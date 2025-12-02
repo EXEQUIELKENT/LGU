@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Booking Management</title>
+  <link rel="stylesheet" href="booking-emp.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    /* ====== Action Buttons (Confirm / Reject) ====== */
+    .action-btns {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn-confirm, .btn-reject {
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-confirm {
+      background: #34d399;
+      border: 2px solid transparent;
+    }
+    .btn-confirm:hover {
+      background: #FEFAF6;
+      color: #0d1f1a;
+      border: 2px solid rgba(0, 0, 0, 0.847);
+      box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25);
+    }
+
+    .btn-reject {
+      background: #f87171;
+      border: 2px solid transparent;
+    }
+    .btn-reject:hover {
+      background: #FEFAF6;
+      color: #0d1f1a;
+      border: 2px solid rgba(0, 0, 0, 0.847);
+      box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25);
+    }
+
+    /* Optional: better status colors */
+    .status-value {
+      color: #34d399;
+      font-weight: 600;
+    }
+    .status-pending {
+      color: #fbc777;
+      font-weight: 600;
+    }
+    .status-error {
+      color: #f87171;
+      font-weight: 600;
+    }
+    .transaction-table td {
+  vertical-align: middle;
+  padding: 12px;
+  white-space: normal !important; /* allow wrapping */
+  height: auto;
+}
+
+.action-btns {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.btn-confirm,
+.btn-reject {
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  transition: 0.3s ease;
+}
+
+.btn-confirm {
+  background: #34d399;
+  border: 2px solid transparent;
+}
+.btn-confirm:hover {
+  background: #FEFAF6;
+  color: #0d1f1a;
+  border: 2px solid rgba(0, 0, 0, 0.847);
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.25);
+}
+
+.btn-reject {
+  background: #f87171;
+  border: 2px solid transparent;
+}
+.btn-reject:hover {
+  background: #FEFAF6;
+  color: #0d1f1a;
+  border: 2px solid rgba(0, 0, 0, 0.847);
+  box-shadow: 0 
+  /* ===== VIEW BOOKING MODAL (Luz de Luna Theme) ===== */
+}
+
+#viewModal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+}
+
+#viewModal .modal-content {
+  background: #FEFAF6;
+  border-radius: 20px;
+  padding: 40px 45px;
+  width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(139, 111, 71, 0.25);
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  position: relative;
+  animation: fadeIn 0.25s ease;
+}
+
+/* Gold accent bar at top */
+#viewModal .modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: #8B6F47;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+/* Modal title */
+#viewModal .modal-title {
+  font-size: 1.4rem;
+  color: #5A442A;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* Close X icon */
+#viewModal .close {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  font-size: 24px;
+  color: #8B6F47;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+#viewModal .close:hover {
+  color: #3D3226;
+}
+
+/* Label styling */
+#viewModal label {
+  font-weight: 600;
+  color: #6B4F3F;
+  display: block;
+  margin-top: 10px;
+}
+
+/* Field styling */
+#viewModal .view-field {
+  background: #f5f1ecb2;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #3D3226;
+  font-size: 15px;
+  border: 1px solid rgba(12, 14, 13, 0.25);
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+
+/* Close button (matches your theme buttons) */
+.btn-close-modal {
+  background-color: #8B6F47;
+  color: #FEFAF6;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(139, 111, 71, 0.25);
+}
+
+.btn-close-modal:hover {
+  background-color: #FEFAF6;
+  color: #3D3226;
+  border: 2px solid #8B6F47;
+}
+
+/* ===== VIEW BUTTON ===== */
+.btn-view {
+  background-color: #8B6F47;
+  color: #FEFAF6;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(139, 111, 71, 0.2);
+}
+.btn-view:hover {
+  background-color: #FEFAF6;
+  color: #3D3226;
+  box-shadow: 0 6px 15px rgba(139, 111, 71, 0.25);
+}
+.btn-view i { font-size: 14px; }
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.55);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+}
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #viewModal .modal-content {
+    width: 90%;
+    padding: 25px 20px;
+  }
+}4px 12px rgba(248, 113, 113, 0.25);
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar-nav">
+    <div class="site-logo">
+      <img src="image/logo.png" alt="Logo">
+    </div>
+    <ul class="nav-list">
+      <li><a href="dash-emp.php" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+      <li><a href="facility-emp.php" class="nav-link"><i class="fa fa-hotel"></i> Facilities</a></li>
+      <li><a href="booking-emp.php" class="nav-link active"><i class="fa fa-calendar-alt"></i> Booking</a></li>
+      <li><a href="reservations-emp.php" class="nav-link"><i class="fas fa-calendar-check"></i> Reservation</a></li>
+      <li><a href="cgm-employee.php" class="nav-link"><i class="fas fa-users"></i> C/GM</a></li>
+      <li><a href="crm-employee.php" class="nav-link"><i class="fas fa-phone"></i> CRM</a></li>
+    </ul>
+    <div class="sidebar-divider"></div>
+    <div class="user-info">
+      <span class="user-welcome" id="userWelcome">Welcome</span>
+      <button class="logout-btn" id="logoutBtn" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+  <section class="dashboard">
+    <h2><i class="fas fa-list"></i> Booking Records</h2>
+    <div class="dashboard-main">
+      <div class="cards full-width">
+        <div class="leftbar">
+          <div class="actions-bar">
+            <input type="text" placeholder="Search booking by name..." class="search-box">
+          </div>
+          <h3><i class="fas fa-list"></i> Booking List</h3>
+
+          <table class="transaction-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Guests</th>
+                <th>Package</th>
+                <th>Cost</th>
+                <th>Status / Actions</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($totalBookings > 0): ?>
+                <?php foreach ($bookings as $book): ?>
+                  <tr>
+                    <td>#<?= htmlspecialchars($book['booking_id']) ?></td>
+                    <td><?= htmlspecialchars($book['name']) ?></td>
+                    <td><?= htmlspecialchars($book['contact_email']) ?></td>
+                    <td><?= htmlspecialchars($book['number_of_guests']) ?></td>
+                    <td><?= htmlspecialchars($book['package_name'] ?? '—') ?></td>
+                    <td>₱<?= number_format($book['cost'], 2) ?></td>
+                    <td>
+                      <?php 
+                        if ($book['status'] === 'Confirmed') {
+                          echo '<span class="status-value">Confirmed</span>';
+                        } elseif ($book['status'] === 'Pending') {
+                          echo '<span class="status-pending">Pending</span>';
+                        } else {
+                          echo '<span class="status-error">Cancelled</span>';
+                        }
+                      ?>
+
+                      <div class="action-btns">
+                        <!-- ✅ NEW VIEW BUTTON -->
+                        <button class="btn-view" onclick='openViewModal(<?= json_encode($book, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                          <i class="fas fa-eye"></i> View
+                        </button>
+
+                        <?php if ($book['status'] === 'Pending'): ?>
+                          <a href="?action=confirm&id=<?= $book['booking_id'] ?>" class="btn-confirm">
+                            <i class="fas fa-check"></i> Confirm
+                          </a>
+                          <a href="?action=reject&id=<?= $book['booking_id'] ?>" class="btn-reject">
+                            <i class="fas fa-times"></i> Reject
+                          </a>
+                        <?php elseif ($book['status'] === 'Confirmed'): ?>
+                          <a href="?action=reject&id=<?= $book['booking_id'] ?>" class="btn-reject">
+                            <i class="fas fa-ban"></i> Cancel
+                          </a>
+                        <?php elseif ($book['status'] === 'Cancelled'): ?>
+                          <a href="?action=confirm&id=<?= $book['booking_id'] ?>" class="btn-confirm">
+                            <i class="fas fa-undo"></i> Reinstate
+                          </a>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                    <td><?= htmlspecialchars($book['check_in_date']) ?></td>
+                    <td><?= htmlspecialchars($book['check_out_date']) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <tr><td colspan="9" style="text-align:center; color:#ccc;">No booking records found.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+    <!-- ✅ View Booking Modal -->
+<div class="modal" id="viewModal">
+  <div class="modal-content">
+    <span id="closeViewModal" class="close">&times;</span>
+    <h3 class="modal-title"><i class="fas fa-eye"></i> Booking Details</h3>
+
+    <div class="view-content">
+      <label>Booking ID:</label>
+      <p class="view-field" id="v_id"></p>
+
+      <label>Guest Name:</label>
+      <p class="view-field" id="v_name"></p>
+
+      <label>Email:</label>
+      <p class="view-field" id="v_email"></p>
+
+      <label>Number of Guests:</label>
+      <p class="view-field" id="v_guests"></p>
+
+      <label>Package:</label>
+      <p class="view-field" id="v_package"></p>
+
+      <label>Cost:</label>
+      <p class="view-field" id="v_cost"></p>
+
+      <label>Status:</label>
+      <p class="view-field" id="v_status"></p>
+
+      <label>Check-in Date:</label>
+      <p class="view-field" id="v_checkin"></p>
+
+      <label>Check-out Date:</label>
+      <p class="view-field" id="v_checkout"></p>
+
+      <button id="closeViewBtn" class="btn-close-modal">
+        <i class="fas fa-arrow-left"></i> Close
+      </button>
+    </div>
+  </div>
+</div>
+  </div>
+  <script>
+    function openViewModal(book) {
+  document.getElementById('v_id').textContent = "#" + book.booking_id;
+  document.getElementById('v_name').textContent = book.name;
+  document.getElementById('v_email').textContent = book.contact_email;
+  document.getElementById('v_guests').textContent = book.number_of_guests;
+  document.getElementById('v_package').textContent = book.package_name || "—";
+  document.getElementById('v_cost').textContent = "₱" + (parseFloat(book.cost) || 0).toLocaleString();
+  document.getElementById('v_status').textContent = book.status;
+  document.getElementById('v_checkin').textContent = book.check_in_date;
+  document.getElementById('v_checkout').textContent = book.check_out_date;
+  document.getElementById('viewModal').style.display = 'flex';
+}
+
+document.getElementById('closeViewModal').addEventListener('click', () => {
+  document.getElementById('viewModal').style.display = 'none';
+});
+document.getElementById('closeViewBtn').addEventListener('click', () => {
+  document.getElementById('viewModal').style.display = 'none';
+});
+window.onclick = e => {
+  if (e.target === document.getElementById('viewModal'))
+    document.getElementById('viewModal').style.display = 'none';
+};
+  </script>
+</body>
+</html>
