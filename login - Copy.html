@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create Account | LGU Portal</title>
-<link rel="stylesheet" href="style.css">
+<title>LGU | Login</title>
+<link rel="stylesheet" href="style - Copy.css">
 <style>
 
 body {
@@ -37,16 +37,21 @@ body::before {
     position: relative;
     z-index: 1;
 }
+
+/* Make content appear ABOVE blur */
+.footer, .wrapper {
+    position: relative;
+    z-index: 1;
+}
 </style>
 </head>
 
 <body>
 
 <header class="nav">
-    <div class="nav-logo">🏛️ LGU Portal</div>
+    <div class="nav-logo">🏛️ Local Government Unit Portal</div>
     <div class="nav-links">
-        <a href="login.html">Login</a>
-        <a class="active">Create Account</a>
+        <a href="">Home</a>
     </div>
 </header>
 
@@ -55,17 +60,11 @@ body::before {
 
         <img src="logocityhall.png" class="icon-top">
 
-        <h2 class="title">Create Account</h2>
-        <p class="subtitle">Register to access the LGU maintenance system.</p>
+        <h2 class="title">LGU Login</h2>
+        <p class="subtitle">Secure access to community maintenance services.</p>
 
         <form>
-
-            <div class="input-box">
-                <label>Full Name</label>
-                <input type="text" placeholder="Juan Dela Cruz">
-                <span class="icon">👤</span>
-            </div>
-
+            
             <div class="input-box">
                 <label>Email Address</label>
                 <input type="email" placeholder="name@lgu.gov.ph">
@@ -78,22 +77,29 @@ body::before {
                 <span class="icon">🔒</span>
             </div>
 
-            <div class="input-box">
-                <label>Confirm Password</label>
-                <input type="password" placeholder="••••••••">
-                <span class="icon">🔒</span>
-            </div>
+            <button class="btn-primary">Sign In</button>
 
-            <button class="btn-primary">Create Account</button>
-
-            <p class="small-text">
-                Already registered?
-                <a href="login.html" class="link">Sign In</a>
+            <p class="small-text">Don’t have an account?
+                <a href="create.html" class="link">Create one</a>
             </p>
 
         </form>
     </div>
 </div>
+
+<footer class="footer">
+
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">About</a>
+        <a href="#">Help</a>
+    </div>
+
+    <div class="footer-logo">
+        © 2025 LGU Citizen Portal · All Rights Reserved
+    </div>
+
+</footer>
 
 </body>
 </html>

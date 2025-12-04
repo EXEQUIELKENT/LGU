@@ -17,16 +17,35 @@ body {
 /* NAVIGATION */
 .nav {
     width: 100%;
-    padding: 20px 60px;
+    padding: 18px 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #fff;
-    font-size: 18px;
+    
+    background: rgba(255, 255, 255, 0.15);     /* softer glass */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
 }
 
 .nav-links a {
     margin-left: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.nav-logo {
+    text-decoration: none;   /* ⛔ Removes underline */
     cursor: pointer;
     color: #fff;
     opacity: .8;
@@ -36,6 +55,7 @@ body {
 .nav-links a:hover,
 .nav-links .active {
     opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
     font-weight: 600;
 }
 
@@ -52,7 +72,7 @@ body {
 /* CARD */
 .card {
     width: 350px;                /* slightly narrower background: rgba(255, 255, 255, 0.25); */
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.795);
     padding: 28px 32px;          /* reduced padding */
     border-radius: 18px;
     backdrop-filter: blur(15px);
@@ -68,12 +88,12 @@ body {
 .title {
     font-size: 26px;            /* slightly smaller */
     margin-bottom: 6px;
-    color: #fff;
+    color: #000000;
 }
 
 .subtitle {
     margin-bottom: 18px;        /* reduce gap */
-    color: #f0f0f0;
+    color: #000000;
 }
 
 /* INPUT BOX */
@@ -81,7 +101,7 @@ body {
     position: relative;
     text-align: left;
     margin-bottom: 14px;        /* reduce spacing */
-    color: #fff;
+    color: #000000;
 }
 
 .input-box label {
@@ -102,7 +122,7 @@ body {
 .icon {
     position: absolute;
     right: 12px;
-    top: 38px;
+    top: 45px;
     transform: translateY(-50%);
     font-size: 18px;
     opacity: 0.6;
@@ -135,7 +155,7 @@ body {
 .small-text {
     margin-top: 15px;
     font-size: 13px;
-    color: #ffffffcc; /* slightly softer white */
+    color: #000000cc; /* slightly softer white */
 }
 
 /* LINKS */
@@ -150,4 +170,53 @@ body {
     color: #004ef6;
     text-decoration: underline;
 }
+
+/* FOOTER — same design as NAVBAR */
+.footer {
+    width: 100%;
+    padding: 18px 45px;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 -4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+
+    animation: fadeUp 0.4s ease-out; /* smooth reveal */
+}
+
+/* Left-aligned links */
+.footer-links {
+    position: absolute;
+    left: 60px;  /* same padding as header */
+}
+
+.footer-links a {
+    margin-right: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.footer-links a:hover {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
+
+/* Center copyright */
+.footer-logo {
+    text-align: center;
+    font-weight: 500;
+    color: #fff;
+}
+
 
