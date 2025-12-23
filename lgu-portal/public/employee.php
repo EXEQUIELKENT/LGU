@@ -1,8 +1,21 @@
+<?php
 session_start();
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
 }
+
+// Handle logout request
+if (isset($_GET['logout'])) {
+    // Clear all session data
+    session_unset();
+    session_destroy();
+
+    // Redirect to login page
+    header("Location: login.php");
+    exit;
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -10,7 +23,7 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU Employee Portal</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style - Copy.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
@@ -293,7 +306,7 @@ body::before {
 
     <div class="user-info">
         <div class="user-welcome">Welcome, Kent</div>
-        <button class="logout-btn">Logout</button>
+    <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
@@ -322,4 +335,15 @@ body::before {
 </div>
 
 </body>
+
+<script>
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    logoutBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to logout?')) {
+            // Redirect to logout handler
+            window.location.href = 'employee.php?logout=1';
+        }
+    });
+</script>
 </html>
