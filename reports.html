@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Reports</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+
+body{
+    height:100vh;
+    background:url("cityhall.jpeg") center/cover no-repeat fixed;
+    position:relative;
+}
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    backdrop-filter:blur(6px);
+    background:rgba(0,0,0,0.35);
+    z-index:0;
+}
+
+/* SIDEBAR — SAME DESIGN */
+.sidebar-nav{
+    position:fixed;top:0;left:0;width:250px;height:100vh;
+    background:rgba(255,255,255,.795);
+    backdrop-filter:blur(18px);
+    box-shadow:0 4px 25px rgba(0,0,0,.25);
+    display:flex;flex-direction:column;justify-content:space-between;
+    z-index:1000;
+}
+.sidebar-top{padding:20px 0;display:flex;flex-direction:column;flex-grow:1}
+.site-logo{display:flex;justify-content:center;margin-bottom:20px}
+.site-logo img{width:120px;border-radius:10px}
+.nav-list{list-style:none;padding:0 20px;font-size:14px}
+.nav-link{
+    display:flex;padding:12px 20px;border-radius:8px;
+    text-decoration:none;color:#000;transition:.3s;
+}
+.nav-link:hover{background:#97a4c2;transform:translateX(8px)}
+.nav-link.active{background:#3762c8;color:#fff}
+.sidebar-divider{border-bottom:2px solid rgba(0,0,0,.55);margin:20px 25px}
+.user-info{text-align:center;padding:20px}
+.logout-btn{
+    background:#3762c8;color:#fff;border:none;
+    padding:8px 12px;border-radius:6px;cursor:pointer;
+}
+
+/* CONTENT */
+.main-content{
+    margin-left:250px;
+    padding:60px 80px;
+    position:relative;
+    z-index:1;
+}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px}
+.card{
+    background:rgba(255,255,255,.9);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+thead{background:#3762c8;color:#fff}
+th,td{padding:14px;font-size:14px;text-align:left}
+tbody tr{border-bottom:1px solid rgba(0,0,0,.1)}
+tbody tr:hover{background:rgba(55,98,200,.08)}
+
+.status{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600}
+.completed{background:#a5d6a7;color:#1b5e20}
+.on-going{background:#fff59d;color:#f57f17}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar-nav">
+    <div class="sidebar-top">
+        <div class="site-logo"><img src="logocityhall.png"></div>
+        <ul class="nav-list">
+            <li><a href="employee.html" class="nav-link">Dashboard</a></li>
+            <li><a href="requests.html" class="nav-link">Requests</a></li>
+            <li><a href="reports.html" class="nav-link active">Reports</a></li>
+            <li><a href="sched.html" class="nav-link">Schedule</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="user-info">
+        <div><strong>Welcome, Kent</strong></div>
+        <button class="logout-btn">Logout</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <h2 class="page-title">Maintenance Reports</h2>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Report ID</th>
+                    <th>Infrastructure</th>
+                    <th>Location</th>
+                    <th>Work Done</th>
+                    <th>Date Completed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#REP-101</td>
+                    <td>Road</td>
+                    <td>Barangay San Juan</td>
+                    <td>Pothole Patching</td>
+                    <td>2025-04-20</td>
+                    <td><span class="status on-going">On-Going</span></td>
+                </tr>
+                <tr>
+                    <td>#REP-102</td>
+                    <td>Drainage</td>
+                    <td>Market Area</td>
+                    <td>Cleaning & Desilting</td>
+                    <td>2025-04-22</td>
+                    <td><span class="status completed">Completed</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
