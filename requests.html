@@ -3,37 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LGU Employee Portal</title>
-<link rel="stylesheet" href="style.css">
+<title>Infrastructure Repair Requests</title>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* BACKGROUND */
 body {
     height: 100vh;
-    display: flex;
-    flex-direction: column;
-
-    /* NEW — background image + blur */
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
     overflow: hidden;
 }
 
-/* NEW — Blur overlay */
 body::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-
-    backdrop-filter: blur(6px); /* actual blur */
-    background: rgba(0, 0, 0, 0.35); /* dark overlay */
-    z-index: 0; /* keeps blur behind content */
+    inset: 0;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
 }
 
-/* Sidebar Navigation */
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -166,117 +164,118 @@ body::before {
     transform: translateY(-2px) scale(1.02);
 }
 
+/* ================= MAIN CONTENT ================= */
 .main-content {
     margin-left: 250px;
-    padding: 30px;
-
-    height: 100vh;
-    box-sizing: border-box;
-
-    display: flex;
+    padding: 60px 80px;
+    position: relative;
+    z-index: 1;
 }
 
-
-/* Optional: smooth scrolling */
-.main-content::-webkit-scrollbar {
-    height: 8px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 4px;
-}
-
-.main-content::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
-}
-
-/* MAIN CONTAINER CARD */
-.main-card {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(14px);
-    border-radius: 26px;
-
-    padding: 40px;
-    margin: 20px;
-
-    width: 100%;
-    height: calc(100vh - 100px); /* ✅ fills screen even without content */
-
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
-
-    box-sizing: border-box;
-    overflow-y: auto;
-
-    box-shadow: 0 12px 35px rgba(0,0,0,0.18);
-}
-
-
-
-/* Keep inner cards slightly floating */
-.main-card .card {
-    background: rgba(255, 255, 255, 0.95);
-}
-
-.card {
-    align-self: start; /* ✅ prevents forced equal height */
-
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
-
-    padding: 30px 35px;
-
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    transition: 0.2s;
-}
-
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-
-.card h3 {
-    margin-bottom: 12px;
-}
-
-.card p {
-    font-size: 14px;
-    color: #000000;
-}
-
-/* Buttons */
-.btn-primary {
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
+.page-title {
     color: #fff;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    cursor: pointer;
-    transition: 0.25s;
+    font-size: 28px;
+    margin-bottom: 25px;
 }
 
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
+/* CARD */
+.table-card {
+    background: rgba(255,255,255,0.9);
+    border-radius: 22px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #3762c8;
+    color: #fff;
+}
+
+th, td {
+    padding: 14px;
+    font-size: 14px;
+    text-align: left;
+}
+
+tbody tr {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+tbody tr:hover {
+    background: rgba(55,98,200,0.08);
+}
+
+/* STATUS */
+.status {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pending { background: #ffe082; color: #6b5500; }
+.in-progress { background: #90caf9; color: #0d47a1; }
+.completed { background: #a5d6a7; color: #1b5e20; }
+
+/* ACTION */
+.btn-view {
+    background: #3762c8;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* EVIDENCE */
+.evidence-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.evidence-preview {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #555;
+}
+
+.upload-btn {
+    background: #3762c8;
+    color: #fff;
+    padding: 5px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: fit-content;
 }
 </style>
 </head>
+
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar-nav">
     <div class="sidebar-top">
         <div class="site-logo">
-            <img src="logocityhall.png" alt="LGU Logo">
-    <div class="sidebar-divider"></div>
+            <img src="logocityhall.png">
         </div>
+
         <ul class="nav-list">
-            <li><a href="employee.html" class="nav-link active">Dashboard</a></li>
-            <li><a href="requests.html" class="nav-link">Requests</a></li>
+            <li><a href="employee.html" class="nav-link">Dashboard</a></li>
+            <li><a href="requests.html" class="nav-link active">Requests</a></li>
             <li><a href="reports.html" class="nav-link">Reports</a></li>
             <li><a href="sched.html" class="nav-link">Schedule</a></li>
         </ul>
@@ -285,32 +284,46 @@ body::before {
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-        <div class="user-welcome">Welcome, Kent</div>
+           <div class="user-welcome">Welcome, Kent</div>
         <button class="logout-btn">Logout</button>
     </div>
 </div>
 
+<!-- CONTENT -->
 <div class="main-content">
-    <div class="main-card">
+    <h2 class="page-title">Infrastructure Repair Requests</h2>
 
-        <div class="card">
-            <h3>Pending Requests</h3>
-            <p>Track and assign new community maintenance requests submitted by citizens.</p>
-            <button class="btn-primary">View Requests</button>
-        </div>
-
-        <div class="card">
-            <h3>Facility Status</h3>
-            <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
-            <button class="btn-primary">Update Status</button>
-        </div>
-
-        <div class="card">
-            <h3>Performance Reports</h3>
-            <p>Generate reports on completed requests and ongoing maintenance projects.</p>
-            <button class="btn-primary">Generate Report</button>
-        </div>
-
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Request ID</th>
+                    <th>Infrastructure</th>
+                    <th>Location</th>
+                    <th>Issue</th>
+                    <th>Date Submitted</th>
+                    <th>Evidence</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#REQ-001</td>
+                    <td>Road</td>
+                    <td>Barangay San Juan</td>
+                    <td>Potholes</td>
+                    <td>2025-04-10</td>
+                    <td>
+                        <div class="evidence-box">
+                            <div class="evidence-preview">No image</div>
+                        </div>
+                    </td>
+                    <td><span class="status pending">Pending</span></td>
+                    <td><button class="btn-view">View</button></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Schedule</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+
+body{
+    height:100vh;
+    background:url("cityhall.jpeg") center/cover no-repeat fixed;
+    position:relative;
+}
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    backdrop-filter:blur(6px);
+    background:rgba(0,0,0,0.35);
+    z-index:0;
+}
+
+/* SIDEBAR (same) */
+.sidebar-nav{
+    position:fixed;top:0;left:0;width:250px;height:100vh;
+    background:rgba(255,255,255,.795);
+    backdrop-filter:blur(18px);
+    box-shadow:0 4px 25px rgba(0,0,0,.25);
+    display:flex;flex-direction:column;justify-content:space-between;
+    z-index:1000;
+}
+.sidebar-top{padding:20px 0}
+.site-logo{display:flex;justify-content:center;margin-bottom:20px}
+.site-logo img{width:120px;border-radius:10px}
+.nav-list{list-style:none;padding:0 20px;font-size:14px}
+.nav-link{
+    display:flex;padding:12px 20px;border-radius:8px;
+    text-decoration:none;color:#000;transition:.3s;
+}
+.nav-link:hover{background:#97a4c2;transform:translateX(8px)}
+.nav-link.active{background:#3762c8;color:#fff}
+.sidebar-divider{border-bottom:2px solid rgba(0,0,0,.55);margin:20px 25px}
+.user-info{text-align:center;padding:20px}
+.logout-btn{background:#3762c8;color:#fff;border:none;padding:8px 12px;border-radius:6px}
+
+/* CONTENT */
+.main-content{
+    margin-left:250px;
+    padding:60px 80px;
+    position:relative;
+    z-index:1;
+}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px}
+
+.card{
+    background:rgba(255,255,255,.9);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+
+.schedule-item{
+    display:flex;
+    justify-content:space-between;
+    padding:15px;
+    border-bottom:1px solid rgba(0,0,0,.1);
+}
+.schedule-item:last-child{border-bottom:none}
+.schedule-date{font-weight:600;color:#3762c8}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar-nav">
+    <div class="sidebar-top">
+        <div class="site-logo"><img src="logocityhall.png"></div>
+        <ul class="nav-list">
+            <li><a href="employee.html" class="nav-link">Dashboard</a></li>
+            <li><a href="requests.html" class="nav-link">Requests</a></li>
+            <li><a href="reports.html" class="nav-link">Reports</a></li>
+            <li><a href="sched.html" class="nav-link active">Schedule</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="user-info">
+        <div><strong>Welcome, Kent</strong></div>
+        <button class="logout-btn">Logout</button>
+    </div>
+</div>
+
+<div class="main-content">
+    <h2 class="page-title">Maintenance Schedule</h2>
+
+    <div class="card">
+        <div class="schedule-item">
+            <div>
+                <strong>Road Repair</strong><br>
+                Barangay San Juan
+            </div>
+            <div class="schedule-date">April 28, 2025</div>
+        </div>
+
+        <div class="schedule-item">
+            <div>
+                <strong>Street Light Maintenance</strong><br>
+                Main Highway
+            </div>
+            <div class="schedule-date">April 30, 2025</div>
+        </div>
+
+        <div class="schedule-item">
+            <div>
+                <strong>Drainage Cleaning</strong><br>
+                Market Area
+            </div>
+            <div class="schedule-date">May 3, 2025</div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
