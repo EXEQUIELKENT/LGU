@@ -31,6 +31,71 @@
             z-index: -1; /* Place behind all content */
         }
 
+        /* NAVBAR - styled like Employee sidebar */
+        .nav {
+            width: 100%;
+            padding: 18px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            
+            background: rgba(255, 255, 255, 0.15);     /* softer glass */
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+            box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        .site-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .site-logo img {
+            width: 40px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .nav a {
+            margin-left: 25px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.85;
+            transition: 0.2s;
+        }
+
+        .nav-links a {
+            margin-left: 25px;
+            text-decoration: none;   /* ⛔ Removes underline */
+            cursor: pointer;
+            color: #fff;
+            opacity: .8;
+            transition: .2s;
+        }
+
+        .nav .nav-link.active,
+        .nav .nav-link.active:hover {
+        opacity: 1;
+            text-decoration: none;   /* ⛔ Removes underline */
+            font-weight: 600;
+        }
+
+        .nav .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(8px) scale(1.02);
+        }
+
         /* CONTENT WRAPPER */
         .form-wrapper {
             position: relative;
@@ -120,12 +185,12 @@
 
 <header class="nav">
     <div class="site-logo">
-        <img src="" alt="LGU Logo">
+        <img src="logocityhall.png" alt="LGU Logo">
         <span>LGU Citizen Portal</span>
     </div>
     <div class="nav-links">
         <a href="citizen.html">Home</a>
-        <a class="active" href="#">Services</a>
+        <a class="active">Services</a>
         <a href="#">Requests</a>
     </div>
 </header>

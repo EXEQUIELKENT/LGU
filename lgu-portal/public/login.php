@@ -48,13 +48,16 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         return;
     }
 
-    // Password check (placeholder)
-    if (isset($_POST['login_submit'])) {
-        $password = $_POST['password'];
-        if ($password !== "admin123") {
-            echo "<script>alert('Invalid password');</script>";
-            return;
-        }
+    // Allowed emails (can login with ANY password)
+    $allowedEmails = [
+        'bartolomeexequielkent@gmail.com',
+        'villawarvie@gmail.com'
+    ];
+
+    // Check if email is allowed
+    if (!in_array($email, $allowedEmails)) {
+        echo "<script>alert('This email is not authorized to access the LGU Portal.');</script>";
+        return;
     }
 
     $_SESSION['login_email'] = $email;
@@ -95,7 +98,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
