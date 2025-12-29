@@ -2,18 +2,19 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+require __DIR__ . '/db.php'; // Make sure your db.php connects $conn
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
 
-// Reset OTP form if user reloads login page (fresh start)
+// Reset OTP if user reloads
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
 }
 
-// Handle OTP verification
+// OTP verification
 if (isset($_POST['otp_submit'])) {
     $entered_otp = trim($_POST['otp']);
     $current_time = time();
@@ -21,11 +22,12 @@ if (isset($_POST['otp_submit'])) {
     if (!isset($_SESSION['otp']) || !isset($_SESSION['otp_time'])) {
         echo "<script>alert('OTP expired or not generated. Please log in again.');</script>";
         unset($_SESSION['show_otp_form']);
-    } elseif ($current_time - $_SESSION['otp_time'] > 300) { // 5 minutes expiration
+    } elseif ($current_time - $_SESSION['otp_time'] > 300) {
         echo "<script>alert('OTP expired. Please log in again.');</script>";
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
+        $_SESSION['otp_verified'] = true;
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
 
         echo "<script>
@@ -38,26 +40,36 @@ if (isset($_POST['otp_submit'])) {
     }
 }
 
-// Handle initial login form submission
+// Handle login submission
 if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $email = trim($_POST['email']);
+    $password = $_POST['password'] ?? '';
 
-    // Validate Gmail
+    // Validate Gmail format
     if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/', $email)) {
         echo "<script>alert('Only @gmail.com email addresses are allowed');</script>";
         return;
     }
 
-    // Allowed emails (can login with ANY password)
-    $allowedEmails = [
-        'bartolomeexequielkent@gmail.com',
-        'villawarvie@gmail.com'
-    ];
+    // Fetch user from DB
+    $stmt = $conn->prepare("SELECT password FROM employees WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    // Check if email is allowed
-    if (!in_array($email, $allowedEmails)) {
-        echo "<script>alert('This email is not authorized to access the LGU Portal.');</script>";
+    if ($result->num_rows !== 1) {
+        echo "<script>alert('Email not found');</script>";
         return;
+    }
+
+    $user = $result->fetch_assoc();
+
+    // Only check password if not resending OTP
+    if (isset($_POST['login_submit'])) {
+        if (!password_verify($password, $user['password'])) {
+            echo "<script>alert('Incorrect password');</script>";
+            return;
+        }
     }
 
     $_SESSION['login_email'] = $email;
@@ -68,7 +80,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $_SESSION['otp_time'] = time();
     $_SESSION['show_otp_form'] = true;
 
-    // Send OTP via email
+    // Send OTP email
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
@@ -99,6 +111,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 }
 ?>
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,10 +136,76 @@ body::before
     backdrop-filter: blur(6px); 
     background: rgba(0,0,0,0.35); 
     z-index:0;}
+
+/* NAVBAR */
+.nav {
+    width: 100%;
+    padding: 16px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+/* LOGO AREA */
+.site-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* LOGO IMAGE */
+.site-logo img {
+    width: 40px;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* NAV LINKS */
+.nav-links {
+    display: flex;
+    align-items: center;
+}
+
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;
+    color: #fff;
+    opacity: 0.85;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 10px;
+    transition: 0.25s ease;
+}
+
+.nav-links a:hover {
+    opacity: 1;
+}
+
+.nav-links a.active {
+    opacity: 1;
+    font-weight: 600;
+}
+
 .nav,  .wrapper, .footer 
     { 
     position: relative; 
     z-index:1; }
+    
 #timer     
     {font-size: 16px;
     font-weight: 600;
@@ -160,8 +239,14 @@ body::before
 <body>
 
 <header class="nav">
-    <div class="nav-logo">🏛️ Local Government Unit Portal</div>
-    <div class="nav-links"><a href="">Home</a></div>
+    <div class="site-logo">
+        <img src="logocityhall.png" alt="LGU Logo">
+        <span>Local Government Unit Portal</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="#" class="active">Home</a>
+    </div>
 </header>
 
 <div class="wrapper">

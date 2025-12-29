@@ -22,34 +22,24 @@ if (isset($_GET['logout'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LGU Employee Portal</title>
-<link rel="stylesheet" href="style - Copy.css">
+<title>Maintenance Reports</title>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-body {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-
-    /* NEW — background image + blur */
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    position: relative;
-    overflow: hidden;
+body{
+    height:100vh;
+    background:url("cityhall.jpeg") center/cover no-repeat fixed;
+    position:relative;
 }
-
-/* NEW — Blur overlay */
-body::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-
-    backdrop-filter: blur(6px); /* actual blur */
-    background: rgba(0, 0, 0, 0.35); /* dark overlay */
-    z-index: 0; /* keeps blur behind content */
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    backdrop-filter:blur(6px);
+    background:rgba(0,0,0,0.35);
+    z-index:0;
 }
 
 /* Sidebar Navigation */
@@ -185,106 +175,58 @@ body::before {
     transform: translateY(-2px) scale(1.02);
 }
 
-.main-content {
-    margin-left: 250px;
-    padding: 30px;
-
-    height: 100vh;
-    box-sizing: border-box;
-
-    display: flex;
+/* CONTENT */
+.main-content{
+    margin-left:250px;
+    padding:60px 80px;
+    position:relative;
+    z-index:1;
+}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px}
+.card{
+    background:rgba(255,255,255,.9);
+    border-radius:22px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
 
-
-/* Optional: smooth scrolling */
-.main-content::-webkit-scrollbar {
-    height: 8px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 4px;
-}
-
-.main-content::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
-}
-
-/* MAIN CONTAINER CARD */
-.main-card {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(14px);
-    border-radius: 26px;
-
-    padding: 40px;
-    margin: 20px;
-
+/* TABLE */
+/* TABLE */
+table {
     width: 100%;
-    height: calc(100vh - 100px); /* ✅ fills screen even without content */
-
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
-
-    box-sizing: border-box;
-    overflow-y: auto;
-
-    box-shadow: 0 12px 35px rgba(0,0,0,0.18);
+    border-collapse: separate; /* IMPORTANT */
+    border-spacing: 0;
 }
 
-
-
-/* Keep inner cards slightly floating */
-.main-card .card {
-    background: rgba(255, 255, 255, 0.95);
-}
-
-.card {
-    align-self: start; /* ✅ prevents forced equal height */
-
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
-
-    padding: 30px 35px;
-
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    transition: 0.2s;
-}
-
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-
-.card h3 {
-    margin-bottom: 12px;
-}
-
-.card p {
-    font-size: 14px;
-    color: #000000;
-}
-
-/* Buttons */
-.btn-primary {
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
+thead {
+    background: #3762c8;
     color: #fff;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    cursor: pointer;
-    transition: 0.25s;
 }
 
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
+thead th {
+    padding: 14px;
+    font-size: 14px;
+    text-align: left;
 }
+
+/* Rounded corners for TH */
+thead th:first-child {
+    border-top-left-radius: 12px;
+}
+
+thead th:last-child {
+    border-top-right-radius: 12px;
+}
+th,td{padding:14px;font-size:14px;text-align:left}
+tbody tr{border-bottom:1px solid rgba(0,0,0,.1)}
+tbody tr:hover{background:rgba(55,98,200,.08)}
+
+.status{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600}
+.completed{background:#a5d6a7;color:#1b5e20}
+.on-going{background:#fff59d;color:#f57f17}
 </style>
 </head>
+
 <body>
 
 <div class="sidebar-nav">
@@ -294,9 +236,9 @@ body::before {
     <div class="sidebar-divider"></div>
         </div>
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active">Dashboard</a></li>
+            <li><a href="employee.php" class="nav-link">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
-            <li><a href="reports.php" class="nav-link">Reports</a></li>
+            <li><a href="#" class="nav-link active">Reports</a></li>
             <li><a href="sched.php" class="nav-link">Schedule</a></li>
         </ul>
     </div>
@@ -310,30 +252,41 @@ body::before {
 </div>
 
 <div class="main-content">
-    <div class="main-card">
+    <h2 class="page-title">Maintenance Reports</h2>
 
-        <div class="card">
-            <h3>Pending Requests</h3>
-            <p>Track and assign new community maintenance requests submitted by citizens.</p>
-            <button class="btn-primary">View Requests</button>
-        </div>
-
-        <div class="card">
-            <h3>Facility Status</h3>
-            <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
-            <button class="btn-primary">Update Status</button>
-        </div>
-
-        <div class="card">
-            <h3>Performance Reports</h3>
-            <p>Generate reports on completed requests and ongoing maintenance projects.</p>
-            <button class="btn-primary">Generate Report</button>
-        </div>
-
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Report ID</th>
+                    <th>Infrastructure</th>
+                    <th>Location</th>
+                    <th>Work Done</th>
+                    <th>Date Completed</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#REP-101</td>
+                    <td>Road</td>
+                    <td>Barangay San Juan</td>
+                    <td>Pothole Patching</td>
+                    <td>2025-04-20</td>
+                    <td><span class="status on-going">On-Going</span></td>
+                </tr>
+                <tr>
+                    <td>#REP-102</td>
+                    <td>Drainage</td>
+                    <td>Market Area</td>
+                    <td>Cleaning & Desilting</td>
+                    <td>2025-04-22</td>
+                    <td><span class="status completed">Completed</span></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
-
-</body>
 
 <script>
     const logoutBtn = document.getElementById('logoutBtn');
@@ -345,4 +298,6 @@ body::before {
         }
     });
 </script>
+
+</body>
 </html>
