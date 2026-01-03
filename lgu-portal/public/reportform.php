@@ -103,7 +103,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding: 120px 20px 60px; /* Space for fixed navbar */
+            padding: 75px 20px 0px; /* Space for fixed navbar */
         }
 
         /* FORM CARD */
@@ -111,13 +111,13 @@
             width: 100%;
             max-width: 500px;
             background: rgba(255, 255, 255, 0.9); /* Higher opacity for readability */
-            padding: 35px;
+            padding: 30px;
             border-radius: 18px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .report-card h2 {
-            margin-bottom: 20px;
+            margin-bottom: 5px;
             font-size: 26px;
             color: #000;
             text-align: center;
@@ -189,9 +189,9 @@
         <span>LGU Citizen Portal</span>
     </div>
     <div class="nav-links">
-        <a href="citizen.html">Home</a>
-        <a class="active">Services</a>
-        <a href="#">Requests</a>
+        <a href="citizen.php">Home</a>
+        <a href="services.php" class="active">Services</a>
+        <a href="">Requests</a>
     </div>
 </header>
 
@@ -212,18 +212,13 @@
             </div>
 
             <div class="input-group">
-                <label>Location</label>
+                <label>Location(or paste the link from Google maps)</label>
                 <input type="text" placeholder="Street, Barangay, Landmark" required>
             </div>
 
             <div class="input-group">
                 <label>Issue / Damage Description</label>
                 <textarea placeholder="Describe the problem in detail..." required></textarea>
-            </div>
-
-            <div class="input-group">
-                <label>Date Submitted</label>
-                <input type="date" id="submissionDate" required>
             </div>
 
             <div class="input-group">
