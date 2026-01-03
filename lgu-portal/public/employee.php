@@ -308,7 +308,11 @@ body::before {
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
+<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+        <div class="user-welcome">Welcome, User</div>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
     <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>

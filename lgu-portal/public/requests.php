@@ -1,9 +1,12 @@
 <?php
 session_start();
+<<<<<<< HEAD
 require __DIR__ . '/db.php';
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
@@ -19,10 +22,13 @@ if (isset($_GET['logout'])) {
     header("Location: login.php");
     exit;
 }
+<<<<<<< HEAD
 
 // Fetch requests from DB
 $sql = "SELECT * FROM requests ORDER BY date_submitted DESC";
 $result = $conn->query($sql);
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
 ?>
 
 
@@ -328,7 +334,11 @@ tbody tr:hover {
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
+<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+        <div class="user-welcome">Welcome, User</div>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
     <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
@@ -351,6 +361,7 @@ tbody tr:hover {
                     <th>Action</th>
                 </tr>
             </thead>
+<<<<<<< HEAD
 
             <tbody>
             <?php if ($result->num_rows > 0): ?>
@@ -390,6 +401,24 @@ tbody tr:hover {
             <?php endif; ?>
             </tbody>
 
+=======
+            <tbody>
+                <tr>
+                    <td>#REQ-001</td>
+                    <td>Road</td>
+                    <td>Barangay San Juan</td>
+                    <td>Potholes</td>
+                    <td>2025-04-10</td>
+                    <td>
+                        <div class="evidence-box">
+                            <div class="evidence-preview">No image</div>
+                        </div>
+                    </td>
+                    <td><span class="status pending">Pending</span></td>
+                    <td><button class="btn-view">View</button></td>
+                </tr>
+            </tbody>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
         </table>
     </div>
 </div>
