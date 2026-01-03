@@ -1,14 +1,27 @@
 <?php
 session_start();
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 require __DIR__ . '/db.php';
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 // Fetch schedules
 $schedules = [];
 $sql = "SELECT * FROM maintenance_schedule ORDER BY schedule_date ASC";
@@ -21,26 +34,61 @@ if ($result && $result->num_rows > 0) {
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
+<<<<<<< HEAD
+=======
+=======
+// Handle logout request
+if (isset($_GET['logout'])) {
+    // Clear all session data
+    session_unset();
+    session_destroy();
+
+    // Redirect to login page
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     header("Location: login.php");
     exit;
 }
 ?>
 
+<<<<<<< HEAD
 <script>
 const scheduleData = <?= json_encode($schedules); ?>;
 </script>
+=======
+<<<<<<< HEAD
+<script>
+const scheduleData = <?= json_encode($schedules); ?>;
+</script>
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<<<<<<< HEAD
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+=======
+<<<<<<< HEAD
+<title>Maintenance Schedule</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+=======
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Schedule</title>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 body {
     margin: 0;
     padding: 0;
@@ -61,6 +109,23 @@ body::before {
     background: rgba(0,0,0,0.35); /* semi-transparent dark layer */
     backdrop-filter: blur(6px);   /* blur effect */
     z-index: 0;
+<<<<<<< HEAD
+=======
+=======
+body{
+    height:100vh;
+    background:url("cityhall.jpeg") center/cover no-repeat fixed;
+    position:relative;
+}
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    backdrop-filter:blur(6px);
+    background:rgba(0,0,0,0.35);
+    z-index:0;
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 }
 
 /* Sidebar Navigation */
@@ -196,6 +261,10 @@ body::before {
     transform: translateY(-2px) scale(1.02);
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 .main-content {
     margin-left: 250px;
     padding: 20px 80px;
@@ -206,11 +275,31 @@ body::before {
 
 .card{
     background:rgba(255,255,255,.92);
+<<<<<<< HEAD
+=======
+=======
+/* CONTENT */
+.main-content{
+    margin-left:250px;
+    padding:60px 80px;
+    position:relative;
+    z-index:1;
+}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px}
+
+.card{
+    background:rgba(255,255,255,.9);
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     border-radius:22px;
     padding:30px;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 /* TOGGLE BUTTON */
 .toggle-btn{
     margin-top:20px;
@@ -310,6 +399,19 @@ body::before {
 .modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
 .modal h3 {margin-bottom:15px;}
 .modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
+<<<<<<< HEAD
+=======
+=======
+.schedule-item{
+    display:flex;
+    justify-content:space-between;
+    padding:15px;
+    border-bottom:1px solid rgba(0,0,0,.1);
+}
+.schedule-item:last-child{border-bottom:none}
+.schedule-date{font-weight:600;color:#3762c8}
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 </style>
 </head>
 
@@ -325,19 +427,39 @@ body::before {
             <li><a href="employee.php" class="nav-link">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
             <li><a href="reports.php" class="nav-link">Reports</a></li>
+<<<<<<< HEAD
             <li><a href="#" class="nav-link active">Maintenance Schedule</a></li>
+=======
+<<<<<<< HEAD
+            <li><a href="#" class="nav-link active">Maintenance Schedule</a></li>
+=======
+            <li><a href="#" class="nav-link active">Schedule</a></li>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
+<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+<<<<<<< HEAD
+        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+        <div class="user-welcome">Welcome, User</div>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
 <div class="main-content">
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
     <div class="card">
 
@@ -389,10 +511,45 @@ body::before {
         <span id="modalClose" class="modal-close">&times;</span>
         <h3>Scheduled Tasks</h3>
         <div id="modalBody"></div>
+<<<<<<< HEAD
+=======
+=======
+    <h2 class="page-title">Maintenance Schedule</h2>
+
+    <div class="card">
+        <div class="schedule-item">
+            <div>
+                <strong>Road Repair</strong><br>
+                Barangay San Juan
+            </div>
+            <div class="schedule-date">April 28, 2025</div>
+        </div>
+
+        <div class="schedule-item">
+            <div>
+                <strong>Street Light Maintenance</strong><br>
+                Main Highway
+            </div>
+            <div class="schedule-date">April 30, 2025</div>
+        </div>
+
+        <div class="schedule-item">
+            <div>
+                <strong>Drainage Cleaning</strong><br>
+                Market Area
+            </div>
+            <div class="schedule-date">May 3, 2025</div>
+        </div>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     </div>
 </div>
 
 <script>
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 const calendarGrid = document.getElementById('calendarGrid');
 const calendarDetails = document.getElementById('calendarDetails');
 const monthLabel = document.getElementById('monthLabel');
@@ -493,5 +650,20 @@ document.getElementById('logoutBtn').addEventListener('click', ()=>{
 </script>
 
 
+<<<<<<< HEAD
+=======
+=======
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    logoutBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to logout?')) {
+            // Redirect to logout handler
+            window.location.href = 'employee.php?logout=1';
+        }
+    });
+</script>
+
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 </body>
 </html>

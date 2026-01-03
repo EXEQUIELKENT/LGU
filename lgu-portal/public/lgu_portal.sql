@@ -3,7 +3,15 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
+<<<<<<< HEAD
 -- Generation Time: Jan 03, 2026 at 11:13 AM
+=======
+<<<<<<< HEAD
+-- Generation Time: Jan 03, 2026 at 11:13 AM
+=======
+-- Generation Time: Dec 28, 2025 at 07:31 PM
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -29,10 +37,20 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `employees` (
   `id` int(11) NOT NULL,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
   `first_name` varchar(255) NOT NULL,
   `last_name` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `role` varchar(100) NOT NULL,
+<<<<<<< HEAD
+=======
+=======
+  `email` varchar(255) NOT NULL,
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
   `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -40,6 +58,10 @@ CREATE TABLE `employees` (
 -- Dumping data for table `employees`
 --
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`) VALUES
 (14, '', '', 'bartolomeexequielkent@gmail.com', 'Employee', '$2y$10$PPfq0JSn/P.MxjEapoyGi.aT5SPuYsW207H8P30Pu6h6XorWx7Qka'),
 (15, '', '', 'villawarvie@gmail.com', 'Employee', '$2y$10$N.z8Y0uBYRQKMJgd9MHVmei1Kqia/InIVJGvkRY6fqxH.Wvz4z/Zu');
@@ -99,6 +121,14 @@ CREATE TABLE `requests` (
   `evidence` varchar(255) DEFAULT NULL,
   `status` enum('Pending','In Progress','Completed') DEFAULT 'Pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+<<<<<<< HEAD
+=======
+=======
+INSERT INTO `employees` (`id`, `email`, `password`) VALUES
+(14, 'bartolomeexequielkent@gmail.com', '$2y$10$PPfq0JSn/P.MxjEapoyGi.aT5SPuYsW207H8P30Pu6h6XorWx7Qka'),
+(15, 'villawarvie@gmail.com', '$2y$10$N.z8Y0uBYRQKMJgd9MHVmei1Kqia/InIVJGvkRY6fqxH.Wvz4z/Zu');
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 --
 -- Indexes for dumped tables
@@ -112,6 +142,10 @@ ALTER TABLE `employees`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 -- Indexes for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
@@ -130,6 +164,11 @@ ALTER TABLE `requests`
   ADD PRIMARY KEY (`id`);
 
 --
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -138,6 +177,10 @@ ALTER TABLE `requests`
 --
 ALTER TABLE `employees`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -156,6 +199,11 @@ ALTER TABLE `reports`
 --
 ALTER TABLE `requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

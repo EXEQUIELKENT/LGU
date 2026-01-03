@@ -301,14 +301,26 @@ body::before {
             <li><a href="#" class="nav-link active">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
             <li><a href="reports.php" class="nav-link">Reports</a></li>
+<<<<<<< HEAD
             <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
+=======
+            <li><a href="sched.php" class="nav-link">Schedule</a></li>
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
+<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+<<<<<<< HEAD
+        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+=======
+        <div class="user-welcome">Welcome, User</div>
+>>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>

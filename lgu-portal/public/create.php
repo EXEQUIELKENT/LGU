@@ -126,6 +126,10 @@ body::before {
 .card {
     width: 100%;
     max-width: 500px;
+<<<<<<< HEAD
+=======
+    background: rgba(231, 222, 222, 0.95); /* soft white with opacity */
+>>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     backdrop-filter: blur(8px);
     border-radius: 20px;
     padding: 30px 25px;
