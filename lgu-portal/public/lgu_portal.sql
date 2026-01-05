@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 03, 2026 at 02:00 PM
+-- Generation Time: Jan 05, 2026 at 07:48 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.1.25
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -50,6 +50,19 @@ INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `pass
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `evidence_images`
+--
+
+CREATE TABLE `evidence_images` (
+  `image_id` int(11) NOT NULL,
+  `request_id` int(11) NOT NULL,
+  `image_path` varchar(255) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `maintenance_schedule`
 --
 
@@ -90,17 +103,15 @@ CREATE TABLE `reports` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `requests`
+-- Table structure for table `request`
 --
 
-CREATE TABLE `requests` (
-  `id` int(11) NOT NULL,
-  `infrastructure` varchar(100) DEFAULT NULL,
-  `location` varchar(255) DEFAULT NULL,
-  `issue` varchar(255) DEFAULT NULL,
-  `date_submitted` date DEFAULT NULL,
-  `evidence` varchar(255) DEFAULT NULL,
-  `status` enum('Pending','In Progress','Completed') DEFAULT 'Pending'
+CREATE TABLE `request` (
+  `request_id` int(11) NOT NULL,
+  `infrastructure` varchar(100) NOT NULL,
+  `location` varchar(255) NOT NULL,
+  `issue` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -115,6 +126,13 @@ ALTER TABLE `employees`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  ADD PRIMARY KEY (`image_id`),
+  ADD KEY `request_id` (`request_id`);
+
+--
 -- Indexes for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
@@ -127,10 +145,10 @@ ALTER TABLE `reports`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `requests`
+-- Indexes for table `request`
 --
-ALTER TABLE `requests`
-  ADD PRIMARY KEY (`id`);
+ALTER TABLE `request`
+  ADD PRIMARY KEY (`request_id`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -141,6 +159,12 @@ ALTER TABLE `requests`
 --
 ALTER TABLE `employees`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  MODIFY `image_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -155,10 +179,20 @@ ALTER TABLE `reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `requests`
+-- AUTO_INCREMENT for table `request`
 --
-ALTER TABLE `requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `request`
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  ADD CONSTRAINT `evidence_images_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `request` (`request_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
