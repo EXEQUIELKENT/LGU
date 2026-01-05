@@ -2,37 +2,13 @@
 session_start();
 require __DIR__ . '/db.php';
 
-$firstName = $_SESSION['employee_first_name'] ?? 'User';
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    header("Location: login.php");
-    exit;
-}
-
-// Handle logout request
-if (isset($_GET['logout'])) {
-    // Set log out notification for next login page
+// Notification system (copied from employee.php/sched.php)
+function setNotification($type, $message) {
     $_SESSION['notification'] = [
-        'type' => 'info',
-        'message' => 'Successfully logged out.'
+        'type' => $type,
+        'message' => $message
     ];
-    // Clear all session data (but preserve notification)
-    $notif = $_SESSION['notification'];
-    session_unset();
-    session_destroy();
-    // Start new session to save notification
-    session_start();
-    $_SESSION['notification'] = $notif;
-    header("Location: login.php");
-    exit;
 }
-
-// Fetch requests from DB
-// FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
-$sql = "SELECT * FROM requests ORDER BY created_at DESC";
-$result = $conn->query($sql);
-
-// Notification system (copied from employee.php)
 function showNotification() {
     if (!empty($_SESSION['notification'])) {
         $type = $_SESSION['notification']['type'];
@@ -54,6 +30,33 @@ function showNotification() {
         </script>";
     }
 }
+
+$firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
+
+if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
+    header("Location: login.php");
+    exit;
+}
+
+// Handle logout request
+if (isset($_GET['logout'])) {
+    // Set log out notification for next login page
+    setNotification('info', 'Successfully logged out.');
+    // Clear all session data (but preserve notification)
+    $notif = $_SESSION['notification'];
+    session_unset();
+    session_destroy();
+    // Session destroyed, start new to save notification
+    session_start();
+    $_SESSION['notification'] = $notif;
+    header("Location: login.php");
+    exit;
+}
+
+// Fetch requests from DB
+// FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
+$sql = "SELECT * FROM requests ORDER BY created_at DESC";
+$result = $conn->query($sql);
 ?>
 
 

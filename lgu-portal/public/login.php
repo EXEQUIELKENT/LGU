@@ -40,7 +40,7 @@ function showNotification() {
 
 // Reset OTP if user reloads
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
+    unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
 }
 
 // OTP verification
@@ -48,16 +48,26 @@ if (isset($_POST['otp_submit'])) {
     $entered_otp = trim($_POST['otp']);
     $current_time = time();
 
+    // Initialize or get current attempts
+    if (!isset($_SESSION['otp_attempts'])) {
+        $_SESSION['otp_attempts'] = 0;
+    }
+
+    // Check if OTP and time are set and valid
     if (!isset($_SESSION['otp']) || !isset($_SESSION['otp_time'])) {
         setNotification('error', 'OTP expired or not generated. Please log in again.');
-        unset($_SESSION['show_otp_form']);
+        unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
     } elseif ($current_time - $_SESSION['otp_time'] > 300) {
         setNotification('warning', 'OTP expired. Please log in again.');
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+    } elseif ($_SESSION['otp_attempts'] >= 3) {
+        // Block after 3 wrong attempts
+        setNotification('error', 'Too many wrong attempts. This OTP is now expired. Please log in again and request a new OTP.');
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
 
         setNotification('success', 'Login successful! Redirecting to Employee Portal...');
         // Redirect after slight delay so notification shows
@@ -66,11 +76,18 @@ if (isset($_POST['otp_submit'])) {
         </script>";
         // Do not exit here, allow notification display
     } else {
-        setNotification('error', 'Invalid OTP. Please try again.');
+        $_SESSION['otp_attempts']++;
+        if ($_SESSION['otp_attempts'] >= 3) {
+            setNotification('error', 'You have entered the wrong code 3 times. This OTP is now expired. Please log in again and request a new OTP.');
+            unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+        } else {
+            $remaining = 3 - $_SESSION['otp_attempts'];
+            setNotification('error', 'Invalid OTP. You have ' . $remaining . ' attempt' . ($remaining > 1 ? 's' : '') . ' left.');
+        }
     }
 }
 
-// Handle login submission
+// Handle login submission & OTP resend logic
 if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'] ?? '';
@@ -82,7 +99,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         exit;
     }
 
-    // Fetch user from DB (fixing merge/lint error: use correct query and no merge conflict)
+    // Fetch user from DB
     $stmt = $conn->prepare("SELECT first_name, password FROM employees WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -109,11 +126,12 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     $_SESSION['login_email'] = $email;
 
-    // Generate new OTP
+    // Generate new OTP and attempts only on login OR resend
     $otp = rand(100000, 999999);
     $_SESSION['otp'] = $otp;
     $_SESSION['otp_time'] = time();
     $_SESSION['show_otp_form'] = true;
+    $_SESSION['otp_attempts'] = 0;
 
     // Send OTP email
     $mail = new PHPMailer(true);
@@ -213,7 +231,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 }
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -222,6 +239,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <title>LGU | Login</title>
 <link rel="stylesheet" href="style - Copy.css">
 <style>
+/* ...styles omitted for brevity (left unchanged from before)... */
 body 
     { height: 100vh; 
     display:flex; flex-direction:column; 
@@ -479,11 +497,42 @@ body::before
                 <div class="otp-icon-wrapper">
                 </div>
             </div>
-            
-         
+
             <p class="otp-instruction">Enter Verify Code Below</p>
-            <p id="timer">Time remaining: 05:00</p>
-            
+            <?php
+            // Time remaining and wrong attempts shown in UI
+            $remaining_seconds = 0;
+            $expired = false;
+            if (isset($_SESSION['otp_time'])) {
+                $now = time();
+                $elapsed = $now - $_SESSION['otp_time'];
+                $remaining_seconds = max(0, 300 - $elapsed);
+                if ($remaining_seconds <= 0) {
+                    $expired = true;
+                }
+            }
+            $attempts_left = 3 - ($_SESSION['otp_attempts'] ?? 0);
+            ?>
+            <p id="timer">
+                <?php
+                if ($expired) {
+                    echo 'OTP expired. Please resend OTP.';
+                } else {
+                    $min = str_pad(floor($remaining_seconds / 60), 2, "0", STR_PAD_LEFT);
+                    $sec = str_pad($remaining_seconds % 60, 2, "0", STR_PAD_LEFT);
+                    echo "Time remaining: {$min}:{$sec}";
+                }
+                ?>
+            </p>
+            <div class="otp-attempts-msg" style="text-align:center;color:#ca173f;font-size: 14px;margin-bottom:10px;">
+                <?php if(!$expired): ?>
+                    <?php if($attempts_left === 1): ?>
+                        You have <strong>1</strong> attempt left.
+                    <?php elseif($attempts_left < 3): ?>
+                        You have <strong><?php echo $attempts_left; ?></strong> attempts left.
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
             <form method="post" id="otpForm" action="">
                 <div class="otp-inputs-container">
                     <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
@@ -494,12 +543,12 @@ body::before
                     <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
                 </div>
                 <input type="hidden" name="otp" id="otpValue">
-                <button type="submit" name="otp_submit" class="verify-code-btn">Verify Code</button>
+                <button type="submit" name="otp_submit" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
             </form>
 
             <form method="post" action="">
-                <input type="hidden" name="email" value="<?php echo $_SESSION['login_email']; ?>">
-                <button type="submit" name="resend_otp" class="resend-code-btn">Resend Code</button>
+                <input type="hidden" name="email" value="<?php echo htmlspecialchars($_SESSION['login_email'] ?? '', ENT_QUOTES); ?>">
+                <button type="submit" name="resend_otp" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
             </form>
 
             <script>
@@ -509,8 +558,10 @@ body::before
                 const otpValueInput = document.getElementById('otpValue');
                 const verifyBtn = document.querySelector('.verify-code-btn');
 
-                // Focus first input on load
-                otpInputs[0].focus();
+                // Focus first input on load, only if not disabled
+                if (!verifyBtn.disabled) {
+                    otpInputs[0].focus();
+                }
 
                 // Handle input
                 otpInputs.forEach((input, index) => {
@@ -521,7 +572,6 @@ body::before
                         if (value && index < otpInputs.length - 1) {
                             otpInputs[index + 1].focus();
                         }
-
                         updateOTPValue();
                     });
 
@@ -559,17 +609,21 @@ body::before
                 function updateOTPValue() {
                     const otp = Array.from(otpInputs).map(input => input.value).join('');
                     otpValueInput.value = otp;
-                    verifyBtn.disabled = otp.length !== 6;
+                    verifyBtn.disabled = (otp.length !== 6) || verifyBtn.hasAttribute('data-expired') || <?php echo ($expired || $attempts_left <= 0) ? 'true' : 'false'; ?>;
                 }
 
-                // Countdown timer (5 minutes)
-                let totalTime = 5 * 60; // 5 minutes in seconds
+                // Countdown timer - continue timer, do NOT reset on failed attempts
+                let totalTime = <?php echo (int)$remaining_seconds; ?>;
                 const timerEl = document.getElementById('timer');
+                let timerExpired = <?php echo $expired ? 'true': 'false'; ?>;
 
                 const countdown = setInterval(() => {
+                    if (timerExpired) return;
                     let minutes = Math.floor(totalTime / 60);
                     let seconds = totalTime % 60;
-                    timerEl.textContent = `Time remaining: ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+                    if (totalTime >= 0) {
+                        timerEl.textContent = `Time remaining: ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+                    } 
                     totalTime--;
 
                     if (totalTime < 0) {
@@ -580,13 +634,22 @@ body::before
                             input.disabled = true;
                             input.style.opacity = '0.5';
                         });
+                        // Mark form as expired so updateOTPValue disables verifyBtn even if fields filled later
+                        verifyBtn.setAttribute('data-expired','1');
                     }
                 }, 1000);
 
                 // Disable verify button initially
-                verifyBtn.disabled = true;
-            </script>
+                updateOTPValue();
 
+                // Also disable OTP fields if expired or attempts exceeded (just in case)
+                if (<?php echo ($expired || $attempts_left <= 0) ? 'true' : 'false'; ?>) {
+                    otpInputs.forEach(input => {
+                        input.disabled = true;
+                        input.style.opacity = '0.5';
+                    });
+                }
+            </script>
         <?php else: ?>
             <p class="subtitle">Secure access to community maintenance services.</p>
             <form method="post" action="">
@@ -595,17 +658,55 @@ body::before
                     <input type="email" name="email" placeholder="yourname@gmail.com" required>
                     <span class="icon">📧</span>
                 </div>
-                <div class="input-box">
+                <div class="input-box" style="position: relative;">
                     <label>Password</label>
-                    <input type="password" name="password" placeholder="••••••••" required>
-                    <span class="icon">🔒</span>
+                    <input type="password" name="password" id="passwordInput" placeholder="••••••••" required>
+                    <button type="button" id="togglePassword" 
+                            style="
+                                position: absolute;
+                                right: 10px;
+                                top: 30px;
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                                font-size: 1.2em;
+                                color: #888;"
+                            tabindex="-1"
+                            aria-label="Show password">
+                        <span id="togglePwdIcon" aria-hidden="true">👁️</span>
+                    </button>
                 </div>
                 <button type="submit" name="login_submit" class="btn-primary">Sign In</button>
             </form>
+            <script>
+                // Password toggle logic
+                const pwdInput = document.getElementById('passwordInput');
+                const toggleBtn = document.getElementById('togglePassword');
+                const toggleIcon = document.getElementById('togglePwdIcon');
+
+                // Unicode for eye (open) and closed eye for a more professional LGU setting
+                // 🕶️ (modern closed-eye icon), or use SVG for best look
+                const iconShow = '👁‍🗨'; // professional eye-inside-box style
+                const iconHide = '🛡️';    // shield to signify secure/hidden
+
+                toggleBtn.addEventListener('click', function() {
+                    if (pwdInput.type === 'password') {
+                        pwdInput.type = 'text';
+                        toggleIcon.textContent = iconHide;
+                        toggleBtn.setAttribute('aria-label', 'Hide password');
+                    } else {
+                        pwdInput.type = 'password';
+                        toggleIcon.textContent = iconShow;
+                        toggleBtn.setAttribute('aria-label', 'Show password');
+                    }
+                });
+
+                // Set initial icon on page load
+                toggleIcon.textContent = iconShow;
+            </script>
         <?php endif; ?>
     </div>
 </div>
-
 
 <footer class="footer">
     <div class="footer-links">

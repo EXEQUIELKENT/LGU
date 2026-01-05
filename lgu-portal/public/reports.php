@@ -2,6 +2,35 @@
 session_start();
 require __DIR__ . '/db.php';
 
+// Notification system (copied from sched.php)
+function setNotification($type, $message) {
+    $_SESSION['notification'] = [
+        'type' => $type,
+        'message' => $message
+    ];
+}
+function showNotification() {
+    if (!empty($_SESSION['notification'])) {
+        $type = $_SESSION['notification']['type'];
+        $message = htmlspecialchars($_SESSION['notification']['message']);
+        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
+                <span class='notif-icon'>{$icon}</span>
+                <span class='notif-message'>{$message}</span>
+                <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
+              </div>";
+        unset($_SESSION['notification']);
+        echo "<script>
+            function closeNotif() {
+                var n = document.getElementById('notifPopup'); 
+                if(n) n.style.opacity='0';
+                setTimeout(()=>{if(n)n.remove();}, 400);
+            }
+            setTimeout(closeNotif, 2200);
+        </script>";
+    }
+}
+
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
@@ -9,10 +38,17 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     exit;
 }
 
-// Handle logout request
+// Handle logout request with notification
 if (isset($_GET['logout'])) {
+    // Set log out notification for next login page
+    setNotification('info', 'Successfully logged out.');
+    // Clear all session data (but preserve notification)
+    $notif = $_SESSION['notification'];
     session_unset();
     session_destroy();
+    // Session destroyed, start new to save notification
+    session_start();
+    $_SESSION['notification'] = $notif;
     header("Location: login.php");
     exit;
 }
