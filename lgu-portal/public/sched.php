@@ -408,6 +408,26 @@ body::before {
 .modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
 .modal h3 {margin-bottom:15px;}
 .modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
+/* -- Start: ListView Search Styles -- */
+#scheduleSearch {
+    width: 100%;
+    font-size: 1rem;
+    padding: 9px 11px;
+    border: 1px solid #b1b8d0;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    margin-top: 0;
+    outline: none;
+    background: #f8faff;
+    color: #23285c;
+    box-sizing: border-box;
+    transition: border 0.19s, box-shadow 0.19s;
+}
+#scheduleSearch:focus {
+    border: 1.5px solid #3762c8;
+    box-shadow: 0 2px 8px rgba(55,98,200,0.06);
+}
+/* -- End: ListView Search Styles -- */
 </style>
 </head>
 
@@ -461,10 +481,16 @@ body::before {
         </div>
         <!-- LIST VIEW -->
         <div id="scheduleView" class="hidden">
+            <!-- Search Input for Schedule List View -->
+            <input id="scheduleSearch" type="text" placeholder="Search by task, location, or date...">
+            <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>
-                <p>No scheduled maintenance.</p>
+                <p id="noScheduleMsg">No scheduled maintenance.</p>
             <?php else: foreach ($schedules as $row): ?>
-                <div class="schedule-item">
+                <div class="schedule-item" 
+                    data-task="<?= htmlspecialchars(strtolower($row['task'])) ?>"
+                    data-location="<?= htmlspecialchars(strtolower($row['location'])) ?>"
+                    data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>">
                     <div>
                         <strong><?= htmlspecialchars($row['task']) ?></strong><br>
                         <?= htmlspecialchars($row['location']) ?>
@@ -473,7 +499,10 @@ body::before {
                         <?= date("F d, Y", strtotime($row['schedule_date'])) ?>
                     </div>
                 </div>
-            <?php endforeach; endif; ?>
+            <?php endforeach; ?>
+                <p id="noResultMsg" style="display:none;">No matching data or result.</p>
+            <?php endif; ?>
+            </div>
         </div>
 
         <button id="toggleBtn" class="toggle-btn">View Schedule</button>
@@ -595,6 +624,49 @@ function renderCalendar(){
 document.getElementById('prevMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()-1); renderCalendar();}
 document.getElementById('nextMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()+1); renderCalendar();}
 renderCalendar();
+
+// Schedule LIST VIEW SEARCH functionality
+const scheduleSearch = document.getElementById('scheduleSearch');
+const scheduleListHolder = document.getElementById('scheduleListHolder');
+const noResultMsg = document.getElementById('noResultMsg');
+
+if (scheduleSearch && scheduleListHolder) {
+    scheduleSearch.addEventListener('input', function() {
+        const searchVal = this.value.trim().toLowerCase();
+        const items = scheduleListHolder.querySelectorAll('.schedule-item');
+        let shownCount = 0;
+
+        if (!searchVal.length) {
+            items.forEach(i => { i.style.display = ''; });
+            if (noResultMsg) noResultMsg.style.display = 'none';
+            return;
+        }
+
+        items.forEach(item => {
+            const task = item.getAttribute('data-task') || '';
+            const loc = item.getAttribute('data-location') || '';
+            const date = item.getAttribute('data-date') || '';
+            if (
+                task.includes(searchVal) ||
+                loc.includes(searchVal) ||
+                date.includes(searchVal)
+            ) {
+                item.style.display = '';
+                shownCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        if (noResultMsg) {
+            if (shownCount === 0) {
+                noResultMsg.style.display = '';
+            } else {
+                noResultMsg.style.display = 'none';
+            }
+        }
+    });
+}
 
 // Logout Alert Modal Logic - REFERENCE DESIGN FROM reports.php
 const logoutBtn = document.getElementById('logoutBtn');
