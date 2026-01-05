@@ -51,16 +51,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         return;
     }
 
-    // Fetch user from DB
-<<<<<<< HEAD
+    // Fetch user from DB (fixing merge/lint error: use correct query and no merge conflict)
     $stmt = $conn->prepare("SELECT first_name, password FROM employees WHERE email = ?");
-=======
-<<<<<<< HEAD
-    $stmt = $conn->prepare("SELECT first_name, password FROM employees WHERE email = ?");
-=======
-    $stmt = $conn->prepare("SELECT password FROM employees WHERE email = ?");
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -72,16 +64,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     $user = $result->fetch_assoc();
 
-<<<<<<< HEAD
     $_SESSION['employee_first_name'] = $user['first_name'];
 
-=======
-<<<<<<< HEAD
-    $_SESSION['employee_first_name'] = $user['first_name'];
-
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     // Only check password if not resending OTP
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
