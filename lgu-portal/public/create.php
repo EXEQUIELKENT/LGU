@@ -1,8 +1,36 @@
 <?php
+session_start();
 require __DIR__ . '/db.php';
 
-$error = '';
-$success = '';
+// Notification system
+function setNotification($type, $message) {
+    $_SESSION['notification'] = [
+        'type' => $type, // success, warning, error, info
+        'message' => $message
+    ];
+}
+
+function showNotification() {
+    if (!empty($_SESSION['notification'])) {
+        $type = $_SESSION['notification']['type'];
+        $message = htmlspecialchars($_SESSION['notification']['message']);
+        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
+                <span class='notif-icon'>{$icon}</span>
+                <span class='notif-message'>{$message}</span>
+                <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
+              </div>";
+        unset($_SESSION['notification']);
+        echo "<script>
+            function closeNotif() {
+                var n = document.getElementById('notifPopup'); 
+                if(n) n.style.opacity='0';
+                setTimeout(()=>{if(n)n.remove();}, 400);
+            }
+            setTimeout(closeNotif, 4500);
+        </script>";
+    }
+}
 
 // Password generator function
 function generateTempPassword($length = 10) {
@@ -27,9 +55,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 
     // Validation
     if (empty($firstName) || empty($lastName) || empty($email) || empty($role)) {
-        $error = 'All fields are required.';
+        setNotification('error', 'All fields are required.');
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address.';
+        setNotification('error', 'Please enter a valid email address.');
     } else {
         // Check if email already exists
         $checkStmt = $conn->prepare("SELECT id FROM employees WHERE email = ?");
@@ -38,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
         $result = $checkStmt->get_result();
         
         if ($result->num_rows > 0) {
-            $error = 'Email already exists in the system.';
+            setNotification('error', 'Email already exists in the system.');
         } else {
             // Hash the password
             $hashedPassword = password_hash($tempPassword, PASSWORD_DEFAULT);
@@ -48,11 +76,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
             $stmt->bind_param("sssss", $firstName, $lastName, $email, $role, $hashedPassword);
             
             if ($stmt->execute()) {
-                $success = 'Employee account created successfully!<br>Temporary password: <strong>' . htmlspecialchars($tempPassword) . '</strong>';
-                // Clear form data except for the last generated temp password for display
+                setNotification('success', 'Employee account created successfully! Temporary password: ' . htmlspecialchars($tempPassword));
+                // Clear form data
                 $firstName = $lastName = $email = $role = '';
             } else {
-                $error = 'Error creating account: ' . $conn->error;
+                setNotification('error', 'Error creating account: ' . $conn->error);
             }
             $stmt->close();
         }
@@ -213,27 +241,53 @@ body {
     font-weight: 600;
 }
 
-.alert {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    /* To prevent overflow causing scroll inside card, make alerts word-wrap and block layout */
-    word-break: break-word;
-    display: block;
+/* Notification popup styles */
+.notif-popup {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    max-width: 90vw;
+    background: #fff;
+    color: #11294d;
+    padding: 18px 32px 18px 22px;
+    border-radius: 16px;
+    box-shadow: 0 7px 30px rgba(44,66,133,0.19);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 9999;
+    font-size: 16.5px;
+    opacity: 1;
+    transition: opacity 0.4s cubic-bezier(.4,.9,.1,1.1);
+    border-left: 6.5px solid #2c64d7;
+    font-family: 'Poppins', Arial, sans-serif;
 }
-
-.alert-error {
-    background-color: #fee;
-    color: #c33;
-    border: 1px solid #fcc;
+.notif-success { border-color: #10b759 !important; }
+.notif-warning { border-color: #fdc13f !important; }
+.notif-error { border-color: #de3f4a !important; color: #b0212a !important; }
+.notif-info { border-color: #2c64d7 !important; }
+.notif-icon {
+    font-size: 23px;
+    margin-right: 2px;
 }
-
-.alert-success {
-    background-color: #efe;
-    color: #3c3;
-    border: 1px solid #cfc;
+.notif-message {
+    flex: 1;
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
+.notif-close {
+    background: none;
+    border: none;
+    font-size: 21px;
+    color: #aaa;
+    cursor: pointer;
+    margin-left: 12px;
+    padding: 0;
+    transition: color 0.2s;
+}
+.notif-close:hover { color: #536ae2; }
 
 /* Role Select Styling */
 .role-select {
@@ -268,6 +322,8 @@ body {
 
 <body>
 
+<?php showNotification(); ?>
+
 <header class="nav">
     <div class="site-logo">
         <img src="logocityhall.png" alt="LGU Logo">
@@ -286,14 +342,6 @@ body {
 
         <h2 class="title">Create Employee Account</h2>
         <p class="subtitle">Register a new employee to access the LGU maintenance system.</p>
-
-        <?php if ($error): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
-
-        <?php if ($success): ?>
-            <div class="alert alert-success"><?= $success ?></div>
-        <?php endif; ?>
 
         <form method="POST" action="">
             <div class="name-row">

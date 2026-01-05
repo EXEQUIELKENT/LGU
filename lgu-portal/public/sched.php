@@ -36,7 +36,6 @@ const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | 
 <meta charset="UTF-8">
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -44,23 +43,21 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Poppins', sans-serif;
-    min-height: 100vh;           /* let body grow if content is taller */
+    min-height: 100vh;
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
 }
-/* Full-page overlay for blur and dark tint */
 body::before {
     content: "";
-    position: fixed;              /* fixed ensures full viewport coverage */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.35); /* semi-transparent dark layer */
-    backdrop-filter: blur(6px);   /* blur effect */
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(6px);
     z-index: 0;
 }
-/* Sidebar Navigation */
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -70,7 +67,7 @@ body::before {
     background: rgba(255, 255, 255, 0.795);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
     box-shadow: 0 4px 25px rgba(0,0,0,0.25);
     color: #fff;
     display: flex;
@@ -79,7 +76,6 @@ body::before {
     padding: 0;
     z-index: 1000;
 }
-/* Top area: logo + nav links */
 .sidebar-top {
     display: flex;
     flex-direction: column;
@@ -87,7 +83,6 @@ body::before {
     padding: 20px 0;
     overflow-y: auto;
 }
-/* LGU Logo */
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -109,7 +104,6 @@ body::before {
     object-fit: contain;
     border-radius: 10px;
 }
-/* Navigation Links */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
@@ -135,21 +129,19 @@ body::before {
 }
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     color: #fff;
     transform: translateX(2px);
 }
 .sidebar-nav .nav-link:hover {
-    background: #97a4c2; /* slightly lighter */
+    background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
-/* Divider */
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
 }
-/* User info at bottom */
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
@@ -165,8 +157,105 @@ body::before {
     font-size: 0.95rem;
     margin-bottom: 5px;
 }
+/* Logout Modal Custom Design (matching @reports.php) */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 5000;
+    inset: 0;
+    background: rgba(37, 59, 115, 0.20);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+}
+#logoutAlertBackdrop.active {
+    display: flex;
+}
+#logoutAlertModal {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
+    padding: 36px 28px 22px 28px;
+    width: 340px;
+    max-width: 95vw;
+    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+@keyframes fadeIn {
+    from{transform:translateY(34px) scale(.95); opacity:.24;}
+    to  {transform:translateY(0) scale(1); opacity:1;}
+}
+#logoutAlertModal .icon-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: #fdeeed;
+    border-radius: 50%;
+    margin: 0 auto 13px auto;
+    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
+}
+#logoutAlertModal .icon-wrap .icon {
+    color: #e94444;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+#logoutAlertModal .alert-title {
+    font-size: 1.09rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    color: #23285c;
+    text-align: center;
+    margin-bottom: 8px;
+    margin-top: 6px;
+}
+#logoutAlertModal .alert-desc {
+    color: #374565;
+    font-size: 0.99rem;
+    text-align: center;
+    margin-bottom: 19px;
+}
+#logoutAlertModal .alert-btns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+#logoutAlertModal .alert-btn {
+    min-width: 95px;
+    padding: 8px 0;
+    border-radius: 7px;
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+    outline: none;
+}
+#logoutAlertModal .alert-btn.cancel {
+    background: #f3f4fa;
+    color: #353d52;
+    border: 1px solid #e3e6f1;
+}
+#logoutAlertModal .alert-btn.cancel:hover {
+    background: #e9eeff;
+    color: #3650c7;
+    border-color: #c7d1f3;
+}
+#logoutAlertModal .alert-btn.logout {
+    color: #fff;
+    background: #e94444;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
+}
+#logoutAlertModal .alert-btn.logout:hover {
+    background: #c82d2d;
+}
 .sidebar-nav .logout-btn {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     border: 1px solid rgba(255,255,255,0.3);
     color: #fff;
     padding: 8px 12px;
@@ -175,24 +264,23 @@ body::before {
     transition: 0.3s ease;
 }
 .sidebar-nav .logout-btn:hover {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     color: #fff;
     transform: translateY(-2px) scale(1.02);
 }
 .main-content {
     margin-left: 250px;
     padding: 20px 80px;
-    position: relative;   /* stays above the overlay */
+    position: relative;
     z-index: 1;
-    padding-bottom: 0px;          /* extra space at bottom */
+    padding-bottom: 0px;
 }
-.card{
+.card {
     background:rgba(255,255,255,.92);
     border-radius:22px;
     padding:30px;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
-/* TOGGLE BUTTON */
 .toggle-btn{
     margin-top:20px;
     background:#3762c8;
@@ -203,7 +291,6 @@ body::before {
     cursor:pointer;
     font-weight:600;
 }
-/* SCHEDULE LIST */
 .schedule-item{
     display:flex;
     justify-content:space-between;
@@ -211,7 +298,6 @@ body::before {
     border-bottom:1px solid rgba(0,0,0,.1);
 }
 .schedule-date{font-weight:600}
-/* CALENDAR */
 .calendar-header{
     display:flex;
     justify-content:space-between;
@@ -232,16 +318,16 @@ body::before {
     background: #f2f4f8;
     cursor: pointer;
     font-size: 13px;
-    min-height: 80px; /* increased height to allow space for tasks */
+    min-height: 80px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* tasks go under the date */
-    gap: 5px; /* spacing between date and tasks */
+    justify-content: flex-start;
+    gap: 5px;
 }
 .calendar-day .day-tasks {
     font-size: 11px;
     color: #333;
-    margin-top: auto; /* pushes tasks to bottom */
+    margin-top: auto;
     text-align: left;
 }
 .task-btn {
@@ -280,7 +366,6 @@ body::before {
     padding: 6px 0;
     font-size: 13px;
 }
-/* Modal */
 .modal {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:2000;}
 .modal.hidden {display:none !important;}
 .modal-content {background:#fff; padding:20px; border-radius:12px; width:90%; max-width:500px; max-height:80%; overflow-y:auto; position:relative;}
@@ -291,7 +376,6 @@ body::before {
 </head>
 
 <body>
-
 <div class="sidebar-nav">
     <div class="sidebar-top">
         <div class="site-logo">
@@ -369,6 +453,21 @@ body::before {
     </div>
 </div>
 
+<!-- Logout Confirmation Alert Modal (Redesigned based on reports.php) -->
+<div id="logoutAlertBackdrop">
+    <div id="logoutAlertModal">
+        <div class="icon-wrap">
+            <span class="icon">&#9888;</span>
+        </div>
+        <div class="alert-title">Log out of your account?</div>
+        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const calendarGrid = document.getElementById('calendarGrid');
 const calendarDetails = document.getElementById('calendarDetails');
@@ -435,17 +534,15 @@ function renderCalendar(){
                 const btn = document.createElement('button');
                 btn.textContent = i + 1;
                 btn.className = 'task-btn';
-                // Only open modal on button click
                 btn.addEventListener('click', (ev) => {
-                    ev.stopPropagation(); // prevent parent div click
-                    openModal([e]);       // show this task
+                    ev.stopPropagation();
+                    openModal([e]);
                 });
                 tasksDiv.appendChild(btn);
             });
             div.appendChild(tasksDiv);
         }
 
-        // Only update the calendar details on day click, no modal here
         div.addEventListener('click', () => {
             if(events.length){
                 calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>`;
@@ -463,9 +560,32 @@ document.getElementById('prevMonth').onclick=()=>{currentDate.setMonth(currentDa
 document.getElementById('nextMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()+1); renderCalendar();}
 renderCalendar();
 
-// Logout
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-    if(confirm('Are you sure you want to logout?')) window.location.href='sched.php?logout=1';
+// Logout Alert Modal Logic - REFERENCE DESIGN FROM reports.php
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+
+// Show modal on logout button click
+logoutBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.add("active");
+});
+
+// Hide modal on cancel
+logoutCancelBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+// Confirm logout
+logoutConfirmBtn.addEventListener('click', () => {
+    window.location.href = 'sched.php?logout=1';
+});
+
+// Click on backdrop (not the modal) closes modal
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
+    }
 });
 </script>
 

@@ -9,6 +9,35 @@ require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
 
+function setNotification($type, $message) {
+    $_SESSION['notification'] = [
+        'type' => $type, // success, warning, error, info
+        'message' => $message
+    ];
+}
+
+function showNotification() {
+    if (!empty($_SESSION['notification'])) {
+        $type = $_SESSION['notification']['type'];
+        $message = htmlspecialchars($_SESSION['notification']['message']);
+        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
+                <span class='notif-icon'>{$icon}</span>
+                <span class='notif-message'>{$message}</span>
+                <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
+              </div>";
+        unset($_SESSION['notification']);
+        echo "<script>
+            function closeNotif() {
+                var n = document.getElementById('notifPopup'); 
+                if(n) n.style.opacity='0';
+                setTimeout(()=>{if(n)n.remove();}, 400);
+            }
+            setTimeout(closeNotif, 4500);
+        </script>";
+    }
+}
+
 // Reset OTP if user reloads
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
@@ -20,23 +49,24 @@ if (isset($_POST['otp_submit'])) {
     $current_time = time();
 
     if (!isset($_SESSION['otp']) || !isset($_SESSION['otp_time'])) {
-        echo "<script>alert('OTP expired or not generated. Please log in again.');</script>";
+        setNotification('error', 'OTP expired or not generated. Please log in again.');
         unset($_SESSION['show_otp_form']);
     } elseif ($current_time - $_SESSION['otp_time'] > 300) {
-        echo "<script>alert('OTP expired. Please log in again.');</script>";
+        setNotification('warning', 'OTP expired. Please log in again.');
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form']);
 
+        setNotification('success', 'Login successful! Redirecting to Employee Portal...');
+        // Redirect after slight delay so notification shows
         echo "<script>
-            alert('Login successful! Redirecting to Employee Portal...');
-            window.location.href = 'employee.php';
+            setTimeout(function(){ window.location.href = 'employee.php'; }, 1100);
         </script>";
-        exit;
+        // Do not exit here, allow notification display
     } else {
-        echo "<script>alert('Invalid OTP. Please try again.');</script>";
+        setNotification('error', 'Invalid OTP. Please try again.');
     }
 }
 
@@ -47,8 +77,9 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     // Validate Gmail format
     if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/', $email)) {
-        echo "<script>alert('Only @gmail.com email addresses are allowed');</script>";
-        return;
+        setNotification('warning', 'Only @gmail.com email addresses are allowed');
+        header("Location: login.php");
+        exit;
     }
 
     // Fetch user from DB (fixing merge/lint error: use correct query and no merge conflict)
@@ -58,8 +89,9 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $result = $stmt->get_result();
 
     if ($result->num_rows !== 1) {
-        echo "<script>alert('Email not found');</script>";
-        return;
+        setNotification('error', 'Email not found');
+        header("Location: login.php");
+        exit;
     }
 
     $user = $result->fetch_assoc();
@@ -69,8 +101,9 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     // Only check password if not resending OTP
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
-            echo "<script>alert('Incorrect password');</script>";
-            return;
+            setNotification('error', 'Incorrect password');
+            header("Location: login.php");
+            exit;
         }
     }
 
@@ -88,27 +121,94 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'bartolomeexequielkent@gmail.com';
-        $mail->Password   = 'htssugpsvbpehfrm';
+        $mail->Username   = 'lguportalph@gmail.com';
+        $mail->Password   = 'zsozvbpsggclkcno';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
 
-        $mail->setFrom('bartolomeexequielkent@gmail.com', 'LGU Portal');
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal');
         $mail->addAddress($email);
 
         $mail->isHTML(true);
-        $mail->Subject = 'Your OTP Code for LGU Portal Login';
-        $mail->Body = "
-            <h2>LGU Portal Login OTP</h2>
-            <p>Your OTP code is: <strong>$otp</strong></p>
-            <p>This code is valid for 5 minutes.</p>
-        ";
+        $mail->Subject = 'Verify Your Identity: LGU Portal OTP Code';
 
+        $pictureCid = 'cityhallimg'; // Embedded image cid
+        $mail->addEmbeddedImage(__DIR__.'/cityhall.jpeg', $pictureCid);
+
+        $mail->Body = '
+                <div style="min-height: 100vh;
+                    background: #fff;
+                    position: relative;
+                    padding: 44px 0;
+                    font-family: \'Poppins\', Arial, sans-serif;
+                    ">
+                    <!-- Semi-transparent overlay with blur -->
+                    <div style="
+                        position: absolute;
+                        top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(24,32,54,0.14);
+                        backdrop-filter: blur(8px);
+                        -webkit-backdrop-filter: blur(8px);
+                        z-index: 0;
+                        border-radius: 0;
+                    "></div>
+                    <div style="
+                        position: relative;
+                        max-width: 430px;
+                        margin: 60px auto;
+                        background: rgb(247, 243, 243);
+                        border-radius: 18px;
+                        box-shadow: 0 10px 38px rgba(66,93,135,0.15);
+                        border: 1.8px solid #c8ddf9;
+                        padding: 48px 44px 36px 44px;
+                        z-index: 1;">
+                        <div style="text-align: center;">
+                            <img src="cid:'.$pictureCid.'" style="margin-top:-65px;margin-bottom:16px;width:80px;height:80px;object-fit:cover;border-radius:50%;box-shadow: 0 2px 22px rgba(69,104,181,0.09);background:#ecf3fc; border:3.5px solid #e2e8f6; display:inline-block;" alt="City Hall">
+                            <div style="font-size: 32px; color: #27417b; font-weight: 800; letter-spacing: 0.03em; margin-bottom: 12px; text-shadow: 0 2px 11px #fff, 0 1px 0 #d3e6ff;">LGU Portal</div>
+                            <div style="font-size: 18px; color: #4e627f; margin-bottom: 25px; font-weight: 500; letter-spacing:0.015em;">OTP Verification</div>
+                            <div style="background: linear-gradient(104deg, #eaf4fe 85%, #e9f6fd 100%);
+                                        display: inline-block; 
+                                        border-radius: 8.5px; 
+                                        margin-bottom: 28px; 
+                                        padding: 18px 38px 17px 38px; 
+                                        box-shadow: 0 3px 16px rgba(133,168,194,0.11);
+                                        min-width: 170px;">
+                                <div style="font-size: 20px; color: #233; font-weight: 500; margin-bottom: 8px; letter-spacing: 0.01em;">Your authentication code is</div>
+                                <div style="
+                                    font-size: 39px;
+                                    font-family: \'Courier New\', monospace;
+                                    letter-spacing: 0.22em;
+                                    color: #1f66b1;
+                                    font-weight: 800;
+                                    margin: 0 0 6px 0;
+                                    letter-spacing: 0.22em;
+                                    letter-spacing: 0.18em;
+                                    padding-bottom: 2px;
+                                    ">'.$otp.'</div>
+                            </div>
+                            <div style="color: #305176; font-size: 15.5px; margin-bottom: 17px;">
+                                This code is valid for <span style="font-weight:700;color:#174c86;">5 minutes</span> and can only be used once.
+                            </div>
+                            <div style="color: #ca173f; font-size: 15px; margin-bottom: 18px;">
+                                <span style="font-weight: 700;">Never share this code with anyone.</span><br>
+                                LGU Portal staff will <span style="text-decoration: underline;">never</span> ask for this code.
+                            </div>
+                            <div style="color: #9b9eaa; font-size: 13px; margin-top: 16px; line-height:1.5;">
+                                Didn\'t request this OTP? You may safely ignore this email.<br>
+                                For extra security, do not forward this message.
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align:center; color:#b7bcca; font-size:12.6px; margin-top:28px; position: relative; z-index:2;">
+                        &copy; '.date('Y').' LGU Portal
+                    </div>
+                </div>
+        ';
         $mail->send();
-        echo "<script>alert('OTP sent! Please check your email.');</script>";
+        setNotification('success', 'OTP sent! Please check your email.');
 
     } catch (Exception $e) {
-        echo "<script>alert('Failed to send OTP: {$mail->ErrorInfo}');</script>";
+        setNotification('error', 'Failed to send OTP: ' . $mail->ErrorInfo);
     }
 }
 ?>
@@ -138,6 +238,54 @@ body::before
     backdrop-filter: blur(6px); 
     background: rgba(0,0,0,0.35); 
     z-index:0;}
+
+/* Notification popup styles */
+.notif-popup {
+    position: fixed;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    max-width: 90vw;
+    background: #fff;
+    color: #11294d;
+    padding: 18px 32px 18px 22px;
+    border-radius: 16px;
+    box-shadow: 0 7px 30px rgba(44,66,133,0.19);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 9999;
+    font-size: 16.5px;
+    opacity: 1;
+    transition: opacity 0.4s cubic-bezier(.4,.9,.1,1.1);
+    border-left: 6.5px solid #2c64d7;
+    font-family: 'Poppins', Arial, sans-serif;
+}
+.notif-success { border-color: #10b759 !important; }
+.notif-warning { border-color: #fdc13f !important; }
+.notif-error { border-color: #de3f4a !important; color: #b0212a !important; }
+.notif-info { border-color: #2c64d7 !important; }
+.notif-icon {
+    font-size: 23px;
+    margin-right: 2px;
+}
+.notif-message {
+    flex: 1;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+.notif-close {
+    background: none;
+    border: none;
+    font-size: 21px;
+    color: #aaa;
+    cursor: pointer;
+    margin-left: 12px;
+    padding: 0;
+    transition: color 0.2s;
+}
+.notif-close:hover { color: #536ae2; }
 
 /* NAVBAR */
 .nav {
@@ -214,6 +362,74 @@ body::before
     color: #d9534f; /* red for urgency */
     margin-bottom: 15px;
     text-align: center;}
+
+/* OTP Verification Form Styles */
+.otp-instruction {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.otp-inputs-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.otp-input {
+    width: 45px;
+    height: 45px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    border: 2px solid rgba(99, 132, 210, 0.3);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.otp-input:focus {
+    border-color: #6384d2;
+    box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.1);
+    background: #fff;
+}
+
+.otp-input.active {
+    border-color: #6384d2;
+    box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.15);
+}
+
+.verify-code-btn,
+.resend-code-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: 0.25s ease;
+}
+
+.verify-code-btn:hover,
+.resend-code-btn:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+}
+
+.verify-code-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 /* Resend OTP Button */
 .btn-secondary {
     width: 100%;
@@ -240,6 +456,8 @@ body::before
 </head>
 <body>
 
+<?php showNotification(); ?>
+
 <header class="nav">
     <div class="site-logo">
         <img src="logocityhall.png" alt="LGU Logo">
@@ -257,27 +475,96 @@ body::before
         <h2 class="title">LGU Login</h2>
 
         <?php if(isset($_SESSION['show_otp_form']) && $_SESSION['show_otp_form'] === true): ?>
-            <p class="subtitle">Enter the OTP sent to your email to complete login.</p>
+            <div class="otp-icon-container">
+                <div class="otp-icon-wrapper">
+                </div>
+            </div>
+            
+         
+            <p class="otp-instruction">Enter Verify Code Below</p>
             <p id="timer">Time remaining: 05:00</p>
             
             <form method="post" id="otpForm" action="">
-                <div class="input-box">
-                    <label>OTP Code</label>
-                    <input type="text" name="otp" placeholder="Enter OTP" required>
+                <div class="otp-inputs-container">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
                 </div>
-                <button type="submit" name="otp_submit" class="btn-primary">Verify OTP</button>
+                <input type="hidden" name="otp" id="otpValue">
+                <button type="submit" name="otp_submit" class="verify-code-btn">Verify Code</button>
             </form>
 
             <form method="post" action="">
                 <input type="hidden" name="email" value="<?php echo $_SESSION['login_email']; ?>">
-                <button type="submit" name="resend_otp" class="btn-secondary" style="margin-top:10px;">Resend OTP</button>
+                <button type="submit" name="resend_otp" class="resend-code-btn">Resend Code</button>
             </form>
 
             <script>
+                // OTP Input handling
+                const otpInputs = document.querySelectorAll('.otp-input');
+                const otpForm = document.getElementById('otpForm');
+                const otpValueInput = document.getElementById('otpValue');
+                const verifyBtn = document.querySelector('.verify-code-btn');
+
+                // Focus first input on load
+                otpInputs[0].focus();
+
+                // Handle input
+                otpInputs.forEach((input, index) => {
+                    input.addEventListener('input', (e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        e.target.value = value;
+
+                        if (value && index < otpInputs.length - 1) {
+                            otpInputs[index + 1].focus();
+                        }
+
+                        updateOTPValue();
+                    });
+
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                            otpInputs[index - 1].focus();
+                        }
+                    });
+
+                    input.addEventListener('paste', (e) => {
+                        e.preventDefault();
+                        const paste = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                        paste.split('').forEach((char, i) => {
+                            if (otpInputs[i]) {
+                                otpInputs[i].value = char;
+                            }
+                        });
+                        updateOTPValue();
+                        if (otpInputs[paste.length]) {
+                            otpInputs[paste.length].focus();
+                        } else {
+                            otpInputs[otpInputs.length - 1].focus();
+                        }
+                    });
+
+                    input.addEventListener('focus', () => {
+                        input.classList.add('active');
+                    });
+
+                    input.addEventListener('blur', () => {
+                        input.classList.remove('active');
+                    });
+                });
+
+                function updateOTPValue() {
+                    const otp = Array.from(otpInputs).map(input => input.value).join('');
+                    otpValueInput.value = otp;
+                    verifyBtn.disabled = otp.length !== 6;
+                }
+
                 // Countdown timer (5 minutes)
                 let totalTime = 5 * 60; // 5 minutes in seconds
                 const timerEl = document.getElementById('timer');
-                const otpForm = document.getElementById('otpForm');
 
                 const countdown = setInterval(() => {
                     let minutes = Math.floor(totalTime / 60);
@@ -288,9 +575,16 @@ body::before
                     if (totalTime < 0) {
                         clearInterval(countdown);
                         timerEl.textContent = "OTP expired. Please resend OTP.";
-                        otpForm.querySelector('button[type="submit"]').disabled = true;
+                        verifyBtn.disabled = true;
+                        otpInputs.forEach(input => {
+                            input.disabled = true;
+                            input.style.opacity = '0.5';
+                        });
                     }
                 }, 1000);
+
+                // Disable verify button initially
+                verifyBtn.disabled = true;
             </script>
 
         <?php else: ?>

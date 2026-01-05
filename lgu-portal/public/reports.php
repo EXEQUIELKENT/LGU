@@ -11,11 +11,8 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 
 // Handle logout request
 if (isset($_GET['logout'])) {
-    // Clear all session data
     session_unset();
     session_destroy();
-
-    // Redirect to login page
     header("Location: login.php");
     exit;
 }
@@ -51,7 +48,6 @@ body::before{
     z-index:0;
 }
 
-/* Sidebar Navigation */
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -61,7 +57,7 @@ body::before{
     background: rgba(255, 255, 255, 0.795);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
     box-shadow: 0 4px 25px rgba(0,0,0,0.25);
     color: #fff;
     display: flex;
@@ -71,7 +67,6 @@ body::before{
     z-index: 1000;
 }
 
-/* Top area: logo + nav links */
 .sidebar-top {
     display: flex;
     flex-direction: column;
@@ -80,7 +75,6 @@ body::before{
     overflow-y: auto;
 }
 
-/* LGU Logo */
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -104,7 +98,6 @@ body::before{
     border-radius: 10px;
 }
 
-/* Navigation Links */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
@@ -133,24 +126,22 @@ body::before{
 
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     color: #fff;
     transform: translateX(2px);
 }
 
 .sidebar-nav .nav-link:hover {
-    background: #97a4c2; /* slightly lighter */
+    background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
 
-/* Divider */
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
 }
 
-/* User info at bottom */
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
@@ -169,7 +160,7 @@ body::before{
 }
 
 .sidebar-nav .logout-btn {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     border: 1px solid rgba(255,255,255,0.3);
     color: #fff;
     padding: 8px 12px;
@@ -179,12 +170,109 @@ body::before{
 }
 
 .sidebar-nav .logout-btn:hover {
-    background: #3762c8; /* slightly lighter */
+    background: #3762c8;
     color: #fff;
     transform: translateY(-2px) scale(1.02);
 }
 
-/* CONTENT */
+/* Logout Modal Custom Design (matching @sched.php) */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 5000;
+    inset: 0;
+    background: rgba(37, 59, 115, 0.20);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+}
+#logoutAlertBackdrop.active {
+    display: flex;
+}
+#logoutAlertModal {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
+    padding: 36px 28px 22px 28px;
+    width: 340px;
+    max-width: 95vw;
+    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+@keyframes fadeIn {
+    from{transform:translateY(34px) scale(.95); opacity:.24;}
+    to  {transform:translateY(0) scale(1); opacity:1;}
+}
+#logoutAlertModal .icon-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: #fdeeed;
+    border-radius: 50%;
+    margin: 0 auto 13px auto;
+    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
+}
+#logoutAlertModal .icon-wrap .icon {
+    color: #e94444;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+#logoutAlertModal .alert-title {
+    font-size: 1.09rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    color: #23285c;
+    text-align: center;
+    margin-bottom: 8px;
+    margin-top: 6px;
+}
+#logoutAlertModal .alert-desc {
+    color: #374565;
+    font-size: 0.99rem;
+    text-align: center;
+    margin-bottom: 19px;
+}
+#logoutAlertModal .alert-btns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+#logoutAlertModal .alert-btn {
+    min-width: 95px;
+    padding: 8px 0;
+    border-radius: 7px;
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+    outline: none;
+}
+#logoutAlertModal .alert-btn.cancel {
+    background: #f3f4fa;
+    color: #353d52;
+    border: 1px solid #e3e6f1;
+}
+#logoutAlertModal .alert-btn.cancel:hover {
+    background: #e9eeff;
+    color: #3650c7;
+    border-color: #c7d1f3;
+}
+#logoutAlertModal .alert-btn.logout {
+    color: #fff;
+    background: #e94444;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
+}
+#logoutAlertModal .alert-btn.logout:hover {
+    background: #c82d2d;
+}
+
 .main-content{
     margin-left:250px;
     padding:60px 80px;
@@ -199,10 +287,9 @@ body::before{
     box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
 
-/* TABLE */
 table {
     width: 100%;
-    border-collapse: separate; /* IMPORTANT */
+    border-collapse: separate;
     border-spacing: 0;
 }
 
@@ -217,11 +304,9 @@ thead th {
     text-align: left;
 }
 
-/* Rounded corners for TH */
 thead th:first-child {
     border-top-left-radius: 12px;
 }
-
 thead th:last-child {
     border-top-right-radius: 12px;
 }
@@ -241,7 +326,7 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
-    <div class="sidebar-divider"></div>
+            <div class="sidebar-divider"></div>
         </div>
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link">Dashboard</a></li>
@@ -250,18 +335,30 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
             <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
         </ul>
     </div>
-
     <div class="sidebar-divider"></div>
-
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
         <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
+<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
+<div id="logoutAlertBackdrop">
+    <div id="logoutAlertModal">
+        <div class="icon-wrap">
+            <span class="icon">&#9888;</span>
+        </div>
+        <div class="alert-title">Log out of your account?</div>
+        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
+</div>
+
 <div class="main-content">
     <h2 class="page-title">Maintenance Reports</h2>
-
     <div class="card">
         <table>
             <thead>
@@ -301,14 +398,33 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
 </div>
 
 <script>
-    const logoutBtn = document.getElementById('logoutBtn');
+// Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 
-    logoutBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to logout?')) {
-            // Redirect to logout handler
-            window.location.href = 'employee.php?logout=1';
-        }
-    });
+// Show modal on logout button click
+logoutBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.add("active");
+});
+
+// Hide modal on cancel
+logoutCancelBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+// Confirm logout
+logoutConfirmBtn.addEventListener('click', () => {
+    window.location.href = 'reports.php?logout=1';
+});
+
+// Click on backdrop (not the modal) closes modal
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
+    }
+});
 </script>
 
 </body>

@@ -11,11 +11,18 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 
 // Handle logout request
 if (isset($_GET['logout'])) {
-    // Clear all session data
+    // Set log out notification for next login page
+    $_SESSION['notification'] = [
+        'type' => 'info',
+        'message' => 'Successfully logged out.'
+    ];
+    // Clear all session data (but preserve notification)
+    $notif = $_SESSION['notification'];
     session_unset();
     session_destroy();
-
-    // Redirect to login page
+    // Start new session to save notification
+    session_start();
+    $_SESSION['notification'] = $notif;
     header("Location: login.php");
     exit;
 }
@@ -24,6 +31,29 @@ if (isset($_GET['logout'])) {
 // FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
 $sql = "SELECT * FROM requests ORDER BY created_at DESC";
 $result = $conn->query($sql);
+
+// Notification system (copied from employee.php)
+function showNotification() {
+    if (!empty($_SESSION['notification'])) {
+        $type = $_SESSION['notification']['type'];
+        $message = htmlspecialchars($_SESSION['notification']['message']);
+        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
+                <span class='notif-icon'>{$icon}</span>
+                <span class='notif-message'>{$message}</span>
+                <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
+              </div>";
+        unset($_SESSION['notification']);
+        echo "<script>
+            function closeNotif() {
+                var n = document.getElementById('notifPopup'); 
+                if(n) n.style.opacity='0';
+                setTimeout(()=>{if(n)n.remove();}, 400);
+            }
+            setTimeout(closeNotif, 2200);
+        </script>";
+    }
+}
 ?>
 
 
@@ -60,6 +90,46 @@ body::before {
     background: rgba(0,0,0,0.35);
     z-index: 0;
 }
+
+/* Notification Popup Styles (copied from login.php/employee.php)*/
+.notif-popup {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: #fff;
+    border-radius: 13px;
+    box-shadow: 0 8px 38px rgba(34,53,126,0.23);
+    z-index: 3001;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s;
+}
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup .notif-message { flex: 1 1 auto; }
+.notif-popup .notif-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #bbb;
+    cursor: pointer;
+    margin-left: 6px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+.notif-popup .notif-close:hover { color: #444; }
+.notif-popup.notif-success { border-left: 6px solid #47b066; }
+.notif-popup.notif-error { border-left: 6px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 6px solid #eed434; }
+.notif-popup.notif-info { border-left: 6px solid #3da6e3; }
 
 /* Sidebar Navigation */
 .sidebar-nav {
@@ -194,6 +264,104 @@ body::before {
     transform: translateY(-2px) scale(1.02);
 }
 
+/* Logout Modal Custom Design (matching @sched.php) */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 5000;
+    inset: 0;
+    background: rgba(37, 59, 115, 0.20);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+}
+#logoutAlertBackdrop.active {
+    display: flex;
+}
+#logoutAlertModal {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
+    padding: 36px 28px 22px 28px;
+    width: 340px;
+    max-width: 95vw;
+    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+@keyframes fadeIn {
+    from{transform:translateY(34px) scale(.95); opacity:.24;}
+    to  {transform:translateY(0) scale(1); opacity:1;}
+}
+#logoutAlertModal .icon-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: #fdeeed;
+    border-radius: 50%;
+    margin: 0 auto 13px auto;
+    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
+}
+#logoutAlertModal .icon-wrap .icon {
+    color: #e94444;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+#logoutAlertModal .alert-title {
+    font-size: 1.09rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    color: #23285c;
+    text-align: center;
+    margin-bottom: 8px;
+    margin-top: 6px;
+}
+#logoutAlertModal .alert-desc {
+    color: #374565;
+    font-size: 0.99rem;
+    text-align: center;
+    margin-bottom: 19px;
+}
+#logoutAlertModal .alert-btns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+#logoutAlertModal .alert-btn {
+    min-width: 95px;
+    padding: 8px 0;
+    border-radius: 7px;
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+    outline: none;
+}
+#logoutAlertModal .alert-btn.cancel {
+    background: #f3f4fa;
+    color: #353d52;
+    border: 1px solid #e3e6f1;
+}
+#logoutAlertModal .alert-btn.cancel:hover {
+    background: #e9eeff;
+    color: #3650c7;
+    border-color: #c7d1f3;
+}
+#logoutAlertModal .alert-btn.logout {
+    color: #fff;
+    background: #e94444;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
+}
+#logoutAlertModal .alert-btn.logout:hover {
+    background: #c82d2d;
+}
+
 /* ================= MAIN CONTENT ================= */
 .main-content {
     margin-left: 250px;
@@ -312,6 +480,8 @@ tbody tr:hover {
 
 <body>
 
+<?php showNotification(); ?>
+
 <div class="sidebar-nav">
     <div class="sidebar-top">
         <div class="site-logo">
@@ -361,7 +531,7 @@ tbody tr:hover {
                     <td><?php echo htmlspecialchars($row['infrastructure']); ?></td>
                     <td><?php echo htmlspecialchars($row['location']); ?></td>
                     <td><?php echo htmlspecialchars($row['issue']); ?></td>
-                    <td><?php echo $row['date_submitted']; ?></td>
+                    <td><?php echo $row['created_at'] ?? ''; ?></td>
                     <td>
                         <?php if (!empty($row['evidence'])): ?>
                             <a href="uploads/<?php echo $row['evidence']; ?>" target="_blank">View</a>
@@ -395,15 +565,49 @@ tbody tr:hover {
     </div>
 </div>
 
-<script>
-    const logoutBtn = document.getElementById('logoutBtn');
+<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
+<div id="logoutAlertBackdrop">
+    <div id="logoutAlertModal">
+        <div class="icon-wrap">
+            <span class="icon">&#9888;</span>
+        </div>
+        <div class="alert-title">Log out of your account?</div>
+        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
+</div>
 
-    logoutBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to logout?')) {
-            // Redirect to logout handler
-            window.location.href = 'employee.php?logout=1';
-        }
-    });
+<script>
+// Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
+const logoutBtn = document.getElementById('logoutBtn');
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+
+// Show modal on logout button click
+logoutBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.add("active");
+});
+
+// Hide modal on cancel
+logoutCancelBtn.addEventListener('click', () => {
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+// Confirm logout
+logoutConfirmBtn.addEventListener('click', () => {
+    window.location.href = 'requests.php?logout=1';
+});
+
+// Click on backdrop (not the modal) closes modal
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
+    }
+});
 </script>
 
 </body>
