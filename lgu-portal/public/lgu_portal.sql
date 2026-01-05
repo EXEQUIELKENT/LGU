@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 05, 2026 at 07:48 AM
+-- Generation Time: Jan 05, 2026 at 09:41 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.1.25
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -43,9 +43,7 @@ CREATE TABLE `employees` (
 INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`) VALUES
 (1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW'),
 (2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou'),
-(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni'),
-(4, 'Exequiel', 'Kent', 'bartolomstolome@gmail.com', 'Office Staff', '$2y$10$X8trSEoZq0vlFBZdawxm1Oao.71Ncn3AqnrRke6CEh5Z/t15122xK'),
-(5, 'Jhoven', 'Las-ay', 'crackencontrol@gmail.com', 'Office Staff', '$2y$10$2Wdsn3eLiI5R2blRfrTQwe85kjtHrd8CM92OljFkSO0vqhEe//wcu');
+(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni');
 
 -- --------------------------------------------------------
 
@@ -80,10 +78,7 @@ CREATE TABLE `maintenance_schedule` (
 INSERT INTO `maintenance_schedule` (`id`, `task`, `location`, `schedule_date`) VALUES
 (1, 'Aircon Maintenance', 'City Hall Room 101', '2026-01-05'),
 (2, 'Generator Inspection', 'City Hall Basement', '2026-01-07'),
-(3, 'Fire Extinguisher Check', 'City Hall Lobby', '2026-01-10'),
-(4, 'Garden Landscaping', 'City Hall Garden', '2026-01-12'),
-(5, 'Elevator Safety Test', 'City Hall Tower A', '2026-01-15'),
-(6, 'Aircons Maintenance', 'City Hall Room 101', '2026-01-05');
+(3, 'Fire Extinguisher Check', 'City Hall Lobby', '2026-01-10');
 
 -- --------------------------------------------------------
 
@@ -103,15 +98,16 @@ CREATE TABLE `reports` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `request`
+-- Table structure for table `requests`
 --
 
-CREATE TABLE `request` (
+CREATE TABLE `requests` (
   `request_id` int(11) NOT NULL,
   `infrastructure` varchar(100) NOT NULL,
   `location` varchar(255) NOT NULL,
   `issue` text NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('Pending','In Progress','Completed') DEFAULT 'Pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -145,9 +141,9 @@ ALTER TABLE `reports`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `request`
+-- Indexes for table `requests`
 --
-ALTER TABLE `request`
+ALTER TABLE `requests`
   ADD PRIMARY KEY (`request_id`);
 
 --
@@ -158,7 +154,7 @@ ALTER TABLE `request`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -170,7 +166,7 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `reports`
@@ -179,9 +175,9 @@ ALTER TABLE `reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `request`
+-- AUTO_INCREMENT for table `requests`
 --
-ALTER TABLE `request`
+ALTER TABLE `requests`
   MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -192,7 +188,7 @@ ALTER TABLE `request`
 -- Constraints for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  ADD CONSTRAINT `evidence_images_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `request` (`request_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `evidence_images_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

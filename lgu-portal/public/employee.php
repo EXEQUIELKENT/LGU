@@ -2,7 +2,7 @@
 session_start();
 require __DIR__ . '/db.php'; // Make sure your db.php connects $conn
 
-$firstName = $_SESSION['employee_first_name'] ?? 'User';
+$firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
 
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
@@ -216,7 +216,7 @@ body::before {
 
 /* MAIN CONTAINER CARD */
 .main-card {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255,255,255,.9);
     backdrop-filter: blur(14px);
     border-radius: 26px;
 
@@ -254,6 +254,10 @@ body::before {
 
     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     transition: 0.2s;
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* Add space between all direct children (e.g., h3, p, button) */
 }
 
 
@@ -281,11 +285,13 @@ body::before {
     background: linear-gradient(135deg, #6384d2, #285ccd);
     cursor: pointer;
     transition: 0.25s;
+    text-decoration: none; /* Remove underline */
 }
 
 .btn-primary:hover {
     background: linear-gradient(135deg, #4d76d6, #1651d0);
     transform: translateY(-2px);
+    text-decoration: none; /* Ensure underline doesn't appear on hover */
 }
 </style>
 </head>
@@ -295,33 +301,21 @@ body::before {
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
-    <div class="sidebar-divider"></div>
+            <div class="sidebar-divider"></div>
         </div>
         <ul class="nav-list">
             <li><a href="#" class="nav-link active">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
             <li><a href="reports.php" class="nav-link">Reports</a></li>
-<<<<<<< HEAD
             <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
-=======
-            <li><a href="sched.php" class="nav-link">Schedule</a></li>
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-<<<<<<< HEAD
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-        <div class="user-welcome">Welcome, User</div>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-    <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
@@ -331,34 +325,36 @@ body::before {
         <div class="card">
             <h3>Pending Requests</h3>
             <p>Track and assign new community maintenance requests submitted by citizens.</p>
-            <button class="btn-primary">View Requests</button>
+            <a href="requests.php" class="btn-primary">View Requests</a>
         </div>
 
         <div class="card">
             <h3>Facility Status</h3>
             <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
-            <button class="btn-primary">Update Status</button>
+            <a href="reports.php" class="btn-primary">Update Status</a>
         </div>
 
         <div class="card">
             <h3>Performance Reports</h3>
             <p>Generate reports on completed requests and ongoing maintenance projects.</p>
-            <button class="btn-primary">Generate Report</button>
+            <a href="reports.php" class="btn-primary">Generate Report</a>
         </div>
 
     </div>
 </div>
 
-</body>
-
 <script>
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    logoutBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to logout?')) {
-            // Redirect to logout handler
-            window.location.href = 'employee.php?logout=1';
+    document.addEventListener('DOMContentLoaded', function () {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function () {
+                if (confirm('Are you sure you want to logout?')) {
+                    // Redirect to logout handler
+                    window.location.href = 'employee.php?logout=1';
+                }
+            });
         }
     });
 </script>
+</body>
 </html>

@@ -1,27 +1,14 @@
 <?php
 session_start();
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 require __DIR__ . '/db.php';
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
 }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 // Fetch schedules
 $schedules = [];
 $sql = "SELECT * FROM maintenance_schedule ORDER BY schedule_date ASC";
@@ -34,61 +21,25 @@ if ($result && $result->num_rows > 0) {
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
-<<<<<<< HEAD
-=======
-=======
-// Handle logout request
-if (isset($_GET['logout'])) {
-    // Clear all session data
-    session_unset();
-    session_destroy();
-
-    // Redirect to login page
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     header("Location: login.php");
     exit;
 }
 ?>
 
-<<<<<<< HEAD
 <script>
-const scheduleData = <?= json_encode($schedules); ?>;
+const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 </script>
-=======
-<<<<<<< HEAD
-<script>
-const scheduleData = <?= json_encode($schedules); ?>;
-</script>
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<<<<<<< HEAD
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-=======
-<<<<<<< HEAD
-<title>Maintenance Schedule</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-=======
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maintenance Schedule</title>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 body {
     margin: 0;
     padding: 0;
@@ -97,7 +48,6 @@ body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
 }
-
 /* Full-page overlay for blur and dark tint */
 body::before {
     content: "";
@@ -109,25 +59,7 @@ body::before {
     background: rgba(0,0,0,0.35); /* semi-transparent dark layer */
     backdrop-filter: blur(6px);   /* blur effect */
     z-index: 0;
-<<<<<<< HEAD
-=======
-=======
-body{
-    height:100vh;
-    background:url("cityhall.jpeg") center/cover no-repeat fixed;
-    position:relative;
 }
-body::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    backdrop-filter:blur(6px);
-    background:rgba(0,0,0,0.35);
-    z-index:0;
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-}
-
 /* Sidebar Navigation */
 .sidebar-nav {
     position: fixed;
@@ -147,7 +79,6 @@ body::before{
     padding: 0;
     z-index: 1000;
 }
-
 /* Top area: logo + nav links */
 .sidebar-top {
     display: flex;
@@ -156,7 +87,6 @@ body::before{
     padding: 20px 0;
     overflow-y: auto;
 }
-
 /* LGU Logo */
 .sidebar-nav .site-logo {
     margin-top: 5px;
@@ -173,14 +103,12 @@ body::before{
     margin-bottom: 20px;
     color: #fff;
 }
-
 .sidebar-nav .site-logo img {
     width: 120px;
     height: auto;
     object-fit: contain;
     border-radius: 10px;
 }
-
 /* Navigation Links */
 .sidebar-nav .nav-list {
     list-style: none;
@@ -191,12 +119,10 @@ body::before{
     flex-direction: column;
     flex-grow: 1;
 }
-
 .sidebar-nav .nav-list li {
     width: 100%;
     margin: 3px 0;
 }
-
 .sidebar-nav .nav-link {
     display: flex;
     align-items: center;
@@ -207,26 +133,22 @@ body::before{
     transition: all 0.3s ease;
     border-radius: 8px;
 }
-
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
     background: #3762c8; /* slightly lighter */
     color: #fff;
     transform: translateX(2px);
 }
-
 .sidebar-nav .nav-link:hover {
     background: #97a4c2; /* slightly lighter */
     transform: translateX(8px) scale(1.02);
 }
-
 /* Divider */
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
 }
-
 /* User info at bottom */
 .sidebar-nav .user-info {
     display: flex;
@@ -235,7 +157,6 @@ body::before{
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
 }
-
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -244,7 +165,6 @@ body::before{
     font-size: 0.95rem;
     margin-bottom: 5px;
 }
-
 .sidebar-nav .logout-btn {
     background: #3762c8; /* slightly lighter */
     border: 1px solid rgba(255,255,255,0.3);
@@ -254,17 +174,11 @@ body::before{
     cursor: pointer;
     transition: 0.3s ease;
 }
-
 .sidebar-nav .logout-btn:hover {
     background: #3762c8; /* slightly lighter */
     color: #fff;
     transform: translateY(-2px) scale(1.02);
 }
-
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 .main-content {
     margin-left: 250px;
     padding: 20px 80px;
@@ -272,34 +186,12 @@ body::before{
     z-index: 1;
     padding-bottom: 0px;          /* extra space at bottom */
 }
-
 .card{
     background:rgba(255,255,255,.92);
-<<<<<<< HEAD
-=======
-=======
-/* CONTENT */
-.main-content{
-    margin-left:250px;
-    padding:60px 80px;
-    position:relative;
-    z-index:1;
-}
-.page-title{color:#fff;font-size:28px;margin-bottom:25px}
-
-.card{
-    background:rgba(255,255,255,.9);
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     border-radius:22px;
     padding:30px;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
-
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 /* TOGGLE BUTTON */
 .toggle-btn{
     margin-top:20px;
@@ -311,7 +203,6 @@ body::before{
     cursor:pointer;
     font-weight:600;
 }
-
 /* SCHEDULE LIST */
 .schedule-item{
     display:flex;
@@ -320,7 +211,6 @@ body::before{
     border-bottom:1px solid rgba(0,0,0,.1);
 }
 .schedule-date{font-weight:600}
-
 /* CALENDAR */
 .calendar-header{
     display:flex;
@@ -368,13 +258,11 @@ body::before{
 .task-btn:hover {
     background: #2a4fa3;
 }
-
 .calendar-day.has-event{
     background:#e0e7ff;
     font-weight:600;
 }
 .calendar-day:hover{background:#dbe3ff}
-
 .calendar-details{
     margin-top:15px;
     font-size:13px;
@@ -399,19 +287,6 @@ body::before{
 .modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
 .modal h3 {margin-bottom:15px;}
 .modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
-<<<<<<< HEAD
-=======
-=======
-.schedule-item{
-    display:flex;
-    justify-content:space-between;
-    padding:15px;
-    border-bottom:1px solid rgba(0,0,0,.1);
-}
-.schedule-item:last-child{border-bottom:none}
-.schedule-date{font-weight:600;color:#3762c8}
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 </style>
 </head>
 
@@ -427,39 +302,19 @@ body::before{
             <li><a href="employee.php" class="nav-link">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
             <li><a href="reports.php" class="nav-link">Reports</a></li>
-<<<<<<< HEAD
             <li><a href="#" class="nav-link active">Maintenance Schedule</a></li>
-=======
-<<<<<<< HEAD
-            <li><a href="#" class="nav-link active">Maintenance Schedule</a></li>
-=======
-            <li><a href="#" class="nav-link active">Schedule</a></li>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-<<<<<<< HEAD
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-        <div class="user-welcome">Welcome, User</div>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-    <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
 <div class="main-content">
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
     <div class="card">
 
@@ -511,45 +366,10 @@ body::before{
         <span id="modalClose" class="modal-close">&times;</span>
         <h3>Scheduled Tasks</h3>
         <div id="modalBody"></div>
-<<<<<<< HEAD
-=======
-=======
-    <h2 class="page-title">Maintenance Schedule</h2>
-
-    <div class="card">
-        <div class="schedule-item">
-            <div>
-                <strong>Road Repair</strong><br>
-                Barangay San Juan
-            </div>
-            <div class="schedule-date">April 28, 2025</div>
-        </div>
-
-        <div class="schedule-item">
-            <div>
-                <strong>Street Light Maintenance</strong><br>
-                Main Highway
-            </div>
-            <div class="schedule-date">April 30, 2025</div>
-        </div>
-
-        <div class="schedule-item">
-            <div>
-                <strong>Drainage Cleaning</strong><br>
-                Market Area
-            </div>
-            <div class="schedule-date">May 3, 2025</div>
-        </div>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
     </div>
 </div>
 
 <script>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 const calendarGrid = document.getElementById('calendarGrid');
 const calendarDetails = document.getElementById('calendarDetails');
 const monthLabel = document.getElementById('monthLabel');
@@ -598,45 +418,45 @@ function renderCalendar(){
     for(let i=0;i<firstDay;i++) calendarGrid.innerHTML+='<div></div>';
 
     for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const events = scheduleData.filter(e => e.schedule_date === dateStr);
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const events = scheduleData.filter(e => e.schedule_date === dateStr);
 
-    const div = document.createElement('div');
-    div.className = 'calendar-day' + (events.length ? ' has-event' : '');
+        const div = document.createElement('div');
+        div.className = 'calendar-day' + (events.length ? ' has-event' : '');
 
-    const dayNum = document.createElement('div');
-    dayNum.textContent = d;
-    div.appendChild(dayNum);
+        const dayNum = document.createElement('div');
+        dayNum.textContent = d;
+        div.appendChild(dayNum);
 
-    if (events.length) {
-        const tasksDiv = document.createElement('div');
-        tasksDiv.className = 'day-tasks';
-        events.forEach((e, i) => {
-            const btn = document.createElement('button');
-            btn.textContent = i + 1;
-            btn.className = 'task-btn';
-            // Only open modal on button click
-            btn.addEventListener('click', (ev) => {
-                ev.stopPropagation(); // prevent parent div click
-                openModal([e]);       // show this task
+        if (events.length) {
+            const tasksDiv = document.createElement('div');
+            tasksDiv.className = 'day-tasks';
+            events.forEach((e, i) => {
+                const btn = document.createElement('button');
+                btn.textContent = i + 1;
+                btn.className = 'task-btn';
+                // Only open modal on button click
+                btn.addEventListener('click', (ev) => {
+                    ev.stopPropagation(); // prevent parent div click
+                    openModal([e]);       // show this task
+                });
+                tasksDiv.appendChild(btn);
             });
-            tasksDiv.appendChild(btn);
-        });
-        div.appendChild(tasksDiv);
-    }
-
-    // Only update the calendar details on day click, no modal here
-    div.addEventListener('click', () => {
-        if(events.length){
-            calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>`;
-            calendarDetails.innerHTML += events.map(e => `• ${e.task} – ${e.location}`).join('<br>');
-        } else {
-            calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>No scheduled maintenance.`;
+            div.appendChild(tasksDiv);
         }
-    });
 
-    calendarGrid.appendChild(div);
-}
+        // Only update the calendar details on day click, no modal here
+        div.addEventListener('click', () => {
+            if(events.length){
+                calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>`;
+                calendarDetails.innerHTML += events.map(e => `• ${e.task} – ${e.location}`).join('<br>');
+            } else {
+                calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>No scheduled maintenance.`;
+            }
+        });
+
+        calendarGrid.appendChild(div);
+    }
 }
 
 document.getElementById('prevMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()-1); renderCalendar();}
@@ -645,25 +465,9 @@ renderCalendar();
 
 // Logout
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
-    if(confirm('Are you sure you want to logout?')) window.location.href='employee.php?logout=1';
+    if(confirm('Are you sure you want to logout?')) window.location.href='sched.php?logout=1';
 });
 </script>
 
-
-<<<<<<< HEAD
-=======
-=======
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    logoutBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to logout?')) {
-            // Redirect to logout handler
-            window.location.href = 'employee.php?logout=1';
-        }
-    });
-</script>
-
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 </body>
 </html>

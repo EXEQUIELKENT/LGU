@@ -1,18 +1,9 @@
 <?php
 session_start();
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 require __DIR__ . '/db.php';
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
@@ -28,10 +19,6 @@ if (isset($_GET['logout'])) {
     header("Location: login.php");
     exit;
 }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 // Fetch reports
 $sql = "SELECT * FROM reports ORDER BY id DESC";
@@ -39,15 +26,6 @@ $result = $conn->query($sql);
 
 ?>
 
-
-
-<<<<<<< HEAD
-=======
-=======
-?>
-
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -222,13 +200,6 @@ body::before{
 }
 
 /* TABLE */
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-/* TABLE */
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 table {
     width: 100%;
     border-collapse: separate; /* IMPORTANT */
@@ -276,27 +247,15 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
             <li><a href="employee.php" class="nav-link">Dashboard</a></li>
             <li><a href="requests.php" class="nav-link">Requests</a></li>
             <li><a href="#" class="nav-link active">Reports</a></li>
-<<<<<<< HEAD
             <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
-=======
-            <li><a href="sched.php" class="nav-link">Schedule</a></li>
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-<<<<<<< HEAD
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-        <div class="user-welcome">Welcome, User</div>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-    <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
@@ -316,11 +275,6 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
                 </tr>
             </thead>
             <tbody>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-
             <?php if ($result->num_rows > 0): ?>
                 <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
@@ -328,10 +282,10 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
                     <td><?php echo htmlspecialchars($row['infrastructure']); ?></td>
                     <td><?php echo htmlspecialchars($row['location']); ?></td>
                     <td><?php echo htmlspecialchars($row['work_done']); ?></td>
-                    <td><?php echo $row['date_completed']; ?></td>
+                    <td><?php echo htmlspecialchars($row['date_completed']); ?></td>
                     <td>
                         <span class="status <?php echo $row['status'] === 'Completed' ? 'completed' : 'on-going'; ?>">
-                            <?php echo $row['status']; ?>
+                            <?php echo htmlspecialchars($row['status']); ?>
                         </span>
                     </td>
                 </tr>
@@ -341,28 +295,6 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
                     <td colspan="6" style="text-align:center;">No reports found</td>
                 </tr>
             <?php endif; ?>
-
-<<<<<<< HEAD
-=======
-=======
-                <tr>
-                    <td>#REP-101</td>
-                    <td>Road</td>
-                    <td>Barangay San Juan</td>
-                    <td>Pothole Patching</td>
-                    <td>2025-04-20</td>
-                    <td><span class="status on-going">On-Going</span></td>
-                </tr>
-                <tr>
-                    <td>#REP-102</td>
-                    <td>Drainage</td>
-                    <td>Market Area</td>
-                    <td>Cleaning & Desilting</td>
-                    <td>2025-04-22</td>
-                    <td><span class="status completed">Completed</span></td>
-                </tr>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
             </tbody>
         </table>
     </div>

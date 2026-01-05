@@ -1,18 +1,9 @@
 <?php
 session_start();
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 require __DIR__ . '/db.php';
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
 
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     header("Location: login.php");
     exit;
@@ -28,19 +19,11 @@ if (isset($_GET['logout'])) {
     header("Location: login.php");
     exit;
 }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
 // Fetch requests from DB
-$sql = "SELECT * FROM requests ORDER BY date_submitted DESC";
+// FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
+$sql = "SELECT * FROM requests ORDER BY created_at DESC";
 $result = $conn->query($sql);
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 ?>
 
 
@@ -333,33 +316,21 @@ tbody tr:hover {
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
-    <div class="sidebar-divider"></div>
+            <div class="sidebar-divider"></div>
         </div>
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link">Dashboard</a></li>
             <li><a href="#" class="nav-link active">Requests</a></li>
             <li><a href="reports.php" class="nav-link">Reports</a></li>
-<<<<<<< HEAD
             <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
-=======
-            <li><a href="sched.php" class="nav-link">Schedule</a></li>
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </ul>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-<<<<<<< HEAD
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-<<<<<<< HEAD
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-=======
-        <div class="user-welcome">Welcome, User</div>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
-    <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
 </div>
 
@@ -381,10 +352,6 @@ tbody tr:hover {
                     <th>Action</th>
                 </tr>
             </thead>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
 
             <tbody>
             <?php if ($result->num_rows > 0): ?>
@@ -424,27 +391,6 @@ tbody tr:hover {
             <?php endif; ?>
             </tbody>
 
-<<<<<<< HEAD
-=======
-=======
-            <tbody>
-                <tr>
-                    <td>#REQ-001</td>
-                    <td>Road</td>
-                    <td>Barangay San Juan</td>
-                    <td>Potholes</td>
-                    <td>2025-04-10</td>
-                    <td>
-                        <div class="evidence-box">
-                            <div class="evidence-preview">No image</div>
-                        </div>
-                    </td>
-                    <td><span class="status pending">Pending</span></td>
-                    <td><button class="btn-view">View</button></td>
-                </tr>
-            </tbody>
->>>>>>> 048455f66d273420c27e240de9cca7cfa7ba0ac0
->>>>>>> 2e6a3e8753bb88f4c00d03ffd496b38197156c03
         </table>
     </div>
 </div>
