@@ -153,9 +153,19 @@ body::before {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    min-height: 0;
+    height: 100%;
     padding: 20px 0;
     overflow-y: auto;
+    position: relative;
 }
+
+/* Add a flex spacer below .site-logo to enforce consistent space above nav-list */
+.sidebar-logo-spacer {
+    height: 16px;
+    flex-shrink: 0;
+}
+
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -180,18 +190,33 @@ body::before {
     border-radius: 10px;
     transition: all 0.3s ease, opacity 0.3s ease;
 }
-.sidebar-nav.collapsed .site-logo img {
-    opacity: 0;
-    visibility: hidden;
-    width: 0;
-    height: 0;
-}
 .sidebar-nav.collapsed .site-logo {
     margin-left: 15px;
     margin-right: 15px;
     width: calc(100% - 30px);
     margin-bottom: 10px;
 }
+.sidebar-nav.collapsed .site-logo img {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+    transition: all 0.33s cubic-bezier(.4,.21,.47,.99);
+}
+
+/* --------- MODIFIED: Make logo-divider visible when collapsed --------- */
+.sidebar-divider.logo-divider {
+    transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
+    opacity: 1;
+    width: calc(100% - 50px);
+    margin: 18px 25px 0 25px;
+}
+.sidebar-nav.collapsed .sidebar-divider.logo-divider {
+    opacity: 1;
+    width: 40px;
+    margin: 30px 25px 0 25px;
+}
+
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
@@ -199,7 +224,8 @@ body::before {
     margin: 0;
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
+    flex-grow: 0;
+    flex-shrink: 0;
     transition: padding 0.3s ease;
 }
 .sidebar-nav.collapsed .nav-list {
@@ -232,9 +258,12 @@ body::before {
     background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
+
+/* Collapsed sidebar nav link style */
 .sidebar-nav.collapsed .nav-link {
     justify-content: center;
     padding: 12px 10px;
+    position: relative;
 }
 .sidebar-nav.collapsed .nav-link span:last-child {
     display: none;
@@ -242,49 +271,58 @@ body::before {
 .sidebar-nav.collapsed .nav-link:hover {
     transform: translateX(0) scale(1.08);
 }
-/* Tooltip for collapsed sidebar */
-.sidebar-nav.collapsed .nav-link::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-left: 10px;
+
+/* SIDEBAR HOVER TOOLTIP: Shows navlink name as pop-up at side upon hover/collapsed */
+.sidebar-tooltip-pop {
+    position: fixed;
+    z-index: 5555;
+    left: 85px;
+    top: 0;
     background: #3762c8;
     color: #fff;
-    padding: 8px 14px;
     border-radius: 8px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    z-index: 1002;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    font-size: 14px;
+    padding: 9px 18px;
+    font-size: 15px;
     font-weight: 500;
+    box-shadow: 0 6px 24px rgba(41,87,179,0.13);
+    white-space: nowrap;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.24s, transform 0.23s;
+    transform: translateY(-50%) scale(0.97);
+    display:none;
+    letter-spacing: 0.03em;
 }
-.sidebar-nav.collapsed .nav-link:hover::after {
+
+/* Show/animate tooltip */
+.sidebar-tooltip-pop.active {
     opacity: 1;
-    transform: translateY(-50%) translateX(5px);
+    display: block;
+    transform: translateY(-50%) scale(1.03);
 }
+/* Optional: Add a little arrow - visually aligns tooltip */
+.sidebar-tooltip-pop::before {
+    content:"";
+    position:absolute;
+    left:-8px;
+    top:50%;
+    transform:translateY(-50%);
+    border-width:8px 8px 8px 0;
+    border-style:solid;
+    border-color:transparent #3762c8 transparent transparent;
+}
+
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
     transition: all 0.3s ease;
 }
-.sidebar-divider.logo-divider {
-    transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
-}
 .sidebar-nav.collapsed .sidebar-divider {
     width: calc(100% - 20px);
     margin: 20px 10px 0 10px;
 }
-.sidebar-nav.collapsed .sidebar-divider.logo-divider {
-    opacity: 0;
-    width: 0;
-    margin: 0;
-}
+
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
@@ -307,6 +345,67 @@ body::before {
 .sidebar-nav.collapsed .user-welcome {
     display: none;
 }
+
+/* --- LOGOUT BUTTON --- */
+.sidebar-nav .logout-btn {
+    background: #3762c8;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s ease;
+    white-space: nowrap;
+    font-size: 16px;
+    min-width: 0;
+}
+/* Expanded state is normal, below is collapsed state */
+.sidebar-nav.collapsed .logout-btn {
+    padding: 12px 10px !important;
+    width: 70%;
+    border-radius: 8px;
+    font-size: 0 !important;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    display: flex;
+}
+.sidebar-nav.collapsed .logout-btn::before {
+    content: "🚪";
+    font-size: 20px;
+    margin-right: 0;
+    display: inline-block;
+    line-height: 1;
+}
+.sidebar-nav .logout-btn:hover {
+    background: #3762c8;
+    color: #fff;
+    transform: translateY(-2px) scale(1.02);
+}
+.sidebar-nav.collapsed .logout-btn:hover {
+    transform: scale(1.08);
+    background: #2851b3;
+}
+
+/* Ensure the button does not shrink smaller than nav-link when collapsed */
+.sidebar-nav.collapsed .logout-btn {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.sidebar-nav.collapsed .logout-btn::after {
+    display: none;
+}
+
+/* --- Custom: Logout Tooltip for Collapsed Sidebar --- */
+.sidebar-tooltip-pop.logout-pop {
+    min-width: 120px;
+    max-width: 60vw;
+    white-space: normal;
+    text-align: center;
+    transition: none !important;
+}
+
 /* Logout Modal Custom Design (matching @reports.php) */
 #logoutAlertBackdrop {
     position: fixed;
@@ -403,29 +502,6 @@ body::before {
 }
 #logoutAlertModal .alert-btn.logout:hover {
     background: #c82d2d;
-}
-.sidebar-nav .logout-btn {
-    background: #3762c8;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.3s ease;
-    white-space: nowrap;
-}
-.sidebar-nav .logout-btn:hover {
-    background: #3762c8;
-    color: #fff;
-    transform: translateY(-2px) scale(1.02);
-}
-.sidebar-nav.collapsed .logout-btn {
-    padding: 8px;
-    font-size: 0;
-}
-.sidebar-nav.collapsed .logout-btn::before {
-    content: "🚪";
-    font-size: 20px;
 }
 .main-content {
     margin-left: 250px;
@@ -559,30 +635,38 @@ body::before {
 </head>
 
 <body>
-<div class="sidebar-nav">
+
+<?php showNotification(); ?>
+
+<div class="sidebar-nav" id="sidebarNav">
     <button class="sidebar-toggle" id="sidebarToggle">
         <span class="toggle-icon">◀</span>
     </button>
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
-    <div class="sidebar-divider"></div>
+            <div class="sidebar-divider logo-divider"></div>
         </div>
+        <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
+        <div style="flex-grow:1;"></div>
     </div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-        <button id="logoutBtn" class="logout-btn">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
+
+<!-- Tooltip container for sidebar nav-links and logout -->
+<div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
 <div class="main-content">
 
@@ -800,8 +884,10 @@ if (scheduleSearch && scheduleListHolder) {
 
 // Sidebar Toggle Functionality
 const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.querySelector('.sidebar-nav');
+const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
+
+const sidebarNav = document.getElementById('sidebarNav');
 
 // Load saved state from localStorage
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
@@ -813,14 +899,217 @@ if (sidebarCollapsed) {
 sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded');
-    
     // Save state to localStorage
     const isCollapsed = sidebar.classList.contains('collapsed');
     localStorage.setItem('sidebarCollapsed', isCollapsed);
+    // Logo is hidden/shown by CSS transition only, extra script unnecessary
+    // Hide/cleanup tooltip if present on toggle
+    if (!isCollapsed) {
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.style.display = 'none';
+    }
 });
 
-// Logout Alert Modal Logic - REFERENCE DESIGN FROM reports.php
+// --- Sidebar Tooltip Pop Functionality (modified logic) ---
+// Tooltip now disappears when you stop hovering a nav-link, 
+// even if the mouse is still in the sidebar,
+// unless you're interacting with the tooltip pop itself.
+
+const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
+let tooltipActiveLink = null;
+let tooltipHideTimeout = null;
+
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    // Mouse enter and focus (for accessibility)
+    link.addEventListener('mouseenter', navTooltipHandler);
+    link.addEventListener('focus', navTooltipHandler);
+
+    // Mouse leave and blur
+    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+
+// --- BEGIN: Add logout tooltip when sidebar collapsed ---
 const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('focus', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('mouseleave', function(e) {
+    // Hide, unless mouse moved into tooltip itself (same as nav-link logic)
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    // === FIX: Hide tooltip instantly, *without* transition, to avoid resize glitch ===
+    sidebarNavTooltip.classList.remove('active');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+logoutBtn.addEventListener('blur', hideNavTooltip);
+
+// Support tooltip remaining if mouse is over tooltip itself
+// Done already below (mouseleave/enter on tooltip).
+
+function showLogoutTooltip(e) {
+    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+    tooltipActiveLink = logoutBtn;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+
+    // Position tooltip beside the logout button (to the right)
+    const rect = logoutBtn.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    // Cancel hide timeout if any
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+// When hiding the logout tooltip, remove .logout-pop for style reset
+function hideNavTooltipImmediate() {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+function hideNavTooltip() {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    setTimeout(function() {
+        sidebarNavTooltip.style.display = 'none';
+        tooltipActiveLink = null;
+    }, 150);
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+// --- END: logout tooltip addition ---
+
+// Show tooltip beside nav-link
+function navTooltipHandler(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltip();
+        return;
+    }
+    const tooltipText = this.getAttribute('data-tooltip');
+    if (!tooltipText) return;
+    tooltipActiveLink = this;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+
+    // Calculate position beside hovered nav-link
+    const rect = this.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    // Cancel hide timeout if any
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+
+// When mouse leaves the nav-link, hide tooltip UNLESS moving directly into the tooltip itself
+function navLinkMouseLeaveHandler(e) {
+    // See if the destination (relatedTarget) is the tooltip itself
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        // Do NOT hide yet, let the tooltip stay open
+        return;
+    }
+    // Otherwise, start timer to hide tooltip
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60); // Hide *quickly* after nav-link is left
+}
+
+// Hide tooltip when mouse leaves the tooltip itself (even if still in sidebar)
+sidebarNavTooltip.addEventListener('mouseleave', function() {
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60);
+});
+
+// If user moves into tooltip from nav-link or logout, cancel hide
+sidebarNavTooltip.addEventListener('mouseenter', function() {
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+
+// On mouse entering sidebar, do not restore tooltip (changed from old code)
+
+document.querySelectorAll('.nav-link').forEach(function(link) {
+    link.addEventListener('keydown', function(e) {
+        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            this.focus();
+        }
+    });
+});
+logoutBtn.addEventListener('keydown', function(e) {
+    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        this.focus();
+    }
+});
+
+// Immediately hide tooltip when sidebar is expanded
+sidebarToggle.addEventListener('click', () => {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+
+// Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
@@ -828,6 +1117,8 @@ const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 // Show modal on logout button click
 logoutBtn.addEventListener('click', () => {
     logoutAlertBackdrop.classList.add("active");
+    // Hide tooltip immediately
+    hideNavTooltipImmediate();
 });
 
 // Hide modal on cancel
