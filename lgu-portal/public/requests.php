@@ -55,7 +55,7 @@ if (isset($_GET['logout'])) {
 
 // Fetch requests from DB
 // FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
-$sql = "SELECT * FROM requests ORDER BY created_at DESC";
+$sql = "SELECT * FROM request ORDER BY created_at DESC";
 $result = $conn->query($sql);
 ?>
 

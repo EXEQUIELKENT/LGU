@@ -72,6 +72,7 @@ const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | 
 <meta charset="UTF-8">
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}

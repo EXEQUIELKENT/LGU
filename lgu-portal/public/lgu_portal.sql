@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 05, 2026 at 09:41 AM
+-- Generation Time: Jan 10, 2026 at 06:53 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -43,7 +43,9 @@ CREATE TABLE `employees` (
 INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`) VALUES
 (1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW'),
 (2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou'),
-(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni');
+(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni'),
+(4, 'Kent', 'Bartolome', 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$WoFWpEk14H3gSt.r.VSH1uKGLEYEzTjEeNCqc5Z9SIAcWho8lXZXi'),
+(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe');
 
 -- --------------------------------------------------------
 
@@ -98,10 +100,10 @@ CREATE TABLE `reports` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `requests`
+-- Table structure for table `request`
 --
 
-CREATE TABLE `requests` (
+CREATE TABLE `request` (
   `request_id` int(11) NOT NULL,
   `infrastructure` varchar(100) NOT NULL,
   `location` varchar(255) NOT NULL,
@@ -141,9 +143,9 @@ ALTER TABLE `reports`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `requests`
+-- Indexes for table `request`
 --
-ALTER TABLE `requests`
+ALTER TABLE `request`
   ADD PRIMARY KEY (`request_id`);
 
 --
@@ -154,7 +156,7 @@ ALTER TABLE `requests`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -175,9 +177,9 @@ ALTER TABLE `reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `requests`
+-- AUTO_INCREMENT for table `request`
 --
-ALTER TABLE `requests`
+ALTER TABLE `request`
   MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -188,7 +190,7 @@ ALTER TABLE `requests`
 -- Constraints for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  ADD CONSTRAINT `evidence_images_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `evidence_images_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `request` (`request_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

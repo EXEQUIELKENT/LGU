@@ -95,7 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Create Account | LGU Portal</title>
-<link rel="stylesheet" href="style - Copy.css">
+<link rel="stylesheet" href="style.css">
 <style>
 body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;

@@ -237,7 +237,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU | Login</title>
-<link rel="stylesheet" href="style - Copy.css">
+<link rel="stylesheet" href="style.css">
 <style>
 /* ...styles omitted for brevity (left unchanged from before)... */
 body 
