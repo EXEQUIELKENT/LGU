@@ -38,9 +38,46 @@ function showNotification() {
     }
 }
 
-// Reset OTP if user reloads
-if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+// Handle password change submission
+if (isset($_POST['change_password_submit'])) {
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    $email = $_SESSION['login_email'] ?? '';
+
+    if (empty($newPassword) || empty($confirmPassword)) {
+        setNotification('error', 'Both password fields are required.');
+    } elseif (strlen($newPassword) < 8) {
+        setNotification('error', 'Password must be at least 8 characters long.');
+    } elseif ($newPassword !== $confirmPassword) {
+        setNotification('error', 'Passwords do not match. Please try again.');
+    } elseif ($email) {
+        // Hash the new password
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        
+        // Update password and set is_first_login to 0
+        $stmt = $conn->prepare("UPDATE employees SET password = ?, is_first_login = 0 WHERE email = ?");
+        $stmt->bind_param("ss", $hashedPassword, $email);
+        
+        if ($stmt->execute()) {
+            unset($_SESSION['show_change_password_modal'], $_SESSION['otp_verified']);
+            setNotification('success', 'Password changed successfully! Redirecting to Employee Portal...');
+            echo "<script>
+                setTimeout(function(){ window.location.href = 'employee.php'; }, 1500);
+            </script>";
+        } else {
+            setNotification('error', 'Failed to update password: ' . $conn->error);
+        }
+        $stmt->close();
+    } else {
+        setNotification('error', 'Session expired. Please log in again.');
+        header("Location: login.php");
+        exit;
+    }
+}
+
+// Reset OTP if user reloads (but keep change password modal state if needed)
+if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_password_modal'])) {
+    unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_verified']);
 }
 
 // OTP verification
@@ -69,11 +106,51 @@ if (isset($_POST['otp_submit'])) {
         $_SESSION['otp_verified'] = true;
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
 
-        setNotification('success', 'Login successful! Redirecting to Employee Portal...');
-        // Redirect after slight delay so notification shows
-        echo "<script>
-            setTimeout(function(){ window.location.href = 'employee.php'; }, 1100);
-        </script>";
+        // Check if this is a first-time login (needs password change)
+        $email = $_SESSION['login_email'] ?? '';
+        if ($email) {
+            $checkStmt = $conn->prepare("SELECT is_first_login FROM employees WHERE email = ?");
+            $checkStmt->bind_param("s", $email);
+            $checkStmt->execute();
+            $result = $checkStmt->get_result();
+            
+            if ($result->num_rows === 1) {
+                $userData = $result->fetch_assoc();
+                $isFirstLogin = $userData['is_first_login'] ?? 0;
+                
+                if ($isFirstLogin == 1) {
+                    // Show change password modal - redirect to clear OTP form state
+                    $_SESSION['show_change_password_modal'] = true;
+                    setNotification('info', 'Please change your password to continue.');
+                    // Redirect to show modal on fresh page load
+                    header("Location: login.php");
+                    exit;
+                } else {
+                    // Old account, redirect directly to employee.php
+                    // Clear any OTP-related session variables
+                    unset($_SESSION['show_change_password_modal']);
+                    setNotification('success', 'Login successful! Redirecting to Employee Portal...');
+                    // Redirect after slight delay so notification shows
+                    echo "<script>
+                        setTimeout(function(){ window.location.href = 'employee.php'; }, 1100);
+                    </script>";
+                    exit; // Exit to prevent further rendering
+                }
+            } else {
+                // Fallback: redirect if user not found (shouldn't happen)
+                unset($_SESSION['show_change_password_modal']);
+                setNotification('warning', 'User data not found. Redirecting...');
+                echo "<script>
+                    setTimeout(function(){ window.location.href = 'employee.php'; }, 1100);
+                </script>";
+                exit; // Exit to prevent further rendering
+            }
+            $checkStmt->close();
+        } else {
+            setNotification('error', 'Session error. Please log in again.');
+            header("Location: login.php");
+            exit;
+        }
         // Do not exit here, allow notification display
     } else {
         $_SESSION['otp_attempts']++;
@@ -99,19 +176,61 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         exit;
     }
 
-    // Fetch user from DB
-    $stmt = $conn->prepare("SELECT first_name, password FROM employees WHERE email = ?");
+    // Fetch user from DB - check email and verification status
+    // First check employees table (verified accounts)
+    $stmt = $conn->prepare("SELECT first_name, password, email_verified FROM employees WHERE LOWER(email) = LOWER(?)");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows !== 1) {
-        setNotification('error', 'Email not found');
-        header("Location: login.php");
-        exit;
+        // Email not found in employees table - check pending_registrations
+        $stmt->close();
+        
+        $pendingStmt = $conn->prepare("SELECT id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
+        $pendingStmt->bind_param("s", $email);
+        $pendingStmt->execute();
+        $pendingResult = $pendingStmt->get_result();
+        
+        if ($pendingResult->num_rows > 0) {
+            // Email found in pending registrations
+            $pendingRow = $pendingResult->fetch_assoc();
+            $expires = strtotime($pendingRow['verification_token_expires']);
+            $now = time();
+            
+            if ($now > $expires) {
+                // Expired pending registration - clean it up
+                $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE id = ?");
+                $deleteStmt->bind_param("i", $pendingRow['id']);
+                $deleteStmt->execute();
+                $deleteStmt->close();
+                
+                setNotification('error', 'Email not found. Your verification link has expired. Please register again.');
+            } else {
+                // Still pending verification
+                setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the "Confirm Email" button to activate your account. Your account will be created after verification.');
+            }
+            $pendingStmt->close();
+            header("Location: login.php");
+            exit;
+        } else {
+            // Not found in either table
+            $pendingStmt->close();
+            setNotification('error', 'Email not found');
+            header("Location: login.php");
+            exit;
+        }
     }
 
     $user = $result->fetch_assoc();
+    $stmt->close();
+    
+    // Check if email is verified
+    if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
+        setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
+        header("Location: login.php");
+        exit;
+    }
 
     $_SESSION['employee_first_name'] = $user['first_name'];
 
@@ -470,6 +589,332 @@ body::before
     transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
 }
+
+/* Change Password Modal Styles */
+#changePasswordModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 1;
+    animation: fadeInModal 0.3s ease;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent body scroll when modal is open */
+body:has(#changePasswordModal) {
+    overflow: hidden;
+}
+
+@keyframes fadeInModal {
+    from { 
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to { 
+        opacity: 1;
+        backdrop-filter: blur(6px);
+    }
+}
+
+#changePasswordModal .modal-content {
+    width: 350px;
+    background: rgba(255, 255, 255, 0.795);
+    padding: 28px 32px;
+    border-radius: 18px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    animation: slideUpModal 0.4s cubic-bezier(.34, 1.56, .64, 1);
+    position: relative;
+    margin: auto;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+@keyframes slideUpModal {
+    from {
+        transform: translateY(50px) scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+#changePasswordModal .modal-header {
+    text-align: center;
+    margin-bottom: 18px;
+    padding-bottom: 0;
+}
+
+#changePasswordModal .modal-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #6384d2 0%, #285ccd 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px auto;
+    box-shadow: 0 4px 15px rgba(99, 132, 210, 0.3);
+    font-size: 28px;
+    position: relative;
+}
+
+#changePasswordModal .modal-icon::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(99, 132, 210, 0.3), rgba(40, 92, 205, 0.3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+#changePasswordModal .modal-title {
+    font-size: 26px;
+    color: #000000;
+    font-weight: 600;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+#changePasswordModal .modal-subtitle {
+    font-size: 14px;
+    color: #000000;
+    font-weight: 400;
+    line-height: 1.4;
+    margin: 0 0 18px 0;
+}
+
+#changePasswordModal .modal-body {
+    margin-bottom: 18px;
+}
+
+#changePasswordModal .input-box {
+    margin-bottom: 14px;
+    position: relative;
+    text-align: left;
+    color: #000000;
+}
+
+#changePasswordModal .input-box:last-of-type {
+    margin-bottom: 14px;
+}
+
+#changePasswordModal .input-box label {
+    display: block;
+    margin-bottom: 5px;
+    color: #000000;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+#changePasswordModal .input-box input {
+    width: 100%;
+    padding: 10px 38px 10px 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: all 0.25s ease;
+    background: rgba(255,255,255,0.7);
+    color: #000000;
+    box-sizing: border-box;
+    font-family: 'Poppins', Arial, sans-serif;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+#changePasswordModal .input-box input::placeholder {
+    color: #888;
+    opacity: 0.7;
+}
+
+#changePasswordModal .input-box input:focus {
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
+}
+
+#changePasswordModal .input-box input:hover {
+    background: rgba(255,255,255,0.85);
+}
+
+#changePasswordModal .password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 35px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: #888;
+    padding: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    opacity: 0.6;
+}
+
+#changePasswordModal .password-toggle:hover {
+    color: #6384d2;
+    opacity: 1;
+}
+
+#changePasswordModal .password-toggle:active {
+    transform: scale(0.95);
+}
+
+#changePasswordModal .password-requirements {
+    font-size: 12px;
+    color: #666;
+    margin-top: 6px;
+    padding-left: 0;
+    line-height: 1.4;
+}
+
+#changePasswordModal .modal-footer {
+    display: flex;
+    gap: 0;
+    margin-top: 10px;
+}
+
+#changePasswordModal .btn-change-password {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s ease;
+    font-family: 'Poppins', Arial, sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+#changePasswordModal .btn-change-password::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#changePasswordModal .btn-change-password:hover::before {
+    left: 100%;
+}
+
+#changePasswordModal .btn-change-password:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+}
+
+#changePasswordModal .btn-change-password:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(43, 91, 222, 0.3);
+}
+
+#changePasswordModal .btn-change-password:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+#changePasswordModal .btn-change-password:disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+}
+
+/* Responsive Modal Styles */
+@media (max-width: 600px) {
+    #changePasswordModal {
+        padding: 15px;
+    }
+    
+    #changePasswordModal .modal-content {
+        width: 100%;
+        max-width: 350px;
+        padding: 24px 28px;
+        border-radius: 18px;
+    }
+    
+    #changePasswordModal .modal-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+    
+    #changePasswordModal .modal-title {
+        font-size: 24px;
+    }
+    
+    #changePasswordModal .modal-subtitle {
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    
+    #changePasswordModal .modal-body {
+        margin-bottom: 16px;
+    }
+    
+    #changePasswordModal .input-box {
+        margin-bottom: 12px;
+    }
+    
+    #changePasswordModal .input-box input {
+        padding: 10px 38px 10px 12px;
+        font-size: 14px;
+    }
+    
+    #changePasswordModal .password-toggle {
+        top: 35px;
+        right: 12px;
+        width: 26px;
+        height: 26px;
+        font-size: 16px;
+    }
+    
+    #changePasswordModal .btn-change-password {
+        padding: 12px;
+        font-size: 15px;
+    }
+}
+
+/* Ensure modal is always on top */
+#changePasswordModal * {
+    box-sizing: border-box;
+}
 </style>
 </head>
 <body>
@@ -492,7 +937,15 @@ body::before
         <img src="logocityhall.png" class="icon-top">
         <h2 class="title">LGU Login</h2>
 
-        <?php if(isset($_SESSION['show_otp_form']) && $_SESSION['show_otp_form'] === true): ?>
+        <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
+            <!-- Hide card content when showing change password modal -->
+            <style>
+                .card {
+                    opacity: 0;
+                    pointer-events: none;
+                }
+            </style>
+        <?php elseif(isset($_SESSION['show_otp_form']) && $_SESSION['show_otp_form'] === true): ?>
             <div class="otp-icon-container">
                 <div class="otp-icon-wrapper">
                 </div>
@@ -707,6 +1160,138 @@ body::before
         <?php endif; ?>
     </div>
 </div>
+
+<?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
+    <!-- Change Password Modal - Outside card wrapper for proper centering -->
+    <div id="changePasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon">🔒</div>
+                <h2 class="modal-title">Change Your Password</h2>
+                <p class="modal-subtitle">You must change your temporary password to continue</p>
+            </div>
+            <form method="post" action="" id="changePasswordForm">
+                <div class="modal-body">
+                    <div class="input-box">
+                        <label for="new_password">New Password</label>
+                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" required minlength="8">
+                        <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">
+                            <span id="toggleNewPasswordIcon">👁️</span>
+                        </button>
+                        <div class="password-requirements">Must be at least 8 characters long</div>
+                    </div>
+                    <div class="input-box">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required minlength="8">
+                        <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">
+                            <span id="toggleConfirmPasswordIcon">👁️</span>
+                        </button>
+                    </div>
+                    <div id="passwordMatchError" style="color: #d9534f; font-size: 12px; margin-top: 8px; margin-bottom: 0; display: none; font-weight: 500; text-align: center; padding: 8px 10px; background: rgba(217, 83, 79, 0.1); border-radius: 8px;">
+                        ⚠️ Passwords do not match
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+        
+        // Password toggle functionality for change password modal
+        const newPasswordInput = document.getElementById('new_password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        const toggleNewPassword = document.getElementById('toggleNewPassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const toggleNewPasswordIcon = document.getElementById('toggleNewPasswordIcon');
+        const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
+        const passwordMatchError = document.getElementById('passwordMatchError');
+        const changePasswordBtn = document.getElementById('changePasswordBtn');
+        const changePasswordForm = document.getElementById('changePasswordForm');
+
+        const iconShow = '👁️';
+        const iconHide = '🛡️';
+
+        toggleNewPassword.addEventListener('click', function() {
+            if (newPasswordInput.type === 'password') {
+                newPasswordInput.type = 'text';
+                toggleNewPasswordIcon.textContent = iconHide;
+                toggleNewPassword.setAttribute('aria-label', 'Hide password');
+            } else {
+                newPasswordInput.type = 'password';
+                toggleNewPasswordIcon.textContent = iconShow;
+                toggleNewPassword.setAttribute('aria-label', 'Show password');
+            }
+        });
+
+        toggleConfirmPassword.addEventListener('click', function() {
+            if (confirmPasswordInput.type === 'password') {
+                confirmPasswordInput.type = 'text';
+                toggleConfirmPasswordIcon.textContent = iconHide;
+                toggleConfirmPassword.setAttribute('aria-label', 'Hide password');
+            } else {
+                confirmPasswordInput.type = 'password';
+                toggleConfirmPasswordIcon.textContent = iconShow;
+                toggleConfirmPassword.setAttribute('aria-label', 'Show password');
+            }
+        });
+
+        // Real-time password match validation
+        function validatePasswords() {
+            const newPwd = newPasswordInput.value;
+            const confirmPwd = confirmPasswordInput.value;
+            
+            if (confirmPwd.length > 0) {
+                if (newPwd !== confirmPwd) {
+                    passwordMatchError.style.display = 'block';
+                    changePasswordBtn.disabled = true;
+                    return false;
+                } else {
+                    passwordMatchError.style.display = 'none';
+                    if (newPwd.length >= 8) {
+                        changePasswordBtn.disabled = false;
+                    }
+                    return true;
+                }
+            } else {
+                passwordMatchError.style.display = 'none';
+                if (newPwd.length >= 8) {
+                    changePasswordBtn.disabled = false;
+                } else {
+                    changePasswordBtn.disabled = true;
+                }
+                return false;
+            }
+        }
+
+        newPasswordInput.addEventListener('input', validatePasswords);
+        confirmPasswordInput.addEventListener('input', validatePasswords);
+
+        // Disable submit button initially
+        changePasswordBtn.disabled = true;
+
+        // Form submission validation
+        changePasswordForm.addEventListener('submit', function(e) {
+            const newPwd = newPasswordInput.value;
+            const confirmPwd = confirmPasswordInput.value;
+
+            if (newPwd.length < 8) {
+                e.preventDefault();
+                alert('Password must be at least 8 characters long.');
+                return false;
+            }
+
+            if (newPwd !== confirmPwd) {
+                e.preventDefault();
+                passwordMatchError.style.display = 'block';
+                return false;
+            }
+        });
+    </script>
+<?php endif; ?>
 
 <footer class="footer">
     <div class="footer-links">
