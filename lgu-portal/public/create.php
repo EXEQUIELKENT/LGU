@@ -304,12 +304,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                         $scriptPath = rtrim($scriptPath, '/');
                         $verificationLink = $protocol . '://' . $host . $scriptPath . '/verify.php?token=' . urlencode($verificationToken);
                         
-                        // Now send verification email
+                        // Now send verification email - Optimized for speed (same method as login.php)
                         $mail = new PHPMailer(true);
                         try {
-                            // Enable verbose debug output (disable in production)
-                            // $mail->SMTPDebug = 2; // Uncomment for debugging
-                            // $mail->Debugoutput = function($str, $level) { echo "Debug level $level: $str<br>\n"; };
+                            // Disable debug output for faster email delivery
+                            // Only enable debug (set to 2) when troubleshooting email issues
+                            $mail->SMTPDebug = 0; // 0 = disabled (fastest), 2 = detailed debug (slower)
                             
                             $mail->isSMTP();
                             $mail->Host       = 'smtp.gmail.com';
@@ -319,104 +319,59 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                             $mail->SMTPSecure = 'tls';
                             $mail->Port       = 587;
                             $mail->CharSet    = 'UTF-8';
-                            $mail->Encoding   = 'base64';
+                            $mail->Encoding   = 'quoted-printable'; // Faster than base64 for text emails
+                            $mail->Timeout    = 30; // Reduced timeout for faster failure detection (was 60)
                             
-                            // SMTP Options for Gmail
+                            // SMTP Options for Gmail - Optimized for speed
                             $mail->SMTPOptions = array(
                                 'ssl' => array(
                                     'verify_peer' => false,
                                     'verify_peer_name' => false,
-                                    'allow_self_signed' => true
+                                    'allow_self_signed' => true,
+                                    'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
                                 )
                             );
+                            
+                            // Optimize SMTP settings for faster delivery
+                            $mail->SMTPAutoTLS = true;
+                            $mail->SMTPKeepAlive = false; // Close connection immediately after sending
+                            $mail->WordWrap = 0; // Disable word wrap for faster processing
 
-                            $mail->setFrom('lguportalph@gmail.com', 'LGU Portal');
+                            $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
                             $mail->addAddress($emailNormalized, htmlspecialchars($firstName . ' ' . $lastName));
                             $mail->isHTML(true);
                             $mail->Subject = 'Verify Your Email Address - LGU Portal Account Creation';
 
-                            // Add embedded image if it exists
-                            $pictureCid = 'cityhallimg';
-                            $imagePath = __DIR__ . '/cityhall.jpeg';
-                            if (file_exists($imagePath) && is_readable($imagePath)) {
-                                $mail->addEmbeddedImage($imagePath, $pictureCid, 'cityhall.jpeg', 'base64', 'image/jpeg');
-                            } else {
-                                // If image doesn't exist, set $pictureCid to empty string for the template
-                                $pictureCid = '';
-                            }
-
-                            $htmlBody = '
-                                <div style="min-height: 100vh;
-                                    background: #fff;
-                                    position: relative;
-                                    padding: 44px 0;
-                                    font-family: \'Poppins\', Arial, sans-serif;
-                                    ">
-                                    <div style="
-                                        position: absolute;
-                                        top: 0; left: 0; width: 100%; height: 100%;
-                                        background: rgba(24,32,54,0.14);
-                                        backdrop-filter: blur(8px);
-                                        -webkit-backdrop-filter: blur(8px);
-                                        z-index: 0;
-                                        border-radius: 0;
-                                    "></div>
-                                    <div style="
-                                        position: relative;
-                                        max-width: 430px;
-                                        margin: 60px auto;
-                                        background: rgb(247, 243, 243);
-                                        border-radius: 18px;
-                                        box-shadow: 0 10px 38px rgba(66,93,135,0.15);
-                                        border: 1.8px solid #c8ddf9;
-                                        padding: 48px 44px 36px 44px;
-                                        z-index: 1;">
-                                        <div style="text-align: center;">';
-                            
-                            if (!empty($pictureCid)) {
-                                $htmlBody .= '<img src="cid:'.$pictureCid.'" style="margin-top:-65px;margin-bottom:16px;width:80px;height:80px;object-fit:cover;border-radius:50%;box-shadow: 0 2px 22px rgba(69,104,181,0.09);background:#ecf3fc; border:3.5px solid #e2e8f6; display:inline-block;" alt="City Hall">';
-                            }
-                            
-                            $htmlBody .= '<div style="font-size: 32px; color: #27417b; font-weight: 800; letter-spacing: 0.03em; margin-bottom: 12px; text-shadow: 0 2px 11px #fff, 0 1px 0 #d3e6ff;">LGU Portal</div>
-                                            <div style="font-size: 18px; color: #4e627f; margin-bottom: 25px; font-weight: 500; letter-spacing:0.015em;">Email Verification Required</div>
-                                            <div style="color: #305176; font-size: 15.5px; margin-bottom: 28px; line-height: 1.6;">
-                                                Hello <strong>'.htmlspecialchars($firstName).'</strong>,<br><br>
-                                                Thank you for registering with LGU Portal. Please click the button below to verify your email address and complete your account creation.
-                                            </div>
-                                            <div style="margin-bottom: 28px;">
-                                                <a href="'.$verificationLink.'" 
-                                                   style="display: inline-block;
-                                                          background: linear-gradient(135deg, #6384d2, #285ccd);
-                                                          color: #fff;
-                                                          text-decoration: none;
-                                                          padding: 16px 48px;
-                                                          border-radius: 12px;
-                                                          font-size: 16px;
-                                                          font-weight: 600;
-                                                          box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
-                                                          transition: all 0.3s ease;">
-                                                    Confirm Email
-                                                </a>
-                                            </div>
-                                            <div style="color: #6b7280; font-size: 13.5px; margin-bottom: 18px; line-height: 1.5;">
-                                                If the button above doesn\'t work, copy and paste this link into your browser:<br>
-                                                <a href="'.$verificationLink.'" style="color: #6384d2; word-break: break-all;">'.$verificationLink.'</a>
-                                            </div>
-                                            <div style="color: #ca173f; font-size: 14px; margin-bottom: 18px;">
-                                                <span style="font-weight: 700;">This link will expire in 24 hours.</span><br>
-                                                If you didn\'t request this account, please ignore this email. Your account will NOT be created unless you click the confirmation button.
-                                            </div>
-                                            <div style="color: #9b9eaa; font-size: 12.5px; margin-top: 16px; line-height:1.5;">
-                                                After verification, your temporary password will be: <strong style="color: #27417b;">'.htmlspecialchars($tempPassword).'</strong><br>
-                                                You will be asked to change this password on first login.
-                                            </div>
-                                        </div>
+                            // Skip image embedding for faster email sending (matching login.php approach)
+                            // Simplified HTML body for faster processing and smaller email size
+                            $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
+                                <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+                                    <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px;text-align:center;">LGU Portal</h1>
+                                    <h2 style="color:#4e627f;margin:0 0 30px 0;font-size:18px;font-weight:400;text-align:center;">Email Verification Required</h2>
+                                    <div style="color:#666;font-size:15px;line-height:1.6;margin:20px 0;text-align:center;">
+                                        Hello <strong>'.htmlspecialchars($firstName).'</strong>,<br><br>
+                                        Thank you for registering with LGU Portal. Please click the button below to verify your email address and complete your account creation.
                                     </div>
-                                    <div style="text-align:center; color:#b7bcca; font-size:12.6px; margin-top:28px; position: relative; z-index:2;">
-                                        &copy; '.date('Y').' LGU Portal
+                                    <div style="text-align:center;margin:30px 0">
+                                        <a href="'.$verificationLink.'" style="display:inline-block;background:linear-gradient(135deg,#6384d2,#285ccd);color:#fff;text-decoration:none;padding:16px 48px;border-radius:12px;font-size:16px;font-weight:600;box-shadow:0 6px 15px rgba(43,91,222,0.45)">
+                                            Confirm Email
+                                        </a>
                                     </div>
+                                    <div style="color:#666;font-size:13px;line-height:1.5;margin:20px 0;text-align:center;">
+                                        If the button above doesn\'t work, copy and paste this link into your browser:<br>
+                                        <a href="'.$verificationLink.'" style="color:#6384d2;word-break:break-all;">'.$verificationLink.'</a>
+                                    </div>
+                                    <div style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0;text-align:center;">
+                                        This link will expire in 24 hours.<br>
+                                        If you didn\'t request this account, please ignore this email. Your account will NOT be created unless you click the confirmation button.
+                                    </div>
+                                    <div style="color:#666;font-size:13px;margin-top:30px;border-top:1px solid #eee;padding-top:20px;text-align:center;">
+                                        After verification, your temporary password will be: <strong style="color:#27417b;">'.htmlspecialchars($tempPassword).'</strong><br>
+                                        You will be asked to change this password on first login.
+                                    </div>
+                                    <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
                                 </div>
-                            ';
+                            </body></html>';
                             
                             $mail->Body = $htmlBody;
                             
@@ -431,7 +386,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                                            "If you didn't request this account, please ignore this email.\n\n" .
                                            "© " . date('Y') . " LGU Portal";
                             
-                            // Send verification email (will throw exception on failure since PHPMailer(true) is used)
+                            // Validate email before sending (skip if you want maximum speed, but recommended for error handling)
+                            if (!$mail->validateAddress($emailNormalized)) {
+                                throw new \PHPMailer\PHPMailer\Exception("Invalid email address: $emailNormalized");
+                            }
+                            
+                            // Send verification email immediately - optimized for speed
+                            // Since PHPMailer(true) is used, it will throw exceptions on failure automatically
                             $mail->send();
                             
                             // Success - email sent, account data stored in pending_registrations
@@ -440,20 +401,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                             // Clear form data
                             $firstName = $lastName = $email = $role = '';
                             
-                        } catch (Exception $e) {
+                        } catch (\PHPMailer\PHPMailer\Exception $e) {
                             // If email fails to send, delete the pending registration
-                            $cleanupStmt = $conn->prepare("DELETE FROM pending_registrations WHERE verification_token = ?");
-                            $cleanupStmt->bind_param("s", $verificationToken);
-                            $cleanupStmt->execute();
-                            $cleanupStmt->close();
+                            if (isset($verificationToken) && !empty($verificationToken)) {
+                                try {
+                                    $cleanupStmt = $conn->prepare("DELETE FROM pending_registrations WHERE verification_token = ?");
+                                    $cleanupStmt->bind_param("s", $verificationToken);
+                                    $cleanupStmt->execute();
+                                    $cleanupStmt->close();
+                                } catch (Exception $cleanupEx) {
+                                    error_log('Failed to cleanup pending registration: ' . $cleanupEx->getMessage());
+                                }
+                            }
+                            
+                            // Get detailed error information
+                            $errorInfo = '';
+                            if (isset($mail) && $mail instanceof PHPMailer) {
+                                $errorInfo = $mail->ErrorInfo;
+                            }
                             
                             $errorMsg = 'Failed to send verification email. ';
-                            if (isset($mail) && $mail instanceof PHPMailer) {
-                                $errorMsg .= 'SMTP Error: ' . htmlspecialchars($mail->ErrorInfo) . '. ';
+                            if (!empty($errorInfo)) {
+                                $errorMsg .= 'SMTP Error: ' . htmlspecialchars($errorInfo) . '. ';
                             }
                             $errorMsg .= 'Exception: ' . htmlspecialchars($e->getMessage()) . '. ';
-                            $errorMsg .= 'Please check your email address and try again. If the problem persists, contact support. Account was NOT created.';
+                            $errorMsg .= 'Please check: 1) Gmail credentials are correct, 2) App password is valid, 3) Email address is valid. If the problem persists, contact support. Account was NOT created.';
                             setNotification('error', $errorMsg);
+                            
+                            // Log detailed error for debugging
+                            error_log('PHPMailer Error in create.php: ' . $e->getMessage());
+                            error_log('PHPMailer ErrorInfo: ' . ($errorInfo ? $errorInfo : 'No error info available'));
+                            error_log('Email address: ' . $emailNormalized);
+                            error_log('Verification token: ' . (isset($verificationToken) ? $verificationToken : 'Not set'));
+                            
+                        } catch (\Exception $e) {
+                            // Catch any other exceptions (non-PHPMailer exceptions)
+                            if (isset($verificationToken) && !empty($verificationToken)) {
+                                try {
+                                    $cleanupStmt = $conn->prepare("DELETE FROM pending_registrations WHERE verification_token = ?");
+                                    $cleanupStmt->bind_param("s", $verificationToken);
+                                    $cleanupStmt->execute();
+                                    $cleanupStmt->close();
+                                } catch (Exception $cleanupEx) {
+                                    error_log('Failed to cleanup pending registration: ' . $cleanupEx->getMessage());
+                                }
+                            }
+                            
+                            $errorMsg = 'Failed to send verification email. Error: ' . htmlspecialchars($e->getMessage()) . '. Please check your email address and try again. If the problem persists, contact support. Account was NOT created.';
+                            setNotification('error', $errorMsg);
+                            error_log('General Exception in create.php email sending: ' . $e->getMessage());
+                            error_log('Exception class: ' . get_class($e));
+                            error_log('Stack trace: ' . $e->getTraceAsString());
                         }
                     }
                 }

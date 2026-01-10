@@ -252,9 +252,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $_SESSION['show_otp_form'] = true;
     $_SESSION['otp_attempts'] = 0;
 
-    // Send OTP email
+    // Send OTP email - Optimized for speed
     $mail = new PHPMailer(true);
     try {
+        // Disable debug output for faster email delivery
+        // Only enable debug (set to 2) when troubleshooting email issues
+        $mail->SMTPDebug = 0; // 0 = disabled (fastest), 2 = detailed debug (slower)
+        
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -262,90 +266,106 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $mail->Password   = 'zsozvbpsggclkcno';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'quoted-printable'; // Faster than base64 for text emails
+        $mail->Timeout    = 30; // Reduced timeout for faster failure detection (was 60)
+        
+        // SMTP Options for Gmail - Optimized for speed
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true,
+                'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
+            )
+        );
+        
+        // Optimize SMTP settings for faster delivery
+        $mail->SMTPAutoTLS = true;
+        $mail->SMTPKeepAlive = false; // Close connection immediately after sending
+        $mail->WordWrap = 0; // Disable word wrap for faster processing
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal');
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
         $mail->addAddress($email);
 
         $mail->isHTML(true);
-        $mail->Subject = 'Verify Your Identity: LGU Portal OTP Code';
+        $mail->Subject = 'LGU Portal - Your OTP Code: ' . $otp;
 
-        $pictureCid = 'cityhallimg'; // Embedded image cid
-        $mail->addEmbeddedImage(__DIR__.'/cityhall.jpeg', $pictureCid);
+        // Skip image embedding for OTP emails to speed up sending
+        // OTP emails should be fast and simple
 
-        $mail->Body = '
-                <div style="min-height: 100vh;
-                    background: #fff;
-                    position: relative;
-                    padding: 44px 0;
-                    font-family: \'Poppins\', Arial, sans-serif;
-                    ">
-                    <!-- Semi-transparent overlay with blur -->
-                    <div style="
-                        position: absolute;
-                        top: 0; left: 0; width: 100%; height: 100%;
-                        background: rgba(24,32,54,0.14);
-                        backdrop-filter: blur(8px);
-                        -webkit-backdrop-filter: blur(8px);
-                        z-index: 0;
-                        border-radius: 0;
-                    "></div>
-                    <div style="
-                        position: relative;
-                        max-width: 430px;
-                        margin: 60px auto;
-                        background: rgb(247, 243, 243);
-                        border-radius: 18px;
-                        box-shadow: 0 10px 38px rgba(66,93,135,0.15);
-                        border: 1.8px solid #c8ddf9;
-                        padding: 48px 44px 36px 44px;
-                        z-index: 1;">
-                        <div style="text-align: center;">
-                            <img src="cid:'.$pictureCid.'" style="margin-top:-65px;margin-bottom:16px;width:80px;height:80px;object-fit:cover;border-radius:50%;box-shadow: 0 2px 22px rgba(69,104,181,0.09);background:#ecf3fc; border:3.5px solid #e2e8f6; display:inline-block;" alt="City Hall">
-                            <div style="font-size: 32px; color: #27417b; font-weight: 800; letter-spacing: 0.03em; margin-bottom: 12px; text-shadow: 0 2px 11px #fff, 0 1px 0 #d3e6ff;">LGU Portal</div>
-                            <div style="font-size: 18px; color: #4e627f; margin-bottom: 25px; font-weight: 500; letter-spacing:0.015em;">OTP Verification</div>
-                            <div style="background: linear-gradient(104deg, #eaf4fe 85%, #e9f6fd 100%);
-                                        display: inline-block; 
-                                        border-radius: 8.5px; 
-                                        margin-bottom: 28px; 
-                                        padding: 18px 38px 17px 38px; 
-                                        box-shadow: 0 3px 16px rgba(133,168,194,0.11);
-                                        min-width: 170px;">
-                                <div style="font-size: 20px; color: #233; font-weight: 500; margin-bottom: 8px; letter-spacing: 0.01em;">Your authentication code is</div>
-                                <div style="
-                                    font-size: 39px;
-                                    font-family: \'Courier New\', monospace;
-                                    letter-spacing: 0.22em;
-                                    color: #1f66b1;
-                                    font-weight: 800;
-                                    margin: 0 0 6px 0;
-                                    letter-spacing: 0.22em;
-                                    letter-spacing: 0.18em;
-                                    padding-bottom: 2px;
-                                    ">'.$otp.'</div>
-                            </div>
-                            <div style="color: #305176; font-size: 15.5px; margin-bottom: 17px;">
-                                This code is valid for <span style="font-weight:700;color:#174c86;">5 minutes</span> and can only be used once.
-                            </div>
-                            <div style="color: #ca173f; font-size: 15px; margin-bottom: 18px;">
-                                <span style="font-weight: 700;">Never share this code with anyone.</span><br>
-                                LGU Portal staff will <span style="text-decoration: underline;">never</span> ask for this code.
-                            </div>
-                            <div style="color: #9b9eaa; font-size: 13px; margin-top: 16px; line-height:1.5;">
-                                Didn\'t request this OTP? You may safely ignore this email.<br>
-                                For extra security, do not forward this message.
-                            </div>
-                        </div>
-                    </div>
-                    <div style="text-align:center; color:#b7bcca; font-size:12.6px; margin-top:28px; position: relative; z-index:2;">
-                        &copy; '.date('Y').' LGU Portal
-                    </div>
+        // Simplified HTML body for faster processing and smaller email size
+        $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
+            <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+                <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
+                <h2 style="color:#4e627f;margin:0 0 30px 0;font-size:18px;font-weight:400; text-align:center;">OTP Verification Code</h2>
+                <div style="background:#eaf4fe;border-radius:8px;padding:25px;text-align:center;margin:30px 0">
+                    <div style="color:#666;font-size:16px;margin-bottom:10px">Your authentication code is</div>
+                    <div style="font-size:42px;font-family:\'Courier New\',monospace;color:#1f66b1;font-weight:700;letter-spacing:8px">'.$otp.'</div>
                 </div>
-        ';
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
+                    This code is valid for <strong style="color:#174c86">5 minutes</strong> and can only be used once.
+                </p>
+                <p style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0; text-align:center;">
+                    Never share this code with anyone.<br>
+                    LGU Portal staff will never ask for this code.
+                </p>
+                <p style="color:#999;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:20px; text-align:center;">
+                    Didn\'t request this OTP? You may safely ignore this email.
+                </p>
+                <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
+            </div>
+        </body></html>';
+        
+        $mail->Body = $htmlBody;
+        
+        // Add plain text alternative for email clients that don't support HTML
+        $mail->AltBody = "LGU Portal - OTP Verification\n\n" .
+                        "Your authentication code is: $otp\n\n" .
+                        "This code is valid for 5 minutes and can only be used once.\n\n" .
+                        "Never share this code with anyone.\n\n" .
+                        "© " . date('Y') . " LGU Portal";
+        
+        // Validate email before sending (skip if you want maximum speed, but recommended for error handling)
+        if (!$mail->validateAddress($email)) {
+            throw new \PHPMailer\PHPMailer\Exception("Invalid email address: $email");
+        }
+        
+        // Send OTP email immediately - optimized for speed
+        // Since PHPMailer(true) is used, it will throw exceptions on failure automatically
         $mail->send();
+        
+        // Success - notify user immediately
         setNotification('success', 'OTP sent! Please check your email.');
 
-    } catch (Exception $e) {
-        setNotification('error', 'Failed to send OTP: ' . $mail->ErrorInfo);
+    } catch (\PHPMailer\PHPMailer\Exception $e) {
+        // Get detailed error information
+        $errorInfo = '';
+        if (isset($mail) && $mail instanceof PHPMailer) {
+            $errorInfo = $mail->ErrorInfo;
+        }
+        
+        $errorMsg = 'Failed to send OTP email. ';
+        if (!empty($errorInfo)) {
+            $errorMsg .= 'SMTP Error: ' . htmlspecialchars($errorInfo) . '. ';
+        }
+        $errorMsg .= 'Exception: ' . htmlspecialchars($e->getMessage()) . '. ';
+        $errorMsg .= 'Please check: 1) Gmail credentials are correct, 2) App password is valid, 3) Email address is valid. If the problem persists, contact support.';
+        setNotification('error', $errorMsg);
+        
+        // Log detailed error for debugging
+        error_log('PHPMailer Error in login.php: ' . $e->getMessage());
+        error_log('PHPMailer ErrorInfo: ' . ($errorInfo ? $errorInfo : 'No error info available'));
+        error_log('Email address: ' . ($email ?? 'Not set'));
+        error_log('OTP: ' . (isset($otp) ? $otp : 'Not set'));
+        
+    } catch (\Exception $e) {
+        // Catch any other exceptions (non-PHPMailer exceptions)
+        $errorMsg = 'Failed to send OTP email. Error: ' . htmlspecialchars($e->getMessage()) . '. Please try again or contact support.';
+        setNotification('error', $errorMsg);
+        error_log('General Exception in login.php email sending: ' . $e->getMessage());
+        error_log('Exception class: ' . get_class($e));
+        error_log('Stack trace: ' . $e->getTraceAsString());
     }
 }
 ?>

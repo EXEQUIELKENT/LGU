@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 10, 2026 at 06:53 AM
+-- Generation Time: Jan 10, 2026 at 03:28 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -33,19 +33,22 @@ CREATE TABLE `employees` (
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `role` enum('Manager','Engineer','Office Staff','Super Admin') NOT NULL,
-  `password` varchar(255) NOT NULL
+  `password` varchar(255) NOT NULL,
+  `is_first_login` tinyint(1) NOT NULL DEFAULT 1,
+  `email_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `verification_token` varchar(64) DEFAULT NULL,
+  `verification_token_expires` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`) VALUES
-(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW'),
-(2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou'),
-(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni'),
-(4, 'Kent', 'Bartolome', 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$WoFWpEk14H3gSt.r.VSH1uKGLEYEzTjEeNCqc5Z9SIAcWho8lXZXi'),
-(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe');
+INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`) VALUES
+(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL),
+(2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL),
+(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL),
+(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -81,6 +84,31 @@ INSERT INTO `maintenance_schedule` (`id`, `task`, `location`, `schedule_date`) V
 (1, 'Aircon Maintenance', 'City Hall Room 101', '2026-01-05'),
 (2, 'Generator Inspection', 'City Hall Basement', '2026-01-07'),
 (3, 'Fire Extinguisher Check', 'City Hall Lobby', '2026-01-10');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pending_registrations`
+--
+
+CREATE TABLE `pending_registrations` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `role` enum('Manager','Engineer','Office Staff','Super Admin') NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `verification_token` varchar(64) NOT NULL,
+  `verification_token_expires` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `pending_registrations`
+--
+
+INSERT INTO `pending_registrations` (`id`, `first_name`, `last_name`, `email`, `role`, `password`, `verification_token`, `verification_token_expires`, `created_at`) VALUES
+(6, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Super Admin', '$2y$10$veSMhFctWzqQKhch15DaGOF2K6obgZK4FfwEu4k/wem2bYMVwsWBG', '636afc06aa52d12674228f116241975f5ec696f317cce0b9b9b58cc033a8c894', '2026-01-11 15:18:49', '2026-01-10 22:18:49');
 
 -- --------------------------------------------------------
 
@@ -137,6 +165,15 @@ ALTER TABLE `maintenance_schedule`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `pending_registrations`
+--
+ALTER TABLE `pending_registrations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `verification_token` (`verification_token`),
+  ADD KEY `expires_idx` (`verification_token_expires`);
+
+--
 -- Indexes for table `reports`
 --
 ALTER TABLE `reports`
@@ -156,7 +193,7 @@ ALTER TABLE `request`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -169,6 +206,12 @@ ALTER TABLE `evidence_images`
 --
 ALTER TABLE `maintenance_schedule`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `pending_registrations`
+--
+ALTER TABLE `pending_registrations`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `reports`
