@@ -72,7 +72,6 @@ const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | 
 <meta charset="UTF-8">
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -112,6 +111,43 @@ body::before {
     justify-content: space-between;
     padding: 0;
     z-index: 1000;
+    transition: width 0.3s ease, left 0.3s ease;
+}
+.sidebar-nav.collapsed {
+    width: 70px;
+}
+/* Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: #3762c8;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.sidebar-toggle:hover {
+    background: #2851b3;
+    transform: scale(1.08);
+}
+.sidebar-nav.collapsed .sidebar-toggle {
+    right: 19px;
+}
+.toggle-icon {
+    transition: transform 0.3s ease;
+}
+.sidebar-nav.collapsed .toggle-icon {
+    transform: rotate(180deg);
 }
 .sidebar-top {
     display: flex;
@@ -134,12 +170,27 @@ body::before {
     box-sizing: border-box;
     margin-bottom: 20px;
     color: #fff;
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
 .sidebar-nav .site-logo img {
     width: 120px;
     height: auto;
     object-fit: contain;
     border-radius: 10px;
+    transition: all 0.3s ease, opacity 0.3s ease;
+}
+.sidebar-nav.collapsed .site-logo img {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+}
+.sidebar-nav.collapsed .site-logo {
+    margin-left: 15px;
+    margin-right: 15px;
+    width: calc(100% - 30px);
+    margin-bottom: 10px;
 }
 .sidebar-nav .nav-list {
     list-style: none;
@@ -149,6 +200,10 @@ body::before {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    transition: padding 0.3s ease;
+}
+.sidebar-nav.collapsed .nav-list {
+    padding: 0 10px;
 }
 .sidebar-nav .nav-list li {
     width: 100%;
@@ -163,6 +218,9 @@ body::before {
     padding: 12px 20px;
     transition: all 0.3s ease;
     border-radius: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
 }
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
@@ -174,10 +232,58 @@ body::before {
     background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
+.sidebar-nav.collapsed .nav-link {
+    justify-content: center;
+    padding: 12px 10px;
+}
+.sidebar-nav.collapsed .nav-link span:last-child {
+    display: none;
+}
+.sidebar-nav.collapsed .nav-link:hover {
+    transform: translateX(0) scale(1.08);
+}
+/* Tooltip for collapsed sidebar */
+.sidebar-nav.collapsed .nav-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    background: #3762c8;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 1002;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    font-size: 14px;
+    font-weight: 500;
+}
+.sidebar-nav.collapsed .nav-link:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(5px);
+}
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
+    transition: all 0.3s ease;
+}
+.sidebar-divider.logo-divider {
+    transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
+}
+.sidebar-nav.collapsed .sidebar-divider {
+    width: calc(100% - 20px);
+    margin: 20px 10px 0 10px;
+}
+.sidebar-nav.collapsed .sidebar-divider.logo-divider {
+    opacity: 0;
+    width: 0;
+    margin: 0;
 }
 .sidebar-nav .user-info {
     display: flex;
@@ -185,6 +291,7 @@ body::before {
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
 }
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
@@ -193,6 +300,12 @@ body::before {
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 5px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.sidebar-nav.collapsed .user-welcome {
+    display: none;
 }
 /* Logout Modal Custom Design (matching @reports.php) */
 #logoutAlertBackdrop {
@@ -299,11 +412,20 @@ body::before {
     border-radius: 6px;
     cursor: pointer;
     transition: 0.3s ease;
+    white-space: nowrap;
 }
 .sidebar-nav .logout-btn:hover {
     background: #3762c8;
     color: #fff;
     transform: translateY(-2px) scale(1.02);
+}
+.sidebar-nav.collapsed .logout-btn {
+    padding: 8px;
+    font-size: 0;
+}
+.sidebar-nav.collapsed .logout-btn::before {
+    content: "🚪";
+    font-size: 20px;
 }
 .main-content {
     margin-left: 250px;
@@ -311,6 +433,10 @@ body::before {
     position: relative;
     z-index: 1;
     padding-bottom: 0px;
+    transition: margin-left 0.3s ease;
+}
+.main-content.expanded {
+    margin-left: 70px;
 }
 .card {
     background:rgba(255,255,255,.92);
@@ -434,16 +560,19 @@ body::before {
 
 <body>
 <div class="sidebar-nav">
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <span class="toggle-icon">◀</span>
+    </button>
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
     <div class="sidebar-divider"></div>
         </div>
         <ul class="nav-list">
-            <li><a href="employee.php" class="nav-link">Dashboard</a></li>
-            <li><a href="requests.php" class="nav-link">Requests</a></li>
-            <li><a href="reports.php" class="nav-link">Reports</a></li>
-            <li><a href="#" class="nav-link active">Maintenance Schedule</a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
+            <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
     </div>
 
@@ -668,6 +797,27 @@ if (scheduleSearch && scheduleListHolder) {
         }
     });
 }
+
+// Sidebar Toggle Functionality
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.querySelector('.sidebar-nav');
+const mainContent = document.querySelector('.main-content');
+
+// Load saved state from localStorage
+const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+if (sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    mainContent.classList.add('expanded');
+}
+
+sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    
+    // Save state to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+});
 
 // Logout Alert Modal Logic - REFERENCE DESIGN FROM reports.php
 const logoutBtn = document.getElementById('logoutBtn');

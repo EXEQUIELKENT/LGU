@@ -60,67 +60,24 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU Employee Portal</title>
-<link rel="stylesheet" href="style.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-body {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    /* NEW — background image + blur */
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    position: relative;
-    overflow: hidden;
+body{
+    height:100vh;
+    background:url("cityhall.jpeg") center/cover no-repeat fixed;
+    position:relative;
 }
-/* NEW — Blur overlay */
-body::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    backdrop-filter: blur(6px);
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 0;
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    backdrop-filter:blur(6px);
+    background:rgba(0,0,0,0.35);
+    z-index:0;
 }
 
-/* Notification Popup Styles (copied from login.php) */
-.notif-popup {
-    position: fixed;
-    top: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 280px;
-    max-width: 95vw;
-    padding: 18px 32px;
-    background: #fff;
-    border-radius: 13px;
-    box-shadow: 0 8px 38px rgba(34,53,126,0.23);
-    z-index: 3001;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-family: 'Poppins', Arial, sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-    opacity: 1;
-    transition: opacity .35s;
-}
-.notif-popup .notif-icon { font-size: 23px; }
-.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
-.notif-popup.notif-error { border-left: 5px solid #d73f52; }
-.notif-popup.notif-warning { border-left: 5px solid #dda203; }
-.notif-popup.notif-info { border-left: 5px solid #527cdf; }
-.notif-popup .notif-close {
-    background: none;
-    border: none;
-    font-size: 20px;
-    margin-left: auto;
-    color: #888;
-    cursor: pointer;
-}
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -130,7 +87,7 @@ body::before {
     background: rgba(255, 255, 255, 0.795);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
     box-shadow: 0 4px 25px rgba(0,0,0,0.25);
     color: #fff;
     display: flex;
@@ -138,15 +95,91 @@ body::before {
     justify-content: space-between;
     padding: 0;
     z-index: 1000;
+    transition: width 0.3s ease, left 0.3s ease;
 }
-/* Top area: logo + nav links */
+.sidebar-nav.collapsed {
+    width: 70px;
+}
+/* Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: #3762c8;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.sidebar-toggle:hover {
+    background: #2851b3;
+    transform: scale(1.08);
+}
+.sidebar-nav.collapsed .sidebar-toggle {
+    right: 19px;
+}
+.toggle-icon {
+    transition: transform 0.3s ease;
+}
+.sidebar-nav.collapsed .toggle-icon {
+    transform: rotate(180deg);
+}
+
 .sidebar-top {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: 20px 0;
-    overflow-y: auto;
+    z-index: 1000;
+    transition: width 0.3s ease, left 0.3s ease;
 }
+.sidebar-nav.collapsed {
+    width: 70px;
+}
+/* Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: #3762c8;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.sidebar-toggle:hover {
+    background: #2851b3;
+    transform: scale(1.08);
+}
+.sidebar-nav.collapsed .sidebar-toggle {
+    right: 19px;
+}
+.toggle-icon {
+    transition: transform 0.3s ease;
+}
+.sidebar-nav.collapsed .toggle-icon {
+    transform: rotate(180deg);
+}
+    overflow-y: auto;
+
+
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -161,14 +194,30 @@ body::before {
     box-sizing: border-box;
     margin-bottom: 20px;
     color: #fff;
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
+
 .sidebar-nav .site-logo img {
     width: 120px;
     height: auto;
     object-fit: contain;
     border-radius: 10px;
+    transition: all 0.3s ease, opacity 0.3s ease;
 }
-/* Navigation Links */
+.sidebar-nav.collapsed .site-logo img {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+}
+.sidebar-nav.collapsed .site-logo {
+    margin-left: 15px;
+    margin-right: 15px;
+    width: calc(100% - 30px);
+    margin-bottom: 10px;
+}
+
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
@@ -177,11 +226,17 @@ body::before {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    transition: padding 0.3s ease;
 }
+.sidebar-nav.collapsed .nav-list {
+    padding: 0 10px;
+}
+
 .sidebar-nav .nav-list li {
     width: 100%;
     margin: 3px 0;
 }
+
 .sidebar-nav .nav-link {
     display: flex;
     align-items: center;
@@ -191,31 +246,83 @@ body::before {
     padding: 12px 20px;
     transition: all 0.3s ease;
     border-radius: 8px;
+    white-space: nowrap;
+    overflow: visible;
+    position: relative;
 }
+.sidebar-nav .nav-link .nav-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.sidebar-nav .nav-link .nav-text {
+    transition: opacity 0.2s ease;
+}
+.sidebar-nav.collapsed .nav-link {
+    overflow: visible;
+}
+.sidebar-nav.collapsed .nav-link .nav-text {
+    opacity: 0;
+    width: 0;
+    position: absolute;
+}
+
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
     background: #3762c8;
     color: #fff;
     transform: translateX(2px);
 }
+
 .sidebar-nav .nav-link:hover {
     background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
-/* Divider */
+/* Tooltip for collapsed sidebar */
+.sidebar-nav.collapsed .nav-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    background: #3762c8;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 1002;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    font-size: 14px;
+    font-weight: 500;
+}
+.sidebar-nav.collapsed .nav-link:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(5px);
+}
+
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
+    transition: all 0.3s ease;
 }
-/* User info at bottom */
+.sidebar-nav.collapsed .sidebar-divider {
+    width: calc(100% - 20px);
+    margin: 20px 10px 0 10px;
+}
+
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
 }
+
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -223,7 +330,14 @@ body::before {
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 5px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
 }
+.sidebar-nav.collapsed .user-welcome {
+    display: none;
+}
+
 .sidebar-nav .logout-btn {
     background: #3762c8;
     border: 1px solid rgba(255,255,255,0.3);
@@ -232,13 +346,24 @@ body::before {
     border-radius: 6px;
     cursor: pointer;
     transition: 0.3s ease;
+    white-space: nowrap;
 }
+
 .sidebar-nav .logout-btn:hover {
     background: #3762c8;
     color: #fff;
     transform: translateY(-2px) scale(1.02);
 }
-/* Logout Modal Custom Design (matching @reports.php) */
+.sidebar-nav.collapsed .logout-btn {
+    padding: 8px;
+    font-size: 0;
+}
+.sidebar-nav.collapsed .logout-btn::before {
+    content: "🚪";
+    font-size: 20px;
+}
+
+/* Logout Modal Custom Design (matching @sched.php) */
 #logoutAlertBackdrop {
     position: fixed;
     z-index: 5000;
@@ -279,21 +404,11 @@ body::before {
     border-radius: 50%;
     margin: 0 auto 13px auto;
     box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
-    position: relative;
 }
 #logoutAlertModal .icon-wrap .icon {
-    color:rgb(255, 0, 0);
+    color: #e94444;
     font-size: 2.1rem;
     line-height: 1;
-    margin: 0;
-    padding: 0;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 #logoutAlertModal .alert-title {
     font-size: 1.09rem;
@@ -345,12 +460,52 @@ body::before {
 #logoutAlertModal .alert-btn.logout:hover {
     background: #c82d2d;
 }
+
+/* Notification Popup Styles (copied from login.php) */
+.notif-popup {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: #fff;
+    border-radius: 13px;
+    box-shadow: 0 8px 38px rgba(34,53,126,0.23);
+    z-index: 3001;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s;
+}
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+.notif-popup.notif-error { border-left: 5px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 5px solid #dda203; }
+.notif-popup.notif-info { border-left: 5px solid #527cdf; }
+.notif-popup .notif-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    margin-left: auto;
+    color: #888;
+    cursor: pointer;
+}
 .main-content {
     margin-left: 250px;
     padding: 30px;
     height: 100vh;
     box-sizing: border-box;
     display: flex;
+    transition: margin-left 0.3s ease;
+}
+.main-content.expanded {
+    margin-left: 70px;
 }
 .main-content::-webkit-scrollbar { height: 8px; }
 .main-content::-webkit-scrollbar-thumb {
@@ -426,16 +581,19 @@ body::before {
 <?php showNotification(); ?>
 
 <div class="sidebar-nav">
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <span class="toggle-icon">◀</span>
+    </button>
     <div class="sidebar-top">
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
-            <div class="sidebar-divider"></div>
+            <div class="sidebar-divider logo-divider"></div>
         </div>
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active">Dashboard</a></li>
-            <li><a href="requests.php" class="nav-link">Requests</a></li>
-            <li><a href="reports.php" class="nav-link">Reports</a></li>
-            <li><a href="sched.php" class="nav-link">Maintenance Schedule</a></li>
+            <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span class="nav-icon">📋</span><span class="nav-text">Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span class="nav-icon">📄</span><span class="nav-text">Reports</span></a></li>
+            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span class="nav-icon">📅</span><span class="nav-text">Maintenance Schedule</span></a></li>
         </ul>
     </div>
 
@@ -487,6 +645,27 @@ body::before {
 </div>
 
 <script>
+// Sidebar Toggle Functionality
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.querySelector('.sidebar-nav');
+const mainContent = document.querySelector('.main-content');
+
+// Load saved state from localStorage
+const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+if (sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    mainContent.classList.add('expanded');
+}
+
+sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    
+    // Save state to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+});
+
 // Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
 const logoutBtn = document.getElementById('logoutBtn');
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
