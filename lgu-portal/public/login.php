@@ -2,20 +2,27 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Determine base path - if accessed from root via index.php, use root; otherwise use current directory
-$scriptName = basename($_SERVER['PHP_SELF']);
-$requestUri = $_SERVER['REQUEST_URI'];
-$isRootAccess = ($scriptName === 'index.php' || $requestUri === '/' || $requestUri === '/index.php' || strpos($requestUri, '/index.php') !== false);
-$basePath = $isRootAccess ? '' : 'lgu-portal/public/';
-$loginPath = $isRootAccess ? '/' : 'login.php';
-$employeePath = $isRootAccess ? 'lgu-portal/public/employee.php' : 'employee.php';
-
 require __DIR__ . '/db.php'; // Make sure your db.php connects $conn
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
+
+// Determine base path and redirect URLs - works whether accessed directly or through index.php
+$basePath = '';
+$loginUrl = 'login.php';
+$employeeUrl = 'employee.php';
+
+// Check if accessed through index.php (when login.php is included from root index.php)
+// $_SERVER['SCRIPT_NAME'] will be '/index.php' when accessed through root
+if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
+    // Accessed through index.php in root
+    $basePath = 'lgu-portal/public/';
+    $loginUrl = 'index.php'; // Redirect to index.php when accessed through root
+    $employeeUrl = 'lgu-portal/public/employee.php';
+}
+// If accessed directly, paths remain relative to current directory
 
 function setNotification($type, $message) {
     $_SESSION['notification'] = [
@@ -70,16 +77,16 @@ if (isset($_POST['change_password_submit'])) {
             unset($_SESSION['show_change_password_modal'], $_SESSION['otp_verified']);
             setNotification('success', 'Password changed successfully! Redirecting to Employee Portal...');
             echo "<script>
-                setTimeout(function(){ window.location.href = '" . $employeePath . "'; }, 1500);
+                setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1500);
             </script>";
         } else {
             setNotification('error', 'Failed to update password: ' . $conn->error);
         }
         $stmt->close();
     } else {
-            setNotification('error', 'Session expired. Please log in again.');
-            header("Location: " . $loginPath);
-            exit;
+        setNotification('error', 'Session expired. Please log in again.');
+        header("Location: " . $loginUrl);
+        exit;
     }
 }
 
@@ -131,7 +138,7 @@ if (isset($_POST['otp_submit'])) {
                     $_SESSION['show_change_password_modal'] = true;
                     setNotification('info', 'Please change your password to continue.');
                     // Redirect to show modal on fresh page load
-                    header("Location: " . $loginPath);
+                    header("Location: " . $loginUrl);
                     exit;
                 } else {
                     // Old account, redirect directly to employee.php
@@ -140,7 +147,7 @@ if (isset($_POST['otp_submit'])) {
                     setNotification('success', 'Login successful! Redirecting to Employee Portal...');
                     // Redirect after slight delay so notification shows
                     echo "<script>
-                        setTimeout(function(){ window.location.href = '" . $employeePath . "'; }, 1100);
+                        setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1100);
                     </script>";
                     exit; // Exit to prevent further rendering
                 }
@@ -149,14 +156,14 @@ if (isset($_POST['otp_submit'])) {
                 unset($_SESSION['show_change_password_modal']);
                 setNotification('warning', 'User data not found. Redirecting...');
                 echo "<script>
-                    setTimeout(function(){ window.location.href = '" . $employeePath . "'; }, 1100);
+                    setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1100);
                 </script>";
                 exit; // Exit to prevent further rendering
             }
             $checkStmt->close();
         } else {
             setNotification('error', 'Session error. Please log in again.');
-            header("Location: " . $loginPath);
+            header("Location: " . $loginUrl);
             exit;
         }
         // Do not exit here, allow notification display
@@ -180,7 +187,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     // Validate Gmail format
     if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/', $email)) {
         setNotification('warning', 'Only @gmail.com email addresses are allowed');
-        header("Location: " . $loginPath);
+        header("Location: " . $loginUrl);
         exit;
     }
 
@@ -219,13 +226,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the "Confirm Email" button to activate your account. Your account will be created after verification.');
             }
             $pendingStmt->close();
-            header("Location: " . $loginPath);
+            header("Location: " . $loginUrl);
             exit;
         } else {
             // Not found in either table
             $pendingStmt->close();
             setNotification('error', 'Email not found');
-            header("Location: " . $loginPath);
+            header("Location: " . $loginUrl);
             exit;
         }
     }
@@ -236,7 +243,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     // Check if email is verified
     if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
         setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
-        header("Location: " . $loginPath);
+        header("Location: " . $loginUrl);
         exit;
     }
 
@@ -246,7 +253,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
             setNotification('error', 'Incorrect password');
-            header("Location: " . $loginPath);
+            header("Location: " . $loginUrl);
             exit;
         }
     }
@@ -384,13 +391,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU | Login</title>
-<link rel="stylesheet" href="lgu-portal/public/style.css">
+<link rel="stylesheet" href="<?php echo htmlspecialchars($basePath); ?>style.css">
 <style>
 /* ...styles omitted for brevity (left unchanged from before)... */
 body 
     { height: 100vh; 
     display:flex; flex-direction:column; 
-    background: url("lgu-portal/public/cityhall.jpeg") center/cover no-repeat fixed; 
+    background: url("cityhall.jpeg") center/cover no-repeat fixed; 
     position: relative; 
     overflow: hidden; }
 body::before 
@@ -951,7 +958,7 @@ body:has(#changePasswordModal) {
 
 <header class="nav">
     <div class="site-logo">
-        <img src="lgu-portal/public/logocityhall.png" alt="LGU Logo">
+        <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" alt="LGU Logo">
         <span>Local Government Unit Portal</span>
     </div>
 
@@ -962,7 +969,7 @@ body:has(#changePasswordModal) {
 
 <div class="wrapper">
     <div class="card">
-        <img src="lgu-portal/public/logocityhall.png" class="icon-top">
+        <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" class="icon-top">
         <h2 class="title">LGU Login</h2>
 
         <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>

@@ -1,3 +1,3 @@
 <?php
-// Directly include the login page as root (no redirect)
+// Directly include the home page (no redirect)
 require_once __DIR__ . '/lgu-portal/public/login.php';
