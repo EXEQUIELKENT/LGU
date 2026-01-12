@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LGU | Login</title>
+    <link rel="stylesheet" href="styles/style.css" />
+    <style>
+      body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+
+        /* NEW — background image + blur */
+        background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* NEW — Blur overlay */
+      body::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+
+        backdrop-filter: blur(6px); /* actual blur */
+        background: rgba(0, 0, 0, 0.35); /* dark overlay */
+        z-index: 0; /* keeps blur behind content */
+      }
+
+      /* Make content appear ABOVE blur */
+      .nav,
+      .wrapper {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Make content appear ABOVE blur */
+      .footer,
+      .wrapper {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="nav">
+      <div class="nav-logo">🏛️ Local Government Unit Portal</div>
+      <div class="nav-links">
+        <a href="">Home</a>
+      </div>
+    </header>
+    <div class="wrapper">
+      <div class="slider" id="slider">
+        <!-- LOGIN -->
+        <div class="panel login">
+          <div class="card">
+            <img src="assets/img/logocityhall.png" class="icon-top" />
+            <h2 class="title">LGU Login</h2>
+            <p class="subtitle">
+              Secure access to community maintenance services.
+            </p>
+
+            <form id="loginForm">
+              <div class="input-box">
+                <label>Email Address</label>
+                <input type="email" id="email" placeholder="name@lgu.gov.ph" required />
+                <span class="icon">📧</span>
+              </div>
+
+              <div class="input-box">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••" required />
+                <span class="icon">🔒</span>
+              </div>
+
+              <button type="submit" class="btn-primary">Sign In</button>
+
+              <div id="loginMessage" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+
+              <p class="small-text">
+                Don't have an account?
+                <a href="#" class="link" onclick="showPanel('register')"
+                  >Create one</a
+                >
+              </p>
+            </form>
+          </div>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="panel register">
+          <div class="card">
+            <h2 class="title">Create Account</h2>
+            <p class="subtitle">Register for LGU services.</p>
+
+            <form id="registerForm">
+              <div class="input-box">
+                <label>Email Address</label>
+                <input type="email" id="regEmail" required />
+              </div>
+
+              <div class="input-box">
+                <label>Password</label>
+                <input type="password" id="regPassword" required />
+              </div>
+
+              <button
+                class="btn-primary"
+                type="button"
+                onclick="showPanel('additional')"
+              >
+                Next
+              </button>
+
+              <div id="registerMessage" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+
+              <p class="small-text">
+                Already have an account?
+                <a href="#" class="link" onclick="showPanel('login')"
+                  >Back to Login</a
+                >
+              </p>
+            </form>
+          </div>
+        </div>
+
+        <!-- ADDITIONAL INFO PANEL -->
+        <!-- ADDITIONAL INFO PANEL -->
+        <div class="panel additional">
+          <div class="card wide">
+            <h2 class="title">Additional Information</h2>
+
+            <form id="additionalForm" class="two-column-form">
+              <div class="input-box">
+                <label>First Name</label>
+                <input type="text" id="firstName" required />
+              </div>
+
+              <div class="input-box">
+                <label>Middle Name</label>
+                <input type="text" id="middleName" />
+              </div>
+
+              <div class="input-box">
+                <label>Last Name</label>
+                <input type="text" id="lastName" required />
+              </div>
+
+              <div class="input-box">
+                <label>Birthday</label>
+                <input type="date" id="birthday" />
+              </div>
+
+              <div class="input-box">
+                <label>Address</label>
+                <input type="text" id="address" />
+              </div>
+
+              <div class="input-box">
+                <label>Civil Status</label>
+                <input type="text" id="civilStatus" />
+              </div>
+
+              <div class="input-box">
+                <label>Role</label>
+                <select id="role" required>
+                  <option value="">Select role</option>
+                  <option value="engineer">Engineer</option>
+                  <option value="lgu_officer">LGU Officer</option>
+                  <option value="citizen">Citizen</option>
+                </select>
+              </div>
+
+              <!-- UPLOAD ID -->
+              <div class="input-box">
+                <label>Upload Valid ID</label>
+                <input type="file" id="idPhoto" accept="image/*" />
+              </div>
+
+              <!-- FULL WIDTH BUTTON -->
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">Submit</button>
+                <div id="additionalMessage" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;"></div>
+                <p class="small-text">
+                  <a href="#" class="link" onclick="showPanel('register')"
+                    >Back</a
+                  >
+                </p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">About</a>
+        <a href="#">Help</a>
+      </div>
+
+      <div class="footer-logo">
+        © 2025 LGU Citizen Portal · All Rights Reserved
+      </div>
+    </footer>
+    <script>
+      // Store registration data
+      let registrationData = {};
+      
+      function showPanel(panel) {
+        const wrapper = document.querySelector(".wrapper");
+        wrapper.classList.remove("show-register", "show-additional");
+        if (panel === "register") wrapper.classList.add("show-register");
+        if (panel === "additional") wrapper.classList.add("show-additional");
+      }
+      
+      // Login form submission
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const messageDiv = document.getElementById('loginMessage');
+        
+        try {
+          const response = await fetch('api/login.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#d4edda';
+            messageDiv.style.color = '#155724';
+            messageDiv.textContent = result.message;
+            
+            setTimeout(() => {
+              window.location.href = result.redirect_url;
+            }, 1500);
+          } else {
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#f8d7da';
+            messageDiv.style.color = '#721c24';
+            messageDiv.textContent = result.message;
+          }
+        } catch (error) {
+          messageDiv.style.display = 'block';
+          messageDiv.style.background = '#f8d7da';
+          messageDiv.style.color = '#721c24';
+          messageDiv.textContent = 'Network error. Please try again.';
+        }
+      });
+      
+      // Store basic registration info
+      document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        registrationData.email = document.getElementById('regEmail').value;
+        registrationData.password = document.getElementById('regPassword').value;
+        
+        showPanel('additional');
+      });
+      
+      // Complete registration
+      document.getElementById('additionalForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+          ...registrationData,
+          first_name: document.getElementById('firstName').value,
+          middle_name: document.getElementById('middleName').value,
+          last_name: document.getElementById('lastName').value,
+          birthday: document.getElementById('birthday').value,
+          address: document.getElementById('address').value,
+          civil_status: document.getElementById('civilStatus').value,
+          role: document.getElementById('role').value
+        };
+        
+        const messageDiv = document.getElementById('additionalMessage');
+        
+        try {
+          const response = await fetch('api/register.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#d4edda';
+            messageDiv.style.color = '#155724';
+            messageDiv.textContent = result.message;
+            
+            setTimeout(() => {
+              showPanel('login');
+            }, 3000);
+          } else {
+            messageDiv.style.display = 'block';
+            messageDiv.style.background = '#f8d7da';
+            messageDiv.style.color = '#721c24';
+            messageDiv.textContent = result.message;
+          }
+        } catch (error) {
+          messageDiv.style.display = 'block';
+          messageDiv.style.background = '#f8d7da';
+          messageDiv.style.color = '#721c24';
+          messageDiv.textContent = 'Network error. Please try again.';
+        }
+      });
+    </script>
+  </body>
+</html>
