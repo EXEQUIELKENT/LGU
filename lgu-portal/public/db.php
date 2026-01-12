@@ -3,7 +3,7 @@
 
 $DB_HOST = "localhost";
 $DB_USER = "cimm_root";
-$DB_PASS = "xqjzFor8gi!e54@3";          // default XAMPP password
+$DB_PASS = "eCI2CNz!xAy89I9q";          // default XAMPP password
 $DB_NAME = "cimm_LGU";
 
 $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
