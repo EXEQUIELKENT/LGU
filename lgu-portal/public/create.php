@@ -758,7 +758,7 @@ body {
 
             <div class="input-box">
                 <label>Email Address</label>
-                <input type="email" name="email" id="emailInput" placeholder="name@lgu.gov.ph" value="<?= htmlspecialchars($email ?? '') ?>" required>
+                <input type="email" name="email" id="emailInput" placeholder="yourname@gmail.com" value="<?= htmlspecialchars($email ?? '') ?>" required>
                 <span class="icon">📧</span>
                 <div id="emailError" style="color: #d9534f; font-size: 12px; margin-top: 6px; display: none; font-weight: 500;"></div>
                 <div id="emailValid" style="color: #10b759; font-size: 12px; margin-top: 6px; display: none; font-weight: 500;">✓ Valid email address</div>
