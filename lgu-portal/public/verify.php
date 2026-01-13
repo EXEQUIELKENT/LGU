@@ -42,7 +42,7 @@ if (!empty($token)) {
     
     // Check if token exists in pending_registrations table (not employees table)
     // Account is NOT created until email is verified
-    $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, password, verification_token_expires FROM pending_registrations WHERE verification_token = ?");
+    $stmt = $conn->prepare("SELECT penreg_id, first_name, last_name, email, role, password, verification_token_expires FROM pending_registrations WHERE verification_token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -70,7 +70,7 @@ if (!empty($token)) {
             $emailVerified = 1; // true - email is verified because user clicked confirmation
             
             // Check if email already exists in employees table (shouldn't happen, but safety check)
-            $checkStmt = $conn->prepare("SELECT id FROM employees WHERE LOWER(email) = LOWER(?)");
+            $checkStmt = $conn->prepare("SELECT user_id FROM employees WHERE LOWER(email) = LOWER(?)");
             $checkStmt->bind_param("s", $emailNormalized);
             $checkStmt->execute();
             $checkResult = $checkStmt->get_result();

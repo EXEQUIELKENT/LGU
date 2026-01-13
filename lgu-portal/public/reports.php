@@ -54,7 +54,7 @@ if (isset($_GET['logout'])) {
 }
 
 // Fetch reports
-$sql = "SELECT * FROM reports ORDER BY id DESC";
+$sql = "SELECT * FROM reports ORDER BY report_id DESC";
 $result = $conn->query($sql);
 
 ?>
