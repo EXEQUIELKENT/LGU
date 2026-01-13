@@ -472,11 +472,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 /* Base layout */
 body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     margin: 0;
 }
 
@@ -492,14 +493,86 @@ body::before {
     z-index: 0;
 }
 
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/* NAVBAR */
 .nav {
-    position: relative;
-    z-index: 1;
-    /* Ensure header height is defined for offset calculations */
-    height: 80px;
+    width: 100%;
+    padding: 16px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+/* LOGO AREA */
+.site-logo {
     display: flex;
     align-items: center;
-    background: transparent;
+    gap: 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* LOGO IMAGE */
+.site-logo img {
+    width: 40px;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* NAV LINKS */
+.nav-links {
+    display: flex;
+    align-items: center;
+}
+
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;
+    color: #fff;
+    opacity: 0.9;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 10px;
+    transition: 0.25s ease;
+}
+
+.nav-links a:hover {
+    opacity: 1;
+}
+
+.nav-links a.active {
+    opacity: 1;
+    font-weight: 600;
+}
+
+.nav, .wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Footer - Desktop only (fixed at bottom) */
+.footer {
+    position: relative;
+    bottom: -215px;
+    left: 0;
+    width: 100%;
+    z-index: 100;
 }
 
 .wrapper {
@@ -507,7 +580,7 @@ body::before {
     justify-content: center;
     align-items: flex-start;
     box-sizing: border-box;
-    padding: 120px 16px 40px;
+    padding: 25px 16px 100px;
     position: relative;
     z-index: 1;
     min-height: calc(100vh - 80px);
@@ -516,7 +589,7 @@ body::before {
 /* Card styling (small centered panel) */
 .card {
     width: 100%;
-    max-width: 420px;
+    max-width: 500px;
     background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
     backdrop-filter: blur(8px);
     border-radius: 20px;
@@ -700,12 +773,14 @@ body {
 
 /* Name fields side by side */
 .name-row {
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
     margin-bottom: 14px;
 }
 
 .name-row .input-box {
-    margin-bottom: 14px;
+    margin-bottom: 0;
 }
 
 /* Email validation styles */
@@ -774,7 +849,7 @@ body {
 
     .card {
         width: 100%;
-        max-width: 360px;
+        max-width: 450px;
         margin: 0 auto;
         background: rgba(255, 255, 255, 0.96);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
@@ -839,6 +914,10 @@ body {
         text-align: center;
         margin-top: 16px;
         font-size: 13px;
+    }
+ 
+    .footer {
+        display: none;
     }
 }
 </style>
@@ -1126,6 +1205,15 @@ emailInput.addEventListener('blur', async function() {
     }
 });
 </script>
+
+<footer class="footer">
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">About</a>
+        <a href="#">Help</a>
+    </div>
+    <div class="footer-logo">© 2025 LGU Citizen Portal · All Rights Reserved</div>
+</footer>
 
 </body>
 </html>

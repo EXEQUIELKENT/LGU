@@ -396,12 +396,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <style>
 /* Base layout */
 body {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     margin: 0;
 }
 body::before {
@@ -414,6 +415,10 @@ body::before {
     backdrop-filter: blur(6px);
     background: rgba(0, 0, 0, 0.35);
     z-index: 0;
+}
+
+body::-webkit-scrollbar {
+  display: none;
 }
 
 /* Notification popup styles */
@@ -555,18 +560,18 @@ body::before {
 /* Wrapper & card layout (small centered panel) */
 .wrapper {
     min-height: calc(100vh - 80px);
-    padding: 120px 16px 40px;
+    padding: 80px 16px 100px;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     box-sizing: border-box;
 }
 
 .card {
     width: 100%;
-    max-width: 420px;
+    max-width: 355px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
     border-radius: 20px;
     padding: 28px 22px 32px;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
@@ -1053,7 +1058,7 @@ body:has(#changePasswordModal) {
 
     .card {
         width: 100%;
-        max-width: 360px;
+        max-width: 400px;
         margin: 0 auto;
         background: rgba(255, 255, 255, 0.96);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
