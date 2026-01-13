@@ -38,12 +38,97 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     exit;
 }
 
-// Fetch schedules
+// Fetch schedules with derived work-order fields (category, priority, status, assigned team)
 $schedules = [];
-$sql = "SELECT * FROM maintenance_schedule ORDER BY schedule_date ASC";
+
+// Join with reports (if any) to detect completed work on that date/location/task
+$sql = "
+    SELECT 
+        ms.*,
+        r.status AS report_status
+    FROM maintenance_schedule ms
+    LEFT JOIN reports r
+        ON r.infrastructure = ms.task
+       AND r.location = ms.location
+       AND r.date_completed = ms.schedule_date
+    ORDER BY ms.schedule_date ASC
+";
+
 $result = $conn->query($sql);
+
 if ($result && $result->num_rows > 0) {
-    $schedules = $result->fetch_all(MYSQLI_ASSOC);
+    $today = new DateTime('today');
+
+    while ($row = $result->fetch_assoc()) {
+        $taskLower = strtolower($row['task'] ?? '');
+
+        // 2.2 Issue Categorization (simple rule‑based categories)
+        if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
+            $category = 'HVAC / Cooling';
+        } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
+            $category = 'Power & Electrical';
+        } elseif (strpos($taskLower, 'road') !== false || strpos($taskLower, 'pavement') !== false || strpos($taskLower, 'street') !== false) {
+            $category = 'Roads & Pavements';
+        } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'extinguisher') !== false || strpos($taskLower, 'safety') !== false) {
+            $category = 'Safety & Compliance';
+        } else {
+            $category = 'General Maintenance';
+        }
+
+        // 2.5 Scheduling and 2.3 Priority / Urgency based on proximity to schedule_date
+        $priority = 'Low';
+        $status   = 'Planned';
+
+        $assignedTeam = 'General Maintenance Team';
+        if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
+            $assignedTeam = 'Facilities - HVAC Team';
+        } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
+            $assignedTeam = 'Electrical Maintenance Team';
+        } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
+            $assignedTeam = 'Safety & Compliance Team';
+        }
+
+        if (!empty($row['schedule_date'])) {
+            try {
+                $dueDate = new DateTime($row['schedule_date']);
+                $diffDays = (int)$today->diff($dueDate)->format('%r%a'); // negative if past
+
+                // If there is a completed report, treat as completed/verified work
+                if (!empty($row['report_status']) && $row['report_status'] === 'Completed') {
+                    $status   = 'Completed';
+                    $priority = 'Normal';
+                } else {
+                    if ($diffDays < 0) {
+                        // Past due date, no completion report
+                        $status   = 'Delayed';
+                        $priority = 'Critical';
+                    } elseif ($diffDays === 0) {
+                        $status   = 'In Progress';
+                        $priority = 'High';
+                    } elseif ($diffDays <= 3) {
+                        $status   = 'Scheduled (High)';
+                        $priority = 'High';
+                    } elseif ($diffDays <= 7) {
+                        $status   = 'Scheduled';
+                        $priority = 'Medium';
+                    } else {
+                        $status   = 'Planned';
+                        $priority = 'Low';
+                    }
+                }
+            } catch (Exception $e) {
+                // Fallback: keep defaults if date parsing fails
+            }
+        }
+
+        // Attach derived fields so the front‑end can use them
+        $row['category']      = $category;
+        $row['priority']      = $priority;
+        $row['status_label']  = $status;
+        $row['assigned_team'] = $assignedTeam;
+
+        $schedules[] = $row;
+    }
 }
 
 // Logout
@@ -537,6 +622,67 @@ body::before {
     border-bottom:1px solid rgba(0,0,0,.1);
 }
 .schedule-date{font-weight:600}
+
+/* Badges for category / priority / status in list view */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.badge-category {
+    background:#eef2ff;
+    color:#1f3c88;
+}
+.badge-priority-low {
+    background:#e8f5e9;
+    color:#2e7d32;
+}
+.badge-priority-medium {
+    background:#fff8e1;
+    color:#f9a825;
+}
+.badge-priority-high {
+    background:#ffebee;
+    color:#c62828;
+}
+.badge-priority-critical {
+    background:#ffebee;
+    color:#b71c1c;
+}
+.badge-status-completed {
+    background:#e8f5e9;
+    color:#2e7d32;
+}
+.badge-status-in-progress {
+    background:#e3f2fd;
+    color:#1565c0;
+}
+.badge-status-delayed {
+    background:#ffebee;
+    color:#c62828;
+}
+.badge-status-planned,
+.badge-status-scheduled {
+    background:#eceff1;
+    color:#37474f;
+}
+
+/* Global text color helpers for status (used in list, calendar number, and modal) */
+.status-delayed-color {
+    color:#c62828 !important;
+}
+.status-ongoing-color {
+    color:#f9a825 !important;
+}
+.status-completed-color {
+    color:#2e7d32 !important;
+}
+.status-upcoming-color {
+    color:#1565c0 !important;
+}
 .calendar-header{
     display:flex;
     justify-content:space-between;
@@ -582,6 +728,21 @@ body::before {
 }
 .task-btn:hover {
     background: #2a4fa3;
+}
+
+/* Status-based background colors for calendar buttons only */
+.task-btn.status-delayed-bg {
+    background:#c62828;
+}
+.task-btn.status-ongoing-bg {
+    background:#fdd835;
+    color:#000;
+}
+.task-btn.status-completed-bg {
+    background:#2e7d32;
+}
+.task-btn.status-upcoming-bg {
+    background:#1565c0;
 }
 .calendar-day.has-event{
     background:#e0e7ff;
@@ -696,7 +857,7 @@ body::before {
         <!-- LIST VIEW -->
         <div id="scheduleView" class="hidden">
             <!-- Search Input for Schedule List View -->
-            <input id="scheduleSearch" type="text" placeholder="Search by task, location, or date...">
+            <input id="scheduleSearch" type="text" placeholder="Search by task, location, category, status, or date...">
             <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>
                 <p id="noScheduleMsg">No scheduled maintenance.</p>
@@ -704,13 +865,48 @@ body::before {
                 <div class="schedule-item" 
                     data-task="<?= htmlspecialchars(strtolower($row['task'])) ?>"
                     data-location="<?= htmlspecialchars(strtolower($row['location'])) ?>"
+                    data-category="<?= htmlspecialchars(strtolower($row['category'] ?? '')) ?>"
+                    data-status="<?= htmlspecialchars(strtolower($row['status_label'] ?? '')) ?>"
+                    data-priority="<?= htmlspecialchars(strtolower($row['priority'] ?? '')) ?>"
                     data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>">
                     <div>
                         <strong><?= htmlspecialchars($row['task']) ?></strong><br>
-                        <?= htmlspecialchars($row['location']) ?>
+                        <?= htmlspecialchars($row['location']) ?><br>
+                        <?php if (!empty($row['category'])): ?>
+                            <span class="badge badge-category"><?= htmlspecialchars($row['category']) ?></span>
+                        <?php endif; ?>
                     </div>
                     <div class="schedule-date">
-                        <?= date("F d, Y", strtotime($row['schedule_date'])) ?>
+                        <?= date("F d, Y", strtotime($row['schedule_date'])) ?><br>
+                        <?php
+                            $priorityClass = 'badge-priority-low';
+                            $priorityLower = strtolower($row['priority'] ?? '');
+                            if ($priorityLower === 'medium') {
+                                $priorityClass = 'badge-priority-medium';
+                            } elseif ($priorityLower === 'high' || strpos($priorityLower, 'high') !== false) {
+                                $priorityClass = 'badge-priority-high';
+                            } elseif ($priorityLower === 'critical') {
+                                $priorityClass = 'badge-priority-critical';
+                            }
+
+                            $statusClass = 'badge-status-planned';
+                            $statusLower = strtolower($row['status_label'] ?? '');
+                            if ($statusLower === 'completed') {
+                                $statusClass = 'badge-status-completed';
+                            } elseif ($statusLower === 'in progress') {
+                                $statusClass = 'badge-status-in-progress';
+                            } elseif ($statusLower === 'delayed') {
+                                $statusClass = 'badge-status-delayed';
+                            } elseif (strpos($statusLower, 'scheduled') !== false) {
+                                $statusClass = 'badge-status-scheduled';
+                            }
+                        ?>
+                        <?php if (!empty($row['status_label'])): ?>
+                            <span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($row['priority'])): ?>
+                            <span class="badge <?= $priorityClass ?>"><?= htmlspecialchars($row['priority']) ?> priority</span>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -758,6 +954,26 @@ const scheduleView = document.getElementById('scheduleView');
 let currentDate = new Date();
 let showingCalendar = true;
 
+// Helper to normalize status into 4 buckets: delayed, ongoing, completed, upcoming
+function getStatusKey(statusLabel) {
+    const s = (statusLabel || '').toLowerCase();
+    if (!s) return 'upcoming';
+    if (s.indexOf('delay') !== -1) return 'delayed';
+    if (s.indexOf('progress') !== -1 || s.indexOf('on-going') !== -1 || s.indexOf('ongoing') !== -1) return 'ongoing';
+    if (s.indexOf('completed') !== -1) return 'completed';
+    return 'upcoming';
+}
+
+// Apply status-based colors to schedule list items
+function applyStatusClassesToList() {
+    const items = document.querySelectorAll('.schedule-item');
+    items.forEach(item => {
+        const statusLabel = item.getAttribute('data-status') || '';
+        const key = getStatusKey(statusLabel);
+        item.classList.add('status-' + key + '-color');
+    });
+}
+
 toggleBtn.onclick = () => {
     showingCalendar = !showingCalendar;
     calendarView.classList.toggle('hidden');
@@ -777,9 +993,23 @@ function openModal(tasks){
     tasks.forEach(t=>{
         const div=document.createElement('div');
         div.className='modal-task-item';
+        const category   = t.category      || 'General Maintenance';
+        const priority   = t.priority      || 'Low';
+        const statusLbl  = t.status_label  || 'Planned';
+        const team       = t.assigned_team || 'General Maintenance Team';
+
+        const statusKey  = getStatusKey(statusLbl);
+        if (statusKey) {
+            div.classList.add('status-' + statusKey + '-color');
+        }
+
         div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
                        <strong>Location:</strong> ${t.location}<br>
-                       <strong>Date:</strong> ${t.schedule_date}`;
+                       <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
+                       <strong>Category:</strong> ${category}<br>
+                       <strong>Priority:</strong> ${priority}<br>
+                       <strong>Status:</strong> ${statusLbl}<br>
+                       <strong>Assigned Team:</strong> ${team}`;
         modalBody.appendChild(div);
     });
     taskModal.classList.remove('hidden');
@@ -803,7 +1033,7 @@ function renderCalendar(){
         div.className = 'calendar-day' + (events.length ? ' has-event' : '');
 
         const dayNum = document.createElement('div');
-        dayNum.textContent = d;
+        dayNum.textContent = d; // keep date number neutral (no status color)
         div.appendChild(dayNum);
 
         if (events.length) {
@@ -813,6 +1043,13 @@ function renderCalendar(){
                 const btn = document.createElement('button');
                 btn.textContent = i + 1;
                 btn.className = 'task-btn';
+
+                // Color the button background based on this event's status
+                const key = getStatusKey(e.status_label || '');
+                if (key) {
+                    btn.classList.add('status-' + key + '-bg');
+                }
+
                 btn.addEventListener('click', (ev) => {
                     ev.stopPropagation();
                     openModal([e]);
@@ -838,6 +1075,7 @@ function renderCalendar(){
 document.getElementById('prevMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()-1); renderCalendar();}
 document.getElementById('nextMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()+1); renderCalendar();}
 renderCalendar();
+applyStatusClassesToList();
 
 // Schedule LIST VIEW SEARCH functionality
 const scheduleSearch = document.getElementById('scheduleSearch');
@@ -860,10 +1098,16 @@ if (scheduleSearch && scheduleListHolder) {
             const task = item.getAttribute('data-task') || '';
             const loc = item.getAttribute('data-location') || '';
             const date = item.getAttribute('data-date') || '';
+            const cat = item.getAttribute('data-category') || '';
+            const stat = item.getAttribute('data-status') || '';
+            const prio = item.getAttribute('data-priority') || '';
             if (
                 task.includes(searchVal) ||
                 loc.includes(searchVal) ||
-                date.includes(searchVal)
+                date.includes(searchVal) ||
+                cat.includes(searchVal) ||
+                stat.includes(searchVal) ||
+                prio.includes(searchVal)
             ) {
                 item.style.display = '';
                 shownCount++;
