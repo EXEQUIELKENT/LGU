@@ -202,7 +202,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
             $emailNormalized = strtolower($email);
             
             // Check if email already exists in employees table (case-insensitive check)
-            $checkStmt = $conn->prepare("SELECT id, email, email_verified FROM employees WHERE LOWER(email) = LOWER(?)");
+            $checkStmt = $conn->prepare("SELECT user_id, email, email_verified FROM employees WHERE LOWER(email) = LOWER(?)");
             $checkStmt->bind_param("s", $email);
             $checkStmt->execute();
             $result = $checkStmt->get_result();
@@ -221,7 +221,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                 $checkStmt->close();
                 
                 // Also check pending_registrations table
-                $pendingCheckStmt = $conn->prepare("SELECT id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
+                $pendingCheckStmt = $conn->prepare("SELECT penreg_id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
                 $pendingCheckStmt->bind_param("s", $email);
                 $pendingCheckStmt->execute();
                 $pendingResult = $pendingCheckStmt->get_result();
@@ -274,7 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                         $cleanupStmt->close();
                         
                         // Check if email already exists in pending registrations (double check)
-                        $pendingDoubleCheck = $conn->prepare("SELECT id FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
+                        $pendingDoubleCheck = $conn->prepare("SELECT penreg_id FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
                         $pendingDoubleCheck->bind_param("s", $email);
                         $pendingDoubleCheck->execute();
                         $pendingDoubleResult = $pendingDoubleCheck->get_result();
