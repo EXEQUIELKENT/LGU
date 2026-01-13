@@ -202,7 +202,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         // Email not found in employees table - check pending_registrations
         $stmt->close();
         
-        $pendingStmt = $conn->prepare("SELECT id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
+        // Use correct primary key column name penreg_id (see cimm_LGU.sql)
+        $pendingStmt = $conn->prepare("SELECT penreg_id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
         $pendingStmt->bind_param("s", $email);
         $pendingStmt->execute();
         $pendingResult = $pendingStmt->get_result();
@@ -214,9 +215,9 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             $now = time();
             
             if ($now > $expires) {
-                // Expired pending registration - clean it up
-                $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE id = ?");
-                $deleteStmt->bind_param("i", $pendingRow['id']);
+                // Expired pending registration - clean it up (use penreg_id)
+                $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE penreg_id = ?");
+                $deleteStmt->bind_param("i", $pendingRow['penreg_id']);
                 $deleteStmt->execute();
                 $deleteStmt->close();
                 
@@ -393,23 +394,27 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <title>LGU | Login</title>
 <link rel="stylesheet" href="<?php echo htmlspecialchars($basePath); ?>style.css">
 <style>
-/* ...styles omitted for brevity (left unchanged from before)... */
-body 
-    { height: 100vh; 
-    display:flex; flex-direction:column; 
-    background: url("cityhall.jpeg") center/cover no-repeat fixed; 
-    position: relative; 
-    overflow: hidden; }
-body::before 
-    { content:""; 
-    position:absolute; 
-    top:0; 
-    left:0; 
-    width:100%; 
-    height:100%; 
-    backdrop-filter: blur(6px); 
-    background: rgba(0,0,0,0.35); 
-    z-index:0;}
+/* Base layout */
+body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 0;
+}
 
 /* Notification popup styles */
 .notif-popup {
@@ -446,6 +451,7 @@ body::before
     flex: 1;
     font-weight: 500;
     letter-spacing: 0.01em;
+    line-height: 1.35;
 }
 .notif-close {
     background: none;
@@ -458,6 +464,24 @@ body::before
     transition: color 0.2s;
 }
 .notif-close:hover { color: #536ae2; }
+
+@media (max-width: 640px) {
+    .notif-popup {
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 32px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 16px 14px 14px;
+        gap: 10px;
+        font-size: 14px;
+        border-radius: 14px;
+        line-height: 1.35;
+    }
+    .notif-icon { font-size: 20px; }
+    .notif-close { font-size: 20px; }
+}
 
 /* NAVBAR */
 .nav {
@@ -507,7 +531,7 @@ body::before
     margin-left: 25px;
     text-decoration: none;
     color: #fff;
-    opacity: 0.85;
+    opacity: 0.9;
     font-weight: 500;
     padding: 8px 14px;
     border-radius: 10px;
@@ -523,10 +547,51 @@ body::before
     font-weight: 600;
 }
 
-.nav,  .wrapper, .footer 
-    { 
-    position: relative; 
-    z-index:1; }
+.nav,  .wrapper, .footer {
+    position: relative;
+    z-index: 1;
+}
+
+/* Wrapper & card layout (small centered panel) */
+.wrapper {
+    min-height: calc(100vh - 80px);
+    padding: 120px 16px 40px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    box-sizing: border-box;
+}
+
+.card {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 20px;
+    padding: 28px 22px 32px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    box-sizing: border-box;
+}
+    
+/* Primary button styling (shared) */
+.btn-primary {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(40, 92, 205, 0.32);
+    transition: 0.25s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    transform: translateY(-1px);
+}
     
 #timer     
     {font-size: 16px;
@@ -949,6 +1014,114 @@ body:has(#changePasswordModal) {
 /* Ensure modal is always on top */
 #changePasswordModal * {
     box-sizing: border-box;
+}
+
+/* ===== Mobile-first refinements (like reference design) ===== */
+@media (max-width: 640px) {
+    body {
+        background: url("cityhall.jpeg") center/cover no-repeat fixed;
+        overflow-y: auto;
+    }
+
+    body::before {
+        display: block;
+        backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .nav {
+        position: static;
+        padding: 20px 20px 8px;
+        background: transparent;
+        box-shadow: none;
+        border-bottom: none;
+        backdrop-filter: none;
+    }
+
+    .site-logo span {
+        font-size: 16px;
+        color: #FFFFFF;
+    }
+
+    .wrapper {
+        margin-top: 0;
+        padding: 40px 20px 32px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .card {
+        width: 100%;
+        max-width: 360px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
+        border-radius: 20px;
+        padding: 26px 20px 32px;
+    }
+
+    .icon-top {
+        display: block;
+        width: 120px;
+        height: auto;
+        margin: 16px auto 28px;
+    }
+
+    .title {
+        font-size: 32px;
+        margin: 0 0 6px;
+        text-align: center;
+        color: #000000;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        margin-top: 12px;
+        font-size: 16px;
+        color: #000000;
+        text-align: center;
+    }
+
+    .input-box {
+        margin-bottom: 18px;
+    }
+
+    .input-box label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .input-box input {
+        height: 52px;
+        border-radius: 12px;
+        font-size: 15px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #6384d2, #285ccd);
+        border: none;
+        box-shadow: 0 7px 18px rgba(40, 92, 205, 0.28);
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    }
+
+    .small-text {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+    }
+ 
+     .footer {
+         display: none;
+     }
 }
 </style>
 </head>
