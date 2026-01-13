@@ -266,7 +266,7 @@ body::before {
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
-    padding: 0 20px;
+    padding: 0 15px; /* changed from 0 20px to 0 10px */
     margin: 0;
     display: flex;
     flex-direction: column;

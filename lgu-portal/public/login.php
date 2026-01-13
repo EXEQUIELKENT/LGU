@@ -14,10 +14,7 @@ $basePath = '';
 $loginUrl = 'login.php';
 $employeeUrl = 'employee.php';
 
-// Check if accessed through index.php (when login.php is included from root index.php)
-// $_SERVER['SCRIPT_NAME'] will be '/index.php' when accessed through root
 if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
-    // Accessed through index.php in root
     $basePath = 'lgu-portal/public/';
     $loginUrl = 'index.php'; // Redirect to index.php when accessed through root
     $employeeUrl = 'lgu-portal/public/employee.php';
@@ -53,26 +50,79 @@ function showNotification() {
     }
 }
 
+/**
+ * Check if a password is "unique enough":
+ * - At least 8 characters
+ * - Not all the same character & not short repeated patterns
+ * - Must contain at least one uppercase letter, one lowercase letter, one digit, and one symbol
+ * - Not found as substring in common passwords
+ * - At least 5 unique characters
+ */
+function isUniqueEnoughPassword($password) {
+    if (strlen($password) < 8) return false;
+
+    // Not all same character
+    if (preg_match('/^(\w)\1+$/', $password)) return false;
+
+    // Should contain at least one uppercase, one lowercase, one digit, and one symbol
+    if (
+        !preg_match('/[A-Z]/', $password) ||
+        !preg_match('/[a-z]/', $password) ||
+        !preg_match('/[0-9]/', $password) ||
+        !preg_match('/[^a-zA-Z0-9]/', $password)
+    ) return false;
+
+    // Repeating very short sequence (e.g., abababab, 12121212, etc)
+    for ($len = 1; $len <= 3; $len++) {
+        $pattern = substr($password, 0, $len);
+        if ($pattern && $pattern !== $password && $pattern !== '') {
+            $repeat = str_repeat($pattern, intdiv(strlen($password), $len));
+            if ($repeat === $password) return false;
+        }
+    }
+
+    // Common bad passwords (basic check)
+    $common = ['password', '12345678', 'qwertyui', 'abcdefgh', 'iloveyou', 'asdfasdf', '87654321'];
+    foreach($common as $bad) {
+        if (stripos($password, $bad) !== false) return false;
+    }
+
+    // At least 5 unique characters
+    if (count(array_unique(str_split($password))) < 5) return false;
+
+    return true;
+}
+
 // Handle password change submission
 if (isset($_POST['change_password_submit'])) {
     $newPassword = $_POST['new_password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
     $email = $_SESSION['login_email'] ?? '';
 
+    // Improved error messaging and order
     if (empty($newPassword) || empty($confirmPassword)) {
         setNotification('error', 'Both password fields are required.');
     } elseif (strlen($newPassword) < 8) {
         setNotification('error', 'Password must be at least 8 characters long.');
     } elseif ($newPassword !== $confirmPassword) {
         setNotification('error', 'Passwords do not match. Please try again.');
+    } elseif (
+        !preg_match('/[A-Z]/', $newPassword) ||
+        !preg_match('/[a-z]/', $newPassword) ||
+        !preg_match('/[0-9]/', $newPassword) ||
+        !preg_match('/[^a-zA-Z0-9]/', $newPassword)
+    ) {
+        setNotification('error', 'Password must include at least one uppercase letter, one lowercase letter, one digit, and one symbol.');
+    } elseif (!isUniqueEnoughPassword($newPassword)) {
+        setNotification('error', 'Please choose a stronger password—avoid common words, patterns (like abababab, 12345678), and use at least 5 unique characters.');
     } elseif ($email) {
         // Hash the new password
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-        
+
         // Update password and set is_first_login to 0
         $stmt = $conn->prepare("UPDATE employees SET password = ?, is_first_login = 0 WHERE email = ?");
         $stmt->bind_param("ss", $hashedPassword, $email);
-        
+
         if ($stmt->execute()) {
             unset($_SESSION['show_change_password_modal'], $_SESSION['otp_verified']);
             setNotification('success', 'Password changed successfully! Redirecting to Employee Portal...');
@@ -128,11 +178,11 @@ if (isset($_POST['otp_submit'])) {
             $checkStmt->bind_param("s", $email);
             $checkStmt->execute();
             $result = $checkStmt->get_result();
-            
+
             if ($result->num_rows === 1) {
                 $userData = $result->fetch_assoc();
                 $isFirstLogin = $userData['is_first_login'] ?? 0;
-                
+
                 if ($isFirstLogin == 1) {
                     // Show change password modal - redirect to clear OTP form state
                     $_SESSION['show_change_password_modal'] = true;
@@ -201,26 +251,26 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     if ($result->num_rows !== 1) {
         // Email not found in employees table - check pending_registrations
         $stmt->close();
-        
+
         // Use correct primary key column name penreg_id (see cimm_LGU.sql)
         $pendingStmt = $conn->prepare("SELECT penreg_id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
         $pendingStmt->bind_param("s", $email);
         $pendingStmt->execute();
         $pendingResult = $pendingStmt->get_result();
-        
+
         if ($pendingResult->num_rows > 0) {
             // Email found in pending registrations
             $pendingRow = $pendingResult->fetch_assoc();
             $expires = strtotime($pendingRow['verification_token_expires']);
             $now = time();
-            
+
             if ($now > $expires) {
                 // Expired pending registration - clean it up (use penreg_id)
                 $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE penreg_id = ?");
                 $deleteStmt->bind_param("i", $pendingRow['penreg_id']);
                 $deleteStmt->execute();
                 $deleteStmt->close();
-                
+
                 setNotification('error', 'Email not found. Your verification link has expired. Please register again.');
             } else {
                 // Still pending verification
@@ -240,7 +290,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     $user = $result->fetch_assoc();
     $stmt->close();
-    
+
     // Check if email is verified
     if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
         setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
@@ -274,7 +324,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         // Disable debug output for faster email delivery
         // Only enable debug (set to 2) when troubleshooting email issues
         $mail->SMTPDebug = 0; // 0 = disabled (fastest), 2 = detailed debug (slower)
-        
+
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -285,7 +335,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'quoted-printable'; // Faster than base64 for text emails
         $mail->Timeout    = 30; // Reduced timeout for faster failure detection (was 60)
-        
+
         // SMTP Options for Gmail - Optimized for speed
         $mail->SMTPOptions = array(
             'ssl' => array(
@@ -295,7 +345,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
             )
         );
-        
+
         // Optimize SMTP settings for faster delivery
         $mail->SMTPAutoTLS = true;
         $mail->SMTPKeepAlive = false; // Close connection immediately after sending
@@ -332,25 +382,25 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
             </div>
         </body></html>';
-        
+
         $mail->Body = $htmlBody;
-        
+
         // Add plain text alternative for email clients that don't support HTML
         $mail->AltBody = "LGU Portal - OTP Verification\n\n" .
                         "Your authentication code is: $otp\n\n" .
                         "This code is valid for 5 minutes and can only be used once.\n\n" .
                         "Never share this code with anyone.\n\n" .
                         "© " . date('Y') . " LGU Portal";
-        
+
         // Validate email before sending (skip if you want maximum speed, but recommended for error handling)
         if (!$mail->validateAddress($email)) {
             throw new \PHPMailer\PHPMailer\Exception("Invalid email address: $email");
         }
-        
+
         // Send OTP email immediately - optimized for speed
         // Since PHPMailer(true) is used, it will throw exceptions on failure automatically
         $mail->send();
-        
+
         // Success - notify user immediately
         setNotification('success', 'OTP sent! Please check your email.');
 
@@ -360,7 +410,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         if (isset($mail) && $mail instanceof PHPMailer) {
             $errorInfo = $mail->ErrorInfo;
         }
-        
+
         $errorMsg = 'Failed to send OTP email. ';
         if (!empty($errorInfo)) {
             $errorMsg .= 'SMTP Error: ' . htmlspecialchars($errorInfo) . '. ';
@@ -368,13 +418,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $errorMsg .= 'Exception: ' . htmlspecialchars($e->getMessage()) . '. ';
         $errorMsg .= 'Please check: 1) Gmail credentials are correct, 2) App password is valid, 3) Email address is valid. If the problem persists, contact support.';
         setNotification('error', $errorMsg);
-        
+
         // Log detailed error for debugging
         error_log('PHPMailer Error in login.php: ' . $e->getMessage());
         error_log('PHPMailer ErrorInfo: ' . ($errorInfo ? $errorInfo : 'No error info available'));
         error_log('Email address: ' . ($email ?? 'Not set'));
         error_log('OTP: ' . (isset($otp) ? $otp : 'Not set'));
-        
+
     } catch (\Exception $e) {
         // Catch any other exceptions (non-PHPMailer exceptions)
         $errorMsg = 'Failed to send OTP email. Error: ' . htmlspecialchars($e->getMessage()) . '. Please try again or contact support.';
@@ -963,6 +1013,7 @@ body:has(#changePasswordModal) {
     padding-left: 0;
     line-height: 1.4;
 }
+/* No unnecessary error-blocks that cause modal height expansion! */
 
 #changePasswordModal .modal-footer {
     display: flex;
@@ -1212,7 +1263,6 @@ body:has(#changePasswordModal) {
         <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" alt="LGU Logo">
         <span>Local Government Unit Portal</span>
     </div>
-
     <div class="nav-links">
         <a href="#" class="active">Home</a>
     </div>
@@ -1226,10 +1276,7 @@ body:has(#changePasswordModal) {
         <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
             <!-- Hide card content when showing change password modal -->
             <style>
-                .card {
-                    opacity: 0;
-                    pointer-events: none;
-                }
+                .card { opacity: 0; pointer-events: none; }
             </style>
         <?php elseif(isset($_SESSION['show_otp_form']) && $_SESSION['show_otp_form'] === true): ?>
             <div class="otp-icon-container">
@@ -1423,10 +1470,8 @@ body:has(#changePasswordModal) {
                 const toggleBtn = document.getElementById('togglePassword');
                 const toggleIcon = document.getElementById('togglePwdIcon');
 
-                // Unicode for eye (open) and closed eye for a more professional LGU setting
-                // 🕶️ (modern closed-eye icon), or use SVG for best look
-                const iconShow = '👁‍🗨'; // professional eye-inside-box style
-                const iconHide = '🛡️';    // shield to signify secure/hidden
+                const iconShow = '👁‍🗨';
+                const iconHide = '🛡️';
 
                 toggleBtn.addEventListener('click', function() {
                     if (pwdInput.type === 'password') {
@@ -1439,8 +1484,6 @@ body:has(#changePasswordModal) {
                         toggleBtn.setAttribute('aria-label', 'Show password');
                     }
                 });
-
-                // Set initial icon on page load
                 toggleIcon.textContent = iconShow;
             </script>
         <?php endif; ?>
@@ -1448,7 +1491,7 @@ body:has(#changePasswordModal) {
 </div>
 
 <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
-    <!-- Change Password Modal - Outside card wrapper for proper centering -->
+    <!-- Change Password Modal -->
     <div id="changePasswordModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1456,26 +1499,28 @@ body:has(#changePasswordModal) {
                 <h2 class="modal-title">Change Your Password</h2>
                 <p class="modal-subtitle">You must change your temporary password to continue</p>
             </div>
-            <form method="post" action="" id="changePasswordForm">
+            <form method="post" action="" id="changePasswordForm" autocomplete="off">
                 <div class="modal-body">
                     <div class="input-box">
                         <label for="new_password">New Password</label>
-                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" required minlength="8">
+                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">
                             <span id="toggleNewPasswordIcon">👁️</span>
                         </button>
-                        <div class="password-requirements">Must be at least 8 characters long</div>
+                        <div class="password-requirements">
+                            Must be at least 8 characters;<br>
+                            include <b>uppercase</b>, <b>lowercase</b>, <b>number</b>, and <b>symbol</b>; <br>
+                            avoid common words and simple patterns.
+                        </div>
                     </div>
                     <div class="input-box">
                         <label for="confirm_password">Confirm Password</label>
-                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required minlength="8">
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">
                             <span id="toggleConfirmPasswordIcon">👁️</span>
                         </button>
                     </div>
-                    <div id="passwordMatchError" style="color: #d9534f; font-size: 12px; margin-top: 8px; margin-bottom: 0; display: none; font-weight: 500; text-align: center; padding: 8px 10px; background: rgba(217, 83, 79, 0.1); border-radius: 8px;">
-                        ⚠️ Passwords do not match
-                    </div>
+                    <!-- No inline error blocks! All errors go to notification popup. -->
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
@@ -1484,17 +1529,15 @@ body:has(#changePasswordModal) {
         </div>
     </div>
     <script>
-        // Prevent body scroll when modal is open
         document.body.style.overflow = 'hidden';
-        
-        // Password toggle functionality for change password modal
+
+        // Password toggle
         const newPasswordInput = document.getElementById('new_password');
         const confirmPasswordInput = document.getElementById('confirm_password');
         const toggleNewPassword = document.getElementById('toggleNewPassword');
         const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
         const toggleNewPasswordIcon = document.getElementById('toggleNewPasswordIcon');
         const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
-        const passwordMatchError = document.getElementById('passwordMatchError');
         const changePasswordBtn = document.getElementById('changePasswordBtn');
         const changePasswordForm = document.getElementById('changePasswordForm');
 
@@ -1525,56 +1568,48 @@ body:has(#changePasswordModal) {
             }
         });
 
-        // Real-time password match validation
+        // Client-side uniqueness check: must match PHP rules!
+        function isUniqueEnoughPasswordClient(pass) {
+            if (pass.length < 8) return false;
+            if (/^(\w)\1+$/.test(pass)) return false;
+            if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return false;
+            for (let len = 1; len <= 3; len++) {
+                let pattern = pass.slice(0, len);
+                if(pattern && pattern !== pass) {
+                    let repeat = pattern.repeat(Math.floor(pass.length/len));
+                    if (repeat === pass) return false;
+                }
+            }
+            let common = ['password','12345678','qwertyui','abcdefgh','iloveyou','asdfasdf','87654321'];
+            for(let bad of common) {
+                if (pass.toLowerCase().includes(bad)) return false;
+            }
+            let uniq = Array.from(new Set(pass.split('')));
+            if (uniq.length < 5) return false;
+            return true;
+        }
+
+        // Realtime validity disables submit but does not show messages (let notification show on submit)
         function validatePasswords() {
             const newPwd = newPasswordInput.value;
             const confirmPwd = confirmPasswordInput.value;
-            
-            if (confirmPwd.length > 0) {
-                if (newPwd !== confirmPwd) {
-                    passwordMatchError.style.display = 'block';
-                    changePasswordBtn.disabled = true;
-                    return false;
-                } else {
-                    passwordMatchError.style.display = 'none';
-                    if (newPwd.length >= 8) {
-                        changePasswordBtn.disabled = false;
-                    }
-                    return true;
-                }
-            } else {
-                passwordMatchError.style.display = 'none';
-                if (newPwd.length >= 8) {
-                    changePasswordBtn.disabled = false;
-                } else {
-                    changePasswordBtn.disabled = true;
-                }
-                return false;
-            }
+            let valid = true;
+            if (newPwd.length < 8) valid = false;
+            if (!isUniqueEnoughPasswordClient(newPwd)) valid = false;
+            if (confirmPwd !== newPwd || confirmPwd.length === 0) valid = false;
+            changePasswordBtn.disabled = !valid;
         }
-
         newPasswordInput.addEventListener('input', validatePasswords);
         confirmPasswordInput.addEventListener('input', validatePasswords);
-
-        // Disable submit button initially
         changePasswordBtn.disabled = true;
 
-        // Form submission validation
+        // On submit, always let PHP do error checks and showNotification
         changePasswordForm.addEventListener('submit', function(e) {
-            const newPwd = newPasswordInput.value;
-            const confirmPwd = confirmPasswordInput.value;
-
-            if (newPwd.length < 8) {
+            // Always allow PHP-side error notification to appear, but simple JS check disables submit if fields are empty
+            if (!newPasswordInput.value || !confirmPasswordInput.value) {
                 e.preventDefault();
-                alert('Password must be at least 8 characters long.');
-                return false;
             }
-
-            if (newPwd !== confirmPwd) {
-                e.preventDefault();
-                passwordMatchError.style.display = 'block';
-                return false;
-            }
+            // Do not show/expand any JS errors inline; errors will show via PHP notification popup!
         });
     </script>
 <?php endif; ?>
@@ -1587,30 +1622,21 @@ function showLoading() {
         overlay.classList.add('show');
     }
 }
-
 function hideLoading() {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
         overlay.classList.remove('show');
     }
 }
-
-// Show loading on all form submissions
 document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('form');
-    
     forms.forEach(form => {
         form.addEventListener('submit', function(e) {
-            // Show loading screen when form is submitted
             showLoading();
         });
     });
-    
-    // Hide loading if page finishes loading without form submission
     window.addEventListener('load', function() {
-        // Small delay to allow for any pending operations
         setTimeout(function() {
-            // Only hide if no form was just submitted
             if (!document.querySelector('form:invalid')) {
                 hideLoading();
             }
@@ -1627,6 +1653,5 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     <div class="footer-logo">© 2025 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
-
 </body>
 </html>

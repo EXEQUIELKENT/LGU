@@ -568,8 +568,9 @@ body::-webkit-scrollbar {
 
 /* Footer - Desktop only (fixed at bottom) */
 .footer {
-    position: fixed;
-    bottom: 0;
+    position: relative;
+    top: 90px;
+    bottom: 0px;
     left: 0;
     width: 100%;
     z-index: 100;

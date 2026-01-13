@@ -242,10 +242,11 @@ body::before{
 /* --------- END MODIFICATION --------- */
 
 /* Navigation Links */
+/* Move nav-links a bit more to the left (reduce left/right padding) to fit maintenance schedule */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
-    padding: 0 20px;
+    padding: 0 15px; /* changed from 0 20px to 0 10px */
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -390,7 +391,7 @@ body::before{
 }
 /* Expanded state is normal, below is collapsed state */
 .sidebar-nav.collapsed .logout-btn {
-    padding: 12px 10px !important;       /* Match .nav-link collapsed style */
+    padding: 12px 4px !important;       /* Match tightened .nav-link in collapsed */
     width: 70%;                         /* Take full available width to match nav-links */
     border-radius: 8px;
     font-size: 0 !important;             /* Hide text like .nav-link */
