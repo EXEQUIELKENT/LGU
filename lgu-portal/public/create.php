@@ -568,8 +568,8 @@ body::-webkit-scrollbar {
 
 /* Footer - Desktop only (fixed at bottom) */
 .footer {
-    position: relative;
-    bottom: -215px;
+    position: fixed;
+    bottom: 0;
     left: 0;
     width: 100%;
     z-index: 100;
@@ -783,6 +783,71 @@ body {
     margin-bottom: 0;
 }
 
+/* Loading Screen Styles */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#loadingOverlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.lgu-spinner {
+    display: inline-block;
+    font-size: 64px;
+    font-weight: 800;
+    color: #6384d2;
+    letter-spacing: 8px;
+    animation: spinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
+}
+
+@keyframes spinLGU {
+    0% {
+        transform: rotateY(0deg);
+    }
+    100% {
+        transform: rotateY(360deg);
+    }
+}
+
+.loading-text {
+    margin-top: 20px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+@media (max-width: 640px) {
+    .lgu-spinner {
+        font-size: 48px;
+        letter-spacing: 6px;
+    }
+    
+    .loading-text {
+        font-size: 14px;
+    }
+}
+
 /* Email validation styles */
 #emailInput:invalid:not(:focus):not(:placeholder-shown) {
     background: rgba(217, 83, 79, 0.1);
@@ -924,6 +989,14 @@ body {
 </head>
 
 <body>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+    <div class="loading-content">
+        <div class="lgu-spinner">LGU</div>
+        <div class="loading-text">Processing...</div>
+    </div>
+</div>
 
 <?php showNotification(); ?>
 
@@ -1119,7 +1192,23 @@ emailInput.addEventListener('input', function() {
     }, 800);
 });
 
-// Prevent form submission if email is invalid or already exists
+
+// Loading screen functions
+function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+// Show loading on form submission
 createForm.addEventListener('submit', async function(e) {
     const email = emailInput.value.trim();
     
@@ -1139,32 +1228,58 @@ createForm.addEventListener('submit', async function(e) {
             return false;
         }
         
-        // Then check if email already exists (case-insensitive)
-        emailError.style.display = 'block';
-        emailError.textContent = 'Verifying email...';
-        emailError.style.color = '#2c64d7';
-        
-        const emailCheck = await checkEmailExists(email);
-        
-        if (emailCheck.exists) {
-            e.preventDefault();
-            emailError.textContent = emailCheck.message || 'This email is already registered. Please use a different email address.';
-            emailError.style.color = '#d9534f';
-            emailError.style.display = 'block';
-            emailValid.style.display = 'none';
-            emailInput.setAttribute('data-valid', 'false');
-            emailInput.setAttribute('data-exists', 'true');
-            emailInput.focus();
-            return false;
-        }
-        
         // Check if email was marked as invalid or exists by previous validation
         if (emailInput.getAttribute('data-valid') === 'false' || emailInput.getAttribute('data-exists') === 'true') {
             e.preventDefault();
             emailInput.focus();
             return false;
         }
+        
+        // Then check if email already exists (case-insensitive)
+        emailError.style.display = 'block';
+        emailError.textContent = 'Verifying email...';
+        emailError.style.color = '#2c64d7';
+        
+        // Show loading immediately
+        showLoading();
+        
+        try {
+            const emailCheck = await checkEmailExists(email);
+            
+            if (emailCheck.exists) {
+                e.preventDefault();
+                hideLoading();
+                emailError.textContent = emailCheck.message || 'This email is already registered. Please use a different email address.';
+                emailError.style.color = '#d9534f';
+                emailError.style.display = 'block';
+                emailValid.style.display = 'none';
+                emailInput.setAttribute('data-valid', 'false');
+                emailInput.setAttribute('data-exists', 'true');
+                emailInput.focus();
+                return false;
+            }
+            
+            // If validation passes, keep loading shown and allow form submission
+            // Loading will continue until page reloads
+        } catch (error) {
+            hideLoading();
+            console.error('Error validating email:', error);
+        }
+    } else {
+        // Show loading for form submission
+        showLoading();
     }
+});
+
+// Hide loading when page finishes loading (if no form submission)
+window.addEventListener('load', function() {
+    // Small delay to allow for any pending operations
+    setTimeout(function() {
+        // Only hide if no form was just submitted
+        if (!document.querySelector('form:invalid')) {
+            hideLoading();
+        }
+    }, 500);
 });
 
 // Also validate on blur (when user leaves the field)

@@ -421,6 +421,71 @@ body::-webkit-scrollbar {
   display: none;
 }
 
+/* Loading Screen Styles */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#loadingOverlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.lgu-spinner {
+    display: inline-block;
+    font-size: 64px;
+    font-weight: 800;
+    color: #6384d2;
+    letter-spacing: 8px;
+    animation: spinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
+}
+
+@keyframes spinLGU {
+    0% {
+        transform: rotateY(0deg);
+    }
+    100% {
+        transform: rotateY(360deg);
+    }
+}
+
+.loading-text {
+    margin-top: 20px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+@media (max-width: 640px) {
+    .lgu-spinner {
+        font-size: 48px;
+        letter-spacing: 6px;
+    }
+    
+    .loading-text {
+        font-size: 14px;
+    }
+}
+
 /* Notification popup styles */
 .notif-popup {
     position: fixed;
@@ -1132,6 +1197,14 @@ body:has(#changePasswordModal) {
 </head>
 <body>
 
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+    <div class="loading-content">
+        <div class="lgu-spinner">LGU</div>
+        <div class="loading-text">Processing...</div>
+    </div>
+</div>
+
 <?php showNotification(); ?>
 
 <header class="nav">
@@ -1505,6 +1578,46 @@ body:has(#changePasswordModal) {
         });
     </script>
 <?php endif; ?>
+
+<script>
+// Loading screen functions
+function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+// Show loading on all form submissions
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            // Show loading screen when form is submitted
+            showLoading();
+        });
+    });
+    
+    // Hide loading if page finishes loading without form submission
+    window.addEventListener('load', function() {
+        // Small delay to allow for any pending operations
+        setTimeout(function() {
+            // Only hide if no form was just submitted
+            if (!document.querySelector('form:invalid')) {
+                hideLoading();
+            }
+        }, 500);
+    });
+});
+</script>
 
 <footer class="footer">
     <div class="footer-links">
