@@ -38,8 +38,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['check_email'])) {
     } else {
         $checkStmt->close();
         
-        // Also check pending_registrations table
-        $pendingCheckStmt = $conn->prepare("SELECT id, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
+        // Also check pending_registrations table (use correct primary key penreg_id)
+        $pendingCheckStmt = $conn->prepare("SELECT penreg_id, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
         $pendingCheckStmt->bind_param("s", $email);
         $pendingCheckStmt->execute();
         $pendingResult = $pendingCheckStmt->get_result();
@@ -234,9 +234,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
                     $now = time();
                     
                     if ($now > $expires) {
-                        // Expired - delete it and allow new registration
-                        $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE id = ?");
-                        $deleteStmt->bind_param("i", $pendingRow['id']);
+                        // Expired - delete it and allow new registration (use penreg_id)
+                        $deleteStmt = $conn->prepare("DELETE FROM pending_registrations WHERE penreg_id = ?");
+                        $deleteStmt->bind_param("i", $pendingRow['penreg_id']);
                         $deleteStmt->execute();
                         $deleteStmt->close();
                         // Continue with registration
@@ -469,6 +469,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 <title>Create Account | LGU Portal</title>
 <link rel="stylesheet" href="style.css">
 <style>
+/* Base layout */
 body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     height: 100vh;
@@ -476,11 +477,12 @@ body {
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    margin: 0;
 }
 
 body::before {
     content: "";
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -505,36 +507,44 @@ body::before {
     justify-content: center;
     align-items: flex-start;
     box-sizing: border-box;
-    min-height: 0;
-    padding: 30px 20px 20px 20px;
+    padding: 120px 16px 40px;
     position: relative;
     z-index: 1;
-    margin-top: 0; /* Fix the space between header and wrapper, remove 80px margin */
     min-height: calc(100vh - 80px);
 }
 
-@media (max-width: 600px) {
-    .card {
-        padding: 22px 8px;
-    }
-    .wrapper {
-        margin-top: 0;
-    }
-}
-
-/* Card styling */
+/* Card styling (small centered panel) */
 .card {
     width: 100%;
-    max-width: 500px;
-    background: rgba(231, 222, 222, 0.95); /* soft white with opacity */
+    max-width: 420px;
+    background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
     backdrop-filter: blur(8px);
     border-radius: 20px;
-    padding: 30px 25px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    padding: 28px 22px 32px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
     box-sizing: border-box;
     animation: fadeIn 0.5s ease-in-out;
-    /* Instead of overflow-y: auto, allow card to grow naturally and wrapper to scroll */
-    margin-top: 5px; /* Ensure card always sits just below header */
+    margin: 0 auto;
+}
+
+/* Primary button styling (shared) */
+.btn-primary {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(40, 92, 205, 0.32);
+    transition: 0.25s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    transform: translateY(-1px);
 }
 
 /* To allow main section to scroll, but keep header visible */
@@ -543,12 +553,6 @@ html, body {
 }
 body {
     min-height: 100vh;
-}
-
-.wrapper {
-    /* overlay scroll if needed, so the card never overlaps header */
-    overflow-y: auto;
-    max-height: calc(100vh - 80px);
 }
 
 /* Custom scrollbar for card */
@@ -597,7 +601,7 @@ body {
     margin-left: 25px;
     text-decoration: none;
     color: #fff;
-    opacity: 0.85;
+    opacity: 0.9;
     font-weight: 500;
     padding: 8px 14px;
     border-radius: 10px;
@@ -645,6 +649,7 @@ body {
     flex: 1;
     font-weight: 500;
     letter-spacing: 0.01em;
+    line-height: 1.35;
 }
 .notif-close {
     background: none;
@@ -657,6 +662,24 @@ body {
     transition: color 0.2s;
 }
 .notif-close:hover { color: #536ae2; }
+
+@media (max-width: 640px) {
+    .notif-popup {
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 32px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 16px 14px 14px;
+        gap: 10px;
+        font-size: 14px;
+        border-radius: 14px;
+        line-height: 1.35;
+    }
+    .notif-icon { font-size: 20px; }
+    .notif-close { font-size: 20px; }
+}
 
 /* Role Select Styling */
 .role-select {
@@ -677,14 +700,12 @@ body {
 
 /* Name fields side by side */
 .name-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    display: block;
     margin-bottom: 14px;
 }
 
 .name-row .input-box {
-    margin-bottom: 0;
+    margin-bottom: 14px;
 }
 
 /* Email validation styles */
@@ -714,6 +735,111 @@ body {
     background: rgba(16, 183, 89, 0.1);
     border-radius: 6px;
     border-left: 3px solid #10b759;
+}
+
+/* ===== Mobile-first refinements (like reference design) ===== */
+@media (max-width: 640px) {
+    body {
+        background: url("cityhall.jpeg") center/cover no-repeat fixed;
+        overflow-y: auto;
+    }
+
+    body::before {
+        display: block;
+        backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.35);
+    }
+
+    .nav {
+        position: static;
+        padding: 20px 20px 8px;
+        background: transparent;
+        box-shadow: none;
+        border-bottom: none;
+        backdrop-filter: none;
+    }
+
+    .site-logo span {
+        font-size: 16px;
+        color: #FFFFFF;
+    }
+
+    .wrapper {
+        margin-top: 0;
+        padding: 40px 20px 32px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .card {
+        width: 100%;
+        max-width: 360px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
+        border-radius: 20px;
+        padding: 26px 20px 32px;
+    }
+
+    .icon-top {
+        display: block;
+        width: 120px;
+        height: auto;
+        margin: 16px auto 28px;
+    }
+
+    .title {
+        font-size: 32px;
+        margin: 0 0 6px;
+        text-align: center;
+        color: #000000;
+        font-weight: 700;
+    }
+
+    .subtitle {
+        margin-top: 12px;
+        font-size: 16px;
+        color: #000000;
+        text-align: center;
+    }
+
+    .input-box {
+        margin-bottom: 18px;
+    }
+
+    .input-box label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .input-box input,
+    .input-box select {
+        height: 52px;
+        border-radius: 12px;
+        font-size: 15px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #6384d2, #285ccd);
+        border: none;
+        box-shadow: 0 7px 18px rgba(40, 92, 205, 0.28);
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    }
+
+    .small-text {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+    }
 }
 </style>
 </head>
