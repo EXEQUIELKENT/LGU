@@ -4,7 +4,7 @@
 $DB_HOST = "192.168.1.6";
 $DB_USER = "root";
 $DB_PASS = "";          // default XAMPP password
-$DB_NAME = "cimm_LGU";
+$DB_NAME = "cimm_lgu";
 
 $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
 
