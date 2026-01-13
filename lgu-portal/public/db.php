@@ -1,7 +1,7 @@
 <?php
 // config/db.php
 
-$DB_HOST = "192.168.1.6";
+$DB_HOST = "localhost";
 $DB_USER = "root";
 $DB_PASS = "";          // default XAMPP password
 $DB_NAME = "cimm_lgu";
