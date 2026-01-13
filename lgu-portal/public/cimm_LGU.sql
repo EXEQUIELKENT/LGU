@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Generation Time: Jan 12, 2026 at 02:15 PM
--- Server version: 10.11.14-MariaDB-ubu2204
--- PHP Version: 8.0.30
+-- Host: 127.0.0.1
+-- Generation Time: Jan 13, 2026 at 10:39 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,10 +18,8 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `cimm_LGU`
+-- Database: `cimm_lgu`
 --
-CREATE DATABASE IF NOT EXISTS `cimm_LGU` DEFAULT CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci;
-USE `cimm_LGU`;
 
 -- --------------------------------------------------------
 
@@ -30,7 +28,7 @@ USE `cimm_LGU`;
 --
 
 CREATE TABLE `employees` (
-  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
@@ -46,11 +44,12 @@ CREATE TABLE `employees` (
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`) VALUES
+INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`) VALUES
 (1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL),
 (2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL),
 (3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL),
-(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL);
+(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL),
+(8, 'Steph', 'Sagun', 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -72,7 +71,7 @@ CREATE TABLE `evidence_images` (
 --
 
 CREATE TABLE `maintenance_schedule` (
-  `id` int(11) NOT NULL,
+  `sched_id` int(11) NOT NULL,
   `task` varchar(150) DEFAULT NULL,
   `location` varchar(150) DEFAULT NULL,
   `schedule_date` date DEFAULT NULL
@@ -82,7 +81,7 @@ CREATE TABLE `maintenance_schedule` (
 -- Dumping data for table `maintenance_schedule`
 --
 
-INSERT INTO `maintenance_schedule` (`id`, `task`, `location`, `schedule_date`) VALUES
+INSERT INTO `maintenance_schedule` (`sched_id`, `task`, `location`, `schedule_date`) VALUES
 (1, 'Aircon Maintenance', 'City Hall Room 101', '2026-01-05'),
 (2, 'Generator Inspection', 'City Hall Basement', '2026-01-07'),
 (3, 'Fire Extinguisher Check', 'City Hall Lobby', '2026-01-10');
@@ -94,7 +93,7 @@ INSERT INTO `maintenance_schedule` (`id`, `task`, `location`, `schedule_date`) V
 --
 
 CREATE TABLE `pending_registrations` (
-  `id` int(10) UNSIGNED NOT NULL,
+  `penreg_id` int(10) UNSIGNED NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
@@ -105,13 +104,6 @@ CREATE TABLE `pending_registrations` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `pending_registrations`
---
-
-INSERT INTO `pending_registrations` (`id`, `first_name`, `last_name`, `email`, `role`, `password`, `verification_token`, `verification_token_expires`, `created_at`) VALUES
-(6, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Super Admin', '$2y$10$veSMhFctWzqQKhch15DaGOF2K6obgZK4FfwEu4k/wem2bYMVwsWBG', '636afc06aa52d12674228f116241975f5ec696f317cce0b9b9b58cc033a8c894', '2026-01-11 15:18:49', '2026-01-10 22:18:49');
-
 -- --------------------------------------------------------
 
 --
@@ -119,7 +111,7 @@ INSERT INTO `pending_registrations` (`id`, `first_name`, `last_name`, `email`, `
 --
 
 CREATE TABLE `reports` (
-  `id` int(11) NOT NULL,
+  `report_id` int(11) NOT NULL,
   `infrastructure` varchar(100) DEFAULT NULL,
   `location` varchar(150) DEFAULT NULL,
   `work_done` varchar(255) DEFAULT NULL,
@@ -150,7 +142,7 @@ CREATE TABLE `request` (
 -- Indexes for table `employees`
 --
 ALTER TABLE `employees`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`user_id`),
   ADD UNIQUE KEY `email` (`email`);
 
 --
@@ -164,13 +156,13 @@ ALTER TABLE `evidence_images`
 -- Indexes for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`sched_id`);
 
 --
 -- Indexes for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`penreg_id`),
   ADD UNIQUE KEY `email` (`email`),
   ADD UNIQUE KEY `verification_token` (`verification_token`),
   ADD KEY `expires_idx` (`verification_token_expires`);
@@ -179,7 +171,7 @@ ALTER TABLE `pending_registrations`
 -- Indexes for table `reports`
 --
 ALTER TABLE `reports`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`report_id`);
 
 --
 -- Indexes for table `request`
@@ -195,7 +187,7 @@ ALTER TABLE `request`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -207,19 +199,19 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `sched_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `report_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `request`
