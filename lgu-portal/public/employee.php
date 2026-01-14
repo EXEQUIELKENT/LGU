@@ -78,6 +78,50 @@ body::before{
     z-index:0;
 }
 
+/* PROFILE BUTTON */
+
+.sidebar-profile-btn {
+    position: absolute;
+    top: 18px;
+    left: 15px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #3762c8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    z-index: 1002;
+}
+.sidebar-profile-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Hover */
+
+.sidebar-profile-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 14px rgba(55,98,200,0.35);
+}
+
+/* COLLAPSED SIDEBAR PROFILE POSITION FIX */
+.sidebar-nav.collapsed .sidebar-profile-btn {
+    position: relative;       /* removes overlap */
+    top: auto;
+    left: auto;
+    margin: 52px auto 10px;   /* pushes profile BELOW toggle */
+}
+
+/* COLLAPSED SIDEBAR LAYOUT PUSH-DOWN */
+.sidebar-nav.collapsed .sidebar-top {
+    padding-top: 10px;
+}
+
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -117,7 +161,7 @@ body::before{
     justify-content: center;
     font-size: 18px;
     transition: all 0.3s ease;
-    z-index: 1001;
+    z-index: 1003;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 .sidebar-toggle:hover {
@@ -213,17 +257,16 @@ body::before{
     transition: all 0.3s ease, opacity 0.3s ease;
 }
 .sidebar-nav.collapsed .site-logo {
-    margin-left: 15px;
-    margin-right: 15px;
-    width: calc(100% - 30px);
-    margin-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    margin-bottom: 0px;
 }
 .sidebar-nav.collapsed .site-logo img {
-    opacity: 0;
-    visibility: hidden;
-    width: 0;
-    height: 0;
-    transition: all 0.33s cubic-bezier(.4,.21,.47,.99);
+    opacity: 1;
+    visibility: visible;
+    width: 40px;
+    height: auto;
 }
 /* --------- MODIFIED: Make logo-divider visible when collapsed --------- */
 .sidebar-divider.logo-divider {
@@ -234,10 +277,9 @@ body::before{
     margin: 18px 25px 0 25px;
 }
 .sidebar-nav.collapsed .sidebar-divider.logo-divider {
-    /* Make visible, narrowed width, and crisp on collapse */
     opacity: 1;
     width: 40px;
-    margin: 30px 25px 0 25px;
+    margin: 5px 25px 0 25px;
 }
 /* --------- END MODIFICATION --------- */
 
@@ -654,26 +696,37 @@ body::before{
 <?php showNotification(); ?>
 
 <div class="sidebar-nav" id="sidebarNav">
-    <button class="sidebar-toggle" id="sidebarToggle">
-        <span class="toggle-icon">◀</span>
-    </button>
+    <div class="sidebar-header">
+        <button class="sidebar-toggle" id="sidebarToggle">
+            <span class="toggle-icon">◀</span>
+        </button>
+    </div>
 
+    <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
+
+        <!-- Profile Button -->
+        <div class="sidebar-profile-btn">
+            <img src="profile.png" alt="Profile">
+        </div>
+        <!-- Logo -->
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
+        <!-- Navigation -->
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
-            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
+            <li><a href="#" class="nav-link active"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
+            <li><a href="sched.php" class="nav-link"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
-        <!-- Optionally add a flexible spacer div to push nav-list to proper place and user-info to the bottom -->
         <div style="flex-grow:1;"></div>
     </div>
+
     <div class="sidebar-divider"></div>
+
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
