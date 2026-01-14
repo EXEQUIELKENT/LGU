@@ -69,30 +69,45 @@ $result = $conn->query($sql);
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
+/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
+
+/* HIDE MOBILE TOP NAV ON DESKTOP */
+.mobile-top-nav {
+    display: none;
 }
 
-/* BACKGROUND */
+/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
 body {
     height: 100vh;
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
-    overflow: hidden;
+    z-index: 0;
 }
-
 body::before {
     content: "";
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
     backdrop-filter: blur(6px);
     background: rgba(0,0,0,0.35);
     z-index: 0;
 }
+
+body::-webkit-scrollbar {
+  display: none;
+}
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* PROFILE BUTTON */
 
@@ -609,11 +624,7 @@ body::before {
     margin-left: 70px;
 }
 
-.page-title {
-    color: #fff;
-    font-size: 28px;
-    margin-bottom: 25px;
-}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px;margin-top:-45px;}
 
 /* CARD */
 .table-card {
@@ -714,10 +725,223 @@ tbody tr:hover {
     cursor: pointer;
     width: fit-content;
 }
+
+/* =========================
+   MOBILE VIEW ONLY
+========================= */
+@media (max-width: 768px) {
+
+/* Show mobile top nav in mobile */
+.mobile-top-nav {
+    display: flex;
+}
+
+/* Hide desktop sidebar initially */
+.sidebar-nav {
+    left: -110%;
+    width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    top: 12px;
+    bottom: 12px;
+    border-radius: 18px;
+    transition: left 0.35s ease;
+    z-index: 4000;
+}
+
+/* Show sidebar when active */
+.sidebar-nav.mobile-active {
+    left: 12px;
+}
+
+/* Disable desktop collapse behavior */
+.sidebar-nav.collapsed {
+    width: calc(100% - 24px);
+}
+
+/* Main content always full width */
+.main-content,
+.main-content.expanded {
+    margin-left: 0 !important;
+    padding-top: 90px;
+}
+
+/* MOBILE TOP NAV */
+.mobile-top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+}
+
+.mobile-top-nav img {
+    height: 42px;
+    object-fit: contain;
+}
+
+.mobile-toggle {
+    position: absolute;
+    left: 16px;
+    background: #3762c8;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Sidebar internal layout for mobile */
+.sidebar-top {
+    padding-top: 30px;
+}
+
+.sidebar-profile-btn {
+    position: relative;
+    margin: 10px 0 0 15px;
+}
+
+.site-logo {
+    margin: 10px auto 20px auto;
+}
+
+.nav-list {
+    padding: 0 20px;
+}
+
+.sidebar-divider,
+.sidebar-toggle,
+.sidebar-toggle-divider {
+    display: none !important;
+}
+
+/* Logout stays bottom */
+.user-info {
+    padding-bottom: 20px;
+}
+
+/* Hide desktop toggle */
+.sidebar-toggle {
+    display: none;
+}
+
+/* ===============================
+   🚩 MOBILE-ONLY MAIN CONTENT FIXES
+   =============================== */
+
+/* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+.main-content,
+.main-content.expanded {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;           /* allow scrolling */
+    padding: 14px;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 70px;
+}
+
+/* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
+.main-content::-webkit-scrollbar {
+    display: none;
+}
+.main-content {
+    scrollbar-width: none; /* Firefox */
+}
+
+/* 🧪 OPTIONAL: mobile card tighter padding for small screens */
+.card {
+    padding: 22px;
+}
+/* ===============================
+   📱 MOBILE REQUEST CARD VIEW
+================================ */
+
+/* Hide desktop table */
+
+/* Hide desktop table on mobile */
+table {
+    display: none;
+}
+
+h2  {
+    display: none;
+}
+
+/* Show mobile list */
+.mobile-request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 0px;
+}
+
+/* Request card */
+.request-card {
+    background: rgba(255,255,255,0.96);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    font-size: 14px;
+}
+
+/* Card rows */
+.request-card div {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* Labels */
+.request-card strong {
+    color: #3762c8;
+    font-weight: 600;
+}
+
+/* Status pill spacing */
+.request-card .status {
+    display: inline-block;
+    margin-left: 6px;
+}
+
+/* Actions */
+.request-actions {
+    margin-top: 10px;
+}
+
+.request-actions .btn-view {
+    display: inline-block;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.no-evidence {
+    font-size: 12px;
+    color: #777;
+}
+
+/* Hide the no requests card in desktop view */
+}
+@media (min-width: 769px) {
+    .mobile-no-requests {
+        display: none !important;
+    }
+}
 </style>
 </head>
 
 <body>
+
+<!-- MOBILE TOP NAV -->
+<div class="mobile-top-nav">
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <img src="logocityhall.png" alt="LGU Logo">
+</div>
 
 <?php showNotification(); ?>
 
@@ -820,6 +1044,48 @@ tbody tr:hover {
             </tbody>
 
         </table>
+
+        <!-- 📱 MOBILE REQUEST CARD LIST -->
+        <div class="mobile-request-list">
+        <?php
+        if ($result->num_rows > 0):
+            mysqli_data_seek($result, 0); // reset pointer
+            while ($row = $result->fetch_assoc()):
+        ?>
+                <div class="request-card">
+                    <div><strong>Request ID:</strong> #REQ-<?php echo str_pad($row['id'], 3, '0', STR_PAD_LEFT); ?></div>
+                    <div><strong>Infrastructure:</strong> <?php echo htmlspecialchars($row['infrastructure']); ?></div>
+                    <div><strong>Location:</strong> <?php echo htmlspecialchars($row['location']); ?></div>
+                    <div><strong>Issue:</strong> <?php echo htmlspecialchars($row['issue']); ?></div>
+                    <div><strong>Date Submitted:</strong> <?php echo $row['created_at'] ?? ''; ?></div>
+                    <div>
+                        <strong>Status:</strong>
+                        <span class="status 
+                            <?php
+                                if ($row['status'] === 'Pending') echo 'pending';
+                                elseif ($row['status'] === 'In Progress') echo 'in-progress';
+                                else echo 'completed';
+                            ?>">
+                            <?php echo $row['status']; ?>
+                        </span>
+                    </div>
+                    <div class="request-actions">
+                        <?php if (!empty($row['evidence'])): ?>
+                            <a class="btn-view" href="uploads/<?php echo $row['evidence']; ?>" target="_blank">View Evidence</a>
+                        <?php else: ?>
+                            <span class="no-evidence">No Evidence</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+        <?php
+            endwhile;
+        else:
+        ?>
+            <div class="request-card mobile-no-requests">No requests found</div>
+        <?php endif; ?>
+        </div>
+        <!-- END MOBILE REQUEST CARD LIST -->
+
     </div>
 </div>
 
@@ -1061,6 +1327,14 @@ logoutAlertBackdrop.addEventListener('mousedown', (e) => {
         logoutAlertBackdrop.classList.remove("active");
     }
 });
+
+// MOBILE SIDEBAR TOGGLE
+const mobileToggle = document.getElementById('mobileToggle');
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-active');
+    });
+}
 </script>
 
 </body>

@@ -22,7 +22,7 @@ function showNotification() {
         unset($_SESSION['notification']);
         echo "<script>
             function closeNotif() {
-                var n = document.getElementById('notifPopup'); 
+                var n = document.getElementById('notifPopup');
                 if(n) n.style.opacity='0';
                 setTimeout(()=>{if(n)n.remove();}, 400);
             }
@@ -38,22 +38,10 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     exit;
 }
 
-// Fetch schedules with derived work-order fields (category, priority, status, assigned team)
+// Fetch schedules directly from maintenance_schedule and process/derive fields in PHP
 $schedules = [];
 
-// Join with reports (if any) to detect completed work on that date/location/task
-$sql = "
-    SELECT 
-        ms.*,
-        r.status AS report_status
-    FROM maintenance_schedule ms
-    LEFT JOIN reports r
-        ON r.infrastructure = ms.task
-       AND r.location = ms.location
-       AND r.date_completed = ms.schedule_date
-    ORDER BY ms.schedule_date ASC
-";
-
+$sql = "SELECT * FROM maintenance_schedule ORDER BY schedule_date ASC";
 $result = $conn->query($sql);
 
 if ($result && $result->num_rows > 0) {
@@ -61,85 +49,76 @@ if ($result && $result->num_rows > 0) {
 
     while ($row = $result->fetch_assoc()) {
         $taskLower = strtolower($row['task'] ?? '');
-
-        // 2.2 Issue Categorization (simple rule‑based categories)
-        if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
-            $category = 'HVAC / Cooling';
-        } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
-            $category = 'Power & Electrical';
-        } elseif (strpos($taskLower, 'road') !== false || strpos($taskLower, 'pavement') !== false || strpos($taskLower, 'street') !== false) {
-            $category = 'Roads & Pavements';
-        } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'extinguisher') !== false || strpos($taskLower, 'safety') !== false) {
-            $category = 'Safety & Compliance';
-        } else {
-            $category = 'General Maintenance';
-        }
-
-        // 2.5 Scheduling and 2.3 Priority / Urgency based on proximity to schedule_date
-        $priority = 'Low';
-        $status   = 'Planned';
-
-        $assignedTeam = 'General Maintenance Team';
-        if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
-            $assignedTeam = 'Facilities - HVAC Team';
-        } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
-            $assignedTeam = 'Electrical Maintenance Team';
-        } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
-            $assignedTeam = 'Safety & Compliance Team';
-        }
-
-        if (!empty($row['schedule_date'])) {
-            try {
-                $dueDate = new DateTime($row['schedule_date']);
-                $diffDays = (int)$today->diff($dueDate)->format('%r%a'); // negative if past
-
-                // If there is a completed report, treat as completed/verified work
-                if (!empty($row['report_status']) && $row['report_status'] === 'Completed') {
-                    $status   = 'Completed';
-                    $priority = 'Normal';
-                } else {
-                    if ($diffDays < 0) {
-                        // Past due date, no completion report
-                        $status   = 'Delayed';
-                        $priority = 'Critical';
-                    } elseif ($diffDays === 0) {
-                        $status   = 'In Progress';
-                        $priority = 'High';
-                    } elseif ($diffDays <= 3) {
-                        $status   = 'Scheduled (High)';
-                        $priority = 'High';
-                    } elseif ($diffDays <= 7) {
-                        $status   = 'Scheduled';
-                        $priority = 'Medium';
-                    } else {
-                        $status   = 'Planned';
-                        $priority = 'Low';
-                    }
-                }
-            } catch (Exception $e) {
-                // Fallback: keep defaults if date parsing fails
+        $autoCategory = false;
+        if (empty($row['category']) || $row['category'] === "General Maintenance") {
+            if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
+                $row['category'] = 'HVAC / Cooling';
+                $autoCategory = true;
+            } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
+                $row['category'] = 'Power & Electrical';
+                $autoCategory = true;
+            } elseif (strpos($taskLower, 'road') !== false || strpos($taskLower, 'pavement') !== false || strpos($taskLower, 'street') !== false) {
+                $row['category'] = 'Roads & Pavements';
+                $autoCategory = true;
+            } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'extinguisher') !== false || strpos($taskLower, 'safety') !== false) {
+                $row['category'] = 'Safety & Compliance';
+                $autoCategory = true;
+            } else {
+                $row['category'] = 'General Maintenance';
             }
         }
 
-        // Attach derived fields so the front‑end can use them
-        $row['category']      = $category;
-        $row['priority']      = $priority;
-        $row['status_label']  = $status;
-        $row['assigned_team'] = $assignedTeam;
+        if (empty($row['priority']) || $row['priority'] === 'Low') {
+            if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
+                $row['priority'] = 'Medium';
+            } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
+                $row['priority'] = 'Medium';
+            } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
+                $row['priority'] = 'High';
+            }
+        }
+        if (empty($row['assigned_team']) || $row['assigned_team'] === 'General Maintenance Team') {
+            if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
+                $row['assigned_team'] = 'Facilities - HVAC Team';
+            } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
+                $row['assigned_team'] = 'Electrical Maintenance Team';
+            } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
+                $row['assigned_team'] = 'Safety & Compliance Team';
+            }
+        }
+
+        $status_label = $row['status'];
+        $priority_label = $row['priority'];
+        if ($row['status'] == 'Completed' || !empty($row['completed_at'])) {
+            $status_label = 'Completed';
+        } else {
+            if (!empty($row['schedule_date'])) {
+                try {
+                    $dueDate = new DateTime($row['schedule_date']);
+                    $diffDays = (int)$today->diff($dueDate)->format('%r%a');
+                    if ($diffDays < 0 && $row['status'] != 'Completed' && $row['status'] != 'In Progress') {
+                        $status_label = 'Delayed';
+                        $priority_label = 'Critical';
+                    } elseif ($diffDays === 0 && $row['status'] != 'Completed') {
+                        $status_label = 'In Progress';
+                        $priority_label = 'High';
+                    }
+                } catch (Exception $e) {}
+            }
+        }
+
+        $row['status_label'] = $status_label;
+        $row['priority'] = $priority_label;
 
         $schedules[] = $row;
     }
 }
 
-// Logout
 if (isset($_GET['logout'])) {
-    // Set log out notification for next login page
     setNotification('info', 'Successfully logged out.');
-    // Clear all session data (but preserve notification)
     $notif = $_SESSION['notification'];
     session_unset();
     session_destroy();
-    // Session destroyed, start new to save notification
     session_start();
     $_SESSION['notification'] = $notif;
     header("Location: login.php");
@@ -160,25 +139,43 @@ const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
+
+/* HIDE MOBILE TOP NAV ON DESKTOP */
+.mobile-top-nav {
+    display: none;
+}
+
+/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
 body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Poppins', sans-serif;
-    min-height: 100vh;
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    height: 100vh;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
+    z-index: 0;
 }
 body::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.35);
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
     backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
     z-index: 0;
 }
+
+body::-webkit-scrollbar {
+  display: none;
+}
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 /* PROFILE BUTTON */
 
 .sidebar-profile-btn {
@@ -278,16 +275,29 @@ body::before {
 .sidebar-nav.collapsed .toggle-icon {
     transform: rotate(180deg);
 }
+
+.sidebar-top {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 20px 0;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* --------- FIX FOR: "navlinks move at the top of the side bar fix it" ---------
+   We will enforce that .sidebar-top always stretches to fill remaining height,
+   and position nav-list at the correct vertical position below the logo,
+   not at the top after collapse.
+   Use a spacer div after .site-logo, then let nav-list and the rest flex naturally.
+*/
 .sidebar-top {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
     height: 100%;
-    padding: 20px 0;
-    overflow-y: auto;
-    position: relative;
-    padding-top: 20px;
+    /* Ensure that .sidebar-top always fills sidebar height */
 }
 
 /* Add a flex spacer below .site-logo to enforce consistent space above nav-list */
@@ -296,6 +306,30 @@ body::before {
     flex-shrink: 0;
 }
 
+/* --------- END FIX --------- */
+
+/* Divider just UNDER the toggle button */
+.sidebar-toggle-divider {
+    border-bottom: 2px solid rgba(0,0,0,0.18);
+    width: 60%;
+    margin: 15px auto 9px auto;
+    transition: opacity 0.3s, height 0.3s, margin 0.3s;
+    opacity: 0;
+    height: 0;
+    pointer-events: none;
+}
+.sidebar-nav.collapsed .sidebar-toggle-divider {
+    opacity: 1;
+    height: 0;
+    margin: 15px auto 14px auto;
+    pointer-events: auto;
+}
+/* There is no need for a duplicate .collapse-toggle-divider, replaced with .sidebar-toggle-divider for clear intent */
+
+.sidebar-divider.collapse-toggle-divider { display:none; } /* Remove the old divider line for collapsed */
+
+/* Other existing styles unchanged ... */
+/* -- LOGO VISIBILITY ON COLLAPSE -- */
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -332,10 +366,10 @@ body::before {
     width: 40px;
     height: auto;
 }
-
 /* --------- MODIFIED: Make logo-divider visible when collapsed --------- */
 .sidebar-divider.logo-divider {
     transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
+    /* always display the divider; style changes below */
     opacity: 1;
     width: calc(100% - 50px);
     margin: 18px 25px 0 25px;
@@ -345,6 +379,10 @@ body::before {
     width: 40px;
     margin: 5px 25px 0 25px;
 }
+/* --------- END MODIFICATION --------- */
+
+/* Navigation Links */
+/* Move nav-links a bit more to the left (reduce left/right padding) to fit maintenance schedule */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
@@ -354,6 +392,7 @@ body::before {
     flex-direction: column;
     flex-grow: 0;
     flex-shrink: 0;
+    /* Ensures the nav-list stays together and never stretches vertically */
     transition: padding 0.3s ease;
 }
 .sidebar-nav.collapsed .nav-list {
@@ -375,7 +414,9 @@ body::before {
     white-space: nowrap;
     overflow: hidden;
     position: relative;
+    /* The default size for nav links (14px font, 12px top/bottom, some left/right) */
 }
+
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
     background: #3762c8;
@@ -390,7 +431,7 @@ body::before {
 /* Collapsed sidebar nav link style */
 .sidebar-nav.collapsed .nav-link {
     justify-content: center;
-    padding: 12px 10px;
+    padding: 12px 10px;  /* This is the nav-link size in collapse: 14px font, 12px top/bottom, 10px left/right */
     position: relative;
 }
 .sidebar-nav.collapsed .nav-link span:last-child {
@@ -459,6 +500,7 @@ body::before {
     border-top: 1px solid rgba(255,255,255,0.2);
     transition: all 0.3s ease;
 }
+
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -489,10 +531,10 @@ body::before {
 }
 /* Expanded state is normal, below is collapsed state */
 .sidebar-nav.collapsed .logout-btn {
-    padding: 12px 10px !important;
-    width: 70%;
+    padding: 12px 4px !important;       /* Match tightened .nav-link in collapsed */
+    width: 70%;                         /* Take full available width to match nav-links */
     border-radius: 8px;
-    font-size: 0 !important;
+    font-size: 0 !important;             /* Hide text like .nav-link */
     justify-content: center;
     align-items: center;
     min-width: 0;
@@ -525,16 +567,8 @@ body::before {
     display: none;
 }
 
-/* --- Custom: Logout Tooltip for Collapsed Sidebar --- */
-.sidebar-tooltip-pop.logout-pop {
-    min-width: 120px;
-    max-width: 60vw;
-    white-space: normal;
-    text-align: center;
-    transition: none !important;
-}
+/* END LOGOUT BUTTON */
 
-/* Logout Modal Custom Design (matching @reports.php) */
 #logoutAlertBackdrop {
     position: fixed;
     z-index: 5000;
@@ -835,10 +869,156 @@ body::before {
     box-shadow: 0 2px 8px rgba(55,98,200,0.06);
 }
 /* -- End: ListView Search Styles -- */
+/* =========================
+   MOBILE VIEW ONLY
+========================= */
+@media (max-width: 768px) {
+
+/* Show mobile top nav in mobile */
+.mobile-top-nav {
+    display: flex;
+}
+
+/* Hide desktop sidebar initially */
+.sidebar-nav {
+    left: -110%;
+    width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    top: 12px;
+    bottom: 12px;
+    border-radius: 18px;
+    transition: left 0.35s ease;
+    z-index: 4000;
+}
+
+/* Show sidebar when active */
+.sidebar-nav.mobile-active {
+    left: 12px;
+}
+
+/* Disable desktop collapse behavior */
+.sidebar-nav.collapsed {
+    width: calc(100% - 24px);
+}
+
+/* Main content always full width */
+.main-content,
+.main-content.expanded {
+    margin-left: 0 !important;
+    padding-top: 90px;
+}
+
+/* MOBILE TOP NAV */
+.mobile-top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+}
+
+.mobile-top-nav img {
+    height: 42px;
+    object-fit: contain;
+}
+
+.mobile-toggle {
+    position: absolute;
+    left: 16px;
+    background: #3762c8;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Sidebar internal layout for mobile */
+.sidebar-top {
+    padding-top: 30px;
+}
+
+.sidebar-profile-btn {
+    position: relative;
+    margin: 10px 0 0 15px;
+}
+
+.site-logo {
+    margin: 10px auto 20px auto;
+}
+
+.nav-list {
+    padding: 0 20px;
+}
+
+.sidebar-divider,
+.sidebar-toggle,
+.sidebar-toggle-divider {
+    display: none !important;
+}
+
+/* Logout stays bottom */
+.user-info {
+    padding-bottom: 20px;
+}
+
+/* Hide desktop toggle */
+.sidebar-toggle {
+    display: none;
+}
+
+/* ===============================
+   🚩 MOBILE-ONLY MAIN CONTENT FIXES
+   =============================== */
+
+/* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+.main-content,
+.main-content.expanded {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;           /* allow scrolling */
+    padding: 0px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
+.main-card {
+    margin-top: 85px;
+    padding: 20px;
+    border-radius: 18px;
+}
+
+/* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
+.main-content::-webkit-scrollbar {
+    display: none;
+}
+.main-content {
+    scrollbar-width: none; /* Firefox */
+}
+
+/* 🧪 OPTIONAL: mobile card tighter padding for small screens */
+.card {
+    padding: 22px;
+}
+}
 </style>
 </head>
 
 <body>
+
+<!-- MOBILE TOP NAV -->
+<div class="mobile-top-nav">
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <img src="logocityhall.png" alt="LGU Logo">
+</div>
 
 <?php showNotification(); ?>
 
@@ -849,20 +1029,15 @@ body::before {
         </button>
     </div>
 
-    <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
-
-        <!-- Profile Button -->
         <div class="sidebar-profile-btn">
             <img src="profile.png" alt="Profile">
         </div>
-        <!-- Logo -->
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
-        <!-- Navigation -->
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link"><span>📊</span><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
@@ -871,16 +1046,13 @@ body::before {
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
-
     <div class="sidebar-divider"></div>
-
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
 
-<!-- Tooltip container for sidebar nav-links and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
 <div class="main-content">
@@ -889,7 +1061,7 @@ body::before {
 
         <!-- CALENDAR VIEW -->
         <div id="calendarView">
-                <div class="calendar-header">
+            <div class="calendar-header">
                 <button id="prevMonth" class="toggle-btn" style="padding:5px 10px;">&#8592;</button>
                 <span id="monthLabel"></span>
                 <button id="nextMonth" class="toggle-btn" style="padding:5px 10px;">&#8594;</button>
@@ -910,13 +1082,12 @@ body::before {
         </div>
         <!-- LIST VIEW -->
         <div id="scheduleView" class="hidden">
-            <!-- Search Input for Schedule List View -->
             <input id="scheduleSearch" type="text" placeholder="Search by task, location, category, status, or date...">
             <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>
                 <p id="noScheduleMsg">No scheduled maintenance.</p>
             <?php else: foreach ($schedules as $row): ?>
-                <div class="schedule-item" 
+                <div class="schedule-item"
                     data-task="<?= htmlspecialchars(strtolower($row['task'])) ?>"
                     data-location="<?= htmlspecialchars(strtolower($row['location'])) ?>"
                     data-category="<?= htmlspecialchars(strtolower($row['category'] ?? '')) ?>"
@@ -937,7 +1108,7 @@ body::before {
                             $priorityLower = strtolower($row['priority'] ?? '');
                             if ($priorityLower === 'medium') {
                                 $priorityClass = 'badge-priority-medium';
-                            } elseif ($priorityLower === 'high' || strpos($priorityLower, 'high') !== false) {
+                            } elseif ($priorityLower === 'high') {
                                 $priorityClass = 'badge-priority-high';
                             } elseif ($priorityLower === 'critical') {
                                 $priorityClass = 'badge-priority-critical';
@@ -951,7 +1122,7 @@ body::before {
                                 $statusClass = 'badge-status-in-progress';
                             } elseif ($statusLower === 'delayed') {
                                 $statusClass = 'badge-status-delayed';
-                            } elseif (strpos($statusLower, 'scheduled') !== false) {
+                            } elseif ($statusLower === 'scheduled') {
                                 $statusClass = 'badge-status-scheduled';
                             }
                         ?>
@@ -1008,7 +1179,6 @@ const scheduleView = document.getElementById('scheduleView');
 let currentDate = new Date();
 let showingCalendar = true;
 
-// Helper to normalize status into 4 buckets: delayed, ongoing, completed, upcoming
 function getStatusKey(statusLabel) {
     const s = (statusLabel || '').toLowerCase();
     if (!s) return 'upcoming';
@@ -1018,7 +1188,6 @@ function getStatusKey(statusLabel) {
     return 'upcoming';
 }
 
-// Apply status-based colors to schedule list items
 function applyStatusClassesToList() {
     const items = document.querySelectorAll('.schedule-item');
     items.forEach(item => {
@@ -1035,7 +1204,6 @@ toggleBtn.onclick = () => {
     toggleBtn.textContent = showingCalendar ? 'View Schedule' : 'View Calendar';
 };
 
-// Modal
 const taskModal = document.getElementById('taskModal');
 const modalBody = document.getElementById('modalBody');
 const modalClose = document.getElementById('modalClose');
@@ -1069,6 +1237,7 @@ function openModal(tasks){
     taskModal.classList.remove('hidden');
 }
 
+// FIXED renderCalendar so .task-btns show up in calendar cells
 function renderCalendar(){
     calendarGrid.innerHTML='';
     calendarDetails.innerHTML='Select a date to view schedule.';
@@ -1077,28 +1246,41 @@ function renderCalendar(){
     monthLabel.textContent=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
     const firstDay=new Date(year, month,1).getDay();
     const daysInMonth=new Date(year,month+1,0).getDate();
-    for(let i=0;i<firstDay;i++) calendarGrid.innerHTML+='<div></div>';
+    // Add blank cells for offset of first day
+    for(let i=0;i<firstDay;i++) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = "calendar-day";
+        calendarGrid.appendChild(emptyDiv);
+    }
 
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const events = scheduleData.filter(e => e.schedule_date === dateStr);
 
-        const div = document.createElement('div');
-        div.className = 'calendar-day' + (events.length ? ' has-event' : '');
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
 
-        const dayNum = document.createElement('div');
-        dayNum.textContent = d; // keep date number neutral (no status color)
-        div.appendChild(dayNum);
+        const dayNumDiv = document.createElement('div');
+        dayNumDiv.textContent = d;
+        dayDiv.appendChild(dayNumDiv);
 
+        // Always add the .day-tasks div, even if empty, so buttons show up
+        const tasksDiv = document.createElement('div');
+        tasksDiv.className = 'day-tasks';
+
+        // Make sure event buttons show in the calendar
         if (events.length) {
-            const tasksDiv = document.createElement('div');
-            tasksDiv.className = 'day-tasks';
+            // Add a button for each schedule/task on this day
             events.forEach((e, i) => {
                 const btn = document.createElement('button');
-                btn.textContent = i + 1;
+                // Show task # and part of task name if multiple (for context); you can adjust display as needed
+                btn.textContent = events.length === 1 ? '●' : (i + 1);
                 btn.className = 'task-btn';
 
-                // Color the button background based on this event's status
+                // Set better title for accessibility/mouse hover
+                btn.title = `${e.task} (${e.status_label || ''})`;
+
+                // Color the button based on status
                 const key = getStatusKey(e.status_label || '');
                 if (key) {
                     btn.classList.add('status-' + key + '-bg');
@@ -1110,10 +1292,11 @@ function renderCalendar(){
                 });
                 tasksDiv.appendChild(btn);
             });
-            div.appendChild(tasksDiv);
         }
 
-        div.addEventListener('click', () => {
+        dayDiv.appendChild(tasksDiv);
+
+        dayDiv.addEventListener('click', () => {
             if(events.length){
                 calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>`;
                 calendarDetails.innerHTML += events.map(e => `• ${e.task} – ${e.location}`).join('<br>');
@@ -1122,7 +1305,7 @@ function renderCalendar(){
             }
         });
 
-        calendarGrid.appendChild(div);
+        calendarGrid.appendChild(dayDiv);
     }
 }
 
@@ -1131,7 +1314,6 @@ document.getElementById('nextMonth').onclick=()=>{currentDate.setMonth(currentDa
 renderCalendar();
 applyStatusClassesToList();
 
-// Schedule LIST VIEW SEARCH functionality
 const scheduleSearch = document.getElementById('scheduleSearch');
 const scheduleListHolder = document.getElementById('scheduleListHolder');
 const noResultMsg = document.getElementById('noResultMsg');
@@ -1180,14 +1362,11 @@ if (scheduleSearch && scheduleListHolder) {
     });
 }
 
-// Sidebar Toggle Functionality
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
-
 const sidebarNav = document.getElementById('sidebarNav');
 
-// Load saved state from localStorage
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
@@ -1197,37 +1376,24 @@ if (sidebarCollapsed) {
 sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded');
-    // Save state to localStorage
     const isCollapsed = sidebar.classList.contains('collapsed');
     localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // Logo is hidden/shown by CSS transition only, extra script unnecessary
-    // Hide/cleanup tooltip if present on toggle
     if (!isCollapsed) {
         sidebarNavTooltip.classList.remove('active');
         sidebarNavTooltip.style.display = 'none';
     }
 });
 
-// --- Sidebar Tooltip Pop Functionality (modified logic) ---
-// Tooltip now disappears when you stop hovering a nav-link, 
-// even if the mouse is still in the sidebar,
-// unless you're interacting with the tooltip pop itself.
-
 const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    // Mouse enter and focus (for accessibility)
     link.addEventListener('mouseenter', navTooltipHandler);
     link.addEventListener('focus', navTooltipHandler);
-
-    // Mouse leave and blur
     link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     link.addEventListener('blur', hideNavTooltip);
 });
-
-// --- BEGIN: Add logout tooltip when sidebar collapsed ---
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -1244,14 +1410,12 @@ logoutBtn.addEventListener('focus', function(e) {
     showLogoutTooltip(e);
 });
 logoutBtn.addEventListener('mouseleave', function(e) {
-    // Hide, unless mouse moved into tooltip itself (same as nav-link logic)
     if (
         e.relatedTarget === sidebarNavTooltip ||
         (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
     ) {
         return;
     }
-    // === FIX: Hide tooltip instantly, *without* transition, to avoid resize glitch ===
     sidebarNavTooltip.classList.remove('active');
     sidebarNavTooltip.classList.remove('logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1263,17 +1427,12 @@ logoutBtn.addEventListener('mouseleave', function(e) {
 });
 logoutBtn.addEventListener('blur', hideNavTooltip);
 
-// Support tooltip remaining if mouse is over tooltip itself
-// Done already below (mouseleave/enter on tooltip).
-
 function showLogoutTooltip(e) {
     const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
     tooltipActiveLink = logoutBtn;
     sidebarNavTooltip.textContent = tooltipText;
     sidebarNavTooltip.classList.add('logout-pop');
     sidebarNavTooltip.style.display = 'block';
-
-    // Position tooltip beside the logout button (to the right)
     const rect = logoutBtn.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
@@ -1285,13 +1444,11 @@ function showLogoutTooltip(e) {
         sidebarNavTooltip.classList.add('active');
     }, 5);
 
-    // Cancel hide timeout if any
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 }
-// When hiding the logout tooltip, remove .logout-pop for style reset
 function hideNavTooltipImmediate() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1312,9 +1469,6 @@ function hideNavTooltip() {
         tooltipHideTimeout = null;
     }
 }
-// --- END: logout tooltip addition ---
-
-// Show tooltip beside nav-link
 function navTooltipHandler(e) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
@@ -1326,8 +1480,6 @@ function navTooltipHandler(e) {
     sidebarNavTooltip.textContent = tooltipText;
     sidebarNavTooltip.classList.remove('logout-pop');
     sidebarNavTooltip.style.display = 'block';
-
-    // Calculate position beside hovered nav-link
     const rect = this.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
@@ -1339,48 +1491,35 @@ function navTooltipHandler(e) {
         sidebarNavTooltip.classList.add('active');
     }, 5);
 
-    // Cancel hide timeout if any
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 }
-
-// When mouse leaves the nav-link, hide tooltip UNLESS moving directly into the tooltip itself
 function navLinkMouseLeaveHandler(e) {
-    // See if the destination (relatedTarget) is the tooltip itself
     if (
         e.relatedTarget === sidebarNavTooltip ||
         (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
     ) {
-        // Do NOT hide yet, let the tooltip stay open
         return;
     }
-    // Otherwise, start timer to hide tooltip
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
-    }, 60); // Hide *quickly* after nav-link is left
+    }, 60);
 }
-
-// Hide tooltip when mouse leaves the tooltip itself (even if still in sidebar)
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
     }, 60);
 });
-
-// If user moves into tooltip from nav-link or logout, cancel hide
 sidebarNavTooltip.addEventListener('mouseenter', function() {
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 });
-
-// On mouse entering sidebar, do not restore tooltip (changed from old code)
-
 document.querySelectorAll('.nav-link').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -1395,8 +1534,6 @@ logoutBtn.addEventListener('keydown', function(e) {
         this.focus();
     }
 });
-
-// Immediately hide tooltip when sidebar is expanded
 sidebarToggle.addEventListener('click', () => {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1407,34 +1544,31 @@ sidebarToggle.addEventListener('click', () => {
     }
 });
 
-// Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
-
-// Show modal on logout button click
 logoutBtn.addEventListener('click', () => {
     logoutAlertBackdrop.classList.add("active");
-    // Hide tooltip immediately
     hideNavTooltipImmediate();
 });
-
-// Hide modal on cancel
 logoutCancelBtn.addEventListener('click', () => {
     logoutAlertBackdrop.classList.remove("active");
 });
-
-// Confirm logout
 logoutConfirmBtn.addEventListener('click', () => {
     window.location.href = 'sched.php?logout=1';
 });
-
-// Click on backdrop (not the modal) closes modal
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
     if (e.target === logoutAlertBackdrop) {
         logoutAlertBackdrop.classList.remove("active");
     }
 });
+
+const mobileToggle = document.getElementById('mobileToggle');
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-active');
+    });
+}
 </script>
 
 </body>

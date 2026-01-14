@@ -69,19 +69,43 @@ $result = $conn->query($sql);
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-body{
-    height:100vh;
-    background:url("cityhall.jpeg") center/cover no-repeat fixed;
-    position:relative;
+/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
+
+/* HIDE MOBILE TOP NAV ON DESKTOP */
+.mobile-top-nav {
+    display: none;
 }
-body::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    backdrop-filter:blur(6px);
-    background:rgba(0,0,0,0.35);
-    z-index:0;
+
+/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+body {
+    height: 100vh;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
 }
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* PROFILE BUTTON */
 
@@ -549,7 +573,7 @@ body::before{
 .main-content.expanded {
     margin-left: 70px;
 }
-.page-title{color:#fff;font-size:28px;margin-bottom:25px}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px;margin-top:-45px;}
 .card{
     background:rgba(255,255,255,.9);
     border-radius:22px;
@@ -587,10 +611,211 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
 .status{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600}
 .completed{background:#a5d6a7;color:#1b5e20}
 .on-going{background:#fff59d;color:#f57f17}
+
+/* =========================
+   MOBILE VIEW ONLY
+========================= */
+@media (max-width: 768px) {
+
+/* Show mobile top nav in mobile */
+.mobile-top-nav {
+    display: flex;
+}
+
+/* Hide desktop sidebar initially */
+.sidebar-nav {
+    left: -110%;
+    width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    top: 12px;
+    bottom: 12px;
+    border-radius: 18px;
+    transition: left 0.35s ease;
+    z-index: 4000;
+}
+
+/* Show sidebar when active */
+.sidebar-nav.mobile-active {
+    left: 12px;
+}
+
+/* Disable desktop collapse behavior */
+.sidebar-nav.collapsed {
+    width: calc(100% - 24px);
+}
+
+/* Main content always full width */
+.main-content,
+.main-content.expanded {
+    margin-left: 0 !important;
+    padding-top: 90px;
+}
+
+/* MOBILE TOP NAV */
+.mobile-top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+}
+
+.mobile-top-nav img {
+    height: 42px;
+    object-fit: contain;
+}
+
+.mobile-toggle {
+    position: absolute;
+    left: 16px;
+    background: #3762c8;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Sidebar internal layout for mobile */
+.sidebar-top {
+    padding-top: 30px;
+}
+
+.sidebar-profile-btn {
+    position: relative;
+    margin: 10px 0 0 15px;
+}
+
+.site-logo {
+    margin: 10px auto 20px auto;
+}
+
+.nav-list {
+    padding: 0 20px;
+}
+
+.sidebar-divider,
+.sidebar-toggle,
+.sidebar-toggle-divider {
+    display: none !important;
+}
+
+/* Logout stays bottom */
+.user-info {
+    padding-bottom: 20px;
+}
+
+/* Hide desktop toggle */
+.sidebar-toggle {
+    display: none;
+}
+
+/* ===============================
+   🚩 MOBILE-ONLY MAIN CONTENT FIXES
+   =============================== */
+
+/* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+.main-content,
+.main-content.expanded {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;           /* allow scrolling */
+    padding: 14px;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 70px;
+}
+
+/* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
+.main-content::-webkit-scrollbar {
+    display: none;
+}
+.main-content {
+    scrollbar-width: none; /* Firefox */
+}
+
+/* 🧪 OPTIONAL: mobile card tighter padding for small screens */
+.card {
+    padding: 22px;
+}
+
+/* ===============================
+   📱 MOBILE REPORT CARD VIEW
+================================ */
+
+/* Hide desktop table on mobile */
+.card table,
+.card thead,
+.card tbody,
+.card tr,
+.card th,
+.card td {
+    display: none;
+}
+
+h2 {
+    display: none;
+}
+
+/* Show card list */
+.mobile-report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 0px;
+}
+
+/* Individual report card */
+.report-card {
+    background: rgba(255,255,255,0.96);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    font-size: 14px;
+}
+
+/* Label + value spacing */
+.report-card div {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+/* Make labels slightly muted */
+.report-card strong {
+    color: #3762c8;
+    font-weight: 600;
+}
+
+/* Status pill spacing */
+.report-card .status {
+    display: inline-block;
+    margin-left: 6px;
+}
+
+/* Hide the 'no reports found' card on desktop */
+}
+@media (min-width: 769px) {
+    .mobile-report-list .report-card.no-mobile {
+        display: none !important;
+    }
+}
 </style>
 </head>
 
 <body>
+
+<!-- MOBILE TOP NAV -->
+<div class="mobile-top-nav">
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <img src="logocityhall.png" alt="LGU Logo">
+</div>
 
 <?php showNotification(); ?>
 
@@ -687,6 +912,32 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
             <?php endif; ?>
             </tbody>
         </table>
+
+        <!-- MOBILE REPORT CARDS -->
+        <div class="mobile-report-list">
+        <?php if ($result->num_rows > 0): ?>
+            <?php mysqli_data_seek($result, 0); // reset pointer ?>
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <div class="report-card">
+                    <div><strong>Report ID:</strong> #REP-<?php echo $row['id']; ?></div>
+                    <div><strong>Infrastructure:</strong> <?php echo htmlspecialchars($row['infrastructure']); ?></div>
+                    <div><strong>Location:</strong> <?php echo htmlspecialchars($row['location']); ?></div>
+                    <div><strong>Work Done:</strong> <?php echo htmlspecialchars($row['work_done']); ?></div>
+                    <div><strong>Date Completed:</strong> <?php echo htmlspecialchars($row['date_completed']); ?></div>
+                    <div>
+                        <strong>Status:</strong>
+                        <span class="status <?php echo $row['status'] === 'Completed' ? 'completed' : 'on-going'; ?>">
+                            <?php echo htmlspecialchars($row['status']); ?>
+                        </span>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div class="report-card no-mobile">No reports found</div>
+        <?php endif; ?>
+        </div>
+        <!-- END MOBILE REPORT CARDS -->
+
     </div>
 </div>
 
@@ -913,6 +1164,14 @@ logoutAlertBackdrop.addEventListener('mousedown', (e) => {
         logoutAlertBackdrop.classList.remove("active");
     }
 });
+
+// MOBILE SIDEBAR TOGGLE
+const mobileToggle = document.getElementById('mobileToggle');
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-active');
+    });
+}
 </script>
 
 </body>

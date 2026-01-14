@@ -64,19 +64,43 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-body{
-    height:100vh;
-    background:url("cityhall.jpeg") center/cover no-repeat fixed;
-    position:relative;
+/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
+
+/* HIDE MOBILE TOP NAV ON DESKTOP */
+.mobile-top-nav {
+    display: none;
 }
-body::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    backdrop-filter:blur(6px);
-    background:rgba(0,0,0,0.35);
-    z-index:0;
+
+/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+body {
+    height: 100vh;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
 }
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* PROFILE BUTTON */
 
@@ -641,6 +665,9 @@ body::before{
 .main-card .card {
     background: rgba(255, 255, 255, 0.95);
 }
+.main-card::-webkit-scrollbar {
+    display: none;
+}
 .card {
     align-self: start;
     background: rgba(255, 255, 255, 0.95);
@@ -675,6 +702,8 @@ body::before{
     cursor: pointer;
     transition: 0.25s;
     text-decoration: none;
+    text-align: center;
+    align-items: center;
 }
 .btn-primary:hover {
     background: linear-gradient(135deg, #4d76d6, #1651d0);
@@ -689,9 +718,163 @@ body::before{
     text-align: center;
     transition: none !important; /* <--- FIX: prevent animation/resize on hide */
 }
+
+/* =========================
+   MOBILE VIEW ONLY
+========================= */
+@media (max-width: 768px) {
+
+    /* Show mobile top nav in mobile */
+    .mobile-top-nav {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar initially */
+    .sidebar-nav {
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        transition: left 0.35s ease;
+        z-index: 4000;
+    }
+
+    /* Show sidebar when active */
+    .sidebar-nav.mobile-active {
+        left: 12px;
+    }
+
+    /* Disable desktop collapse behavior */
+    .sidebar-nav.collapsed {
+        width: calc(100% - 24px);
+    }
+
+    /* Main content always full width */
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+    }
+
+    /* MOBILE TOP NAV */
+    .mobile-top-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 64px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+        z-index: 5000;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    }
+
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
+    }
+
+    .mobile-toggle {
+        position: absolute;
+        left: 16px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    /* Sidebar internal layout for mobile */
+    .sidebar-top {
+        padding-top: 30px;
+    }
+
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
+
+    .site-logo {
+        margin: 10px auto 20px auto;
+    }
+
+    .nav-list {
+        padding: 0 20px;
+    }
+
+    .sidebar-divider,
+    .sidebar-toggle,
+    .sidebar-toggle-divider {
+        display: none !important;
+    }
+
+    /* Logout stays bottom */
+    .user-info {
+        padding-bottom: 20px;
+    }
+
+    /* Hide desktop toggle */
+    .sidebar-toggle {
+        display: none;
+    }
+
+    /* ===============================
+       🚩 MOBILE-ONLY MAIN CONTENT FIXES
+       =============================== */
+
+    /* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+    .main-content,
+    .main-content.expanded {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;           /* allow scrolling */
+        padding: 0px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
+    }
+
+    /* Hide main-content vertical (right) scrollbar but retain scrollability */
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
+    }
+    .main-content {
+        scrollbar-width: none;           /* Firefox */
+        -ms-overflow-style: none;        /* Edge/IE */
+    }
+
+    /* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
+    .main-card {
+        margin-top: 85px;
+        padding: 20px;
+        border-radius: 18px;
+    }
+    .main-card::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* 🧪 OPTIONAL: mobile card tighter padding for small screens */
+    .card {
+        padding: 22px;
+    }
+}
 </style>
 </head>
 <body>
+
+<!-- MOBILE TOP NAV -->
+<div class="mobile-top-nav">
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <img src="logocityhall.png" alt="LGU Logo">
+</div>
 
 <?php showNotification(); ?>
 
@@ -1049,6 +1232,14 @@ logoutAlertBackdrop.addEventListener('mousedown', (e) => {
         logoutAlertBackdrop.classList.remove("active");
     }
 });
+
+// MOBILE SIDEBAR TOGGLE
+const mobileToggle = document.getElementById('mobileToggle');
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-active');
+    });
+}
 </script>
 
 </body>
