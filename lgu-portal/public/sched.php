@@ -1,5 +1,23 @@
 <?php
 session_start();
+
+/* 🚫 Prevent browser caching of protected pages */
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+/* 🔐 Strict session check */
+if (
+    !isset($_SESSION['employee_logged_in']) ||
+    $_SESSION['employee_logged_in'] !== true
+) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
 require __DIR__ . '/db.php';
 
 // Notification system (copied from employee.php)
@@ -33,14 +51,8 @@ function showNotification() {
 
 $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
 
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    header("Location: login.php");
-    exit;
-}
-
-// Fetch schedules directly from maintenance_schedule and process/derive fields in PHP
+// Fetch schedules from database
 $schedules = [];
-
 $sql = "SELECT * FROM maintenance_schedule ORDER BY schedule_date ASC";
 $result = $conn->query($sql);
 
@@ -113,17 +125,6 @@ if ($result && $result->num_rows > 0) {
         $schedules[] = $row;
     }
 }
-
-if (isset($_GET['logout'])) {
-    setNotification('info', 'Successfully logged out.');
-    $notif = $_SESSION['notification'];
-    session_unset();
-    session_destroy();
-    session_start();
-    $_SESSION['notification'] = $notif;
-    header("Location: login.php");
-    exit;
-}
 ?>
 
 <script>
@@ -137,6 +138,7 @@ const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | 
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+/* ...[UNCHANGED CSS CODE]... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
@@ -1030,7 +1032,7 @@ body::-webkit-scrollbar {
     </div>
 
     <div class="sidebar-top">
-        <div class="sidebar-profile-btn">
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile">
             <img src="profile.png" alt="Profile">
         </div>
         <div class="site-logo">
@@ -1039,16 +1041,17 @@ body::-webkit-scrollbar {
         </div>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
-            <li><a href="employee.php" class="nav-link"><span>📊</span><span>Dashboard</span></a></li>
-            <li><a href="requests.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="#" class="nav-link active"><span>📅</span><span>Maintenance Schedule</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
+            <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+        <!-- Removed onclick="window.location.href='logout.php'" for correct modal behavior -->
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
@@ -1367,6 +1370,7 @@ const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
 const sidebarNav = document.getElementById('sidebarNav');
 
+// Make sure sidebar collapsed state is persisted
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
@@ -1388,12 +1392,23 @@ const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
+// Add tooltip listeners for nav-links
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
     link.addEventListener('mouseenter', navTooltipHandler);
     link.addEventListener('focus', navTooltipHandler);
     link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     link.addEventListener('blur', hideNavTooltip);
 });
+// Add tooltip for profile icon (on collapse, like employee.php)
+const profileIconBtn = document.getElementById('profileIconBtn');
+if (profileIconBtn) {
+    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+    profileIconBtn.addEventListener('focus', navTooltipHandler);
+    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    profileIconBtn.addEventListener('blur', hideNavTooltip);
+}
+
+// Add tooltip and logic for logout button (keep existing logic with tooltip)
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -1474,7 +1489,9 @@ function navTooltipHandler(e) {
         hideNavTooltip();
         return;
     }
-    const tooltipText = this.getAttribute('data-tooltip');
+    // Show nav-link or profile icon name
+    let tooltipText = this.getAttribute('data-tooltip');
+    if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
     if (!tooltipText) return;
     tooltipActiveLink = this;
     sidebarNavTooltip.textContent = tooltipText;
@@ -1520,7 +1537,9 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
         tooltipHideTimeout = null;
     }
 });
-document.querySelectorAll('.nav-link').forEach(function(link) {
+
+// Also support keyboard accessibility: show tooltip on space/enter
+document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
             e.preventDefault();
@@ -1547,15 +1566,21 @@ sidebarToggle.addEventListener('click', () => {
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
-logoutBtn.addEventListener('click', () => {
+
+// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
+logoutBtn.addEventListener('click', (e) => {
+    // prevent default just in case (button not type=submit)
+    e.preventDefault();
     logoutAlertBackdrop.classList.add("active");
     hideNavTooltipImmediate();
 });
-logoutCancelBtn.addEventListener('click', () => {
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     logoutAlertBackdrop.classList.remove("active");
 });
-logoutConfirmBtn.addEventListener('click', () => {
-    window.location.href = 'sched.php?logout=1';
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'logout.php';
 });
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
     if (e.target === logoutAlertBackdrop) {
@@ -1569,6 +1594,13 @@ if (mobileToggle) {
         sidebar.classList.toggle('mobile-active');
     });
 }
+
+// --- Add step 3: force reload on browser bfcache to enforce session check ---
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
 </script>
 
 </body>

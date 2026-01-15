@@ -1,5 +1,23 @@
 <?php
 session_start();
+
+/* 🚫 Prevent browser caching of protected pages */
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+/* 🔐 Strict session check */
+if (
+    !isset($_SESSION['employee_logged_in']) ||
+    $_SESSION['employee_logged_in'] !== true
+) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
 require __DIR__ . '/db.php';
 
 // Notification system
@@ -17,7 +35,7 @@ function showNotification() {
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
-                <button class='notif-close' onclick=\"scloseNotif()\">&times;</button>
+                <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
               </div>";
         unset($_SESSION['notification']);
         echo "<script>
@@ -33,27 +51,7 @@ function showNotification() {
 
 $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
 
-// If just logged out redirect from employee page
-if (isset($_GET['logout'])) {
-    // Set log out notification for next login page
-    setNotification('info', 'Successfully logged out.');
-    // Clear all session data (but preserve notification)
-    $notif = $_SESSION['notification'];
-    session_unset();
-    session_destroy();
-    // Session destroyed, start new to save notification
-    session_start();
-    $_SESSION['notification'] = $notif;
-    header("Location: login.php");
-    exit;
-}
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    header("Location: login.php");
-    exit;
-}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -889,7 +887,7 @@ body::-webkit-scrollbar {
     <div class="sidebar-top">
 
         <!-- Profile Button -->
-        <div class="sidebar-profile-btn">
+        <div class="sidebar-profile-btn" id="sidebarProfileBtn" tabindex="0" data-tooltip="Profile">
             <img src="profile.png" alt="Profile">
         </div>
         <!-- Logo -->
@@ -900,10 +898,10 @@ body::-webkit-scrollbar {
         <div class="sidebar-logo-spacer"></div>
         <!-- Navigation -->
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active"><span>📊</span><span>Dashboard</span></a></li>
-            <li><a href="requests.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="sched.php" class="nav-link"><span>📅</span><span>Maintenance Schedule</span></a></li>
+            <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
+            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -916,9 +914,8 @@ body::-webkit-scrollbar {
     </div>
 </div>
 
-<!-- Tooltip container for sidebar nav-links and logout -->
+<!-- Tooltip container for sidebar nav-links, profile icon, and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<!-- Extra: We don't need a separate logout tooltip container, we reuse sidebarNavTooltip -->
 
 <!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
 <div id="logoutAlertBackdrop">
@@ -937,39 +934,20 @@ body::-webkit-scrollbar {
 
 <div class="main-content">
     <div class="main-card">
-
         <div class="card">
             <h3>Pending Requests</h3>
             <p>Track and assign new community maintenance requests submitted by citizens.</p>
             <a href="requests.php" class="btn-primary">View Requests</a>
         </div>
-
         <div class="card">
             <h3>Facility Status</h3>
             <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
             <a href="reports.php" class="btn-primary">Update Status</a>
         </div>
-
         <div class="card">
             <h3>Performance Reports</h3>
             <p>Generate reports on completed requests and ongoing maintenance projects.</p>
             <a href="reports.php" class="btn-primary">Generate Report</a>
-        </div>
-
-    </div>
-</div>
-
-<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
-<div id="logoutAlertBackdrop">
-    <div id="logoutAlertModal">
-        <div class="icon-wrap">
-            <span class="icon">&#9888;</span>
-        </div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
         </div>
     </div>
 </div>
@@ -979,99 +957,31 @@ body::-webkit-scrollbar {
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.querySelector('.sidebar-nav');
 const mainContent = document.querySelector('.main-content');
-const logo = document.querySelector('.site-logo img');
-const logoDivider = document.querySelector('.sidebar-divider.logo-divider');
 
-const sidebarNav = document.getElementById('sidebarNav');
-
-// Load saved state from localStorage
-const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-if (sidebarCollapsed) {
-    sidebar.classList.add('collapsed');
-    mainContent.classList.add('expanded');
-}
-
-sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
-    // Save state to localStorage
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // Logo is hidden/shown by CSS transition only, extra script unnecessary
-    // Hide/cleanup tooltip if present on toggle
-    if (!isCollapsed) {
-        sidebarNavTooltip.classList.remove('active');
-        sidebarNavTooltip.style.display = 'none';
-    }
-});
-
-// --- Sidebar Tooltip Pop Functionality (modified logic) ---
-// Tooltip now disappears when you stop hovering a nav-link, 
-// even if the mouse is still in the sidebar,
-// unless you're interacting with the tooltip pop itself.
-
+// Tooltip logic
 const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    // Mouse enter and focus (for accessibility)
-    link.addEventListener('mouseenter', navTooltipHandler);
-    link.addEventListener('focus', navTooltipHandler);
+// --- Universal Tooltip Handler for NavLinks, Profile, Logout ---
 
-    // Mouse leave and blur
-    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    link.addEventListener('blur', hideNavTooltip);
-});
-
-// --- BEGIN: Add logout tooltip when sidebar collapsed ---
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('mouseenter', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('focus', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('mouseleave', function(e) {
-    // Hide, unless mouse moved into tooltip itself (same as nav-link logic)
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
-        return;
-    }
-    // === FIX: Hide tooltip instantly, *without* transition, to avoid resize glitch ===
-    sidebarNavTooltip.classList.remove('active');
-    sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
-logoutBtn.addEventListener('blur', hideNavTooltip);
-
-// Support tooltip remaining if mouse is over tooltip itself
-// Done already below (mouseleave/enter on tooltip).
-
-function showLogoutTooltip(e) {
-    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
-    tooltipActiveLink = logoutBtn;
+// Helper: Show tooltip at link/button position
+function showSidebarTooltip(elem, opts = {}) {
+    const tooltipText = elem.getAttribute('data-tooltip');
+    if (!tooltipText) return;
+    tooltipActiveLink = elem;
     sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    // Add special class for logout button, if needed
+    if (elem.id === "logoutBtn") {
+        sidebarNavTooltip.classList.add('logout-pop');
+    } else {
+        sidebarNavTooltip.classList.remove('logout-pop');
+    }
     sidebarNavTooltip.style.display = 'block';
 
-    // Position tooltip beside the logout button (to the right)
-    const rect = logoutBtn.getBoundingClientRect();
+    // Position tooltip beside element (to the right)
+    const rect = elem.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
     const y = rect.top + rect.height / 2 + window.scrollY;
@@ -1088,7 +998,8 @@ function showLogoutTooltip(e) {
         tooltipHideTimeout = null;
     }
 }
-// When hiding the logout tooltip, remove .logout-pop for style reset
+
+// Helper: Hide tooltip immediately
 function hideNavTooltipImmediate() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1098,6 +1009,7 @@ function hideNavTooltipImmediate() {
         tooltipHideTimeout = null;
     }
 }
+// Hide tooltip soon (with a slight delay for mouseout transitions)
 function hideNavTooltip() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     setTimeout(function() {
@@ -1109,66 +1021,59 @@ function hideNavTooltip() {
         tooltipHideTimeout = null;
     }
 }
-// --- END: logout tooltip addition ---
 
-// Show tooltip beside nav-link
-function navTooltipHandler(e) {
+// Handler for focus/hover on nav links/profile/logout
+function sidebarTooltipHandler(event) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
         return;
     }
-    const tooltipText = this.getAttribute('data-tooltip');
-    if (!tooltipText) return;
-    tooltipActiveLink = this;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'block';
-
-    // Calculate position beside hovered nav-link
-    const rect = this.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const x = sidebarRect.right + 5;
-    const y = rect.top + rect.height / 2 + window.scrollY;
-    sidebarNavTooltip.style.left = (x + 10) + 'px';
-    sidebarNavTooltip.style.top = y + 'px';
-
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
-
-    // Cancel hide timeout if any
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
+    showSidebarTooltip(this);
 }
-
-// When mouse leaves the nav-link, hide tooltip UNLESS moving directly into the tooltip itself
-function navLinkMouseLeaveHandler(e) {
-    // See if the destination (relatedTarget) is the tooltip itself
+function sidebarTooltipMouseLeaveHandler(e) {
     if (
         e.relatedTarget === sidebarNavTooltip ||
         (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
     ) {
-        // Do NOT hide yet, let the tooltip stay open
         return;
     }
     // Otherwise, start timer to hide tooltip
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
-    }, 60); // Hide *quickly* after nav-link is left
+    }, 60);
 }
 
-// Hide tooltip when mouse leaves the tooltip itself (even if still in sidebar)
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    link.addEventListener('mouseenter', sidebarTooltipHandler);
+    link.addEventListener('focus', sidebarTooltipHandler);
+    link.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+
+// Profile icon tooltip
+const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
+if (sidebarProfileBtn) {
+    sidebarProfileBtn.addEventListener('mouseenter', sidebarTooltipHandler);
+    sidebarProfileBtn.addEventListener('focus', sidebarTooltipHandler);
+    sidebarProfileBtn.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
+    sidebarProfileBtn.addEventListener('blur', hideNavTooltip);
+}
+
+// Logout tooltip
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', sidebarTooltipHandler);
+logoutBtn.addEventListener('focus', sidebarTooltipHandler);
+logoutBtn.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
+logoutBtn.addEventListener('blur', hideNavTooltip);
+
+// Hide tooltip when mouse leaves the tooltip container
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
     }, 60);
 });
-
-// If user moves into tooltip from nav-link or logout, cancel hide
 sidebarNavTooltip.addEventListener('mouseenter', function() {
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
@@ -1176,9 +1081,8 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// On mouse entering sidebar, do not restore tooltip (changed from old code)
-
-document.querySelectorAll('.nav-link').forEach(function(link) {
+// Keyboard navigation for nav-link, profile, logout
+document.querySelectorAll('.nav-link, #sidebarProfileBtn, #logoutBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
             e.preventDefault();
@@ -1186,25 +1090,28 @@ document.querySelectorAll('.nav-link').forEach(function(link) {
         }
     });
 });
-logoutBtn.addEventListener('keydown', function(e) {
-    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
-        e.preventDefault();
-        this.focus();
-    }
-});
 
 // Immediately hide tooltip when sidebar is expanded
 sidebarToggle.addEventListener('click', () => {
-    sidebarNavTooltip.classList.remove('active', 'logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    // Save state to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+    // Hide tooltip if sidebar is expanding
+    if (!isCollapsed) {
+        hideNavTooltipImmediate();
     }
 });
 
-// Logout Alert Modal Logic - REFERENCE DESIGN FROM sched.php
+// Load saved state from localStorage
+const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+if (sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    mainContent.classList.add('expanded');
+}
+
+// Logout Alert Modal Logic (unchanged)
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
@@ -1223,7 +1130,7 @@ logoutCancelBtn.addEventListener('click', () => {
 
 // Confirm logout
 logoutConfirmBtn.addEventListener('click', () => {
-    window.location.href = 'employee.php?logout=1';
+    window.location.href = 'logout.php';
 });
 
 // Click on backdrop (not the modal) closes modal
@@ -1242,5 +1149,12 @@ if (mobileToggle) {
 }
 </script>
 
+<script>
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+</script>
 </body>
 </html>

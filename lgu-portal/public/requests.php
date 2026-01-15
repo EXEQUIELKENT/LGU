@@ -1,5 +1,12 @@
 <?php
 session_start();
+
+/* 🚫 Prevent browser caching of protected pages */
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
 require __DIR__ . '/db.php';
 
 // Notification system (copied from employee.php/sched.php)
@@ -31,30 +38,20 @@ function showNotification() {
     }
 }
 
-$firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    header("Location: login.php");
-    exit;
-}
-
-// Handle logout request
-if (isset($_GET['logout'])) {
-    // Set log out notification for next login page
-    setNotification('info', 'Successfully logged out.');
-    // Clear all session data (but preserve notification)
-    $notif = $_SESSION['notification'];
+// 🔐 Strict session check (same as employee.php)
+if (
+    !isset($_SESSION['employee_logged_in']) ||
+    $_SESSION['employee_logged_in'] !== true
+) {
     session_unset();
     session_destroy();
-    // Session destroyed, start new to save notification
-    session_start();
-    $_SESSION['notification'] = $notif;
     header("Location: login.php");
     exit;
 }
 
+$firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
+
 // Fetch requests from DB
-// FIX: "date_submitted" does not exist, should be "created_at" according to the SQL reference
 $sql = "SELECT * FROM request ORDER BY created_at DESC";
 $result = $conn->query($sql);
 ?>
@@ -66,7 +63,6 @@ $result = $conn->query($sql);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Infrastructure Repair Requests</title>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -956,7 +952,7 @@ h2  {
     <div class="sidebar-top">
 
         <!-- Profile Button -->
-        <div class="sidebar-profile-btn">
+        <div class="sidebar-profile-btn" id="sidebarProfileBtn" tabindex="0" data-tooltip="Profile">
             <img src="profile.png" alt="Profile">
         </div>
         <!-- Logo -->
@@ -967,10 +963,10 @@ h2  {
         <div class="sidebar-logo-spacer"></div>
         <!-- Navigation -->
         <ul class="nav-list">
-            <li><a href="employee.php" class="nav-link"><span>📊</span><span>Dashboard</span></a></li>
-            <li><a href="#" class="nav-link active"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="sched.php" class="nav-link"><span>📅</span><span>Maintenance Schedule</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="#" class="nav-link active" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
+            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -1048,8 +1044,10 @@ h2  {
         <!-- 📱 MOBILE REQUEST CARD LIST -->
         <div class="mobile-request-list">
         <?php
-        if ($result->num_rows > 0):
-            mysqli_data_seek($result, 0); // reset pointer
+        // Seek back to the beginning for second display
+        if ($result->num_rows > 0) {
+            // This will fail with some DB drivers, but for mysqli in procedural mode it's OK:
+            mysqli_data_seek($result, 0);
             while ($row = $result->fetch_assoc()):
         ?>
                 <div class="request-card">
@@ -1079,10 +1077,10 @@ h2  {
                 </div>
         <?php
             endwhile;
-        else:
+        } else {
         ?>
             <div class="request-card mobile-no-requests">No requests found</div>
-        <?php endif; ?>
+        <?php } ?>
         </div>
         <!-- END MOBILE REQUEST CARD LIST -->
 
@@ -1135,55 +1133,15 @@ const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    link.addEventListener('mouseenter', navTooltipHandler);
-    link.addEventListener('focus', navTooltipHandler);
-    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    link.addEventListener('blur', hideNavTooltip);
-});
-
-// --- BEGIN: Add logout tooltip when sidebar collapsed ---
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('mouseenter', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('focus', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('mouseleave', function(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
-        return;
-    }
-    sidebarNavTooltip.classList.remove('active');
+function showTooltip(element, text, additionalClass) {
+    tooltipActiveLink = element;
+    sidebarNavTooltip.textContent = text;
     sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
-logoutBtn.addEventListener('blur', hideNavTooltip);
-
-function showLogoutTooltip(e) {
-    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
-    tooltipActiveLink = logoutBtn;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.add('logout-pop');
+    if (additionalClass) sidebarNavTooltip.classList.add(additionalClass);
+    else sidebarNavTooltip.classList.remove('logout-pop');
     sidebarNavTooltip.style.display = 'block';
 
-    const rect = logoutBtn.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
     const y = rect.top + rect.height / 2 + window.scrollY;
@@ -1222,7 +1180,6 @@ function hideNavTooltip() {
     }
 }
 
-// Show tooltip beside nav-link
 function navTooltipHandler(e) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
@@ -1230,26 +1187,7 @@ function navTooltipHandler(e) {
     }
     const tooltipText = this.getAttribute('data-tooltip');
     if (!tooltipText) return;
-    tooltipActiveLink = this;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'block';
-
-    const rect = this.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const x = sidebarRect.right + 5;
-    const y = rect.top + rect.height / 2 + window.scrollY;
-    sidebarNavTooltip.style.left = (x + 10) + 'px';
-    sidebarNavTooltip.style.top = y + 'px';
-
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
-
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
+    showTooltip(this, tooltipText);
 }
 
 function navLinkMouseLeaveHandler(e) {
@@ -1265,6 +1203,85 @@ function navLinkMouseLeaveHandler(e) {
     }, 60);
 }
 
+// Nav links tooltips
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    link.addEventListener('mouseenter', navTooltipHandler);
+    link.addEventListener('focus', navTooltipHandler);
+    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+
+// Profile icon tooltip
+const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
+if (sidebarProfileBtn) {
+    sidebarProfileBtn.addEventListener('mouseenter', function() {
+        if (!sidebar.classList.contains('collapsed')) {
+            hideNavTooltipImmediate();
+            return;
+        }
+        showTooltip(this, this.getAttribute('data-tooltip') || "Profile");
+    });
+    sidebarProfileBtn.addEventListener('focus', function() {
+        if (!sidebar.classList.contains('collapsed')) {
+            hideNavTooltipImmediate();
+            return;
+        }
+        showTooltip(this, this.getAttribute('data-tooltip') || "Profile");
+    });
+    sidebarProfileBtn.addEventListener('mouseleave', function(e) {
+        if (
+            e.relatedTarget === sidebarNavTooltip ||
+            (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+        ) {
+            return;
+        }
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.classList.remove('logout-pop');
+        sidebarNavTooltip.style.display = 'none';
+        tooltipActiveLink = null;
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    });
+    sidebarProfileBtn.addEventListener('blur', hideNavTooltip);
+}
+
+// Logout tooltip (unchanged)
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', function() {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showTooltip(this, this.getAttribute('data-tooltip') || "Log out", "logout-pop");
+});
+logoutBtn.addEventListener('focus', function() {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showTooltip(this, this.getAttribute('data-tooltip') || "Log out", "logout-pop");
+});
+logoutBtn.addEventListener('mouseleave', function(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    sidebarNavTooltip.classList.remove('active');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+logoutBtn.addEventListener('blur', hideNavTooltip);
+
+// Tooltip mouse enter/leave events
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
@@ -1279,6 +1296,7 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
+// Keyboard support for tooltip on links/profile/logout
 document.querySelectorAll('.nav-link').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -1287,6 +1305,14 @@ document.querySelectorAll('.nav-link').forEach(function(link) {
         }
     });
 });
+if (sidebarProfileBtn) {
+    sidebarProfileBtn.addEventListener('keydown', function(e) {
+        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            this.focus();
+        }
+    });
+}
 logoutBtn.addEventListener('keydown', function(e) {
     if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
         e.preventDefault();
@@ -1319,7 +1345,7 @@ logoutCancelBtn.addEventListener('click', () => {
 });
 
 logoutConfirmBtn.addEventListener('click', () => {
-    window.location.href = 'requests.php?logout=1';
+    window.location.href = 'logout.php';
 });
 
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
@@ -1335,6 +1361,13 @@ if (mobileToggle) {
         sidebar.classList.toggle('mobile-active');
     });
 }
+
+// Force reload on BFCache restore
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
 </script>
 
 </body>
