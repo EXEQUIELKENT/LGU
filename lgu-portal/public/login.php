@@ -15,6 +15,10 @@ require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
 
+// 🔔 Handle logout success notification
+if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
+    setNotification('success', 'Successfully logged out.');
+}
 /**
  * NOTE: Logout logic is now in logout.php—old logic removed for safety!
  * For security, do not use ?logout=1 here—use logout.php instead.
@@ -1729,7 +1733,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="#">About</a>
         <a href="#">Help</a>
     </div>
-    <div class="footer-logo">© 2025 LGU Citizen Portal · All Rights Reserved</div>
+    <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
 </body>
 </html>
