@@ -179,6 +179,7 @@ body::-webkit-scrollbar {
 
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 /* PROFILE BUTTON */
+/* ... (the rest of your existing CSS unchanged above this point) ... */
 
 .sidebar-profile-btn {
     position: absolute;
@@ -684,7 +685,14 @@ body::-webkit-scrollbar {
     padding:30px;
     box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
-.toggle-btn{
+
+/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
+.toggle-btn {
+    min-width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-top:20px;
     background:#3762c8;
     color:#fff;
@@ -694,6 +702,42 @@ body::-webkit-scrollbar {
     cursor:pointer;
     font-weight:600;
 }
+
+/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
+.schedule-btn {
+    width: 38%;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top:20px;
+    margin-right: 5px;
+    background:#3762c8;
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+}
+
+/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
+.calendar-btn {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background:#3762c8;
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+}
+
 .schedule-item{
     display:flex;
     justify-content:space-between;
@@ -851,6 +895,24 @@ body::-webkit-scrollbar {
 .modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
 .modal h3 {margin-bottom:15px;}
 .modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
+
+/* ===============================
+   🧾 TASK CHOOSER BUTTON FIX
+================================ */
+#taskChooserBody .task-btn {
+    width: 100%;
+    min-height: 44px;          /* ⬅ touch-friendly height */
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+    text-align: left;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    white-space: normal;      /* allow wrapping */
+    word-break: break-word;
+}
+
 /* -- Start: ListView Search Styles -- */
 #scheduleSearch {
     width: 100%;
@@ -874,142 +936,457 @@ body::-webkit-scrollbar {
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
-@media (max-width: 768px) {
-
-/* Show mobile top nav in mobile */
-.mobile-top-nav {
-    display: flex;
-}
-
-/* Hide desktop sidebar initially */
-.sidebar-nav {
-    left: -110%;
-    width: calc(100% - 24px);
-    height: calc(100% - 24px);
-    top: 12px;
-    bottom: 12px;
-    border-radius: 18px;
-    transition: left 0.35s ease;
-    z-index: 4000;
-}
-
-/* Show sidebar when active */
-.sidebar-nav.mobile-active {
-    left: 12px;
-}
-
-/* Disable desktop collapse behavior */
-.sidebar-nav.collapsed {
-    width: calc(100% - 24px);
-}
-
-/* Main content always full width */
-.main-content,
-.main-content.expanded {
-    margin-left: 0 !important;
-    padding-top: 90px;
-}
-
-/* MOBILE TOP NAV */
-.mobile-top-nav {
+/* ===============================
+   📅 MONTH / YEAR PICKER
+================================ */
+.month-picker-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 64px;
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(12px);
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 5000;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    z-index: 6000;
+}
+.month-picker-overlay.hidden {
+    display: none;
 }
 
-.mobile-top-nav img {
-    height: 42px;
-    object-fit: contain;
+.month-picker {
+    background: #fff;
+    padding: 20px;
+    border-radius: 16px;
+    width: 320px;
+    max-width: 90%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.mobile-toggle {
-    position: absolute;
-    left: 16px;
+.picker-header {
+    font-weight: 600;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.month-picker select {
+    padding: 10px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    border: 1px solid #b1b8d0;
+    background: #f8faff;
+}
+
+.picker-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.picker-actions button {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#pickerCancel {
+    background: #f1f3f9;
+}
+#pickerApply {
     background: #3762c8;
     color: #fff;
-    border: none;
-    border-radius: 10px;
-    width: 38px;
-    height: 38px;
-    font-size: 20px;
-    cursor: pointer;
-}
-
-/* Sidebar internal layout for mobile */
-.sidebar-top {
-    padding-top: 30px;
-}
-
-.sidebar-profile-btn {
-    position: relative;
-    margin: 10px 0 0 15px;
-}
-
-.site-logo {
-    margin: 10px auto 20px auto;
-}
-
-.nav-list {
-    padding: 0 20px;
-}
-
-.sidebar-divider,
-.sidebar-toggle,
-.sidebar-toggle-divider {
-    display: none !important;
-}
-
-/* Logout stays bottom */
-.user-info {
-    padding-bottom: 20px;
-}
-
-/* Hide desktop toggle */
-.sidebar-toggle {
-    display: none;
 }
 
 /* ===============================
-   🚩 MOBILE-ONLY MAIN CONTENT FIXES
-   =============================== */
+   📱 FIX: Center Month Picker on Mobile
+================================ */
+@media (max-width: 768px) {
+    .month-picker-overlay {
+        align-items: center;       /* ⬅ center vertically */
+        justify-content: center;
+        padding: 16px;
+    }
 
-/* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
-.main-content,
-.main-content.expanded {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;           /* allow scrolling */
-    padding: 0px;
-    -webkit-overflow-scrolling: touch;
+    .month-picker {
+        width: 100%;
+        max-width: 360px;
+        border-radius: 18px;       /* ⬅ normal modal shape */
+        padding-bottom: 20px;
+        animation: pickerPop 0.25s ease;
+    }
+}
+/* subtle pop animation */
+@keyframes pickerPop {
+    from {
+        transform: translateY(20px) scale(0.96);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
 }
 
-/* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
-.main-card {
-    margin-top: 85px;
-    padding: 20px;
-    border-radius: 18px;
+/* ===============================
+   📌 Clickable Month Label Indicator
+================================ */
+#monthLabel,
+#mobileMonthLabel {
+    cursor: pointer;
+    position: relative;
+    padding-right: 18px;
 }
 
-/* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
-.main-content::-webkit-scrollbar {
-    display: none;
-}
-.main-content {
-    scrollbar-width: none; /* Firefox */
+#monthLabel::after,
+#mobileMonthLabel::after {
+    content: "▾";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9em;
+    opacity: 0.6;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-/* 🧪 OPTIONAL: mobile card tighter padding for small screens */
-.card {
-    padding: 22px;
+#monthLabel:hover::after,
+#mobileMonthLabel:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
 }
+
+#monthLabel:hover,
+#mobileMonthLabel:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+
+    /* ===============================
+       📱 MOBILE OUTSIDE-CARD CONTROLS
+       =============================== */
+    .mobile-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 6px 14px 6px;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    }
+    /* List view controls */
+    #mobileListControls input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #b1b8d0;
+        font-size: 0.95rem;
+    }
+    /* -- CALENDAR CONTROLS: OVERRIDE/REPLACE FOR MOBILE ALIGNMENT -- */
+    /* ===============================
+       📅 MOBILE CALENDAR CONTROLS FIX
+       =============================== */
+    #mobileCalendarControls {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+    /* Month label centered */
+    #mobileCalendarControls span {
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: nowrap;
+    }
+    /* Unified button size for calendar controls */
+    #mobileCalendarControls button {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0; /* 🔥 IMPORTANT - overrides margin-top, margin-bottom, margin-right breakdowns */
+        padding: 0;
+    }
+    /* Slight visual emphasis for active touch */
+    #mobileCalendarControls button:active {
+        transform: scale(0.95);
+    }
+
+    /* -- The following still exist for legacy/custom usage elsewhere, but no longer apply to calendar controls -- */
+
+    .mobile-toggle-btn {
+        min-width: 20px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top:20px;
+        background:#3762c8;
+        color:#fff;
+        border:none;
+        padding:10px 18px;
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:600;
+    }
+    .mobile-schedule-btn {
+        width: 20%;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top:20px;
+        margin-right: 5px;
+        background:#3762c8;
+        color:#fff;
+        border:none;
+        padding:10px 18px;
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:600;
+    }
+    .mobile-calendar-btn {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0px;
+        background:#3762c8;
+        color:#fff;
+        border:none;
+        padding:10px 18px;
+        border-radius:10px;
+        cursor:pointer;
+        font-weight:600;
+    }
+
+    /* Hide desktop controls INSIDE card on mobile */
+    #scheduleView > div:first-child,
+    .calendar-header {
+        display: none !important;
+    }
+
+    /* Show mobile top nav in mobile */
+    .mobile-top-nav {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar initially */
+    .sidebar-nav {
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        transition: left 0.35s ease;
+        z-index: 4000;
+    }
+
+    /* Show sidebar when active */
+    .sidebar-nav.mobile-active {
+        left: 12px;
+    }
+
+    /* Disable desktop collapse behavior */
+    .sidebar-nav.collapsed {
+        width: calc(100% - 24px);
+    }
+
+    /* Main content always full width */
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+    }
+
+    /* MOBILE TOP NAV */
+    .mobile-top-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 64px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+        z-index: 5000;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    }
+
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
+    }
+
+    .mobile-toggle {
+        position: absolute;
+        left: 16px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    /* Sidebar internal layout for mobile */
+    .sidebar-top {
+        padding-top: 30px;
+    }
+
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
+
+    .site-logo {
+        margin: 10px auto 20px auto;
+    }
+
+    .nav-list {
+        padding: 0 20px;
+    }
+
+    .sidebar-divider,
+    .sidebar-toggle,
+    .sidebar-toggle-divider {
+        display: none !important;
+    }
+
+    /* Logout stays bottom */
+    .user-info {
+        padding-bottom: 20px;
+    }
+
+    /* Hide desktop toggle */
+    .sidebar-toggle {
+        display: none;
+    }
+
+    /* ---------- CALENDAR VIEW ---------- */
+
+        /* Calendar wrapper spacing */
+        #calendarView {
+            padding: 14px;
+            margin-top: 0px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.88);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+        }
+
+        /* Weekday labels – compact */
+        .calendar-weekdays div {
+            font-size: 11px;
+            padding: 4px 0;
+            letter-spacing: 0.04em;
+        }
+
+        /* Calendar grid spacing */
+        .calendar-grid {
+            gap: 6px;
+        }
+
+        /* Day cell compact layout */
+        .calendar-day {
+            min-height: 64px;
+            padding: 6px 4px;
+            font-size: 11px;
+            border-radius: 10px;
+        }
+
+        /* Task buttons smaller */
+        .calendar-day .task-btn {
+            font-size: 9px;
+            padding: 3px 6px;
+            border-radius: 6px;
+        }
+
+        /* Calendar details spacing */
+        .calendar-details {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        /* ---------- LIST VIEW ---------- */
+
+        #scheduleView {
+            padding: 14px;
+            margin-top: 0px;;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.88);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+        }
+
+        /* Search spacing */
+        #scheduleSearch {
+            margin-bottom: 14px;
+        }
+
+        /* Each schedule item becomes card-like */
+        .schedule-item {
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .schedule-date {
+            font-size: 13px;
+        }
+
+    /* ===============================
+       🚩 MOBILE-ONLY MAIN CONTENT FIXES
+       =============================== */
+
+    /* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+    .main-content,
+    .main-content.expanded {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;           /* allow scrolling */
+        padding: 14px;
+        -webkit-overflow-scrolling: touch;
+        margin-top: 70px;
+    }
+
+    /* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
+    .main-content::-webkit-scrollbar {
+        display: none;
+    }
+    .main-content {
+        scrollbar-width: none; /* Firefox */
+    }
+
+    /* 🧪 OPTIONAL: mobile card tighter padding for small screens */
+    .card {
+        padding: 22px;
+    }
 }
 </style>
 </head>
@@ -1062,12 +1439,32 @@ body::-webkit-scrollbar {
 
     <div class="card">
 
+        <!-- MOBILE CONTROLS (MOBILE ONLY, INSIDE CARD) -->
+        <div class="mobile-controls" id="mobileListControls" style="display:none;">
+            <input id="mobileScheduleSearch" type="text"
+                   placeholder="Search schedules...">
+            <button id="mobileToCalendarBtn" class="mobile-calendar-btn">📅</button>
+        </div>
+        <div class="mobile-controls" id="mobileCalendarControls" style="display:none;">
+            <button id="mobilePrevMonth" class="mobile-toggle-btn">&#8592;</button>
+            <span id="mobileMonthLabel" title="Click to jump date"></span>
+            <button id="mobileToListBtn" class="mobile-schedule-btn">📋</button>
+            <button id="mobileNextMonth" class="mobile-toggle-btn">&#8594;</button>
+        </div>
+
         <!-- CALENDAR VIEW -->
         <div id="calendarView">
             <div class="calendar-header">
                 <button id="prevMonth" class="toggle-btn" style="padding:5px 10px;">&#8592;</button>
-                <span id="monthLabel"></span>
-                <button id="nextMonth" class="toggle-btn" style="padding:5px 10px;">&#8594;</button>
+                <span id="monthLabel" title="Click to jump date"></span>
+                <div style="display:flex; gap:8px;">
+                    <button id="toListBtn" class="schedule-btn" title="Schedule List">
+                        📋
+                    </button>
+                    <button id="nextMonth" class="toggle-btn" style="padding:5px 10px;">
+                        &#8594;
+                    </button>
+                </div>
             </div>
             <div class="calendar-weekdays">
                 <div>Sunday</div>
@@ -1085,7 +1482,14 @@ body::-webkit-scrollbar {
         </div>
         <!-- LIST VIEW -->
         <div id="scheduleView" class="hidden">
-            <input id="scheduleSearch" type="text" placeholder="Search by task, location, category, status, or date...">
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input id="scheduleSearch" type="text"
+                       placeholder="Search by task, location, category, status, or date..."
+                       style="flex:1;">
+                <button id="toCalendarBtn" class="calendar-btn" title="Calendar View">
+                    📅
+                </button>
+            </div>
             <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>
                 <p id="noScheduleMsg">No scheduled maintenance.</p>
@@ -1143,7 +1547,8 @@ body::-webkit-scrollbar {
             </div>
         </div>
 
-        <button id="toggleBtn" class="toggle-btn">View Schedule</button>
+        <!-- Removed old toggle button here -->
+
     </div>
 </div>
 
@@ -1154,6 +1559,15 @@ body::-webkit-scrollbar {
         <h3>Scheduled Tasks</h3>
         <div id="modalBody"></div>
     </div>
+</div>
+
+<!-- NEW: Multi-Task Chooser Modal (for date with >1 task) -->
+<div id="taskChooserModal" class="modal hidden">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeTaskChooser()">&times;</span>
+    <h3>Select a Task</h3>
+    <div id="taskChooserBody"></div>
+  </div>
 </div>
 
 <!-- Logout Confirmation Alert Modal (Redesigned based on reports.php) -->
@@ -1171,11 +1585,26 @@ body::-webkit-scrollbar {
     </div>
 </div>
 
+<!-- Month / Year Picker + Date Picker (MODIFIED) -->
+<div id="monthPickerOverlay" class="month-picker-overlay hidden">
+  <div class="month-picker">
+    <div class="picker-header">Jump to Date</div>
+    <select id="pickerMonth"></select>
+    <select id="pickerYear"></select>
+    <!-- NEW: Date picker -->
+    <input type="date" id="pickerDate" style="padding:10px;border-radius:10px;border:1px solid #b1b8d0;">
+    <div class="picker-actions">
+      <button id="pickerCancel">Cancel</button>
+      <button id="pickerApply">Apply</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const calendarGrid = document.getElementById('calendarGrid');
 const calendarDetails = document.getElementById('calendarDetails');
 const monthLabel = document.getElementById('monthLabel');
-const toggleBtn = document.getElementById('toggleBtn');
+const mobileMonthLabel = document.getElementById('mobileMonthLabel');
 const calendarView = document.getElementById('calendarView');
 const scheduleView = document.getElementById('scheduleView');
 
@@ -1200,18 +1629,16 @@ function applyStatusClassesToList() {
     });
 }
 
-toggleBtn.onclick = () => {
-    showingCalendar = !showingCalendar;
-    calendarView.classList.toggle('hidden');
-    scheduleView.classList.toggle('hidden');
-    toggleBtn.textContent = showingCalendar ? 'View Schedule' : 'View Calendar';
-};
-
 const taskModal = document.getElementById('taskModal');
 const modalBody = document.getElementById('modalBody');
 const modalClose = document.getElementById('modalClose');
 modalClose.onclick = ()=>taskModal.classList.add('hidden');
-window.onclick = (e)=>{if(e.target===taskModal) taskModal.classList.add('hidden');};
+window.onclick = (e)=>{
+    // Close Task Modal
+    if(e.target===taskModal) taskModal.classList.add('hidden');
+    // Close Chooser Modal
+    if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
+};
 
 function openModal(tasks){
     modalBody.innerHTML='';
@@ -1240,13 +1667,41 @@ function openModal(tasks){
     taskModal.classList.remove('hidden');
 }
 
+// Task Chooser Modal logic (when more than 1 task exists)
+const taskChooserModal = document.getElementById('taskChooserModal');
+const taskChooserBody = document.getElementById('taskChooserBody');
+function openTaskChooser(date, tasks) {
+    taskChooserBody.innerHTML = '';
+    tasks.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'task-btn';
+        btn.style.margin = '8px 0'; // changed from '6px 0' to '8px 0' per instructions
+        btn.style.width = '100%';
+        btn.textContent = `${t.task} – ${t.location}`;
+        const key = getStatusKey(t.status_label || '');
+        if (key) btn.classList.add('status-' + key + '-bg');
+        btn.onclick = () => {
+            taskChooserModal.classList.add('hidden');
+            openModal([t]);
+        };
+        taskChooserBody.appendChild(btn);
+    });
+    taskChooserModal.classList.remove('hidden');
+}
+function closeTaskChooser() {
+    taskChooserModal.classList.add('hidden');
+}
+
 // FIXED renderCalendar so .task-btns show up in calendar cells
 function renderCalendar(){
     calendarGrid.innerHTML='';
     calendarDetails.innerHTML='Select a date to view schedule.';
     const year=currentDate.getFullYear();
     const month=currentDate.getMonth();
-    monthLabel.textContent=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
+    const monthText=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
+    monthLabel.textContent=monthText;
+    if(mobileMonthLabel) mobileMonthLabel.textContent=monthText;  // <-- Also update the mobile label here!
+
     const firstDay=new Date(year, month,1).getDay();
     const daysInMonth=new Date(year,month+1,0).getDate();
     // Add blank cells for offset of first day
@@ -1312,8 +1767,14 @@ function renderCalendar(){
     }
 }
 
-document.getElementById('prevMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()-1); renderCalendar();}
-document.getElementById('nextMonth').onclick=()=>{currentDate.setMonth(currentDate.getMonth()+1); renderCalendar();}
+document.getElementById('prevMonth').onclick=()=>{
+    currentDate.setMonth(currentDate.getMonth()-1);
+    renderCalendar();
+}
+document.getElementById('nextMonth').onclick=()=>{
+    currentDate.setMonth(currentDate.getMonth()+1);
+    renderCalendar();
+}
 renderCalendar();
 applyStatusClassesToList();
 
@@ -1601,6 +2062,245 @@ window.addEventListener("pageshow", function (event) {
         window.location.reload();
     }
 });
+
+/* ---- NEW: Calendar/List icon toggle logic ---- */
+const toCalendarBtn = document.getElementById('toCalendarBtn');
+const toListBtn = document.getElementById('toListBtn');
+function showCalendarView() {
+    calendarView.classList.remove('hidden');
+    scheduleView.classList.add('hidden');
+    showingCalendar = true;
+    updateMobileControls(); // Ensure mobile controls update too
+    updateWeekdayLabels();  // Make sure to update weekday labels when view toggles
+}
+function showListView() {
+    calendarView.classList.add('hidden');
+    scheduleView.classList.remove('hidden');
+    showingCalendar = false;
+    updateMobileControls(); // Ensure mobile controls update too
+    updateWeekdayLabels();  // May not be critical, but keep consistent
+}
+if (toCalendarBtn) toCalendarBtn.onclick = showCalendarView;
+if (toListBtn) toListBtn.onclick = showListView;
+
+/* ===============================
+   📱 MOBILE VIEW CONTROL (ONLY)
+   =============================== */
+
+const mobileListControls = document.getElementById('mobileListControls');
+const mobileCalendarControls = document.getElementById('mobileCalendarControls');
+
+function isMobileView() {
+    return window.innerWidth <= 768;
+}
+
+// This manages showing/hiding mobile controls independently of content rendering
+function updateMobileControls() {
+    if (!isMobileView()) {
+        // Always hide mobile controls on desktop
+        mobileListControls.style.display = "none";
+        mobileCalendarControls.style.display = "none";
+        return;
+    }
+
+    if (showingCalendar) {
+        mobileCalendarControls.style.display = "";
+        mobileListControls.style.display = "none";
+        // Sync month label if in calendar
+        if (mobileMonthLabel && monthLabel) {
+            mobileMonthLabel.textContent = monthLabel.textContent;
+        }
+    } else {
+        mobileListControls.style.display = "";
+        mobileCalendarControls.style.display = "none";
+    }
+}
+
+// Replace and deprecate syncMobileControls, syncing just calendar/list view
+function syncMobileControls() {
+    if (!isMobileView()) return; // Do nothing on desktop
+    // Don't update .hidden on card view, just sync controls as above
+    updateMobileControls();
+}
+window.addEventListener('resize', function() {
+    updateMobileControls();
+    updateWeekdayLabels(); // <-- Call label update on any resize
+});
+
+/* ===============================
+   🔘 MOBILE BUTTON ACTIONS
+   =============================== */
+
+// From LIST ➜ CALENDAR
+document.getElementById('mobileToCalendarBtn').onclick = () => {
+    showingCalendar = true;
+    calendarView.classList.remove('hidden');
+    scheduleView.classList.add('hidden');
+    updateMobileControls();
+    updateWeekdayLabels();
+};
+
+// From CALENDAR ➜ LIST
+document.getElementById('mobileToListBtn').onclick = () => {
+    showingCalendar = false;
+    scheduleView.classList.remove('hidden');
+    calendarView.classList.add('hidden');
+    updateMobileControls();
+    updateWeekdayLabels();
+};
+
+// Month navigation (change month AND update both mobile and desktop labels)
+document.getElementById('mobilePrevMonth').onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+    updateMobileControls();
+};
+
+document.getElementById('mobileNextMonth').onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+    updateMobileControls();
+};
+
+/* ===============================
+   🔎 SEARCH SYNC (MOBILE ➜ DESKTOP)
+   =============================== */
+
+document.getElementById('mobileScheduleSearch').addEventListener('input', e => {
+    const desktopSearch = document.getElementById('scheduleSearch');
+    desktopSearch.value = e.target.value;
+    desktopSearch.dispatchEvent(new Event('input'));
+});
+
+/* ===============================
+   🔄 INITIAL MOBILE STATE
+   =============================== */
+
+// Ensure correct mobile control on initial load
+updateMobileControls();
+
+</script>
+
+<script>
+/* Update weekday labels for calendar header. 
+ * - On mobile (≤768px): Show S,M,T,...
+ * - On desktop: Show Sunday, Monday, Tuesday, ...
+ */
+function updateWeekdayLabels() {
+    const desktopDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const shortDays = ['S','M','T','W','T','F','S'];
+    const weekdayDivs = document.querySelectorAll('.calendar-weekdays div');
+    if (!weekdayDivs.length) return;
+    if (window.innerWidth <= 768) {
+        weekdayDivs.forEach((el, i) => {
+            el.textContent = shortDays[i];
+        });
+    } else {
+        weekdayDivs.forEach((el, i) => {
+            el.textContent = desktopDays[i];
+        });
+    }
+}
+
+/* Run on load & resize */
+window.addEventListener('load', updateWeekdayLabels);
+window.addEventListener('resize', updateWeekdayLabels);
+</script>
+
+<script>
+/* ===============================
+   📅 Enhanced Month / Date Picker
+================================ */
+
+const monthPickerOverlay = document.getElementById('monthPickerOverlay');
+const pickerMonth = document.getElementById('pickerMonth');
+const pickerYear = document.getElementById('pickerYear');
+const pickerDate = document.getElementById('pickerDate');
+const pickerCancel = document.getElementById('pickerCancel');
+const pickerApply = document.getElementById('pickerApply');
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December"
+];
+
+function initMonthPicker() {
+    pickerMonth.innerHTML = '';
+    MONTHS.forEach((m, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = m;
+        pickerMonth.appendChild(opt);
+    });
+
+    pickerYear.innerHTML = '';
+    const yNow = new Date().getFullYear();
+    for (let y = yNow - 25; y <= yNow + 25; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        pickerYear.appendChild(opt);
+    }
+
+    pickerMonth.value = currentDate.getMonth();
+    pickerYear.value = currentDate.getFullYear();
+
+    // Default to "no date" if last picked was not a valid value
+    pickerDate.value = '';
+}
+
+// Show month picker overlay/modal
+function openMonthPicker() {
+    initMonthPicker();
+    monthPickerOverlay.classList.remove('hidden');
+    // Optionally focus date or month for accessibility
+    pickerMonth.focus();
+}
+
+// Close the overlay/modal
+function closeMonthPicker() {
+    monthPickerOverlay.classList.add('hidden');
+}
+
+pickerCancel.onclick = closeMonthPicker;
+
+/* APPLY LOGIC */
+pickerApply.onclick = () => {
+    const y = parseInt(pickerYear.value);
+    const m = parseInt(pickerMonth.value);
+    currentDate.setFullYear(y);
+    currentDate.setMonth(m);
+    renderCalendar();
+
+    // If date field is filled, jump and show the tasks!
+    if (pickerDate.value) {
+        const selectedDate = pickerDate.value;
+        const tasks = scheduleData.filter(t => t.schedule_date === selectedDate);
+        if (tasks.length === 1) {
+            openModal(tasks);
+        }
+        else if (tasks.length > 1) {
+            openTaskChooser(selectedDate, tasks);
+        }
+    }
+
+    closeMonthPicker();
+};
+
+// Click outside modal closes the overlay as well
+monthPickerOverlay.addEventListener('click', e => {
+    if (e.target === monthPickerOverlay) closeMonthPicker();
+});
+
+// Attach to both labels/clickable indicators
+monthLabel.addEventListener('click', openMonthPicker);
+mobileMonthLabel.addEventListener('click', openMonthPicker);
+
+// Add accessible tooltip/cursor for both month labels
+monthLabel.setAttribute("title", "Click to jump date");
+mobileMonthLabel.setAttribute("title", "Click to jump date");
+monthLabel.style.cursor = "pointer";
+mobileMonthLabel.style.cursor = "pointer";
 </script>
 
 </body>
