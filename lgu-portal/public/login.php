@@ -24,6 +24,8 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
  * For security, do not use ?logout=1 here—use logout.php instead.
  */
 
+// OTP validity window set to 12 hours
+define('OTP_VALIDITY_SECONDS', 60 * 60 * 12);
 
 // Determine base path and redirect URLs - works whether accessed directly or through index.php
 $basePath = '';
@@ -200,6 +202,19 @@ if (isset($_POST['otp_submit'])) {
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
+
+        // Save OTP verification timestamp (for DB-backed skip logic!)
+        $email = $_SESSION['login_email'];
+        $now = date('Y-m-d H:i:s');
+        $updateOtpStmt = $conn->prepare("
+            UPDATE employees
+            SET last_otp_verified_at = ?
+            WHERE email = ?
+        ");
+        $updateOtpStmt->bind_param("ss", $now, $email);
+        $updateOtpStmt->execute();
+        $updateOtpStmt->close();
+
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
 
         // Check if this is a first-time login (needs password change)
@@ -280,7 +295,11 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     }
 
     // Fetch user from DB - check email and verification status
-    $stmt = $conn->prepare("SELECT first_name, password, email_verified FROM employees WHERE LOWER(email) = LOWER(?)");
+    $stmt = $conn->prepare("
+        SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at
+        FROM employees
+        WHERE LOWER(email) = LOWER(?)
+    ");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -329,6 +348,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $_SESSION['employee_first_name'] = $user['first_name'];
 
     // Only check password if not resending OTP
+    $requireOtp = false;
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
             // Register the failed password try
@@ -353,6 +373,30 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         } else {
             // Password was correct: log in, so reset the fail count
             resetLoginFail($email);
+
+            // Determine if OTP is required
+            if ($user['last_otp_verified_at'] === null) {
+                // First login ever: OTP required
+                $requireOtp = true;
+            } else {
+                $lastOtpTime = strtotime($user['last_otp_verified_at']);
+                if ((time() - $lastOtpTime) > OTP_VALIDITY_SECONDS) {
+                    // OTP expired
+                    $requireOtp = true;
+                }
+            }
+
+            // If OTP is NOT required → Login directly
+            if (!$requireOtp) {
+                $_SESSION['employee_logged_in'] = true;
+                $_SESSION['otp_verified'] = true;
+
+                setNotification('success', 'Login successful! Redirecting...');
+                echo "<script>
+                    setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 900);
+                </script>";
+                exit;
+            }
         }
     }
 
@@ -371,106 +415,110 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     $_SESSION['login_email'] = $email;
 
-    // Generate new OTP and attempts only on login OR resend
-    $otp = rand(100000, 999999);
-    $_SESSION['otp'] = $otp;
-    $_SESSION['otp_time'] = time();
-    $_SESSION['show_otp_form'] = true;
-    $_SESSION['otp_attempts'] = 0;
+    // OTP GENERATION (database-backed, only if required)
+    if (
+        (isset($_POST['login_submit']) && $requireOtp) ||
+        (isset($_POST['resend_otp']))
+    ) {
+        $otp = rand(100000, 999999);
+        $_SESSION['otp'] = $otp;
+        $_SESSION['otp_time'] = time();
+        $_SESSION['show_otp_form'] = true;
+        $_SESSION['otp_attempts'] = 0;
 
-    // Send OTP email - Optimized for speed
-    $mail = new PHPMailer(true);
-    try {
-        $mail->SMTPDebug = 0;
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
-        $mail->CharSet    = 'UTF-8';
-        $mail->Encoding   = 'quoted-printable';
-        $mail->Timeout    = 30;
+        // Send OTP email - Optimized for speed
+        $mail = new PHPMailer(true);
+        try {
+            $mail->SMTPDebug = 0;
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'lguportalph@gmail.com';
+            $mail->Password   = 'zsozvbpsggclkcno';
+            $mail->SMTPSecure = 'tls';
+            $mail->Port       = 587;
+            $mail->CharSet    = 'UTF-8';
+            $mail->Encoding   = 'quoted-printable';
+            $mail->Timeout    = 30;
 
-        $mail->SMTPOptions = array(
-            'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
-                'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
-            )
-        );
+            $mail->SMTPOptions = array(
+                'ssl' => array(
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                    'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
+                )
+            );
 
-        $mail->SMTPAutoTLS = true;
-        $mail->SMTPKeepAlive = false;
-        $mail->WordWrap = 0;
+            $mail->SMTPAutoTLS = true;
+            $mail->SMTPKeepAlive = false;
+            $mail->WordWrap = 0;
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
-        $mail->addAddress($email);
+            $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+            $mail->addAddress($email);
 
-        $mail->isHTML(true);
-        $mail->Subject = 'LGU Portal - Your OTP Code: ' . $otp;
+            $mail->isHTML(true);
+            $mail->Subject = 'LGU Portal - Your OTP Code: ' . $otp;
 
-        $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
-            <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
-                <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
-                <h2 style="color:#4e627f;margin:0 0 30px 0;font-size:18px;font-weight:400; text-align:center;">OTP Verification Code</h2>
-                <div style="background:#eaf4fe;border-radius:8px;padding:25px;text-align:center;margin:30px 0">
-                    <div style="color:#666;font-size:16px;margin-bottom:10px">Your authentication code is</div>
-                    <div style="font-size:42px;font-family:\'Courier New\',monospace;color:#1f66b1;font-weight:700;letter-spacing:8px">'.$otp.'</div>
+            $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
+                <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
+                    <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
+                    <h2 style="color:#4e627f;margin:0 0 30px 0;font-size:18px;font-weight:400; text-align:center;">OTP Verification Code</h2>
+                    <div style="background:#eaf4fe;border-radius:8px;padding:25px;text-align:center;margin:30px 0">
+                        <div style="color:#666;font-size:16px;margin-bottom:10px">Your authentication code is</div>
+                        <div style="font-size:42px;font-family:\'Courier New\',monospace;color:#1f66b1;font-weight:700;letter-spacing:8px">'.$otp.'</div>
+                    </div>
+                    <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
+                        This code is valid for <strong style="color:#174c86">5 minutes</strong> and can only be used once.
+                    </p>
+                    <p style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0; text-align:center;">
+                        Never share this code with anyone.<br>
+                        LGU Portal staff will never ask for this code.
+                    </p>
+                    <p style="color:#999;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:20px; text-align:center;">
+                        Didn\'t request this OTP? You may safely ignore this email.
+                    </p>
+                    <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
                 </div>
-                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
-                    This code is valid for <strong style="color:#174c86">5 minutes</strong> and can only be used once.
-                </p>
-                <p style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0; text-align:center;">
-                    Never share this code with anyone.<br>
-                    LGU Portal staff will never ask for this code.
-                </p>
-                <p style="color:#999;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:20px; text-align:center;">
-                    Didn\'t request this OTP? You may safely ignore this email.
-                </p>
-                <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
-            </div>
-        </body></html>';
+            </body></html>';
 
-        $mail->Body = $htmlBody;
-        $mail->AltBody = "LGU Portal - OTP Verification\n\n" .
-                        "Your authentication code is: $otp\n\n" .
-                        "This code is valid for 5 minutes and can only be used once.\n\n" .
-                        "Never share this code with anyone.\n\n" .
-                        "© " . date('Y') . " LGU Portal";
+            $mail->Body = $htmlBody;
+            $mail->AltBody = "LGU Portal - OTP Verification\n\n" .
+                            "Your authentication code is: $otp\n\n" .
+                            "This code is valid for 5 minutes and can only be used once.\n\n" .
+                            "Never share this code with anyone.\n\n" .
+                            "© " . date('Y') . " LGU Portal";
 
-        if (!$mail->validateAddress($email)) {
-            throw new \PHPMailer\PHPMailer\Exception("Invalid email address: $email");
+            if (!$mail->validateAddress($email)) {
+                throw new \PHPMailer\PHPMailer\Exception("Invalid email address: $email");
+            }
+
+            $mail->send();
+            setNotification('success', 'OTP sent! Please check your email.');
+        } catch (\PHPMailer\PHPMailer\Exception $e) {
+            $errorInfo = '';
+            if (isset($mail) && $mail instanceof PHPMailer) {
+                $errorInfo = $mail->ErrorInfo;
+            }
+            $errorMsg = 'Failed to send OTP email. ';
+            if (!empty($errorInfo)) {
+                $errorMsg .= 'SMTP Error: ' . htmlspecialchars($errorInfo) . '. ';
+            }
+            $errorMsg .= 'Exception: ' . htmlspecialchars($e->getMessage()) . '. ';
+            $errorMsg .= 'Please check: 1) Gmail credentials are correct, 2) App password is valid, 3) Email address is valid. If the problem persists, contact support.';
+            setNotification('error', $errorMsg);
+
+            error_log('PHPMailer Error in login.php: ' . $e->getMessage());
+            error_log('PHPMailer ErrorInfo: ' . ($errorInfo ? $errorInfo : 'No error info available'));
+            error_log('Email address: ' . ($email ?? 'Not set'));
+            error_log('OTP: ' . (isset($otp) ? $otp : 'Not set'));
+        } catch (\Exception $e) {
+            $errorMsg = 'Failed to send OTP email. Error: ' . htmlspecialchars($e->getMessage()) . '. Please try again or contact support.';
+            setNotification('error', $errorMsg);
+            error_log('General Exception in login.php email sending: ' . $e->getMessage());
+            error_log('Exception class: ' . get_class($e));
+            error_log('Stack trace: ' . $e->getTraceAsString());
         }
-
-        $mail->send();
-        setNotification('success', 'OTP sent! Please check your email.');
-
-    } catch (\PHPMailer\PHPMailer\Exception $e) {
-        $errorInfo = '';
-        if (isset($mail) && $mail instanceof PHPMailer) {
-            $errorInfo = $mail->ErrorInfo;
-        }
-        $errorMsg = 'Failed to send OTP email. ';
-        if (!empty($errorInfo)) {
-            $errorMsg .= 'SMTP Error: ' . htmlspecialchars($errorInfo) . '. ';
-        }
-        $errorMsg .= 'Exception: ' . htmlspecialchars($e->getMessage()) . '. ';
-        $errorMsg .= 'Please check: 1) Gmail credentials are correct, 2) App password is valid, 3) Email address is valid. If the problem persists, contact support.';
-        setNotification('error', $errorMsg);
-
-        error_log('PHPMailer Error in login.php: ' . $e->getMessage());
-        error_log('PHPMailer ErrorInfo: ' . ($errorInfo ? $errorInfo : 'No error info available'));
-        error_log('Email address: ' . ($email ?? 'Not set'));
-        error_log('OTP: ' . (isset($otp) ? $otp : 'Not set'));
-    } catch (\Exception $e) {
-        $errorMsg = 'Failed to send OTP email. Error: ' . htmlspecialchars($e->getMessage()) . '. Please try again or contact support.';
-        setNotification('error', $errorMsg);
-        error_log('General Exception in login.php email sending: ' . $e->getMessage());
-        error_log('Exception class: ' . get_class($e));
-        error_log('Stack trace: ' . $e->getTraceAsString());
     }
 }
 // END PHP

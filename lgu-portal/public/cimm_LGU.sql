@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 15, 2026 at 06:15 AM
+-- Generation Time: Jan 17, 2026 at 12:00 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -37,20 +37,21 @@ CREATE TABLE `employees` (
   `is_first_login` tinyint(1) NOT NULL DEFAULT 1,
   `email_verified` tinyint(1) NOT NULL DEFAULT 0,
   `verification_token` varchar(64) DEFAULT NULL,
-  `verification_token_expires` datetime DEFAULT NULL
+  `verification_token_expires` datetime DEFAULT NULL,
+  `last_otp_verified_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`) VALUES
-(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL),
-(2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL),
-(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL),
-(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL),
-(8, 'Steph', 'Sagun', 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL),
-(9, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Manager', '$2y$10$nbQgJN.MTHi1BcYCYO8bw./W59FmBKp4fceONQuD8aOC.UvojiY7e', 0, 1, NULL, NULL);
+INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`, `last_otp_verified_at`) VALUES
+(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-01-17 11:48:34'),
+(2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL, NULL),
+(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, NULL),
+(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL),
+(8, 'Steph', 'Sagun', 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL, NULL),
+(9, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Manager', '$2y$10$nbQgJN.MTHi1BcYCYO8bw./W59FmBKp4fceONQuD8aOC.UvojiY7e', 0, 1, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -92,7 +93,12 @@ INSERT INTO `maintenance_schedule` (`sched_id`, `task`, `location`, `category`, 
 (1, 'Aircon Cleaning', 'City Hall – Office 201', 'HVAC / Cooling', 'Medium', 'Scheduled', 'Facilities - HVAC Team', '2025-01-20', NULL, '2026-01-14 08:41:37'),
 (2, 'Generator Test', 'City Hall Basement', 'Power & Electrical', 'High', 'Planned', 'Electrical Maintenance Team', '2025-01-22', NULL, '2026-01-14 08:41:37'),
 (3, 'Road Crack Repair', 'Barangay 176', 'Roads & Pavements', 'Critical', 'Delayed', 'Public Works Team', '2025-01-10', NULL, '2026-01-14 08:41:37'),
-(4, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37');
+(4, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37'),
+(5, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37'),
+(6, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37'),
+(7, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37'),
+(9, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2025-01-05', NULL, '2026-01-14 08:41:37'),
+(10, 'Fire Extinguisher Check', 'City Hall Lobby', 'Safety & Compliance', 'Low', 'Completed', 'Safety & Compliance Team', '2026-01-05', NULL, '2026-01-14 08:41:37');
 
 -- --------------------------------------------------------
 
@@ -207,7 +213,7 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  MODIFY `sched_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `sched_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`

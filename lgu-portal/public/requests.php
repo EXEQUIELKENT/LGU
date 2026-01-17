@@ -1,11 +1,35 @@
 <?php
 session_start();
 
+$INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
+
+// If last activity is set and timeout exceeded
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
+
 /* 🚫 Prevent browser caching of protected pages */
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
+
+/* 🔐 Strict session check */
+if (
+    !isset($_SESSION['employee_logged_in']) ||
+    $_SESSION['employee_logged_in'] !== true
+) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
 
 require __DIR__ . '/db.php';
 
@@ -1387,6 +1411,27 @@ function handleProfilePicture() {
 }
 
 document.addEventListener('DOMContentLoaded', handleProfilePicture);
+</script>
+
+<script>
+let inactivityTime = 20 * 60 * 1000; // 20 minutes
+let inactivityTimer;
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        // Silent logout (no notification)
+        window.location.href = 'logout.php';
+    }, inactivityTime);
+}
+
+// Events that count as activity
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+    document.addEventListener(event, resetInactivityTimer, true);
+});
+
+// Start timer on load
+resetInactivityTimer();
 </script>
 
 
