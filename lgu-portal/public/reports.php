@@ -826,8 +826,9 @@ h2 {
     <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
         <!-- Profile Button -->
-        <div class="sidebar-profile-btn" id="sidebarProfileBtn" tabindex="0" data-tooltip="Profile">
-            <img src="profile.png" alt="Profile">
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile">
+            <img src="profile.png" alt="Profile" id="profileImg">
+            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
         <!-- Logo -->
         <div class="site-logo">
@@ -949,50 +950,115 @@ h2 {
 </div>
 
 <script>
-// Sidebar Toggle Functionality
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
+const sidebarNav = document.getElementById('sidebarNav');
 
-// Load saved state from localStorage
+// Helper to detect mobile view (update the breakpoint if needed)
+function isMobileView() {
+    return window.innerWidth <= 900; // or your specific mobile breakpoint
+}
+
+// Make sure sidebar collapsed state is persisted
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
     mainContent.classList.add('expanded');
 }
 
+// --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
+let lastMobileState = isMobileView();
+window.addEventListener('resize', () => {
+    const isNowMobile = isMobileView();
+    // If we just switched to mobile AND sidebar is collapsed, expand sidebar & update localStorage
+    if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('expanded');
+        localStorage.setItem('sidebarCollapsed', 'false');
+    }
+    lastMobileState = isNowMobile;
+});
+
 sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded');
-    // Save state to localStorage
     const isCollapsed = sidebar.classList.contains('collapsed');
     localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // Hide tooltip if sidebar is expanding
     if (!isCollapsed) {
-        hideNavTooltipImmediate();
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.style.display = 'none';
     }
 });
 
-// Sidebar Tooltip Pop Functionality (including profile icon popup)
 const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-// Helper to show tooltip for target and text
-function showNavTooltip(target, tooltipText, isLogout = false) {
-    tooltipActiveLink = target;
-    sidebarNavTooltip.textContent = tooltipText || "";
-    sidebarNavTooltip.classList.toggle('logout-pop', isLogout);
-    sidebarNavTooltip.style.display = "block";
-    // Position tooltip
-    const rect = target.getBoundingClientRect();
+// Add tooltip listeners for nav-links
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    link.addEventListener('mouseenter', navTooltipHandler);
+    link.addEventListener('focus', navTooltipHandler);
+    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+// Add tooltip for profile icon (on collapse, like employee.php)
+const profileIconBtn = document.getElementById('profileIconBtn');
+if (profileIconBtn) {
+    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+    profileIconBtn.addEventListener('focus', navTooltipHandler);
+    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    profileIconBtn.addEventListener('blur', hideNavTooltip);
+}
+
+// Add tooltip and logic for logout button (keep existing logic with tooltip)
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('focus', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('mouseleave', function(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    sidebarNavTooltip.classList.remove('active');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+logoutBtn.addEventListener('blur', hideNavTooltip);
+
+function showLogoutTooltip(e) {
+    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+    tooltipActiveLink = logoutBtn;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = logoutBtn.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
     const y = rect.top + rect.height / 2 + window.scrollY;
     sidebarNavTooltip.style.left = (x + 10) + 'px';
     sidebarNavTooltip.style.top = y + 'px';
 
-    setTimeout(() => {
+    setTimeout(function(){
         sidebarNavTooltip.classList.add('active');
     }, 5);
 
@@ -1026,9 +1092,29 @@ function navTooltipHandler(e) {
         hideNavTooltip();
         return;
     }
-    const tooltipText = this.getAttribute('data-tooltip');
+    // Show nav-link or profile icon name
+    let tooltipText = this.getAttribute('data-tooltip');
+    if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
     if (!tooltipText) return;
-    showNavTooltip(this, tooltipText, false);
+    tooltipActiveLink = this;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = this.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
 }
 function navLinkMouseLeaveHandler(e) {
     if (
@@ -1042,63 +1128,6 @@ function navLinkMouseLeaveHandler(e) {
         tooltipActiveLink = null;
     }, 60);
 }
-
-// Add tooltip for nav-links
-document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    link.addEventListener('mouseenter', navTooltipHandler);
-    link.addEventListener('focus', navTooltipHandler);
-    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    link.addEventListener('blur', hideNavTooltip);
-});
-
-// Add tooltip for profile icon button
-const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
-if (sidebarProfileBtn) {
-    function profileTooltipHandler(e) {
-        if (!sidebar.classList.contains('collapsed')) {
-            hideNavTooltip();
-            return;
-        }
-        const tooltipText = sidebarProfileBtn.getAttribute('data-tooltip');
-        if (tooltipText)
-            showNavTooltip(sidebarProfileBtn, tooltipText, false);
-    }
-    sidebarProfileBtn.addEventListener('mouseenter', profileTooltipHandler);
-    sidebarProfileBtn.addEventListener('focus', profileTooltipHandler);
-    sidebarProfileBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    sidebarProfileBtn.addEventListener('blur', hideNavTooltip);
-}
-
-// Add tooltip for logout button when collapsed
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('mouseenter', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showNavTooltip(logoutBtn, logoutBtn.getAttribute('data-tooltip') || "Log out", true);
-});
-logoutBtn.addEventListener('focus', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showNavTooltip(logoutBtn, logoutBtn.getAttribute('data-tooltip') || "Log out", true);
-});
-logoutBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-logoutBtn.addEventListener('blur', hideNavTooltip);
-
-// Keyboard navigation for nav-link, profile, logout
-document.querySelectorAll('.nav-link, #sidebarProfileBtn, #logoutBtn').forEach(function(link) {
-    link.addEventListener('keydown', function(e) {
-        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
-            e.preventDefault();
-            this.focus();
-        }
-    });
-});
-
-// Hide tooltip when mouse leaves the tooltip container
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
@@ -1112,6 +1141,21 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
+// Also support keyboard accessibility: show tooltip on space/enter
+document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
+    link.addEventListener('keydown', function(e) {
+        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            this.focus();
+        }
+    });
+});
+logoutBtn.addEventListener('keydown', function(e) {
+    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        this.focus();
+    }
+});
 sidebarToggle.addEventListener('click', () => {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1122,19 +1166,23 @@ sidebarToggle.addEventListener('click', () => {
     }
 });
 
-// Logout Alert Modal Logic
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 
-logoutBtn.addEventListener('click', () => {
+// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
+logoutBtn.addEventListener('click', (e) => {
+    // prevent default just in case (button not type=submit)
+    e.preventDefault();
     logoutAlertBackdrop.classList.add("active");
     hideNavTooltipImmediate();
 });
-logoutCancelBtn.addEventListener('click', () => {
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     logoutAlertBackdrop.classList.remove("active");
 });
-logoutConfirmBtn.addEventListener('click', () => {
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     window.location.href = 'logout.php';
 });
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
@@ -1143,7 +1191,6 @@ logoutAlertBackdrop.addEventListener('mousedown', (e) => {
     }
 });
 
-// MOBILE SIDEBAR TOGGLE
 const mobileToggle = document.getElementById('mobileToggle');
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
@@ -1151,12 +1198,41 @@ if (mobileToggle) {
     });
 }
 
-// Force reload on Safari/tab restore to defeat backcache (bfcache)
+// --- Add step 3: force reload on browser bfcache to enforce session check ---
 window.addEventListener("pageshow", function (event) {
     if (event.persisted) {
         window.location.reload();
     }
 });
+</script>
+
+<script>
+function handleProfilePicture() {
+    const img = document.getElementById('profileImg');
+    const fallback = document.getElementById('profileFallbackIcon');
+
+    if (!img) return;
+
+    // If image fails to load
+    img.onerror = () => {
+        img.style.display = 'none';
+        fallback.style.display = 'flex';
+    };
+
+    // If image exists and loads correctly
+    img.onload = () => {
+        img.style.display = 'block';
+        fallback.style.display = 'none';
+    };
+
+    // Extra safety: empty or default src
+    if (!img.src || img.src.endsWith('profile.png')) {
+        img.style.display = 'none';
+        fallback.style.display = 'flex';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', handleProfilePicture);
 </script>
 
 </body>

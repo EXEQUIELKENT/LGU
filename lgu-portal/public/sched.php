@@ -127,10 +127,6 @@ if ($result && $result->num_rows > 0) {
 }
 ?>
 
-<script>
-const scheduleData = <?= json_encode($schedules, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
-</script>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -736,6 +732,109 @@ body::-webkit-scrollbar {
     border-radius:10px;
     cursor:pointer;
     font-weight:600;
+}
+
+/* ===== Arrow + counter wrapper ===== */
+.more-tasks-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+/* Arrow button (centered) */
+.more-tasks-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 14px;
+    line-height: 1;
+    color: #333;
+
+    transition: transform 0.25s ease;
+}
+
+.more-tasks-btn.open {
+    transform: rotate(180deg);
+}
+
+/* Counter badge (desktop only) */
+.task-counter {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #e5e7eb;
+    color: #111;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+
+/* --- UX Improvements for Dropdown & Arrow --- */
+.more-tasks-btn {
+    transition: transform 0.25s ease;
+}
+.more-tasks-btn.open {
+    transform: rotate(180deg);
+}
+.task-dropdown {
+    animation: dropdownFade 0.2s ease-out;
+    z-index:999; /* stays above */
+}
+@keyframes dropdownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== Calendar overflow task dropdown ===== */
+
+.calendar-day {
+    position: relative;
+    overflow: visible;
+}
+
+/* Arrow button */
+.more-tasks-btn {
+    width: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 4px;
+    color: #333;
+}
+
+/* Floating dropdown panel */
+.task-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    z-index: 50;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    padding: 6px;
+}
+
+/* Task buttons inside dropdown */
+.task-dropdown .task-btn {
+    display: block;
+    width: 100%;
+    margin: 6px 0;
 }
 
 .schedule-item{
@@ -1388,7 +1487,10 @@ body::-webkit-scrollbar {
         padding: 22px;
     }
 }
+
 </style>
+
+
 </head>
 
 <body>
@@ -1410,7 +1512,8 @@ body::-webkit-scrollbar {
 
     <div class="sidebar-top">
         <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile">
-            <img src="profile.png" alt="Profile">
+            <img src="profile.png" alt="Profile" id="profileImg">
+            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
@@ -1428,7 +1531,6 @@ body::-webkit-scrollbar {
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
-        <!-- Removed onclick="window.location.href='logout.php'" for correct modal behavior -->
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
@@ -1547,8 +1649,6 @@ body::-webkit-scrollbar {
             </div>
         </div>
 
-        <!-- Removed old toggle button here -->
-
     </div>
 </div>
 
@@ -1591,7 +1691,6 @@ body::-webkit-scrollbar {
     <div class="picker-header">Jump to Date</div>
     <select id="pickerMonth"></select>
     <select id="pickerYear"></select>
-    <!-- NEW: Date picker -->
     <input type="date" id="pickerDate" style="padding:10px;border-radius:10px;border:1px solid #b1b8d0;">
     <div class="picker-actions">
       <button id="pickerCancel">Cancel</button>
@@ -1600,707 +1699,819 @@ body::-webkit-scrollbar {
   </div>
 </div>
 
+<!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-const calendarGrid = document.getElementById('calendarGrid');
-const calendarDetails = document.getElementById('calendarDetails');
-const monthLabel = document.getElementById('monthLabel');
-const mobileMonthLabel = document.getElementById('mobileMonthLabel');
-const calendarView = document.getElementById('calendarView');
-const scheduleView = document.getElementById('scheduleView');
+window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+</script>
+<!-- ============ END SCHEDULE DATA PATCH ============== -->
 
-let currentDate = new Date();
-let showingCalendar = true;
-
-function getStatusKey(statusLabel) {
-    const s = (statusLabel || '').toLowerCase();
-    if (!s) return 'upcoming';
-    if (s.indexOf('delay') !== -1) return 'delayed';
-    if (s.indexOf('progress') !== -1 || s.indexOf('on-going') !== -1 || s.indexOf('ongoing') !== -1) return 'ongoing';
-    if (s.indexOf('completed') !== -1) return 'completed';
-    return 'upcoming';
-}
-
-function applyStatusClassesToList() {
-    const items = document.querySelectorAll('.schedule-item');
-    items.forEach(item => {
-        const statusLabel = item.getAttribute('data-status') || '';
-        const key = getStatusKey(statusLabel);
-        item.classList.add('status-' + key + '-color');
-    });
-}
-
-const taskModal = document.getElementById('taskModal');
-const modalBody = document.getElementById('modalBody');
-const modalClose = document.getElementById('modalClose');
-modalClose.onclick = ()=>taskModal.classList.add('hidden');
-window.onclick = (e)=>{
-    // Close Task Modal
-    if(e.target===taskModal) taskModal.classList.add('hidden');
-    // Close Chooser Modal
-    if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
-};
-
-function openModal(tasks){
-    modalBody.innerHTML='';
-    tasks.forEach(t=>{
-        const div=document.createElement('div');
-        div.className='modal-task-item';
-        const category   = t.category      || 'General Maintenance';
-        const priority   = t.priority      || 'Low';
-        const statusLbl  = t.status_label  || 'Planned';
-        const team       = t.assigned_team || 'General Maintenance Team';
-
-        const statusKey  = getStatusKey(statusLbl);
-        if (statusKey) {
-            div.classList.add('status-' + statusKey + '-color');
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Helper for query selector with error
+    function getSafeElem(id) {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn('[sched.php] Missing element for:', id);
         }
-
-        div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
-                       <strong>Location:</strong> ${t.location}<br>
-                       <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
-                       <strong>Category:</strong> ${category}<br>
-                       <strong>Priority:</strong> ${priority}<br>
-                       <strong>Status:</strong> ${statusLbl}<br>
-                       <strong>Assigned Team:</strong> ${team}`;
-        modalBody.appendChild(div);
-    });
-    taskModal.classList.remove('hidden');
-}
-
-// Task Chooser Modal logic (when more than 1 task exists)
-const taskChooserModal = document.getElementById('taskChooserModal');
-const taskChooserBody = document.getElementById('taskChooserBody');
-function openTaskChooser(date, tasks) {
-    taskChooserBody.innerHTML = '';
-    tasks.forEach(t => {
-        const btn = document.createElement('button');
-        btn.className = 'task-btn';
-        btn.style.margin = '8px 0'; // changed from '6px 0' to '8px 0' per instructions
-        btn.style.width = '100%';
-        btn.textContent = `${t.task} – ${t.location}`;
-        const key = getStatusKey(t.status_label || '');
-        if (key) btn.classList.add('status-' + key + '-bg');
-        btn.onclick = () => {
-            taskChooserModal.classList.add('hidden');
-            openModal([t]);
-        };
-        taskChooserBody.appendChild(btn);
-    });
-    taskChooserModal.classList.remove('hidden');
-}
-function closeTaskChooser() {
-    taskChooserModal.classList.add('hidden');
-}
-
-// FIXED renderCalendar so .task-btns show up in calendar cells
-function renderCalendar(){
-    calendarGrid.innerHTML='';
-    calendarDetails.innerHTML='Select a date to view schedule.';
-    const year=currentDate.getFullYear();
-    const month=currentDate.getMonth();
-    const monthText=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
-    monthLabel.textContent=monthText;
-    if(mobileMonthLabel) mobileMonthLabel.textContent=monthText;  // <-- Also update the mobile label here!
-
-    const firstDay=new Date(year, month,1).getDay();
-    const daysInMonth=new Date(year,month+1,0).getDate();
-    // Add blank cells for offset of first day
-    for(let i=0;i<firstDay;i++) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = "calendar-day";
-        calendarGrid.appendChild(emptyDiv);
+        return el;
     }
 
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const events = scheduleData.filter(e => e.schedule_date === dateStr);
+    // Grab all required elements safely (with null fallback)
+    const sidebarToggle = getSafeElem('sidebarToggle');
+    const sidebar = getSafeElem('sidebarNav');
+    const mainContent = document.querySelector('.main-content');
+    const sidebarNav = getSafeElem('sidebarNav');
+    const sidebarNavTooltip = getSafeElem('sidebarNavTooltip');
+    const profileIconBtn = getSafeElem('profileIconBtn');
+    const logoutBtn = getSafeElem('logoutBtn');
+    const logoutAlertBackdrop = getSafeElem('logoutAlertBackdrop');
+    const logoutCancelBtn = getSafeElem('logoutCancelBtn');
+    const logoutConfirmBtn = getSafeElem('logoutConfirmBtn');
+    const mobileToggle = getSafeElem('mobileToggle');
+    const taskModal = getSafeElem('taskModal');
+    const modalBody = getSafeElem('modalBody');
+    const modalClose = getSafeElem('modalClose');
+    const taskChooserModal = getSafeElem('taskChooserModal');
+    const taskChooserBody = getSafeElem('taskChooserBody');
+    const calendarGrid = getSafeElem('calendarGrid');
+    const calendarDetails = getSafeElem('calendarDetails');
+    const monthLabel = getSafeElem('monthLabel');
+    const mobileMonthLabel = getSafeElem('mobileMonthLabel');
+    const calendarView = getSafeElem('calendarView');
+    const scheduleView = getSafeElem('scheduleView');
+    const scheduleSearch = getSafeElem('scheduleSearch');
+    const scheduleListHolder = getSafeElem('scheduleListHolder');
+    const noResultMsg = getSafeElem('noResultMsg');
+    const toCalendarBtn = getSafeElem('toCalendarBtn');
+    const toListBtn = getSafeElem('toListBtn');
+    const mobileListControls = getSafeElem('mobileListControls');
+    const mobileCalendarControls = getSafeElem('mobileCalendarControls');
+    const mobileToCalendarBtn = getSafeElem('mobileToCalendarBtn');
+    const mobileToListBtn = getSafeElem('mobileToListBtn');
+    const mobilePrevMonth = getSafeElem('mobilePrevMonth');
+    const mobileNextMonth = getSafeElem('mobileNextMonth');
+    const mobileScheduleSearch = getSafeElem('mobileScheduleSearch');
+    const prevMonthBtn = getSafeElem('prevMonth');
+    const nextMonthBtn = getSafeElem('nextMonth');
 
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
+    // Month Picker
+    const monthPickerOverlay = getSafeElem('monthPickerOverlay');
+    const pickerMonth = getSafeElem('pickerMonth');
+    const pickerYear = getSafeElem('pickerYear');
+    const pickerDate = getSafeElem('pickerDate');
+    const pickerCancel = getSafeElem('pickerCancel');
+    const pickerApply = getSafeElem('pickerApply');
 
-        const dayNumDiv = document.createElement('div');
-        dayNumDiv.textContent = d;
-        dayDiv.appendChild(dayNumDiv);
+    // Defensive fallback (should never be needed with PATCH above)
+    if (typeof window.scheduleData === "undefined") window.scheduleData = [];
 
-        // Always add the .day-tasks div, even if empty, so buttons show up
-        const tasksDiv = document.createElement('div');
-        tasksDiv.className = 'day-tasks';
+    // --- MOBILE VIEW DETECTOR (Canonical, one function only) ---
+    function isMobileView() {
+        return window.innerWidth <= 768;
+    }
 
-        // Make sure event buttons show in the calendar
-        if (events.length) {
-            // Add a button for each schedule/task on this day
-            events.forEach((e, i) => {
-                const btn = document.createElement('button');
-                // Show task # and part of task name if multiple (for context); you can adjust display as needed
-                btn.textContent = events.length === 1 ? '●' : (i + 1);
-                btn.className = 'task-btn';
-
-                // Set better title for accessibility/mouse hover
-                btn.title = `${e.task} (${e.status_label || ''})`;
-
-                // Color the button based on status
-                const key = getStatusKey(e.status_label || '');
-                if (key) {
-                    btn.classList.add('status-' + key + '-bg');
+    // --- Sidebar collapse state logic (unchanged) ---
+    if (sidebar && mainContent) {
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+        }
+        let lastMobileState = isMobileView();
+        window.addEventListener('resize', () => {
+            const isNowMobile = isMobileView();
+            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                localStorage.setItem('sidebarCollapsed', 'false');
+            }
+            lastMobileState = isNowMobile;
+        });
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                if (sidebarNavTooltip) {
+                    sidebarNavTooltip.classList.remove('active');
+                    sidebarNavTooltip.style.display = 'none';
                 }
-
-                btn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    openModal([e]);
-                });
-                tasksDiv.appendChild(btn);
             });
         }
-
-        dayDiv.appendChild(tasksDiv);
-
-        dayDiv.addEventListener('click', () => {
-            if(events.length){
-                calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>`;
-                calendarDetails.innerHTML += events.map(e => `• ${e.task} – ${e.location}`).join('<br>');
-            } else {
-                calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>No scheduled maintenance.`;
-            }
-        });
-
-        calendarGrid.appendChild(dayDiv);
     }
-}
 
-document.getElementById('prevMonth').onclick=()=>{
-    currentDate.setMonth(currentDate.getMonth()-1);
-    renderCalendar();
-}
-document.getElementById('nextMonth').onclick=()=>{
-    currentDate.setMonth(currentDate.getMonth()+1);
-    renderCalendar();
-}
-renderCalendar();
-applyStatusClassesToList();
-
-const scheduleSearch = document.getElementById('scheduleSearch');
-const scheduleListHolder = document.getElementById('scheduleListHolder');
-const noResultMsg = document.getElementById('noResultMsg');
-
-if (scheduleSearch && scheduleListHolder) {
-    scheduleSearch.addEventListener('input', function() {
-        const searchVal = this.value.trim().toLowerCase();
-        const items = scheduleListHolder.querySelectorAll('.schedule-item');
-        let shownCount = 0;
-
-        if (!searchVal.length) {
-            items.forEach(i => { i.style.display = ''; });
-            if (noResultMsg) noResultMsg.style.display = 'none';
+    // --- Sidebar tooltips and nav (unchanged) ---
+    // ... no changes, copy as before ...
+    let tooltipActiveLink = null;
+    let tooltipHideTimeout = null;
+    function hideNavTooltipImmediate() {
+        if (!sidebarNavTooltip) return;
+        sidebarNavTooltip.classList.remove('active', 'logout-pop');
+        sidebarNavTooltip.style.display = 'none';
+        tooltipActiveLink = null;
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    }
+    function hideNavTooltip() {
+        if (!sidebarNavTooltip) return;
+        sidebarNavTooltip.classList.remove('active', 'logout-pop');
+        setTimeout(function() {
+            sidebarNavTooltip.style.display = 'none';
+            tooltipActiveLink = null;
+        }, 150);
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    }
+    function showLogoutTooltip(e) {
+        if (!sidebarNavTooltip || !logoutBtn || !sidebar) return;
+        const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+        tooltipActiveLink = logoutBtn;
+        sidebarNavTooltip.textContent = tooltipText;
+        sidebarNavTooltip.classList.add('logout-pop');
+        sidebarNavTooltip.style.display = 'block';
+        const rect = logoutBtn.getBoundingClientRect();
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const x = sidebarRect.right + 5;
+        const y = rect.top + rect.height / 2 + window.scrollY;
+        sidebarNavTooltip.style.left = (x + 10) + 'px';
+        sidebarNavTooltip.style.top = y + 'px';
+        setTimeout(function(){ sidebarNavTooltip.classList.add('active'); }, 5);
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    }
+    function navTooltipHandler(e) {
+        if (!sidebarNavTooltip || !sidebar) return;
+        if (!sidebar.classList.contains('collapsed')) {
+            hideNavTooltip();
             return;
         }
+        let tooltipText = this.getAttribute('data-tooltip');
+        if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
+        if (!tooltipText) return;
+        tooltipActiveLink = this;
+        sidebarNavTooltip.textContent = tooltipText;
+        sidebarNavTooltip.classList.remove('logout-pop');
+        sidebarNavTooltip.style.display = 'block';
+        const rect = this.getBoundingClientRect();
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const x = sidebarRect.right + 5;
+        const y = rect.top + rect.height / 2 + window.scrollY;
+        sidebarNavTooltip.style.left = (x + 10) + 'px';
+        sidebarNavTooltip.style.top = y + 'px';
+        setTimeout(function(){ sidebarNavTooltip.classList.add('active'); }, 5);
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    }
+    function navLinkMouseLeaveHandler(e) {
+        if (!sidebarNavTooltip) return;
+        if (
+            e.relatedTarget === sidebarNavTooltip ||
+            (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+        ) {
+            return;
+        }
+        tooltipHideTimeout = setTimeout(() => {
+            hideNavTooltip();
+            tooltipActiveLink = null;
+        }, 60);
+    }
+    if (sidebarNavTooltip) {
+        sidebarNavTooltip.addEventListener('mouseleave', function() {
+            tooltipHideTimeout = setTimeout(() => {
+                hideNavTooltip();
+                tooltipActiveLink = null;
+            }, 60);
+        });
+        sidebarNavTooltip.addEventListener('mouseenter', function() {
+            if (tooltipHideTimeout) {
+                clearTimeout(tooltipHideTimeout);
+                tooltipHideTimeout = null;
+            }
+        });
+    }
 
-        items.forEach(item => {
-            const task = item.getAttribute('data-task') || '';
-            const loc = item.getAttribute('data-location') || '';
-            const date = item.getAttribute('data-date') || '';
-            const cat = item.getAttribute('data-category') || '';
-            const stat = item.getAttribute('data-status') || '';
-            const prio = item.getAttribute('data-priority') || '';
+    if (sidebarNav) {
+        document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+            link.addEventListener('mouseenter', navTooltipHandler);
+            link.addEventListener('focus', navTooltipHandler);
+            link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+            link.addEventListener('blur', hideNavTooltip);
+        });
+    }
+    if (profileIconBtn) {
+        profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+        profileIconBtn.addEventListener('focus', navTooltipHandler);
+        profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+        profileIconBtn.addEventListener('blur', hideNavTooltip);
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('mouseenter', function(e) {
+            if (!sidebar || !sidebar.classList.contains('collapsed')) {
+                hideNavTooltipImmediate();
+                return;
+            }
+            showLogoutTooltip(e);
+        });
+        logoutBtn.addEventListener('focus', function(e) {
+            if (!sidebar || !sidebar.classList.contains('collapsed')) {
+                hideNavTooltipImmediate();
+                return;
+            }
+            showLogoutTooltip(e);
+        });
+        logoutBtn.addEventListener('mouseleave', function(e) {
             if (
-                task.includes(searchVal) ||
-                loc.includes(searchVal) ||
-                date.includes(searchVal) ||
-                cat.includes(searchVal) ||
-                stat.includes(searchVal) ||
-                prio.includes(searchVal)
-            ) {
-                item.style.display = '';
-                shownCount++;
-            } else {
-                item.style.display = 'none';
+                sidebarNavTooltip && 
+                (e.relatedTarget === sidebarNavTooltip ||
+                (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget)))
+            ) { return; }
+            sidebarNavTooltip && sidebarNavTooltip.classList.remove('active', 'logout-pop');
+            sidebarNavTooltip && (sidebarNavTooltip.style.display = 'none');
+            tooltipActiveLink = null;
+            if (tooltipHideTimeout) {
+                clearTimeout(tooltipHideTimeout);
+                tooltipHideTimeout = null;
             }
         });
-
-        if (noResultMsg) {
-            if (shownCount === 0) {
-                noResultMsg.style.display = '';
-            } else {
-                noResultMsg.style.display = 'none';
+        logoutBtn.addEventListener('blur', hideNavTooltip);
+        logoutBtn.addEventListener('keydown', function(e) {
+            if (sidebar && sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+                e.preventDefault();
+                this.focus();
             }
-        }
-    });
-}
-
-const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebarNav');
-const mainContent = document.querySelector('.main-content');
-const sidebarNav = document.getElementById('sidebarNav');
-
-// Make sure sidebar collapsed state is persisted
-const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-if (sidebarCollapsed) {
-    sidebar.classList.add('collapsed');
-    mainContent.classList.add('expanded');
-}
-
-sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
-    if (!isCollapsed) {
-        sidebarNavTooltip.classList.remove('active');
-        sidebarNavTooltip.style.display = 'none';
-    }
-});
-
-const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
-let tooltipActiveLink = null;
-let tooltipHideTimeout = null;
-
-// Add tooltip listeners for nav-links
-document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    link.addEventListener('mouseenter', navTooltipHandler);
-    link.addEventListener('focus', navTooltipHandler);
-    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    link.addEventListener('blur', hideNavTooltip);
-});
-// Add tooltip for profile icon (on collapse, like employee.php)
-const profileIconBtn = document.getElementById('profileIconBtn');
-if (profileIconBtn) {
-    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
-    profileIconBtn.addEventListener('focus', navTooltipHandler);
-    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    profileIconBtn.addEventListener('blur', hideNavTooltip);
-}
-
-// Add tooltip and logic for logout button (keep existing logic with tooltip)
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('mouseenter', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('focus', function(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltipImmediate();
-        return;
-    }
-    showLogoutTooltip(e);
-});
-logoutBtn.addEventListener('mouseleave', function(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
-        return;
-    }
-    sidebarNavTooltip.classList.remove('active');
-    sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
-logoutBtn.addEventListener('blur', hideNavTooltip);
-
-function showLogoutTooltip(e) {
-    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
-    tooltipActiveLink = logoutBtn;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.add('logout-pop');
-    sidebarNavTooltip.style.display = 'block';
-    const rect = logoutBtn.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const x = sidebarRect.right + 5;
-    const y = rect.top + rect.height / 2 + window.scrollY;
-    sidebarNavTooltip.style.left = (x + 10) + 'px';
-    sidebarNavTooltip.style.top = y + 'px';
-
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
-
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-}
-function hideNavTooltipImmediate() {
-    sidebarNavTooltip.classList.remove('active', 'logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-}
-function hideNavTooltip() {
-    sidebarNavTooltip.classList.remove('active', 'logout-pop');
-    setTimeout(function() {
-        sidebarNavTooltip.style.display = 'none';
-        tooltipActiveLink = null;
-    }, 150);
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-}
-function navTooltipHandler(e) {
-    if (!sidebar.classList.contains('collapsed')) {
-        hideNavTooltip();
-        return;
-    }
-    // Show nav-link or profile icon name
-    let tooltipText = this.getAttribute('data-tooltip');
-    if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
-    if (!tooltipText) return;
-    tooltipActiveLink = this;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.remove('logout-pop');
-    sidebarNavTooltip.style.display = 'block';
-    const rect = this.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const x = sidebarRect.right + 5;
-    const y = rect.top + rect.height / 2 + window.scrollY;
-    sidebarNavTooltip.style.left = (x + 10) + 'px';
-    sidebarNavTooltip.style.top = y + 'px';
-
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
-
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-}
-function navLinkMouseLeaveHandler(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
-        return;
-    }
-    tooltipHideTimeout = setTimeout(() => {
-        hideNavTooltip();
-        tooltipActiveLink = null;
-    }, 60);
-}
-sidebarNavTooltip.addEventListener('mouseleave', function() {
-    tooltipHideTimeout = setTimeout(() => {
-        hideNavTooltip();
-        tooltipActiveLink = null;
-    }, 60);
-});
-sidebarNavTooltip.addEventListener('mouseenter', function() {
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
-
-// Also support keyboard accessibility: show tooltip on space/enter
-document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
-    link.addEventListener('keydown', function(e) {
-        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        });
+        logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            this.focus();
-        }
-    });
-});
-logoutBtn.addEventListener('keydown', function(e) {
-    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
-        e.preventDefault();
-        this.focus();
-    }
-});
-sidebarToggle.addEventListener('click', () => {
-    sidebarNavTooltip.classList.remove('active', 'logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
-
-const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
-const logoutCancelBtn = document.getElementById('logoutCancelBtn');
-const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
-
-// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
-logoutBtn.addEventListener('click', (e) => {
-    // prevent default just in case (button not type=submit)
-    e.preventDefault();
-    logoutAlertBackdrop.classList.add("active");
-    hideNavTooltipImmediate();
-});
-logoutCancelBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    logoutAlertBackdrop.classList.remove("active");
-});
-logoutConfirmBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = 'logout.php';
-});
-logoutAlertBackdrop.addEventListener('mousedown', (e) => {
-    if (e.target === logoutAlertBackdrop) {
-        logoutAlertBackdrop.classList.remove("active");
-    }
-});
-
-const mobileToggle = document.getElementById('mobileToggle');
-if (mobileToggle) {
-    mobileToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('mobile-active');
-    });
-}
-
-// --- Add step 3: force reload on browser bfcache to enforce session check ---
-window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-        window.location.reload();
-    }
-});
-
-/* ---- NEW: Calendar/List icon toggle logic ---- */
-const toCalendarBtn = document.getElementById('toCalendarBtn');
-const toListBtn = document.getElementById('toListBtn');
-function showCalendarView() {
-    calendarView.classList.remove('hidden');
-    scheduleView.classList.add('hidden');
-    showingCalendar = true;
-    updateMobileControls(); // Ensure mobile controls update too
-    updateWeekdayLabels();  // Make sure to update weekday labels when view toggles
-}
-function showListView() {
-    calendarView.classList.add('hidden');
-    scheduleView.classList.remove('hidden');
-    showingCalendar = false;
-    updateMobileControls(); // Ensure mobile controls update too
-    updateWeekdayLabels();  // May not be critical, but keep consistent
-}
-if (toCalendarBtn) toCalendarBtn.onclick = showCalendarView;
-if (toListBtn) toListBtn.onclick = showListView;
-
-/* ===============================
-   📱 MOBILE VIEW CONTROL (ONLY)
-   =============================== */
-
-const mobileListControls = document.getElementById('mobileListControls');
-const mobileCalendarControls = document.getElementById('mobileCalendarControls');
-
-function isMobileView() {
-    return window.innerWidth <= 768;
-}
-
-// This manages showing/hiding mobile controls independently of content rendering
-function updateMobileControls() {
-    if (!isMobileView()) {
-        // Always hide mobile controls on desktop
-        mobileListControls.style.display = "none";
-        mobileCalendarControls.style.display = "none";
-        return;
-    }
-
-    if (showingCalendar) {
-        mobileCalendarControls.style.display = "";
-        mobileListControls.style.display = "none";
-        // Sync month label if in calendar
-        if (mobileMonthLabel && monthLabel) {
-            mobileMonthLabel.textContent = monthLabel.textContent;
-        }
-    } else {
-        mobileListControls.style.display = "";
-        mobileCalendarControls.style.display = "none";
-    }
-}
-
-// Replace and deprecate syncMobileControls, syncing just calendar/list view
-function syncMobileControls() {
-    if (!isMobileView()) return; // Do nothing on desktop
-    // Don't update .hidden on card view, just sync controls as above
-    updateMobileControls();
-}
-window.addEventListener('resize', function() {
-    updateMobileControls();
-    updateWeekdayLabels(); // <-- Call label update on any resize
-});
-
-/* ===============================
-   🔘 MOBILE BUTTON ACTIONS
-   =============================== */
-
-// From LIST ➜ CALENDAR
-document.getElementById('mobileToCalendarBtn').onclick = () => {
-    showingCalendar = true;
-    calendarView.classList.remove('hidden');
-    scheduleView.classList.add('hidden');
-    updateMobileControls();
-    updateWeekdayLabels();
-};
-
-// From CALENDAR ➜ LIST
-document.getElementById('mobileToListBtn').onclick = () => {
-    showingCalendar = false;
-    scheduleView.classList.remove('hidden');
-    calendarView.classList.add('hidden');
-    updateMobileControls();
-    updateWeekdayLabels();
-};
-
-// Month navigation (change month AND update both mobile and desktop labels)
-document.getElementById('mobilePrevMonth').onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
-    updateMobileControls();
-};
-
-document.getElementById('mobileNextMonth').onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
-    updateMobileControls();
-};
-
-/* ===============================
-   🔎 SEARCH SYNC (MOBILE ➜ DESKTOP)
-   =============================== */
-
-document.getElementById('mobileScheduleSearch').addEventListener('input', e => {
-    const desktopSearch = document.getElementById('scheduleSearch');
-    desktopSearch.value = e.target.value;
-    desktopSearch.dispatchEvent(new Event('input'));
-});
-
-/* ===============================
-   🔄 INITIAL MOBILE STATE
-   =============================== */
-
-// Ensure correct mobile control on initial load
-updateMobileControls();
-
-</script>
-
-<script>
-/* Update weekday labels for calendar header. 
- * - On mobile (≤768px): Show S,M,T,...
- * - On desktop: Show Sunday, Monday, Tuesday, ...
- */
-function updateWeekdayLabels() {
-    const desktopDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const shortDays = ['S','M','T','W','T','F','S'];
-    const weekdayDivs = document.querySelectorAll('.calendar-weekdays div');
-    if (!weekdayDivs.length) return;
-    if (window.innerWidth <= 768) {
-        weekdayDivs.forEach((el, i) => {
-            el.textContent = shortDays[i];
-        });
-    } else {
-        weekdayDivs.forEach((el, i) => {
-            el.textContent = desktopDays[i];
+            if (logoutAlertBackdrop) logoutAlertBackdrop.classList.add("active");
+            hideNavTooltipImmediate();
         });
     }
-}
-
-/* Run on load & resize */
-window.addEventListener('load', updateWeekdayLabels);
-window.addEventListener('resize', updateWeekdayLabels);
-</script>
-
-<script>
-/* ===============================
-   📅 Enhanced Month / Date Picker
-================================ */
-
-const monthPickerOverlay = document.getElementById('monthPickerOverlay');
-const pickerMonth = document.getElementById('pickerMonth');
-const pickerYear = document.getElementById('pickerYear');
-const pickerDate = document.getElementById('pickerDate');
-const pickerCancel = document.getElementById('pickerCancel');
-const pickerApply = document.getElementById('pickerApply');
-
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
-
-function initMonthPicker() {
-    pickerMonth.innerHTML = '';
-    MONTHS.forEach((m, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = m;
-        pickerMonth.appendChild(opt);
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebarNavTooltip) {
+                sidebarNavTooltip.classList.remove('active', 'logout-pop');
+                sidebarNavTooltip.style.display = 'none';
+            }
+            tooltipActiveLink = null;
+            if (tooltipHideTimeout) {
+                clearTimeout(tooltipHideTimeout);
+                tooltipHideTimeout = null;
+            }
+        });
+    }
+    document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
+        link.addEventListener('keydown', function(e) {
+            if (sidebar && sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+                e.preventDefault();
+                this.focus();
+            }
+        });
     });
 
-    pickerYear.innerHTML = '';
-    const yNow = new Date().getFullYear();
-    for (let y = yNow - 25; y <= yNow + 25; y++) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        pickerYear.appendChild(opt);
+    if (logoutAlertBackdrop && logoutCancelBtn && logoutConfirmBtn) {
+        logoutCancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logoutAlertBackdrop.classList.remove("active");
+        });
+        logoutConfirmBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'logout.php';
+        });
+        logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+            if (e.target === logoutAlertBackdrop) {
+                logoutAlertBackdrop.classList.remove("active");
+            }
+        });
     }
 
-    pickerMonth.value = currentDate.getMonth();
-    pickerYear.value = currentDate.getFullYear();
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('mobile-active');
+        });
+    }
 
-    // Default to "no date" if last picked was not a valid value
-    pickerDate.value = '';
-}
+    // Enforce calendar/form reload on bfcache
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
 
-// Show month picker overlay/modal
-function openMonthPicker() {
-    initMonthPicker();
-    monthPickerOverlay.classList.remove('hidden');
-    // Optionally focus date or month for accessibility
-    pickerMonth.focus();
-}
+    // === Calendar & Schedule Logic ===
 
-// Close the overlay/modal
-function closeMonthPicker() {
-    monthPickerOverlay.classList.add('hidden');
-}
+    // Defensive: ensure calendar elements exist
+    if (!calendarGrid || !calendarDetails || !monthLabel || !calendarView || !scheduleView) return;
 
-pickerCancel.onclick = closeMonthPicker;
+    let currentDate = new Date();
+    let showingCalendar = true;
 
-/* APPLY LOGIC */
-pickerApply.onclick = () => {
-    const y = parseInt(pickerYear.value);
-    const m = parseInt(pickerMonth.value);
-    currentDate.setFullYear(y);
-    currentDate.setMonth(m);
+    // --- Helper: status mapping
+    function getStatusKey(statusLabel) {
+        const s = (statusLabel || '').toLowerCase();
+        if (!s) return 'upcoming';
+        if (s.indexOf('delay') !== -1) return 'delayed';
+        if (s.indexOf('progress') !== -1 || s.indexOf('on-going') !== -1 || s.indexOf('ongoing') !== -1) return 'ongoing';
+        if (s.indexOf('completed') !== -1) return 'completed';
+        return 'upcoming';
+    }
+    function applyStatusClassesToList() {
+        document.querySelectorAll('.schedule-item').forEach(item => {
+            const statusLabel = item.getAttribute('data-status') || '';
+            const key = getStatusKey(statusLabel);
+            item.classList.add('status-' + key + '-color');
+        });
+    }
+
+    // --- Modal Logic ---
+    if (taskModal && modalBody && modalClose && taskChooserModal && taskChooserBody) {
+        modalClose.onclick = ()=>taskModal.classList.add('hidden');
+        window.onclick = (e)=>{
+            if(e.target===taskModal) taskModal.classList.add('hidden');
+            if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
+        };
+    }
+    function openModal(tasks){
+        if (!modalBody || !taskModal) return;
+        modalBody.innerHTML='';
+        tasks.forEach(t=>{
+            const div=document.createElement('div');
+            div.className='modal-task-item';
+            const category   = t.category      || 'General Maintenance';
+            const priority   = t.priority      || 'Low';
+            const statusLbl  = t.status_label  || 'Planned';
+            const team       = t.assigned_team || 'General Maintenance Team';
+
+            const statusKey  = getStatusKey(statusLbl);
+            if (statusKey) {
+                div.classList.add('status-' + statusKey + '-color');
+            }
+
+            div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
+                           <strong>Location:</strong> ${t.location}<br>
+                           <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
+                           <strong>Category:</strong> ${category}<br>
+                           <strong>Priority:</strong> ${priority}<br>
+                           <strong>Status:</strong> ${statusLbl}<br>
+                           <strong>Assigned Team:</strong> ${team}`;
+            modalBody.appendChild(div);
+        });
+        taskModal.classList.remove('hidden');
+    }
+    function openTaskChooser(date, tasks) {
+        if (!taskChooserBody || !taskChooserModal) return;
+        taskChooserBody.innerHTML = '';
+        tasks.forEach(t => {
+            const btn = document.createElement('button');
+            btn.className = 'task-btn';
+            btn.style.margin = '8px 0';
+            btn.style.width = '100%';
+            btn.textContent = `${t.task} – ${t.location}`;
+            const key = getStatusKey(t.status_label || '');
+            if (key) btn.classList.add('status-' + key + '-bg');
+            btn.onclick = () => {
+                taskChooserModal.classList.add('hidden');
+                openModal([t]);
+            };
+            taskChooserBody.appendChild(btn);
+        });
+        taskChooserModal.classList.remove('hidden');
+    }
+    window.closeTaskChooser = function() {
+        if (taskChooserModal) taskChooserModal.classList.add('hidden');
+    };
+
+    // --- Calendar render & dropdown logic ---
+    let openDropdown = null;
+    let openDropdownDay = null;
+    function closeDropdown(){
+        if (openDropdown) {
+            openDropdown.remove();
+            openDropdown = null;
+            openDropdownDay = null;
+            document.querySelectorAll('.more-tasks-btn.open').forEach(b => b.classList.remove('open'));
+        }
+    }
+    function toggleTaskDropdown(dayDiv, events, arrowBtn) {
+        if (openDropdown && openDropdownDay === dayDiv) {
+            closeDropdown();
+            return;
+        }
+        closeDropdown();
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'task-dropdown';
+        dropdown.setAttribute('role','menu');
+
+        // FIX 2: Stop dropdown auto-closing by stopping propagation
+        dropdown.addEventListener('click', ev => {
+            ev.stopPropagation();
+        });
+
+        events.slice(1).forEach((e, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'task-btn';
+            btn.setAttribute('role','menuitem');
+            if (isMobileView()) {
+                btn.textContent = i + 2;
+            } else {
+                btn.textContent = e.task;
+            }
+            const key = getStatusKey(e.status_label || '');
+            if (key) btn.classList.add('status-' + key + '-bg');
+            btn.onclick = (ev) => {
+                ev.stopPropagation();
+                closeDropdown();
+                openModal([e]);
+            };
+            dropdown.appendChild(btn);
+        });
+        dayDiv.appendChild(dropdown);
+        openDropdown = dropdown;
+        openDropdownDay = dayDiv;
+        if (arrowBtn) arrowBtn.classList.add('open');
+    }
+    // Clicking anywhere closes dropdown (still ok with new fix)
+    document.addEventListener('click', () => {
+        closeDropdown();
+    });
+
+    // == Calendar Render ==
+    function renderCalendar(){
+        closeDropdown && closeDropdown();
+        if (!calendarGrid || !calendarDetails) return;
+        calendarGrid.innerHTML='';
+        calendarDetails.innerHTML='Select a date to view schedule.';
+
+        const year=currentDate.getFullYear();
+        const month=currentDate.getMonth();
+        const monthText=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
+        if (monthLabel) monthLabel.textContent=monthText;
+        if(mobileMonthLabel) mobileMonthLabel.textContent=monthText;
+
+        const firstDay=new Date(year, month,1).getDay();
+        const daysInMonth=new Date(year,month+1,0).getDate();
+        for(let i=0;i<firstDay;i++) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = "calendar-day";
+            calendarGrid.appendChild(emptyDiv);
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const events = Array.isArray(window.scheduleData) && window.scheduleData.length
+                ? window.scheduleData.filter(e => e.schedule_date === dateStr)
+                : []; // Ensure always an array
+
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
+
+            // Use 'data-date' for debugging/lookup
+            dayDiv.setAttribute('data-date', dateStr);
+
+            // Day number
+            const dayNumDiv = document.createElement('div');
+            dayNumDiv.textContent = d;
+            dayDiv.appendChild(dayNumDiv);
+
+            // Show tasks in day box if present
+            if (events.length) {
+                // Create a tasks holder, always visible if day has events
+                const tasksDiv = document.createElement('div');
+                tasksDiv.className = 'day-tasks';
+
+                if (events.length === 1) {
+                    const e = events[0];
+                    const btn = document.createElement('button');
+                    btn.className = 'task-btn';
+                    btn.textContent = isMobileView() ? '1' : e.task;
+                    btn.title = `${e.task} (${e.status_label || ''})`;
+                    const key = getStatusKey(e.status_label || '');
+                    if (key) btn.classList.add('status-' + key + '-bg');
+                    btn.onclick = function(ev) {
+                        ev.stopPropagation();
+                        openModal([e]);
+                    };
+                    tasksDiv.appendChild(btn);
+                } else if (events.length > 1) {
+                    // --- FIX: correct render for >1 tasks in a day ---
+                    const first = events[0];
+
+                    // First visible task
+                    const firstBtn = document.createElement('button');
+                    firstBtn.className = 'task-btn';
+                    firstBtn.textContent = isMobileView() ? '1' : first.task;
+                    firstBtn.title = `${first.task} (${first.status_label || ''})`;
+                    const firstKey = getStatusKey(first.status_label || '');
+                    if (firstKey) firstBtn.classList.add('status-' + firstKey + '-bg');
+                    firstBtn.onclick = function(ev) {
+                        ev.stopPropagation();
+                        openModal([first]);
+                    };
+                    tasksDiv.appendChild(firstBtn);
+
+                    // Arrow + counter wrapper
+                    const moreWrap = document.createElement('div');
+                    moreWrap.className = 'more-tasks-wrap';
+
+                    const arrowBtn = document.createElement('button');
+                    arrowBtn.className = 'more-tasks-btn';
+                    arrowBtn.innerHTML = '▾';
+                    arrowBtn.onclick = function(ev) {
+                        ev.stopPropagation();
+                        toggleTaskDropdown(dayDiv, events, arrowBtn);
+                    };
+
+                    // Start MODIFIED BLOCK
+                    if (isMobileView()) {
+                        // On mobile, show only the arrow, no counter.
+                        moreWrap.appendChild(arrowBtn);
+                    } else {
+                        // On desktop, show arrow and counter.
+                        moreWrap.appendChild(arrowBtn);
+                        const counter = document.createElement('span');
+                        counter.className = 'task-counter';
+                        counter.textContent = `+${events.length - 1}`;
+                        moreWrap.appendChild(counter);
+                    }
+                    // End MODIFIED BLOCK
+
+                    tasksDiv.appendChild(moreWrap);
+                }
+                dayDiv.appendChild(tasksDiv);
+            } // end events.length
+
+            dayDiv.addEventListener('click', function() {
+                // Show all event details in calendarDetails if exists
+                if (events.length) {
+                    let detailsHtml = `<strong>${dateStr}</strong><br>`;
+                    detailsHtml += events.map(e =>
+                        `• ${e.task} – ${e.location ? e.location : ''}`
+                    ).join('<br>');
+                    calendarDetails.innerHTML = detailsHtml;
+                } else {
+                    calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>No scheduled maintenance.`;
+                }
+            });
+
+            calendarGrid.appendChild(dayDiv);
+        }
+    }
+
+    // ... rest of code unchanged ...
+    // Make sure to call renderCalendar on load and when month/view changes
+    if (typeof prevMonthBtn !== "undefined" && prevMonthBtn && nextMonthBtn) {
+        prevMonthBtn.onclick = ()=>{
+            currentDate.setMonth(currentDate.getMonth()-1);
+            renderCalendar();
+        };
+        nextMonthBtn.onclick = ()=>{
+            currentDate.setMonth(currentDate.getMonth()+1);
+            renderCalendar();
+        };
+    }
     renderCalendar();
+    applyStatusClassesToList();
 
-    // If date field is filled, jump and show the tasks!
-    if (pickerDate.value) {
-        const selectedDate = pickerDate.value;
-        const tasks = scheduleData.filter(t => t.schedule_date === selectedDate);
-        if (tasks.length === 1) {
-            openModal(tasks);
-        }
-        else if (tasks.length > 1) {
-            openTaskChooser(selectedDate, tasks);
-        }
+    // --- Schedule search (desktop) ---
+    if (scheduleSearch && scheduleListHolder) {
+        scheduleSearch.addEventListener('input', function() {
+            const searchVal = this.value.trim().toLowerCase();
+            const items = scheduleListHolder.querySelectorAll('.schedule-item');
+            let shownCount = 0;
+            if (!searchVal.length) {
+                items.forEach(i => { i.style.display = ''; });
+                if (noResultMsg) noResultMsg.style.display = 'none';
+                return;
+            }
+            items.forEach(item => {
+                const task = item.getAttribute('data-task') || '';
+                const loc = item.getAttribute('data-location') || '';
+                const date = item.getAttribute('data-date') || '';
+                const cat = item.getAttribute('data-category') || '';
+                const stat = item.getAttribute('data-status') || '';
+                const prio = item.getAttribute('data-priority') || '';
+                if (
+                    task.includes(searchVal) ||
+                    loc.includes(searchVal) ||
+                    date.includes(searchVal) ||
+                    cat.includes(searchVal) ||
+                    stat.includes(searchVal) ||
+                    prio.includes(searchVal)
+                ) {
+                    item.style.display = '';
+                    shownCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            if (noResultMsg) {
+                if (shownCount === 0) {
+                    noResultMsg.style.display = '';
+                } else {
+                    noResultMsg.style.display = 'none';
+                }
+            }
+        });
     }
 
-    closeMonthPicker();
-};
+    // --- Show calendar view/list view logic ---
+    function showCalendarView() {
+        if (!calendarView || !scheduleView) return;
+        calendarView.classList.remove('hidden');
+        scheduleView.classList.add('hidden');
+        showingCalendar = true;
+        updateMobileControls();
+        updateWeekdayLabels();
+    }
+    function showListView() {
+        if (!calendarView || !scheduleView) return;
+        calendarView.classList.add('hidden');
+        scheduleView.classList.remove('hidden');
+        showingCalendar = false;
+        updateMobileControls();
+        updateWeekdayLabels();
+    }
+    if (toCalendarBtn) toCalendarBtn.onclick = showCalendarView;
+    if (toListBtn) toListBtn.onclick = showListView;
 
-// Click outside modal closes the overlay as well
-monthPickerOverlay.addEventListener('click', e => {
-    if (e.target === monthPickerOverlay) closeMonthPicker();
-});
+    // -- Mobile controls
+    function updateMobileControls() {
+        if (!mobileListControls || !mobileCalendarControls) return;
+        if (!isMobileView()) {
+            mobileListControls.style.display = "none";
+            mobileCalendarControls.style.display = "none";
+            return;
+        }
+        if (showingCalendar) {
+            mobileCalendarControls.style.display = "";
+            mobileListControls.style.display = "none";
+            if (mobileMonthLabel && monthLabel) {
+                mobileMonthLabel.textContent = monthLabel.textContent;
+            }
+        } else {
+            mobileListControls.style.display = "";
+            mobileCalendarControls.style.display = "none";
+        }
+    }
+    function syncMobileControls() {
+        if (!isMobileView()) return;
+        updateMobileControls();
+    }
 
-// Attach to both labels/clickable indicators
-monthLabel.addEventListener('click', openMonthPicker);
-mobileMonthLabel.addEventListener('click', openMonthPicker);
+    // Responsive calendar re-render
+    let lastMobileState = isMobileView();
+    window.addEventListener('resize', () => {
+        updateMobileControls();
+        updateWeekdayLabels && updateWeekdayLabels();
+        const nowMobile = isMobileView();
+        if (nowMobile !== lastMobileState) {
+            lastMobileState = nowMobile;
+            closeDropdown();
+            renderCalendar();
+        }
+    });
 
-// Add accessible tooltip/cursor for both month labels
-monthLabel.setAttribute("title", "Click to jump date");
-mobileMonthLabel.setAttribute("title", "Click to jump date");
-monthLabel.style.cursor = "pointer";
-mobileMonthLabel.style.cursor = "pointer";
+    // MOBILE BUTTONS
+    if (mobileToCalendarBtn) mobileToCalendarBtn.onclick = showCalendarView;
+    if (mobileToListBtn) mobileToListBtn.onclick = showListView;
+    if (mobilePrevMonth) mobilePrevMonth.onclick = () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+        updateMobileControls();
+    };
+    if (mobileNextMonth) mobileNextMonth.onclick = () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+        updateMobileControls();
+    };
+
+    // Mobile search sync
+    if (mobileScheduleSearch && scheduleSearch) {
+        mobileScheduleSearch.addEventListener('input', e => {
+            scheduleSearch.value = e.target.value;
+            scheduleSearch.dispatchEvent(new Event('input'));
+        });
+    }
+
+    // INITIAL state
+    updateMobileControls();
+
+    // Weekday label helper (exported globally for resize use below)
+    window.updateWeekdayLabels = function updateWeekdayLabels() {
+        const desktopDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const shortDays = ['S','M','T','W','T','F','S'];
+        const weekdayDivs = document.querySelectorAll('.calendar-weekdays div');
+        if (!weekdayDivs.length) return;
+        if (window.innerWidth <= 768) {
+            weekdayDivs.forEach((el, i) => { el.textContent = shortDays[i]; });
+        } else {
+            weekdayDivs.forEach((el, i) => { el.textContent = desktopDays[i]; });
+        }
+    };
+
+    window.addEventListener('load', updateWeekdayLabels);
+    window.addEventListener('resize', updateWeekdayLabels);
+
+    // =====================
+    // Enhanced Month Picker
+    // =====================
+    const MONTHS = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+    function initMonthPicker() {
+        if (!pickerMonth || !pickerYear) return;
+        pickerMonth.innerHTML = '';
+        MONTHS.forEach((m, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = m;
+            pickerMonth.appendChild(opt);
+        });
+        pickerYear.innerHTML = '';
+        const yNow = new Date().getFullYear();
+        for (let y = yNow - 25; y <= yNow + 25; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            pickerYear.appendChild(opt);
+        }
+        pickerMonth.value = currentDate.getMonth();
+        pickerYear.value = currentDate.getFullYear();
+        if (pickerDate)
+            pickerDate.value = '';
+    }
+    function openMonthPicker() {
+        initMonthPicker();
+        if (monthPickerOverlay) monthPickerOverlay.classList.remove('hidden');
+        if (pickerMonth) pickerMonth.focus();
+    }
+    function closeMonthPicker() {
+        if (monthPickerOverlay) monthPickerOverlay.classList.add('hidden');
+    }
+    if (pickerCancel) pickerCancel.onclick = closeMonthPicker;
+    if (pickerApply && pickerMonth && pickerYear) {
+        pickerApply.onclick = () => {
+            const y = parseInt(pickerYear.value);
+            const m = parseInt(pickerMonth.value);
+            currentDate.setFullYear(y);
+            currentDate.setMonth(m);
+            renderCalendar();
+            if (pickerDate && pickerDate.value) {
+                const selectedDate = pickerDate.value;
+                const tasks = window.scheduleData.filter(t => t.schedule_date === selectedDate);
+                if (tasks.length === 1) {
+                    openModal(tasks);
+                }
+                else if (tasks.length > 1) {
+                    openTaskChooser(selectedDate, tasks);
+                }
+            }
+            closeMonthPicker();
+        };
+    }
+    if (pickerDate && pickerYear && pickerMonth) {
+        pickerDate.addEventListener('change', () => {
+            if (!pickerDate.value) return;
+            const [y, m, d] = pickerDate.value.split('-').map(Number);
+            currentDate = new Date(y, m - 1, d);
+            pickerYear.value = y;
+            pickerMonth.value = m - 1;
+            renderCalendar();
+        });
+    }
+    if (monthPickerOverlay) {
+        monthPickerOverlay.addEventListener('click', e => {
+            if (e.target === monthPickerOverlay) closeMonthPicker();
+        });
+    }
+    if (monthLabel) monthLabel.addEventListener('click', openMonthPicker);
+    if (mobileMonthLabel) mobileMonthLabel.addEventListener('click', openMonthPicker);
+    if (monthLabel) { monthLabel.setAttribute("title", "Click to jump date"); monthLabel.style.cursor = "pointer"; }
+    if (mobileMonthLabel) { mobileMonthLabel.setAttribute("title", "Click to jump date"); mobileMonthLabel.style.cursor = "pointer"; }
+}); // --- END DOMContentLoaded ---
+
+// --- Profile Picture safety ---
+function handleProfilePicture() {
+    const img = document.getElementById('profileImg');
+    const fallback = document.getElementById('profileFallbackIcon');
+    if (!img) return;
+    img.onerror = () => { img.style.display = 'none'; fallback && (fallback.style.display = 'flex'); };
+    img.onload = () => { img.style.display = 'block'; fallback && (fallback.style.display = 'none'); };
+    if (!img.src || img.src.endsWith('profile.png')) {
+        img.style.display = 'none';
+        fallback && (fallback.style.display = 'flex');
+    }
+}
+document.addEventListener('DOMContentLoaded', handleProfilePicture);
 </script>
 
 </body>
