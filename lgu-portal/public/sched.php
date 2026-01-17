@@ -1685,18 +1685,43 @@ body::-webkit-scrollbar {
     </div>
 </div>
 
-<!-- Month / Year Picker + Date Picker (MODIFIED) -->
-<div id="monthPickerOverlay" class="month-picker-overlay hidden">
-  <div class="month-picker">
-    <div class="picker-header">Jump to Date</div>
-    <select id="pickerMonth"></select>
-    <select id="pickerYear"></select>
-    <input type="date" id="pickerDate" style="padding:10px;border-radius:10px;border:1px solid #b1b8d0;">
-    <div class="picker-actions">
-      <button id="pickerCancel">Cancel</button>
-      <button id="pickerApply">Apply</button>
-    </div>
-  </div>
+<!-- Native Date Picker Element (hidden, no overlay/modal) -->
+<input
+  type="date"
+  id="pickerDate"
+  style="
+    position: fixed;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+  "
+>
+
+<!-- Custom Date Picker Overlay -->
+<style>
+#customDatePickerOverlay {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    z-index: 2000; /* Increased for UX on mobile */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: none;
+}
+#customDatePickerOverlay input[type="date"] {
+    width: 180px;
+    padding: 6px 8px;
+}
+@media (max-width: 768px) {
+    #customDatePickerOverlay {
+        position: fixed !important;
+        width: 150px;
+        z-index: 2500;
+    }
+}
+</style>
+<div id="customDatePickerOverlay">
+    <input type="date" id="overlayDatePicker">
 </div>
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
@@ -1754,13 +1779,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevMonthBtn = getSafeElem('prevMonth');
     const nextMonthBtn = getSafeElem('nextMonth');
 
-    // Month Picker
-    const monthPickerOverlay = getSafeElem('monthPickerOverlay');
-    const pickerMonth = getSafeElem('pickerMonth');
-    const pickerYear = getSafeElem('pickerYear');
+    // Date Picker (Native input only, no overlay)
     const pickerDate = getSafeElem('pickerDate');
-    const pickerCancel = getSafeElem('pickerCancel');
-    const pickerApply = getSafeElem('pickerApply');
 
     // Defensive fallback (should never be needed with PATCH above)
     if (typeof window.scheduleData === "undefined") window.scheduleData = [];
@@ -2421,82 +2441,162 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', updateWeekdayLabels);
 
     // =====================
-    // Enhanced Month Picker
+    // Custom Floating Date Picker Overlay - PATCHED PER PROMPT
     // =====================
-    const MONTHS = [
-      "January","February","March","April","May","June",
-      "July","August","September","October","November","December"
-    ];
-    function initMonthPicker() {
-        if (!pickerMonth || !pickerYear) return;
-        pickerMonth.innerHTML = '';
-        MONTHS.forEach((m, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = m;
-            pickerMonth.appendChild(opt);
-        });
-        pickerYear.innerHTML = '';
-        const yNow = new Date().getFullYear();
-        for (let y = yNow - 25; y <= yNow + 25; y++) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
-            pickerYear.appendChild(opt);
+    const overlayPicker = document.getElementById('customDatePickerOverlay');
+    const overlayInput  = document.getElementById('overlayDatePicker');
+    // Retain reference for legacy picker (should not be shown)
+    // const pickerDate = getSafeElem('pickerDate');
+
+    function openDatePicker(event) {
+        if (!overlayPicker || !overlayInput) return;
+
+        // Sync with current calendar date
+        const y = currentDate.getFullYear();
+        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const d = String(currentDate.getDate()).padStart(2, '0');
+        overlayInput.value = `${y}-${m}-${d}`;
+
+        // Position overlay below clicked label with mobile-aware logic
+        const rect = event.target.getBoundingClientRect();
+        let top = rect.bottom + window.scrollY + 4;
+        let left = rect.left + window.scrollX;
+
+        // MOBILE: fixed positioning below mobileMonthLabel, not floating/awkward (and prevent offscreen right)
+        const overlayWidth = overlayPicker.offsetWidth || 180;
+        if (window.innerWidth <= 768) {
+            // position: fixed, so we use rect relative to viewport (no scrollY)
+            top = rect.bottom + 4;
+            left = rect.left;
+            if (left + overlayWidth > window.innerWidth - 8) {
+                left = window.innerWidth - overlayWidth - 8;
+            }
+            if (top + overlayPicker.offsetHeight > window.innerHeight - 8) {
+                top = window.innerHeight - overlayPicker.offsetHeight - 8;
+            }
+            overlayPicker.style.position = 'fixed';
+        } else {
+            // desktop: classic absolute + scroll
+            if (left + overlayWidth > window.innerWidth - 8) {
+                left = window.innerWidth - overlayWidth - 8;
+            }
+            overlayPicker.style.position = 'absolute';
         }
-        pickerMonth.value = currentDate.getMonth();
-        pickerYear.value = currentDate.getFullYear();
-        if (pickerDate)
-            pickerDate.value = '';
+
+        overlayPicker.style.top = top + "px";
+        overlayPicker.style.left = left + "px";
+        overlayPicker.style.display = "block";
+
+        overlayInput.focus();
+        // Highlight all for immediate typing UX
+        if (overlayInput.setSelectionRange) {
+            overlayInput.setSelectionRange(0, overlayInput.value.length);
+        }
     }
-    function openMonthPicker() {
-        initMonthPicker();
-        if (monthPickerOverlay) monthPickerOverlay.classList.remove('hidden');
-        if (pickerMonth) pickerMonth.focus();
+
+    // Close overlay if clicked outside
+    document.addEventListener('click', function(e) {
+        if (!overlayPicker.contains(e.target) && e.target !== monthLabel && e.target !== mobileMonthLabel) {
+            overlayPicker.style.display = 'none';
+        }
+    });
+
+    // Prevent click bubbling (so picker stays open if clicking on overlay)
+    if (overlayPicker) {
+        overlayPicker.addEventListener('click', function(e) { e.stopPropagation(); });
     }
-    function closeMonthPicker() {
-        if (monthPickerOverlay) monthPickerOverlay.classList.add('hidden');
-    }
-    if (pickerCancel) pickerCancel.onclick = closeMonthPicker;
-    if (pickerApply && pickerMonth && pickerYear) {
-        pickerApply.onclick = () => {
-            const y = parseInt(pickerYear.value);
-            const m = parseInt(pickerMonth.value);
-            currentDate.setFullYear(y);
-            currentDate.setMonth(m);
-            renderCalendar();
-            if (pickerDate && pickerDate.value) {
-                const selectedDate = pickerDate.value;
-                const tasks = window.scheduleData.filter(t => t.schedule_date === selectedDate);
-                if (tasks.length === 1) {
-                    openModal(tasks);
-                }
-                else if (tasks.length > 1) {
-                    openTaskChooser(selectedDate, tasks);
+
+    // Restrict typing in the year part to 4 digits only
+    if (overlayInput) {
+        // Prevent typing more than 4 numbers in the year part
+        overlayInput.addEventListener('beforeinput', function(e) {
+            // Only for direct text input (not deletes, not navigation)
+            if (
+                e.inputType.startsWith('insert') &&
+                typeof e.data === 'string' &&
+                e.data.match(/[0-9]/)
+            ) {
+                // Get the value as it will be after addition
+                let inputValue = overlayInput.value;
+                const selectionStart = overlayInput.selectionStart;
+                const selectionEnd = overlayInput.selectionEnd;
+                // Simulate insertion
+                inputValue = inputValue.slice(0, selectionStart) + e.data + inputValue.slice(selectionEnd);
+
+                // Only validate if insertion is in the year part
+                // year: index 0-3
+                if (selectionStart <= 4) {
+                    const yearPart = inputValue.slice(0, 4);
+                    // Count only digit characters in year part
+                    const yearDigits = (yearPart.match(/\d/g) || []).join('');
+                    if (yearDigits.length > 4) {
+                        e.preventDefault();
+                        return;
+                    }
                 }
             }
-            closeMonthPicker();
-        };
-    }
-    if (pickerDate && pickerYear && pickerMonth) {
-        pickerDate.addEventListener('change', () => {
-            if (!pickerDate.value) return;
-            const [y, m, d] = pickerDate.value.split('-').map(Number);
-            currentDate = new Date(y, m - 1, d);
-            pickerYear.value = y;
-            pickerMonth.value = m - 1;
-            renderCalendar();
+        });
+
+        // Handle typing/date preview as user types (day → month → year typing flow)
+        overlayInput.addEventListener('input', function(e) {
+            const val = overlayInput.value;
+            if (!val) return;
+            // Enforce year part to have a maximum of 4 digits
+            let [y, m, d] = val.split('-');
+            if (y && y.length > 4) {
+                y = y.slice(0, 4);
+                // Set the trimmed value (without triggering another input)
+                const newVal = [y,m,d].filter(Boolean).join('-');
+                overlayInput.value = newVal;
+            }
+
+            // Only proceed if valid parts
+            const parts = overlayInput.value.split('-').map(Number);
+            if (parts.length === 3) {
+                const [yy, mm, dd] = parts;
+                if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
+                    currentDate = new Date(yy, mm - 1, dd);
+                    renderCalendar();
+                }
+            }
+        });
+        // Apply date only when Enter (or Escape to cancel)
+        overlayInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const val = overlayInput.value;
+                if (val) {
+                    let [y, m, d] = val.split('-');
+                    // Don't allow more than 4 digits in year
+                    if (y && y.length > 4) {
+                        y = y.slice(0, 4);
+                    }
+                    currentDate = new Date(Number(y), Number(m) - 1, Number(d));
+                    renderCalendar();
+
+                    const tasks = window.scheduleData.filter(
+                        t => t.schedule_date === `${y}-${m}-${d}`
+                    );
+                    if (tasks.length === 1) openModal(tasks);
+                    else if (tasks.length > 1) openTaskChooser(`${y}-${m}-${d}`, tasks);
+                }
+                overlayPicker.style.display = 'none';
+            } else if (e.key === 'Escape') {
+                overlayPicker.style.display = 'none';
+            }
         });
     }
-    if (monthPickerOverlay) {
-        monthPickerOverlay.addEventListener('click', e => {
-            if (e.target === monthPickerOverlay) closeMonthPicker();
-        });
+
+    // Wire labels to open our overlay picker
+    if (monthLabel) {
+        monthLabel.title = "Click to jump date";
+        monthLabel.style.cursor = "pointer";
+        monthLabel.addEventListener('click', openDatePicker);
     }
-    if (monthLabel) monthLabel.addEventListener('click', openMonthPicker);
-    if (mobileMonthLabel) mobileMonthLabel.addEventListener('click', openMonthPicker);
-    if (monthLabel) { monthLabel.setAttribute("title", "Click to jump date"); monthLabel.style.cursor = "pointer"; }
-    if (mobileMonthLabel) { mobileMonthLabel.setAttribute("title", "Click to jump date"); mobileMonthLabel.style.cursor = "pointer"; }
+    if (mobileMonthLabel) {
+        mobileMonthLabel.title = "Click to jump date";
+        mobileMonthLabel.style.cursor = "pointer";
+        mobileMonthLabel.addEventListener('click', openDatePicker);
+    }
 }); // --- END DOMContentLoaded ---
 
 // --- Profile Picture safety ---
