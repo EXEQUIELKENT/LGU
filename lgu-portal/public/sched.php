@@ -1164,51 +1164,82 @@ body::-webkit-scrollbar {
 
 @media (max-width: 768px) {
 
-    /* ===============================
-       📱 MOBILE OUTSIDE-CARD CONTROLS
-       =============================== */
+    /* MOBILE CONTROLS (INSIDE CARD) */
     .mobile-controls {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin: 0 6px 14px 6px;
-        padding: 12px 14px;
+        flex-wrap: wrap;        /* allow wrapping on tiny screens */
+        gap: 6px;               /* smaller gap for tight screens */
+        margin: 0 4px 12px 4px;
+        padding: 10px 12px;
         background: rgba(255,255,255,0.92);
         backdrop-filter: blur(12px);
         border-radius: 16px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
-    /* List view controls */
+
+    /* LIST VIEW CONTROLS */
     #mobileListControls input {
-        flex: 1;
-        padding: 10px 12px;
+        flex: 1 1 auto;                           /* grow and shrink */
+        min-width: 100px;                         /* prevent too small */
+        max-width: calc(100% - 50px);             /* slightly more room to reduce space */
+        padding: 8px 8px;                         /* less horizontal padding */
         border-radius: 10px;
         border: 1px solid #b1b8d0;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
+        margin-right: 4px;                        /* reduce space between input and button */
     }
-    /* -- CALENDAR CONTROLS: OVERRIDE/REPLACE FOR MOBILE ALIGNMENT -- */
-    /* ===============================
-       📅 MOBILE CALENDAR CONTROLS FIX
-       =============================== */
-    #mobileCalendarControls {
-        display: grid;
-        grid-template-columns: auto 1fr auto auto;
+    /* Mobile List → Calendar button matches calendar button style */
+    #mobileListControls button.mobile-calendar-btn {
+        flex: 0 0 38px;                   /* slightly less width */
+        height: 38px;                     /* match input height if needed */
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 12px;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        margin: 0;
+        transition: transform 0.1s ease-in-out;
     }
-    /* Month label centered */
-    #mobileCalendarControls span {
+
+    /* Active touch scale effect like calendar buttons */
+    #mobileListControls button.mobile-calendar-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* CALENDAR CONTROLS */
+    #mobileCalendarControls {
+        display: flex;
+        flex-wrap: wrap;           /* wrap if space is tight */
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px;
+        padding: 8px 10px;
+    }
+
+    /* Month label centered & responsive */
+    #mobileCalendarControls span#mobileMonthLabel {
+        flex: 1 1 auto;           /* grow to fill space */
+        min-width: 80px;
         text-align: center;
         font-weight: 600;
         font-size: 0.95rem;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    /* Unified button size for calendar controls */
+
+    /* Buttons responsive */
     #mobileCalendarControls button {
-        width: 40px;
-        height: 40px;
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1217,63 +1248,19 @@ body::-webkit-scrollbar {
         border: none;
         border-radius: 10px;
         font-size: 16px;
-        font-weight: 600;
         cursor: pointer;
-        margin: 0; /* 🔥 IMPORTANT - overrides margin-top, margin-bottom, margin-right breakdowns */
         padding: 0;
+        margin: 0;
     }
-    /* Slight visual emphasis for active touch */
+    #mobileToListBtn {
+        flex: 0 0 auto;
+        min-width: 36px;
+        padding: 0 6px; /* allow icon+text to fit */
+    }
+
+    /* Active touch scale */
     #mobileCalendarControls button:active {
         transform: scale(0.95);
-    }
-
-    /* -- The following still exist for legacy/custom usage elsewhere, but no longer apply to calendar controls -- */
-
-    .mobile-toggle-btn {
-        min-width: 20px;
-        height: 38px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top:20px;
-        background:#3762c8;
-        color:#fff;
-        border:none;
-        padding:10px 18px;
-        border-radius:10px;
-        cursor:pointer;
-        font-weight:600;
-    }
-    .mobile-schedule-btn {
-        width: 20%;
-        height: 38px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top:20px;
-        margin-right: 5px;
-        background:#3762c8;
-        color:#fff;
-        border:none;
-        padding:10px 18px;
-        border-radius:10px;
-        cursor:pointer;
-        font-weight:600;
-    }
-    .mobile-calendar-btn {
-        width: 45px;
-        height: 45px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 0px;
-        background:#3762c8;
-        color:#fff;
-        border:none;
-        padding:10px 18px;
-        border-radius:10px;
-        cursor:pointer;
-        font-weight:600;
     }
 
     /* Hide desktop controls INSIDE card on mobile */
@@ -1711,12 +1698,28 @@ body::-webkit-scrollbar {
 #customDatePickerOverlay input[type="date"] {
     width: 180px;
     padding: 6px 8px;
+    background: #f7faff; /* Match desktop calendar background */
+    border: 1px solid #b1b8d0;
+    color: #222;
+    font-size: 1rem;
+    border-radius: 7px;
+    transition: background 0.15s;
+}
+#customDatePickerOverlay input[type="date"]:focus {
+    background: #e8f1ff;
+    outline: 2px solid #3762c8;
+    outline-offset: 0;
 }
 @media (max-width: 768px) {
     #customDatePickerOverlay {
         position: fixed !important;
         width: 150px;
         z-index: 2500;
+    }
+    #customDatePickerOverlay input[type="date"] {
+        width: 100%;
+        font-size: 1rem;
+        background: #f7faff; /* Ensure mobile also matches */
     }
 }
 </style>
