@@ -569,9 +569,9 @@ body::-webkit-scrollbar {
 /* Responsive Footer - sticks to bottom if content is short, stays after content if long */
 .footer {
     width: 100%;
-    z-index: 100;
+    z-index: 100;   
     position: relative;
-    margin-top: 48px;
+    margin-top: 100px;
     padding-bottom: 18px;
     /* No fixed px offset, adapts to content length */
 }
