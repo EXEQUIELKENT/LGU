@@ -32,6 +32,7 @@ function showNotification() {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
         $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        // ADD: Add a notification container for absolute positioning fixes
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -602,7 +603,7 @@ body::-webkit-scrollbar {
     background: #fff;
     border-radius: 13px;
     box-shadow: 0 8px 38px rgba(34,53,126,0.23);
-    z-index: 3001;
+    z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
     display: flex;
     align-items: center;
     gap: 14px;
@@ -862,6 +863,19 @@ body::-webkit-scrollbar {
     /* 🧪 OPTIONAL: mobile card tighter padding for small screens */
     .card {
         padding: 22px;
+    }
+
+    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
+    .notif-popup {
+        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
+        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 40px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 12px;
+        font-size: 16px;
     }
 }
 </style>
