@@ -469,25 +469,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 <title>Create Account | LGU Portal</title>
 <link rel="stylesheet" href="style.css">
 <style>
-/* Base layout */
-body {
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow-y: auto;
-    overflow-x: hidden;
+/* --- BASE FLEX LAYOUT and OVERLAY FIXES --- */
+
+/* Always set html & body height for flexbox layout */
+html, body {
+    height: 100%;
     margin: 0;
 }
 
+body {
+    min-height: 120vh;
+    display: flex;
+    flex-direction: column;
+    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    overflow-x: hidden;
+    position: relative; /* For ::before absolutely positioned overlay */
+    margin: 0;
+    /* Don't overflow hidden on y—allow to scroll if content grows */
+}
+
+/* Blur overlay participates in document flow, never covers footer */
 body::before {
     content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: absolute; /* <--- NOT fixed */
+    inset: 0;
+    min-height: 100%;
+    pointer-events: none;
     backdrop-filter: blur(6px);
     background: rgba(0, 0, 0, 0.35);
     z-index: 0;
@@ -497,7 +504,7 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-/* NAVBAR */
+/* --- NAVBAR --- */
 .nav {
     width: 100%;
     padding: 16px 60px;
@@ -505,12 +512,10 @@ body::-webkit-scrollbar {
     justify-content: space-between;
     align-items: center;
 
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+    background: rgba(255,255,255,0.15);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
 
     position: fixed;
     top: 0;
@@ -566,18 +571,10 @@ body::-webkit-scrollbar {
     z-index: 1;
 }
 
-/* Responsive Footer - sticks to bottom if content is short, stays after content if long */
-.footer {
-    width: 100%;
-    z-index: 100;   
-    position: relative;
-    margin-top: 100px;
-    padding-bottom: 18px;
-    /* No fixed px offset, adapts to content length */
-}
-
+/* --- FLEX WRAPPER (main content area) --- */
 .wrapper {
     display: flex;
+    flex: 1; /* <--- enables content to grow, pushes footer down */
     justify-content: center;
     align-items: flex-start;
     box-sizing: border-box;
@@ -587,7 +584,14 @@ body::-webkit-scrollbar {
     min-height: calc(100vh - 80px);
 }
 
-/* Card styling (small centered panel) */
+/* Recommended: Prevent footer "touching" card on short screens */
+@media (min-height: 700px) {
+    .wrapper {
+        padding-bottom: 60px;
+    }
+}
+
+/* --- CARD (registration panel) --- */
 .card {
     width: 100%;
     max-width: 500px;
@@ -598,8 +602,32 @@ body::-webkit-scrollbar {
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
     box-sizing: border-box;
     animation: fadeIn 0.5s ease-in-out;
-    margin: 0 auto;
+    margin-top: 20px;
+    margin-bottom: 20px;
 }
+
+/* --- FOOTER: always at bottom, never overlays, in flex flow --- */
+.footer {
+    width: 100%;
+    padding: 26px 0 22px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+
+    color: #fff;
+    text-align: center;
+    font-size: 15px;
+    font-family: 'Poppins', Arial, sans-serif;
+
+    margin-top: auto;   /* STICKY FLEX FOOTER */
+    flex-shrink: 0;     /* Prevent shrinkage if container shrinks */
+    position: relative; /* Not fixed! */
+    z-index: 1;
+}
+
+/* --- Miscellaneous original styles --- */
 
 /* Primary button styling (shared) */
 .btn-primary {
@@ -621,34 +649,23 @@ body::-webkit-scrollbar {
     transform: translateY(-1px);
 }
 
-/* To allow main section to scroll, but keep header visible */
-html, body {
-    height: 100%;
-}
-body {
-    min-height: 100vh;
-}
-
 /* Custom scrollbar for card */
 .card::-webkit-scrollbar {
     width: 8px;
 }
-
 .card::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
 }
-
 .card::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
-
 .card::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.3);
 }
 
-/* LOGO AREA */
+/* LOGO AREA (repeat/corrected) */
 .site-logo {
     display: flex;
     align-items: center;
@@ -657,20 +674,17 @@ body {
     font-weight: 600;
     font-size: 18px;
 }
-
-/* LOGO IMAGE */
 .site-logo img {
     width: 40px;
     height: auto;
     border-radius: 8px;
 }
 
-/* NAV LINKS */
+/* NAV LINKS (repeat/corrected) */
 .nav-links {
     display: flex;
     align-items: center;
 }
-
 .nav-links a {
     margin-left: 25px;
     text-decoration: none;
@@ -681,7 +695,6 @@ body {
     border-radius: 10px;
     transition: 0.25s ease;
 }
-
 .nav-links a:hover,
 .nav-links a.active {
     opacity: 1;
@@ -889,6 +902,7 @@ body {
         display: block;
         backdrop-filter: blur(8px);
         background: rgba(0, 0, 0, 0.35);
+        /* Remains absolute on mobile */
     }
 
     .nav {
