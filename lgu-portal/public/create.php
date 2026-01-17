@@ -478,7 +478,7 @@ html, body {
 }
 
 body {
-    min-height: 120vh;
+    min-height: 150vh;
     display: flex;
     flex-direction: column;
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
