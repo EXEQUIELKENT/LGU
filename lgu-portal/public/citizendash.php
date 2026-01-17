@@ -216,7 +216,7 @@
         </div>
         <!-- Footer-->
         <footer class="bg-light py-5">
-            <div class="container px-4 px-lg-5"><div class="small text-center text-muted">© 2025 LGU Infrastructue and Utilities · All Rights Reserved</div></div>
+            <div class="container px-4 px-lg-5"><div class="small text-center text-muted">© 2026 LGU Infrastructue and Utilities · All Rights Reserved</div></div>
         </footer>
         <!-- Bootstrap core JS-->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
