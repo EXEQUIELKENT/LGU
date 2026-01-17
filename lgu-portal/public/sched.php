@@ -1704,47 +1704,12 @@ body::-webkit-scrollbar {
     font-size: 1rem;
     border-radius: 7px;
     transition: background 0.15s;
-    /* Force the dropdown background to blue for day, month, year selectors */
-    accent-color: #3762c8;
 }
 #customDatePickerOverlay input[type="date"]:focus {
     background: #e8f1ff;
     outline: 2px solid #3762c8;
     outline-offset: 0;
 }
-
-/* Force blue background on focused native parts in webkit browsers (Chrome/Safari/Edge/Opera) */
-#customDatePickerOverlay input[type="date"]:focus::-webkit-datetime-edit,
-#customDatePickerOverlay input[type="date"]:active::-webkit-datetime-edit {
-    background-color: #3762c8 !important;
-    color: #fff !important;
-    border-radius: 5px;
-}
-#customDatePickerOverlay input[type="date"]::-webkit-datetime-edit-fields-wrapper {
-    background-color: #3762c8 !important;
-    color: #fff !important;
-    border-radius: 5px;
-}
-#customDatePickerOverlay input[type="date"]::-webkit-datetime-edit-text,
-#customDatePickerOverlay input[type="date"]::-webkit-datetime-edit-day-field,
-#customDatePickerOverlay input[type="date"]::-webkit-datetime-edit-month-field,
-#customDatePickerOverlay input[type="date"]::-webkit-datetime-edit-year-field {
-    background: #3762c8 !important;
-    color: #fff !important;
-    border-radius: 4px;
-    padding: 0 2px;
-}
-
-/* For Firefox (with less granularity; entire input gets blue) */
-@-moz-document url-prefix() {
-    #customDatePickerOverlay input[type="date"]:focus {
-        background-color: #3762c8 !important;
-        color: #fff !important;
-        border-radius: 7px;
-    }
-}
-
-/* On mobile (iOS/Android), override backgrounds too if possible */
 @media (max-width: 768px) {
     #customDatePickerOverlay {
         position: fixed !important;
@@ -1755,12 +1720,6 @@ body::-webkit-scrollbar {
         width: 100%;
         font-size: 1rem;
         background: #f7faff; /* Ensure mobile also matches */
-        /* accent-color covers some browsers for native controls */
-        accent-color: #3762c8;
-    }
-    #customDatePickerOverlay input[type="date"]:focus {
-        background-color: #3762c8 !important;
-        color: #fff !important;
     }
 }
 </style>
