@@ -41,7 +41,7 @@ function showNotification() {
         unset($_SESSION['notification']);
         echo "<script>
             function closeNotif() {
-                var n = document.getElementById('notifPopup');
+                var n = document.getElementById('notifPopup'); 
                 if(n) n.style.opacity='0';
                 setTimeout(()=>{if(n)n.remove();}, 400);
             }
