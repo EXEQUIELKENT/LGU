@@ -57,8 +57,7 @@ $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- RECOMMENDED: prevent zoom glitches on desktop mode-on-phone -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU Employee Portal</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
@@ -729,17 +728,6 @@ body::-webkit-scrollbar {
         display: flex;
     }
 
-    /* Mobile controls only visible in mobile (clean controlled) */
-    .mobile-controls {
-        display: flex;
-    }
-    #mobileListControls {
-        display: flex;
-    }
-    #mobileCalendarControls {
-        display: flex;
-    }
-
     /* Hide desktop sidebar initially */
     .sidebar-nav {
         left: -110%;
@@ -792,10 +780,14 @@ body::-webkit-scrollbar {
     .mobile-toggle {
         position: absolute;
         left: 16px;
-        /* 🚩 mobile colors and radius move to shared, but size can remain here */
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
         width: 38px;
         height: 38px;
         font-size: 20px;
+        cursor: pointer;
     }
 
     /* Sidebar internal layout for mobile */
@@ -841,10 +833,10 @@ body::-webkit-scrollbar {
     .main-content.expanded {
         height: auto;
         min-height: 100vh;
-        overflow-y: auto;
+        overflow-y: auto;           /* allow scrolling */
         padding: 0px;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
     }
 
     /* Hide main-content vertical (right) scrollbar but retain scrollability */
@@ -854,8 +846,8 @@ body::-webkit-scrollbar {
         display: none !important;
     }
     .main-content {
-        scrollbar-width: none;
-        -ms-overflow-style: none;
+        scrollbar-width: none;           /* Firefox */
+        -ms-overflow-style: none;        /* Edge/IE */
     }
 
     /* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
@@ -875,8 +867,8 @@ body::-webkit-scrollbar {
 
     /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
-        top: 76px !important;
-        z-index: 5050 !important;
+        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
+        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 40px);
