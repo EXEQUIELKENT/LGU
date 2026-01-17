@@ -566,14 +566,14 @@ body::-webkit-scrollbar {
     z-index: 1;
 }
 
-/* Footer - Desktop only (fixed at bottom) */
+/* Responsive Footer - sticks to bottom if content is short, stays after content if long */
 .footer {
-    position: relative;
-    top: 90px;
-    bottom: 0px;
-    left: 0;
     width: 100%;
     z-index: 100;
+    position: relative;
+    margin-top: 48px;
+    padding-bottom: 18px;
+    /* No fixed px offset, adapts to content length */
 }
 
 .wrapper {
