@@ -478,7 +478,7 @@ html, body {
 }
 
 body {
-    min-height: 150vh;
+    min-height: 120vh;
     display: flex;
     flex-direction: column;
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
@@ -893,16 +893,31 @@ body::-webkit-scrollbar {
 
 /* ===== Mobile-first refinements (like reference design) ===== */
 @media (max-width: 640px) {
+    html, body {
+        height: 100% !important;
+        min-height: 100vh !important;
+    }
+
     body {
         background: url("cityhall.jpeg") center/cover no-repeat fixed;
         overflow-y: auto;
+        min-height: 100vh !important;
+        position: relative;
     }
 
     body::before {
+        content: "";
+        position: fixed !important; /* CHANGED from absolute to fixed on mobile */
+        top: 0; left: 0; right: 0; bottom: 0; /* Ensure overlay covers all */
+        width: 100vw;
+        height: 100vh;
+        min-height: 100vh !important;
         display: block;
+        pointer-events: none;
         backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         background: rgba(0, 0, 0, 0.35);
-        /* Remains absolute on mobile */
+        z-index: 0;
     }
 
     .nav {
