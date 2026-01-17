@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LGU Road Damage Reporting | Admin</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      :root {
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --glass-bg: rgba(255, 255, 255, 0.85);
+        --glass-border: #2563eb;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        height: 100vh;
+        background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
+        position: relative;
+        overflow: hidden;
+        color: var(--text-main);
+      }
+
+      body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        backdrop-filter: blur(8px);
+        background: rgba(
+          15,
+          23,
+          42,
+          0.4
+        ); /* Darker overlay for better contrast */
+        z-index: 0;
+      }
+
+      /* Sidebar Refinement */
+      .sidebar-nav {
+        position: fixed;
+        width: 260px;
+        height: 100vh;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid var(--glass-border);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        padding: 20px 0;
+      }
+
+      /* Main Content */
+      .main-content {
+        position: relative;
+        margin-left: 260px;
+        height: 100vh;
+        padding: 40px 60px;
+        display: flex;
+        flex-direction: column;
+        z-index: 1;
+      }
+
+      /* Card System */
+      .card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        border-radius: 12px; /* Slightly sharper for professional look */
+        border: 1px solid var(--glass-border);
+        padding: 24px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Role Switcher */
+      .role-container {
+        display: flex;
+        justify-content: flex-start;
+        gap: 16px;
+        margin-bottom: 30px;
+      }
+
+      .role-card {
+        flex: 1;
+        max-width: 200px;
+        cursor: pointer;
+        text-align: center;
+        padding: 16px;
+        border: 2px solid transparent;
+      }
+
+      .role-card.active {
+        border-color: var(--primary);
+        background: rgb(255, 255, 255);
+      }
+
+      .role-card h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .role-card.active h3 {
+        color: var(--primary);
+      }
+
+      /* Stats Section */
+      .content-row {
+        display: flex;
+        gap: 24px;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .stats-sidebar {
+        width: 240px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .stat-card {
+        border-left: 4px solid var(--primary);
+      }
+
+      .stat-card.pending {
+        border-left-color: #f59e0b;
+      }
+      .stat-card.accepted {
+        border-left-color: #10b981;
+      }
+
+      .stat-card h3 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+      }
+
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 8px;
+        color: var(--text-main);
+      }
+
+      /* Table Styling */
+      .table-card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0; /* Let table fill space */
+        overflow: hidden;
+      }
+
+      .table-header-area {
+        padding: 24px 24px 16px 24px;
+      }
+
+      .table-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 24px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        padding: 12px 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        z-index: 10;
+      }
+
+      td {
+        padding: 16px;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      tr:hover td {
+        background: rgb(211, 137, 76);
+      }
+
+      /* Buttons */
+      .btn-primary {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: #fff;
+        background: var(--primary);
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-hover);
+      }
+
+      .btn-outline {
+        background: transparent;
+        border: 1px solid #e2e8f0;
+        color: var(--text-main);
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .btn-outline:hover {
+        background: #f8fafc;
+      }
+
+      .pagination-bar {
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+
+      /* Status Badges */
+      .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .badge-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge-accepted {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .role-card {
+        display: flex;
+        align-items: center; /* vertical center */
+        gap: 10px; /* space between icon and title */
+      }
+      .role-card svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+      }
+      .role-card h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .page-header {
+        grid-column: span 2;
+        color: white;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+      <!-- Controls above the table -->
+
+      <header class="page-header">
+        <h1 style="font-size: 1.5rem; font-weight: 700">User and Access</h1>
+        <p style="opacity: 0.8; font-size: 0.9rem">
+          Mag confirm ng mga nag register.
+        </p>
+
+        <!-- Divider -->
+        <hr class="divider" />
+      </header>
+
+      <div class="role-container">
+        <div class="card role-card active" data-role="engineer">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-wrench-adjustable"
+            viewBox="0 0 16 16"
+          >
+            <path
+              d="M16 4.5a4.5 4.5 0 0 1-1.703 3.526L13 5l2.959-1.11q.04.3.041.61"
+            />
+            <path
+              d="M11.5 9c.653 0 1.273-.139 1.833-.39L12 5.5 11 3l3.826-1.53A4.5 4.5 0 0 0 7.29 6.092l-6.116 5.096a2.583 2.583 0 1 0 3.638 3.638L9.908 8.71A4.5 4.5 0 0 0 11.5 9m-1.292-4.361-.596.893.809-.27a.25.25 0 0 1 .287.377l-.596.893.809-.27.158.475-1.5.5a.25.25 0 0 1-.287-.376l.596-.893-.809.27a.25.25 0 0 1-.287-.377l.596-.893-.809.27-.158-.475 1.5-.5a.25.25 0 0 1 .287.376M3 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2"
+            />
+          </svg>
+          <h3>Engineers</h3>
+        </div>
+        <div class="card role-card" data-role="lgu_officer">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-person-raised-hand"
+            viewBox="0 0 16 16"
+          >
+            <path
+              d="M6 6.207v9.043a.75.75 0 0 0 1.5 0V10.5a.5.5 0 0 1 1 0v4.75a.75.75 0 0 0 1.5 0v-8.5a.25.25 0 1 1 .5 0v2.5a.75.75 0 0 0 1.5 0V6.5a3 3 0 0 0-3-3H6.236a1 1 0 0 1-.447-.106l-.33-.165A.83.83 0 0 1 5 2.488V.75a.75.75 0 0 0-1.5 0v2.083c0 .715.404 1.37 1.044 1.689L5.5 5c.32.32.5.754.5 1.207"
+            />
+            <path d="M8 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3" />
+          </svg>
+          <h3>LGU Officers</h3>
+        </div>
+        <div class="card role-card" data-role="citizen">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-person-bounding-box"
+            viewBox="0 0 16 16"
+          >
+            <path
+              d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5"
+            />
+            <path
+              d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"
+            />
+          </svg>
+          <h3>Citizens</h3>
+        </div>
+      </div>
+
+      <div class="content-row">
+        <div class="stats-sidebar">
+          <div class="card stat-card pending">
+            <h3>Pending</h3>
+            <p class="stat-number" id="pending-count">0</p>
+          </div>
+          <div class="card stat-card accepted">
+            <h3>Accepted</h3>
+            <p class="stat-number" id="accepted-count">0</p>
+          </div>
+        </div>
+
+        <div style="flex: 1; display: flex">
+          <div class="card table-card">
+            <div
+              class="table-header-area"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0 16px; /* optional padding for edges */
+                flex-wrap: wrap; /* allows wrapping on smaller screens */
+              "
+            >
+              <h2 id="table-title" style="font-size: 1.25rem">Engineers</h2>
+              <!-- Professional Sort & Filter Controls -->
+              <div
+                style="
+                  display: flex;
+                  justify-content: flex-start;
+                  gap: 40px;
+                  padding: 24px;
+                  align-items: center;
+                "
+              >
+                <div style="display: flex; flex-direction: column">
+                  <label
+                    for="sort-date"
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      margin-bottom: 4px;
+                    "
+                    >Sort by Date</label
+                  >
+                  <select
+                    id="sort-date"
+                    style="
+                      padding: 6px 12px;
+                      border-radius: 6px;
+                      border: 1px solid var(--glass-border);
+                      background: var(--glass-bg);
+                      color: var(--text-main);
+                      cursor: pointer;
+                    "
+                  >
+                    <option value="latest">Latest</option>
+                    <option value="earliest">Earliest</option>
+                  </select>
+                </div>
+                <div style="display: flex; flex-direction: column">
+                  <label
+                    for="filter-status"
+                    style="
+                      font-size: 0.8rem;
+                      color: var(--text-muted);
+                      margin-bottom: 4px;
+                    "
+                    >Filter by Status</label
+                  >
+                  <select
+                    id="filter-status"
+                    style="
+                      padding: 6px 12px;
+                      border-radius: 6px;
+                      border: 1px solid var(--glass-border);
+                      background: var(--glass-bg);
+                      color: var(--text-main);
+                      cursor: pointer;
+                    "
+                  >
+                    <option value="all">All</option>
+                    <option value="pending">Review</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              <script>
+                const sortSelect = document.getElementById("sort-date");
+                const filterSelect = document.getElementById("filter-status");
+
+                function getFilteredAndSortedData(data) {
+                  let filtered = [...data];
+
+                  // Filter by status
+                  const statusFilter = filterSelect.value;
+                  if (statusFilter !== "all") {
+                    filtered = filtered.filter(
+                      (item) => item.status === statusFilter
+                    );
+                  }
+
+                  // Sort by date
+                  const sortOrder = sortSelect.value;
+                  filtered.sort((a, b) => {
+                    const dateA = new Date(a.requested);
+                    const dateB = new Date(b.requested);
+                    return sortOrder === "latest"
+                      ? dateB - dateA
+                      : dateA - dateB;
+                  });
+
+                  return filtered;
+                }
+
+                // Update renderTable function
+                function renderTable(role, page = 1) {
+                  currentRole = role;
+                  currentPage = page;
+                  let data = sampleData[role];
+                  data = getFilteredAndSortedData(data);
+
+                  const tableBody = document.getElementById("user-table");
+                  document.getElementById("table-title").textContent = role
+                    .replace("_", " ")
+                    .toUpperCase();
+                  tableBody.innerHTML = "";
+
+                  const start = (page - 1) * ITEMS_PER_PAGE;
+                  const paginatedData = data.slice(
+                    start,
+                    start + ITEMS_PER_PAGE
+                  );
+
+                  paginatedData.forEach((user) => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+      <td>${user.first}</td>
+      <td>${user.middle}</td>
+      <td>${user.last}</td>
+      <td><span style="color:#64748b">${user.requested}</span></td>
+      <td style="text-align:right;">
+        <button class="btn-primary" onclick="window.location.href='permission.html'">
+          ${user.status === "pending" ? "Review" : "View Details"}
+        </button>
+      </td>
+    `;
+                    tableBody.appendChild(tr);
+                  });
+
+                  const pending = data.filter(
+                    (d) => d.status === "pending"
+                  ).length;
+                  const accepted = data.filter(
+                    (d) => d.status === "accepted"
+                  ).length;
+                  document.getElementById("pending-count").textContent =
+                    pending;
+                  document.getElementById("accepted-count").textContent =
+                    accepted;
+
+                  const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+                  document.getElementById(
+                    "page-indicator"
+                  ).textContent = `Page ${currentPage} of ${totalPages || 1}`;
+                }
+
+                // Event listeners for controls
+                sortSelect.addEventListener("change", () =>
+                  renderTable(currentRole, 1)
+                );
+                filterSelect.addEventListener("change", () =>
+                  renderTable(currentRole, 1)
+                );
+              </script>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>First Name</th>
+                    <th>Middle Name</th>
+                    <th>Last Name</th>
+                    <th>Date Requested</th>
+                    <th style="text-align: right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="user-table"></tbody>
+              </table>
+            </div>
+
+            <div class="pagination-bar">
+              <button class="btn-outline" id="prev-page">Previous</button>
+              <span
+                id="page-indicator"
+                style="font-size: 0.85rem; color: var(--text-muted)"
+                >Page 1 of 1</span
+              >
+              <button class="btn-outline" id="next-page">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* Logic remains largely the same, just updated the render function for the cleaner UI */
+      const sampleData = {
+        engineer: [
+          {
+            first: "Juan",
+            middle: "Ching",
+            last: "De la Cruz",
+            requested: "Dec 1, 2025",
+            status: "pending",
+          },
+          {
+            first: "Maria",
+            middle: "Clara",
+            last: "Reyes",
+            requested: "Dec 2, 2025",
+            status: "accepted",
+          },
+          {
+            first: "John",
+            middle: "Paul",
+            last: "De la Cruz",
+            requested: "Dec 3, 2025",
+            status: "pending",
+          },
+          {
+            first: "Anna",
+            middle: "Mae",
+            last: "Santos",
+            requested: "Dec 4, 2025",
+            status: "pending",
+          },
+          {
+            first: "Mark",
+            middle: "Anthony",
+            last: "Lopez",
+            requested: "Dec 5, 2025",
+            status: "accepted",
+          },
+          {
+            first: "Paul",
+            middle: "James",
+            last: "Reyes",
+            requested: "Dec 6, 2025",
+            status: "pending",
+          },
+          {
+            first: "Kevin",
+            middle: "Luis",
+            last: "Garcia",
+            requested: "Dec 7, 2025",
+            status: "pending",
+          },
+          {
+            first: "Rhea",
+            middle: "Anne",
+            last: "Cruz",
+            requested: "Dec 8, 2025",
+            status: "accepted",
+          },
+          {
+            first: "Noel",
+            middle: "Bryan",
+            last: "Torres",
+            requested: "Dec 9, 2025",
+            status: "pending",
+          },
+          {
+            first: "Joy",
+            middle: "Marie",
+            last: "Lim",
+            requested: "Dec 10, 2025",
+            status: "pending",
+          },
+          {
+            first: "Leo",
+            middle: "Martin",
+            last: "Villanueva",
+            requested: "Dec 11, 2025",
+            status: "accepted",
+          },
+        ],
+        lgu_officer: [
+          {
+            first: "Kristine",
+            middle: "Ann",
+            last: "Geranta",
+            requested: "Dec 1, 2025",
+            status: "pending",
+          },
+        ],
+        citizen: [
+          {
+            first: "Angela",
+            middle: "Rose",
+            last: "Cruz",
+            requested: "Dec 1, 2025",
+            status: "pending",
+          },
+        ],
+      };
+
+      const ITEMS_PER_PAGE = 8;
+      let currentRole = "engineer";
+      let currentPage = 1;
+
+      function renderTable(role, page = 1) {
+        currentRole = role;
+        currentPage = page;
+        const data = sampleData[role];
+        const tableBody = document.getElementById("user-table");
+
+        document.getElementById("table-title").textContent = role
+          .replace("_", " ")
+          .toUpperCase();
+        tableBody.innerHTML = "";
+
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const paginatedData = data.slice(start, start + ITEMS_PER_PAGE);
+
+        paginatedData.forEach((user) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+                    <td>${user.first}</td>
+                    <td>${user.middle}</td>
+                    <td>${user.last}</td>
+                    <td><span style="color: #64748b">${
+                      user.requested
+                    }</span></td>
+                    <td style="text-align: right;">
+                        <button class="btn-primary" onclick="window.location.href='permission.html'"> ${
+                          user.status === "pending" ? "Review" : "View Details"
+                        } </button>
+                    </td>
+                `;
+          tableBody.appendChild(tr);
+        });
+
+        // Update Stats
+        const pending = data.filter((d) => d.status === "pending").length;
+        const accepted = data.filter((d) => d.status === "accepted").length;
+        document.getElementById("pending-count").textContent = pending;
+        document.getElementById("accepted-count").textContent = accepted;
+
+        // Pagination text
+        const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+        document.getElementById(
+          "page-indicator"
+        ).textContent = `Page ${currentPage} of ${totalPages || 1}`;
+      }
+
+      // Event Listeners
+      document.querySelectorAll(".role-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          document
+            .querySelectorAll(".role-card")
+            .forEach((c) => c.classList.remove("active"));
+          card.classList.add("active");
+          renderTable(card.dataset.role, 1);
+        });
+      });
+
+      document.getElementById("prev-page").addEventListener("click", () => {
+        if (currentPage > 1) renderTable(currentRole, currentPage - 1);
+      });
+
+      document.getElementById("next-page").addEventListener("click", () => {
+        const totalPages = Math.ceil(
+          sampleData[currentRole].length / ITEMS_PER_PAGE
+        );
+        if (currentPage < totalPages) renderTable(currentRole, currentPage + 1);
+      });
+
+      renderTable("engineer", 1);
+    </script>
+    <script src="/js/sidebar.js"></script>
+  </body>
+</html>

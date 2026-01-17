@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LGU | Engineer Review</title>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
+        position: relative;
+      }
+
+      body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        backdrop-filter: blur(6px);
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 0;
+      }
+
+      /* SIDEBAR */
+      .sidebar-nav {
+        position: fixed;
+        width: 250px;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.25);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .site-logo {
+        padding: 20px;
+        text-align: center;
+      }
+
+      .site-logo img {
+        width: 120px;
+        border-radius: 10px;
+      }
+
+      .nav-list {
+        list-style: none;
+        padding: 0 20px;
+      }
+
+      .nav-link {
+        display: block;
+        padding: 12px 20px;
+        color: #000;
+        text-decoration: none;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        transition: 0.3s;
+      }
+
+      .nav-link:hover {
+        background: #97a4c2;
+        transform: translateX(5px);
+      }
+
+      .nav-link.active {
+        background: #3762c8;
+        color: #fff;
+      }
+
+      .user-info {
+        text-align: center;
+        padding: 20px;
+      }
+
+      .logout-btn {
+        margin-top: 8px;
+        padding: 8px 14px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      /* MAIN CONTENT */
+      .main-content {
+        margin-left: 250px;
+        height: 100vh;
+        padding: 50px 70px;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .page-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #f2eaea;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 18px;
+        padding: 30px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        flex: 1;
+      }
+
+      .section {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .section h3 {
+        font-size: 15px;
+        color: #1e40af;
+        margin-bottom: 14px;
+        border-bottom: 1px solid #dbeafe;
+        padding-bottom: 6px;
+      }
+
+      .detail {
+        font-size: 13px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .detail span {
+        font-weight: 500;
+        color: #334155;
+      }
+
+      .id-photo {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 10px;
+        margin-top: 8px;
+        border: 1px solid #cbd5f5;
+      }
+
+      .permissions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .permission-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #ffffff;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+      }
+
+      .permission-item input {
+        transform: scale(1.1);
+      }
+
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .btn {
+        padding: 10px 22px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .btn-reject {
+        background: #e5e7eb;
+      }
+
+      .btn-approve {
+        background: linear-gradient(135deg, #3762c8, #1e40af);
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- MAIN -->
+    <div class="main-content">
+      <div class="page-title">Engineer Account Review & Permission Setup</div>
+
+      <div class="card">
+        <div class="grid">
+          <!-- INFO -->
+          <div class="section">
+            <h3>Registrant Information</h3>
+
+            <div class="detail">
+              <strong>First Name</strong><span>Juan</span>
+            </div>
+            <div class="detail">
+              <strong>Middle Name</strong><span>Ching</span>
+            </div>
+            <div class="detail">
+              <strong>Last Name</strong><span>De la Cruz</span>
+            </div>
+            <div class="detail">
+              <strong>Civil Status</strong><span>Married</span>
+            </div>
+            <div class="detail">
+              <strong>Address</strong><span>Quezon City</span>
+            </div>
+            <div class="detail"><strong>Role</strong><span>Engineer</span></div>
+            <div class="detail">
+              <strong>Birthday</strong><span>May 12, 1999</span>
+            </div>
+
+            <strong style="font-size: 13px; margin-top: 6px"
+              >Uploaded ID</strong
+            >
+            <img src="assets/img/sample-id.jpg" class="id-photo" />
+          </div>
+
+          <!-- PERMISSIONS -->
+          <div class="section">
+            <h3>Engineer Permissions</h3>
+
+            <div class="permissions">
+              <label class="permission-item"
+                ><input type="checkbox" checked /> Road Damage Reporting</label
+              >
+              <label class="permission-item"
+                ><input type="checkbox" checked /> GIS Mapping</label
+              >
+              <label class="permission-item"
+                ><input type="checkbox" checked /> Damage Assessment</label
+              >
+              <label class="permission-item"
+                ><input type="checkbox" checked /> Inspection & Workflow</label
+              >
+              <label class="permission-item"
+                ><input type="checkbox" checked /> Document Management</label
+              >
+              <label class="permission-item"
+                ><input type="checkbox" checked /> Public Transparency</label
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="goBack()">Back</button>
+          <button class="btn btn-reject">Reject</button>
+          <button class="btn btn-approve">Approve Engineer</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      fetch("../sidebar/sidebar.html")
+        .then((response) => response.text())
+        .then((data) => {
+          document.getElementById("sidebar-container").innerHTML = data;
+        });
+
+      function goBack() {
+        window.history.back();
+      }
+    </script>
+  </body>
+</html>
