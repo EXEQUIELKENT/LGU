@@ -1,9 +1,79 @@
+<?php
+session_start();
+require_once 'db.php';
+
+$error_message = '';
+$success_message = '';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate inputs
+    $infrastructure = isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '';
+    $location = isset($_POST['location']) ? trim($_POST['location']) : '';
+    $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
+    $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
+    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    
+    if (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
+        $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
+    } else {
+        // Insert into requests table
+        $stmt = $conn->prepare("INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())");
+        $stmt->bind_param("sssss", $infrastructure, $location, $issue, $contact_number, $name);
+        
+        if ($stmt->execute()) {
+            $req_id = $stmt->insert_id;
+            $stmt->close();
+            
+            // Handle file uploads
+            if (isset($_FILES['evidence']) && !empty($_FILES['evidence']['name'][0])) {
+                $upload_dir = 'uploads/evidence/';
+                
+                // Create directory if it doesn't exist
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                
+                $file_count = count($_FILES['evidence']['name']);
+                $uploaded_files = 0;
+                
+                for ($i = 0; $i < $file_count; $i++) {
+                    if ($_FILES['evidence']['error'][$i] === UPLOAD_ERR_OK) {
+                        $file_name = $_FILES['evidence']['name'][$i];
+                        $file_tmp = $_FILES['evidence']['tmp_name'][$i];
+                        $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+                        
+                        // Generate unique filename
+                        $new_filename = 'evidence_' . $req_id . '_' . time() . '_' . $i . '.' . $file_ext;
+                        $file_path = $upload_dir . $new_filename;
+                        
+                        if (move_uploaded_file($file_tmp, $file_path)) {
+                            // Insert into evidence_images table
+                            $img_stmt = $conn->prepare("INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())");
+                            $img_stmt->bind_param("is", $req_id, $file_path);
+                            $img_stmt->execute();
+                            $img_stmt->close();
+                            $uploaded_files++;
+                        }
+                    }
+                }
+            }
+            
+            $success_message = 'Maintenance request submitted successfully! Request ID: ' . $req_id;
+            // Redirect after 2 seconds
+            header("refresh:2;url=citizencimm.php");
+        } else {
+            $error_message = 'Failed to submit request. Please try again.';
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit Repair Request - LGU Citizen Portal</title>
+    <title>Submit Maintenance Request - InfraGovServices</title>
     <link rel="stylesheet" href="style.css">
     <style>
         /* PAGE STYLING */
@@ -109,22 +179,33 @@
         /* FORM CARD */
         .report-card {
             width: 100%;
-            max-width: 500px;
+            max-width: 900px;
             background: rgba(255, 255, 255, 0.9); /* Higher opacity for readability */
-            padding: 30px;
+            padding: 15px 30px;
             border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3)
         }
 
         .report-card h2 {
-            margin-bottom: 5px;
+            margin-bottom: 20px;
             font-size: 26px;
             color: #000;
             text-align: center;
+            grid-column: 1 / -1;
+        }
+
+        .report-card form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .input-group.full-width {
+            grid-column: 1 / -1;
         }
 
         .input-group {
-            margin-bottom: 15px;
+            margin-bottom: 0;
             text-align: left;
         }
 
@@ -140,7 +221,7 @@
         .input-group input, 
         .input-group textarea {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border-radius: 10px;
             border: 1px solid #ccc;
             background: #fff;
@@ -156,7 +237,8 @@
         .btn-container {
             display: flex;
             gap: 12px;
-            margin-top: 25px;
+            margin-top: 0;
+            grid-column: 1 / -1;
         }
 
         .btn-cancel {
@@ -190,54 +272,75 @@
     </div>
     <div class="nav-links">
         <a href="citizencimm.php">Home</a>
-        <a href="services.php">Services</a>
         <a href="citizenrepform.php" class="active">Requests</a>
+        <a href="about.php">About</a>
     </div>
 </header>
 
 <div class="form-wrapper">
     <div class="report-card">
-        <h2>Maintenance Report</h2>
+        <h2>Maintenance Request</h2>
         
-        <form action="#">
+        <?php if ($error_message): ?>
+            <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #f5c6cb;">
+                <?php echo htmlspecialchars($error_message); ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if ($success_message): ?>
+            <div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #c3e6cb;">
+                <?php echo htmlspecialchars($success_message); ?>
+            </div>
+        <?php endif; ?>
+        
+        <form method="POST" enctype="multipart/form-data">
             <div class="input-group">
-                <label>Infrastructure</label>
-                <select required>
+                <label for="infrastructure">Infrastructure Type *</label>
+                <select id="infrastructure" name="infrastructure" required>
                     <option value="" disabled selected>Select Infrastructure...</option>
                     <option value="Roads">Roads</option>
                     <option value="Street Lights">Street Lights</option>
                     <option value="Drainage">Drainage</option>
                     <option value="Public Facilities">Public Facilities</option>
+                    <option value="Water Supply">Water Supply</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Other">Other</option>
                 </select>
             </div>
 
             <div class="input-group">
-                <label>Location(or paste the link from Google maps)</label>
-                <input type="text" placeholder="Street, Barangay, Landmark" required>
+                <label for="location">Location *</label>
+                <input type="text" id="location" name="location" placeholder="Street, Barangay, Landmark" required>
             </div>
 
             <div class="input-group">
-                <label>Issue / Damage Description</label>
-                <textarea placeholder="Describe the problem in detail..." required></textarea>
+                <label for="name">Name (Optional)</label>
+                <input type="text" id="name" name="name" placeholder="Your name">
             </div>
 
             <div class="input-group">
-                <label>Evidence (Upload Image of the issue in 3 different angles)</label>
-                <input type="file" accept="image/*" required>
+                <label for="contact_number">Contact Number *</label>
+                <input type="tel" id="contact_number" name="contact_number" placeholder="09XX-XXX-XXXX" required>
+            </div>
+
+            <div class="input-group full-width">
+                <label for="issue">Issue / Damage Description *</label>
+                <textarea id="issue" name="issue" placeholder="Describe the problem in detail..." required></textarea>
+            </div>
+
+            <div class="input-group full-width">
+                <label for="evidence">Evidence - Upload Images (Multiple files accepted)</label>
+                <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
+                <small style="color: #666; display: block; margin-top: 5px;">Upload 3 different angles if possible</small>
             </div>
 
             <div class="btn-container">
-                <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
-                <button type="submit" class="btn-primary">Submit Report</button>
+                <button type="button" class="btn-cancel" onclick="window.location.href='citizencimm.php'">Cancel</button>
+                <button type="submit" class="btn-primary">Submit Request</button>
             </div>
         </form>
     </div>
 </div>
-
-<script>
-    // Set default date to today
-    document.getElementById('submissionDate').valueAsDate = new Date();
-</script>
 
 </body>
 </html>
