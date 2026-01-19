@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 19, 2026 at 04:50 AM
+-- Generation Time: Jan 19, 2026 at 08:08 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -122,7 +122,11 @@ INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_ad
 (27, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 10:48:19'),
 (28, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 10:48:32'),
 (29, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 11:20:53'),
-(30, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 11:24:53');
+(30, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 11:24:53'),
+(31, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 11:54:48'),
+(32, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 13:15:53'),
+(33, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 13:40:10'),
+(34, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', 0, 0, '2026-01-19 15:07:17');
 
 -- --------------------------------------------------------
 
@@ -144,6 +148,45 @@ CREATE TABLE `maintenance_schedule` (
   `estimated_completion_date` datetime NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `maintenance_schedule`
+--
+
+INSERT INTO `maintenance_schedule` (`sched_id`, `task`, `location`, `category`, `priority`, `status`, `engineer_id`, `assigned_team`, `budget`, `starting_date`, `estimated_completion_date`, `created_at`) VALUES
+(1, 'HVAC System Check', 'Building A', 'Electrical', 'High', 'Scheduled', 5, 'Team Alpha', 5000.00, '2026-01-20 09:00:00', '2026-01-20 17:00:00', '2026-01-19 03:54:43'),
+(2, 'Elevator Maintenance', 'Building B', 'Mechanical', 'Critical', 'Scheduled', 5, 'Team Beta', 12000.00, '2026-01-20 10:00:00', '2026-01-20 15:00:00', '2026-01-19 03:54:43'),
+(3, 'Fire Alarm Inspection', 'Building C', 'Safety', 'Medium', 'Scheduled', 5, 'Team Gamma', 3000.00, '2026-01-20 08:30:00', '2026-01-20 12:00:00', '2026-01-19 03:54:43'),
+(4, 'Plumbing Check', 'Building D', 'Plumbing', 'Low', 'Scheduled', 5, 'Team Delta', 1500.00, '2026-01-20 13:00:00', '2026-01-20 16:00:00', '2026-01-19 03:54:43'),
+(5, 'Roof Inspection', 'Building E', 'Structural', 'High', 'Scheduled', 5, 'Team Epsilon', 4000.00, '2026-01-20 09:30:00', '2026-01-20 14:00:00', '2026-01-19 03:54:43'),
+(6, 'Aircon Filter Cleaning', 'City Hall – 2nd Floor', 'HVAC', 'Medium', 'Scheduled', 5, 'Maintenance Team A', 0.00, '2026-01-25 08:00:00', '2026-01-25 10:00:00', '2026-01-19 03:56:24'),
+(7, 'Electrical Panel Inspection', 'City Hall – Electrical Room', 'Electrical', 'High', 'Scheduled', 5, 'Electrical Team', 0.00, '2026-01-25 09:30:00', '2026-01-25 12:00:00', '2026-01-19 03:56:24'),
+(8, 'Plumbing Leak Repair', 'Public Market – Stall Area', 'Plumbing', 'Critical', 'In Progress', 5, 'Repair Team B', 0.00, '2026-01-25 11:00:00', '2026-01-25 15:00:00', '2026-01-19 03:56:24'),
+(9, 'Fire Alarm System Testing', 'Municipal Library', 'Safety', 'Low', 'Completed', 5, 'Inspection Team', 0.00, '2026-01-25 13:00:00', '2026-01-25 16:00:00', '2026-01-19 03:56:24'),
+(10, 'Generator Routine Check', 'City Hall – Basement', 'Mechanical', 'High', 'Scheduled', 5, 'Power Team', 0.00, '2026-01-25 14:30:00', '2026-01-25 18:00:00', '2026-01-19 03:56:24'),
+(11, 'CCTV Camera Alignment', 'City Hall – Parking Area', 'Security', 'Medium', 'Scheduled', 5, 'Security Tech Team', 0.00, '2026-01-25 07:30:00', '2026-01-25 09:00:00', '2026-01-19 03:56:24'),
+(12, 'Water Tank Cleaning', 'City Hall – Rooftop', 'Sanitation', 'High', 'Scheduled', 5, 'Sanitation Team', 0.00, '2026-01-25 15:00:00', '2026-01-25 18:30:00', '2026-01-19 03:56:24'),
+(13, 'Network Cable Testing', 'City Hall – IT Office', 'IT', 'Medium', 'In Progress', 5, 'IT Support Team', 0.00, '2026-01-25 10:00:00', '2026-01-25 13:00:00', '2026-01-19 03:56:24'),
+(14, 'Aircon Filter Cleaning', 'City Hall – 2nd Floor', 'HVAC', 'Medium', 'Scheduled', 5, 'Maintenance Team A', 0.00, '2026-01-19 08:00:00', '2026-01-19 10:00:00', '2026-01-19 05:17:35'),
+(15, 'Electrical Panel Inspection', 'City Hall – Electrical Room', 'Electrical', 'High', 'In Progress', 5, 'Electrical Team', 0.00, '2026-01-19 09:00:00', '2026-01-19 12:00:00', '2026-01-19 05:17:35'),
+(16, 'Plumbing Leak Repair', 'Public Market – Stall Area', 'Plumbing', 'Critical', 'Completed', 5, 'Repair Team B', 0.00, '2026-01-19 11:00:00', '2026-01-19 15:00:00', '2026-01-19 05:17:35'),
+(17, 'Fire Alarm System Testing', 'Municipal Library', 'Safety', 'Low', 'Delayed', 5, 'Inspection Team', 0.00, '2026-01-20 13:00:00', '2026-01-20 16:00:00', '2026-01-19 05:17:35'),
+(18, 'Generator Routine Check', 'City Hall – Basement', 'Mechanical', 'High', 'Scheduled', 5, 'Power Team', 0.00, '2026-01-20 14:30:00', '2026-01-20 18:00:00', '2026-01-19 05:17:35'),
+(19, 'CCTV Camera Alignment', 'City Hall – Parking Area', 'Security', 'Medium', 'Scheduled', 5, 'Security Tech Team', 0.00, '2026-01-21 07:30:00', '2026-01-21 09:00:00', '2026-01-19 05:17:35'),
+(20, 'Water Tank Cleaning', 'City Hall – Rooftop', 'Sanitation', 'High', 'In Progress', 5, 'Sanitation Team', 0.00, '2026-01-21 15:00:00', '2026-01-21 18:30:00', '2026-01-19 05:17:35'),
+(21, 'Network Cable Testing', 'City Hall – IT Office', 'IT', 'Medium', 'Completed', 5, 'IT Support Team', 0.00, '2026-01-22 10:00:00', '2026-01-22 13:00:00', '2026-01-19 05:17:35'),
+(22, 'HVAC Duct Cleaning', 'City Hall – 3rd Floor', 'HVAC', 'High', 'Scheduled', 5, 'Maintenance Team B', 0.00, '2026-01-22 08:00:00', '2026-01-22 11:00:00', '2026-01-19 05:17:35'),
+(23, 'Elevator Safety Inspection', 'Building B', 'Mechanical', 'Critical', 'Delayed', 5, 'Team Beta', 0.00, '2026-01-23 09:00:00', '2026-01-23 12:30:00', '2026-01-19 05:17:35'),
+(24, 'Roof Leak Repair', 'City Hall – Roof', 'Structural', 'High', 'In Progress', 5, 'Repair Team C', 0.00, '2026-01-23 13:00:00', '2026-01-23 17:00:00', '2026-01-19 05:17:35'),
+(25, 'Fire Extinguisher Check', 'City Hall – All Floors', 'Safety', 'Medium', 'Completed', 5, 'Safety Team', 0.00, '2026-01-24 09:00:00', '2026-01-24 11:30:00', '2026-01-19 05:17:35'),
+(26, 'Server Room Cooling Check', 'City Hall – IT Room', 'IT', 'High', 'Scheduled', 5, 'IT Support Team', 0.00, '2026-01-24 12:00:00', '2026-01-24 15:00:00', '2026-01-19 05:17:35'),
+(27, 'Plumbing Pipe Replacement', 'Public Market – Restrooms', 'Plumbing', 'Critical', 'Scheduled', 5, 'Repair Team B', 0.00, '2026-01-25 08:30:00', '2026-01-25 12:00:00', '2026-01-19 05:17:35'),
+(28, 'Security Alarm Testing', 'City Hall – Entrances', 'Security', 'Medium', 'In Progress', 5, 'Security Tech Team', 0.00, '2026-01-25 10:00:00', '2026-01-25 12:30:00', '2026-01-19 05:17:35'),
+(29, 'Window Glass Replacement', 'City Hall – 1st Floor', 'Structural', 'Low', 'Completed', 5, 'Maintenance Team A', 0.00, '2026-01-26 09:00:00', '2026-01-26 11:00:00', '2026-01-19 05:17:35'),
+(30, 'UPS Battery Replacement', 'City Hall – IT Room', 'Electrical', 'High', 'Delayed', 5, 'Electrical Team', 0.00, '2026-01-26 13:00:00', '2026-01-26 16:00:00', '2026-01-19 05:17:35'),
+(31, 'Parking Lot Light Maintenance', 'City Hall – Parking', 'Electrical', 'Medium', 'Scheduled', 5, 'Electrical Team', 0.00, '2026-01-27 07:30:00', '2026-01-27 10:00:00', '2026-01-19 05:17:35'),
+(32, 'Janitorial Supplies Restock', 'City Hall – Storage', 'Sanitation', 'Low', 'Completed', 5, 'Sanitation Team', 0.00, '2026-01-27 11:00:00', '2026-01-27 13:00:00', '2026-01-19 05:17:35'),
+(33, 'IT Workstation Setup', 'City Hall – IT Office', 'IT', 'High', 'Scheduled', 5, 'IT Support Team', 0.00, '2026-01-28 08:00:00', '2026-01-28 12:00:00', '2026-01-19 05:17:35');
 
 -- --------------------------------------------------------
 
@@ -225,6 +268,8 @@ CREATE TABLE `requests` (
   `infrastructure` varchar(255) NOT NULL,
   `location` varchar(255) NOT NULL,
   `issue` text NOT NULL,
+  `contact_number` varchar(20) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
   `approval_status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -342,13 +387,13 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `materials_equipment_costs`
