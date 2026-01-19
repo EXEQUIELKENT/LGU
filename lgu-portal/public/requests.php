@@ -75,6 +75,7 @@ $result = $conn->query($sql);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Infrastructure Repair Requests</title>
 <style>
+/* ... (CSS unchanged for brevity) ... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
@@ -84,6 +85,12 @@ $result = $conn->query($sql);
 .mobile-top-nav {
     display: none;
 }
+
+/* Hide mobile cards by default (desktop) */
+.mobile-request-list {
+    display: none;
+}
+
 
 /* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
 body {
@@ -693,6 +700,8 @@ tbody tr:hover {
 .pending { background: #ffe082; color: #6b5500; }
 .in-progress { background: #90caf9; color: #0d47a1; }
 .completed { background: #a5d6a7; color: #1b5e20; }
+/* Add missing CSS for rejected status */
+.rejected { background: #ef9a9a; color: #7f1d1d; }
 
 /* ACTION */
 .btn-view {
@@ -731,6 +740,147 @@ tbody tr:hover {
     border-radius: 6px;
     cursor: pointer;
     width: fit-content;
+}
+
+/* =========================
+   🖼 IMAGE MODAL VIEWER
+========================= */
+.image-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 9000;
+}
+
+.image-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dark semi-transparent background */
+.image-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.70);
+}
+
+/* Base (MOBILE-FIRST – SAFE) */
+#imageModalImg {
+    position: relative;
+    max-width: 92vw;
+    max-height: 80vh;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    animation: imageZoomIn 0.25s ease;
+    background: #fff;
+    object-fit: contain;
+    display: block;
+}
+
+/* 🖥 Desktop settings (LARGE IMAGE) */
+@media (min-width: 1024px) {
+    #imageModalImg {
+        max-width: 93vw;
+        max-height: 93vh;
+        min-width: 480px;
+        min-height: 320px;
+        border-radius: 18px;
+        box-shadow: 0 18px 56px rgba(0,0,0,0.54);
+        user-select: none;
+        -webkit-user-drag: none;
+        -webkit-user-select: none;
+        pointer-events: auto;
+
+    }
+}
+@media (min-width: 1280px) {
+    #imageModalImg {
+        max-width: 1800px;
+        max-height: 1200px;
+        min-width: 700px;
+        min-height: 480px;
+        user-select: none;
+        -webkit-user-drag: none;
+        -webkit-user-select: none;
+        pointer-events: auto;
+
+    }
+}
+
+/* --- CLEAN IMAGE MODAL CLOSE BUTTON DEFINITIONS --- */
+
+/* Close button (DEFAULT = DESKTOP) */
+.image-modal-close {
+    position: fixed;
+    top: 70px;
+    right: 350px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    border: none;
+    font-size: 26px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 9001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.image-modal-close:hover {
+    background: rgba(0,0,0,0.88);
+}
+
+/* 📱 MOBILE-ONLY OVERRIDE (POSITION ONLY) */
+@media (max-width: 768px) {
+    .image-modal-close {
+        top: 140px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+}
+
+/* Animation */
+@keyframes imageZoomIn {
+    from { transform: scale(0.87); opacity: 0.18; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+/* Desktop thumbnail preview */
+.evidence-thumb {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.evidence-thumb:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+/* Cursor zoom on desktop */
+@media (min-width: 769px) {
+    #imageModalImg {
+        cursor: zoom-in;
+        transition: transform 0.25s ease;
+    }
+    #imageModalImg.zoomed {
+        cursor: zoom-out;
+    }
+}
+
+/* Mobile pinch zoom and swipe indication */
+@media (max-width: 768px) {
+    #imageModalImg {
+        touch-action: none; /* allow pinch/swipe gestures */
+    }
 }
 
 /* =========================
@@ -874,23 +1024,24 @@ tbody tr:hover {
 
 /* Hide desktop table on mobile */
 table {
-    display: none;
+    display: none !important;
 }
 
 h2  {
     display: none;
 }
 
-/* Show mobile list */
+/* ✅ SHOW mobile cards */
 .mobile-request-list {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     gap: 16px;
-    margin-top: 0px;
+    width: 100%;
 }
 
-/* Request card */
+/* Ensure cards stretch properly */
 .request-card {
+    width: 100%;
     background: rgba(255,255,255,0.96);
     border-radius: 16px;
     padding: 16px 18px;
@@ -1017,26 +1168,37 @@ h2  {
             <?php if ($result->num_rows > 0): ?>
                 <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
-                    <td>#REQ-<?php echo str_pad($row['id'], 3, '0', STR_PAD_LEFT); ?></td>
+                    <td>
+                        #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
+                    </td>
                     <td><?php echo htmlspecialchars($row['infrastructure']); ?></td>
                     <td><?php echo htmlspecialchars($row['location']); ?></td>
                     <td><?php echo htmlspecialchars($row['issue']); ?></td>
                     <td><?php echo $row['created_at'] ?? ''; ?></td>
                     <td>
                         <?php if (!empty($row['evidence'])): ?>
-                            <a href="uploads/<?php echo $row['evidence']; ?>" target="_blank">View</a>
+                            <img
+                                src="<?php echo htmlspecialchars($row['evidence']); ?>"
+                                class="evidence-thumb"
+                                alt="Evidence"
+                                onclick="openImageModal('<?php echo htmlspecialchars($row['evidence']); ?>')"
+                            />
                         <?php else: ?>
                             No image
                         <?php endif; ?>
                     </td>
                     <td>
-                        <span class="status 
-                            <?php
-                                if ($row['status'] === 'Pending') echo 'pending';
-                                elseif ($row['status'] === 'In Progress') echo 'in-progress';
-                                else echo 'completed';
-                            ?>">
-                            <?php echo $row['status']; ?>
+                        <?php
+                        $status = $row['approval_status'];
+                        $statusClass = match ($status) {
+                            'Pending'   => 'pending',
+                            'Approved'  => 'completed',
+                            'Rejected'  => 'rejected',
+                            default     => 'pending',
+                        };
+                        ?>
+                        <span class="status <?= $statusClass ?>">
+                            <?= htmlspecialchars($status) ?>
                         </span>
                     </td>
                     <td>
@@ -1050,7 +1212,6 @@ h2  {
                 </tr>
             <?php endif; ?>
             </tbody>
-
         </table>
 
         <!-- 📱 MOBILE REQUEST CARD LIST -->
@@ -1058,30 +1219,41 @@ h2  {
         <?php
         // Seek back to the beginning for second display
         if ($result->num_rows > 0) {
-            // This will fail with some DB drivers, but for mysqli in procedural mode it's OK:
             mysqli_data_seek($result, 0);
             while ($row = $result->fetch_assoc()):
         ?>
                 <div class="request-card">
-                    <div><strong>Request ID:</strong> #REQ-<?php echo str_pad($row['id'], 3, '0', STR_PAD_LEFT); ?></div>
+                    <div>
+                        <strong>Request ID:</strong>
+                        #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
+                    </div>
                     <div><strong>Infrastructure:</strong> <?php echo htmlspecialchars($row['infrastructure']); ?></div>
                     <div><strong>Location:</strong> <?php echo htmlspecialchars($row['location']); ?></div>
                     <div><strong>Issue:</strong> <?php echo htmlspecialchars($row['issue']); ?></div>
                     <div><strong>Date Submitted:</strong> <?php echo $row['created_at'] ?? ''; ?></div>
                     <div>
                         <strong>Status:</strong>
-                        <span class="status 
-                            <?php
-                                if ($row['status'] === 'Pending') echo 'pending';
-                                elseif ($row['status'] === 'In Progress') echo 'in-progress';
-                                else echo 'completed';
-                            ?>">
-                            <?php echo $row['status']; ?>
+                        <?php
+                        $status = $row['approval_status'];
+                        $statusClass = match ($status) {
+                            'Pending'   => 'pending',
+                            'Approved'  => 'completed',
+                            'Rejected'  => 'rejected',
+                            default     => 'pending',
+                        };
+                        ?>
+                        <span class="status <?= $statusClass ?>">
+                            <?= htmlspecialchars($status) ?>
                         </span>
                     </div>
                     <div class="request-actions">
                         <?php if (!empty($row['evidence'])): ?>
-                            <a class="btn-view" href="uploads/<?php echo $row['evidence']; ?>" target="_blank">View Evidence</a>
+                            <button
+                                class="btn-view"
+                                onclick="openImageModal('<?php echo htmlspecialchars($row['evidence']); ?>')"
+                            >
+                                View Evidence
+                            </button>
                         <?php else: ?>
                             <span class="no-evidence">No Evidence</span>
                         <?php endif; ?>
@@ -1114,7 +1286,15 @@ h2  {
     </div>
 </div>
 
+<!-- 🖼 IMAGE VIEWER MODAL -->
+<div id="imageModal" class="image-modal">
+    <div class="image-modal-backdrop"></div>
+    <button class="image-modal-close" aria-label="Close image">&times;</button>
+    <img id="imageModalImg" src="" alt="Evidence Image">
+</div>
+
 <script>
+// (JS unchanged)
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
@@ -1145,7 +1325,7 @@ window.addEventListener('resize', () => {
     lastMobileState = isNowMobile;
 });
 
-sidebarToggle.addEventListener('click', () => {
+sidebarToggle.addEventListener('click', () => { 
     sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded');
     const isCollapsed = sidebar.classList.contains('collapsed');
@@ -1421,6 +1601,225 @@ function resetInactivityTimer() {
 resetInactivityTimer();
 </script>
 
+<script>
+// IMAGE MODAL ELEMENTS
+const imageModal = document.getElementById('imageModal');
+const imageModalImg = document.getElementById('imageModalImg');
+const imageModalClose = document.querySelector('.image-modal-close');
+const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
+
+// --- Zoom Constants & State ---
+const BASE_ZOOM = 2;
+const MAX_WHEEL_ZOOM = 5;
+const WHEEL_ZOOM_SPEED = 0.002;
+
+let isZoomed = false;
+let isDragging = false;
+let isWheelZooming = false;
+
+let startX = 0;
+let startY = 0;
+let translateX = 0;
+let translateY = 0;
+let currentScale = 1; // Used in both desktop & mobile
+
+// --- DRAG BEHAVIOR FIXES ---
+// Disable default browser image dragging
+imageModalImg.draggable = false;
+// Prevent browser dragstart event for bulletproof behavior
+imageModalImg.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+});
+
+// --- OPEN IMAGE MODAL ---
+function openImageModal(src) {
+    imageModalImg.src = src;
+    imageModal.classList.add('active');
+    resetZoom();
+}
+
+// --- CLOSE IMAGE MODAL ---
+function closeImageModal() {
+    imageModal.classList.remove('active');
+    resetZoom();
+}
+imageModalClose.addEventListener('click', closeImageModal);
+imageModalBackdrop.addEventListener('click', closeImageModal);
+
+// --- DESKTOP DOUBLE-CLICK TO ZOOM ---
+imageModalImg.addEventListener('dblclick', (e) => {
+    const rect = imageModalImg.getBoundingClientRect();
+
+    // Mouse position relative to image
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+
+    // Convert to percentage
+    const percentX = offsetX / rect.width;
+    const percentY = offsetY / rect.height;
+
+    if (!isZoomed) {
+        isZoomed = true;
+
+        // Calculate translate so zoom focuses on clicked spot
+        translateX = (0.5 - percentX) * rect.width * (BASE_ZOOM - 1);
+        translateY = (0.5 - percentY) * rect.height * (BASE_ZOOM - 1);
+
+        currentScale = BASE_ZOOM;
+
+        imageModalImg.classList.add('zoomed');
+        imageModalImg.style.transform = `
+            scale(${currentScale})
+            translate(${translateX}px, ${translateY}px)
+        `;
+
+        imageModalImg.style.cursor = 'grab';
+        imageModalClose.style.display = 'none';
+        imageModalClose.disabled = true;
+    } else {
+        resetZoom();
+    }
+});
+
+// --- DESKTOP CLICK + DRAG TO PAN ---
+imageModalImg.addEventListener('mousedown', (e) => {
+    if (!isZoomed) return;
+    if (e.button !== 0) return; // Only left mouse button
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    imageModalImg.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mouseup', () => {
+    if (!isZoomed) return;
+
+    isDragging = false;
+    imageModalImg.style.cursor = 'grab';
+
+    if (isWheelZooming) {
+        isWheelZooming = false;
+        currentScale = BASE_ZOOM;
+
+        imageModalImg.style.transition = 'transform 0.2s ease';
+        imageModalImg.style.transform = `
+            scale(${currentScale})
+            translate(${translateX}px, ${translateY}px)
+        `;
+
+        setTimeout(() => {
+            imageModalImg.style.transition = '';
+        }, 200);
+    }
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isZoomed || !isDragging) return;
+    // Natural movement: move same direction as mouse
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    imageModalImg.style.transform = `
+        scale(${currentScale})
+        translate(${translateX}px, ${translateY}px)
+    `;
+});
+
+// --- DESKTOP MOUSE WHEEL DEEP ZOOM WHILE DRAGGING ---
+imageModalImg.addEventListener('wheel', (e) => {
+    if (!isZoomed || !isDragging) return;
+
+    e.preventDefault();
+    isWheelZooming = true;
+
+    const rect = imageModalImg.getBoundingClientRect();
+
+    // Cursor position relative to image
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    const percentX = offsetX / rect.width;
+    const percentY = offsetY / rect.height;
+
+    // Zoom direction
+    const delta = -e.deltaY * WHEEL_ZOOM_SPEED;
+    const newScale = Math.min(
+        Math.max(currentScale + delta, BASE_ZOOM),
+        MAX_WHEEL_ZOOM
+    );
+
+    // Adjust translate so zoom stays cursor-focused
+    const scaleDiff = newScale / currentScale;
+    translateX = translateX * scaleDiff + (0.5 - percentX) * rect.width * (scaleDiff - 1);
+    translateY = translateY * scaleDiff + (0.5 - percentY) * rect.height * (scaleDiff - 1);
+
+    currentScale = newScale;
+
+    imageModalImg.style.transform = `
+        scale(${currentScale})
+        translate(${translateX}px, ${translateY}px)
+    `;
+}, { passive: false });
+
+// --- RESET ZOOM ---
+function resetZoom() {
+    isZoomed = false;
+    isDragging = false;
+    isWheelZooming = false;
+    translateX = 0;
+    translateY = 0;
+    currentScale = 1;
+    imageModalImg.classList.remove('zoomed');
+    imageModalImg.style.transform = 'scale(1)';
+    imageModalImg.style.transformOrigin = 'center center';
+    imageModalImg.style.cursor = 'zoom-in';
+    // Show & enable close button
+    imageModalClose.style.display = 'flex';
+    imageModalClose.disabled = false;
+}
+
+// --- MOBILE PINCH & SWIPE ---
+let initialDistance = null;
+let lastTouchY = null;
+
+imageModalImg.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        initialDistance = getDistance(e.touches[0], e.touches[1]);
+    } else if (e.touches.length === 1) {
+        lastTouchY = e.touches[0].clientY;
+    }
+});
+
+imageModalImg.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialDistance) {
+        e.preventDefault(); // prevent scroll
+        const newDistance = getDistance(e.touches[0], e.touches[1]);
+        currentScale = Math.min(Math.max(newDistance / initialDistance, 0.5), 3);
+        imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
+    } else if (e.touches.length === 1 && lastTouchY !== null) {
+        const deltaY = e.touches[0].clientY - lastTouchY;
+        if (deltaY > 150) { // swipe down threshold
+            closeImageModal();
+        }
+    }
+});
+
+imageModalImg.addEventListener('touchend', () => {
+    if (currentScale < 1) currentScale = 1;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
+    initialDistance = null;
+    lastTouchY = null;
+});
+
+// --- Helper: distance between 2 touches ---
+function getDistance(touch1, touch2) {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+// --- CURSOR INDICATOR ---
+imageModalImg.style.cursor = 'zoom-in';
+
+</script>
 
 </body>
 </html>
