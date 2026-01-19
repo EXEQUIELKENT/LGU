@@ -17,9 +17,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
         $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
     } else {
-        // Insert into requests table
-        $stmt = $conn->prepare("INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())");
-        $stmt->bind_param("sssss", $infrastructure, $location, $issue, $contact_number, $name);
+        // Check for duplicate requests from same contact number within last 24 hours
+        $check_stmt = $conn->prepare("SELECT COUNT(*) as duplicate_count FROM requests WHERE contact_number = ? AND infrastructure = ? AND location = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+        $check_stmt->bind_param("sss", $contact_number, $infrastructure, $location);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        $check_row = $check_result->fetch_assoc();
+        $check_stmt->close();
+        
+        if ($check_row['duplicate_count'] > 0) {
+            $error_message = 'You have already submitted a request for this issue at this location within the last 24 hours. Please wait before submitting another request.';
+        } else {
+            // Insert into requests table
+            $stmt = $conn->prepare("INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())");
+            $stmt->bind_param("sssss", $infrastructure, $location, $issue, $contact_number, $name);
         
         if ($stmt->execute()) {
             $req_id = $stmt->insert_id;
@@ -64,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("refresh:2;url=citizencimm.php");
         } else {
             $error_message = 'Failed to submit request. Please try again.';
+        }
         }
     }
 }
