@@ -999,6 +999,54 @@ body::-webkit-scrollbar {
 .modal h3 {margin-bottom:15px;}
 .modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
 
+
+/* === Calendar Details Card === */
+.calendar-details-card {
+    position: relative;
+    margin-top: 16px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    border: 1px solid #000;
+    padding: 12px 14px 30px;
+    max-height: 180px;
+    overflow: hidden;
+}
+/* Scrollable content */
+.calendar-details {
+    max-height: 140px;
+    overflow-y: auto;
+    padding-right: 8px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+/* Hide scrollbar (cross-browser) */
+.calendar-details::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+.calendar-details {
+    scrollbar-width: none; /* Firefox */
+}
+/* Scroll indicator (fade + arrow) */
+.scroll-indicator {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18px;
+    color: #444;
+    opacity: 0.6;
+    pointer-events: none;
+    animation: scrollHint 1.6s infinite ease-in-out;
+}
+
+/* Arrow bounce animation */
+@keyframes scrollHint {
+    0%   { transform: translate(-50%, 0); opacity: 0.4; }
+    50%  { transform: translate(-50%, 6px); opacity: 0.8; }
+    100% { transform: translate(-50%, 0); opacity: 0.4; }
+}
 /* ===============================
    🧾 TASK CHOOSER BUTTON FIX
 ================================ */
@@ -1450,6 +1498,24 @@ body::-webkit-scrollbar {
             font-size: 13px;
         }
 
+        .calendar-details-card {
+            padding: 4px 4px 14px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+            max-height: 150px;
+            border: 0.1px solid #000;
+        }
+
+        .calendar-details {
+            font-size: 0.82rem;   /* smaller, readable */
+            line-height: 1.35;
+            max-height: 110px;
+        }
+
+        .scroll-indicator {
+            font-size: 14px;
+            bottom: 4px;
+        }
+
     /* ===============================
        🚩 MOBILE-ONLY MAIN CONTENT FIXES
        =============================== */
@@ -1495,7 +1561,7 @@ body::-webkit-scrollbar {
 /* ============================= */
 
 .task-dropdown {
-    max-height: calc(5 * 38px); /* ~5 task buttons */
+    max-height: calc(3 * 38px); /* ~5 task buttons */
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-right: 4px;
@@ -1534,19 +1600,12 @@ body::-webkit-scrollbar {
     }
 
     .task-dropdown {
-        max-height: calc(5 * 42px);
+        max-height: calc(3 * 42px);
     }
 }
-
-
-
 </style>
-
-
 </head>
-
 <body>
-
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
@@ -1630,8 +1689,11 @@ body::-webkit-scrollbar {
                 <div>Saturday</div>
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
-            <div class="calendar-details" id="calendarDetails">
-                Select a date to view schedule.
+            <div class="calendar-details-card">
+                <div class="calendar-details" id="calendarDetails">
+                    Select a date to view schedule.
+                </div>
+                <div class="scroll-indicator">⌄</div>
             </div>
         </div>
         <!-- LIST VIEW -->
@@ -1787,6 +1849,8 @@ body::-webkit-scrollbar {
         background: #f7faff; /* Ensure mobile also matches */
     }
 }
+
+
 </style>
 <div id="customDatePickerOverlay">
     <input type="date" id="overlayDatePicker">
@@ -2353,7 +2417,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ... rest of code unchanged ...
+    // Optional: Auto-hide scroll indicator when not scrollable
+    function updateCalendarDetailsScrollHint() {
+        const details = document.getElementById('calendarDetails');
+        const indicator = document.querySelector('.scroll-indicator');
+        if (!details || !indicator) return;
+
+        indicator.style.display =
+            details.scrollHeight > details.clientHeight ? 'block' : 'none';
+    }
+
     // Make sure to call renderCalendar on load and when month/view changes
     if (typeof prevMonthBtn !== "undefined" && prevMonthBtn && nextMonthBtn) {
         prevMonthBtn.onclick = ()=>{
@@ -2365,6 +2438,13 @@ document.addEventListener('DOMContentLoaded', function() {
             renderCalendar();
         };
     }
+    // Patch renderCalendar to auto-update scroll indicator
+    const originalRenderCalendar = renderCalendar;
+    renderCalendar = function () {
+        originalRenderCalendar();
+        setTimeout(updateCalendarDetailsScrollHint, 0);
+    };
+
     renderCalendar();
     applyStatusClassesToList();
 
