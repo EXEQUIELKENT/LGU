@@ -15,24 +15,20 @@ require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
 
-/* ====== OTP re-send protection (updated) ====== */
-define('OTP_RESEND_COOLDOWN', 30);     // seconds
-define('OTP_MAX_RESENDS', 1);          // maximum resends allowed
+// --- OTP re-send protection (unchanged) ---
+define('OTP_RESEND_COOLDOWN', 30);
+define('OTP_MAX_RESENDS', 1);
 
-if (!isset($_SESSION['otp_resend_count'])) {
-    $_SESSION['otp_resend_count'] = 0;
-}
-
-if (!isset($_SESSION['otp_last_sent_time'])) {
-    $_SESSION['otp_last_sent_time'] = 0;
-}
+if (!isset($_SESSION['otp_resend_count'])) $_SESSION['otp_resend_count'] = 0;
+if (!isset($_SESSION['otp_last_sent_time'])) $_SESSION['otp_last_sent_time'] = 0;
+if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0; // For logging
 
 if (!isset($_SESSION['otp_total_resends'])) {
     $_SESSION['otp_total_resends'] = 0; // Track total resends for logging
 }
 // ===== END add-on config =====
 
-// 2️⃣ Login Event Logger
+// 2⃣ Login Event Logger
 function logLoginEvent(
     mysqli $conn,
     ?string $email,
@@ -64,7 +60,7 @@ function logLoginEvent(
     $stmt->close();
 }
 
-// 🔔 Handle logout success notification
+// Handle logout success notification
 if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     setNotification('success', 'Successfully logged out.');
 }
@@ -141,37 +137,39 @@ function isUniqueEnoughPassword($password) {
     return isStrongPassword($password);
 }
 
+// Session-based cache for failed logins, by normalized (lowercased) email.
 function isLoginLockedOut($email) {
     if (!isset($_SESSION['failed_logins'])) return false;
-    $info = $_SESSION['failed_logins'][$email] ?? null;
+    $emailKey = strtolower($email);
+    $info = $_SESSION['failed_logins'][$emailKey] ?? null;
     if (!$info || !isset($info['count']) || !isset($info['time'])) return false;
     if ($info['count'] < 3) return false;
     if ((time() - $info['time']) > 600) {
-        unset($_SESSION['failed_logins'][$email]);
+        unset($_SESSION['failed_logins'][$emailKey]);
         return false;
     }
     return true;
 }
-
 function registerLoginFail($email) {
+    $emailKey = strtolower($email);
     if (!isset($_SESSION['failed_logins'])) {
         $_SESSION['failed_logins'] = [];
     }
-    if (!isset($_SESSION['failed_logins'][$email])) {
-        $_SESSION['failed_logins'][$email] = ['count' => 1, 'time' => time()];
+    if (!isset($_SESSION['failed_logins'][$emailKey])) {
+        $_SESSION['failed_logins'][$emailKey] = ['count' => 1, 'time' => time()];
     } else {
-        $_SESSION['failed_logins'][$email]['count'] += 1;
-        $_SESSION['failed_logins'][$email]['time'] = time();
+        $_SESSION['failed_logins'][$emailKey]['count'] += 1;
+        $_SESSION['failed_logins'][$emailKey]['time'] = time();
     }
 }
-
 function resetLoginFail($email) {
-    if (isset($_SESSION['failed_logins'][$email])) {
-        unset($_SESSION['failed_logins'][$email]);
+    $emailKey = strtolower($email);
+    if (isset($_SESSION['failed_logins'][$emailKey])) {
+        unset($_SESSION['failed_logins'][$emailKey]);
     }
 }
 
-// Handle password change submission
+// Handle password change submission (as before)
 if (isset($_POST['change_password_submit'])) {
     $newPassword = $_POST['new_password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
@@ -216,7 +214,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_passwo
     unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 }
 
-// OTP verification
+// OTP verification (no perf change needed for this section)
 if (isset($_POST['otp_submit'])) {
     $entered_otp = trim($_POST['otp']);
     $current_time = time();
@@ -308,33 +306,35 @@ if (isset($_POST['otp_submit'])) {
     }
 }
 
-// --- Login submission logic with Remember Me cookie ---
+// --- Login submission logic with performance improvements ---
 if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember_me']) ? true : false;
 
-    // Check login lockout status before proceeding
-    if (isset($_POST['login_submit']) && isLoginLockedOut($email)) {
-        logLoginEvent($conn, $email, false, 'Account locked (too many attempts)');
-        $info = $_SESSION['failed_logins'][$email];
-        $timeSince = time() - $info['time'];
-        $timeLeft = 600 - $timeSince;
-        $minutes = floor($timeLeft / 60);
-        $seconds = $timeLeft % 60;
-        setNotification('error', 'Too many incorrect password attempts. Login is disabled for this account for 10 minutes. Please try again after ' . sprintf('%02d:%02d', $minutes, $seconds) . '.');
-        header("Location: " . $loginUrl);
-        exit;
-    }
-
-    // Validate Gmail format
+    // Step 1: Validate email format FIRST
     if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/', $email)) {
         setNotification('warning', 'Only @gmail.com email addresses are allowed');
         header("Location: " . $loginUrl);
         exit;
     }
 
-    // Fetch user from DB
+    // Step 2: Check session-cached failed login attempts before DB query (session cache, per lowercase email)
+    $emailKey = strtolower($email);
+    if (!isset($_SESSION['failed_logins'])) $_SESSION['failed_logins'] = [];
+    $failedInfo = $_SESSION['failed_logins'][$emailKey] ?? ['count' => 0, 'time' => 0];
+    if (
+        isset($_POST['login_submit']) &&
+        $failedInfo['count'] >= 3 && (time() - $failedInfo['time'] < 600)
+    ) {
+        $minutesLeft = floor((600 - (time() - $failedInfo['time'])) / 60);
+        $secondsLeft = (600 - (time() - $failedInfo['time'])) % 60;
+        setNotification('error', "Too many incorrect password attempts. Login is disabled for this account for 10 minutes. Please try again after " . sprintf('%02d:%02d', $minutesLeft, $secondsLeft) . ".");
+        header("Location: " . $loginUrl);
+        exit;
+    }
+
+    // Step 3: Lazy-load (do NOT query DB if format invalid or locked out above): fetch user here if we reach this far
     $stmt = $conn->prepare("
         SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at
         FROM employees
@@ -346,6 +346,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     if ($result->num_rows !== 1) {
         $stmt->close();
+        // Check in pending_registrations ONLY if not found in employees
         $pendingStmt = $conn->prepare("SELECT penreg_id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
         $pendingStmt->bind_param("s", $email);
         $pendingStmt->execute();
@@ -364,7 +365,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 setNotification('error', 'Email not found. Your verification link has expired. Please register again.');
             } else {
                 logLoginEvent($conn, $email, false, 'Email not verified');
-                setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the "Confirm Email" button to activate your account. Your account will be created after verification.');
+                setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the \"Confirm Email\" button to activate your account. Your account will be created after verification.');
             }
             $pendingStmt->close();
             header("Location: " . $loginUrl);
@@ -383,7 +384,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
         logLoginEvent($conn, $email, false, 'Email not verified');
-        setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
+        setNotification('error', 'Your email address has not been verified yet. Please check your email and click the \"Confirm Email\" button to activate your account.');
         header("Location: " . $loginUrl);
         exit;
     }
@@ -396,19 +397,20 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         if (!password_verify($password, $user['password'])) {
             logLoginEvent($conn, $email, false, 'Incorrect password');
             registerLoginFail($email);
+            // Check updated fail count for current login/lockout state
+            $failCount = $_SESSION['failed_logins'][strtolower($email)]['count'] ?? 1;
+            $triesLeft = max(0, 3 - $failCount);
+            $msg = 'Incorrect password';
             if (isLoginLockedOut($email)) {
-                setNotification('error', 'Incorrect password. You have reached 3 failed attempts. Login is locked for 10 minutes for this account.');
+                $msg .= ". You have reached 3 failed attempts. Login is locked for 10 minutes for this account.";
             } else {
-                $failCount = $_SESSION['failed_logins'][$email]['count'] ?? 1;
-                $triesLeft = max(0, 3 - $failCount);
-                $msg = 'Incorrect password';
                 if ($triesLeft > 0) {
                     $msg .= ". You have $triesLeft attempt" . ($triesLeft > 1 ? "s" : "") . " remaining before lockout.";
                 } else {
                     $msg .= ". Login is now locked for 10 minutes for this account.";
                 }
-                setNotification('error', $msg);
             }
+            setNotification('error', $msg);
             header("Location: " . $loginUrl);
             exit;
         } else {
@@ -1756,7 +1758,7 @@ body:has(#changePasswordModal) {
                 <div class="input-box" style="position: relative;">
                     <label>Password</label>
                     <input type="password" name="password" id="passwordInput"
-                        placeholder="••••••••" required
+                        placeholder="•••••••" required
                         value="<?php
                            if (isset($_COOKIE['remember_password']) && isset($_COOKIE['remember_email'])) {
                                if (is_string($_COOKIE['remember_password'])) {
@@ -1797,7 +1799,7 @@ body:has(#changePasswordModal) {
                 const pwdInput = document.getElementById('passwordInput');
                 const toggleBtn = document.getElementById('togglePassword');
                 const toggleIcon = document.getElementById('togglePwdIcon');
-                const iconShow = '👁‍🗨';
+                const iconShow = '👁️';
                 const iconHide = '🛡️';
                 toggleBtn.addEventListener('click', function() {
                     if (pwdInput.type === 'password') {
@@ -1895,7 +1897,7 @@ body:has(#changePasswordModal) {
                         <label for="confirm_password">Confirm Password</label>
                         <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">
-                            <span id="toggleConfirmPasswordIcon">👁️</span>
+                            <span id="toggleConfirmPasswordIcon">👁</span>
                         </button>
                     </div>
                     <!-- No inline error blocks! All errors go to notification popup. -->
