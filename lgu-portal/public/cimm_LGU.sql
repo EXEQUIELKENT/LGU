@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 19, 2026 at 04:40 AM
+-- Generation Time: Jan 19, 2026 at 04:50 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -199,6 +199,24 @@ CREATE TABLE `repair_archive` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `reports`
+--
+
+CREATE TABLE `reports` (
+  `rep_id` int(10) UNSIGNED NOT NULL,
+  `res_id` int(10) UNSIGNED NOT NULL,
+  `starting_date` date NOT NULL,
+  `estimated_end_date` date NOT NULL,
+  `engineer_id` int(10) UNSIGNED NOT NULL,
+  `report_by` int(10) UNSIGNED NOT NULL,
+  `priority_lvl` varchar(50) DEFAULT NULL,
+  `budget` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `requests`
 --
 
@@ -238,6 +256,13 @@ ALTER TABLE `employees`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  ADD PRIMARY KEY (`img_id`),
+  ADD KEY `fk_evidence_request` (`req_id`);
+
+--
 -- Indexes for table `login_logs`
 --
 ALTER TABLE `login_logs`
@@ -251,6 +276,12 @@ ALTER TABLE `login_logs`
 ALTER TABLE `maintenance_schedule`
   ADD PRIMARY KEY (`sched_id`),
   ADD KEY `fk_sched_engineer` (`engineer_id`);
+
+--
+-- Indexes for table `materials_equipment_costs`
+--
+ALTER TABLE `materials_equipment_costs`
+  ADD PRIMARY KEY (`cost_id`);
 
 --
 -- Indexes for table `pending_registrations`
@@ -269,6 +300,29 @@ ALTER TABLE `repair_archive`
   ADD KEY `fk_arc_engineer` (`engineer_id`);
 
 --
+-- Indexes for table `reports`
+--
+ALTER TABLE `reports`
+  ADD PRIMARY KEY (`rep_id`),
+  ADD KEY `fk_report_res` (`res_id`),
+  ADD KEY `fk_report_engineer` (`engineer_id`),
+  ADD KEY `fk_report_reporter` (`report_by`);
+
+--
+-- Indexes for table `requests`
+--
+ALTER TABLE `requests`
+  ADD PRIMARY KEY (`req_id`);
+
+--
+-- Indexes for table `request_resolutions`
+--
+ALTER TABLE `request_resolutions`
+  ADD PRIMARY KEY (`res_id`),
+  ADD KEY `fk_res_request` (`req_id`),
+  ADD KEY `fk_res_employee` (`resolved_by`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -277,6 +331,12 @@ ALTER TABLE `repair_archive`
 --
 ALTER TABLE `employees`
   MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
@@ -291,6 +351,12 @@ ALTER TABLE `maintenance_schedule`
   MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `materials_equipment_costs`
+--
+ALTER TABLE `materials_equipment_costs`
+  MODIFY `cost_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
@@ -303,8 +369,32 @@ ALTER TABLE `repair_archive`
   MODIFY `arc_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `reports`
+--
+ALTER TABLE `reports`
+  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `requests`
+--
+ALTER TABLE `requests`
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `request_resolutions`
+--
+ALTER TABLE `request_resolutions`
+  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `evidence_images`
+--
+ALTER TABLE `evidence_images`
+  ADD CONSTRAINT `fk_evidence_request` FOREIGN KEY (`req_id`) REFERENCES `requests` (`req_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `maintenance_schedule`
@@ -317,6 +407,21 @@ ALTER TABLE `maintenance_schedule`
 --
 ALTER TABLE `repair_archive`
   ADD CONSTRAINT `fk_arc_engineer` FOREIGN KEY (`engineer_id`) REFERENCES `employees` (`user_id`);
+
+--
+-- Constraints for table `reports`
+--
+ALTER TABLE `reports`
+  ADD CONSTRAINT `fk_report_engineer` FOREIGN KEY (`engineer_id`) REFERENCES `employees` (`user_id`),
+  ADD CONSTRAINT `fk_report_reporter` FOREIGN KEY (`report_by`) REFERENCES `employees` (`user_id`),
+  ADD CONSTRAINT `fk_report_res` FOREIGN KEY (`res_id`) REFERENCES `request_resolutions` (`res_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `request_resolutions`
+--
+ALTER TABLE `request_resolutions`
+  ADD CONSTRAINT `fk_res_employee` FOREIGN KEY (`resolved_by`) REFERENCES `employees` (`user_id`),
+  ADD CONSTRAINT `fk_res_request` FOREIGN KEY (`req_id`) REFERENCES `requests` (`req_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

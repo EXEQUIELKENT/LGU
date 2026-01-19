@@ -1,6 +1,19 @@
 <?php
 session_start();
 
+$INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
+
+// If last activity is set and timeout exceeded
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
+
 /* 🚫 Prevent browser caching of protected pages */
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -32,6 +45,7 @@ function showNotification() {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
         $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        // ADD: Add a notification container for absolute positioning fixes
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -602,7 +616,7 @@ body::-webkit-scrollbar {
     background: #fff;
     border-radius: 13px;
     box-shadow: 0 8px 38px rgba(34,53,126,0.23);
-    z-index: 3001;
+    z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
     display: flex;
     align-items: center;
     gap: 14px;
@@ -827,7 +841,7 @@ body::-webkit-scrollbar {
        🚩 MOBILE-ONLY MAIN CONTENT FIXES
        =============================== */
 
-    /* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
+    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
     .main-content,
     .main-content.expanded {
         height: auto;
@@ -863,6 +877,19 @@ body::-webkit-scrollbar {
     .card {
         padding: 22px;
     }
+
+    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
+    .notif-popup {
+        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
+        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 40px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 12px;
+        font-size: 16px;
+    }
 }
 </style>
 </head>
@@ -887,8 +914,9 @@ body::-webkit-scrollbar {
     <div class="sidebar-top">
 
         <!-- Profile Button -->
-        <div class="sidebar-profile-btn" id="sidebarProfileBtn" tabindex="0" data-tooltip="Profile">
-            <img src="profile.png" alt="Profile">
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile">
+            <img src="profile.png" alt="Profile" id="profileImg">
+            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
         <!-- Logo -->
         <div class="site-logo">
@@ -953,35 +981,108 @@ body::-webkit-scrollbar {
 </div>
 
 <script>
-// Sidebar Toggle Functionality
 const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.querySelector('.sidebar-nav');
+const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
+const sidebarNav = document.getElementById('sidebarNav');
 
-// Tooltip logic
+// Helper to detect mobile view (update the breakpoint if needed)
+function isMobileView() {
+    return window.innerWidth <= 900; // or your specific mobile breakpoint
+}
+
+// Make sure sidebar collapsed state is persisted
+const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+if (sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    mainContent.classList.add('expanded');
+}
+
+// --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
+let lastMobileState = isMobileView();
+window.addEventListener('resize', () => {
+    const isNowMobile = isMobileView();
+    // If we just switched to mobile AND sidebar is collapsed, expand sidebar & update localStorage
+    if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('expanded');
+        localStorage.setItem('sidebarCollapsed', 'false');
+    }
+    lastMobileState = isNowMobile;
+});
+
+sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+    if (!isCollapsed) {
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.style.display = 'none';
+    }
+});
+
 const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-// --- Universal Tooltip Handler for NavLinks, Profile, Logout ---
+// Add tooltip listeners for nav-links
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    link.addEventListener('mouseenter', navTooltipHandler);
+    link.addEventListener('focus', navTooltipHandler);
+    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+// Add tooltip for profile icon (on collapse, like employee.php)
+const profileIconBtn = document.getElementById('profileIconBtn');
+if (profileIconBtn) {
+    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+    profileIconBtn.addEventListener('focus', navTooltipHandler);
+    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    profileIconBtn.addEventListener('blur', hideNavTooltip);
+}
 
-// Helper: Show tooltip at link/button position
-function showSidebarTooltip(elem, opts = {}) {
-    const tooltipText = elem.getAttribute('data-tooltip');
-    if (!tooltipText) return;
-    tooltipActiveLink = elem;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.remove('logout-pop');
-    // Add special class for logout button, if needed
-    if (elem.id === "logoutBtn") {
-        sidebarNavTooltip.classList.add('logout-pop');
-    } else {
-        sidebarNavTooltip.classList.remove('logout-pop');
+// Add tooltip and logic for logout button (keep existing logic with tooltip)
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
     }
-    sidebarNavTooltip.style.display = 'block';
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('focus', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('mouseleave', function(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    sidebarNavTooltip.classList.remove('active');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+logoutBtn.addEventListener('blur', hideNavTooltip);
 
-    // Position tooltip beside element (to the right)
-    const rect = elem.getBoundingClientRect();
+function showLogoutTooltip(e) {
+    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+    tooltipActiveLink = logoutBtn;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = logoutBtn.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const x = sidebarRect.right + 5;
     const y = rect.top + rect.height / 2 + window.scrollY;
@@ -992,14 +1093,11 @@ function showSidebarTooltip(elem, opts = {}) {
         sidebarNavTooltip.classList.add('active');
     }, 5);
 
-    // Cancel hide timeout if any
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 }
-
-// Helper: Hide tooltip immediately
 function hideNavTooltipImmediate() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1009,7 +1107,6 @@ function hideNavTooltipImmediate() {
         tooltipHideTimeout = null;
     }
 }
-// Hide tooltip soon (with a slight delay for mouseout transitions)
 function hideNavTooltip() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     setTimeout(function() {
@@ -1021,53 +1118,47 @@ function hideNavTooltip() {
         tooltipHideTimeout = null;
     }
 }
-
-// Handler for focus/hover on nav links/profile/logout
-function sidebarTooltipHandler(event) {
+function navTooltipHandler(e) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
         return;
     }
-    showSidebarTooltip(this);
+    // Show nav-link or profile icon name
+    let tooltipText = this.getAttribute('data-tooltip');
+    if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
+    if (!tooltipText) return;
+    tooltipActiveLink = this;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = this.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
 }
-function sidebarTooltipMouseLeaveHandler(e) {
+function navLinkMouseLeaveHandler(e) {
     if (
         e.relatedTarget === sidebarNavTooltip ||
         (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
     ) {
         return;
     }
-    // Otherwise, start timer to hide tooltip
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
     }, 60);
 }
-
-document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
-    link.addEventListener('mouseenter', sidebarTooltipHandler);
-    link.addEventListener('focus', sidebarTooltipHandler);
-    link.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
-    link.addEventListener('blur', hideNavTooltip);
-});
-
-// Profile icon tooltip
-const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
-if (sidebarProfileBtn) {
-    sidebarProfileBtn.addEventListener('mouseenter', sidebarTooltipHandler);
-    sidebarProfileBtn.addEventListener('focus', sidebarTooltipHandler);
-    sidebarProfileBtn.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
-    sidebarProfileBtn.addEventListener('blur', hideNavTooltip);
-}
-
-// Logout tooltip
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('mouseenter', sidebarTooltipHandler);
-logoutBtn.addEventListener('focus', sidebarTooltipHandler);
-logoutBtn.addEventListener('mouseleave', sidebarTooltipMouseLeaveHandler);
-logoutBtn.addEventListener('blur', hideNavTooltip);
-
-// Hide tooltip when mouse leaves the tooltip container
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
@@ -1081,8 +1172,8 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// Keyboard navigation for nav-link, profile, logout
-document.querySelectorAll('.nav-link, #sidebarProfileBtn, #logoutBtn').forEach(function(link) {
+// Also support keyboard accessibility: show tooltip on space/enter
+document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
             e.preventDefault();
@@ -1090,71 +1181,111 @@ document.querySelectorAll('.nav-link, #sidebarProfileBtn, #logoutBtn').forEach(f
         }
     });
 });
-
-// Immediately hide tooltip when sidebar is expanded
+logoutBtn.addEventListener('keydown', function(e) {
+    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        this.focus();
+    }
+});
 sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
-    // Save state to localStorage
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
-    // Hide tooltip if sidebar is expanding
-    if (!isCollapsed) {
-        hideNavTooltipImmediate();
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
     }
 });
 
-// Load saved state from localStorage
-const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-if (sidebarCollapsed) {
-    sidebar.classList.add('collapsed');
-    mainContent.classList.add('expanded');
-}
-
-// Logout Alert Modal Logic (unchanged)
 const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 
-// Show modal on logout button click
-logoutBtn.addEventListener('click', () => {
+// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
+logoutBtn.addEventListener('click', (e) => {
+    // prevent default just in case (button not type=submit)
+    e.preventDefault();
     logoutAlertBackdrop.classList.add("active");
-    // Hide tooltip immediately
     hideNavTooltipImmediate();
 });
-
-// Hide modal on cancel
-logoutCancelBtn.addEventListener('click', () => {
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     logoutAlertBackdrop.classList.remove("active");
 });
-
-// Confirm logout
-logoutConfirmBtn.addEventListener('click', () => {
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     window.location.href = 'logout.php';
 });
-
-// Click on backdrop (not the modal) closes modal
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
     if (e.target === logoutAlertBackdrop) {
         logoutAlertBackdrop.classList.remove("active");
     }
 });
 
-// MOBILE SIDEBAR TOGGLE
 const mobileToggle = document.getElementById('mobileToggle');
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
         sidebar.classList.toggle('mobile-active');
     });
 }
-</script>
 
-<script>
+// --- Add step 3: force reload on browser bfcache to enforce session check ---
 window.addEventListener("pageshow", function (event) {
     if (event.persisted) {
         window.location.reload();
     }
 });
 </script>
+
+<script>
+function handleProfilePicture() {
+    const img = document.getElementById('profileImg');
+    const fallback = document.getElementById('profileFallbackIcon');
+
+    if (!img) return;
+
+    // If image fails to load
+    img.onerror = () => {
+        img.style.display = 'none';
+        fallback.style.display = 'flex';
+    };
+
+    // If image exists and loads correctly
+    img.onload = () => {
+        img.style.display = 'block';
+        fallback.style.display = 'none';
+    };
+
+    // Extra safety: empty or default src
+    if (!img.src || img.src.endsWith('profile.png')) {
+        img.style.display = 'none';
+        fallback.style.display = 'flex';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', handleProfilePicture);
+</script>
+
+<script>
+let inactivityTime = 20 * 60 * 1000; // 20 minutes
+let inactivityTimer;
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        // Silent logout (no notification)
+        window.location.href = 'logout.php';
+    }, inactivityTime);
+}
+
+// Events that count as activity
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+    document.addEventListener(event, resetInactivityTimer, true);
+});
+
+// Start timer on load
+resetInactivityTimer();
+</script>
+
 </body>
 </html>
