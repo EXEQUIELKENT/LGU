@@ -1,3 +1,45 @@
+<?php
+session_start();
+require_once 'db.php';
+
+// Get repairs count from repair_archive
+$repairs_count = 0;
+$repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
+if ($repairs_result) {
+    $repairs_row = $repairs_result->fetch_assoc();
+    $repairs_count = $repairs_row['count'];
+}
+
+// Get ongoing count from maintenance_schedule (In Progress status)
+$ongoing_count = 0;
+$ongoing_result = $conn->query("SELECT COUNT(*) as count FROM maintenance_schedule WHERE status = 'In Progress'");
+if ($ongoing_result) {
+    $ongoing_row = $ongoing_result->fetch_assoc();
+    $ongoing_count = $ongoing_row['count'];
+}
+
+// Get pending count from requests (Pending approval status)
+$pending_count = 0;
+$pending_result = $conn->query("SELECT COUNT(*) as count FROM requests WHERE approval_status = 'Pending'");
+if ($pending_result) {
+    $pending_row = $pending_result->fetch_assoc();
+    $pending_count = $pending_row['count'];
+}
+
+// Get maintenance schedule data for table
+$maintenance_data = array();
+$maintenance_result = $conn->query("
+    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date, budget 
+    FROM maintenance_schedule 
+    ORDER BY starting_date DESC 
+    LIMIT 10
+");
+if ($maintenance_result) {
+    while ($row = $maintenance_result->fetch_assoc()) {
+        $maintenance_data[] = $row;
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -218,8 +260,8 @@
     </div>
     <div class="nav-links">
         <a href="citizencimm.php" class="active">Home</a>
-        <a href="citizenrepform.php">Report Issue</a>
-        <a href="services.php">Services</a>
+        <a href="citizenrepform.php">Requests</a>
+        <a href="about.php">About</a>
     </div>
 </header>
 
@@ -231,22 +273,21 @@
     <div class="stats-grid">
         <div class="stat-card">
             <h3>Repairs</h3>
-            <div class="number">10</div>
+            <div class="number"><?php echo $repairs_count; ?></div>
         </div>
         <div class="stat-card">
             <h3>On-Going Repairs</h3>
-            <div class="number">7</div>
+            <div class="number"><?php echo $ongoing_count; ?></div>
         </div>
         <div class="stat-card">
             <h3>Pending</h3>
-            <div class="number">13</div>
+            <div class="number"><?php echo $pending_count; ?></div>
         </div>
     </div>
 
     <div class="content-card">
         <div class="card-header">
             <h2>Recent Maintenance Reports</h2>
-            <button class="btn-primary btn-small" onclick="location.href='citizenrepform.php'" style="width: auto; margin-top: 0;">+ New Report</button>
         </div>
         
         <div class="table-wrapper">
@@ -256,32 +297,42 @@
                         <th>Date</th>
                         <th>Type</th>
                         <th>Location</th>
+                        <th>Budget</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <?php 
+                    if (count($maintenance_data) > 0) {
+                        foreach ($maintenance_data as $item) {
+                            // Determine status pill class
+                            $status_class = 'status-pending';
+                            if ($item['status'] === 'Completed') {
+                                $status_class = 'status-fixed';
+                            } elseif ($item['status'] === 'In Progress') {
+                                $status_class = 'status-progress';
+                            }
+                            
+                            // Format date
+                            $date = date('M d, Y', strtotime($item['starting_date']));
+                    ?>
                     <tr>
-                        <td>Oct 24, 2023</td>
-                        <td>Street Lights</td>
-                        <td>Poblacion Ward II</td>
-                        <td><span class="status-pill status-pending">Pending</span></td>
+                        <td><?php echo $date; ?></td>
+                        <td><?php echo htmlspecialchars($item['task']); ?></td>
+                        <td><?php echo htmlspecialchars($item['location']); ?></td>
+                        <td>₱<?php echo number_format($item['budget'], 2); ?></td>
+                        <td><span class="status-pill <?php echo $status_class; ?>"><?php echo $item['status']; ?></span></td>
                         <td><a href="#" class="link">View</a></td>
                     </tr>
+                    <?php 
+                        }
+                    } else {
+                    ?>
                     <tr>
-                        <td>Oct 20, 2023</td>
-                        <td>Drainage</td>
-                        <td>Brgy. San Jose</td>
-                        <td><span class="status-pill status-progress">In Progress</span></td>
-                        <td><a href="#" class="link">View</a></td>
+                        <td colspan="6" style="text-align: center; color: #999;">No maintenance schedules available</td>
                     </tr>
-                    <tr>
-                        <td>Oct 15, 2023</td>
-                        <td>Road Repair</td>
-                        <td>Mabini St.</td>
-                        <td><span class="status-pill status-fixed">Resolved</span></td>
-                        <td><a href="#" class="link">View</a></td>
-                    </tr>
+                    <?php } ?>
                 </tbody>
             </table>
         </div>
