@@ -186,12 +186,12 @@
 <header class="nav">
     <div class="site-logo">
         <img src="logocityhall.png" alt="LGU Logo">
-        <span>LGU Citizen Portal</span>
+        <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <a href="citizen.php">Home</a>
-        <a href="services.php" class="active">Services</a>
-        <a href="">Requests</a>
+        <a href="citizencimm.php">Home</a>
+        <a href="services.php">Services</a>
+        <a href="citizenrepform.php" class="active">Requests</a>
     </div>
 </header>
 
