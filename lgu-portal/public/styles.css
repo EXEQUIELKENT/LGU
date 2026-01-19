@@ -10929,13 +10929,25 @@ hr.divider-light {
 header.masthead {
   padding-top: 10rem;
   padding-bottom: calc(10rem - 4.5rem);
-  background-image: linear-gradient(to bottom, rgba(13, 110, 253, 0.7) 0%, rgba(13, 110, 253, 0.7) 100%), url("memcir.jpg");
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+header.masthead::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: url("assets/img/memcir.jpg");
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: scroll;
   background-size: cover;
-  backdrop-filter: blur(6px);
-  z-index: 0;
+  filter: blur(5px);
+  z-index: -1;
 }
 header.masthead h1, header.masthead .h1 {
   font-size: 2.25rem;
