@@ -8,39 +8,84 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require __DIR__ . '/db.php'; // Make sure your db.php connects $conn
+require __DIR__ . '/db.php';
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
 
 session_start();
 
+/* ====== OTP re-send protection (updated) ====== */
+define('OTP_RESEND_COOLDOWN', 30);     // seconds
+define('OTP_MAX_RESENDS', 1);          // maximum resends allowed
+
+if (!isset($_SESSION['otp_resend_count'])) {
+    $_SESSION['otp_resend_count'] = 0;
+}
+
+if (!isset($_SESSION['otp_last_sent_time'])) {
+    $_SESSION['otp_last_sent_time'] = 0;
+}
+
+if (!isset($_SESSION['otp_total_resends'])) {
+    $_SESSION['otp_total_resends'] = 0; // Track total resends for logging
+}
+// ===== END add-on config =====
+
+// 2️⃣ Login Event Logger
+function logLoginEvent(
+    mysqli $conn,
+    ?string $email,
+    bool $success,
+    string $failureReason = null,
+    bool $otpUsed = false,
+    int $otpResends = 0
+) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    $agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN', 0, 255);
+    $stmt = $conn->prepare("
+        INSERT INTO login_logs
+        (email, success, failure_reason, ip_address, user_agent, otp_used, otp_resends)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $successInt = $success ? 1 : 0;
+    $otpInt = $otpUsed ? 1 : 0;
+    $stmt->bind_param(
+        "sisssii",
+        $email,
+        $successInt,
+        $failureReason,
+        $ip,
+        $agent,
+        $otpInt,
+        $otpResends
+    );
+    $stmt->execute();
+    $stmt->close();
+}
+
 // 🔔 Handle logout success notification
 if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     setNotification('success', 'Successfully logged out.');
 }
-/**
- * NOTE: Logout logic is now in logout.php—old logic removed for safety!
- * For security, do not use ?logout=1 here—use logout.php instead.
- */
 
 // OTP validity window set to 12 hours
 define('OTP_VALIDITY_SECONDS', 60 * 60 * 12);
 
-// Determine base path and redirect URLs - works whether accessed directly or through index.php
+// Determine base path and redirect URLs
 $basePath = '';
 $loginUrl = 'login.php';
 $employeeUrl = 'employee.php';
 
 if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
     $basePath = 'lgu-portal/public/';
-    $loginUrl = 'index.php'; // Redirect to index.php when accessed through root
+    $loginUrl = 'index.php';
     $employeeUrl = 'lgu-portal/public/employee.php';
 }
 
 function setNotification($type, $message) {
     $_SESSION['notification'] = [
-        'type' => $type, // success, warning, error, info
+        'type' => $type,
         'message' => $message
     ];
 }
@@ -67,49 +112,47 @@ function showNotification() {
     }
 }
 
-/**
- * Password "unique enough" function
- */
-function isUniqueEnoughPassword($password) {
+function isStrongPassword($password) {
     if (strlen($password) < 8) return false;
+    if (!preg_match('/[A-Z]/', $password)) return false;
+    if (!preg_match('/[a-z]/', $password)) return false;
+    if (!preg_match('/[0-9]/', $password)) return false;
+    if (!preg_match('/[^a-zA-Z0-9]/', $password)) return false;
     if (preg_match('/^(\w)\1+$/', $password)) return false;
-    if (
-        !preg_match('/[A-Z]/', $password) ||
-        !preg_match('/[a-z]/', $password) ||
-        !preg_match('/[0-9]/', $password) ||
-        !preg_match('/[^a-zA-Z0-9]/', $password)
-    ) return false;
+    $common = [
+        'password','12345678','qwertyui','abcdefgh',
+        'iloveyou','asdfasdf','87654321'
+    ];
+    foreach ($common as $bad) {
+        if (stripos($password, $bad) !== false) return false;
+    }
+    if (count(array_unique(str_split($password))) < 5) return false;
     for ($len = 1; $len <= 3; $len++) {
         $pattern = substr($password, 0, $len);
-        if ($pattern && $pattern !== $password && $pattern !== '') {
+        if ($pattern && $pattern !== $password) {
             $repeat = str_repeat($pattern, intdiv(strlen($password), $len));
             if ($repeat === $password) return false;
         }
     }
-    $common = ['password', '12345678', 'qwertyui', 'abcdefgh', 'iloveyou', 'asdfasdf', '87654321'];
-    foreach($common as $bad) {
-        if (stripos($password, $bad) !== false) return false;
-    }
-    if (count(array_unique(str_split($password))) < 5) return false;
     return true;
 }
 
-/**
- * Login lockout logic for failed password attempts
- */
+function isUniqueEnoughPassword($password) {
+    return isStrongPassword($password);
+}
+
 function isLoginLockedOut($email) {
-    // Returns true if user ($email) is locked out
     if (!isset($_SESSION['failed_logins'])) return false;
     $info = $_SESSION['failed_logins'][$email] ?? null;
     if (!$info || !isset($info['count']) || !isset($info['time'])) return false;
     if ($info['count'] < 3) return false;
-    // If last fail was more than 10 min ago, reset
     if ((time() - $info['time']) > 600) {
         unset($_SESSION['failed_logins'][$email]);
         return false;
     }
     return true;
 }
+
 function registerLoginFail($email) {
     if (!isset($_SESSION['failed_logins'])) {
         $_SESSION['failed_logins'] = [];
@@ -121,6 +164,7 @@ function registerLoginFail($email) {
         $_SESSION['failed_logins'][$email]['time'] = time();
     }
 }
+
 function resetLoginFail($email) {
     if (isset($_SESSION['failed_logins'][$email])) {
         unset($_SESSION['failed_logins'][$email]);
@@ -133,27 +177,19 @@ if (isset($_POST['change_password_submit'])) {
     $confirmPassword = $_POST['confirm_password'] ?? '';
     $email = $_SESSION['login_email'] ?? '';
 
-    // Improved error messaging and order
     if (empty($newPassword) || empty($confirmPassword)) {
         setNotification('error', 'Both password fields are required.');
-    } elseif (strlen($newPassword) < 8) {
-        setNotification('error', 'Password must be at least 8 characters long.');
     } elseif ($newPassword !== $confirmPassword) {
         setNotification('error', 'Passwords do not match. Please try again.');
-    } elseif (
-        !preg_match('/[A-Z]/', $newPassword) ||
-        !preg_match('/[a-z]/', $newPassword) ||
-        !preg_match('/[0-9]/', $newPassword) ||
-        !preg_match('/[^a-zA-Z0-9]/', $newPassword)
-    ) {
-        setNotification('error', 'Password must include at least one uppercase letter, one lowercase letter, one digit, and one symbol.');
-    } elseif (!isUniqueEnoughPassword($newPassword)) {
-        setNotification('error', 'Please choose a stronger password—avoid common words, patterns (like abababab, 12345678), and use at least 5 unique characters.');
+    } elseif (!isStrongPassword($newPassword)) {
+        $_SESSION['notification'] = [
+            'type' => 'error',
+            'message' => 'Password does not meet security requirements.'
+        ];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
     } elseif ($email) {
-        // Hash the new password
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-
-        // Update password and set is_first_login to 0
         $stmt = $conn->prepare("UPDATE employees SET password = ?, is_first_login = 0 WHERE email = ?");
         $stmt->bind_param("ss", $hashedPassword, $email);
 
@@ -175,8 +211,9 @@ if (isset($_POST['change_password_submit'])) {
 }
 
 // Reset OTP if user reloads (but keep change password modal state if needed)
-if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_password_modal'])) {
+if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_password_modal']) && !isset($_SESSION['show_otp_form'])) {
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_verified']);
+    unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 }
 
 // OTP verification
@@ -184,26 +221,29 @@ if (isset($_POST['otp_submit'])) {
     $entered_otp = trim($_POST['otp']);
     $current_time = time();
 
-    // Initialize or get current attempts
     if (!isset($_SESSION['otp_attempts'])) {
         $_SESSION['otp_attempts'] = 0;
     }
 
-    // Check if OTP and time are set and valid
     if (!isset($_SESSION['otp']) || !isset($_SESSION['otp_time'])) {
+        logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('error', 'OTP expired or not generated. Please log in again.');
-        unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+        unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($current_time - $_SESSION['otp_time'] > 300) {
+        logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('warning', 'OTP expired. Please log in again.');
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($_SESSION['otp_attempts'] >= 3) {
+        logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP attempts exceeded', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('error', 'Too many wrong attempts. This OTP is now expired. Please log in again and request a new OTP.');
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
 
-        // Save OTP verification timestamp (for DB-backed skip logic!)
+        // Log successful OTP login with resend count
+        logLoginEvent($conn, $_SESSION['login_email'], true, null, true, $_SESSION['otp_total_resends'] ?? 0);
+
         $email = $_SESSION['login_email'];
         $now = date('Y-m-d H:i:s');
         $updateOtpStmt = $conn->prepare("
@@ -216,9 +256,8 @@ if (isset($_POST['otp_submit'])) {
         $updateOtpStmt->close();
 
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+        unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 
-        // Check if this is a first-time login (needs password change)
-        $email = $_SESSION['login_email'] ?? '';
         if ($email) {
             $checkStmt = $conn->prepare("SELECT is_first_login FROM employees WHERE email = ?");
             $checkStmt->bind_param("s", $email);
@@ -258,9 +297,10 @@ if (isset($_POST['otp_submit'])) {
         }
     } else {
         $_SESSION['otp_attempts']++;
+        logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'Invalid OTP', true, $_SESSION['otp_total_resends'] ?? 0);
         if ($_SESSION['otp_attempts'] >= 3) {
             setNotification('error', 'You have entered the wrong code 3 times. This OTP is now expired. Please log in again and request a new OTP.');
-            unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
+            unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
         } else {
             $remaining = 3 - $_SESSION['otp_attempts'];
             setNotification('error', 'Invalid OTP. You have ' . $remaining . ' attempt' . ($remaining > 1 ? 's' : '') . ' left.');
@@ -269,14 +309,14 @@ if (isset($_POST['otp_submit'])) {
 }
 
 // --- Login submission logic with Remember Me cookie ---
-
 if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'] ?? '';
-    $remember = isset($_POST['remember_me']) ? true : false; // Checkbox on form
+    $remember = isset($_POST['remember_me']) ? true : false;
 
     // Check login lockout status before proceeding
     if (isset($_POST['login_submit']) && isLoginLockedOut($email)) {
+        logLoginEvent($conn, $email, false, 'Account locked (too many attempts)');
         $info = $_SESSION['failed_logins'][$email];
         $timeSince = time() - $info['time'];
         $timeLeft = 600 - $timeSince;
@@ -294,7 +334,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         exit;
     }
 
-    // Fetch user from DB - check email and verification status
+    // Fetch user from DB
     $stmt = $conn->prepare("
         SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at
         FROM employees
@@ -320,8 +360,10 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 $deleteStmt->bind_param("i", $pendingRow['penreg_id']);
                 $deleteStmt->execute();
                 $deleteStmt->close();
+                logLoginEvent($conn, $email, false, 'Email not found');
                 setNotification('error', 'Email not found. Your verification link has expired. Please register again.');
             } else {
+                logLoginEvent($conn, $email, false, 'Email not verified');
                 setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the "Confirm Email" button to activate your account. Your account will be created after verification.');
             }
             $pendingStmt->close();
@@ -329,6 +371,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             exit;
         } else {
             $pendingStmt->close();
+            logLoginEvent($conn, $email, false, 'Email not found');
             setNotification('error', 'Email not found');
             header("Location: " . $loginUrl);
             exit;
@@ -338,8 +381,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $user = $result->fetch_assoc();
     $stmt->close();
 
-    // Check if email is verified
     if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
+        logLoginEvent($conn, $email, false, 'Email not verified');
         setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
         header("Location: " . $loginUrl);
         exit;
@@ -351,13 +394,11 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $requireOtp = false;
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
-            // Register the failed password try
+            logLoginEvent($conn, $email, false, 'Incorrect password');
             registerLoginFail($email);
-            // If just reached 3rd failed, show 10 min timeout msg
             if (isLoginLockedOut($email)) {
                 setNotification('error', 'Incorrect password. You have reached 3 failed attempts. Login is locked for 10 minutes for this account.');
             } else {
-                // Show remaining attempts out of 3
                 $failCount = $_SESSION['failed_logins'][$email]['count'] ?? 1;
                 $triesLeft = max(0, 3 - $failCount);
                 $msg = 'Incorrect password';
@@ -371,26 +412,29 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             header("Location: " . $loginUrl);
             exit;
         } else {
-            // Password was correct: log in, so reset the fail count
             resetLoginFail($email);
 
-            // Determine if OTP is required
+            if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
+                $rehashStmt = $conn->prepare("UPDATE employees SET password = ? WHERE email = ?");
+                $rehashStmt->bind_param("ss", $newHash, $email);
+                $rehashStmt->execute();
+                $rehashStmt->close();
+            }
+
             if ($user['last_otp_verified_at'] === null) {
-                // First login ever: OTP required
                 $requireOtp = true;
             } else {
                 $lastOtpTime = strtotime($user['last_otp_verified_at']);
                 if ((time() - $lastOtpTime) > OTP_VALIDITY_SECONDS) {
-                    // OTP expired
                     $requireOtp = true;
                 }
             }
 
-            // If OTP is NOT required → Login directly
             if (!$requireOtp) {
                 $_SESSION['employee_logged_in'] = true;
                 $_SESSION['otp_verified'] = true;
-
+                logLoginEvent($conn, $email, true, null, false, 0);
                 setNotification('success', 'Login successful! Redirecting...');
                 echo "<script>
                     setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 900);
@@ -400,14 +444,12 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         }
     }
 
-    // --- REMEMBER ME: Store credentials cookie if chosen ---
+    // Remember Me: Store credentials cookie if chosen
     if (isset($_POST['login_submit'])) {
         if ($remember) {
-            // "Remember me": store credentials in cookies for 7 days (expires in a week)
-            setcookie('remember_email', $email, time() + (60 * 60 * 24 * 7), "/"); // 7 days
-            setcookie('remember_password', base64_encode($password), time() + (60 * 60 * 24 * 7), "/"); // Do not store plaintext! (base64 isn't secure but makes it unreadable)
+            setcookie('remember_email', $email, time() + (60 * 60 * 24 * 7), "/");
+            setcookie('remember_password', base64_encode($password), time() + (60 * 60 * 24 * 7), "/");
         } else {
-            // Clear cookies if not desired
             setcookie('remember_email', '', time() - 3600, "/");
             setcookie('remember_password', '', time() - 3600, "/");
         }
@@ -415,18 +457,48 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     $_SESSION['login_email'] = $email;
 
-    // OTP GENERATION (database-backed, only if required)
-    if (
-        (isset($_POST['login_submit']) && $requireOtp) ||
-        (isset($_POST['resend_otp']))
-    ) {
+    // OTP GENERATION AND RESEND LOGIC
+    if ((isset($_POST['login_submit']) && $requireOtp) || isset($_POST['resend_otp'])) {
+        $currentTime = time();
+        $isResend = isset($_POST['resend_otp']);
+
+        // ONLY CHECK COOLDOWN FOR RESEND REQUESTS (not initial OTP)
+        if ($isResend) {
+            // Check if cooldown period has passed (30 seconds)
+            $timeSinceLastSend = $currentTime - ($_SESSION['otp_last_sent_time'] ?? 0);
+
+            // If 30 seconds have passed, reset the resend counter
+            if ($timeSinceLastSend >= OTP_RESEND_COOLDOWN) {
+                $_SESSION['otp_resend_count'] = 0;
+            }
+
+            // Check resend cooldown
+            $remainingCooldown = max(0, OTP_RESEND_COOLDOWN - $timeSinceLastSend);
+
+            if ($remainingCooldown > 0) {
+                setNotification('error', "Please wait {$remainingCooldown} seconds before requesting another OTP.");
+                $_SESSION['show_otp_form'] = true;
+                header("Location: " . $loginUrl);
+                exit;
+            }
+
+            // Check max resends within cooldown period
+            if ($_SESSION['otp_resend_count'] >= OTP_MAX_RESENDS) {
+                setNotification('error', 'Maximum OTP resend attempts reached. Please wait 30 seconds before trying again.');
+                $_SESSION['show_otp_form'] = true;
+                header("Location: " . $loginUrl);
+                exit;
+            }
+        }
+
+        // Generate new OTP
         $otp = rand(100000, 999999);
         $_SESSION['otp'] = $otp;
         $_SESSION['otp_time'] = time();
         $_SESSION['show_otp_form'] = true;
         $_SESSION['otp_attempts'] = 0;
 
-        // Send OTP email - Optimized for speed
+        // Send OTP email
         $mail = new PHPMailer(true);
         try {
             $mail->SMTPDebug = 0;
@@ -494,7 +566,32 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             }
 
             $mail->send();
-            setNotification('success', 'OTP sent! Please check your email.');
+
+            // Update counters AFTER successful send
+            $_SESSION['otp_last_sent_time'] = time();
+            
+            if ($isResend) {
+                $_SESSION['otp_resend_count']++;
+                $_SESSION['otp_total_resends']++;
+            }
+
+            $resendInfo = '';
+            if ($isResend) {
+                $remainingResends = OTP_MAX_RESENDS - $_SESSION['otp_resend_count'];
+                if ($remainingResends > 0) {
+                    $resendInfo = " You have {$remainingResends} resend" . ($remainingResends > 1 ? 's' : '') . " remaining.";
+                } else {
+                    $resendInfo = " Maximum resends reached. Wait 30 seconds to reset.";
+                }
+            }
+
+            setNotification('success', 'OTP sent! Please check your email.' . $resendInfo);
+
+            // KEEP USER ON OTP FORM
+            $_SESSION['show_otp_form'] = true;
+            header("Location: " . $loginUrl);
+            exit;
+
         } catch (\PHPMailer\PHPMailer\Exception $e) {
             $errorInfo = '';
             if (isset($mail) && $mail instanceof PHPMailer) {
@@ -938,6 +1035,46 @@ body:has(#changePasswordModal) {
     }
 }
 
+/* Change Password Modal Styles */
+#changePasswordModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 1;
+    animation: fadeInModal 0.3s ease;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent body scroll when modal is open */
+body:has(#changePasswordModal) {
+    overflow: hidden;
+}
+
+@keyframes fadeInModal {
+    from { 
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to { 
+        opacity: 1;
+        backdrop-filter: blur(6px);
+    }
+}
+
 #changePasswordModal .modal-content {
     width: 350px;
     background: rgba(255, 255, 255, 0.795);
@@ -1097,11 +1234,95 @@ body:has(#changePasswordModal) {
 #changePasswordModal .password-requirements {
     font-size: 12px;
     color: #666;
-    margin-top: 6px;
+    margin-top: 8px;
     padding-left: 0;
-    line-height: 1.4;
+    line-height: 1.8;
+}
+#changePasswordModal .req-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+    transition: color 0.2s;
+}
+#changePasswordModal .req-check {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #666;
+    text-align: center;
+    line-height: 16px;
+    font-size: 10px;
+    font-weight: bold;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+#changePasswordModal .req-item:not(.satisfied) .req-check {
+    background: #e0e0e0;
+    color: #666;
+}
+#changePasswordModal .req-item:not(.satisfied) .req-check::before {
+    content: '○';
+}
+#changePasswordModal .req-item.satisfied .req-check {
+    background: #10b759;
+    color: #fff;
+}
+#changePasswordModal .req-item.satisfied .req-check::before {
+    content: '✓';
+}
+#changePasswordModal .req-item.satisfied .req-text {
+    color: #10b759;
+    font-weight: 500;
+}
+#changePasswordModal .req-item:not(.satisfied) .req-text {
+    color: #666;
 }
 /* No unnecessary error-blocks that cause modal height expansion! */
+
+/* Password Strength Meter */
+#changePasswordModal .password-strength {
+    margin-top: 10px;
+}
+
+#changePasswordModal .strength-bar {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#changePasswordModal .strength-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    display: block; /* ← THIS IS THE FIX */
+}
+
+#changePasswordModal .strength-text {
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: 500;
+    color: #555;
+}
+
+/* Strength colors */
+#changePasswordModal .strength-weak {
+    background: #ef4444;
+}
+#changePasswordModal .strength-fair {
+    background: #f59e0b;
+}
+#changePasswordModal .strength-good {
+    background: #3b82f6;
+}
+#changePasswordModal .strength-strong {
+    background: #10b759;
+}
 
 #changePasswordModal .modal-footer {
     display: flex;
@@ -1224,6 +1445,7 @@ body:has(#changePasswordModal) {
 #changePasswordModal * {
     box-sizing: border-box;
 }
+
 
 /* ===== Mobile-first refinements (like reference design) ===== */
 @media (max-width: 640px) {
@@ -1641,10 +1863,32 @@ body:has(#changePasswordModal) {
                         <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">
                             <span id="toggleNewPasswordIcon">👁️</span>
                         </button>
-                        <div class="password-requirements">
-                            Must be at least 8 characters;<br>
-                            include <b>uppercase</b>, <b>lowercase</b>, <b>number</b>, and <b>symbol</b>; <br>
-                            avoid common words and simple patterns.
+                        <!-- Password strength meter -->
+                        <div class="password-strength">
+                            <div class="strength-bar">
+                                <span class="strength-fill" id="strengthFill"></span>
+                            </div>
+                            <div class="strength-text" id="strengthText">Strength: —</div>
+                        </div>
+                        <div class="password-requirements" id="passwordRequirements">
+                            <div class="req-item" id="req-length">
+                                <span class="req-check">✓</span> <span class="req-text">At least 8 characters</span>
+                            </div>
+                            <div class="req-item" id="req-uppercase">
+                                <span class="req-check">✓</span> <span class="req-text">One uppercase letter</span>
+                            </div>
+                            <div class="req-item" id="req-lowercase">
+                                <span class="req-check">✓</span> <span class="req-text">One lowercase letter</span>
+                            </div>
+                            <div class="req-item" id="req-number">
+                                <span class="req-check">✓</span> <span class="req-text">One number</span>
+                            </div>
+                            <div class="req-item" id="req-symbol">
+                                <span class="req-check">✓</span> <span class="req-text">One symbol</span>
+                            </div>
+                            <div class="req-item" id="req-unique">
+                                <span class="req-check">✓</span> <span class="req-text">Strong (no common patterns)</span>
+                            </div>
                         </div>
                     </div>
                     <div class="input-box">
@@ -1723,6 +1967,70 @@ body:has(#changePasswordModal) {
             return true;
         }
 
+        // Password strength scoring
+        function calculatePasswordStrength(pass) {
+            let score = 0;
+            if (pass.length >= 8) score++;
+            if (/[A-Z]/.test(pass)) score++;
+            if (/[a-z]/.test(pass)) score++;
+            if (/[0-9]/.test(pass)) score++;
+            if (/[^a-zA-Z0-9]/.test(pass)) score++;
+            if (isUniqueEnoughPasswordClient(pass)) score++;
+            return score; // max = 6
+        }
+
+        // Live password strength indicator (with meter)
+        function updatePasswordStrength() {
+            const pass = newPasswordInput.value;
+
+            const reqLength = document.getElementById('req-length');
+            const reqUppercase = document.getElementById('req-uppercase');
+            const reqLowercase = document.getElementById('req-lowercase');
+            const reqNumber = document.getElementById('req-number');
+            const reqSymbol = document.getElementById('req-symbol');
+            const reqUnique = document.getElementById('req-unique');
+
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+
+            // Rule checks
+            reqLength.classList.toggle('satisfied', pass.length >= 8);
+            reqUppercase.classList.toggle('satisfied', /[A-Z]/.test(pass));
+            reqLowercase.classList.toggle('satisfied', /[a-z]/.test(pass));
+            reqNumber.classList.toggle('satisfied', /[0-9]/.test(pass));
+            reqSymbol.classList.toggle('satisfied', /[^a-zA-Z0-9]/.test(pass));
+            reqUnique.classList.toggle('satisfied', pass.length >= 8 && isUniqueEnoughPasswordClient(pass));
+
+            // Strength score
+            const score = calculatePasswordStrength(pass);
+
+            strengthFill.className = 'strength-fill';
+
+            if (pass.length === 0) {
+                strengthFill.style.width = '0%';
+                strengthText.textContent = 'Strength: —';
+                return;
+            }
+
+            if (score <= 2) {
+                strengthFill.style.width = '25%';
+                strengthFill.classList.add('strength-weak');
+                strengthText.textContent = 'Strength: Weak';
+            } else if (score <= 4) {
+                strengthFill.style.width = '55%';
+                strengthFill.classList.add('strength-fair');
+                strengthText.textContent = 'Strength: Fair';
+            } else if (score === 5) {
+                strengthFill.style.width = '80%';
+                strengthFill.classList.add('strength-good');
+                strengthText.textContent = 'Strength: Good';
+            } else {
+                strengthFill.style.width = '100%';
+                strengthFill.classList.add('strength-strong');
+                strengthText.textContent = 'Strength: Strong';
+            }
+        }
+
         function validatePasswords() {
             const newPwd = newPasswordInput.value;
             const confirmPwd = confirmPasswordInput.value;
@@ -1732,7 +2040,10 @@ body:has(#changePasswordModal) {
             if (confirmPwd !== newPwd || confirmPwd.length === 0) valid = false;
             changePasswordBtn.disabled = !valid;
         }
-        newPasswordInput.addEventListener('input', validatePasswords);
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordStrength();
+            validatePasswords();
+        });
         confirmPasswordInput.addEventListener('input', validatePasswords);
         changePasswordBtn.disabled = true;
 
@@ -1741,6 +2052,9 @@ body:has(#changePasswordModal) {
                 e.preventDefault();
             }
         });
+
+        // Fire update on load to match empty state.
+        updatePasswordStrength();
     </script>
 <?php endif; ?>
 
