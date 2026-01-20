@@ -53,7 +53,7 @@ if (
 
 $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
 
-// Fetch requests from DB with evidence images
+// ✅ Fetch requests from DB with ALL evidence images per request (GROUP_CONCAT)
 $sql = "SELECT 
     r.req_id,
     r.infrastructure,
@@ -61,12 +61,13 @@ $sql = "SELECT
     r.issue,
     r.approval_status,
     r.created_at,
-    (SELECT img_path FROM evidence_images WHERE req_id = r.req_id ORDER BY uploaded_at DESC LIMIT 1) as evidence
+    GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC) AS evidence_images
 FROM requests r
+LEFT JOIN evidence_images e ON e.req_id = r.req_id
+GROUP BY r.req_id
 ORDER BY r.created_at DESC";
 $result = $conn->query($sql);
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -75,9 +76,9 @@ $result = $conn->query($sql);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Infrastructure Repair Requests</title>
 <style>
-/* ... (CSS unchanged for brevity) ... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+/* ... (other CSS unchanged for brevity) ... */
 
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
@@ -206,6 +207,24 @@ body::-webkit-scrollbar {
 .notif-popup.notif-error { border-left: 6px solid #d73f52; }
 .notif-popup.notif-warning { border-left: 6px solid #eed434; }
 .notif-popup.notif-info { border-left: 6px solid #3da6e3; }
+
+/* --- Request Table Search --- */
+#requestSearch {
+    width: 100%;
+    font-size: 1rem;
+    padding: 9px 11px;
+    border: 1px solid #b1b8d0;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    outline: none;
+    background: #f8faff;
+    color: #23285c;
+    transition: border 0.19s, box-shadow 0.19s;
+}
+#requestSearch:focus {
+    border: 1.5px solid #3762c8;
+    box-shadow: 0 2px 8px rgba(55,98,200,0.06);
+}
 
 /* Sidebar Navigation */
 .sidebar-nav {
@@ -745,76 +764,90 @@ tbody tr:hover {
 /* =========================
    🖼 IMAGE MODAL VIEWER
 ========================= */
+
+/* --------- RESPONSIVE MODAL CONTENT (NEW) --------- */
+.image-modal-content {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-height: 85vh;
+    max-width: 90vw;
+    margin: auto;
+}
+/* IMAGE ITSELF - RESPONSIVE */
+#imageModalImg {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 16px;
+    object-fit: contain;
+    transition: transform 0.15s ease;
+}
+
+/* 📱 Swipe Indicator (Mobile Only) */
+.swipe-indicator {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    padding: 6px 14px;
+    font-size: 13px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 9002;
+}
+/* Show only on mobile */
+@media (max-width: 768px) {
+    .swipe-indicator.show {
+        opacity: 1;
+    }
+}
+
+/* ---------- MOBILE VIEW ---------- */
+@media (max-width: 768px) {
+    .image-modal-content {
+        max-width: 95vw;
+        max-height: 70vh;
+        padding: 10px;
+    }
+    #imageModalImg {
+        max-width: 100%;
+        max-height: 55vh;
+        border-radius: 12px;
+    }
+}
+
+/* --- Existing modal and gallery code follows --- */
 .image-modal {
     position: fixed;
     inset: 0;
     display: none;
     z-index: 9000;
 }
-
 .image-modal.active {
     display: flex;
     align-items: center;
     justify-content: center;
 }
-
 /* Dark semi-transparent background */
 .image-modal-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.70);
 }
-
-/* Base (MOBILE-FIRST – SAFE) */
-#imageModalImg {
-    position: relative;
-    max-width: 92vw;
-    max-height: 80vh;
-    border-radius: 14px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-    animation: imageZoomIn 0.25s ease;
-    background: #fff;
-    object-fit: contain;
-    display: block;
-}
-
-/* 🖥 Desktop settings (LARGE IMAGE) */
-@media (min-width: 1024px) {
-    #imageModalImg {
-        max-width: 93vw;
-        max-height: 93vh;
-        min-width: 480px;
-        min-height: 320px;
-        border-radius: 18px;
-        box-shadow: 0 18px 56px rgba(0,0,0,0.54);
-        user-select: none;
-        -webkit-user-drag: none;
-        -webkit-user-select: none;
-        pointer-events: auto;
-
-    }
-}
-@media (min-width: 1280px) {
-    #imageModalImg {
-        max-width: 1800px;
-        max-height: 1200px;
-        min-width: 700px;
-        min-height: 480px;
-        user-select: none;
-        -webkit-user-drag: none;
-        -webkit-user-select: none;
-        pointer-events: auto;
-
-    }
-}
-
-/* --- CLEAN IMAGE MODAL CLOSE BUTTON DEFINITIONS --- */
-
-/* Close button (DEFAULT = DESKTOP) */
+/* ... (can leave out now-redundant old #imageModalImg styles, above covers it) ... */
 .image-modal-close {
     position: fixed;
-    top: 70px;
-    right: 350px;
+    top: 20px;
+    right: 35px;
     background: rgba(0, 0, 0, 0.75);
     color: #fff;
     border: none;
@@ -832,25 +865,25 @@ tbody tr:hover {
 .image-modal-close:hover {
     background: rgba(0,0,0,0.88);
 }
-
-/* 📱 MOBILE-ONLY OVERRIDE (POSITION ONLY) */
 @media (max-width: 768px) {
     .image-modal-close {
-        top: 140px;
+        top: 20px;
         right: 20px;
         width: 40px;
         height: 40px;
         font-size: 24px;
     }
 }
-
-/* Animation */
+/* 📱 Hide navigation arrows on mobile */
+@media (max-width: 768px) {
+    .nav-arrow {
+        display: none !important;
+    }
+}
 @keyframes imageZoomIn {
     from { transform: scale(0.87); opacity: 0.18; }
     to   { transform: scale(1); opacity: 1; }
 }
-
-/* Desktop thumbnail preview */
 .evidence-thumb {
     width: 70px;
     height: 70px;
@@ -859,12 +892,10 @@ tbody tr:hover {
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-
 .evidence-thumb:hover {
     transform: scale(1.06);
     box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
-
 /* Cursor zoom on desktop */
 @media (min-width: 769px) {
     #imageModalImg {
@@ -875,25 +906,67 @@ tbody tr:hover {
         cursor: zoom-out;
     }
 }
-
-/* Mobile pinch zoom and swipe indication */
 @media (max-width: 768px) {
     #imageModalImg {
         touch-action: none; /* allow pinch/swipe gestures */
     }
+}
+.evidence-thumb-wrapper {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+.evidence-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #eee;
+}
+.multi-indicator {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 9001;
+}
+.nav-arrow.left { left: 30px; }
+.nav-arrow.right { right: 30px; }
+.nav-arrow:hover {
+    background: rgba(0,0,0,0.85);
+}
+/* Hide arrows on single image */
+.nav-arrow.hidden {
+    display: none;
 }
 
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-
-/* Show mobile top nav in mobile */
 .mobile-top-nav {
     display: flex;
 }
-
-/* Hide desktop sidebar initially */
 .sidebar-nav {
     left: -110%;
     width: calc(100% - 24px);
@@ -904,25 +977,17 @@ tbody tr:hover {
     transition: left 0.35s ease;
     z-index: 4000;
 }
-
-/* Show sidebar when active */
 .sidebar-nav.mobile-active {
     left: 12px;
 }
-
-/* Disable desktop collapse behavior */
 .sidebar-nav.collapsed {
     width: calc(100% - 24px);
 }
-
-/* Main content always full width */
 .main-content,
 .main-content.expanded {
     margin-left: 0 !important;
     padding-top: 90px;
 }
-
-/* MOBILE TOP NAV */
 .mobile-top-nav {
     position: fixed;
     top: 0;
@@ -936,12 +1001,10 @@ tbody tr:hover {
     z-index: 5000;
     box-shadow: 0 4px 18px rgba(0,0,0,0.2);
 }
-
 .mobile-top-nav img {
     height: 42px;
     object-fit: contain;
 }
-
 .mobile-toggle {
     position: absolute;
     left: 16px;
@@ -954,46 +1017,30 @@ tbody tr:hover {
     font-size: 20px;
     cursor: pointer;
 }
-
-/* Sidebar internal layout for mobile */
 .sidebar-top {
     padding-top: 30px;
 }
-
 .sidebar-profile-btn {
     position: relative;
     margin: 10px 0 0 15px;
 }
-
 .site-logo {
     margin: 10px auto 20px auto;
 }
-
 .nav-list {
     padding: 0 20px;
 }
-
 .sidebar-divider,
 .sidebar-toggle,
 .sidebar-toggle-divider {
     display: none !important;
 }
-
-/* Logout stays bottom */
 .user-info {
     padding-bottom: 20px;
 }
-
-/* Hide desktop toggle */
 .sidebar-toggle {
     display: none;
 }
-
-/* ===============================
-   🚩 MOBILE-ONLY MAIN CONTENT FIXES
-   =============================== */
-
-/* 1️⃣ MAIN CONTENT SCROLLS (allow full height and scroll) */
 .main-content,
 .main-content.expanded {
     height: auto;
@@ -1003,43 +1050,28 @@ tbody tr:hover {
     -webkit-overflow-scrolling: touch;
     margin-top: 70px;
 }
-
-/* 3️⃣ HIDE SCROLLBARS (still scrollable!) */
 .main-content::-webkit-scrollbar {
     display: none;
 }
 .main-content {
     scrollbar-width: none; /* Firefox */
 }
-
-/* 🧪 OPTIONAL: mobile card tighter padding for small screens */
 .card {
     padding: 22px;
 }
-/* ===============================
-   📱 MOBILE REQUEST CARD VIEW
-================================ */
-
-/* Hide desktop table */
-
-/* Hide desktop table on mobile */
+/* MOBILE REQUEST CARD VIEW */
 table {
     display: none !important;
 }
-
 h2  {
     display: none;
 }
-
-/* ✅ SHOW mobile cards */
 .mobile-request-list {
     display: flex !important;
     flex-direction: column;
     gap: 16px;
     width: 100%;
 }
-
-/* Ensure cards stretch properly */
 .request-card {
     width: 100%;
     background: rgba(255,255,255,0.96);
@@ -1048,42 +1080,30 @@ h2  {
     box-shadow: 0 6px 18px rgba(0,0,0,0.18);
     font-size: 14px;
 }
-
-/* Card rows */
 .request-card div {
     margin-bottom: 8px;
     line-height: 1.4;
 }
-
-/* Labels */
 .request-card strong {
     color: #3762c8;
     font-weight: 600;
 }
-
-/* Status pill spacing */
 .request-card .status {
     display: inline-block;
     margin-left: 6px;
 }
-
-/* Actions */
 .request-actions {
     margin-top: 10px;
 }
-
 .request-actions .btn-view {
     display: inline-block;
     padding: 6px 14px;
     font-size: 13px;
 }
-
 .no-evidence {
     font-size: 12px;
     color: #777;
 }
-
-/* Hide the no requests card in desktop view */
 }
 @media (min-width: 769px) {
     .mobile-no-requests {
@@ -1150,6 +1170,13 @@ h2  {
     <h2 class="page-title">Infrastructure Repair Requests</h2>
 
     <div class="table-card">
+        <!-- 1️⃣ SEARCH INPUT -->
+        <input
+            id="requestSearch"
+            type="text"
+            placeholder="Search by Request ID, Infrastructure, Location, Issue, Date, or Status..."
+        >
+
         <table>
             <thead>
                 <tr>
@@ -1165,8 +1192,18 @@ h2  {
             </thead>
 
             <tbody>
+            <!-- 3️⃣ NO RESULT ROW (hidden by default) -->
+            <tr id="noRequestResult" style="display:none;">
+                <td colspan="8" style="text-align:center; padding:20px; font-weight:500;">
+                    No matching data or result
+                </td>
+            </tr>
             <?php if ($result->num_rows > 0): ?>
-                <?php while ($row = $result->fetch_assoc()): ?>
+                <?php
+                // Move pointer to start (just in case)
+                mysqli_data_seek($result, 0);
+                while ($row = $result->fetch_assoc()):
+                ?>
                 <tr>
                     <td>
                         #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
@@ -1176,13 +1213,23 @@ h2  {
                     <td><?php echo htmlspecialchars($row['issue']); ?></td>
                     <td><?php echo $row['created_at'] ?? ''; ?></td>
                     <td>
-                        <?php if (!empty($row['evidence'])): ?>
-                            <img
-                                src="<?php echo htmlspecialchars($row['evidence']); ?>"
-                                class="evidence-thumb"
-                                alt="Evidence"
-                                onclick="openImageModal('<?php echo htmlspecialchars($row['evidence']); ?>')"
-                            />
+                        <?php if (!empty($row['evidence_images'])): 
+                            $images = explode(',', $row['evidence_images']);
+                            $firstImage = $images[0];
+                            $count = count($images);
+                        ?>
+                            <div class="evidence-thumb-wrapper"
+                                onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
+                                <img
+                                    src="<?= htmlspecialchars($firstImage) ?>"
+                                    class="evidence-thumb"
+                                    alt="Evidence"
+                                    data-request-id="<?= $row['req_id'] ?>"
+                                >
+                                <?php if ($count > 1): ?>
+                                    <span class="multi-indicator">+<?= $count - 1 ?></span>
+                                <?php endif; ?>
+                            </div>
                         <?php else: ?>
                             No image
                         <?php endif; ?>
@@ -1247,12 +1294,13 @@ h2  {
                         </span>
                     </div>
                     <div class="request-actions">
-                        <?php if (!empty($row['evidence'])): ?>
+                        <?php if (!empty($row['evidence_images'])): 
+                            $images = explode(',', $row['evidence_images']);
+                        ?>
                             <button
                                 class="btn-view"
-                                onclick="openImageModal('<?php echo htmlspecialchars($row['evidence']); ?>')"
-                            >
-                                View Evidence
+                                onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
+                                View Evidence (<?= count($images) ?>)
                             </button>
                         <?php else: ?>
                             <span class="no-evidence">No Evidence</span>
@@ -1289,12 +1337,18 @@ h2  {
 <!-- 🖼 IMAGE VIEWER MODAL -->
 <div id="imageModal" class="image-modal">
     <div class="image-modal-backdrop"></div>
-    <button class="image-modal-close" aria-label="Close image">&times;</button>
-    <img id="imageModalImg" src="" alt="Evidence Image">
+    <div class="image-modal-content">
+        <button class="image-modal-close" title="Close" aria-label="Close image">&times;</button>
+        <button class="nav-arrow left hidden" type="button" title="Previous" onclick="prevImage()">❮</button>
+        <img id="imageModalImg" src="" alt="Evidence Image">
+        <button class="nav-arrow right hidden" type="button" title="Next" onclick="nextImage()">❯</button>
+        <div class="swipe-indicator" id="swipeIndicator">
+            ⇆ Swipe left or right
+        </div>
+    </div>
 </div>
 
 <script>
-// (JS unchanged)
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
@@ -1325,20 +1379,20 @@ window.addEventListener('resize', () => {
     lastMobileState = isNowMobile;
 });
 
-sidebarToggle.addEventListener('click', () => { 
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('sidebarCollapsed', isCollapsed);
-    if (!isCollapsed) {
-        sidebarNavTooltip.classList.remove('active');
-        sidebarNavTooltip.style.display = 'none';
-    }
-});
+    sidebarToggle.addEventListener('click', () => { 
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('expanded');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+        if (!isCollapsed) {
+            sidebarNavTooltip.classList.remove('active');
+            sidebarNavTooltip.style.display = 'none';
+        }
+    });
 
-const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
-let tooltipActiveLink = null;
-let tooltipHideTimeout = null;
+    const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
+    let tooltipActiveLink = null;
+    let tooltipHideTimeout = null;
 
 // Add tooltip listeners for nav-links
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
@@ -1390,22 +1444,22 @@ logoutBtn.addEventListener('mouseleave', function(e) {
 });
 logoutBtn.addEventListener('blur', hideNavTooltip);
 
-function showLogoutTooltip(e) {
-    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
-    tooltipActiveLink = logoutBtn;
-    sidebarNavTooltip.textContent = tooltipText;
-    sidebarNavTooltip.classList.add('logout-pop');
-    sidebarNavTooltip.style.display = 'block';
-    const rect = logoutBtn.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const x = sidebarRect.right + 5;
-    const y = rect.top + rect.height / 2 + window.scrollY;
-    sidebarNavTooltip.style.left = (x + 10) + 'px';
-    sidebarNavTooltip.style.top = y + 'px';
+    function showLogoutTooltip(e) {
+        const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+        tooltipActiveLink = logoutBtn;
+        sidebarNavTooltip.textContent = tooltipText;
+        sidebarNavTooltip.classList.add('logout-pop');
+        sidebarNavTooltip.style.display = 'block';
+        const rect = logoutBtn.getBoundingClientRect();
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const x = sidebarRect.right + 5;
+        const y = rect.top + rect.height / 2 + window.scrollY;
+        sidebarNavTooltip.style.left = (x + 10) + 'px';
+        sidebarNavTooltip.style.top = y + 'px';
 
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
+        setTimeout(function(){
+            sidebarNavTooltip.classList.add('active');
+        }, 5);
 
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
@@ -1452,39 +1506,39 @@ function navTooltipHandler(e) {
     sidebarNavTooltip.style.left = (x + 10) + 'px';
     sidebarNavTooltip.style.top = y + 'px';
 
-    setTimeout(function(){
-        sidebarNavTooltip.classList.add('active');
-    }, 5);
+        setTimeout(function(){
+            sidebarNavTooltip.classList.add('active');
+        }, 5);
 
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
     }
-}
-function navLinkMouseLeaveHandler(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
-        return;
+    function navLinkMouseLeaveHandler(e) {
+        if (
+            e.relatedTarget === sidebarNavTooltip ||
+            (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+        ) {
+            return;
+        }
+        tooltipHideTimeout = setTimeout(() => {
+            hideNavTooltip();
+            tooltipActiveLink = null;
+        }, 60);
     }
-    tooltipHideTimeout = setTimeout(() => {
-        hideNavTooltip();
-        tooltipActiveLink = null;
-    }, 60);
-}
-sidebarNavTooltip.addEventListener('mouseleave', function() {
-    tooltipHideTimeout = setTimeout(() => {
-        hideNavTooltip();
-        tooltipActiveLink = null;
-    }, 60);
-});
-sidebarNavTooltip.addEventListener('mouseenter', function() {
-    if (tooltipHideTimeout) {
-        clearTimeout(tooltipHideTimeout);
-        tooltipHideTimeout = null;
-    }
-});
+    sidebarNavTooltip.addEventListener('mouseleave', function() {
+        tooltipHideTimeout = setTimeout(() => {
+            hideNavTooltip();
+            tooltipActiveLink = null;
+        }, 60);
+    });
+    sidebarNavTooltip.addEventListener('mouseenter', function() {
+        if (tooltipHideTimeout) {
+            clearTimeout(tooltipHideTimeout);
+            tooltipHideTimeout = null;
+        }
+    });
 
 // Also support keyboard accessibility: show tooltip on space/enter
 document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
@@ -1602,11 +1656,18 @@ resetInactivityTimer();
 </script>
 
 <script>
+// ============================
+//  MODAL GALLERY & IMAGE LOGIC
+// ============================
+const lastViewedImageByRequest = {};
+let currentRequestId = null;
+
 // IMAGE MODAL ELEMENTS
 const imageModal = document.getElementById('imageModal');
 const imageModalImg = document.getElementById('imageModalImg');
 const imageModalClose = document.querySelector('.image-modal-close');
 const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
+const swipeIndicator = document.getElementById('swipeIndicator'); // ADDED
 
 // --- Zoom Constants & State ---
 const BASE_ZOOM = 2;
@@ -1621,26 +1682,31 @@ let startX = 0;
 let startY = 0;
 let translateX = 0;
 let translateY = 0;
-let currentScale = 1; // Used in both desktop & mobile
+let currentScale = 1;
 
 // --- DRAG BEHAVIOR FIXES ---
-// Disable default browser image dragging
 imageModalImg.draggable = false;
-// Prevent browser dragstart event for bulletproof behavior
-imageModalImg.addEventListener('dragstart', (e) => {
-    e.preventDefault();
-});
+imageModalImg.addEventListener('dragstart', (e) => { e.preventDefault(); });
 
-// --- OPEN IMAGE MODAL ---
+// --- OPEN SINGLE IMAGE MODAL (fallback, legacy) ---
 function openImageModal(src) {
     imageModalImg.src = src;
     imageModal.classList.add('active');
     resetZoom();
+    if (typeof galleryImages !== "undefined") {
+        galleryImages = [src];
+        currentIndex = 0;
+        updateGalleryImage();
+    }
 }
 
-// --- CLOSE IMAGE MODAL ---
+// --- CLOSE MODAL: save last viewed image!
 function closeImageModal() {
     imageModal.classList.remove('active');
+    if (currentRequestId !== null) {
+        lastViewedImageByRequest[currentRequestId] = galleryImages[currentIndex];
+        updateEvidenceThumbnail(currentRequestId);
+    }
     resetZoom();
 }
 imageModalClose.addEventListener('click', closeImageModal);
@@ -1660,11 +1726,8 @@ imageModalImg.addEventListener('dblclick', (e) => {
 
     if (!isZoomed) {
         isZoomed = true;
-
-        // Calculate translate so zoom focuses on clicked spot
         translateX = (0.5 - percentX) * rect.width * (BASE_ZOOM - 1);
         translateY = (0.5 - percentY) * rect.height * (BASE_ZOOM - 1);
-
         currentScale = BASE_ZOOM;
 
         imageModalImg.classList.add('zoomed');
@@ -1715,7 +1778,6 @@ window.addEventListener('mouseup', () => {
 
 window.addEventListener('mousemove', (e) => {
     if (!isZoomed || !isDragging) return;
-    // Natural movement: move same direction as mouse
     translateX = e.clientX - startX;
     translateY = e.clientY - startY;
     imageModalImg.style.transform = `
@@ -1739,7 +1801,6 @@ imageModalImg.addEventListener('wheel', (e) => {
     const percentX = offsetX / rect.width;
     const percentY = offsetY / rect.height;
 
-    // Zoom direction
     const delta = -e.deltaY * WHEEL_ZOOM_SPEED;
     const newScale = Math.min(
         Math.max(currentScale + delta, BASE_ZOOM),
@@ -1771,7 +1832,6 @@ function resetZoom() {
     imageModalImg.style.transform = 'scale(1)';
     imageModalImg.style.transformOrigin = 'center center';
     imageModalImg.style.cursor = 'zoom-in';
-    // Show & enable close button
     imageModalClose.style.display = 'flex';
     imageModalClose.disabled = false;
 }
@@ -1790,7 +1850,7 @@ imageModalImg.addEventListener('touchstart', (e) => {
 
 imageModalImg.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && initialDistance) {
-        e.preventDefault(); // prevent scroll
+        e.preventDefault();
         const newDistance = getDistance(e.touches[0], e.touches[1]);
         currentScale = Math.min(Math.max(newDistance / initialDistance, 0.5), 3);
         imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
@@ -1808,18 +1868,211 @@ imageModalImg.addEventListener('touchend', () => {
     initialDistance = null;
     lastTouchY = null;
 });
-
-// --- Helper: distance between 2 touches ---
 function getDistance(touch1, touch2) {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
     return Math.sqrt(dx * dx + dy * dy);
 }
-
-// --- CURSOR INDICATOR ---
 imageModalImg.style.cursor = 'zoom-in';
 
+// --------- GALLERY LOGIC ---------
+let galleryImages = [];
+let currentIndex = 0;
+
+// --- important: updateEvidenceThumbnail ---
+function updateEvidenceThumbnail(requestId) {
+    const thumbImg = document.querySelector(
+        `.evidence-thumb[data-request-id="${requestId}"]`
+    );
+    if (!thumbImg) return;
+    const newSrc = lastViewedImageByRequest[requestId];
+    if (newSrc) {
+        thumbImg.src = newSrc;
+    }
+}
+
+// 📱 Show swipe indicator on mobile when image modal opens
+function showSwipeIndicator() {
+    const indicator = document.getElementById('swipeIndicator');
+    if (!indicator || window.innerWidth > 768) return;
+
+    indicator.classList.add('show');
+
+    // Auto-hide after 2.5 seconds
+    setTimeout(() => {
+        indicator.classList.remove('show');
+    }, 2500);
+}
+
+// Accepts requestId
+function openGalleryModal(images, index, requestId) {
+    galleryImages = images;
+    currentIndex = index;
+    currentRequestId = requestId;
+
+    imageModal.classList.add('active');
+    updateGalleryImage();
+    showSwipeIndicator();
+}
+
+function updateGalleryImage() {
+    if (!galleryImages.length) return;
+    const img = document.getElementById('imageModalImg');
+    img.src = galleryImages[currentIndex];
+
+    // Arrow visibility
+    const leftArrow = document.querySelector('.nav-arrow.left');
+    const rightArrow = document.querySelector('.nav-arrow.right');
+    const isSingle = (galleryImages.length <= 1);
+    leftArrow.classList.toggle('hidden', isSingle);
+    rightArrow.classList.toggle('hidden', isSingle);
+
+    resetZoom();
+}
+function nextImage() {
+    if (!galleryImages.length || galleryImages.length <= 1) return;
+    currentIndex = (currentIndex + 1) % galleryImages.length;
+    updateGalleryImage();
+}
+function prevImage() {
+    if (!galleryImages.length || galleryImages.length <= 1) return;
+    currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+    updateGalleryImage();
+}
+document.addEventListener('keydown', function(e){
+    if (!imageModal.classList.contains('active')) return;
+    if (galleryImages.length > 1) {
+        if (e.key === "ArrowLeft") { prevImage(); e.preventDefault(); }
+        if (e.key === "ArrowRight") { nextImage(); e.preventDefault(); }
+    }
+    if (e.key === "Escape") { closeImageModal(); }
+});
+
+/* === 📱 SWIPE LEFT/RIGHT TO NAVIGATE IMAGE GALLERY === */
+let touchStartX = 0;
+let touchEndX = 0;
+const SWIPE_THRESHOLD = 50; // minimum px distance
+
+imageModalImg.addEventListener('touchstart', (e) => {
+    // Only handle single-finger swipe (not pinch)
+    if (e.touches.length !== 1) return;
+    touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+
+imageModalImg.addEventListener('touchend', (e) => {
+    // Only handle single-finger swipe end
+    if (e.changedTouches.length !== 1) return;
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipeGesture();
+}, { passive: true });
+
+function handleSwipeGesture() {
+    const deltaX = touchEndX - touchStartX;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+    if (galleryImages.length <= 1) return;
+
+    if (deltaX > 0) {
+        // 👉 Swipe RIGHT → previous image
+        prevImage();
+    } else {
+        // 👈 Swipe LEFT → next image
+        nextImage();
+    }
+}
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const searchInput = document.getElementById("requestSearch");
+
+    /* ================= DESKTOP TABLE ================= */
+    const tableBody = document.querySelector("table tbody");
+    const noResultRow = document.getElementById("noRequestResult");
+
+    // Cache ORIGINAL table rows (exclude no-result row)
+    const tableRows = Array.from(tableBody.querySelectorAll("tr"))
+        .filter(row => row.id !== "noRequestResult");
+
+    /* ================= MOBILE CARDS ================= */
+    const mobileList = document.querySelector(".mobile-request-list");
+    const mobileCards = Array.from(
+        mobileList ? mobileList.querySelectorAll(".request-card") : []
+    );
+
+    // Create mobile no-result message (once)
+    let mobileNoResult = document.createElement("div");
+    mobileNoResult.className = "request-card mobile-no-requests";
+    mobileNoResult.textContent = "No matching data or result";
+    mobileNoResult.style.display = "none";
+    if (mobileList) mobileList.appendChild(mobileNoResult);
+
+    // Helper: Get only the actual data from the card (ignore labels/titles)
+    function getCardDataText(card) {
+        const clone = card.cloneNode(true);
+        clone.querySelectorAll("strong, label, .card-title").forEach(el => el.remove());
+        return clone.innerText.toLowerCase();
+    }
+
+    searchInput.addEventListener("input", () => {
+        const keyword = searchInput.value.trim().toLowerCase();
+
+        /* ===== RESET STATE (EMPTY SEARCH) ===== */
+        if (keyword === "") {
+
+            // Desktop reset
+            tableRows.forEach(row => {
+                row.style.display = "";
+                tableBody.appendChild(row);
+            });
+            noResultRow.style.display = "none";
+
+            // Mobile reset
+            mobileCards.forEach(card => {
+                card.style.display = "";
+                mobileList.appendChild(card);
+            });
+            mobileNoResult.style.display = "none";
+
+            return;
+        }
+
+        /* ===== DESKTOP FILTER ===== */
+        let desktopMatches = 0;
+
+        tableRows.forEach(row => {
+            if (row.innerText.toLowerCase().includes(keyword)) {
+                row.style.display = "";
+                tableBody.prepend(row); // move match to top
+                desktopMatches++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        noResultRow.style.display = desktopMatches === 0 ? "" : "none";
+
+        /* ===== MOBILE FILTER (DATA ONLY) ===== */
+        let mobileMatches = 0;
+
+        mobileCards.forEach(card => {
+            const dataText = getCardDataText(card);
+
+            if (dataText.includes(keyword)) {
+                card.style.display = "";
+                mobileList.prepend(card);
+                mobileMatches++;
+            } else {
+                card.style.display = "none";
+            }
+        });
+
+        mobileNoResult.style.display = mobileMatches === 0 ? "" : "none";
+    });
+
+});
+</script>
+
 
 </body>
 </html>

@@ -72,84 +72,84 @@
         <hr class="divider" />
         
         <div class="row gx-5 gy-5 justify-content-center">
-            
+            <!-- Infrastructure Project Management -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-building fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Infrastructure Project Management</h5>
                     <p class="text-muted mb-auto fs-6">Planning and oversight of city-wide construction and development projects.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#infrastructure">Visit Dept</a>
+                        <!-- Replace YOUR_DOMAIN_HERE with the actual target site/domain for the department -->
+                        <a class="btn btn-primary btn-sm px-4" href="https://ipms.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Utilities Billing and Management -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-receipt fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Utilities Billing and Management</h5>
                     <p class="text-muted mb-auto fs-6">Handling water, electricity, and waste disposal accounts and payments.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#billing">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://UMAN.infraservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Road and Transportation Infrastructure Monitoring -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-truck fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Road and Transportation Infrastructure Monitoring</h5>
                     <p class="text-muted mb-auto fs-6">Real-time tracking of traffic flow and road surface conditions.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#transport">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://rgmap.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Public Facilities Reservation System -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-calendar-check fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Public Facilities Reservation System</h5>
                     <p class="text-muted mb-auto fs-6">Book community centers, parks, and sports fields for public use.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#reservation">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://cprf.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Community Infrastructure Maintenance Management -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-tools fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Community Infrastructure Maintenance Management</h5>
                     <p class="text-muted mb-auto fs-6">Coordinating repairs and upkeep for public assets and safety systems.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="citizencimm.php">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://cimm.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Energy Efficiency and Conservation Management -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-lightning-fill fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Energy Efficiency and Conservation Management</h5>
                     <p class="text-muted mb-auto fs-6">Implementing sustainable energy practices and city-wide conservation.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#energy">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://energy.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
+            <!-- Urban Planning and Development -->
             <div class="col-lg-4 col-md-6 text-center d-flex align-items-stretch">
                 <div class="mt-4 d-flex flex-column w-100 p-2">
                     <div class="mb-3"><i class="bi-map fs-2 text-primary"></i></div>
                     <h5 class="fw-bold mb-2">Urban Planning and Development</h5>
                     <p class="text-muted mb-auto fs-6">Zoning, architectural reviews, and long-term city growth strategies.</p>
                     <div class="mt-3">
-                        <a class="btn btn-primary btn-sm px-4" href="#urban">Visit Dept</a>
+                        <a class="btn btn-primary btn-sm px-4" href="https://UPaD.infragovservices.com/">Visit Dept</a>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 </section>
