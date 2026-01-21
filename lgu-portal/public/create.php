@@ -627,33 +627,30 @@ html, body {
     text-decoration: underline;
 }
 
+/* FOOTER — same design as NAVBAR */
 .footer {
     width: 100%;
     padding: 26px 0 22px;
-
     background: rgba(255,255,255,0.15);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-
     border-top: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
-
-    margin-top: auto;      /* ⭐ KEY */
+    margin-top: auto;         /* ⭐ KEY */
     flex-shrink: 0;
-    position: relative;    /* ❌ NOT fixed */
+    position: relative;       /* ❌ NOT fixed */
     z-index: 1;
 }
-
 
 /* Left-aligned links */
 .footer-links {
     position: absolute;
-    left: 60px;  /* same padding as header */
+    left: 60px;               /* same padding as header */
 }
 
 .footer-links a {
     margin-right: 25px;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;    /* ⛔ Removes underline */
     cursor: pointer;
     color: #fff;
     opacity: .8;
@@ -662,7 +659,7 @@ html, body {
 
 .footer-links a:hover {
     opacity: 1;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;    /* ⛔ Removes underline */
     font-weight: 600;
 }
 
@@ -671,6 +668,34 @@ html, body {
     text-align: center;
     font-weight: 500;
     color: #fff;
+}
+
+/* FOOTER FIXES FOR MOBILE */
+.footer {
+    display: flex;
+    flex-direction: row;          /* desktop: horizontal layout */
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;              /* allow wrapping on small screens */
+    padding: 20px 15px;
+}
+
+.footer-links {
+    position: static;             /* remove absolute positioning */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 0;
+}
+
+.footer-links a {
+    margin: 0;
+}
+
+.footer-logo {
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
 }
 
 
@@ -704,25 +729,6 @@ body::before {
 
 body::-webkit-scrollbar {
   display: none;
-}
-
-/* --- NAVBAR --- */
-.nav {
-    width: 100%;
-    padding: 16px 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    background: rgba(255,255,255,0.15);
-    -webkit-backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
-
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 100;
 }
 
 /* LOGO AREA */
@@ -773,18 +779,20 @@ body::-webkit-scrollbar {
     z-index: 1;
 }
 
-/* --- FLEX WRAPPER (main content area) --- */
+/* FLEX WRAPPER (main content area) */
 .wrapper {
     display: flex;
-    flex: 1; /* <--- enables content to grow, pushes footer down */
+    flex: 1;
     justify-content: center;
     align-items: flex-start;
     box-sizing: border-box;
-    padding: 25px 16px 100px;
+    padding: 25px 16px 140px; /* Increased bottom padding to prevent footer overlap */
     position: relative;
     z-index: 1;
     min-height: calc(100vh - 80px);
+    margin-bottom: 115px;
 }
+
 
 /* Recommended: Prevent footer "touching" card on short screens */
 @media (min-height: 700px) {
@@ -808,29 +816,6 @@ body::-webkit-scrollbar {
     margin-bottom: 20px;
     text-align: center;
 }
-
-/* --- FOOTER: always at bottom, never overlays, in flex flow --- */
-.footer {
-    width: 100%;
-    padding: 26px 0 22px;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
-
-    color: #fff;
-    text-align: center;
-    font-size: 15px;
-    font-family: 'Poppins', Arial, sans-serif;
-
-    margin-top: auto;   /* STICKY FLEX FOOTER */
-    flex-shrink: 0;     /* Prevent shrinkage if container shrinks */
-    position: relative; /* Not fixed! */
-    z-index: 1;
-}
-
-/* --- Miscellaneous original styles --- */
 
 /* Primary button styling (shared) */
 .btn-primary {
@@ -1063,6 +1048,7 @@ body::-webkit-scrollbar {
     .loading-text {
         font-size: 14px;
     }
+    
 }
 
 /* Ensure the container is relative */
@@ -1148,16 +1134,10 @@ body::-webkit-scrollbar {
     .nav {
         position: static;
         padding: 20px 20px 8px;
-        background: #fff;    /* softer glass */
+        background-color: transparent;
         box-shadow: none;
         border-bottom: none;
         backdrop-filter: none;
-    }
-    .nav span{
-    color: black;  
-    }
-    .menu-toggle {
-    color: black;
     }
     .site-logo span {
         font-size: 16px;
@@ -1241,7 +1221,7 @@ body::-webkit-scrollbar {
     }
  
     .footer {
-        display: none;
+    display: none;
     }
 }
 </style>

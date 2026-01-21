@@ -105,9 +105,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submit Maintenance Request - InfraGovServices</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -168,10 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.87);;
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            border-bottom: 1px solid rgba(255,255,255,0.25);
+            border-bottom: 2px solid rgba(0, 0, 0, 0.6);
             box-shadow: 0 4px 25px rgba(0,0,0,0.25);
             position: fixed;
             top: 0;
@@ -182,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #fff;
+            color: black;
             font-weight: 600;
         }
         .site-logo img {
@@ -190,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .nav a {
             margin-left: 25px;
-            color: #fff;
+            color: black;
             text-decoration: none;
             font-weight: 500;
             opacity: 0.85;
@@ -200,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-left: 25px;
             text-decoration: none;
             cursor: pointer;
-            color: #fff;
+            color: black;
             opacity: .8;
             transition: .2s;
         }
@@ -379,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 0 auto;
             display: block;
         }
-        .btn-primary:hover { background: #245a96; }
+        .btn-primary:hover { transform: translateY(-4px);background: #245a96; }
         @media (max-width: 950px) {
             .report-card { padding: 20px 8vw; }
         }
@@ -419,6 +425,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-right: 10px;
             }
             .btn-container { justify-content: center; }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
         }
         @media (max-width: 580px) {
             .report-card { padding: 12px 2vw; }
@@ -437,6 +454,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 padding: 14px 14px;
             }
             .btn-container { justify-content: center; }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
         }
         @media (max-width: 480px) {
             .form-wrapper { padding: 90px 3vw 24px; }
@@ -461,6 +489,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 font-size: 17px;
             }
             .btn-container { align-items: center; }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
         }
         .nav { z-index: 1000; }
         #image-preview img {
@@ -592,6 +631,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .location-suggestions div:hover {
             background: #f1f5ff;
+        }
+        /* FOOTER — same design as NAVBAR */
+        .footer {
+            width: 100%;
+            padding: 26px 0 22px;
+
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+
+            border-top: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+
+            margin-top: auto;      /* ⭐ KEY */
+            flex-shrink: 0;
+            position: relative;    /* ❌ NOT fixed */
+            z-index: 1;
+        }
+
+
+        /* Left-aligned links */
+        .footer-links {
+            position: absolute;
+            left: 60px;  /* same padding as header */
+        }
+
+        .footer-links a {
+            margin-right: 25px;
+            text-decoration: none;   /* ⛔ Removes underline */
+            cursor: pointer;
+            color: #fff;
+            opacity: .8;
+            transition: .2s;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: none;   /* ⛔ Removes underline */
+            font-weight: 600;
+        }
+
+        /* Center copyright */
+        .footer-logo {
+            text-align: center;
+            font-weight: 500;
+            color: #fff;
+        }
+        /* FOOTER FIXES FOR MOBILE */
+        .footer {
+            display: flex;
+            flex-direction: row;       /* desktop: horizontal layout */
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;           /* allow wrapping on small screens */
+            padding: 20px 15px;
+        }
+
+        .footer-links {
+            position: static;          /* remove absolute positioning */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 0;
+        }
+
+        .footer-links a {
+            margin: 0;
+        }
+
+        .footer-logo {
+            width: 100%;
+            text-align: center;
+            margin-top: 12px;
         }
     </style>
 </head>
@@ -874,5 +986,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         <?php endif; ?>
     </script>
+
+<footer class="footer">
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">About</a>
+        <a href="#">Help</a>
+    </div>
+    <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
+</footer>
+
 </body>
 </html>

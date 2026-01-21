@@ -782,55 +782,33 @@ body {
     text-align: center;
 }
 
-/* FOOTER TEXT */
-.small-text {
-    margin-top: 15px;
-    font-size: 13px;
-    color: #000000cc; /* slightly softer white */
-}
-
-/* LINKS */
-.link {
-    color: #2864ef;
-    text-decoration: none;
-    font-weight: 500;
-    transition: 0.2s;
-}
-
-.link:hover {
-    color: #004ef6;
-    text-decoration: underline;
-}
-
 /* FOOTER — same design as NAVBAR */
 .footer {
     width: 100%;
-    padding: 18px 45px;
+    padding: 26px 0 22px;
 
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 -4px 25px rgba(0,0,0,0.25);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
 
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    z-index: 100;
-
-    animation: fadeUp 0.4s ease-out; /* smooth reveal */
+    margin-top: auto;         /* ⭐ KEY */
+    flex-shrink: 0;
+    position: relative;       /* ❌ NOT fixed */
+    z-index: 1;
 }
 
 /* Left-aligned links */
 .footer-links {
     position: absolute;
-    left: 60px;  /* same padding as header */
+    left: 60px;               /* same padding as header */
 }
 
 .footer-links a {
     margin-right: 25px;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;    /* ⛔ Removes underline */
     cursor: pointer;
     color: #fff;
     opacity: .8;
@@ -839,7 +817,7 @@ body {
 
 .footer-links a:hover {
     opacity: 1;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;    /* ⛔ Removes underline */
     font-weight: 600;
 }
 
@@ -849,6 +827,35 @@ body {
     font-weight: 500;
     color: #fff;
 }
+
+/* FOOTER FIXES FOR MOBILE */
+.footer {
+    display: flex;
+    flex-direction: row;           /* desktop: horizontal layout */
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;               /* allow wrapping on small screens */
+    padding: 20px 15px;
+}
+
+.footer-links {
+    position: static;              /* remove absolute positioning */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 0;
+}
+
+.footer-links a {
+    margin: 0;
+}
+
+.footer-logo {
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+}
+
 body {
     min-height: 100vh;
     display: flex;
@@ -1714,10 +1721,11 @@ body:has(#changePasswordModal) {
         margin-top: 16px;
         font-size: 13px;
     }
- 
-     .footer {
-         display: none;
-     }
+
+    .footer {
+        display: none;
+    }
+
 }
 </style>
 </head>

@@ -46,10 +46,22 @@ if ($maintenance_result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Citizen Dashboard - LGU Portal</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
         /* === Added for mobile/desktop label toggling === */
         .show-on-mobile {
             display: none;
@@ -375,17 +387,16 @@ if ($maintenance_result) {
             color: #005bb3;
             text-decoration: none;
         }
-        /* NAVBAR UPGRADE */
         .nav {
             width: 100%;
             padding: 18px 60px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.15);     /* softer glass */
+            background: rgba(255, 255, 255, 0.87);;
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+            border-bottom: 2px solid rgba(0, 0, 0, 0.6);
             box-shadow: 0 4px 25px rgba(0,0,0,0.25);
             position: fixed;
             top: 0;
@@ -396,17 +407,15 @@ if ($maintenance_result) {
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #fff;
+            color: black;
             font-weight: 600;
         }
         .site-logo img {
-            width: 40px;
-            height: auto;
-            border-radius: 8px;
+            width: 40px; height: auto; border-radius: 8px;
         }
         .nav a {
             margin-left: 25px;
-            color: #fff;
+            color: black;
             text-decoration: none;
             font-weight: 500;
             opacity: 0.85;
@@ -416,7 +425,7 @@ if ($maintenance_result) {
             margin-left: 25px;
             text-decoration: none;
             cursor: pointer;
-            color: #fff;
+            color: black;
             opacity: .8;
             transition: .2s;
         }
@@ -518,6 +527,17 @@ if ($maintenance_result) {
                 width: 100%;
                 padding: 8px 20px;
             }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
 
             /* === Maintenance card (same visual as request-card) === */
             .report-card {
@@ -600,6 +620,17 @@ if ($maintenance_result) {
             .stat-card .number { font-size: 28px; }
             .card-header h2 { font-size: 1.0rem; }
             .report-card { padding: 12px; }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
         }
 
         /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
@@ -641,6 +672,79 @@ if ($maintenance_result) {
                 font-size: 14px;
                 padding: 9px 14px;
             }
+        }
+        /* FOOTER — same design as NAVBAR */
+        .footer {
+            width: 100%;
+            padding: 26px 0 22px;
+
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+
+            border-top: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+
+            margin-top: auto;      /* ⭐ KEY */
+            flex-shrink: 0;
+            position: relative;    /* ❌ NOT fixed */
+            z-index: 1;
+        }
+
+
+        /* Left-aligned links */
+        .footer-links {
+            position: absolute;
+            left: 60px;  /* same padding as header */
+        }
+
+        .footer-links a {
+            margin-right: 25px;
+            text-decoration: none;   /* ⛔ Removes underline */
+            cursor: pointer;
+            color: #fff;
+            opacity: .8;
+            transition: .2s;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: none;   /* ⛔ Removes underline */
+            font-weight: 600;
+        }
+
+        /* Center copyright */
+        .footer-logo {
+            text-align: center;
+            font-weight: 500;
+            color: #fff;
+        }
+        /* FOOTER FIXES FOR MOBILE */
+        .footer {
+            display: flex;
+            flex-direction: row;       /* desktop: horizontal layout */
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;           /* allow wrapping on small screens */
+            padding: 20px 15px;
+        }
+
+        .footer-links {
+            position: static;          /* remove absolute positioning */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 0;
+        }
+
+        .footer-links a {
+            margin: 0;
+        }
+
+        .footer-logo {
+            width: 100%;
+            text-align: center;
+            margin-top: 12px;
         }
 
     </style>
@@ -936,6 +1040,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 </script>
+
+<footer class="footer">
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">About</a>
+        <a href="#">Help</a>
+    </div>
+    <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
+</footer>
 
 </body>
 </html>
