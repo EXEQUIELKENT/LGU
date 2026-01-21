@@ -466,12 +466,214 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create Account | LGU Portal</title>
-<link rel="stylesheet" href="style.css">
+<title>Create Account | LGU Portal</title>  
+<!-- (Styles unchanged, keep your floating .notif-popup styles and all as in your current file) -->
 <style>
-/* --- BASE FLEX LAYOUT and OVERLAY FIXES --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
-/* Always set html & body height for flexbox layout */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+html, body {
+    height: 100%;
+}
+
+/* NAVIGATION */
+.nav {
+    width: 100%;
+    padding: 18px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    background: rgba(255, 255, 255, 0.15);     /* softer glass */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.nav-links a:hover,
+.nav-links .active {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
+
+/* CENTER WRAPPER */
+.wrapper {
+    width: 100%;
+    height: calc(100vh - 80px); /* subtract header height */
+    display: flex;
+    justify-content: center;
+    align-items: center;  /* THIS centers it vertically */
+    padding-bottom: 0;    /* remove extra spacing */
+}
+
+.icon-top {
+    width: 60px;
+    margin-bottom: 10px;
+}
+
+.title {
+    font-size: 26px;            /* slightly smaller */
+    margin-bottom: 6px;
+    color: #000000;
+}
+
+.subtitle {
+    margin-bottom: 18px;        /* reduce gap */
+    color: #000000;
+}
+
+/* INPUT BOX */
+.input-box {
+    position: relative;
+    text-align: left;
+    margin-bottom: 14px;        /* reduce spacing */
+    color: #000000;
+}
+
+.input-box label {
+    font-size: 13px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-box input {
+    width: 100%;
+    padding: 10px 38px 10px 12px; /* slightly smaller */
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.7);
+    outline: none;
+}
+
+.icon {
+    position: absolute;
+    right: 12px;
+    top: 45px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    opacity: 0.6;
+}
+
+/* BUTTON */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+
+    /* smoother, premium feel */
+    transition: 0.25s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+}
+
+/* FOOTER TEXT */
+.small-text {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #000000cc; /* slightly softer white */
+}
+
+/* LINKS */
+.link {
+    color: #2864ef;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.link:hover {
+    color: #004ef6;
+    text-decoration: underline;
+}
+
+.footer {
+    width: 100%;
+    padding: 26px 0 22px;
+
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+
+    margin-top: auto;      /* ⭐ KEY */
+    flex-shrink: 0;
+    position: relative;    /* ❌ NOT fixed */
+    z-index: 1;
+}
+
+
+/* Left-aligned links */
+.footer-links {
+    position: absolute;
+    left: 60px;  /* same padding as header */
+}
+
+.footer-links a {
+    margin-right: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.footer-links a:hover {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
+
+/* Center copyright */
+.footer-logo {
+    text-align: center;
+    font-weight: 500;
+    color: #fff;
+}
+
+
 html, body {
     height: 100%;
     margin: 0;
@@ -596,7 +798,7 @@ body::-webkit-scrollbar {
     width: 100%;
     max-width: 500px;
     background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(15px);
     border-radius: 20px;
     padding: 28px 22px 32px;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
@@ -604,6 +806,7 @@ body::-webkit-scrollbar {
     animation: fadeIn 0.5s ease-in-out;
     margin-top: 20px;
     margin-bottom: 20px;
+    text-align: center;
 }
 
 /* --- FOOTER: always at bottom, never overlays, in flex flow --- */
@@ -862,33 +1065,55 @@ body::-webkit-scrollbar {
     }
 }
 
-/* Email validation styles */
-#emailInput:invalid:not(:focus):not(:placeholder-shown) {
-    background: rgba(217, 83, 79, 0.1);
+/* Ensure the container is relative */
+.input-box.email-container {
+    position: relative;
 }
 
-#emailInput:valid:not(:placeholder-shown) {
-    background: rgba(16, 183, 89, 0.1);
+/* Floating email error */
+#emailError, #emailValid {
+    position: absolute;
+    top: 100%; /* right below the input */
+    left: 50px;
+    width: 84%;
+    margin-top: 4px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    box-sizing: border-box;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none; /* avoid overlapping input */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(0);
+    background: #fff; /* Background color white */
 }
 
+/* Visible states */
+#emailError.show, #emailValid.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Error styles */
 #emailError {
-    padding: 6px 8px;
-    background: rgba(217, 83, 79, 0.1);
-    border-radius: 6px;
+    background: #fff; /* Background color white */
     border-left: 3px solid #d9534f;
-    transition: all 0.3s ease;
+    color: #d9534f;
 }
 
-#emailError[style*="color: #2c64d7"] {
-    background: rgba(44, 100, 215, 0.1);
+#emailError.checking {
+    background: #fff; /* Background color white */
     border-left-color: #2c64d7;
+    color: #2c64d7;
 }
 
+/* Valid styles */
 #emailValid {
-    padding: 6px 8px;
-    background: rgba(16, 183, 89, 0.1);
-    border-radius: 6px;
+    background: #fff; /* Background color white */
     border-left: 3px solid #10b759;
+    color: #10b759;
 }
 
 /* ===== Mobile-first refinements (like reference design) ===== */
@@ -923,12 +1148,17 @@ body::-webkit-scrollbar {
     .nav {
         position: static;
         padding: 20px 20px 8px;
-        background: transparent;
+        background: #fff;    /* softer glass */
         box-shadow: none;
         border-bottom: none;
         backdrop-filter: none;
     }
-
+    .nav span{
+    color: black;  
+    }
+    .menu-toggle {
+    color: black;
+    }
     .site-logo span {
         font-size: 16px;
         color: #FFFFFF;
@@ -946,7 +1176,6 @@ body::-webkit-scrollbar {
         width: 100%;
         max-width: 450px;
         margin: 0 auto;
-        background: rgba(255, 255, 255, 0.96);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
         border-radius: 20px;
         padding: 26px 20px 32px;
@@ -1019,7 +1248,6 @@ body::-webkit-scrollbar {
 </head>
 
 <body>
-
 <!-- Loading Overlay -->
 <div id="loadingOverlay">
     <div class="loading-content">
@@ -1043,12 +1271,9 @@ body::-webkit-scrollbar {
 
 <div class="wrapper">
     <div class="card">
-
         <img src="logocityhall.png" class="icon-top">
-
         <h2 class="title">Create Employee Account</h2>
         <p class="subtitle">Register a new employee to access the LGU maintenance system.</p>
-
         <form method="POST" action="">
             <div class="name-row">
                 <div class="input-box">
@@ -1056,22 +1281,19 @@ body::-webkit-scrollbar {
                     <input type="text" name="first_name" placeholder="Juan" value="<?= htmlspecialchars($firstName ?? '') ?>" required>
                     <span class="icon">👤</span>
                 </div>
-
                 <div class="input-box">
                     <label>Last Name</label>
                     <input type="text" name="last_name" placeholder="Dela Cruz" value="<?= htmlspecialchars($lastName ?? '') ?>" required>
                     <span class="icon">👤</span>
                 </div>
             </div>
-
-            <div class="input-box">
+            <div class="input-box email-container">
                 <label>Email Address</label>
                 <input type="email" name="email" id="emailInput" placeholder="yourname@gmail.com" value="<?= htmlspecialchars($email ?? '') ?>" required>
                 <span class="icon">📧</span>
-                <div id="emailError" style="color: #d9534f; font-size: 12px; margin-top: 6px; display: none; font-weight: 500;"></div>
-                <div id="emailValid" style="color: #10b759; font-size: 12px; margin-top: 6px; display: none; font-weight: 500;">✓ Valid email address</div>
+                <div id="emailError">This is an error</div>
+                <div id="emailValid">✓ Valid email address</div>
             </div>
-
             <div class="input-box">
                 <label>Role</label>
                 <select name="role" required class="role-select">
@@ -1083,21 +1305,17 @@ body::-webkit-scrollbar {
                 </select>
                 <span class="icon">👔</span>
             </div>
-
             <div class="input-box">
                 <label>Temporary Password</label>
                 <input type="text" name="temp_password" placeholder="Will be generated automatically" value="<?= isset($tempPassword) ? htmlspecialchars($tempPassword) : '' ?>" readonly style="background-color:#f2f2f2; color:#666;">
                 <span class="icon">🔒</span>
                 <span class="small-text" style="color:#555;font-size:12px;display:block;margin-top:4px;">Temporary password will be generated and shown after creation.</span>
             </div>
-
-            <button type="submit" name="create_account" class="btn-primary">Create Account</button>
-
+            <button type="submit" name="create_account" title="Create your account" class="btn-primary">Create Account</button>
             <p class="small-text">
                 Already registered?
                 <a href="login.php" class="link">Sign In</a>
             </p>
-
         </form>
     </div>
 </div>
@@ -1319,30 +1537,33 @@ emailInput.addEventListener('blur', async function() {
         // First validate format
         const validation = validateEmailFormat(email);
         if (!validation.valid) {
+            // Show error
             emailError.textContent = validation.message;
-            emailError.style.color = '#d9534f';
-            emailError.style.display = 'block';
-            emailValid.style.display = 'none';
+            emailError.classList.add('show');
+            emailError.classList.remove('checking');
+            emailValid.classList.remove('show');
             emailInput.setAttribute('data-valid', 'false');
             emailInput.setAttribute('data-exists', 'false');
         } else {
-            // If format is valid, check if email already exists
-            emailError.style.display = 'block';
+            // Show checking
             emailError.textContent = 'Checking email availability...';
-            emailError.style.color = '#2c64d7';
-            
+            emailError.classList.add('show', 'checking');
+            emailValid.classList.remove('show');
+
             const emailCheck = await checkEmailExists(email);
-            
+
             if (emailCheck.exists) {
+                // Show error
                 emailError.textContent = emailCheck.message || 'This email is already registered. Please use a different email address.';
-                emailError.style.color = '#d9534f';
-                emailError.style.display = 'block';
-                emailValid.style.display = 'none';
+                emailError.classList.add('show');
+                emailError.classList.remove('checking');
+                emailValid.classList.remove('show');
                 emailInput.setAttribute('data-valid', 'false');
                 emailInput.setAttribute('data-exists', 'true');
             } else {
-                emailError.style.display = 'none';
-                emailValid.style.display = 'block';
+                // Show valid
+                emailValid.classList.add('show');
+                emailError.classList.remove('show', 'checking');
                 emailInput.setAttribute('data-valid', 'true');
                 emailInput.setAttribute('data-exists', 'false');
             }
@@ -1359,6 +1580,5 @@ emailInput.addEventListener('blur', async function() {
     </div>
     <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
-
 </body>
 </html>

@@ -13,7 +13,6 @@ function showNotification() {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
         $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
-        // ADD: Add a notification container for absolute positioning fixes
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -32,7 +31,6 @@ function showNotification() {
 }
 
 $error_message = '';
-// $success_message removed
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -94,9 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 setNotification('success', 'Maintenance request submitted successfully! Request ID: ' . $req_id);
-                // Stay on the same page; do not redirect
-                // header("refresh:2;url=citizencimm.php");
-                // exit();
             } else {
                 setNotification('error', 'Failed to submit request. Please try again.');
             }
@@ -112,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Submit Maintenance Request - InfraGovServices</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* PAGE STYLING */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
         body {
             margin: 0;
             padding: 0;
@@ -132,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         body::-webkit-scrollbar { display: none; }
 
-        /* Notification Popup Styles (copied from login.php) */
         .notif-popup {
             position: fixed;
             top: 30px;
@@ -144,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #fff;
             border-radius: 13px;
             box-shadow: 0 8px 38px rgba(34,53,126,0.23);
-            z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
+            z-index: 5001;
             display: flex;
             align-items: center;
             gap: 14px;
@@ -168,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cursor: pointer;
         }
 
-        /* NAVBAR UPGRADE */
         .nav {
             width: 100%;
             padding: 18px 60px;
@@ -265,7 +258,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .card-header h2 { font-size: 1.0rem; }
         }
 
-        /* CONTENT WRAPPER - SPACING FIX */
         .form-wrapper {
             position: relative;
             z-index: 1;
@@ -275,11 +267,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 110px 16px 40px;
         }
 
-        /* FORM CARD - MODERN GLASS LOOK */
         .report-card {
             width: 100%;
             max-width: 900px;
-            background: rgba(255,255,255,.95);
+            background: rgba(235, 234, 234, 0.95);
             padding: 30px;
             border-radius: 22px;
             box-shadow: 0 20px 45px rgba(0,0,0,.25);
@@ -287,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .report-card h2 {
             margin-bottom: 24px;
-            font-size: 26px;
+            font-size: 2rem;
             line-height: 1.25;
             color: #212121;
             text-align: center;
@@ -296,7 +287,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             grid-column: 1 / -1;
         }
 
-        /* GRID FORM: 2 columns desktop, 1 column mobile */
         .report-card form {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -342,7 +332,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-color: #2b6cb0;
             box-shadow: 0 0 0 3px rgba(43,108,176,.15);
         }
-        /* FILE INPUT STYLES (user friendly) */
         input[type="file"] {
             padding: 12px;
             border-radius: 10px;
@@ -352,7 +341,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 15px;
             margin-top: 2px;
         }
-        /* Feedback Widgets */
         .alert {
             padding: 14px;
             border-radius: 12px;
@@ -371,77 +359,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .btn-container {
             display: flex;
-            gap: 14px;
+            justify-content: center;
+            gap: 0;
             margin-top: 0;
             grid-column: 1 / -1;
         }
-        .btn-cancel {
-            flex: 1;
-            background: #e0e0e0;
-            color: #444;
-            border: none;
-            border-radius: 14px;
-            padding: 14px;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all .25s;
-            box-shadow: none;
-        }
-        .btn-cancel:hover { background: #d4d4d4; }
         .btn-primary {
-            flex: 1;
+            width: 40%;
             background: #2b6cb0;
             color: #fff;
             border: none;
             border-radius: 14px;
-            padding: 14px;
+            padding: 14px 38px;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 18px;
             cursor: pointer;
             transition: all .25s;
             box-shadow: none;
+            margin: 0 auto;
+            display: block;
         }
         .btn-primary:hover { background: #245a96; }
-
-        /* --- RESPONSIVE: 1 column for mobile, better spacing, thumb targets --- */
         @media (max-width: 950px) {
             .report-card { padding: 20px 8vw; }
         }
         @media (max-width: 768px) {
+            .form-wrapper {
+                margin-top: 20px !important;
+                padding-left: 5vw !important;
+                padding-right: 5vw !important;
+            }
+            .report-card {
+                padding-left: 8vw !important;
+                padding-right: 8vw !important;
+            }
             .report-card form {
                 grid-template-columns: 1fr;
                 gap: 19px;
             }
-            .report-card h2 { font-size: 22px; }
-            .report-card {
+            .report-card h2 { 
+                font-size: 30px; 
                 padding: 18px 6vw;
+            }
+            .report-card {
+                padding: 17px 5vw !important;
                 max-width: 99vw;
             }
+            .btn-primary{
+                margin-bottom: 20px;
+            }
+            .nav {
+            background: #fff;
+            }
+            .nav span{
+            color: black;  
+            }
+            .menu-toggle {
+            color: black;
+            margin-right: 10px;
+            }
+            .btn-container { justify-content: center; }
         }
         @media (max-width: 580px) {
             .report-card { padding: 12px 2vw; }
+            .nav {
+            background: #fff;
+            }
+            .nav span{
+            color: black;  
+            }
+            .menu-toggle {
+            color: black;
+            margin-right: 10px;
+            }
+            .btn-primary {
+                font-size: 17px;
+                padding: 14px 14px;
+            }
+            .btn-container { justify-content: center; }
         }
         @media (max-width: 480px) {
             .form-wrapper { padding: 90px 3vw 24px; }
             .btn-container {
                 flex-direction: column;
-                gap: 11px;
+                gap: 0;
+                align-items: center;
             }
-            .btn-cancel, .btn-primary {
+            .nav {
+            background: #fff;
+            }
+            .nav span{
+            color: black;  
+            }
+            .menu-toggle {
+            color: black;
+            margin-right: 10px;
+            }
+            .btn-primary {
+                padding: 14px 10px;
+                width: 90%;
                 font-size: 17px;
-                padding: 17px;
             }
+            .btn-container { align-items: center; }
         }
-        /* Ensure Navbar stays on top */
         .nav { z-index: 1000; }
-        /* Preview thumbnails for images */
         #image-preview img {
             border: 1px solid #ccc;
             background: #f1f1f1;
             box-shadow: 0 4px 8px rgba(0,0,0,0.07);
         }
-        /* Submit Confirmation Modal */
         #submitAlertBackdrop {
             position: fixed;
             z-index: 5000;
@@ -539,6 +565,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         #submitAlertModal .alert-btn.logout:hover {
             background: #3bb46a;
         }
+
+        /* LOCATION AUTOCOMPLETE DROPDOWN */
+        .location-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+            margin-top: 6px;
+            z-index: 9999;
+            max-height: 240px;
+            overflow-y: auto;
+            display: none;
+        }
+        .location-suggestions div {
+            padding: 10px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .location-suggestions div:last-child {
+            border-bottom: none;
+        }
+        .location-suggestions div:hover {
+            background: #f1f5ff;
+        }
     </style>
 </head>
 <body>
@@ -579,7 +633,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="input-group" style="position:relative;">
                     <label for="locationInput">Location *</label>
-                    <input type="text" id="locationInput" name="location" placeholder="Enter location/address" required>
+                    <input
+                        type="text"
+                        id="locationInput"
+                        name="location"
+                        placeholder="Enter location/address"
+                        autocomplete="off"
+                        required
+                    >
+                    <div id="locationSuggestions" class="location-suggestions"></div>
                 </div>
                 <div class="input-group">
                     <label for="name">Name (Optional)</label>
@@ -600,7 +662,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px;"></div>
                 </div>
                 <div class="btn-container">
-                    <button type="button" class="btn-cancel" onclick="window.location.href='citizencimm.php'">Cancel</button>
                     <button type="submit" class="btn-primary" id="submit-btn">Submit Request</button>
                 </div>
             </form>
@@ -740,6 +801,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             });
         }
+
+        // -- LOCATION AUTOCOMPLETE (OpenStreetMap Nominatim, Quezon City only) --
+        const locationInput = document.getElementById("locationInput");
+        const suggestionBox = document.getElementById("locationSuggestions");
+
+        let debounceTimer = null;
+
+        locationInput.addEventListener("input", () => {
+            const query = locationInput.value.trim();
+
+            clearTimeout(debounceTimer);
+
+            if (query.length < 3) {
+                suggestionBox.style.display = "none";
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&countrycodes=PH`)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionBox.innerHTML = "";
+
+                        // Filter results to only Quezon City
+                        const qcResults = data.filter(place => {
+                            const addr = place.address;
+                            return addr.city === "Quezon City" || addr.county === "Quezon City" || addr.town === "Quezon City" || addr.village === "Quezon City";
+                        });
+
+                        if (!qcResults.length) {
+                            suggestionBox.style.display = "none";
+                            return;
+                        }
+
+                        qcResults.forEach(place => {
+                            const div = document.createElement("div");
+                            div.textContent = place.display_name;
+                            div.onclick = () => {
+                                locationInput.value = place.display_name;
+                                suggestionBox.style.display = "none";
+                            };
+                            suggestionBox.appendChild(div);
+                        });
+
+                        suggestionBox.style.display = "block";
+                    })
+                    .catch(() => {
+                        suggestionBox.style.display = "none";
+                    });
+            }, 350); // debounce
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener("click", e => {
+            if (!e.target.closest(".input-group")) {
+                suggestionBox.style.display = "none";
+            }
+        });
+
         // No longer clear localStorage here; handled through notif-popup auto-clear on next page load.
     </script>
 

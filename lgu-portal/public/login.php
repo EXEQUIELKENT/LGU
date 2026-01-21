@@ -629,9 +629,226 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU | Login</title>
-<link rel="stylesheet" href="<?php echo htmlspecialchars($basePath); ?>style.css">
 <style>
 /* Base layout */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* NAVIGATION */
+.nav {
+    width: 100%;
+    padding: 18px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    background: rgba(255, 255, 255, 0.15);     /* softer glass */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.nav-logo {
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.nav-links a:hover,
+.nav-links .active {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
+
+/* CENTER WRAPPER */
+.wrapper {
+    width: 100%;
+    height: calc(100vh - 80px); /* subtract header height */
+    display: flex;
+    justify-content: center;
+    align-items: center;  /* THIS centers it vertically */
+    padding-bottom: 0;    /* remove extra spacing */
+}
+
+.icon-top {
+    width: 60px;
+    margin-bottom: 10px;
+}
+
+.title {
+    font-size: 26px;            /* slightly smaller */
+    margin-bottom: 6px;
+    color: #000000;
+}
+
+.subtitle {
+    margin-bottom: 18px;        /* reduce gap */
+    color: #000000;
+}
+
+/* INPUT BOX */
+.input-box {
+    position: relative;
+    text-align: left;
+    margin-bottom: 14px;        /* reduce spacing */
+    color: #000000;
+}
+
+.input-box label {
+    font-size: 13px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-box input {
+    width: 100%;
+    padding: 10px 38px 10px 12px; /* slightly smaller */
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.7);
+    outline: none;
+}
+
+.icon {
+    position: absolute;
+    right: 12px;
+    top: 45px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    opacity: 0.6;
+}
+
+/* BUTTON */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+
+    /* smoother, premium feel */
+    transition: 0.25s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+}
+
+/* OTP Timer */
+#timer {
+    font-size: 16px;
+    font-weight: 600;
+    color: #d9534f; /* red for urgency */
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* FOOTER TEXT */
+.small-text {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #000000cc; /* slightly softer white */
+}
+
+/* LINKS */
+.link {
+    color: #2864ef;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.link:hover {
+    color: #004ef6;
+    text-decoration: underline;
+}
+
+/* FOOTER — same design as NAVBAR */
+.footer {
+    width: 100%;
+    padding: 18px 45px;
+
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 -4px 25px rgba(0,0,0,0.25);
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+
+    animation: fadeUp 0.4s ease-out; /* smooth reveal */
+}
+
+/* Left-aligned links */
+.footer-links {
+    position: absolute;
+    left: 60px;  /* same padding as header */
+}
+
+.footer-links a {
+    margin-right: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
+
+.footer-links a:hover {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
+
+/* Center copyright */
+.footer-logo {
+    text-align: center;
+    font-weight: 500;
+    color: #fff;
+}
 body {
     min-height: 100vh;
     display: flex;
@@ -878,6 +1095,10 @@ body::-webkit-scrollbar {
     padding: 28px 22px 32px;
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
     box-sizing: border-box;
+    width: 350px;                /* slightly narrower background: rgba(255, 255, 255, 0.25); */
+    background: rgba(255, 255, 255, 0.795);  
+    backdrop-filter: blur(15px);
+    text-align: center;
 }
     
 /* Primary button styling (shared) */
@@ -974,28 +1195,7 @@ body::-webkit-scrollbar {
     transform: none;
 }
 
-/* Resend OTP Button */
-.btn-secondary {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    border: none;
-    border-radius: 12px;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 10px;
-
-    /* smoother, premium feel */
-    transition: 0.25s ease;
-}
-
-.btn-secondary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
-}
+/* Removed .btn-secondary (unused style) */
 
 /* Change Password Modal Styles */
 #changePasswordModal {
@@ -1037,45 +1237,9 @@ body:has(#changePasswordModal) {
     }
 }
 
-/* Change Password Modal Styles */
-#changePasswordModal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    min-height: 100vh;
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    opacity: 1;
-    animation: fadeInModal 0.3s ease;
-    padding: 20px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-}
+/* Remove repeated #changePasswordModal style block - duplicated below */
 
-/* Prevent body scroll when modal is open */
-body:has(#changePasswordModal) {
-    overflow: hidden;
-}
-
-@keyframes fadeInModal {
-    from { 
-        opacity: 0;
-        backdrop-filter: blur(0px);
-    }
-    to { 
-        opacity: 1;
-        backdrop-filter: blur(6px);
-    }
-}
+/* Remove redundant repeated #changePasswordModal: this style is defined above already. Only keep one block. */
 
 #changePasswordModal .modal-content {
     width: 350px;
@@ -1488,7 +1652,6 @@ body:has(#changePasswordModal) {
         width: 100%;
         max-width: 400px;
         margin: 0 auto;
-        background: rgba(255, 255, 255, 0.96);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
         border-radius: 20px;
         padding: 26px 20px 32px;
@@ -1639,12 +1802,12 @@ body:has(#changePasswordModal) {
                     <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
                 </div>
                 <input type="hidden" name="otp" id="otpValue">
-                <button type="submit" name="otp_submit" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
+                <button type="submit" name="otp_submit" title="Verify OTP code" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
             </form>
 
             <form method="post" action="">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_SESSION['login_email'] ?? '', ENT_QUOTES); ?>">
-                <button type="submit" name="resend_otp" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
+                <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
             </form>
 
             <script>
@@ -1789,7 +1952,7 @@ body:has(#changePasswordModal) {
                         Remember me
                     </label>
                 </div>
-                <button type="submit" name="login_submit" class="btn-primary" <?php if ($disableLogin): ?>disabled<?php endif; ?>>Sign In</button>
+                <button type="submit" name="login_submit" title="Sign in to your account" class="btn-primary" <?php if ($disableLogin): ?>disabled<?php endif; ?>>Sign In</button>
                 <?php if ($disableLogin): ?>
                 <div style="color:#de3f4a;font-size:14px;margin-top:10px;text-align:center;"><?php echo htmlspecialchars($lockoutMsg); ?></div>
                 <?php endif; ?>
@@ -1903,7 +2066,7 @@ body:has(#changePasswordModal) {
                     <!-- No inline error blocks! All errors go to notification popup. -->
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
+                    <button type="submit" title="Change your password" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
                 </div>
             </form>
         </div>
