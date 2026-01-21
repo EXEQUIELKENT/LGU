@@ -1205,13 +1205,13 @@ h2  {
                 while ($row = $result->fetch_assoc()):
                 ?>
                 <tr>
-                    <td>
+                    <td class="searchable">
                         #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
                     </td>
-                    <td><?php echo htmlspecialchars($row['infrastructure']); ?></td>
-                    <td><?php echo htmlspecialchars($row['location']); ?></td>
-                    <td><?php echo htmlspecialchars($row['issue']); ?></td>
-                    <td><?php echo $row['created_at'] ?? ''; ?></td>
+                    <td class="searchable"><?php echo htmlspecialchars($row['infrastructure']); ?></td>
+                    <td class="searchable"><?php echo htmlspecialchars($row['location']); ?></td>
+                    <td class="searchable"><?php echo htmlspecialchars($row['issue']); ?></td>
+                    <td class="searchable"><?php echo $row['created_at'] ?? ''; ?></td>
                     <td>
                         <?php if (!empty($row['evidence_images'])): 
                             $images = explode(',', $row['evidence_images']);
@@ -1244,7 +1244,7 @@ h2  {
                             default     => 'pending',
                         };
                         ?>
-                        <span class="status <?= $statusClass ?>">
+                        <span class="status <?= $statusClass ?> searchable">
                             <?= htmlspecialchars($status) ?>
                         </span>
                     </td>
@@ -1272,12 +1272,24 @@ h2  {
                 <div class="request-card">
                     <div>
                         <strong>Request ID:</strong>
-                        #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
+                        <span class="searchable">#REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?></span>
                     </div>
-                    <div><strong>Infrastructure:</strong> <?php echo htmlspecialchars($row['infrastructure']); ?></div>
-                    <div><strong>Location:</strong> <?php echo htmlspecialchars($row['location']); ?></div>
-                    <div><strong>Issue:</strong> <?php echo htmlspecialchars($row['issue']); ?></div>
-                    <div><strong>Date Submitted:</strong> <?php echo $row['created_at'] ?? ''; ?></div>
+                    <div>
+                        <strong>Infrastructure:</strong>
+                        <span class="searchable"><?php echo htmlspecialchars($row['infrastructure']); ?></span>
+                    </div>
+                    <div>
+                        <strong>Location:</strong>
+                        <span class="searchable"><?php echo htmlspecialchars($row['location']); ?></span>
+                    </div>
+                    <div>
+                        <strong>Issue:</strong>
+                        <span class="searchable"><?php echo htmlspecialchars($row['issue']); ?></span>
+                    </div>
+                    <div>
+                        <strong>Date Submitted:</strong>
+                        <span class="searchable"><?php echo $row['created_at'] ?? ''; ?></span>
+                    </div>
                     <div>
                         <strong>Status:</strong>
                         <?php
@@ -1289,7 +1301,7 @@ h2  {
                             default     => 'pending',
                         };
                         ?>
-                        <span class="status <?= $statusClass ?>">
+                        <span class="searchable status <?= $statusClass ?>">
                             <?= htmlspecialchars($status) ?>
                         </span>
                     </div>
@@ -1347,6 +1359,17 @@ h2  {
         </div>
     </div>
 </div>
+
+<style>
+/* 🔥 Search Highlight */
+.search-highlight {
+    background: #fff176;
+    color: #000;
+    padding: 1px 3px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+</style>
 
 <script>
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -1980,99 +2003,89 @@ function handleSwipeGesture() {
     }
 }
 </script>
-
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", () => {
 
-    const searchInput = document.getElementById("requestSearch");
+const searchInput = document.getElementById("requestSearch");
 
-    /* ================= DESKTOP TABLE ================= */
-    const tableBody = document.querySelector("table tbody");
-    const noResultRow = document.getElementById("noRequestResult");
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-    // Cache ORIGINAL table rows (exclude no-result row)
-    const tableRows = Array.from(tableBody.querySelectorAll("tr"))
-        .filter(row => row.id !== "noRequestResult");
-
-    /* ================= MOBILE CARDS ================= */
-    const mobileList = document.querySelector(".mobile-request-list");
-    const mobileCards = Array.from(
-        mobileList ? mobileList.querySelectorAll(".request-card") : []
-    );
-
-    // Create mobile no-result message (once)
-    let mobileNoResult = document.createElement("div");
-    mobileNoResult.className = "request-card mobile-no-requests";
-    mobileNoResult.textContent = "No matching data or result";
-    mobileNoResult.style.display = "none";
-    if (mobileList) mobileList.appendChild(mobileNoResult);
-
-    // Helper: Get only the actual data from the card (ignore labels/titles)
-    function getCardDataText(card) {
-        const clone = card.cloneNode(true);
-        clone.querySelectorAll("strong, label, .card-title").forEach(el => el.remove());
-        return clone.innerText.toLowerCase();
+function storeOriginal(el) {
+    if (!el.dataset.original) {
+        el.dataset.original = el.innerHTML;
     }
+}
 
-    searchInput.addEventListener("input", () => {
-        const keyword = searchInput.value.trim().toLowerCase();
+function reset(el) {
+    if (el.dataset.original) {
+        el.innerHTML = el.dataset.original;
+    }
+}
 
-        /* ===== RESET STATE (EMPTY SEARCH) ===== */
-        if (keyword === "") {
+function highlight(el, keyword) {
+    if (!keyword) return;
 
-            // Desktop reset
-            tableRows.forEach(row => {
-                row.style.display = "";
-                tableBody.appendChild(row);
-            });
-            noResultRow.style.display = "none";
+    const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
+    el.innerHTML = el.innerHTML.replace(
+        regex,
+        `<span class="search-highlight">$1</span>`
+    );
+}
 
-            // Mobile reset
-            mobileCards.forEach(card => {
-                card.style.display = "";
-                mobileList.appendChild(card);
-            });
-            mobileNoResult.style.display = "none";
+searchInput.addEventListener("input", () => {
+    const keyword = searchInput.value.trim().toLowerCase();
 
-            return;
+    /* ========= DESKTOP TABLE ========= */
+    const rows = document.querySelectorAll("table tbody tr:not(#noRequestResult)");
+    let found = 0;
+
+    rows.forEach(row => {
+        const searchable = row.querySelectorAll(".searchable");
+        let rowText = "";
+
+        searchable.forEach(el => {
+            storeOriginal(el);
+            reset(el);
+            rowText += el.textContent.toLowerCase() + " ";
+        });
+
+        const match = rowText.includes(keyword);
+        row.style.display = match || !keyword ? "" : "none";
+
+        if (match && keyword) {
+            searchable.forEach(el => highlight(el, keyword));
+            found++;
         }
+    });
 
-        /* ===== DESKTOP FILTER ===== */
-        let desktopMatches = 0;
+    document.getElementById("noRequestResult").style.display =
+        keyword && found === 0 ? "" : "none";
 
-        tableRows.forEach(row => {
-            if (row.innerText.toLowerCase().includes(keyword)) {
-                row.style.display = "";
-                tableBody.prepend(row); // move match to top
-                desktopMatches++;
-            } else {
-                row.style.display = "none";
-            }
+    /* ========= MOBILE CARDS ========= */
+    document.querySelectorAll(".request-card").forEach(card => {
+        const searchable = card.querySelectorAll(".searchable");
+        let cardText = "";
+
+        searchable.forEach(el => {
+            storeOriginal(el);
+            reset(el);
+            cardText += el.textContent.toLowerCase() + " ";
         });
 
-        noResultRow.style.display = desktopMatches === 0 ? "" : "none";
+        const match = cardText.includes(keyword);
+        card.style.display = match || !keyword ? "" : "none";
 
-        /* ===== MOBILE FILTER (DATA ONLY) ===== */
-        let mobileMatches = 0;
-
-        mobileCards.forEach(card => {
-            const dataText = getCardDataText(card);
-
-            if (dataText.includes(keyword)) {
-                card.style.display = "";
-                mobileList.prepend(card);
-                mobileMatches++;
-            } else {
-                card.style.display = "none";
-            }
-        });
-
-        mobileNoResult.style.display = mobileMatches === 0 ? "" : "none";
+        if (match && keyword) {
+            searchable.forEach(el => highlight(el, keyword));
+        }
     });
 
 });
-</script>
 
+});
+</script>
 
 </body>
 </html>
