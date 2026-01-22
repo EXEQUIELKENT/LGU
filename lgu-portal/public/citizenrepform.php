@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-left: 25px;
             text-decoration: none;
             cursor: pointer;
-            color: blwgack;
+            color: black;
             opacity: .8;
             transition: .2s;
         }
@@ -819,6 +819,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span>InfraGovServices - Infrastructure and Utilities</span>
         </div>
         <div class="nav-links">
+            <a href="login.php">Log in</a>
             <a href="citizencimm.php">Home</a>
             <a href="#" class="active">Requests</a>
             <a href="about.php">About</a>

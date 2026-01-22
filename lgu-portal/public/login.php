@@ -33,7 +33,7 @@ function logLoginEvent(
     mysqli $conn,
     ?string $email,
     bool $success,
-    string $failureReason = null,
+    ?string $failureReason = null,
     bool $otpUsed = false,
     int $otpResends = 0
 ) {
@@ -647,59 +647,87 @@ body {
     flex-direction: column;
 }
 
-/* NAVIGATION */
 .nav {
-    width: 100%;
-    padding: 18px 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    background: rgba(255, 255, 255, 0.15);     /* softer glass */
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+            width: 100%;
+            padding: 18px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.87);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 2px solid rgba(0, 0, 0, 0.6);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+        .site-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: black;
+            font-weight: 600;
+        }
+        .site-logo img {
+            width: 40px; height: auto; border-radius: 8px;
+        }
+        .nav a {
+            margin-left: 25px;
+            color: black;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.85;
+            transition: 0.2s;
+        }
+        .nav-links a {
+            margin-left: 25px;
+            text-decoration: none;
+            cursor: pointer;
+            color: black;
+            opacity: .8;
+            transition: .2s;
+        }
+        .nav-links a.active {
+            opacity: 1;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+            text-decoration: none;
+        }
+        .menu-toggle {
+            display: none;
+            font-size: 26px;
+            cursor: pointer;
+            color: black;
+            background: none;
+            border: none;
+            margin-left: 18px;
+        }
 
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
-    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
-
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 100;
-}
-
-.nav-links a {
-    margin-left: 25px;
-    text-decoration: none;   /* ⛔ Removes underline */
-    cursor: pointer;
-    color: #fff;
-    opacity: .8;
-    transition: .2s;
-}
-
-.nav-logo {
-    text-decoration: none;   /* ⛔ Removes underline */
-    cursor: pointer;
-    color: #fff;
-    opacity: .8;
-    transition: .2s;
-}
-
-.nav-links a:hover,
-.nav-links .active {
-    opacity: 1;
-    text-decoration: none;   /* ⛔ Removes underline */
-    font-weight: 600;
-}
-
-/* CENTER WRAPPER */
-.wrapper {
-    width: 100%;
-    height: calc(100vh - 80px); /* subtract header height */
+/* FORM WRAPPER - matching citizenrepform structure */
+.form-wrapper {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: center;
-    align-items: center;  /* THIS centers it vertically */
-    padding-bottom: 0;    /* remove extra spacing */
+    align-items: flex-start;
+    padding: 110px 16px 40px;
+}
+
+/* CARD - matching report-card from citizenrepform */
+.card {
+    width: 100%;
+    max-width: 390px;
+    background: rgba(235, 234, 234, 0.95);
+    padding: 30px;
+    border-radius: 22px;
+    box-shadow: 0 20px 45px rgba(0,0,0,.25);
+    transition: all .25s ease;
+    text-align: center;
 }
 
 .icon-top {
@@ -708,69 +736,96 @@ body {
 }
 
 .title {
-    font-size: 26px;            /* slightly smaller */
-    margin-bottom: 6px;
-    color: #000000;
+    margin-bottom: 24px;
+    font-size: 2rem;
+    line-height: 1.25;
+    color: #212121;
+    text-align: center;
+    letter-spacing: .02em;
+    font-weight: 700;
 }
 
 .subtitle {
-    margin-bottom: 18px;        /* reduce gap */
-    color: #000000;
+    margin-bottom: 24px;
+    font-size: 15px;
+    color: #666;
+    text-align: center;
 }
 
-/* INPUT BOX */
+/* INPUT BOX - matching input-group from citizenrepform */
 .input-box {
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 24px;
     text-align: left;
-    margin-bottom: 14px;        /* reduce spacing */
-    color: #000000;
+    transition: all .25s ease;
+    position: relative;
 }
 
 .input-box label {
-    font-size: 13px;
-    margin-bottom: 5px;
-    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+    letter-spacing: 0.01em;
 }
 
 .input-box input {
     width: 100%;
-    padding: 10px 38px 10px 12px; /* slightly smaller */
-    border-radius: 10px;
-    border: none;
-    background: rgba(255,255,255,0.7);
+    padding: 11px 38px 11px 14px;
+    border-radius: 11px;
+    border: 1.5px solid #c0c9d1;
+    background: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    transition: all .2s ease;
+    box-sizing: border-box;
     outline: none;
+}
+
+.input-box input:focus {
+    outline: none;
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43,108,176,.15);
 }
 
 .icon {
     position: absolute;
     right: 12px;
-    top: 45px;
+    top: 50px;
     transform: translateY(-50%);
     font-size: 18px;
     opacity: 0.6;
+    pointer-events: none;
 }
 
-/* BUTTON */
+/* BUTTON - matching btn-primary from citizenrepform */
+.btn-container {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 0;
+}
+
 .btn-primary {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    border: none;
-    border-radius: 12px;
+    background: #2b6cb0;
     color: #fff;
-    font-size: 16px;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 38px;
     font-weight: 600;
+    font-size: 18px;
     cursor: pointer;
-    margin-top: 10px;
-
-    /* smoother, premium feel */
-    transition: 0.25s ease;
+    transition: all .25s;
+    box-shadow: none;
+    margin: 0 auto;
+    display: block;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+    transform: translateY(-4px);
+    background: #245a96;
 }
 
 /* OTP Timer */
@@ -782,79 +837,79 @@ body {
     text-align: center;
 }
 
-/* FOOTER — same design as NAVBAR */
-.footer {
-    width: 100%;
-    padding: 26px 0 22px;
+        /* FOOTER — same design as NAVBAR */
+        .footer {
+            width: 100%;
+            padding: 26px 0 22px;
 
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
 
-    border-top: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+            border-top: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
 
-    margin-top: auto;         /* ⭐ KEY */
-    flex-shrink: 0;
-    position: relative;       /* ❌ NOT fixed */
-    z-index: 1;
-}
+            margin-top: auto;      /* ⭐ KEY */
+            flex-shrink: 0;
+            position: relative;    /* ❌ NOT fixed */
+            z-index: 1;
+        }
 
-/* Left-aligned links */
-.footer-links {
-    position: absolute;
-    left: 60px;               /* same padding as header */
-}
 
-.footer-links a {
-    margin-right: 25px;
-    text-decoration: none;    /* ⛔ Removes underline */
-    cursor: pointer;
-    color: #fff;
-    opacity: .8;
-    transition: .2s;
-}
+        /* Left-aligned links */
+        .footer-links {
+            position: absolute;
+            left: 60px;  /* same padding as header */
+        }
 
-.footer-links a:hover {
-    opacity: 1;
-    text-decoration: none;    /* ⛔ Removes underline */
-    font-weight: 600;
-}
+        .footer-links a {
+            margin-right: 25px;
+            text-decoration: none;   /* ⛔ Removes underline */
+            cursor: pointer;
+            color: #fff;
+            opacity: .8;
+            transition: .2s;
+        }
 
-/* Center copyright */
-.footer-logo {
-    text-align: center;
-    font-weight: 500;
-    color: #fff;
-}
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: none;   /* ⛔ Removes underline */
+            font-weight: 600;
+        }
 
-/* FOOTER FIXES FOR MOBILE */
-.footer {
-    display: flex;
-    flex-direction: row;           /* desktop: horizontal layout */
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;               /* allow wrapping on small screens */
-    padding: 20px 15px;
-}
+        /* Center copyright */
+        .footer-logo {
+            text-align: center;
+            font-weight: 500;
+            color: #fff;
+        }
+        /* FOOTER FIXES FOR MOBILE */
+        .footer {
+            display: flex;
+            flex-direction: row;       /* desktop: horizontal layout */
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;           /* allow wrapping on small screens */
+            padding: 20px 15px;
+        }
 
-.footer-links {
-    position: static;              /* remove absolute positioning */
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 0;
-}
+        .footer-links {
+            position: static;          /* remove absolute positioning */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 0;
+        }
 
-.footer-links a {
-    margin: 0;
-}
+        .footer-links a {
+            margin: 0;
+        }
 
-.footer-logo {
-    width: 100%;
-    text-align: center;
-    margin-top: 12px;
-}
+        .footer-logo {
+            width: 100%;
+            text-align: center;
+            margin-top: 12px;
+        }
 
 body {
     min-height: 100vh;
@@ -1014,119 +1069,6 @@ body::-webkit-scrollbar {
     .notif-close { font-size: 20px; }
 }
 
-/* NAVBAR */
-.nav {
-    width: 100%;
-    padding: 16px 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
-
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 100;
-}
-
-/* LOGO AREA */
-.site-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: #fff;
-    font-weight: 600;
-    font-size: 18px;
-}
-
-/* LOGO IMAGE */
-.site-logo img {
-    width: 40px;
-    height: auto;
-    border-radius: 8px;
-}
-
-/* NAV LINKS */
-.nav-links {
-    display: flex;
-    align-items: center;
-}
-
-.nav-links a {
-    margin-left: 25px;
-    text-decoration: none;
-    color: #fff;
-    opacity: 0.9;
-    font-weight: 500;
-    padding: 8px 14px;
-    border-radius: 10px;
-    transition: 0.25s ease;
-}
-
-.nav-links a:hover {
-    opacity: 1;
-}
-
-.nav-links a.active {
-    opacity: 1;
-    font-weight: 600;
-}
-
-.nav,  .wrapper, .footer {
-    position: relative;
-    z-index: 1;
-}
-
-/* Wrapper & card layout (small centered panel) */
-.wrapper {
-    min-height: calc(100vh - 80px);
-    padding: 80px 16px 100px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-.card {
-    width: 100%;
-    max-width: 355px;
-    margin: 0 auto;
-    background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
-    border-radius: 20px;
-    padding: 28px 22px 32px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-    box-sizing: border-box;
-    width: 350px;                /* slightly narrower background: rgba(255, 255, 255, 0.25); */
-    background: rgba(255, 255, 255, 0.795);  
-    backdrop-filter: blur(15px);
-    text-align: center;
-}
-    
-/* Primary button styling (shared) */
-.btn-primary {
-    width: 100%;
-    padding: 14px 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 8px 18px rgba(40, 92, 205, 0.32);
-    transition: 0.25s ease;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1f4fb3);
-    transform: translateY(-1px);
-}
     
 #timer     
     {font-size: 16px;
@@ -1177,23 +1119,24 @@ body::-webkit-scrollbar {
 .verify-code-btn,
 .resend-code-btn {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    border: none;
-    border-radius: 12px;
+    background: #2b6cb0;
     color: #fff;
-    font-size: 16px;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 38px;
     font-weight: 600;
+    font-size: 18px;
     cursor: pointer;
-    margin-bottom: 10px;
-    transition: 0.25s ease;
+    transition: all .25s;
+    box-shadow: none;
+    margin: 0 auto;
+    display: block;
 }
 
 .verify-code-btn:hover,
 .resend-code-btn:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+    transform: translateY(-4px);
+    background: #245a96;
 }
 
 .verify-code-btn:disabled {
@@ -1620,50 +1563,67 @@ body:has(#changePasswordModal) {
 }
 
 
+@media (max-width: 950px) {
+    .card {
+        padding: 20px 8vw;
+    }
+}
+
 /* ===== Mobile-first refinements (like reference design) ===== */
-@media (max-width: 640px) {
-    body {
-        background: url("cityhall.jpeg") center/cover no-repeat fixed;
-        overflow-y: auto;
+@media (max-width: 768px) {
+    .nav { padding: 18px 13px; }
+    
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        background: rgba(0,0,0,.86);
+        border-radius: 12px;
+        padding: 15px;
+        flex-direction: column;
+        box-shadow: 0 4px 18px rgba(0,0,0,.25);
+        min-width: 160px;
+        z-index: 999;
     }
-
-    body::before {
-        display: block;
-        backdrop-filter: blur(8px);
-        background: rgba(0, 0, 0, 0.35);
+    .nav-links.show {
+        display: flex;
     }
-
+    .nav-links a {
+        color: #fff !important;
+    }
     .nav {
-        position: static;
-        padding: 20px 20px 8px;
-        background: transparent;
-        box-shadow: none;
-        border-bottom: none;
-        backdrop-filter: none;
+        background: #fff;
     }
-
+    .nav span {
+        color: black;  
+    }
+    .menu-toggle {
+        color: black;
+        margin-right: 10px;
+    }
+    .menu-toggle {
+        display: block;
+    }
     .site-logo span {
         font-size: 16px;
-        color: #FFFFFF;
+        color: black;
     }
 
-    .wrapper {
-        margin-top: 0;
-        padding: 40px 20px 32px;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
+    .form-wrapper {
+        margin-top: 20px !important;
+        padding-left: 5vw !important;
+        padding-right: 5vw !important;
+        padding-top: 100px;
     }
 
     .card {
-        width: 100%;
-        max-width: 400px;
-        margin: 0 auto;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
-        border-radius: 20px;
-        padding: 26px 20px 32px;
+        padding-left: 8vw !important;
+        padding-right: 8vw !important;
+        padding: 17px 5vw !important;
+        max-width: 99vw;
     }
-
+    
     .icon-top {
         display: block;
         width: 120px;
@@ -1672,22 +1632,18 @@ body:has(#changePasswordModal) {
     }
 
     .title {
-        font-size: 32px;
-        margin: 0 0 6px;
-        text-align: center;
-        color: #000000;
-        font-weight: 700;
+        font-size: 30px;
+        padding: 18px 6vw;
+        margin-bottom: 20px;
     }
 
     .subtitle {
-        margin-top: 12px;
-        font-size: 16px;
-        color: #000000;
-        text-align: center;
+        font-size: 15px;
+        margin-bottom: 20px;
     }
 
     .input-box {
-        margin-bottom: 18px;
+        margin-bottom: 19px;
     }
 
     .input-box label {
@@ -1696,24 +1652,19 @@ body:has(#changePasswordModal) {
     }
 
     .input-box input {
-        height: 52px;
-        border-radius: 12px;
+        padding: 11px 38px 11px 14px;
+        border-radius: 11px;
         font-size: 15px;
     }
 
     .btn-primary {
-        width: 100%;
-        padding: 14px 20px;
-        border-radius: 999px;
-        font-size: 16px;
-        font-weight: 600;
-        background: linear-gradient(135deg, #6384d2, #285ccd);
-        border: none;
-        box-shadow: 0 7px 18px rgba(40, 92, 205, 0.28);
+        font-size: 17px;
+        padding: 14px 14px;
+        margin-bottom: 20px;
     }
 
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    .btn-container {
+        justify-content: center;
     }
 
     .small-text {
@@ -1723,9 +1674,72 @@ body:has(#changePasswordModal) {
     }
 
     .footer {
-        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+        margin-top: 20px;
+        position: relative;
     }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+}
 
+@media (max-width: 580px) {
+    .card {
+        padding: 12px 2vw;
+    }
+    .btn-primary {
+        font-size: 17px;
+        padding: 14px 14px;
+    }
+    .btn-container {
+        justify-content: center;
+    }
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+    }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-wrapper {
+        padding: 90px 3vw 24px;
+    }
+    .btn-container {
+        flex-direction: column;
+        gap: 0;
+        align-items: center;
+    }
+    .btn-primary {
+        padding: 14px 10px;
+        width: 90%;
+        font-size: 17px;
+    }
+    .btn-container {
+        align-items: center;
+    }
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+    }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
 }
 </style>
 </head>
@@ -1743,39 +1757,20 @@ body:has(#changePasswordModal) {
 
 <header class="nav">
     <div class="site-logo">
-        <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" alt="LGU Logo">
-        <span>Local Government Unit Portal</span>
+        <img src="logocityhall.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <!-- 
-        FIX: Make Home link ALWAYS work regardless of URL path
-
-        - Use absolute path (starting from the domain root)
-        - If your citzen dashboard is at (for example) '/citizencimm.php', always use '/citizencimm.php'
-        - If it's under lgu-portal/public/citizencimm.php, use '/lgu-portal/public/citizencimm.php'
-        - For maximum robustness, detect script directory and build correct relative path
-        -->
-
-        <!-- The following makes it always absolute path from domain root: -->
-        <a href="/lgu-portal/public/citizencimm.php" class="active" id="navHomeLink">Home</a>
+        <a href="#" class="active">Log in</a>
+        <a href="citizencimm.php">Home</a>
+        <a href="citizenrepform.php">Requests</a>
+        <a href="about.php">About</a>
     </div>
+    <div class="menu-toggle">☰</div>
 </header>
 
-<script>
-    // For additional cross-platform/mobile robustness,
-    // if you ever move your path or want to auto-fix, you could use JS:
-    document.addEventListener('DOMContentLoaded', function() {
-        // Remove all event handlers from Home nav link
-        var homeNav = document.getElementById('navHomeLink');
-        if (homeNav) {
-            homeNav.addEventListener('click', function(e) {
-                window.location.href = '/lgu-portal/public/citizencimm.php';
-            });
-        }
-    });
-</script>
 
-<div class="wrapper">
+<div class="form-wrapper">
     <div class="card">
         <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" class="icon-top">
         <h2 class="title">LGU Login</h2>
@@ -1834,12 +1829,16 @@ body:has(#changePasswordModal) {
                     <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
                 </div>
                 <input type="hidden" name="otp" id="otpValue">
-                <button type="submit" name="otp_submit" title="Verify OTP code" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
+                <div class="btn-container">
+                    <button type="submit" name="otp_submit" title="Verify OTP code" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
+                </div>
             </form>
 
             <form method="post" action="">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_SESSION['login_email'] ?? '', ENT_QUOTES); ?>">
-                <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
+                <div class="btn-container">
+                    <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
+                </div>
             </form>
 
             <script>
@@ -1965,7 +1964,7 @@ body:has(#changePasswordModal) {
                             style="
                                 position: absolute;
                                 right: 10px;
-                                top: 30px;
+                                top: 36px;
                                 background: none;
                                 border: none;
                                 cursor: pointer;
@@ -1984,7 +1983,9 @@ body:has(#changePasswordModal) {
                         Remember me
                     </label>
                 </div>
-                <button type="submit" name="login_submit" title="Sign in to your account" class="btn-primary" <?php if ($disableLogin): ?>disabled<?php endif; ?>>Sign In</button>
+                <div class="btn-container">
+                    <button type="submit" name="login_submit" title="Sign in to your account" class="btn-primary" <?php if ($disableLogin): ?>disabled<?php endif; ?>>Sign In</button>
+                </div>
                 <?php if ($disableLogin): ?>
                 <div style="color:#de3f4a;font-size:14px;margin-top:10px;text-align:center;"><?php echo htmlspecialchars($lockoutMsg); ?></div>
                 <?php endif; ?>
@@ -2285,6 +2286,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<script>
+document.querySelector('.menu-toggle')
+    .addEventListener('click', () => {
+        document.querySelector('.nav-links').classList.toggle('show');
+    });
+</script>
+
 
 <footer class="footer">
     <div class="footer-links">

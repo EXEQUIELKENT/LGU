@@ -483,57 +483,86 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
-html, body {
-    height: 100%;
-}
+body::before {
+            content: "";
+            position: fixed;
+            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+                content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    min-height: 100vh;
+    min-width: 100vw;
+    pointer-events: none;
+    z-index: 0;
+        }
+        body::-webkit-scrollbar {
+            display: none;
+        }
 
-/* NAVIGATION */
 .nav {
     width: 100%;
     padding: 18px 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
-    background: rgba(255, 255, 255, 0.15);     /* softer glass */
+    background: rgba(255, 255, 255, 0.87);;
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);  /* glowing border */
+    border-bottom: 2px solid rgba(0, 0, 0, 0.6);
     box-shadow: 0 4px 25px rgba(0,0,0,0.25);
-
     position: fixed;
     top: 0;
     left: 0;
     z-index: 100;
 }
-
+.site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: black;
+    font-weight: 600;
+}
+.site-logo img {
+    width: 40px; height: auto; border-radius: 8px;
+}
+.nav a {
+    margin-left: 25px;
+    color: black;
+    text-decoration: none;
+    font-weight: 500;
+    opacity: 0.85;
+    transition: 0.2s;
+}
 .nav-links a {
     margin-left: 25px;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;
     cursor: pointer;
-    color: #fff;
+    color: black;
     opacity: .8;
     transition: .2s;
 }
-
-.nav-links a:hover,
-.nav-links .active {
+.nav-links a.active {
     opacity: 1;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;
     font-weight: 600;
 }
-
-/* CENTER WRAPPER */
-.wrapper {
-    width: 100%;
-    height: calc(100vh - 80px); /* subtract header height */
-    display: flex;
-    justify-content: center;
-    align-items: center;  /* THIS centers it vertically */
-    padding-bottom: 0;    /* remove extra spacing */
+.nav-links a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+.menu-toggle {
+    display: none;
+    font-size: 26px;
+    cursor: pointer;
+    color: #fff;
+    background: none;
+    border: none;
+    margin-left: 18px;
 }
 
 .icon-top {
@@ -542,79 +571,81 @@ html, body {
 }
 
 .title {
-    font-size: 26px;            /* slightly smaller */
-    margin-bottom: 6px;
-    color: #000000;
+    margin-bottom: 24px;
+    font-size: 2rem;
+    line-height: 1.25;
+    color: #212121;
+    text-align: center;
+    letter-spacing: .02em;
+    font-weight: 700;
 }
 
 .subtitle {
-    margin-bottom: 18px;        /* reduce gap */
-    color: #000000;
+    margin-bottom: 24px;
+    font-size: 15px;
+    color: #666;
+    text-align: center;
 }
 
 /* INPUT BOX */
 .input-box {
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 24px;
     text-align: left;
-    margin-bottom: 14px;        /* reduce spacing */
-    color: #000000;
+    transition: all .25s ease;
+    position: relative;
 }
-
 .input-box label {
-    font-size: 13px;
-    margin-bottom: 5px;
-    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+    letter-spacing: 0.01em;
 }
-
-.input-box input {
+.input-box input,
+.input-box select {
     width: 100%;
-    padding: 10px 38px 10px 12px; /* slightly smaller */
-    border-radius: 10px;
-    border: none;
-    background: rgba(255,255,255,0.7);
+    padding: 11px 44px 11px 14px; /* Increased right padding for icon */
+    border-radius: 11px;
+    border: 1.5px solid #c0c9d1;
+    background: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    transition: all .2s ease;
+    box-sizing: border-box;
     outline: none;
+    height: 44px;
+    line-height: 1.2;
+}
+.input-box input:focus,
+.input-box select:focus {
+    outline: none;
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43,108,176,.15);
 }
 
+/* Align icon vertically centered with input field always */
 .icon {
     position: absolute;
-    right: 12px;
-    top: 45px;
+    right: 16px;
+    top: 65%;
     transform: translateY(-50%);
-    font-size: 18px;
-    opacity: 0.6;
+    font-size: 19px;
+    opacity: 0.68;
+    pointer-events: none;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* BUTTON */
-.btn-primary {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    border: none;
-    border-radius: 12px;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 10px;
-
-    /* smoother, premium feel */
-    transition: 0.25s ease;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
-}
-
-/* FOOTER TEXT */
 .small-text {
     margin-top: 15px;
     font-size: 13px;
     color: #000000cc; /* slightly softer white */
 }
 
-/* LINKS */
 .link {
     color: #2864ef;
     text-decoration: none;
@@ -636,30 +667,28 @@ html, body {
     -webkit-backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
-    margin-top: auto;         /* ⭐ KEY */
+    margin-top: auto;      /* ⭐ KEY */
     flex-shrink: 0;
-    position: relative;       /* ❌ NOT fixed */
+    position: relative;    /* ❌ NOT fixed */
     z-index: 1;
 }
 
 /* Left-aligned links */
 .footer-links {
     position: absolute;
-    left: 60px;               /* same padding as header */
+    left: 60px;  /* same padding as header */
 }
-
 .footer-links a {
     margin-right: 25px;
-    text-decoration: none;    /* ⛔ Removes underline */
+    text-decoration: none;   /* ⛔ Removes underline */
     cursor: pointer;
     color: #fff;
     opacity: .8;
     transition: .2s;
 }
-
 .footer-links a:hover {
     opacity: 1;
-    text-decoration: none;    /* ⛔ Removes underline */
+    text-decoration: none;   /* ⛔ Removes underline */
     font-weight: 600;
 }
 
@@ -669,172 +698,86 @@ html, body {
     font-weight: 500;
     color: #fff;
 }
-
 /* FOOTER FIXES FOR MOBILE */
 .footer {
     display: flex;
-    flex-direction: row;          /* desktop: horizontal layout */
+    flex-direction: row;       /* desktop: horizontal layout */
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;              /* allow wrapping on small screens */
+    flex-wrap: wrap;           /* allow wrapping on small screens */
     padding: 20px 15px;
 }
-
 .footer-links {
-    position: static;             /* remove absolute positioning */
+    position: static;          /* remove absolute positioning */
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
     margin-bottom: 0;
 }
-
 .footer-links a {
     margin: 0;
 }
-
 .footer-logo {
     width: 100%;
     text-align: center;
     margin-top: 12px;
 }
 
-
 html, body {
     height: 100%;
     margin: 0;
 }
 
-body {
-    min-height: 120vh;
-    display: flex;
-    flex-direction: column;
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    overflow-x: hidden;
-    position: relative; /* For ::before absolutely positioned overlay */
-    margin: 0;
-    /* Don't overflow hidden on y—allow to scroll if content grows */
-}
-
-/* Blur overlay participates in document flow, never covers footer */
-body::before {
-    content: "";
-    position: absolute; /* <--- NOT fixed */
-    inset: 0;
-    min-height: 100%;
-    pointer-events: none;
-    backdrop-filter: blur(6px);
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 0;
-}
-
-body::-webkit-scrollbar {
-  display: none;
-}
-
-/* LOGO AREA */
-.site-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: #fff;
-    font-weight: 600;
-    font-size: 18px;
-}
-
-/* LOGO IMAGE */
-.site-logo img {
-    width: 40px;
-    height: auto;
-    border-radius: 8px;
-}
-
-/* NAV LINKS */
-.nav-links {
-    display: flex;
-    align-items: center;
-}
-
-.nav-links a {
-    margin-left: 25px;
-    text-decoration: none;
-    color: #fff;
-    opacity: 0.9;
-    font-weight: 500;
-    padding: 8px 14px;
-    border-radius: 10px;
-    transition: 0.25s ease;
-}
-
-.nav-links a:hover {
-    opacity: 1;
-}
-
-.nav-links a.active {
-    opacity: 1;
-    font-weight: 600;
-}
-
-.nav, .wrapper {
+/* FORM WRAPPER - matching citizenrepform structure */
+.form-wrapper {
     position: relative;
     z-index: 1;
-}
-
-/* FLEX WRAPPER (main content area) */
-.wrapper {
     display: flex;
-    flex: 1;
     justify-content: center;
     align-items: flex-start;
-    box-sizing: border-box;
-    padding: 25px 16px 140px; /* Increased bottom padding to prevent footer overlap */
-    position: relative;
-    z-index: 1;
-    min-height: calc(100vh - 80px);
-    margin-bottom: 115px;
+    padding: 110px 16px 40px;
 }
 
-
-/* Recommended: Prevent footer "touching" card on short screens */
-@media (min-height: 700px) {
-    .wrapper {
-        padding-bottom: 60px;
-    }
-}
-
-/* --- CARD (registration panel) --- */
+/* CARD - matching report-card from citizenrepform */
 .card {
     width: 100%;
-    max-width: 500px;
-    background: rgba(231, 222, 222, 0.96); /* soft white with opacity */
-    backdrop-filter: blur(15px);
-    border-radius: 20px;
-    padding: 28px 22px 32px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-    box-sizing: border-box;
-    animation: fadeIn 0.5s ease-in-out;
-    margin-top: 20px;
-    margin-bottom: 20px;
+    max-width: 700px;
+    background: rgba(235, 234, 234, 0.95);
+    padding: 30px;
+    border-radius: 22px;
+    box-shadow: 0 20px 45px rgba(0,0,0,.25);
+    transition: all .25s ease;
     text-align: center;
 }
 
-/* Primary button styling (shared) */
+/* BUTTON CONTAINER - matching citizenrepform */
+.btn-container {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 0;
+}
+
+/* Primary button styling - matching citizenrepform */
 .btn-primary {
     width: 100%;
-    padding: 14px 20px;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
+    background: #2b6cb0;
     color: #fff;
     border: none;
+    border-radius: 14px;
+    padding: 14px 38px;
+    font-weight: 600;
+    font-size: 18px;
     cursor: pointer;
-    box-shadow: 0 8px 18px rgba(40, 92, 205, 0.32);
-    transition: 0.25s ease;
+    transition: all .25s;
+    box-shadow: none;
+    margin: 0 auto;
+    display: block;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1f4fb3);
-    transform: translateY(-1px);
+    transform: translateY(-4px);
+    background: #245a96;
 }
 
 /* Custom scrollbar for card */
@@ -851,42 +794,6 @@ body::-webkit-scrollbar {
 }
 .card::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 0, 0, 0.3);
-}
-
-/* LOGO AREA (repeat/corrected) */
-.site-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: #fff;
-    font-weight: 600;
-    font-size: 18px;
-}
-.site-logo img {
-    width: 40px;
-    height: auto;
-    border-radius: 8px;
-}
-
-/* NAV LINKS (repeat/corrected) */
-.nav-links {
-    display: flex;
-    align-items: center;
-}
-.nav-links a {
-    margin-left: 25px;
-    text-decoration: none;
-    color: #fff;
-    opacity: 0.9;
-    font-weight: 500;
-    padding: 8px 14px;
-    border-radius: 10px;
-    transition: 0.25s ease;
-}
-.nav-links a:hover,
-.nav-links a.active {
-    opacity: 1;
-    font-weight: 600;
 }
 
 /* Notification popup styles */
@@ -959,33 +866,47 @@ body::-webkit-scrollbar {
 /* Role Select Styling */
 .role-select {
     width: 100%;
-    padding: 10px 38px 10px 12px;
-    border-radius: 10px;
-    border: none;
-    background: rgba(255,255,255,0.7);
+    padding: 11px 44px 11px 14px; /* Align with input - increased right padding for icon */
+    border-radius: 11px;
+    border: 1.5px solid #c0c9d1;
+    background: #fff;
     outline: none;
-    font-size: 14px;
+    font-size: 15px;
     appearance: none;
     background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M6 9L1 4h10z"/></svg>');
     background-repeat: no-repeat;
     background-position: right 12px center;
     cursor: pointer;
     font-family: 'Poppins', sans-serif;
+    transition: all .2s ease;
+    box-sizing: border-box;
+    height: 44px;
+}
+
+.role-select:focus {
+    outline: none;
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43,108,176,.15);
 }
 
 /* Name fields side by side */
 .name-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 14px;
+    gap: 24px;
+    margin-bottom: 24px;
 }
-
 .name-row .input-box {
     margin-bottom: 0;
 }
 
-/* Loading Screen Styles */
+@media (max-width: 768px) {
+    .name-row {
+        grid-template-columns: 1fr;
+        gap: 19px;
+    }
+}
+
 #loadingOverlay {
     position: fixed;
     top: 0;
@@ -1002,16 +923,13 @@ body::-webkit-scrollbar {
     opacity: 0;
     transition: opacity 0.3s ease;
 }
-
 #loadingOverlay.show {
     display: flex;
     opacity: 1;
 }
-
 .loading-content {
     text-align: center;
 }
-
 .lgu-spinner {
     display: inline-block;
     font-size: 64px;
@@ -1021,16 +939,10 @@ body::-webkit-scrollbar {
     animation: spinLGU 2s linear infinite;
     text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
 }
-
 @keyframes spinLGU {
-    0% {
-        transform: rotateY(0deg);
-    }
-    100% {
-        transform: rotateY(360deg);
-    }
+    0% { transform: rotateY(0deg);}
+    100% { transform: rotateY(360deg);}
 }
-
 .loading-text {
     margin-top: 20px;
     color: #fff;
@@ -1038,17 +950,14 @@ body::-webkit-scrollbar {
     font-weight: 500;
     letter-spacing: 1px;
 }
-
 @media (max-width: 640px) {
     .lgu-spinner {
         font-size: 48px;
         letter-spacing: 6px;
     }
-    
     .loading-text {
         font-size: 14px;
     }
-    
 }
 
 /* Ensure the container is relative */
@@ -1075,51 +984,92 @@ body::-webkit-scrollbar {
     transform: translateY(0);
     background: #fff; /* Background color white */
 }
-
-/* Visible states */
 #emailError.show, #emailValid.show {
     opacity: 1;
     pointer-events: auto;
 }
-
-/* Error styles */
 #emailError {
-    background: #fff; /* Background color white */
+    background: #fff;
     border-left: 3px solid #d9534f;
     color: #d9534f;
 }
-
 #emailError.checking {
-    background: #fff; /* Background color white */
+    background: #fff;
     border-left-color: #2c64d7;
     color: #2c64d7;
 }
-
-/* Valid styles */
 #emailValid {
-    background: #fff; /* Background color white */
+    background: #fff;
     border-left: 3px solid #10b759;
     color: #10b759;
 }
 
+@media (max-width: 950px) {
+    .card {
+        padding: 20px 8vw;
+    }
+}
+
 /* ===== Mobile-first refinements (like reference design) ===== */
+@media (max-width: 768px) {
+    .nav { padding: 18px 13px; }
+    
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        background: rgba(0,0,0,.86);
+        border-radius: 12px;
+        padding: 15px;
+        flex-direction: column;
+        box-shadow: 0 4px 18px rgba(0,0,0,.25);
+        min-width: 160px;
+        z-index: 999;
+    }
+    .nav-links.show {
+        display: flex;
+    }
+    .nav-links a {
+        color: #fff !important;
+    }
+    .nav {
+        background: #fff;
+    }
+    .nav span {
+        color: black;  
+    }
+    .menu-toggle {
+        color: black;
+        margin-right: 10px;
+    }
+    .menu-toggle {
+        display: block;
+    }
+    .site-logo span {
+        font-size: 16px;
+        color: black;
+    }
+    .icon {
+        font-size: 18px;
+        right: 14px;
+        top: 65%;
+        height: 22px;
+    }
+    .input-box {
+        margin-bottom: 19px;
+    }
+}
+
 @media (max-width: 640px) {
     html, body {
         height: 100% !important;
         min-height: 100vh !important;
     }
-
-    body {
-        background: url("cityhall.jpeg") center/cover no-repeat fixed;
-        overflow-y: auto;
-        min-height: 100vh !important;
-        position: relative;
-    }
-
     body::before {
         content: "";
-        position: fixed !important; /* CHANGED from absolute to fixed on mobile */
-        top: 0; left: 0; right: 0; bottom: 0; /* Ensure overlay covers all */
+        position: fixed !important;
+        top: 0; left: 0; right: 0; bottom: 0;
         width: 100vw;
         height: 100vh;
         min-height: 100vh !important;
@@ -1130,61 +1080,66 @@ body::-webkit-scrollbar {
         background: rgba(0, 0, 0, 0.35);
         z-index: 0;
     }
-
-    .nav {
-        position: static;
-        padding: 20px 20px 8px;
-        background-color: transparent;
-        box-shadow: none;
-        border-bottom: none;
-        backdrop-filter: none;
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        background: rgba(0,0,0,.86);
+        border-radius: 12px;
+        padding: 15px;
+        flex-direction: column;
+        box-shadow: 0 4px 18px rgba(0,0,0,.25);
+        min-width: 160px;
+        z-index: 999;
     }
-    .site-logo span {
-        font-size: 16px;
-        color: #FFFFFF;
-    }
-
-    .wrapper {
-        margin-top: 0;
-        padding: 40px 20px 32px;
+    .nav-links.show {
         display: flex;
-        justify-content: center;
-        align-items: flex-start;
     }
-
+    .nav-links a {
+        color: #fff !important;
+    }
+    .nav {
+        background: #fff;
+    }
+    .nav span{
+        color: black;  
+    }
+    .menu-toggle {
+        color: black;
+        margin-right: 10px;
+        display: block;
+    }
+    .form-wrapper {
+        margin-top: 20px !important;
+        padding-left: 5vw !important;
+        padding-right: 5vw !important;
+        padding-top: 100px;
+    }
     .card {
-        width: 100%;
-        max-width: 450px;
-        margin: 0 auto;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
-        border-radius: 20px;
-        padding: 26px 20px 32px;
+        padding-left: 8vw !important;
+        padding-right: 8vw !important;
+        padding: 17px 5vw !important;
+        max-width: 99vw;
     }
-
     .icon-top {
         display: block;
         width: 120px;
         height: auto;
         margin: 16px auto 28px;
     }
-
     .title {
-        font-size: 32px;
-        margin: 0 0 6px;
-        text-align: center;
-        color: #000000;
-        font-weight: 700;
+        font-size: 30px;
+        padding: 18px 6vw;
+        margin-bottom: 20px;
     }
-
     .subtitle {
-        margin-top: 12px;
-        font-size: 16px;
-        color: #000000;
-        text-align: center;
+        font-size: 15px;
+        margin-bottom: 20px;
     }
 
     .input-box {
-        margin-bottom: 18px;
+        margin-bottom: 19px;
     }
 
     .input-box label {
@@ -1194,36 +1149,117 @@ body::-webkit-scrollbar {
 
     .input-box input,
     .input-box select {
-        height: 52px;
-        border-radius: 12px;
+        padding: 11px 38px 11px 14px;
+        border-radius: 11px;
         font-size: 15px;
     }
 
     .btn-primary {
-        width: 100%;
-        padding: 14px 20px;
-        border-radius: 999px;
-        font-size: 16px;
-        font-weight: 600;
-        background: linear-gradient(135deg, #6384d2, #285ccd);
-        border: none;
-        box-shadow: 0 7px 18px rgba(40, 92, 205, 0.28);
+        font-size: 17px;
+        padding: 14px 14px;
+        margin-bottom: 20px;
     }
-
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #4d76d6, #1f4fb3);
+    .btn-container {
+        justify-content: center;
     }
-
     .small-text {
         text-align: center;
         margin-top: 16px;
         font-size: 13px;
     }
- 
     .footer {
-    display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+        margin-top: 20px;
+        position: relative;
+    }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+
+    /* Input icon alignment for mobile */
+    .input-box input, .input-box select, .role-select {
+        height: 42px;
+        font-size: 15px;
+        padding: 11px 44px 11px 14px;
+    }
+    .icon {
+        font-size: 18px;
+        right: 13px;
+        top: 65%;
+        height: 22px;
     }
 }
+
+@media (max-width: 580px) {
+    .card {
+        padding: 12px 2vw;
+    }
+    .btn-primary {
+        font-size: 17px;
+        padding: 14px 14px;
+    }
+    .btn-container {
+        justify-content: center;
+    }
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+    }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+    /* Icon alignment on very small screens */
+    .icon {
+        font-size: 17px;
+        right: 10px;
+        height: 20px;
+    }
+}
+@media (max-width: 480px) {
+    .form-wrapper {
+        padding: 90px 3vw 24px;
+    }
+    .btn-container {
+        flex-direction: column;
+        gap: 0;
+        align-items: center;
+    }
+    .btn-primary {
+        padding: 14px 10px;
+        width: 90%;
+        font-size: 17px;
+    }
+    .btn-container {
+        align-items: center;
+    }
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+    }
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+    /* Icon alignment on extra small screens */
+    .icon {
+        font-size: 16px;
+        right: 8px;
+        height: 18px;
+    }
+}
+</style>
 </style>
 </head>
 
@@ -1247,9 +1283,10 @@ body::-webkit-scrollbar {
     <div class="nav-links">
         <a href="#" class="active">Home</a>
     </div>
+    <div class="menu-toggle">☰</div>
 </header>
 
-<div class="wrapper">
+<div class="form-wrapper">
     <div class="card">
         <img src="logocityhall.png" class="icon-top">
         <h2 class="title">Create Employee Account</h2>
@@ -1291,7 +1328,9 @@ body::-webkit-scrollbar {
                 <span class="icon">🔒</span>
                 <span class="small-text" style="color:#555;font-size:12px;display:block;margin-top:4px;">Temporary password will be generated and shown after creation.</span>
             </div>
-            <button type="submit" name="create_account" title="Create your account" class="btn-primary">Create Account</button>
+            <div class="btn-container">
+                <button type="submit" name="create_account" title="Create your account" class="btn-primary">Create Account</button>
+            </div>
             <p class="small-text">
                 Already registered?
                 <a href="login.php" class="link">Sign In</a>
@@ -1552,6 +1591,13 @@ emailInput.addEventListener('blur', async function() {
 });
 </script>
 
+<script>
+document.querySelector('.menu-toggle')
+    .addEventListener('click', () => {
+        document.querySelector('.nav-links').classList.toggle('show');
+    });
+</script>
+
 <footer class="footer">
     <div class="footer-links">
         <a href="#">Privacy Policy</a>
@@ -1560,5 +1606,6 @@ emailInput.addEventListener('blur', async function() {
     </div>
     <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
+
 </body>
 </html>
