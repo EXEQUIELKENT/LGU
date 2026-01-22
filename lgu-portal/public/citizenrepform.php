@@ -884,11 +884,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="input-group full-width">
                     <label for="evidence">Evidence - Upload Images (Multiple files accepted)</label>
                     <div class="evidence-upload-wrapper">
-                        <!-- 
-                            We will have two file inputs:
-                            1. Standard input for all platforms (for gallery/multiple upload)
-                            2. A camera-only input (for camera capture on mobile, disabled otherwise)
-                        -->
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
                         <input 
                             type="file" 
@@ -898,7 +893,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             capture="environment" 
                             style="display:none;"
                         >
-                        <!-- Camera Button (mobile only) -->
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
                     <small id="cameraHelperText">Tap 📷 to capture</small>
@@ -934,104 +928,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.querySelector('.nav-links').classList.toggle('show');
             });
 
-        // ===== IMAGE PREVIEW WITH REMOVE BUTTON & FULL IMAGE VIEW =====
+        // ===== IMAGE PREVIEW WITH REMOVE BUTTON & FULL IMAGE VIEW - UNIFIED FILE LIST LOGIC! =====
         const evidenceInput = document.getElementById('evidence');
         const cameraInput = document.getElementById('evidence-camera');
         const previewDiv = document.getElementById('image-preview');
 
-        function renderImagePreview() {
-            previewDiv.innerHTML = '';
-            // Merge files from both file inputs for preview
+        // Unified file list across both inputs
+        function getAllFiles() {
             const files = [];
-            if (evidenceInput && evidenceInput.files && evidenceInput.files.length > 0) {
-                Array.from(evidenceInput.files).forEach(f => files.push(f));
-            }
-            if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
-                Array.from(cameraInput.files).forEach(f => files.push(f));
-            }
-            files.forEach((file, index) => {
-                if (!file.type.startsWith('image/')) return;
-
-                const reader = new FileReader();
-                reader.onload = e => {
-
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'preview-item';
-
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.title = 'Click to view full image';
-
-                    // FULL IMAGE VIEW
-                    img.addEventListener('click', () => {
-                        const modalBackdrop = document.createElement('div');
-                        modalBackdrop.style.position = 'fixed';
-                        modalBackdrop.style.inset = '0';
-                        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
-                        modalBackdrop.style.display = 'flex';
-                        modalBackdrop.style.alignItems = 'center';
-                        modalBackdrop.style.justifyContent = 'center';
-                        modalBackdrop.style.zIndex = '8000';
-
-                        const fullImg = document.createElement('img');
-                        fullImg.src = e.target.result;
-                        fullImg.style.maxWidth = '90%';
-                        fullImg.style.maxHeight = '90%';
-                        fullImg.style.borderRadius = '12px';
-
-                        modalBackdrop.appendChild(fullImg);
-                        document.body.appendChild(modalBackdrop);
-
-                        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
-                    });
-
-                    // REMOVE BUTTON
-                    const removeBtn = document.createElement('div');
-                    removeBtn.className = 'preview-remove';
-                    removeBtn.innerHTML = '&times;';
-
-                    removeBtn.addEventListener('click', (ev) => {
-                        ev.stopPropagation();
-                        removeImageAtIndex(index);
-                    });
-
-                    wrapper.appendChild(img);
-                    wrapper.appendChild(removeBtn);
-                    previewDiv.appendChild(wrapper);
-
-                };
-
-                reader.readAsDataURL(file);
-            });
+            if (evidenceInput && evidenceInput.files) Array.from(evidenceInput.files).forEach(f => files.push({input:'evidence', file:f}));
+            if (cameraInput && cameraInput.files) Array.from(cameraInput.files).forEach(f => files.push({input:'camera', file:f}));
+            return files;
         }
 
-        // Because we have two inputs, we need synchronization:
+        // Update previews AND merge files
+        function renderImagePreview() {
+            previewDiv.innerHTML = '';
+            const allFiles = getAllFiles();
+            const dtEvidence = new DataTransfer();
+            const dtCamera = new DataTransfer();
+
+            allFiles.forEach((fobj, index) => {
+                if (!fobj.file.type.startsWith('image/')) return;
+
+                // Preview wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-item';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(fobj.file);
+                img.title = 'Click to view full image';
+
+                // Full image view
+                img.addEventListener('click', () => {
+                    const modalBackdrop = document.createElement('div');
+                    modalBackdrop.style.position = 'fixed';
+                    modalBackdrop.style.inset = '0';
+                    modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
+                    modalBackdrop.style.display = 'flex';
+                    modalBackdrop.style.alignItems = 'center';
+                    modalBackdrop.style.justifyContent = 'center';
+                    modalBackdrop.style.zIndex = '8000';
+
+                    const fullImg = document.createElement('img');
+                    fullImg.src = img.src;
+                    fullImg.style.maxWidth = '90%';
+                    fullImg.style.maxHeight = '90%';
+                    fullImg.style.borderRadius = '12px';
+
+                    modalBackdrop.appendChild(fullImg);
+                    document.body.appendChild(modalBackdrop);
+
+                    modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
+                });
+
+                // Remove button
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'preview-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeImageAtIndex(index);
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(removeBtn);
+                previewDiv.appendChild(wrapper);
+
+                // Add to DataTransfer for each input
+                if (fobj.input === 'evidence') dtEvidence.items.add(fobj.file);
+                else dtCamera.items.add(fobj.file);
+            });
+
+            // Update input files
+            evidenceInput.files = dtEvidence.files;
+            cameraInput.files = dtCamera.files;
+        }
+
+        // Remove image at index
         function removeImageAtIndex(removeIndex) {
-            // Reconstruct files from both file inputs
-            const files = [];
-            if (evidenceInput && evidenceInput.files && evidenceInput.files.length > 0) {
-                Array.from(evidenceInput.files).forEach(f => files.push({input: 'evidence', file: f}));
-            }
-            if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
-                Array.from(cameraInput.files).forEach(f => files.push({input: 'camera', file: f}));
-            }
-            // Remove at index
+            const files = getAllFiles();
             files.splice(removeIndex, 1);
-            // Then re-set the files for each input
+
             const dtEvidence = new DataTransfer();
             const dtCamera = new DataTransfer();
             files.forEach(fobj => {
-                if (fobj.input === 'evidence') {
-                    dtEvidence.items.add(fobj.file);
-                } else if (fobj.input === 'camera') {
-                    dtCamera.items.add(fobj.file);
-                }
+                if (fobj.input === 'evidence') dtEvidence.items.add(fobj.file);
+                else dtCamera.items.add(fobj.file);
             });
             evidenceInput.files = dtEvidence.files;
             cameraInput.files = dtCamera.files;
+
             renderImagePreview();
         }
 
+        // Listen to changes on both inputs
         if (evidenceInput) {
             evidenceInput.addEventListener('change', renderImagePreview);
         }
@@ -1075,17 +1066,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             form.addEventListener('submit', e => {
                 if (realSubmit) return; // allow only after modal confirm
                 e.preventDefault();
-
-                // We must move file from cameraInput to evidenceInput dynamically, for upload compatibility.
-                // If there is a picture in cameraInput, append it to evidenceInput's file list before submit.
-                if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
-                    const cameraFiles = Array.from(cameraInput.files);
-                    const origFiles = evidenceInput && evidenceInput.files ? Array.from(evidenceInput.files) : [];
-                    const dt = new DataTransfer();
-                    origFiles.forEach(f => dt.items.add(f));
-                    cameraFiles.forEach(f => dt.items.add(f));
-                    if (evidenceInput) evidenceInput.files = dt.files;
-                }
                 showSubmitModal();
             });
         }
@@ -1179,10 +1159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // On DOMContentLoaded, ensure previews reflect anything in the file inputs
         document.addEventListener('DOMContentLoaded', function() {
-            if (
-                (evidenceInput && evidenceInput.files.length > 0) ||
-                (cameraInput && cameraInput.files.length > 0)
-            ) renderImagePreview();
+            renderImagePreview();
         });
         // No longer clear localStorage here; handled through notif-popup auto-clear on next page load.
     </script>
@@ -1195,7 +1172,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if(form) form.reset();
                 var previewDiv = document.getElementById('image-preview');
                 if(previewDiv) previewDiv.innerHTML = '';
-                // Also clear the special camera input
                 var cameraInput = document.getElementById('evidence-camera');
                 if (cameraInput) cameraInput.value = "";
             });
