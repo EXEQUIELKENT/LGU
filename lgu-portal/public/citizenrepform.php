@@ -32,15 +32,6 @@ function showNotification() {
 
 $error_message = '';
 
-$basePath = 'lgu-portal/public/';
-$loginUrl = 'citizenrepform.php';
-
-if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
-    $basePath = 'lgu-portal/public/';
-    $loginUrl = 'index.php';
-}
-
-
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $infrastructure = isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '';
