@@ -122,7 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-sizing: border-box;
             font-family: 'Poppins', sans-serif;
         }
-
         body {
             margin: 0;
             padding: 0;
@@ -176,7 +175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #888;
             cursor: pointer;
         }
-
         .nav {
             width: 100%;
             padding: 18px 60px;
@@ -276,7 +274,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .stat-card .number { font-size: 28px; }
             .card-header h2 { font-size: 1.0rem; }
         }
-
         .form-wrapper {
             position: relative;
             z-index: 1;
@@ -285,7 +282,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: flex-start;
             padding: 110px 16px 40px;
         }
-
         .report-card {
             width: 100%;
             max-width: 900px;
@@ -305,7 +301,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 700;
             grid-column: 1 / -1;
         }
-
         .report-card form {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -366,12 +361,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             align-items: center;
         }
-
         .evidence-upload-wrapper input[type="file"] {
             flex: 1;
             padding-right: 55px;
         }
-
         #cameraBtn {
             position: absolute;
             right: 12px;
@@ -412,10 +405,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         /* === END CAMERA ENHANCEMENT === */
 
-        /* === IMAGE PREVIEW WITH REMOVE BUTTON === */
-        .preview-item {
+        /* === IMAGE PREVIEW WITH REMOVE BUTTON & responsive layout fix === */
+        #image-preview {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap; /* 🔹 Add this to wrap images on mobile */
+        }
+        #image-preview .preview-item {
+            flex: 1 1 45%; /* allow 2 images per row on mobile */
+            max-width: 45%; /* prevents fourth image from overflowing */
             position: relative;
             display: inline-block;
+        }
+        @media (min-width: 769px) {
+            #image-preview .preview-item {
+                flex: 0 0 auto;
+                max-width: 80px;
+            }
         }
         .preview-item img {
             width: 80px;
@@ -423,6 +430,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             object-fit: cover;
             border-radius: 8px;
             cursor: pointer;
+            border: 1px solid #ccc;
+            background: #f1f1f1;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.07);
         }
         .preview-remove {
             position: absolute;
@@ -451,7 +461,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 line-height: 26px;
             }
         }
-        /* === END IMAGE PREVIEW WITH REMOVE BUTTON === */
+        /* === END IMAGE PREVIEW WITH REMOVE BUTTON & responsive layout fix === */
 
         .alert {
             padding: 14px;
@@ -608,11 +618,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         .nav { z-index: 1000; }
-        #image-preview img {
-            border: 1px solid #ccc;
-            background: #f1f1f1;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.07);
-        }
+
         #submitAlertBackdrop {
             position: fixed;
             z-index: 5000;
@@ -710,8 +716,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         #submitAlertModal .alert-btn.logout:hover {
             background: #3bb46a;
         }
-
-        /* LOCATION AUTOCOMPLETE DROPDOWN */
         .location-suggestions {
             position: absolute;
             top: 100%;
@@ -738,81 +742,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .location-suggestions div:hover {
             background: #f1f5ff;
         }
-        /* FOOTER — same design as NAVBAR */
         .footer {
             width: 100%;
             padding: 26px 0 22px;
-
             background: rgba(255,255,255,0.15);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-
             border-top: 1px solid rgba(255,255,255,0.18);
             box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
-
-            margin-top: auto;      /* ⭐ KEY */
+            margin-top: auto;
             flex-shrink: 0;
-            position: relative;    /* ❌ NOT fixed */
+            position: relative;
             z-index: 1;
         }
-
-
-        /* Left-aligned links */
         .footer-links {
             position: absolute;
-            left: 60px;  /* same padding as header */
+            left: 60px;
         }
-
         .footer-links a {
             margin-right: 25px;
-            text-decoration: none;   /* ⛔ Removes underline */
+            text-decoration: none;
             cursor: pointer;
             color: #fff;
             opacity: .8;
             transition: .2s;
         }
-
         .footer-links a:hover {
             opacity: 1;
-            text-decoration: none;   /* ⛔ Removes underline */
+            text-decoration: none;
             font-weight: 600;
         }
-
-        /* Center copyright */
         .footer-logo {
             text-align: center;
             font-weight: 500;
             color: #fff;
         }
-        /* FOOTER FIXES FOR MOBILE */
         .footer {
             display: flex;
-            flex-direction: row;       /* desktop: horizontal layout */
+            flex-direction: row;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;           /* allow wrapping on small screens */
+            flex-wrap: wrap;
             padding: 20px 15px;
         }
-
         .footer-links {
-            position: static;          /* remove absolute positioning */
+            position: static;
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
             margin-bottom: 0;
         }
-
         .footer-links a {
             margin: 0;
         }
-
         .footer-logo {
             width: 100%;
             text-align: center;
             margin-top: 12px;
         }
-
-        /* ===== DESKTOP: REMOVE CAMERA FUNCTIONALITY VISUALLY ===== */
         @media (min-width: 769px) {
             #cameraBtn {
                 display: none !important;
@@ -896,7 +883,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
                     <small id="cameraHelperText">Tap 📷 to capture</small>
-                    <div id="image-preview" style="display:flex; gap:10px; margin-top:10px;"></div>
+                    <div id="image-preview" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
                 </div>
                 <!-- End Revised Evidence Upload Section -->
                 <div class="btn-container">
@@ -922,6 +909,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        // ===== JS notification helper for image count error =====
+        function showJsNotification(type, message) {
+            const notif = document.createElement('div');
+            notif.className = 'notif-popup notif-' + type;
+            notif.innerHTML = `<span class='notif-icon'>${type==='success'?'✔️':'❌'}</span>
+                               <span class='notif-message'>${message}</span>
+                               <button class='notif-close'>&times;</button>`;
+            document.body.appendChild(notif);
+
+            notif.querySelector('.notif-close').addEventListener('click', () => {
+                notif.style.opacity = '0';
+                setTimeout(()=> notif.remove(), 400);
+            });
+
+            setTimeout(() => {
+                notif.style.opacity = '0';
+                setTimeout(()=> notif.remove(), 400);
+            }, 2200);
+        }
+
         // ===== MENU TOGGLE =====
         document.querySelector('.menu-toggle')
             .addEventListener('click', () => {
@@ -948,7 +955,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Enforce max limit
             if (dt.files.length > MAX_FILES) {
-                alert(`You can only upload up to ${MAX_FILES} images.`);
+                showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
                 // Keep only the first MAX_FILES
                 const limitedDT = new DataTransfer();
                 for (let i = 0; i < MAX_FILES; i++) {
