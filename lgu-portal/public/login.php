@@ -648,65 +648,65 @@ body {
 }
 
 .nav {
-            width: 100%;
-            padding: 18px 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.87);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom: 2px solid rgba(0, 0, 0, 0.6);
-            box-shadow: 0 4px 25px rgba(0,0,0,0.25);
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 100;
-        }
-        .site-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: black;
-            font-weight: 600;
-        }
-        .site-logo img {
-            width: 40px; height: auto; border-radius: 8px;
-        }
-        .nav a {
-            margin-left: 25px;
-            color: black;
-            text-decoration: none;
-            font-weight: 500;
-            opacity: 0.85;
-            transition: 0.2s;
-        }
-        .nav-links a {
-            margin-left: 25px;
-            text-decoration: none;
-            cursor: pointer;
-            color: black;
-            opacity: .8;
-            transition: .2s;
-        }
-        .nav-links a.active {
-            opacity: 1;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .nav-links a:hover {
-            opacity: 1;
-            text-decoration: none;
-        }
-        .menu-toggle {
-            display: none;
-            font-size: 26px;
-            cursor: pointer;
-            color: black;
-            background: none;
-            border: none;
-            margin-left: 18px;
-        }
+    width: 100%;
+    padding: 18px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.87);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.6);
+    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+.site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: black;
+    font-weight: 600;
+}
+.site-logo img {
+    width: 40px; height: auto; border-radius: 8px;
+}
+.nav a {
+    margin-left: 25px;
+    color: black;
+    text-decoration: none;
+    font-weight: 500;
+    opacity: 0.85;
+    transition: 0.2s;
+}
+.nav-links a {
+    margin-left: 25px;
+    text-decoration: none;
+    cursor: pointer;
+    color: black;
+    opacity: .8;
+    transition: .2s;
+}
+.nav-links a.active {
+    opacity: 1;
+    text-decoration: none;
+    font-weight: 600;
+}
+.nav-links a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+.menu-toggle {
+    display: none;
+    font-size: 26px;
+    cursor: pointer;
+    color: black;
+    background: none;
+    border: none;
+    margin-left: 18px;
+}
 
 /* FORM WRAPPER - matching citizenrepform structure */
 .form-wrapper {
@@ -842,12 +842,12 @@ body {
             width: 100%;
             padding: 26px 0 22px;
 
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
-            border-top: 1px solid rgba(255,255,255,0.18);
-            box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
 
             margin-top: auto;      /* ⭐ KEY */
             flex-shrink: 0;
@@ -862,20 +862,20 @@ body {
             left: 60px;  /* same padding as header */
         }
 
-        .footer-links a {
-            margin-right: 25px;
-            text-decoration: none;   /* ⛔ Removes underline */
-            cursor: pointer;
-            color: #fff;
-            opacity: .8;
-            transition: .2s;
-        }
+.footer-links a {
+    margin-right: 25px;
+    text-decoration: none;   /* ⛔ Removes underline */
+    cursor: pointer;
+    color: #fff;
+    opacity: .8;
+    transition: .2s;
+}
 
-        .footer-links a:hover {
-            opacity: 1;
-            text-decoration: none;   /* ⛔ Removes underline */
-            font-weight: 600;
-        }
+.footer-links a:hover {
+    opacity: 1;
+    text-decoration: none;   /* ⛔ Removes underline */
+    font-weight: 600;
+}
 
         /* Center copyright */
         .footer-logo {

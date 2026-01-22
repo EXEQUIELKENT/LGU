@@ -11006,4 +11006,44 @@ header.masthead h1, header.masthead .h1 {
 }
 #portfolio .container-fluid .portfolio-box:hover .portfolio-box-caption, #portfolio .container-sm .portfolio-box:hover .portfolio-box-caption, #portfolio .container-md .portfolio-box:hover .portfolio-box-caption, #portfolio .container-lg .portfolio-box:hover .portfolio-box-caption, #portfolio .container-xl .portfolio-box:hover .portfolio-box-caption, #portfolio .container-xxl .portfolio-box:hover .portfolio-box-caption {
   opacity: 1;
+  /* Mobile Navigation Styles - Add after existing #mainNav styles */
+@media (max-width: 991.98px) {
+  #mainNav .navbar-toggler {
+    border: none;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+  }
+  
+  #mainNav .navbar-collapse {
+    position: absolute;
+    top: 100%;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.86);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 10px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+    min-width: 160px;
+    z-index: 999;
+  }
+  
+  #mainNav .navbar-nav {
+    flex-direction: column;
+  }
+  
+  #mainNav .navbar-nav .nav-item .nav-link {
+    color: #fff !important;
+    padding: 0.5rem 0;
+  }
+  
+  #mainNav .navbar-nav .nav-item .nav-link:hover,
+  #mainNav .navbar-nav .nav-item .nav-link:active {
+    color: #f4623a !important;
+  }
+  
+  #mainNav .navbar-nav .nav-item .nav-link.active {
+    color: #6384d2 !important;
+  }
+}
 }
