@@ -819,8 +819,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span>InfraGovServices - Infrastructure and Utilities</span>
         </div>
         <div class="nav-links">
-            <a href="lgu-portal/public/login.php">Log in</a>
-            <a href="lgu-portal/public/citizencimm.php">Home</a>
+            <a href="login.php">Log in</a>
+            <a href="citizencimm.php">Home</a>
             <a href="#" class="active">Requests</a>
             <a href="about.php">About</a>
         </div>
