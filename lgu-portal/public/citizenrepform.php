@@ -884,7 +884,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="input-group full-width">
                     <label for="evidence">Evidence - Upload Images (Multiple files accepted)</label>
                     <div class="evidence-upload-wrapper">
+                        <!-- 
+                            We will have two file inputs:
+                            1. Standard input for all platforms (for gallery/multiple upload)
+                            2. A camera-only input (for camera capture on mobile, disabled otherwise)
+                        -->
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
+                        <input 
+                            type="file" 
+                            id="evidence-camera" 
+                            name="evidence[]" 
+                            accept="image/*" 
+                            capture="environment" 
+                            style="display:none;"
+                        >
                         <!-- Camera Button (mobile only) -->
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
@@ -923,12 +936,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // ===== IMAGE PREVIEW WITH REMOVE BUTTON & FULL IMAGE VIEW =====
         const evidenceInput = document.getElementById('evidence');
+        const cameraInput = document.getElementById('evidence-camera');
         const previewDiv = document.getElementById('image-preview');
 
         function renderImagePreview() {
             previewDiv.innerHTML = '';
-
-            Array.from(evidenceInput.files).forEach((file, index) => {
+            // Merge files from both file inputs for preview
+            const files = [];
+            if (evidenceInput && evidenceInput.files && evidenceInput.files.length > 0) {
+                Array.from(evidenceInput.files).forEach(f => files.push(f));
+            }
+            if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
+                Array.from(cameraInput.files).forEach(f => files.push(f));
+            }
+            files.forEach((file, index) => {
                 if (!file.type.startsWith('image/')) return;
 
                 const reader = new FileReader();
@@ -984,21 +1005,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         }
 
+        // Because we have two inputs, we need synchronization:
         function removeImageAtIndex(removeIndex) {
-            const dt = new DataTransfer();
-
-            Array.from(evidenceInput.files).forEach((file, index) => {
-                if (index !== removeIndex) {
-                    dt.items.add(file);
+            // Reconstruct files from both file inputs
+            const files = [];
+            if (evidenceInput && evidenceInput.files && evidenceInput.files.length > 0) {
+                Array.from(evidenceInput.files).forEach(f => files.push({input: 'evidence', file: f}));
+            }
+            if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
+                Array.from(cameraInput.files).forEach(f => files.push({input: 'camera', file: f}));
+            }
+            // Remove at index
+            files.splice(removeIndex, 1);
+            // Then re-set the files for each input
+            const dtEvidence = new DataTransfer();
+            const dtCamera = new DataTransfer();
+            files.forEach(fobj => {
+                if (fobj.input === 'evidence') {
+                    dtEvidence.items.add(fobj.file);
+                } else if (fobj.input === 'camera') {
+                    dtCamera.items.add(fobj.file);
                 }
             });
-
-            evidenceInput.files = dt.files;
+            evidenceInput.files = dtEvidence.files;
+            cameraInput.files = dtCamera.files;
             renderImagePreview();
         }
 
         if (evidenceInput) {
             evidenceInput.addEventListener('change', renderImagePreview);
+        }
+        if (cameraInput) {
+            cameraInput.addEventListener('change', renderImagePreview);
         }
 
         // ====== CAMERA LOGIC (Mobile native only) =======
@@ -1009,11 +1047,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Only attach click event on mobile; CSS hides on desktop.
-        if (cameraBtn && evidenceInput && isMobile()) {
+        if (cameraBtn && isMobile() && cameraInput) {
             cameraBtn.addEventListener('click', () => {
-                evidenceInput.click(); // Open native camera/file picker
+                cameraInput.click(); // Open native camera only
             });
         }
+
         // ====== END CAMERA LOGIC ======
 
         // ===== AUTO-FORMAT PHONE NUMBER =====
@@ -1036,6 +1075,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             form.addEventListener('submit', e => {
                 if (realSubmit) return; // allow only after modal confirm
                 e.preventDefault();
+
+                // We must move file from cameraInput to evidenceInput dynamically, for upload compatibility.
+                // If there is a picture in cameraInput, append it to evidenceInput's file list before submit.
+                if (cameraInput && cameraInput.files && cameraInput.files.length > 0) {
+                    const cameraFiles = Array.from(cameraInput.files);
+                    const origFiles = evidenceInput && evidenceInput.files ? Array.from(evidenceInput.files) : [];
+                    const dt = new DataTransfer();
+                    origFiles.forEach(f => dt.items.add(f));
+                    cameraFiles.forEach(f => dt.items.add(f));
+                    if (evidenceInput) evidenceInput.files = dt.files;
+                }
                 showSubmitModal();
             });
         }
@@ -1127,9 +1177,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
 
-        // On DOMContentLoaded, ensure previews reflect anything in the file input
+        // On DOMContentLoaded, ensure previews reflect anything in the file inputs
         document.addEventListener('DOMContentLoaded', function() {
-            if (evidenceInput && evidenceInput.files.length > 0) renderImagePreview();
+            if (
+                (evidenceInput && evidenceInput.files.length > 0) ||
+                (cameraInput && cameraInput.files.length > 0)
+            ) renderImagePreview();
         });
         // No longer clear localStorage here; handled through notif-popup auto-clear on next page load.
     </script>
@@ -1142,6 +1195,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if(form) form.reset();
                 var previewDiv = document.getElementById('image-preview');
                 if(previewDiv) previewDiv.innerHTML = '';
+                // Also clear the special camera input
+                var cameraInput = document.getElementById('evidence-camera');
+                if (cameraInput) cameraInput.value = "";
             });
         <?php endif; ?>
     </script>
