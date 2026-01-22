@@ -72,11 +72,13 @@ define('OTP_VALIDITY_SECONDS', 60 * 60 * 12);
 $basePath = '';
 $loginUrl = 'login.php';
 $employeeUrl = 'employee.php';
+$citizencimmUrl = 'citizencimm.php';
 
 if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
     $basePath = 'lgu-portal/public/';
     $loginUrl = 'index.php';
     $employeeUrl = 'lgu-portal/public/employee.php';
+    $citizencimmUrl = 'lgu-portal/public/citizen.php';
 }
 
 function setNotification($type, $message) {
