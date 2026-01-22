@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-left: 25px;
             text-decoration: none;
             cursor: pointer;
-            color: black;
+            color: blwgack;
             opacity: .8;
             transition: .2s;
         }
@@ -248,6 +248,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 box-shadow: 0 4px 18px rgba(0,0,0,.25);
                 min-width: 160px;
                 z-index: 999;
+            }
+            /* ----- MAKE NAVLINKS WHITE TEXT WHEN MOBILE MENU TOGGLE ----- */
+            .nav-links a {
+                color: #fff !important;
             }
             .nav-links.show {
                 display: flex;
@@ -347,6 +351,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 15px;
             margin-top: 2px;
         }
+        /* === CAMERA BUTTON OVERRIDE/ENHANCEMENT === */
+        .evidence-upload-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .evidence-upload-wrapper input[type="file"] {
+            flex: 1;
+            padding-right: 55px;
+        }
+
+        #cameraBtn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #2b6cb0;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        #cameraBtn:hover {
+            background: #245a96;
+        }
+        @media (max-width: 768px) {
+            #cameraBtn {
+                width: 42px;
+                height: 42px;
+                font-size: 22px;
+            }
+        }
+        /* Camera helper text — mobile only */
+        #cameraHelperText {
+            display: none;
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+        @media (max-width: 768px) {
+            #cameraHelperText { display: block; }
+        }
+        /* === END CAMERA ENHANCEMENT === */
+
+        /* === IMAGE PREVIEW WITH REMOVE BUTTON === */
+        .preview-item {
+            position: relative;
+            display: inline-block;
+        }
+        .preview-item img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .preview-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            border-radius: 50%;
+            font-size: 14px;
+            line-height: 22px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 5;
+        }
+        .preview-remove:hover {
+            background: #d73f52;
+        }
+        @media (max-width: 768px) {
+            .preview-remove {
+                width: 26px;
+                height: 26px;
+                font-size: 16px;
+                line-height: 26px;
+            }
+        }
+        /* === END IMAGE PREVIEW WITH REMOVE BUTTON === */
+
         .alert {
             padding: 14px;
             border-radius: 12px;
@@ -705,6 +802,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             margin-top: 12px;
         }
+
+        /* ===== DESKTOP: REMOVE CAMERA FUNCTIONALITY VISUALLY ===== */
+        @media (min-width: 769px) {
+            #cameraBtn {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -767,12 +871,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="issue">Issue / Damage Description *</label>
                     <textarea id="issue" name="issue" placeholder="Describe the problem in detail..." required></textarea>
                 </div>
+                <!-- Begin Revised Evidence Upload Section -->
                 <div class="input-group full-width">
                     <label for="evidence">Evidence - Upload Images (Multiple files accepted)</label>
-                    <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
-                    <small style="color: #666; display: block; margin-top: 5px;">Upload up to 3 different angles if possible</small>
+                    <div class="evidence-upload-wrapper">
+                        <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
+                        <!-- Camera Button (mobile only) -->
+                        <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
+                    </div>
+                    <small id="cameraHelperText">Tap 📷 to capture</small>
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px;"></div>
                 </div>
+                <!-- End Revised Evidence Upload Section -->
                 <div class="btn-container">
                     <button type="submit" class="btn-primary" id="submit-btn">Submit Request</button>
                 </div>
@@ -802,64 +912,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.querySelector('.nav-links').classList.toggle('show');
             });
 
-        // ===== IMAGE PREVIEW WITH CLICK =====
+        // ===== IMAGE PREVIEW WITH REMOVE BUTTON & FULL IMAGE VIEW =====
         const evidenceInput = document.getElementById('evidence');
         const previewDiv = document.getElementById('image-preview');
 
-        if (evidenceInput) {
-            evidenceInput.addEventListener('change', () => {
-                previewDiv.innerHTML = '';
-                Array.from(evidenceInput.files).forEach((file, index) => {
-                    if (!file.type.startsWith('image/')) return;
+        function renderImagePreview() {
+            previewDiv.innerHTML = '';
 
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        img.style.width = '80px';
-                        img.style.height = '80px';
-                        img.style.objectFit = 'cover';
-                        img.style.borderRadius = '8px';
-                        img.style.cursor = 'pointer';
-                        img.title = `Click to view full image`;
+            Array.from(evidenceInput.files).forEach((file, index) => {
+                if (!file.type.startsWith('image/')) return;
 
-                        // On click: open full image in a modal/lightbox
-                        img.addEventListener('click', () => {
-                            const modalBackdrop = document.createElement('div');
-                            modalBackdrop.style.position = 'fixed';
-                            modalBackdrop.style.top = 0;
-                            modalBackdrop.style.left = 0;
-                            modalBackdrop.style.width = '100vw';
-                            modalBackdrop.style.height = '100vh';
-                            modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
-                            modalBackdrop.style.display = 'flex';
-                            modalBackdrop.style.alignItems = 'center';
-                            modalBackdrop.style.justifyContent = 'center';
-                            modalBackdrop.style.zIndex = 8000;
-                            modalBackdrop.style.cursor = 'pointer';
+                const reader = new FileReader();
+                reader.onload = e => {
 
-                            const fullImg = document.createElement('img');
-                            fullImg.src = e.target.result;
-                            fullImg.style.maxWidth = '90%';
-                            fullImg.style.maxHeight = '90%';
-                            fullImg.style.borderRadius = '12px';
-                            fullImg.style.boxShadow = '0 12px 28px rgba(0,0,0,0.25)';
-                            fullImg.style.cursor = 'auto';
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'preview-item';
 
-                            modalBackdrop.appendChild(fullImg);
-                            document.body.appendChild(modalBackdrop);
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.title = 'Click to view full image';
 
-                            modalBackdrop.addEventListener('click', () => {
-                                modalBackdrop.remove();
-                            });
-                        });
+                    // FULL IMAGE VIEW
+                    img.addEventListener('click', () => {
+                        const modalBackdrop = document.createElement('div');
+                        modalBackdrop.style.position = 'fixed';
+                        modalBackdrop.style.inset = '0';
+                        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
+                        modalBackdrop.style.display = 'flex';
+                        modalBackdrop.style.alignItems = 'center';
+                        modalBackdrop.style.justifyContent = 'center';
+                        modalBackdrop.style.zIndex = '8000';
 
-                        previewDiv.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                });
+                        const fullImg = document.createElement('img');
+                        fullImg.src = e.target.result;
+                        fullImg.style.maxWidth = '90%';
+                        fullImg.style.maxHeight = '90%';
+                        fullImg.style.borderRadius = '12px';
+
+                        modalBackdrop.appendChild(fullImg);
+                        document.body.appendChild(modalBackdrop);
+
+                        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
+                    });
+
+                    // REMOVE BUTTON
+                    const removeBtn = document.createElement('div');
+                    removeBtn.className = 'preview-remove';
+                    removeBtn.innerHTML = '&times;';
+
+                    removeBtn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        removeImageAtIndex(index);
+                    });
+
+                    wrapper.appendChild(img);
+                    wrapper.appendChild(removeBtn);
+                    previewDiv.appendChild(wrapper);
+
+                };
+
+                reader.readAsDataURL(file);
             });
         }
+
+        function removeImageAtIndex(removeIndex) {
+            const dt = new DataTransfer();
+
+            Array.from(evidenceInput.files).forEach((file, index) => {
+                if (index !== removeIndex) {
+                    dt.items.add(file);
+                }
+            });
+
+            evidenceInput.files = dt.files;
+            renderImagePreview();
+        }
+
+        if (evidenceInput) {
+            evidenceInput.addEventListener('change', renderImagePreview);
+        }
+
+        // ====== CAMERA LOGIC (Mobile native only) =======
+        const cameraBtn = document.getElementById('cameraBtn');
+
+        function isMobile() {
+            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+
+        // Only attach click event on mobile; CSS hides on desktop.
+        if (cameraBtn && evidenceInput && isMobile()) {
+            cameraBtn.addEventListener('click', () => {
+                evidenceInput.click(); // Open native camera/file picker
+            });
+        }
+        // ====== END CAMERA LOGIC ======
 
         // ===== AUTO-FORMAT PHONE NUMBER =====
         const phoneInput = document.getElementById('contact_number');
@@ -972,6 +1118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
 
+        // On DOMContentLoaded, ensure previews reflect anything in the file input
+        document.addEventListener('DOMContentLoaded', function() {
+            if (evidenceInput && evidenceInput.files.length > 0) renderImagePreview();
+        });
         // No longer clear localStorage here; handled through notif-popup auto-clear on next page load.
     </script>
 

@@ -505,6 +505,9 @@ if ($maintenance_result) {
             .nav-links.show {
                 display: flex;
             }
+            .nav-links a {
+                color: #fff !important;
+            }
             .nav {
             background: #fff;    /* softer glass */
             }
