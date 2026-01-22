@@ -761,7 +761,7 @@ if ($maintenance_result) {
     </div>
     <div class="nav-links">
         <a href="#" class="active">Home</a>
-        <a href="../citizenrepform.php">Requests</a>
+        <a href="/lgu-portal/public/citizenrepform.php">Requests</a>
         <a href="about.php">About</a>
     </div>
     <div class="menu-toggle">☰</div>
