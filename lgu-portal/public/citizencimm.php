@@ -5,6 +5,7 @@ require_once 'db.php';
 // Determine base path and redirect URLs
 $basePath = '';
 $loginUrl = 'citizencimm.php';
+$BASE_URL = '/lgu-portal/public/';
 
 //if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
     //$basePath = 'lgu-portal/public/';
@@ -763,9 +764,9 @@ if ($maintenance_result) {
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <a href="lgu-portal/public/login.php">Log in</a>
+        <a href="<?= $BASE_URL ?>login.php">Log in</a>
         <a href="#" class="active">Home</a>
-        <a href="lgu-portal/public/citizenrepform.php">Requests</a>
+        <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
         <a href="about.php">About</a>
     </div>
     <div class="menu-toggle">☰</div>
