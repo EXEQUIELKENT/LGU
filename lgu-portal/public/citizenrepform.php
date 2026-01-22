@@ -936,15 +936,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 1️⃣ Always merge files from both file inputs into evidenceInput on any change
         function mergeAndPreviewFiles() {
+            const MAX_FILES = 4; // maximum allowed images
             const dt = new DataTransfer();
 
+            // Merge files from both inputs
             [evidenceInput, cameraInput].forEach(input => {
                 if (input && input.files) {
                     Array.from(input.files).forEach(file => dt.items.add(file));
                 }
             });
 
-            evidenceInput.files = dt.files;
+            // Enforce max limit
+            if (dt.files.length > MAX_FILES) {
+                alert(`You can only upload up to ${MAX_FILES} images.`);
+                // Keep only the first MAX_FILES
+                const limitedDT = new DataTransfer();
+                for (let i = 0; i < MAX_FILES; i++) {
+                    limitedDT.items.add(dt.files[i]);
+                }
+                evidenceInput.files = limitedDT.files;
+            } else {
+                evidenceInput.files = dt.files;
+            }
+
             renderImagePreview();
         }
         if (evidenceInput) {
