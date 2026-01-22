@@ -1747,10 +1747,33 @@ body:has(#changePasswordModal) {
         <span>Local Government Unit Portal</span>
     </div>
     <div class="nav-links">
-        <a href="citizencimm.php" class="active">Home</a>
-    </div>
+        <!-- 
+        FIX: Make Home link ALWAYS work regardless of URL path
+
+        - Use absolute path (starting from the domain root)
+        - If your citzen dashboard is at (for example) '/citizencimm.php', always use '/citizencimm.php'
+        - If it's under lgu-portal/public/citizencimm.php, use '/lgu-portal/public/citizencimm.php'
+        - For maximum robustness, detect script directory and build correct relative path
+        -->
+
+        <!-- The following makes it always absolute path from domain root: -->
+        <a href="/lgu-portal/public/citizencimm.php" class="active" id="navHomeLink">Home</a>
     </div>
 </header>
+
+<script>
+    // For additional cross-platform/mobile robustness,
+    // if you ever move your path or want to auto-fix, you could use JS:
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove all event handlers from Home nav link
+        var homeNav = document.getElementById('navHomeLink');
+        if (homeNav) {
+            homeNav.addEventListener('click', function(e) {
+                window.location.href = '/lgu-portal/public/citizencimm.php';
+            });
+        }
+    });
+</script>
 
 <div class="wrapper">
     <div class="card">
@@ -2265,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <footer class="footer">
     <div class="footer-links">
-        <a href="citizencimm.php" onclick="window.location.href='citizencimm.php'; return false;">Privacy Policy</a>
+        <a href="/lgu-portal/public/citizencimm.php" onclick="window.location.href='/lgu-portal/public/citizencimm.php'; return false;">Privacy Policy</a>
         <a href="#">About</a>
         <a href="#">Help</a>
     </div>
