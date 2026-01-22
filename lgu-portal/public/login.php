@@ -1748,7 +1748,6 @@ body:has(#changePasswordModal) {
     </div>
     <div class="nav-links">
         <a href="citizencimm.php" class="active">Home</a>
-        <a href="citizencimm.php" class="">Cimm</a>
     </div>
     </div>
 </header>
