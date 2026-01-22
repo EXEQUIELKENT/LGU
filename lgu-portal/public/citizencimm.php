@@ -6,10 +6,11 @@ require_once 'db.php';
 $basePath = '';
 $loginUrl = 'citizencimm.php';
 
-if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
-    $basePath = 'lgu-portal/public/';
-    $loginUrl = 'index.php';
-}
+//if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
+    //$basePath = 'lgu-portal/public/';
+    //$loginUrl = 'index.php';
+//}
+
 // Get repairs count from repair_archive
 $repairs_count = 0;
 $repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
@@ -762,9 +763,9 @@ if ($maintenance_result) {
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <a href="lgu-portal/public/login.php">Log in</a>
+        <a href="login.php">Log in</a>
         <a href="#" class="active">Home</a>
-        <a href="lgu-portal/public/citizenrepform.php">Requests</a>
+        <a href="citizenrepform.php">Requests</a>
         <a href="about.php">About</a>
     </div>
     <div class="menu-toggle">☰</div>
