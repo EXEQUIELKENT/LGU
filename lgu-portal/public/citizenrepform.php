@@ -413,20 +413,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex-wrap: wrap; /* 🔹 Add this to wrap images on mobile */
         }
         #image-preview .preview-item {
-            flex: 1 1 45%; /* allow 2 images per row on mobile */
-            max-width: 45%; /* prevents fourth image from overflowing */
+            flex: 1 1 45%;
+            max-width: 45%;
             position: relative;
             display: inline-block;
         }
-        @media (min-width: 769px) {
-            #image-preview .preview-item {
-                flex: 0 0 auto;
-                max-width: 80px;
-            }
-        }
-        .preview-item img {
-            width: 80px;
-            height: 80px;
+        #image-preview .preview-item img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1/1;
             object-fit: cover;
             border-radius: 8px;
             cursor: pointer;
@@ -436,8 +431,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .preview-remove {
             position: absolute;
-            top: -6px;
-            right: -6px;
+            top: 5%;
+            right: 5%;
             width: 22px;
             height: 22px;
             background: rgba(0,0,0,0.75);
@@ -449,16 +444,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cursor: pointer;
             font-weight: bold;
             z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .preview-remove:hover {
             background: #d73f52;
         }
         @media (max-width: 768px) {
+            #image-preview .preview-item {
+                flex: 1 1 45%;
+                max-width: 45%;
+            }
             .preview-remove {
                 width: 26px;
                 height: 26px;
                 font-size: 16px;
                 line-height: 26px;
+                top: 5%;
+                right: 5%;
+            }
+        }
+        @media (min-width: 769px) {
+            #image-preview .preview-item {
+                flex: 0 0 auto;
+                max-width: 80px;
+            }
+            #image-preview .preview-item img {
+                width: 80px;
+                height: 80px;
             }
         }
         /* === END IMAGE PREVIEW WITH REMOVE BUTTON & responsive layout fix === */
@@ -940,34 +954,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const evidenceInput = document.getElementById('evidence');
         const cameraInput = document.getElementById('evidence-camera');
         const previewDiv = document.getElementById('image-preview');
+        const cameraBtn = document.getElementById('cameraBtn');
 
-        // 1️⃣ Always merge files from both file inputs into evidenceInput on any change
-        function mergeAndPreviewFiles() {
-            const MAX_FILES = 4; // maximum allowed images
+        // Update upload button (and camera) enable/disable depending on file count
+        function updateUploadButton() {
+            if (evidenceInput.files.length >= 4) {
+                evidenceInput.disabled = true;
+                if (cameraBtn) cameraBtn.disabled = true;
+            } else {
+                evidenceInput.disabled = false;
+                if (cameraBtn) cameraBtn.disabled = false;
+            }
+        }
+
+        // Only merge current evidenceInput files (not cameraInput!) & render
+        function mergeAndPreviewFiles(e) {
+            const MAX_FILES = 4;
             const dt = new DataTransfer();
 
-            // Merge files from both inputs
-            [evidenceInput, cameraInput].forEach(input => {
-                if (input && input.files) {
-                    Array.from(input.files).forEach(file => dt.items.add(file));
-                }
-            });
+            // If called due to cameraInput, merge cameraInput.files into evidenceInput's files, respecting max
+            if (e && e.target === cameraInput && cameraInput && cameraInput.files.length > 0) {
+                // merge evidenceInput.files + new cameraInput file
+                let files = Array.from(evidenceInput.files);
+                Array.from(cameraInput.files).forEach(f => files.push(f));
 
-            // Enforce max limit
-            if (dt.files.length > MAX_FILES) {
-                showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
-                // Keep only the first MAX_FILES
-                const limitedDT = new DataTransfer();
-                for (let i = 0; i < MAX_FILES; i++) {
-                    limitedDT.items.add(dt.files[i]);
+                // Remove duplicates by name+lastModified (to prevent doubling the same photo)
+                let seen = new Set();
+                const unique = [];
+                for (let file of files) {
+                    const key = file.name + '-' + file.lastModified;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(file);
+                    }
                 }
-                evidenceInput.files = limitedDT.files;
-            } else {
+                files = unique;
+
+                // Limit to MAX_FILES
+                if (files.length > MAX_FILES) {
+                    showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
+                    files = files.slice(0, MAX_FILES);
+                }
+
+                dt.items.clear();
+                for (let file of files) dt.items.add(file);
+
+                evidenceInput.files = dt.files;
+                // Reset camera input so old file doesn't persist
+                cameraInput.value = "";
+            }
+            // If called due to evidenceInput change, use only its files (browser does multiple select)
+            else if (e && e.target === evidenceInput) {
+                Array.from(evidenceInput.files).forEach(file => dt.items.add(file));
+
+                if (dt.files.length > MAX_FILES) {
+                    showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
+                    const limitedDT = new DataTransfer();
+                    for (let i = 0; i < MAX_FILES; i++) limitedDT.items.add(dt.files[i]);
+                    evidenceInput.files = limitedDT.files;
+                }
+            } 
+            // Called from DOMContentLoaded/render?
+            else {
+                Array.from(evidenceInput.files).forEach(file => dt.items.add(file));
                 evidenceInput.files = dt.files;
             }
 
             renderImagePreview();
         }
+
         if (evidenceInput) {
             evidenceInput.addEventListener('change', mergeAndPreviewFiles);
         }
@@ -975,7 +1030,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cameraInput.addEventListener('change', mergeAndPreviewFiles);
         }
 
-        // 2️⃣ Preview all files now in evidenceInput only
         function renderImagePreview() {
             previewDiv.innerHTML = '';
             const files = evidenceInput.files;
@@ -1010,15 +1064,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 reader.readAsDataURL(file);
             });
+            updateUploadButton();
         }
 
-        // 3️⃣ Remove image by index from evidenceInput only
         function removeImageAtIndex(index) {
             const dt = new DataTransfer();
             Array.from(evidenceInput.files).forEach((file, i) => {
                 if (i !== index) dt.items.add(file);
             });
             evidenceInput.files = dt.files;
+
+            // Reset camera input as well to avoid old files persisting
+            if(cameraInput) cameraInput.value = "";
+
             renderImagePreview();
         }
 
@@ -1046,16 +1104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // ====== CAMERA LOGIC (Mobile native only) =======
-        const cameraBtn = document.getElementById('cameraBtn');
-
         function isMobile() {
             return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         }
-
-        // Only attach click event on mobile; CSS hides on desktop.
+        // Only attach click event on mobile & when cameraBtn is enabled
         if (cameraBtn && isMobile() && cameraInput) {
             cameraBtn.addEventListener('click', () => {
-                cameraInput.click(); // Open native camera only
+                if(!cameraBtn.disabled) cameraInput.click(); // Only open if not disabled
             });
         }
 
@@ -1079,8 +1134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             form.addEventListener('submit', e => {
                 if (realSubmit) return; // allow only after modal confirm
                 e.preventDefault();
-
-                // No need to move files manually; mergeAndPreviewFiles already keeps evidenceInput in sync.
 
                 showSubmitModal();
             });
