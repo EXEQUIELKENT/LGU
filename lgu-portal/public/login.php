@@ -2265,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <footer class="footer">
     <div class="footer-links">
-        <a href="citizencimm.php">Privacy Policy</a>
+        <a href="citizencimm.php" onclick="window.location.href='citizencimm.php'; return false;">Privacy Policy</a>
         <a href="#">About</a>
         <a href="#">Help</a>
     </div>
