@@ -763,9 +763,9 @@ if ($maintenance_result) {
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <a href="login.php">Log in</a>
+        <a href="lgu-portal/public/login.php">Log in</a>
         <a href="#" class="active">Home</a>
-        <a href="citizenrepform.php">Requests</a>
+        <a href="lgu-portal/public/citizenrepform.php">Requests</a>
         <a href="about.php">About</a>
     </div>
     <div class="menu-toggle">☰</div>
