@@ -2,6 +2,14 @@
 session_start();
 require_once 'db.php';
 
+// Determine base path and redirect URLs
+$basePath = '';
+$loginUrl = 'citizencimm.php';
+
+if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
+    $basePath = 'lgu-portal/public/';
+    $loginUrl = 'index.php';
+}
 // Get repairs count from repair_archive
 $repairs_count = 0;
 $repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
