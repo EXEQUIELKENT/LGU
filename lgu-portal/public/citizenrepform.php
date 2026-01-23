@@ -43,10 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
-    // Remove dashes and non-digits for server-side validation
     $pure_number = preg_replace('/\D/', '', $contact_number);
 
-    // server-side validation for phone number (enforced pattern 09XXXXXXXXX)
     if (!preg_match('/^09\d{9}$/', $pure_number)) {
         $error_message = 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.';
     } elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
@@ -942,7 +940,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const infraSelect = document.getElementById('infrastructureSelect');
     const infraOther  = document.getElementById('infrastructureOther');
 
-    // Switch to text input
     infraSelect.addEventListener('change', () => {
         if (infraSelect.value === 'Other') {
             infraSelect.style.display = 'none';
@@ -952,14 +949,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     });
 
-    // If user clears text → revert to dropdown
     infraOther.addEventListener('input', () => {
         if (infraOther.value.trim() === '') {
             revertToDropdown();
         }
     });
 
-    // If user focuses elsewhere → revert ONLY if text is empty
     document.addEventListener('focusin', (e) => {
         if (
             infraOther.style.display === 'block' &&
@@ -1027,13 +1022,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     function mergeAndPreviewFiles(e) {
         const dt = new DataTransfer();
 
-        // Start with existing files already in evidenceInput
+        // Always start with currently held files in input (so stacking works even if you upload 1, then another)
         let files = Array.from(evidenceInput.files);
 
         // Add new files from this event (camera or input)
         if (e && e.target.files.length) {
             Array.from(e.target.files).forEach(f => files.push(f));
-            if (e.target === cameraInput) cameraInput.value = '';
+            if (e.target === cameraInput) cameraInput.value = ''; // reset camera input
         }
 
         // Remove duplicates by name+lastModified
@@ -1056,7 +1051,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unique.forEach(f => dt.items.add(f));
         evidenceInput.files = dt.files;
 
-        renderImagePreview();
+        renderImagePreview(); // Always call to reflect new files
     }
 
     if (evidenceInput) {
@@ -1153,13 +1148,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (phoneInput) {
         // Live format to 09XX-XXX-XXXX style
+        //  --- Improved formatter: only add dash when typing forward, not on delete ---
         phoneInput.addEventListener('input', e => {
-            let val = e.target.value.replace(/\D/g, ''); // only digits
+            let orig = e.target.value;
+            let val = orig.replace(/\D/g, '');
             if (val.length > 11) val = val.slice(0, 11);
+
+            // Calculate cursor position BEFORE changing value, so we can restore
+            let selectionStart = e.target.selectionStart;
+            let isRemoving = false;
+
+            // If user pressed backspace just before a dash, don't auto-insert
+            if (orig[selectionStart-1] === '-' && selectionStart && orig.length > val.length) {
+                isRemoving = true;
+            }
+
             let formatted = val;
             if (val.length > 3 && val.length <= 7) formatted = val.slice(0,4)+'-'+val.slice(4);
             if (val.length > 7) formatted = val.slice(0,4)+'-'+val.slice(4,7)+'-'+val.slice(7);
+
             e.target.value = formatted;
+
+            // Try to keep cursor in same logical position
+            if (typeof e.target.setSelectionRange === "function") {
+                if (isRemoving) {
+                    // Place cursor before the dash
+                    e.target.setSelectionRange(selectionStart-1, selectionStart-1);
+                } else {
+                    e.target.setSelectionRange(selectionStart, selectionStart);
+                }
+            }
         });
     }
 
