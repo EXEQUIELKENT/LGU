@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
+date_default_timezone_set('Asia/Manila');
+$serverTimestamp = time();
+
 $INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
 
 /* 🚫 Prevent browser caching of protected pages */
@@ -83,6 +87,101 @@ $result = $conn->query($sql);
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 /* ... (other CSS unchanged for brevity) ... */
 
+/* =========================
+   SIDEBAR/CLOCK ALIGNMENT CONSTANTS (from employee.php)
+========================= */
+:root {
+    --sidebar-expanded: 250px;
+    --sidebar-collapsed: 70px;
+}
+
+/* =========================
+   DESKTOP NAV ↔ SIDEBAR SYNC
+========================= */
+.desktop-top-nav {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-expanded);
+    right: 0;
+    height: 50px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 22px;
+    z-index: 3000;
+    transition: left 0.3s ease;
+}
+body.sidebar-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+.desktop-top-nav .desktop-nav-inner {
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-expanded));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    transition: max-width 0.3s ease, padding 0.3s ease;
+    padding-left: 12px;
+}
+body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+body.sidebar-collapsed .desktop-clock {
+    transform: translateX(-6px);
+}
+
+.desktop-clock {
+    font-size: 14px;
+    font-weight: 500;
+    color: #222;
+    white-space: nowrap;
+    position: relative;
+}
+.desktop-clock .date-part {
+    opacity: 0.6;
+    font-weight: 400;
+}
+.desktop-clock .time-part {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+.time-part span {
+    display: inline-block;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.time-part.flip span {
+    transform: translateY(-4px);
+    opacity: 0.6;
+}
+.desktop-clock::after {
+    content: "Server time";
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+.desktop-clock:hover::after {
+    opacity: 1;
+}
+.clock-timezone {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+    font-weight: 500;
+}
+
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* HIDE MOBILE TOP NAV ON DESKTOP */
@@ -115,9 +214,6 @@ body::before {
     z-index: 0;
 }
 
-body::-webkit-scrollbar {
-  display: none;
-}
 .sidebar-nav,
 .main-content,
 .mobile-top-nav {
@@ -648,26 +744,43 @@ body::-webkit-scrollbar {
     background: #c82d2d;
 }
 
-/* ================= MAIN CONTENT ================= */
+/* Push main content down to avoid overlap */
+/* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
 .main-content {
-    margin-left: 250px;
-    padding: 60px 80px;
-    position: relative;
-    z-index: 1;
+    margin-left: calc(var(--sidebar-expanded) + 20px);
+    margin-right: 18px;
+    padding-top: 60px;
+    padding-left: 20px;
+    padding-right: 20px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     transition: margin-left 0.3s ease;
 }
 .main-content.expanded {
-    margin-left: 70px;
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
 }
+/* --- END FIX --- */
 
-.page-title{color:#fff;font-size:28px;margin-bottom:25px;margin-top:-45px;}
+.page-title{color:#fff;font-size:28px;margin-bottom:25px;margin-top:0;font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;}
 
 /* CARD */
 .table-card {
-    background: rgba(255,255,255,0.9);
-    border-radius: 22px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    align-self: start;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 18px;
+    padding: 30px 35px;
+    margin-bottom: 30px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    transition: 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* TABLE */
@@ -967,9 +1080,27 @@ tbody tr:hover {
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-.mobile-top-nav {
-    display: flex;
-}
+    .desktop-top-nav {
+        display: none;
+    }
+
+    /* Clock inside existing mobile nav */
+    .mobile-top-nav {
+        justify-content: center;
+    }
+    .mobile-clock {
+        position: absolute;
+        right: 16px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #222;
+        white-space: nowrap;
+    }
+
+    /* Show mobile top nav in mobile */
+    .mobile-top-nav {
+        display: flex;
+    }
 .sidebar-nav {
     left: -110%;
     width: calc(100% - 24px);
@@ -986,11 +1117,8 @@ tbody tr:hover {
 .sidebar-nav.collapsed {
     width: calc(100% - 24px);
 }
-.main-content,
-.main-content.expanded {
-    margin-left: 0 !important;
-    padding-top: 90px;
-}
+
+/* MOBILE TOP NAV */
 .mobile-top-nav {
     position: fixed;
     top: 0;
@@ -1004,10 +1132,12 @@ tbody tr:hover {
     z-index: 5000;
     box-shadow: 0 4px 18px rgba(0,0,0,0.2);
 }
+
 .mobile-top-nav img {
     height: 42px;
     object-fit: contain;
 }
+
 .mobile-toggle {
     position: absolute;
     left: 16px;
@@ -1020,48 +1150,90 @@ tbody tr:hover {
     font-size: 20px;
     cursor: pointer;
 }
+
+/* Sidebar internal layout for mobile */
 .sidebar-top {
     padding-top: 30px;
 }
+
 .sidebar-profile-btn {
     position: relative;
     margin: 10px 0 0 15px;
 }
+
 .site-logo {
     margin: 10px auto 20px auto;
 }
+
 .nav-list {
     padding: 0 20px;
 }
+
 .sidebar-divider,
 .sidebar-toggle,
 .sidebar-toggle-divider {
     display: none !important;
 }
+
+/* Logout stays bottom */
 .user-info {
     padding-bottom: 20px;
 }
+
+/* Hide desktop toggle */
 .sidebar-toggle {
     display: none;
 }
-.main-content,
-.main-content.expanded {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;           /* allow scrolling */
-    padding: 14px;
-    -webkit-overflow-scrolling: touch;
-    margin-top: 70px;
-}
-.main-content::-webkit-scrollbar {
-    display: none;
-}
-.main-content {
-    scrollbar-width: none; /* Firefox */
-}
-.card {
-    padding: 22px;
-}
+
+    /* ===============================
+       🚩 MOBILE-ONLY MAIN CONTENT FIXES
+       =============================== */
+
+    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
+    .main-content,
+    .main-content.expanded {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;           /* allow scrolling */
+        padding: 20px;
+        margin: 0px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
+    }
+
+    /* Hide main-content vertical (right) scrollbar but retain scrollability */
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
+    }
+    .main-content {
+        scrollbar-width: none;           /* Firefox */
+        -ms-overflow-style: none;        /* Edge/IE */
+    }
+
+    /* 2️⃣ TABLE CARD no forced height; internal scroll not needed */
+    .table-card {
+        margin-top: 85px;
+        padding: 22px;
+        border-radius: 18px;
+    }
+    .table-card::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
+    .notif-popup {
+        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
+        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 40px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 12px;
+        font-size: 16px;
+    }
 /* MOBILE REQUEST CARD VIEW */
 table {
     display: none !important;
@@ -1114,14 +1286,26 @@ h2  {
     }
 }
 </style>
+<script>
+// --- Server time for server-synced clock ---
+const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+</script>
 </head>
 
 <body>
+
+<!-- DESKTOP TOP NAV -->
+<div class="desktop-top-nav">
+    <div class="desktop-nav-inner">
+        <div class="desktop-clock" id="desktopClock"></div>
+    </div>
+</div>
 
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <img src="logocityhall.png" alt="LGU Logo">
+    <div class="mobile-clock" id="mobileClock"></div>
 </div>
 
 <?php showNotification(); ?>
@@ -1408,6 +1592,7 @@ const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
     mainContent.classList.add('expanded');
+    document.body.classList.add('sidebar-collapsed');
 }
 
 // --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
@@ -1418,6 +1603,7 @@ window.addEventListener('resize', () => {
     if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
         mainContent.classList.remove('expanded');
+        document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('sidebarCollapsed', 'false');
     }
     lastMobileState = isNowMobile;
@@ -1425,8 +1611,9 @@ window.addEventListener('resize', () => {
 
     sidebarToggle.addEventListener('click', () => { 
         sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('expanded');
         const isCollapsed = sidebar.classList.contains('collapsed');
+        mainContent.classList.toggle('expanded', isCollapsed);
+        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
         localStorage.setItem('sidebarCollapsed', isCollapsed);
         if (!isCollapsed) {
             sidebarNavTooltip.classList.remove('active');
@@ -2106,6 +2293,106 @@ searchInput.addEventListener("input", () => {
 });
 
 });
+</script>
+
+<script>
+// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP =====
+
+const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+let currentServerTime = SERVER_TIME;
+let clockInterval = null;
+let lastSecond = null;
+
+function getTimezoneLabel() {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = -new Date().getTimezoneOffset() / 60;
+    const sign = offset >= 0 ? '+' : '-';
+    return `${tz} (GMT${sign}${Math.abs(offset)})`;
+}
+
+function renderClock(now) {
+    const datePart = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const timeStr = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+
+    const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
+    let h = t ? t[1] : "--";
+    let m = t ? t[2] : "--";
+    let s = t ? t[3] : "--";
+    let ampm = t ? t[4] : "";
+
+    const desktopClock = document.getElementById('desktopClock');
+    const mobileClock = document.getElementById('mobileClock');
+
+    function flipSpan(str) {
+        return str.split('').map(chr => `<span>${chr}</span>`).join('');
+    }
+
+    if (desktopClock) {
+        desktopClock.innerHTML = `
+            <span class="date-part">${datePart}</span>
+            &nbsp;&nbsp;&nbsp;
+            <span class="time-part">
+                ${flipSpan(h)}:${flipSpan(m)}:${flipSpan(s)} ${ampm}
+            </span>
+            <span class="clock-timezone">${getTimezoneLabel()}</span>
+        `;
+    }
+
+    if (mobileClock) {
+        mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
+    }
+}
+
+function tick() {
+    const now = new Date(currentServerTime);
+    const sec = now.getSeconds();
+
+    if (sec !== lastSecond) {
+        document.querySelectorAll('.time-part').forEach(el => {
+            el.classList.add('flip');
+            setTimeout(() => el.classList.remove('flip'), 250);
+        });
+        lastSecond = sec;
+    }
+
+    renderClock(now);
+    currentServerTime += 1000;
+}
+
+function startClock() {
+    if (clockInterval) return;
+    tick();
+    clockInterval = setInterval(tick, 1000);
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    } else {
+        startClock();
+    }
+});
+
+setInterval(() => {
+    fetch(location.href, { method: 'HEAD' })
+        .then(() => {
+            currentServerTime = SERVER_TIME;
+        });
+}, RESYNC_MINUTES * 60 * 1000);
+
+startClock();
 </script>
 
 </body>
