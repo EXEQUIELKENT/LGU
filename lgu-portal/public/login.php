@@ -1133,6 +1133,10 @@ body::-webkit-scrollbar {
     display: block;
 }
 
+.verify-code-btn{
+    margin-bottom: 20px;
+}
+
 .verify-code-btn:hover,
 .resend-code-btn:hover {
     transform: translateY(-4px);

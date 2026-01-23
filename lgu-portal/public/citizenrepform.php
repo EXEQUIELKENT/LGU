@@ -34,7 +34,10 @@ $error_message = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $infrastructure = isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '';
+    // Hybrid field: use infrastructure_other if filled, else dropdown value, else ''
+    $infrastructure = isset($_POST['infrastructure_other']) && trim($_POST['infrastructure_other']) !== ''
+        ? trim($_POST['infrastructure_other'])
+        : (isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '');
     $location = isset($_POST['location']) ? trim($_POST['location']) : '';
     $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
@@ -836,10 +839,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
+                <!-- Hybrid dropdown/input: Infrastructure -->
                 <div class="input-group">
-                    <label for="infrastructure">Infrastructure Type *</label>
-                    <select id="infrastructure" name="infrastructure" required>
-                        <option value="" disabled selected>Select Infrastructure...</option>
+                    <label for="infrastructureSelect">Infrastructure Type *</label>
+                    <select id="infrastructureSelect" name="infrastructure">
+                        <option value="">Select infrastructure</option>
                         <option value="Roads">Roads</option>
                         <option value="Street Lights">Street Lights</option>
                         <option value="Drainage">Drainage</option>
@@ -848,6 +852,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="Electrical">Electrical</option>
                         <option value="Other">Other</option>
                     </select>
+                    <input
+                        type="text"
+                        id="infrastructureOther"
+                        name="infrastructure_other"
+                        placeholder="Specify infrastructure"
+                        style="display:none;"
+                        autocomplete="off"
+                    >
                 </div>
                 <div class="input-group" style="position:relative;">
                     <label for="locationInput">Location *</label>
@@ -875,7 +887,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <!-- Begin Revised Evidence Upload Section -->
                 <div class="input-group full-width">
-                    <label for="evidence">Evidence - Upload Images (Multiple files accepted)</label>
+                    <label for="evidence">Evidence - Upload Images (4 Multiple files accepted)</label>
                     <div class="evidence-upload-wrapper">
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
                         <input 
@@ -913,6 +925,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+
+    <script>
+    const infraSelect = document.getElementById('infrastructureSelect');
+    const infraOther  = document.getElementById('infrastructureOther');
+
+    // Switch to text input
+    infraSelect.addEventListener('change', () => {
+        if (infraSelect.value === 'Other') {
+            infraSelect.style.display = 'none';
+            infraOther.style.display = 'block';
+            infraOther.focus();
+            infraSelect.value = '';
+        }
+    });
+
+    // If user clears text → revert to dropdown
+    infraOther.addEventListener('input', () => {
+        if (infraOther.value.trim() === '') {
+            revertToDropdown();
+        }
+    });
+
+    // If user focuses elsewhere → revert ONLY if text is empty
+    document.addEventListener('focusin', (e) => {
+        if (
+            infraOther.style.display === 'block' &&
+            e.target !== infraOther &&
+            infraOther.value.trim() === ''
+        ) {
+            revertToDropdown();
+        }
+    });
+
+    function revertToDropdown() {
+        infraOther.style.display = 'none';
+        infraSelect.style.display = 'block';
+        infraSelect.value = '';
+    }
+    </script>
 
     <script>
         // ===== JS notification helper for image count error =====
@@ -1236,6 +1287,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Also clear the special camera input
                 var cameraInput = document.getElementById('evidence-camera');
                 if (cameraInput) cameraInput.value = "";
+                // Also reset hybrid infrastructure field (optional: always show select default)
+                var infraSelect = document.getElementById('infrastructureSelect');
+                var infraOther = document.getElementById('infrastructureOther');
+                if (infraOther) infraOther.style.display = 'none';
+                if (infraSelect) {
+                    infraSelect.style.display = 'block';
+                    infraSelect.value = '';
+                }
             });
         <?php endif; ?>
     </script>
