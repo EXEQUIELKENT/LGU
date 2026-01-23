@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
-    // Remove dashes for server-side validation
+    // Remove dashes and non-digits for server-side validation
     $pure_number = preg_replace('/\D/', '', $contact_number);
 
     // server-side validation for phone number (enforced pattern 09XXXXXXXXX)
@@ -72,14 +72,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $req_id = $stmt->insert_id;
                 $stmt->close();
 
-                // Handle file uploads (safe & compatible: merge/validate only evidence[] input)
+                // Handle file uploads (merge/validate evidence[] input up to 4 images max)
                 if (isset($_FILES['evidence']) && count(array_filter($_FILES['evidence']['name'])) > 0) {
                     $upload_dir = 'uploads/evidence/';
                     if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+                    $uploadedCount = 0;
 
                     foreach ($_FILES['evidence']['tmp_name'] as $i => $tmp) {
                         if (empty($tmp) || $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) continue;
-
+                        if ($uploadedCount >= 4) break; // Never upload more than 4
                         $ext = strtolower(pathinfo($_FILES['evidence']['name'][$i], PATHINFO_EXTENSION));
                         if (!in_array($ext, ['jpg','jpeg','png','webp'])) continue;
 
@@ -93,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmtImg->bind_param("is", $req_id, $path);
                             $stmtImg->execute();
                             $stmtImg->close();
+                            $uploadedCount++;
                         }
                     }
                 }
@@ -936,6 +938,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+    // --- Hybrid infrastructure dropdown/input logic ---
     const infraSelect = document.getElementById('infrastructureSelect');
     const infraOther  = document.getElementById('infrastructureOther');
 
@@ -975,298 +978,307 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 
     <script>
-        // ===== JS notification helper for image count error =====
-        function showJsNotification(type, message) {
-            const notif = document.createElement('div');
-            notif.className = 'notif-popup notif-' + type;
-            notif.innerHTML = `<span class='notif-icon'>${type==='success'?'✔️':'❌'}</span>
-                               <span class='notif-message'>${message}</span>
-                               <button class='notif-close'>&times;</button>`;
-            document.body.appendChild(notif);
+    // ===== JS notification helper for errors (contact #, images, etc) =====
+    function showJsNotification(type, message) {
+        const notif = document.createElement('div');
+        notif.className = 'notif-popup notif-' + type;
+        const icon = (type === 'success') ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
+        notif.innerHTML = `<span class='notif-icon'>${icon}</span>
+                           <span class='notif-message'>${message}</span>
+                           <button class='notif-close'>&times;</button>`;
+        document.body.appendChild(notif);
 
-            notif.querySelector('.notif-close').addEventListener('click', () => {
-                notif.style.opacity = '0';
-                setTimeout(()=> notif.remove(), 400);
-            });
+        notif.querySelector('.notif-close').addEventListener('click', () => {
+            notif.style.opacity = '0';
+            setTimeout(()=> notif.remove(), 400);
+        });
 
-            setTimeout(() => {
-                notif.style.opacity = '0';
-                setTimeout(()=> notif.remove(), 400);
-            }, 2200);
+        setTimeout(() => {
+            notif.style.opacity = '0';
+            setTimeout(()=> notif.remove(), 400);
+        }, 2200);
+    }
+
+    // ===== MENU TOGGLE =====
+    document.querySelector('.menu-toggle')
+        .addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('show');
+        });
+
+    // ===== IMAGE PREVIEW + FILE MERGING + REMOVE BUTTONS =====
+
+    const evidenceInput = document.getElementById('evidence');
+    const cameraInput = document.getElementById('evidence-camera');
+    const previewDiv = document.getElementById('image-preview');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const MAX_FILES = 4;
+
+    function updateUploadButton() {
+        if (evidenceInput.files.length >= MAX_FILES) {
+            evidenceInput.disabled = true;
+            if (cameraBtn) cameraBtn.disabled = true;
+        } else {
+            evidenceInput.disabled = false;
+            if (cameraBtn) cameraBtn.disabled = false;
+        }
+    }
+
+    // CORRECT MERGING LOGIC: always merge new files into previous files (for mobile/multiple steps)
+    function mergeAndPreviewFiles(e) {
+        const dt = new DataTransfer();
+
+        // Start with existing files already in evidenceInput
+        let files = Array.from(evidenceInput.files);
+
+        // Add new files from this event (camera or input)
+        if (e && e.target.files.length) {
+            Array.from(e.target.files).forEach(f => files.push(f));
+            if (e.target === cameraInput) cameraInput.value = '';
         }
 
-        // ===== MENU TOGGLE =====
-        document.querySelector('.menu-toggle')
-            .addEventListener('click', () => {
-                document.querySelector('.nav-links').classList.toggle('show');
-            });
-
-        // ===== IMAGE PREVIEW WITH REMOVE BUTTON & FULL IMAGE VIEW =====
-
-        const evidenceInput = document.getElementById('evidence');
-        const cameraInput = document.getElementById('evidence-camera');
-        const previewDiv = document.getElementById('image-preview');
-        const cameraBtn = document.getElementById('cameraBtn');
-
-        // Update upload button (and camera) enable/disable depending on file count
-        function updateUploadButton() {
-            if (evidenceInput.files.length >= 4) {
-                evidenceInput.disabled = true;
-                if (cameraBtn) cameraBtn.disabled = true;
-            } else {
-                evidenceInput.disabled = false;
-                if (cameraBtn) cameraBtn.disabled = false;
+        // Remove duplicates by name+lastModified
+        const unique = [];
+        const seen = new Set();
+        for (const f of files) {
+            const key = f.name + f.lastModified;
+            if (!seen.has(key)) {
+                seen.add(key);
+                unique.push(f);
             }
         }
 
-        // CORRECTED: One file input only (evidence[] is all that posts; camera merges)
-        function mergeAndPreviewFiles(e) {
-            const MAX_FILES = 4;
-            const dt = new DataTransfer();
-
-            let files = Array.from(evidenceInput.files);
-
-            // Merge in new camera file, if present
-            if (e && e.target === cameraInput && cameraInput.files.length) {
-                files.push(cameraInput.files[0]);
-                cameraInput.value = '';
-            }
-
-            // Remove duplicates by name+lastModified
-            const unique = [];
-            const seen = new Set();
-            for (const f of files) {
-                const key = f.name + f.lastModified;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    unique.push(f);
-                }
-            }
-
-            if (unique.length > MAX_FILES) {
-                showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
-                unique.length = MAX_FILES;
-            }
-
-            unique.forEach(f => dt.items.add(f));
-            evidenceInput.files = dt.files;
-
-            renderImagePreview();
+        // Limit max
+        if (unique.length > MAX_FILES) {
+            showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
+            unique.length = MAX_FILES;
         }
 
-        if (evidenceInput) {
-            evidenceInput.addEventListener('change', mergeAndPreviewFiles);
-        }
-        if (cameraInput) {
-            cameraInput.addEventListener('change', mergeAndPreviewFiles);
-        }
+        unique.forEach(f => dt.items.add(f));
+        evidenceInput.files = dt.files;
 
-        function renderImagePreview() {
-            previewDiv.innerHTML = '';
-            const files = evidenceInput.files;
-            Array.from(files).forEach((file, index) => {
-                if (!file.type.startsWith('image/')) return;
+        renderImagePreview();
+    }
 
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'preview-item';
+    if (evidenceInput) {
+        evidenceInput.addEventListener('change', mergeAndPreviewFiles);
+    }
+    if (cameraInput) {
+        cameraInput.addEventListener('change', mergeAndPreviewFiles);
+    }
 
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.title = 'Click to view full image';
+    function renderImagePreview() {
+        previewDiv.innerHTML = '';
+        const files = evidenceInput.files;
+        Array.from(files).forEach((file, index) => {
+            if (!file.type.startsWith('image/')) return;
 
-                    // FULL IMAGE VIEW
-                    img.addEventListener('click', () => openFullImage(e.target.result));
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-item';
 
-                    // REMOVE BUTTON
-                    const removeBtn = document.createElement('div');
-                    removeBtn.className = 'preview-remove';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.addEventListener('click', (ev) => {
-                        ev.stopPropagation();
-                        removeImageAtIndex(index);
-                    });
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.title = 'Click to view full image';
 
-                    wrapper.appendChild(img);
-                    wrapper.appendChild(removeBtn);
-                    previewDiv.appendChild(wrapper);
-                };
+                // FULL IMAGE VIEW
+                img.addEventListener('click', () => openFullImage(e.target.result));
 
-                reader.readAsDataURL(file);
-            });
-            updateUploadButton();
-        }
-
-        function removeImageAtIndex(index) {
-            const dt = new DataTransfer();
-            Array.from(evidenceInput.files).forEach((file, i) => {
-                if (i !== index) dt.items.add(file);
-            });
-            evidenceInput.files = dt.files;
-
-            // Reset camera input as well to avoid old files persisting
-            if(cameraInput) cameraInput.value = "";
-
-            renderImagePreview();
-        }
-
-        // Helper for viewing images in full (needed for preview)
-        function openFullImage(src) {
-            const modalBackdrop = document.createElement('div');
-            modalBackdrop.style.position = 'fixed';
-            modalBackdrop.style.inset = '0';
-            modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
-            modalBackdrop.style.display = 'flex';
-            modalBackdrop.style.alignItems = 'center';
-            modalBackdrop.style.justifyContent = 'center';
-            modalBackdrop.style.zIndex = '8000';
-
-            const fullImg = document.createElement('img');
-            fullImg.src = src;
-            fullImg.style.maxWidth = '90%';
-            fullImg.style.maxHeight = '90%';
-            fullImg.style.borderRadius = '12px';
-
-            modalBackdrop.appendChild(fullImg);
-            document.body.appendChild(modalBackdrop);
-
-            modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
-        }
-
-        // ====== CAMERA LOGIC (Mobile native only) =======
-        function isMobile() {
-            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        }
-        // Only attach click event on mobile & when cameraBtn is enabled
-        if (cameraBtn && isMobile() && cameraInput) {
-            cameraBtn.addEventListener('click', () => {
-                if(!cameraBtn.disabled) cameraInput.click(); // Only open if not disabled
-            });
-        }
-
-        // ===== PHONE NUMBER HANDLING: 09XX-XXX-XXXX, only verify/format on submit =====
-        const phoneInput = document.getElementById('contact_number');
-        const form = document.getElementById('maintenanceRequestForm');
-        if (form && phoneInput) {
-            form.addEventListener('submit', e => {
-                // We only want to check on the inner submit, not the modal confirm
-                const val = phoneInput.value.replace(/\D/g, '');
-                if (!/^09\d{9}$/.test(val)) {
-                    e.preventDefault();
-                    alert('Please complete the contact number in 09XX-XXX-XXXX format.');
-                    phoneInput.focus();
-                    return false;
-                }
-                // Format before submit: 09XX-XXX-XXXX
-                phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
-            });
-        }
-
-        // ===== SUBMIT MODAL =====
-        const submitBtn = document.getElementById('submit-btn');
-        let realSubmit = false;
-        if (form && submitBtn) {
-            form.addEventListener('submit', e => {
-                // If this is post-confirm, allow real submit (prevents infinite modal loop)
-                if (realSubmit) return;
-                e.preventDefault();
-                showSubmitModal();
-            });
-        }
-
-        function showSubmitModal() {
-            const backdrop = document.getElementById('submitAlertBackdrop');
-            backdrop.classList.add('active');
-            document.getElementById('submitConfirmBtn').focus();
-            document.getElementById('submitConfirmBtn').onclick = function () {
-                backdrop.classList.remove('active');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Submitting...';
-                localStorage.clear();
-                realSubmit = true;
-                setTimeout(() => form.submit(), 200);
-            };
-        }
-        function closeSubmitModal() {
-            document.getElementById('submitAlertBackdrop').classList.remove('active');
-        }
-
-        // ===== DRAFT SAVE =====
-        if (form) {
-            const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
-            inputs.forEach(input => {
-                const saved = localStorage.getItem(input.name);
-                if (saved) input.value = saved;
-                input.addEventListener('input', () => {
-                    localStorage.setItem(input.name, input.value);
+                // REMOVE BUTTON
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'preview-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeImageAtIndex(index);
                 });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(removeBtn);
+                previewDiv.appendChild(wrapper);
+            };
+            reader.readAsDataURL(file);
+        });
+        updateUploadButton();
+    }
+
+    function removeImageAtIndex(index) {
+        const dt = new DataTransfer();
+        Array.from(evidenceInput.files).forEach((file, i) => {
+            if (i !== index) dt.items.add(file);
+        });
+        evidenceInput.files = dt.files;
+        if (cameraInput) cameraInput.value = '';
+        renderImagePreview();
+    }
+
+    // FULL IMAGE view modal
+    function openFullImage(src) {
+        const modalBackdrop = document.createElement('div');
+        modalBackdrop.style.position = 'fixed';
+        modalBackdrop.style.inset = '0';
+        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
+        modalBackdrop.style.display = 'flex';
+        modalBackdrop.style.alignItems = 'center';
+        modalBackdrop.style.justifyContent = 'center';
+        modalBackdrop.style.zIndex = '8000';
+
+        const fullImg = document.createElement('img');
+        fullImg.src = src;
+        fullImg.style.maxWidth = '90%';
+        fullImg.style.maxHeight = '90%';
+        fullImg.style.borderRadius = '12px';
+
+        modalBackdrop.appendChild(fullImg);
+        document.body.appendChild(modalBackdrop);
+
+        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
+    }
+
+    // ====== CAMERA LOGIC (Mobile native only) =======
+    function isMobile() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+    if (cameraBtn && isMobile() && cameraInput) {
+        cameraBtn.addEventListener('click', () => {
+            if(!cameraBtn.disabled) cameraInput.click();
+        });
+    }
+
+    // ===== CONTACT NUMBER LOGIC: auto-format and validate =====
+    const phoneInput = document.getElementById('contact_number');
+    const form = document.getElementById('maintenanceRequestForm');
+    const submitBtn = document.getElementById('submit-btn');
+    let realSubmit = false;
+
+    if (phoneInput) {
+        // Live format to 09XX-XXX-XXXX style
+        phoneInput.addEventListener('input', e => {
+            let val = e.target.value.replace(/\D/g, ''); // only digits
+            if (val.length > 11) val = val.slice(0, 11);
+            let formatted = val;
+            if (val.length > 3 && val.length <= 7) formatted = val.slice(0,4)+'-'+val.slice(4);
+            if (val.length > 7) formatted = val.slice(0,4)+'-'+val.slice(4,7)+'-'+val.slice(7);
+            e.target.value = formatted;
+        });
+    }
+
+    if (form && phoneInput) {
+        form.addEventListener('submit', e => {
+            if (realSubmit) return;
+
+            e.preventDefault();
+
+            const val = phoneInput.value.replace(/\D/g,'');
+            if (!/^09\d{9}$/.test(val)) {
+                showJsNotification('error', 'Contact number must be 11 digits and start with 09.');
+                phoneInput.focus();
+                return false;
+            }
+
+            showSubmitModal();
+        });
+    }
+
+    function showSubmitModal() {
+        const backdrop = document.getElementById('submitAlertBackdrop');
+        backdrop.classList.add('active');
+        document.getElementById('submitConfirmBtn').focus();
+        document.getElementById('submitConfirmBtn').onclick = function () {
+            backdrop.classList.remove('active');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            localStorage.clear();
+            realSubmit = true;
+
+            // Before submitting, re-format phone (server will clean, but match the dashes for storage)
+            if (phoneInput) {
+                let val = phoneInput.value.replace(/\D/g, '');
+                if (val.length === 11)
+                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
+            }
+
+            setTimeout(() => form.submit(), 200);
+        };
+    }
+    function closeSubmitModal() {
+        document.getElementById('submitAlertBackdrop').classList.remove('active');
+    }
+
+    // ===== DRAFT SAVE =====
+    if (form) {
+        const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
+        inputs.forEach(input => {
+            const saved = localStorage.getItem(input.name);
+            if (saved) input.value = saved;
+            input.addEventListener('input', () => {
+                localStorage.setItem(input.name, input.value);
             });
+        });
+    }
+
+    // -- LOCATION AUTOCOMPLETE (OpenStreetMap Nominatim, Quezon City only) --
+    const locationInput = document.getElementById("locationInput");
+    const suggestionBox = document.getElementById("locationSuggestions");
+
+    let debounceTimer = null;
+
+    locationInput.addEventListener("input", () => {
+        const query = locationInput.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (query.length < 3) {
+            suggestionBox.style.display = "none";
+            return;
         }
 
-        // -- LOCATION AUTOCOMPLETE (OpenStreetMap Nominatim, Quezon City only) --
-        const locationInput = document.getElementById("locationInput");
-        const suggestionBox = document.getElementById("locationSuggestions");
+        debounceTimer = setTimeout(() => {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&countrycodes=PH`)
+                .then(res => res.json())
+                .then(data => {
+                    suggestionBox.innerHTML = "";
 
-        let debounceTimer = null;
-
-        locationInput.addEventListener("input", () => {
-            const query = locationInput.value.trim();
-
-            clearTimeout(debounceTimer);
-
-            if (query.length < 3) {
-                suggestionBox.style.display = "none";
-                return;
-            }
-
-            debounceTimer = setTimeout(() => {
-                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&countrycodes=PH`)
-                    .then(res => res.json())
-                    .then(data => {
-                        suggestionBox.innerHTML = "";
-
-                        // Filter results to only Quezon City
-                        const qcResults = data.filter(place => {
-                            const addr = place.address;
-                            return addr.city === "Quezon City" || addr.county === "Quezon City" || addr.town === "Quezon City" || addr.village === "Quezon City";
-                        });
-
-                        if (!qcResults.length) {
-                            suggestionBox.style.display = "none";
-                            return;
-                        }
-
-                        qcResults.forEach(place => {
-                            const div = document.createElement("div");
-                            div.textContent = place.display_name;
-                            div.onclick = () => {
-                                locationInput.value = place.display_name;
-                                suggestionBox.style.display = "none";
-                            };
-                            suggestionBox.appendChild(div);
-                        });
-
-                        suggestionBox.style.display = "block";
-                    })
-                    .catch(() => {
-                        suggestionBox.style.display = "none";
+                    // Filter results to only Quezon City
+                    const qcResults = data.filter(place => {
+                        const addr = place.address;
+                        return addr.city === "Quezon City" || addr.county === "Quezon City" || addr.town === "Quezon City" || addr.village === "Quezon City";
                     });
-            }, 350); // debounce
-        });
 
-        // Hide suggestions when clicking outside
-        document.addEventListener("click", e => {
-            if (!e.target.closest(".input-group")) {
-                suggestionBox.style.display = "none";
-            }
-        });
+                    if (!qcResults.length) {
+                        suggestionBox.style.display = "none";
+                        return;
+                    }
 
-        // On DOMContentLoaded, ensure previews reflect anything in the file inputs
-        document.addEventListener('DOMContentLoaded', function() {
-            if (evidenceInput && evidenceInput.files.length > 0) renderImagePreview();
-        });
-        // No longer clear localStorage here; handled through notif-popup auto-clear on next page load.
+                    qcResults.forEach(place => {
+                        const div = document.createElement("div");
+                        div.textContent = place.display_name;
+                        div.onclick = () => {
+                            locationInput.value = place.display_name;
+                            suggestionBox.style.display = "none";
+                        };
+                        suggestionBox.appendChild(div);
+                    });
+
+                    suggestionBox.style.display = "block";
+                })
+                .catch(() => {
+                    suggestionBox.style.display = "none";
+                });
+        }, 350); // debounce
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener("click", e => {
+        if (!e.target.closest(".input-group")) {
+            suggestionBox.style.display = "none";
+        }
+    });
+
+    // On DOMContentLoaded, ensure previews reflect anything in the file inputs
+    document.addEventListener('DOMContentLoaded', function() {
+        if (evidenceInput && evidenceInput.files.length > 0) renderImagePreview();
+    });
     </script>
 
     <!-- Auto-clear form after successful submission & notification -->
