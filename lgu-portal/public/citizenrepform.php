@@ -43,7 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
-    if (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
+    // server-side validation for phone number (enforced pattern 09XXXXXXXXX)
+    if (!preg_match('/^09\d{9}$/', $contact_number)) {
+        $error_message = 'Contact number must be 11 digits and start with 09.';
+    } elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
         $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
     } else {
         $check_stmt = $conn->prepare(
@@ -66,30 +69,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $req_id = $stmt->insert_id;
                 $stmt->close();
 
-                // Handle file uploads
+                // Handle file uploads (safe & compatible: merge/validate only evidence[] input)
                 if (isset($_FILES['evidence']) && !empty($_FILES['evidence']['name'][0])) {
                     $upload_dir = 'uploads/evidence/';
-                    if (!is_dir($upload_dir)) {
-                        mkdir($upload_dir, 0755, true);
-                    }
-                    $file_count = count($_FILES['evidence']['name']);
-                    $uploaded_files = 0;
-                    for ($i = 0; $i < $file_count; $i++) {
-                        if ($_FILES['evidence']['error'][$i] === UPLOAD_ERR_OK) {
-                            $file_name = $_FILES['evidence']['name'][$i];
-                            $file_tmp = $_FILES['evidence']['tmp_name'][$i];
-                            $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
-                            $new_filename = 'evidence_' . $req_id . '_' . time() . '_' . $i . '.' . $file_ext;
-                            $file_path = $upload_dir . $new_filename;
-                            if (move_uploaded_file($file_tmp, $file_path)) {
-                                $img_stmt = $conn->prepare(
-                                    "INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())"
-                                );
-                                $img_stmt->bind_param("is", $req_id, $file_path);
-                                $img_stmt->execute();
-                                $img_stmt->close();
-                                $uploaded_files++;
-                            }
+                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+
+                    foreach ($_FILES['evidence']['tmp_name'] as $i => $tmp) {
+                        if ($_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+                        $ext = strtolower(pathinfo($_FILES['evidence']['name'][$i], PATHINFO_EXTENSION));
+                        if (!in_array($ext, ['jpg','jpeg','png','webp'])) continue;
+
+                        $new_name = "evidence_{$req_id}_" . uniqid() . ".$ext";
+                        $path = $upload_dir . $new_name;
+
+                        if (move_uploaded_file($tmp, $path)) {
+                            $stmtImg = $conn->prepare(
+                                "INSERT INTO evidence_images (req_id, img_path, uploaded_at)
+                                 VALUES (?, ?, NOW())"
+                            );
+                            $stmtImg->bind_param("is", $req_id, $path);
+                            $stmtImg->execute();
+                            $stmtImg->close();
                         }
                     }
                 }
@@ -879,7 +880,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="input-group">
                     <label for="contact_number">Contact Number *</label>
-                    <input type="tel" id="contact_number" name="contact_number" placeholder="09XX-XXX-XXXX" required>
+                    <input
+                        type="tel"
+                        id="contact_number"
+                        name="contact_number"
+                        placeholder="09XXXXXXXXX"
+                        inputmode="numeric"
+                        maxlength="11"
+                        required
+                    >
                 </div>
                 <div class="input-group full-width">
                     <label for="issue">Issue / Damage Description *</label>
@@ -893,9 +902,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input 
                             type="file" 
                             id="evidence-camera" 
-                            name="evidence[]" 
-                            accept="image/*" 
-                            capture="environment" 
+                            accept="image/*"
+                            capture="environment"
                             style="display:none;"
                         >
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
@@ -1010,58 +1018,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Only merge current evidenceInput files (not cameraInput!) & render
+        // CORRECTED: One file input only (evidence[] is all that posts; camera merges)
         function mergeAndPreviewFiles(e) {
             const MAX_FILES = 4;
             const dt = new DataTransfer();
 
-            // If called due to cameraInput, merge cameraInput.files into evidenceInput's files, respecting max
-            if (e && e.target === cameraInput && cameraInput && cameraInput.files.length > 0) {
-                // merge evidenceInput.files + new cameraInput file
-                let files = Array.from(evidenceInput.files);
-                Array.from(cameraInput.files).forEach(f => files.push(f));
+            let files = Array.from(evidenceInput.files);
 
-                // Remove duplicates by name+lastModified (to prevent doubling the same photo)
-                let seen = new Set();
-                const unique = [];
-                for (let file of files) {
-                    const key = file.name + '-' + file.lastModified;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        unique.push(file);
-                    }
-                }
-                files = unique;
-
-                // Limit to MAX_FILES
-                if (files.length > MAX_FILES) {
-                    showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
-                    files = files.slice(0, MAX_FILES);
-                }
-
-                dt.items.clear();
-                for (let file of files) dt.items.add(file);
-
-                evidenceInput.files = dt.files;
-                // Reset camera input so old file doesn't persist
-                cameraInput.value = "";
+            // Merge in new camera file, if present
+            if (e && e.target === cameraInput && cameraInput.files.length) {
+                files.push(cameraInput.files[0]);
+                cameraInput.value = '';
             }
-            // If called due to evidenceInput change, use only its files (browser does multiple select)
-            else if (e && e.target === evidenceInput) {
-                Array.from(evidenceInput.files).forEach(file => dt.items.add(file));
 
-                if (dt.files.length > MAX_FILES) {
-                    showJsNotification('error', `You can only upload up to ${MAX_FILES} images.`);
-                    const limitedDT = new DataTransfer();
-                    for (let i = 0; i < MAX_FILES; i++) limitedDT.items.add(dt.files[i]);
-                    evidenceInput.files = limitedDT.files;
+            // Remove duplicates by name+lastModified
+            const unique = [];
+            const seen = new Set();
+            for (const f of files) {
+                const key = f.name + f.lastModified;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unique.push(f);
                 }
-            } 
-            // Called from DOMContentLoaded/render?
-            else {
-                Array.from(evidenceInput.files).forEach(file => dt.items.add(file));
-                evidenceInput.files = dt.files;
             }
+
+            if (unique.length > MAX_FILES) {
+                showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
+                unique.length = MAX_FILES;
+            }
+
+            unique.forEach(f => dt.items.add(f));
+            evidenceInput.files = dt.files;
 
             renderImagePreview();
         }
@@ -1157,15 +1144,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         }
 
-        // ===== AUTO-FORMAT PHONE NUMBER =====
+        // ===== CORRECTED PHONE NUMBER HANDLING =====
         const phoneInput = document.getElementById('contact_number');
+
         if (phoneInput) {
             phoneInput.addEventListener('input', () => {
                 let val = phoneInput.value.replace(/\D/g, '');
-                if (val.startsWith('0')) val = val.slice(1);
-                if (val.length > 4) val = val.slice(0, 4) + '-' + val.slice(4);
-                if (val.length > 8) val = val.slice(0, 8) + '-' + val.slice(8, 12);
-                phoneInput.value = '0' + val;
+
+                // Force starting with 09
+                if (!val.startsWith('09')) {
+                    val = '09' + val.replace(/^0+/, '').slice(0, 9);
+                }
+
+                // Limit strictly to 11 digits
+                val = val.slice(0, 11);
+
+                phoneInput.value = val;
+            });
+
+            phoneInput.addEventListener('blur', () => {
+                if (!/^09\d{9}$/.test(phoneInput.value)) {
+                    alert('Contact number must be 11 digits and start with 09.');
+                    phoneInput.focus();
+                }
             });
         }
 

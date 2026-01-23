@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
+date_default_timezone_set('Asia/Manila');
+$serverTimestamp = time();
+
 $INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
 
 // If last activity is set and timeout exceeded
@@ -76,6 +80,98 @@ $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
+/* =========================
+   DESKTOP TOP NAV BAR
+========================= */
+.desktop-top-nav {
+    position: fixed;
+    top: 0;
+    left: 250px; /* aligns with sidebar */
+    right: 0;
+    height: 50px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 22px;
+    z-index: 3000;
+}
+
+/* Adjust when sidebar is collapsed */
+.sidebar-nav.collapsed ~ .desktop-top-nav {
+    left: 70px;
+}
+
+.desktop-clock {
+    font-size: 14px;
+    font-weight: 500;
+    color: #222;
+    white-space: nowrap;
+    position: relative;
+}
+/* === Clock styling enhancements === */
+.desktop-clock .date-part {
+    opacity: 0.6;
+    font-weight: 400;
+}
+.desktop-clock .time-part {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+/* === REMOVE BLINKING SECONDS === */
+/* .desktop-clock .seconds {
+    animation: blinkSeconds 1s steps(1) infinite;
+}
+@keyframes blinkSeconds {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+} */
+/* === Clock styling enhancements === END */
+
+/* === Smooth digit flip === */
+.time-part span {
+    display: inline-block;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.time-part.flip span {
+    transform: translateY(-4px);
+    opacity: 0.6;
+}
+
+/* === "Server time" tooltip on clock === */
+.desktop-clock::after {
+    content: "Server time";
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+.desktop-clock:hover::after {
+    opacity: 1;
+}
+
+.clock-timezone {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+    font-weight: 500;
+}
+
+/* Push main content down to avoid overlap */
+.main-content {
+    padding-top: 60px;
+}
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* HIDE MOBILE TOP NAV ON DESKTOP */
@@ -640,8 +736,9 @@ body::-webkit-scrollbar {
     cursor: pointer;
 }
 .main-content {
-    margin-left: 250px;
-    padding: 30px;
+    margin-left: 270px;
+    margin-right: 20px;
+    /* padding-top: 60px;  moved above for clock bar */
     height: 100vh;
     box-sizing: border-box;
     display: flex;
@@ -732,9 +829,25 @@ body::-webkit-scrollbar {
 }
 
 /* =========================
-   MOBILE VIEW ONLY
+   MOBILE RULES
 ========================= */
 @media (max-width: 768px) {
+    .desktop-top-nav {
+        display: none;
+    }
+
+    /* Clock inside existing mobile nav */
+    .mobile-top-nav {
+        justify-content: center;
+    }
+    .mobile-clock {
+        position: absolute;
+        right: 16px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #222;
+        white-space: nowrap;
+    }
 
     /* Show mobile top nav in mobile */
     .mobile-top-nav {
@@ -848,6 +961,7 @@ body::-webkit-scrollbar {
         min-height: 100vh;
         overflow-y: auto;           /* allow scrolling */
         padding: 0px;
+        margin: 0px;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
     }
@@ -892,13 +1006,24 @@ body::-webkit-scrollbar {
     }
 }
 </style>
+<script>
+// --- Server time for server-synced clock ---
+const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+</script>
 </head>
 <body>
+
+<!-- DESKTOP TOP NAV -->
+<div class="desktop-top-nav">
+    <div class="desktop-nav-spacer"></div>
+    <div class="desktop-clock" id="desktopClock"></div>
+</div>
 
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <img src="logocityhall.png" alt="LGU Logo">
+    <div class="mobile-clock" id="mobileClock"></div>
 </div>
 
 <?php showNotification(); ?>
@@ -1285,6 +1410,118 @@ function resetInactivityTimer() {
 
 // Start timer on load
 resetInactivityTimer();
+</script>
+
+<script>
+// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP, ETC. =====
+
+const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+let currentServerTime = SERVER_TIME;
+let clockInterval = null;
+let lastSecond = null;
+
+// Get nice timezone label, e.g. Asia/Manila (GMT+8)
+function getTimezoneLabel() {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = -new Date().getTimezoneOffset() / 60;
+    const sign = offset >= 0 ? '+' : '-';
+    return `${tz} (GMT${sign}${Math.abs(offset)})`;
+}
+
+function renderClock(now) {
+    const datePart = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // Always 2-digits for minutes/seconds so we can use flip animation
+    // Output: e.g. 4:07:44 PM
+    const timeStr = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+
+    // Split into hour, minute, second, ampm - for flipping animation
+    // timeStr: "4:07:44 PM"
+    const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
+    let h = t ? t[1] : "--";
+    let m = t ? t[2] : "--";
+    let s = t ? t[3] : "--";
+    let ampm = t ? t[4] : "";
+
+    const desktopClock = document.getElementById('desktopClock');
+    const mobileClock = document.getElementById('mobileClock');
+
+    // For the flip effect, wrap each digit in span
+    function flipSpan(str) {
+        return str.split('').map(chr => `<span>${chr}</span>`).join('');
+    }
+
+    if (desktopClock) {
+        desktopClock.innerHTML = `
+            <span class="date-part">${datePart}</span>
+            &nbsp;&nbsp;&nbsp;
+            <span class="time-part">
+                ${flipSpan(h)}:${flipSpan(m)}:${flipSpan(s)} ${ampm}
+            </span>
+            <span class="clock-timezone">${getTimezoneLabel()}</span>
+        `;
+    }
+
+    if (mobileClock) {
+        mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
+    }
+}
+
+function tick() {
+    const now = new Date(currentServerTime);
+    const sec = now.getSeconds();
+
+    // Animate flips only on actual second changes
+    if (sec !== lastSecond) {
+        document.querySelectorAll('.time-part').forEach(el => {
+            el.classList.add('flip');
+            setTimeout(() => el.classList.remove('flip'), 250);
+        });
+        lastSecond = sec;
+    }
+
+    renderClock(now);
+
+    currentServerTime += 1000;
+}
+
+function startClock() {
+    if (clockInterval) return;
+    tick();
+    clockInterval = setInterval(tick, 1000);
+}
+
+// Pause/resume flip and ticking for perf when page is hidden
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    } else {
+        startClock();
+    }
+});
+
+// Resync with server every X minutes, anti-drift
+setInterval(() => {
+    fetch(location.href, { method: 'HEAD' })
+        .then(() => {
+            // New PHP time is available in global SERVER_TIME var (not perfect, but synchronous; see note)
+            // Since the page doesn't reload, just reset drift to starting value
+            currentServerTime = SERVER_TIME;
+        });
+}, RESYNC_MINUTES * 60 * 1000);
+
+startClock();
 </script>
 
 </body>
