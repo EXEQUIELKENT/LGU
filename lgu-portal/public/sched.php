@@ -2044,6 +2044,9 @@ window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE |
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
 
 <script>
+// The code in this DOMContentLoaded handler must run in the correct sequence:
+// 1. Sidebar collapse state logic triggers and applies collapsed state, before other initializations.
+
 document.addEventListener('DOMContentLoaded', function() {
     // Helper for query selector with error
     function getSafeElem(id) {
@@ -2054,12 +2057,49 @@ document.addEventListener('DOMContentLoaded', function() {
         return el;
     }
 
-    // Grab all required elements safely (with null fallback)
+    // --- (1) Sidebar collapse state logic FIRST ---
     const sidebarToggle = getSafeElem('sidebarToggle');
     const sidebar = getSafeElem('sidebarNav');
     const mainContent = document.querySelector('.main-content');
-    const sidebarNav = getSafeElem('sidebarNav');
     const sidebarNavTooltip = getSafeElem('sidebarNavTooltip');
+
+    // Sidebar collapse state must be applied first
+    if (sidebar && mainContent) {
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+            document.body.classList.add('sidebar-collapsed');
+        }
+        let lastMobileState = window.innerWidth <= 768;
+        window.addEventListener('resize', () => {
+            const isNowMobile = window.innerWidth <= 768;
+            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                document.body.classList.remove('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'false');
+            }
+            lastMobileState = isNowMobile;
+        });
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                mainContent.classList.toggle('expanded', isCollapsed);
+                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                if (sidebarNavTooltip) {
+                    sidebarNavTooltip.classList.remove('active');
+                    sidebarNavTooltip.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    // --- (2) Grab all required elements safely (AFTER sidebar state logic) ---
+    // Elements that depend on sidebar state should be correctly collapsed
+    const sidebarNav = getSafeElem('sidebarNav');
     const profileIconBtn = getSafeElem('profileIconBtn');
     const logoutBtn = getSafeElem('logoutBtn');
     const logoutAlertBackdrop = getSafeElem('logoutAlertBackdrop');
@@ -2091,7 +2131,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileScheduleSearch = getSafeElem('mobileScheduleSearch');
     const prevMonthBtn = getSafeElem('prevMonth');
     const nextMonthBtn = getSafeElem('nextMonth');
-
     // Date Picker (Native input only, no overlay)
     const pickerDate = getSafeElem('pickerDate');
 
@@ -2101,40 +2140,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- MOBILE VIEW DETECTOR (Canonical, one function only) ---
     function isMobileView() {
         return window.innerWidth <= 768;
-    }
-
-    // --- Sidebar collapse state logic (synced with desktop nav) ---
-    if (sidebar && mainContent) {
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('expanded');
-            document.body.classList.add('sidebar-collapsed');
-        }
-        let lastMobileState = isMobileView();
-        window.addEventListener('resize', () => {
-            const isNowMobile = isMobileView();
-            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('expanded');
-                document.body.classList.remove('sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', 'false');
-            }
-            lastMobileState = isNowMobile;
-        });
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                mainContent.classList.toggle('expanded', isCollapsed);
-                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-                localStorage.setItem('sidebarCollapsed', isCollapsed);
-                if (sidebarNavTooltip) {
-                    sidebarNavTooltip.classList.remove('active');
-                    sidebarNavTooltip.style.display = 'none';
-                }
-            });
-        }
     }
 
     // --- Sidebar tooltips and nav (unchanged) ---

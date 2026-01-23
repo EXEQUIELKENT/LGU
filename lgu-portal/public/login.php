@@ -1134,7 +1134,7 @@ body::-webkit-scrollbar {
 }
 
 .verify-code-btn{
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .verify-code-btn:hover,
