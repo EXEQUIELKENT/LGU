@@ -43,16 +43,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
+    // Remove dashes for server-side validation
+    $pure_number = preg_replace('/\D/', '', $contact_number);
+
     // server-side validation for phone number (enforced pattern 09XXXXXXXXX)
-    if (!preg_match('/^09\d{9}$/', $contact_number)) {
-        $error_message = 'Contact number must be 11 digits and start with 09.';
+    if (!preg_match('/^09\d{9}$/', $pure_number)) {
+        $error_message = 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.';
     } elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
         $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
     } else {
         $check_stmt = $conn->prepare(
             "SELECT COUNT(*) as duplicate_count FROM requests WHERE contact_number = ? AND infrastructure = ? AND location = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)"
         );
-        $check_stmt->bind_param("sss", $contact_number, $infrastructure, $location);
+        $check_stmt->bind_param("sss", $pure_number, $infrastructure, $location);
         $check_stmt->execute();
         $check_result = $check_stmt->get_result();
         $check_row = $check_result->fetch_assoc();
@@ -64,18 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare(
                 "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())"
             );
-            $stmt->bind_param("sssss", $infrastructure, $location, $issue, $contact_number, $name);
+            $stmt->bind_param("sssss", $infrastructure, $location, $issue, $pure_number, $name);
             if ($stmt->execute()) {
                 $req_id = $stmt->insert_id;
                 $stmt->close();
 
                 // Handle file uploads (safe & compatible: merge/validate only evidence[] input)
-                if (isset($_FILES['evidence']) && !empty($_FILES['evidence']['name'][0])) {
+                if (isset($_FILES['evidence']) && count(array_filter($_FILES['evidence']['name'])) > 0) {
                     $upload_dir = 'uploads/evidence/';
                     if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
                     foreach ($_FILES['evidence']['tmp_name'] as $i => $tmp) {
-                        if ($_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) continue;
+                        if (empty($tmp) || $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) continue;
 
                         $ext = strtolower(pathinfo($_FILES['evidence']['name'][$i], PATHINFO_EXTENSION));
                         if (!in_array($ext, ['jpg','jpeg','png','webp'])) continue;
@@ -85,8 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if (move_uploaded_file($tmp, $path)) {
                             $stmtImg = $conn->prepare(
-                                "INSERT INTO evidence_images (req_id, img_path, uploaded_at)
-                                 VALUES (?, ?, NOW())"
+                                "INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())"
                             );
                             $stmtImg->bind_param("is", $req_id, $path);
                             $stmtImg->execute();
@@ -884,9 +886,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         type="tel"
                         id="contact_number"
                         name="contact_number"
-                        placeholder="09XXXXXXXXX"
-                        inputmode="numeric"
-                        maxlength="11"
+                        placeholder="09XX-XXX-XXXX"
+                        maxlength="13"
                         required
                     >
                 </div>
@@ -1144,41 +1145,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         }
 
-        // ===== CORRECTED PHONE NUMBER HANDLING =====
+        // ===== PHONE NUMBER HANDLING: 09XX-XXX-XXXX, only verify/format on submit =====
         const phoneInput = document.getElementById('contact_number');
-
-        if (phoneInput) {
-            phoneInput.addEventListener('input', () => {
-                let val = phoneInput.value.replace(/\D/g, '');
-
-                // Force starting with 09
-                if (!val.startsWith('09')) {
-                    val = '09' + val.replace(/^0+/, '').slice(0, 9);
-                }
-
-                // Limit strictly to 11 digits
-                val = val.slice(0, 11);
-
-                phoneInput.value = val;
-            });
-
-            phoneInput.addEventListener('blur', () => {
-                if (!/^09\d{9}$/.test(phoneInput.value)) {
-                    alert('Contact number must be 11 digits and start with 09.');
+        const form = document.getElementById('maintenanceRequestForm');
+        if (form && phoneInput) {
+            form.addEventListener('submit', e => {
+                // We only want to check on the inner submit, not the modal confirm
+                const val = phoneInput.value.replace(/\D/g, '');
+                if (!/^09\d{9}$/.test(val)) {
+                    e.preventDefault();
+                    alert('Please complete the contact number in 09XX-XXX-XXXX format.');
                     phoneInput.focus();
+                    return false;
                 }
+                // Format before submit: 09XX-XXX-XXXX
+                phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
             });
         }
 
         // ===== SUBMIT MODAL =====
-        const form = document.getElementById('maintenanceRequestForm');
         const submitBtn = document.getElementById('submit-btn');
         let realSubmit = false;
         if (form && submitBtn) {
             form.addEventListener('submit', e => {
-                if (realSubmit) return; // allow only after modal confirm
+                // If this is post-confirm, allow real submit (prevents infinite modal loop)
+                if (realSubmit) return;
                 e.preventDefault();
-
                 showSubmitModal();
             });
         }
