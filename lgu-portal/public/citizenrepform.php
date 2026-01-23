@@ -1201,37 +1201,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     let realSubmit = false;
 
     if (phoneInput) {
-        // Live format to 09XX-XXX-XXXX style
-        //  --- Improved formatter: only add dash when typing forward, not on delete ---
-        phoneInput.addEventListener('input', e => {
-            let orig = e.target.value;
-            let val = orig.replace(/\D/g, '');
-            if (val.length > 11) val = val.slice(0, 11);
+        phoneInput.addEventListener('input', (e) => {
+            const input = e.target;
 
-            // Calculate cursor position BEFORE changing value, so we can restore
-            let selectionStart = e.target.selectionStart;
-            let isRemoving = false;
+            // Save cursor position
+            const cursorPos = input.selectionStart;
 
-            // If user pressed backspace just before a dash, don't auto-insert
-            if (orig[selectionStart-1] === '-' && selectionStart && orig.length > val.length) {
-                isRemoving = true;
+            // Raw digits only
+            let digits = input.value.replace(/\D/g, '').slice(0, 11);
+
+            // Build formatted value
+            let formatted = '';
+            if (digits.length <= 4) {
+                formatted = digits;
+            } else if (digits.length <= 7) {
+                formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+            } else {
+                formatted =
+                    digits.slice(0, 4) + '-' +
+                    digits.slice(4, 7) + '-' +
+                    digits.slice(7);
             }
 
-            let formatted = val;
-            if (val.length > 3 && val.length <= 7) formatted = val.slice(0,4)+'-'+val.slice(4);
-            if (val.length > 7) formatted = val.slice(0,4)+'-'+val.slice(4,7)+'-'+val.slice(7);
+            // Count how many digits were before the cursor
+            const digitsBeforeCursor = input.value
+                .slice(0, cursorPos)
+                .replace(/\D/g, '')
+                .length;
 
-            e.target.value = formatted;
+            // Set value
+            input.value = formatted;
 
-            // Try to keep cursor in same logical position
-            if (typeof e.target.setSelectionRange === "function") {
-                if (isRemoving) {
-                    // Place cursor before the dash
-                    e.target.setSelectionRange(selectionStart-1, selectionStart-1);
-                } else {
-                    e.target.setSelectionRange(selectionStart, selectionStart);
+            // Restore cursor logically (after same digit count)
+            let newCursor = 0;
+            let digitCount = 0;
+
+            for (let i = 0; i < formatted.length; i++) {
+                if (/\d/.test(formatted[i])) digitCount++;
+                if (digitCount === digitsBeforeCursor) {
+                    newCursor = i + 1;
+                    break;
                 }
             }
+
+            input.setSelectionRange(newCursor, newCursor);
         });
     }
 
