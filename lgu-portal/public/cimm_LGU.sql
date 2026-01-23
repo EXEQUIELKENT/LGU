@@ -342,7 +342,7 @@ ALTER TABLE `pending_registrations`
 --
 ALTER TABLE `repair_archive`
   ADD PRIMARY KEY (`arc_id`),
-  ADD KEY `fk_arc_engineer` (`engineer_id`);
+  ADD KEY `fk_arc_engineer` (`engineer_id`);  
 
 --
 -- Indexes for table `reports`

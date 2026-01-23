@@ -71,23 +71,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
 
                 // Handle file uploads (merge/validate evidence[] input up to 4 images max)
-                if (isset($_FILES['evidence']) && count(array_filter($_FILES['evidence']['name'])) > 0) {
+                if (
+                    isset($_FILES['evidence']) &&
+                    isset($_FILES['evidence']['name']) &&
+                    is_array($_FILES['evidence']['name']) &&
+                    count($_FILES['evidence']['name']) > 0
+                ) {
                     $upload_dir = 'uploads/evidence/';
-                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+
+                    $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
+                    $max_files = 4;
                     $uploadedCount = 0;
+                    // Normalize files array (VERY IMPORTANT)
+                    $files = [];
 
-                    foreach ($_FILES['evidence']['tmp_name'] as $i => $tmp) {
-                        if (empty($tmp) || $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) continue;
-                        if ($uploadedCount >= 4) break; // Never upload more than 4
-                        $ext = strtolower(pathinfo($_FILES['evidence']['name'][$i], PATHINFO_EXTENSION));
-                        if (!in_array($ext, ['jpg','jpeg','png','webp'])) continue;
+                    // Optional debug (remove after confirm): error_log(print_r($_FILES['evidence'], true));
 
-                        $new_name = "evidence_{$req_id}_" . uniqid() . ".$ext";
+                    foreach ($_FILES['evidence']['name'] as $i => $name) {
+                        if (
+                            empty($name) ||
+                            !isset($_FILES['evidence']['tmp_name'][$i]) ||
+                            $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK
+                        ) {
+                            continue;
+                        }
+                        $files[] = [
+                            'name' => $name,
+                            'tmp'  => $_FILES['evidence']['tmp_name'][$i]
+                        ];
+                    }
+
+                    // Optional hardening: enforce max of 4 before upload loop
+                    if (count($files) > 4) {
+                        setNotification('error', 'Maximum of 4 images allowed.');
+                        return;
+                    }
+
+                    foreach ($files as $file) {
+                        if ($uploadedCount >= $max_files) break;
+                        if (empty($file['tmp'])) continue;
+                        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                        if (!in_array($ext, $allowed_ext)) continue;
+                        $new_name = "evidence_{$req_id}_" . uniqid() . "." . $ext;
                         $path = $upload_dir . $new_name;
-
-                        if (move_uploaded_file($tmp, $path)) {
+                        if (move_uploaded_file($file['tmp'], $path)) {
                             $stmtImg = $conn->prepare(
-                                "INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())"
+                                "INSERT INTO evidence_images (req_id, img_path, uploaded_at)
+                                 VALUES (?, ?, NOW())"
                             );
                             $stmtImg->bind_param("is", $req_id, $path);
                             $stmtImg->execute();
@@ -897,7 +930,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <!-- Begin Revised Evidence Upload Section -->
                 <div class="input-group full-width">
-                    <label for="evidence">Evidence - Upload Images (4 Multiple files accepted)</label>
+                    <label for="evidence">Evidence - Upload Images (up to 4 images accepted)</label>
                     <div class="evidence-upload-wrapper">
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
                         <input 
@@ -1000,7 +1033,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.querySelector('.nav-links').classList.toggle('show');
         });
 
-    // ===== IMAGE PREVIEW + FILE MERGING + REMOVE BUTTONS =====
+    // ===== IMAGE PREVIEW + FILE MERGING + Remove Buttons (DataTransfer bug fix with global state) =====
 
     const evidenceInput = document.getElementById('evidence');
     const cameraInput = document.getElementById('evidence-camera');
@@ -1008,50 +1041,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const cameraBtn = document.getElementById('cameraBtn');
     const MAX_FILES = 4;
 
+    // ----------- THE GLOBAL FILE STATE (single source of truth) -----------
+    let selectedFiles = [];
+
     function updateUploadButton() {
-        if (evidenceInput.files.length >= MAX_FILES) {
-            evidenceInput.disabled = true;
-            if (cameraBtn) cameraBtn.disabled = true;
+        const currentCount = selectedFiles.length;
+
+        if (currentCount >= MAX_FILES) {
+            // Disable adding more files
+            evidenceInput.style.pointerEvents = 'none';
+            evidenceInput.style.opacity = '0.5';
+
+            if (cameraBtn) {
+                cameraBtn.disabled = true;
+                cameraBtn.style.opacity = '0.5';
+            }
         } else {
-            evidenceInput.disabled = false;
-            if (cameraBtn) cameraBtn.disabled = false;
+            // 🔑 RE-ENABLE when files are removed
+            evidenceInput.style.pointerEvents = 'auto';
+            evidenceInput.style.opacity = '1';
+
+            if (cameraBtn) {
+                cameraBtn.disabled = false;
+                cameraBtn.style.opacity = '1';
+            }
         }
     }
 
-    // CORRECT MERGING LOGIC: always merge new files into previous files (for mobile/multiple steps)
+    // Correct merging logic: never trust evidenceInput.files in a change event, always use our own array
     function mergeAndPreviewFiles(e) {
-        const dt = new DataTransfer();
+        let incoming = Array.from(e.target.files || []);
 
-        // Always start with currently held files in input (so stacking works even if you upload 1, then another)
-        let files = Array.from(evidenceInput.files);
+        // Clear camera input immediately after use
+        if (e.target === cameraInput) cameraInput.value = '';
 
-        // Add new files from this event (camera or input)
-        if (e && e.target.files.length) {
-            Array.from(e.target.files).forEach(f => files.push(f));
-            if (e.target === cameraInput) cameraInput.value = ''; // reset camera input
-        }
+        // Merge with existing files stored in selectedFiles
+        selectedFiles = selectedFiles.concat(incoming);
 
-        // Remove duplicates by name+lastModified
-        const unique = [];
+        // Remove duplicates (by name + size + lastModified)
         const seen = new Set();
-        for (const f of files) {
-            const key = f.name + f.lastModified;
-            if (!seen.has(key)) {
-                seen.add(key);
-                unique.push(f);
-            }
-        }
+        selectedFiles = selectedFiles.filter(f => {
+            const key = f.name + f.size + f.lastModified;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 
-        // Limit max
-        if (unique.length > MAX_FILES) {
+        // Enforce max
+        if (selectedFiles.length > MAX_FILES) {
             showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
-            unique.length = MAX_FILES;
+            selectedFiles.length = MAX_FILES;
         }
 
-        unique.forEach(f => dt.items.add(f));
-        evidenceInput.files = dt.files;
+        syncInputWithState();
+    }
 
-        renderImagePreview(); // Always call to reflect new files
+    function removeImageAtIndex(index) {
+        selectedFiles.splice(index, 1);
+        syncInputWithState();
+    }
+
+    // Helper to keep input in sync with state, and update preview always
+    function syncInputWithState() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(f => dt.items.add(f));
+        evidenceInput.files = dt.files;
+        renderImagePreview();
     }
 
     if (evidenceInput) {
@@ -1063,7 +1118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     function renderImagePreview() {
         previewDiv.innerHTML = '';
-        const files = evidenceInput.files;
+        const files = selectedFiles;
         Array.from(files).forEach((file, index) => {
             if (!file.type.startsWith('image/')) return;
 
@@ -1095,16 +1150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             reader.readAsDataURL(file);
         });
         updateUploadButton();
-    }
-
-    function removeImageAtIndex(index) {
-        const dt = new DataTransfer();
-        Array.from(evidenceInput.files).forEach((file, i) => {
-            if (i !== index) dt.items.add(file);
-        });
-        evidenceInput.files = dt.files;
-        if (cameraInput) cameraInput.value = '';
-        renderImagePreview();
     }
 
     // FULL IMAGE view modal
@@ -1139,6 +1184,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if(!cameraBtn.disabled) cameraInput.click();
         });
     }
+
+    // On DOMContentLoaded, ensure previews reflect anything in the file inputs
+    document.addEventListener('DOMContentLoaded', function() {
+        // Defensive: If there's content (e.g., after browser autofill or restoration), reconstruct state and preview
+        if (evidenceInput && evidenceInput.files.length > 0) {
+            selectedFiles = Array.from(evidenceInput.files);
+            renderImagePreview();
+        }
+    });
 
     // ===== CONTACT NUMBER LOGIC: auto-format and validate =====
     const phoneInput = document.getElementById('contact_number');
@@ -1293,9 +1347,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     });
 
-    // On DOMContentLoaded, ensure previews reflect anything in the file inputs
+    // On DOMContentLoaded, ensure previews reflect anything in the file inputs (reconstruct from evidenceInput.files if present)
     document.addEventListener('DOMContentLoaded', function() {
-        if (evidenceInput && evidenceInput.files.length > 0) renderImagePreview();
+        if (evidenceInput && evidenceInput.files.length > 0) {
+            selectedFiles = Array.from(evidenceInput.files);
+            renderImagePreview();
+        }
     });
     </script>
 
@@ -1317,6 +1374,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (infraSelect) {
                     infraSelect.style.display = 'block';
                     infraSelect.value = '';
+                }
+                // Also reset our global file state for evidence (fixes stale preview on form clear)
+                if (typeof selectedFiles !== "undefined") {
+                    selectedFiles.length = 0;
                 }
             });
         <?php endif; ?>

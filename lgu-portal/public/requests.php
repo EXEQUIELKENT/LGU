@@ -54,6 +54,9 @@ if (
 $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
 
 // ✅ Fetch requests from DB with ALL evidence images per request (GROUP_CONCAT)
+// Set GROUP_CONCAT max length to handle long paths (default is 1024)
+$conn->query("SET SESSION group_concat_max_len = 4096");
+
 $sql = "SELECT 
     r.req_id,
     r.infrastructure,
@@ -61,7 +64,7 @@ $sql = "SELECT
     r.issue,
     r.approval_status,
     r.created_at,
-    GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC) AS evidence_images
+    GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
 LEFT JOIN evidence_images e ON e.req_id = r.req_id
 GROUP BY r.req_id
@@ -1213,10 +1216,14 @@ h2  {
                     <td class="searchable"><?php echo htmlspecialchars($row['issue']); ?></td>
                     <td class="searchable"><?php echo $row['created_at'] ?? ''; ?></td>
                     <td>
-                        <?php if (!empty($row['evidence_images'])): 
-                            $images = explode(',', $row['evidence_images']);
-                            $firstImage = $images[0];
-                            $count = count($images);
+                        <?php 
+                        $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
+                        if (!empty($evidenceImages)): 
+                            $images = array_filter(explode(',', $evidenceImages)); // Filter out empty values
+                            $images = array_values($images); // Re-index array
+                            if (!empty($images)):
+                                $firstImage = $images[0];
+                                $count = count($images);
                         ?>
                             <div class="evidence-thumb-wrapper"
                                 onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
@@ -1230,9 +1237,14 @@ h2  {
                                     <span class="multi-indicator">+<?= $count - 1 ?></span>
                                 <?php endif; ?>
                             </div>
-                        <?php else: ?>
-                            No image
-                        <?php endif; ?>
+                        <?php 
+                            else: 
+                                echo 'No image';
+                            endif;
+                        else: 
+                            echo 'No image';
+                        endif; 
+                        ?>
                     </td>
                     <td>
                         <?php
@@ -1306,17 +1318,26 @@ h2  {
                         </span>
                     </div>
                     <div class="request-actions">
-                        <?php if (!empty($row['evidence_images'])): 
-                            $images = explode(',', $row['evidence_images']);
+                        <?php 
+                        $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
+                        if (!empty($evidenceImages)): 
+                            $images = array_filter(explode(',', $evidenceImages)); // Filter out empty values
+                            $images = array_values($images); // Re-index array
+                            if (!empty($images)):
                         ?>
                             <button
                                 class="btn-view"
                                 onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
                                 View Evidence (<?= count($images) ?>)
                             </button>
-                        <?php else: ?>
-                            <span class="no-evidence">No Evidence</span>
-                        <?php endif; ?>
+                        <?php 
+                            else: 
+                                echo '<span class="no-evidence">No Evidence</span>';
+                            endif;
+                        else: 
+                            echo '<span class="no-evidence">No Evidence</span>';
+                        endif; 
+                        ?>
                     </div>
                 </div>
         <?php
