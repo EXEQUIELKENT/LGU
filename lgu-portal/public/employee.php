@@ -81,12 +81,20 @@ $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
 /* =========================
-   DESKTOP TOP NAV BAR
+   SIDEBAR/CLOCK ALIGNMENT CONSTANTS
+========================= */
+:root {
+    --sidebar-expanded: 250px;
+    --sidebar-collapsed: 70px;
+}
+
+/* =========================
+   DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
 ========================= */
 .desktop-top-nav {
     position: fixed;
     top: 0;
-    left: 250px; /* aligns with sidebar */
+    left: var(--sidebar-expanded);
     right: 0;
     height: 50px;
     background: rgba(255,255,255,0.92);
@@ -97,13 +105,32 @@ $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first
     justify-content: space-between;
     padding: 0 22px;
     z-index: 3000;
+    transition: left 0.3s ease;
+}
+body.sidebar-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+/* Inner alignment */
+.desktop-top-nav .desktop-nav-inner {
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-expanded));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    transition: max-width 0.3s ease, padding 0.3s ease;
+    padding-left: 12px;
+}
+body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+/* Micro-shift for polish */
+body.sidebar-collapsed .desktop-clock {
+    transform: translateX(-6px);
 }
 
-/* Adjust when sidebar is collapsed */
-.sidebar-nav.collapsed ~ .desktop-top-nav {
-    left: 70px;
-}
-
+/* =========================
+   DESKTOP NAV INNER ALIGNMENT (rest unchanged)
+========================= */
 .desktop-clock {
     font-size: 14px;
     font-weight: 500;
@@ -169,9 +196,21 @@ $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first
 }
 
 /* Push main content down to avoid overlap */
+/* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
 .main-content {
+    margin-left: calc(var(--sidebar-expanded) + 20px);
+    margin-right: 18px;
     padding-top: 60px;
+    height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    transition: margin-left 0.3s ease;
 }
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+/* --- END FIX --- */
+
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* HIDE MOBILE TOP NAV ON DESKTOP */
@@ -735,18 +774,7 @@ body::-webkit-scrollbar {
     color: #888;
     cursor: pointer;
 }
-.main-content {
-    margin-left: 270px;
-    margin-right: 20px;
-    /* padding-top: 60px;  moved above for clock bar */
-    height: 100vh;
-    box-sizing: border-box;
-    display: flex;
-    transition: margin-left 0.3s ease;
-}
-.main-content.expanded {
-    margin-left: 70px;
-}
+/* MAIN CONTENT SCROLLBAR/EXTRAS UNCHANGED */
 .main-content::-webkit-scrollbar { height: 8px; }
 .main-content::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.3);
@@ -1015,8 +1043,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
-    <div class="desktop-nav-spacer"></div>
-    <div class="desktop-clock" id="desktopClock"></div>
+    <div class="desktop-nav-inner">
+        <div class="desktop-clock" id="desktopClock"></div>
+    </div>
 </div>
 
 <!-- MOBILE TOP NAV -->
@@ -1121,6 +1150,7 @@ const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
     mainContent.classList.add('expanded');
+    document.body.classList.add('sidebar-collapsed');
 }
 
 // --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
@@ -1131,16 +1161,21 @@ window.addEventListener('resize', () => {
     if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
         mainContent.classList.remove('expanded');
+        document.body.classList.remove('sidebar-collapsed');
         localStorage.setItem('sidebarCollapsed', 'false');
     }
     lastMobileState = isNowMobile;
 });
 
 sidebarToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
-    const isCollapsed = sidebar.classList.contains('collapsed');
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded', isCollapsed);
+
+    // 🔑 DESKTOP NAV STATE SYNC
+    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+
     localStorage.setItem('sidebarCollapsed', isCollapsed);
+
     if (!isCollapsed) {
         sidebarNavTooltip.classList.remove('active');
         sidebarNavTooltip.style.display = 'none';
