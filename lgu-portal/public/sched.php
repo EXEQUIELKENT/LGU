@@ -147,7 +147,39 @@ if ($result && $result->num_rows > 0) {
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
-/* HIDE MOBILE TOP NAV ON DESKTOP */
+/* =========================
+   SIDEBAR/CLOCK ALIGNMENT CONSTANTS (from employee.php)
+========================= */
+:root {
+    --sidebar-expanded: 250px;
+    --sidebar-collapsed: 70px;
+}
+
+/* =========================
+   SIDEBAR PRELOAD (NO FLASH)
+========================= */
+.sidebar-preload-collapsed .sidebar-nav {
+    width: var(--sidebar-collapsed);
+}
+.sidebar-preload-collapsed .main-content {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+/* Desktop top nav alignment */
+.sidebar-preload-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+.sidebar-preload-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+/* Disable transitions during preload */
+.sidebar-preload-collapsed .sidebar-nav,
+.sidebar-preload-collapsed .main-content,
+.sidebar-preload-collapsed .desktop-top-nav,
+.sidebar-preload-collapsed .desktop-top-nav .desktop-nav-inner {
+    transition: none !important;
+}
+
+/* --- HIDE MOBILE TOP NAV ON DESKTOP --- */
 .mobile-top-nav {
     display: none;
 }
@@ -1779,6 +1811,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </script>
 </head>
 <body>
+
+<script>
+(function () {
+    try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.documentElement.classList.add('sidebar-preload-collapsed');
+        }
+    } catch (e) {}
+})();
+</script>
+
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
@@ -2030,8 +2073,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         background: #f7faff; /* Ensure mobile also matches */
     }
 }
-
-
 </style>
 <div id="customDatePickerOverlay">
     <input type="date" id="overlayDatePicker">
@@ -2044,9 +2085,6 @@ window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE |
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
 
 <script>
-// The code in this DOMContentLoaded handler must run in the correct sequence:
-// 1. Sidebar collapse state logic triggers and applies collapsed state, before other initializations.
-
 document.addEventListener('DOMContentLoaded', function() {
     // Helper for query selector with error
     function getSafeElem(id) {
@@ -2057,49 +2095,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return el;
     }
 
-    // --- (1) Sidebar collapse state logic FIRST ---
+    // Grab all required elements safely (with null fallback)
     const sidebarToggle = getSafeElem('sidebarToggle');
     const sidebar = getSafeElem('sidebarNav');
     const mainContent = document.querySelector('.main-content');
-    const sidebarNavTooltip = getSafeElem('sidebarNavTooltip');
-
-    // Sidebar collapse state must be applied first
-    if (sidebar && mainContent) {
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('expanded');
-            document.body.classList.add('sidebar-collapsed');
-        }
-        let lastMobileState = window.innerWidth <= 768;
-        window.addEventListener('resize', () => {
-            const isNowMobile = window.innerWidth <= 768;
-            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('expanded');
-                document.body.classList.remove('sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', 'false');
-            }
-            lastMobileState = isNowMobile;
-        });
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                mainContent.classList.toggle('expanded', isCollapsed);
-                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-                localStorage.setItem('sidebarCollapsed', isCollapsed);
-                if (sidebarNavTooltip) {
-                    sidebarNavTooltip.classList.remove('active');
-                    sidebarNavTooltip.style.display = 'none';
-                }
-            });
-        }
-    }
-
-    // --- (2) Grab all required elements safely (AFTER sidebar state logic) ---
-    // Elements that depend on sidebar state should be correctly collapsed
     const sidebarNav = getSafeElem('sidebarNav');
+    const sidebarNavTooltip = getSafeElem('sidebarNavTooltip');
     const profileIconBtn = getSafeElem('profileIconBtn');
     const logoutBtn = getSafeElem('logoutBtn');
     const logoutAlertBackdrop = getSafeElem('logoutAlertBackdrop');
@@ -2131,6 +2132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileScheduleSearch = getSafeElem('mobileScheduleSearch');
     const prevMonthBtn = getSafeElem('prevMonth');
     const nextMonthBtn = getSafeElem('nextMonth');
+
     // Date Picker (Native input only, no overlay)
     const pickerDate = getSafeElem('pickerDate');
 
@@ -2142,8 +2144,46 @@ document.addEventListener('DOMContentLoaded', function() {
         return window.innerWidth <= 768;
     }
 
+    // --- Sidebar collapse state logic (synced with desktop nav) ---
+    if (sidebar && mainContent) {
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+            document.body.classList.add('sidebar-collapsed');
+            // Remove preload state (IMPORTANT: handoff after classes applied)
+            document.documentElement.classList.remove('sidebar-preload-collapsed');
+        }
+        let lastMobileState = isMobileView();
+        window.addEventListener('resize', () => {
+            const isNowMobile = isMobileView();
+            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                document.body.classList.remove('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'false');
+            }
+            lastMobileState = isNowMobile;
+        });
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                mainContent.classList.toggle('expanded', isCollapsed);
+                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+                if (sidebarNavTooltip) {
+                    sidebarNavTooltip.classList.remove('active');
+                    sidebarNavTooltip.style.display = 'none';
+                }
+                // Remove preload class (if still present) after any sidebarToggle
+                document.documentElement.classList.remove('sidebar-preload-collapsed');
+            });
+        }
+    }
+
     // --- Sidebar tooltips and nav (unchanged) ---
-    // ... no changes, copy as before ...
+    // ... [snipped for brevity; unchanged from original selection] ...
     let tooltipActiveLink = null;
     let tooltipHideTimeout = null;
     function hideNavTooltipImmediate() {
