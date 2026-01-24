@@ -2,15 +2,10 @@
 session_start();
 require_once 'db.php';
 
-// Determine base path and redirect URLs
-$basePath = '';
-$loginUrl = 'citizencimm.php';
-$BASE_URL = '/lgu-portal/public/';
-
-//if (isset($_SERVER['SCRIPT_NAME']) && basename($_SERVER['SCRIPT_NAME']) === 'index.php') {
-    //$basePath = 'lgu-portal/public/';
-    //$loginUrl = 'index.php';
-//}
+/**
+ * AUTO BASE URL (works on localhost + domain)
+ */
+$BASE_URL = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
 
 // Get repairs count from repair_archive
 $repairs_count = 0;
@@ -67,7 +62,7 @@ if ($maintenance_result) {
         }
 
         body {
-            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -761,14 +756,14 @@ if ($maintenance_result) {
 
 <header class="nav">
     <div class="site-logo">
-        <img src="logocityhall.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <img src="<?= $BASE_URL ?>logocityhall.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
         <a href="<?= $BASE_URL ?>login.php">Log in</a>
-        <a href="#" class="active">Home</a>
+        <a href="<?= $BASE_URL ?>citizendash.php" class="active">Home</a>
         <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-        <a href="about.php">About</a>
+        <a href="<?= $BASE_URL ?>about.php">About</a>
     </div>
     <div class="menu-toggle">☰</div>
 </header>
