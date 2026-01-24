@@ -2,17 +2,13 @@
 session_start();
 require_once 'db.php';
 
-/**
- * SMART BASE URL
- * - Domain: document root = public → "/"
- * - Localhost: nested folders → "/LGU/lgu-portal/public/"
- */
-$baseDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-
-if ($baseDir === '' || $baseDir === '/') {
-    $BASE_URL = '/';
+// Detect base URL automatically
+if (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)) {
+    // Localhost: include folder structure
+    $BASE_URL = '/LGU/lgu-portal/public/';
 } else {
-    $BASE_URL = $baseDir . '/';
+    // Domain: root is public
+    $BASE_URL = '/';
 }
 
 // Get repairs count from repair_archive
