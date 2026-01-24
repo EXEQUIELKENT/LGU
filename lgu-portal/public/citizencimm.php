@@ -3,9 +3,17 @@ session_start();
 require_once 'db.php';
 
 /**
- * AUTO BASE URL (works on localhost + domain)
+ * SMART BASE URL
+ * - Domain: document root = public → "/"
+ * - Localhost: nested folders → "/LGU/lgu-portal/public/"
  */
-$BASE_URL = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
+$baseDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+
+if ($baseDir === '' || $baseDir === '/') {
+    $BASE_URL = '/';
+} else {
+    $BASE_URL = $baseDir . '/';
+}
 
 // Get repairs count from repair_archive
 $repairs_count = 0;
