@@ -7,7 +7,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
 } else {
     // For domain, make sure this path matches where you uploaded the files
-    $BASE_URL = '/'; // if public/ is root
+    $BASE_URL = '/lgu-portal/public/'; // if public/ is root
     // OR $BASE_URL = '/lgu-portal/public/'; // if domain points above public
 }
 
