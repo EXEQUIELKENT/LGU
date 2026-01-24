@@ -2,13 +2,13 @@
 session_start();
 require_once 'db.php';
 
-// Detect base URL automatically
-if (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)) {
-    // Localhost: include folder structure
+// For local development
+if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
 } else {
-    // Domain: root is public
-    $BASE_URL = '/';
+    // For domain, make sure this path matches where you uploaded the files
+    $BASE_URL = '/'; // if public/ is root
+    // OR $BASE_URL = '/lgu-portal/public/'; // if domain points above public
 }
 
 // Get repairs count from repair_archive
