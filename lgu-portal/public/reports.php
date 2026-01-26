@@ -56,6 +56,11 @@ function showNotification() {
 }
 
 $firstName = $_SESSION['employee_first_name'] ?? 'User';
+$employeeRole = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
+$displayName = $firstName;
+if ($employeeRole === 'Super Admin' || $employeeRole === 'Admin') {
+    $displayName = 'Admin - ' . $firstName;
+}
 
 // Fetch reports with JOINs to get related data
 $sql = "SELECT 
@@ -101,6 +106,25 @@ $result = $conn->query($sql);
 :root {
     --sidebar-expanded: 250px;
     --sidebar-collapsed: 70px;
+    
+    /* Dark Mode Variables */
+    --bg-primary: #ffffff;
+    --bg-secondary: rgba(255, 255, 255, 0.95);
+    --bg-tertiary: rgba(255, 255, 255, 0.9);
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: rgba(26, 26, 26, 0.95);
+    --bg-tertiary: rgba(30, 30, 30, 0.9);
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 /* =========================
@@ -112,15 +136,16 @@ $result = $conn->query($sql);
     left: var(--sidebar-expanded);
     right: 0;
     height: 50px;
-    background: rgba(255,255,255,0.92);
+    background: var(--bg-secondary);
     backdrop-filter: blur(12px);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 18px var(--shadow-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 22px;
     z-index: 3000;
-    transition: left 0.3s ease;
+    transition: left 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
 }
 body.sidebar-collapsed .desktop-top-nav {
     left: var(--sidebar-collapsed);
@@ -131,8 +156,229 @@ body.sidebar-collapsed .desktop-top-nav {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 12px;
     transition: max-width 0.3s ease, padding 0.3s ease;
     padding-left: 12px;
+}
+
+/* Dark Mode & Notification Buttons */
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(55, 98, 200, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+.nav-btn:hover {
+    background: rgba(55, 98, 200, 0.2);
+    transform: scale(1.05);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+.nav-btn.dark-mode-btn {
+    animation: none;
+}
+
+.nav-btn.dark-mode-btn.active {
+    animation: rotateSun 0.5s ease;
+}
+
+@keyframes rotateSun {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+.nav-btn.notif-btn {
+    animation: none;
+}
+
+.nav-btn.notif-btn.has-notif {
+    animation: bellRing 0.5s ease-in-out;
+}
+
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(-10deg); }
+    20%, 40% { transform: rotate(10deg); }
+    50% { transform: rotate(0deg); }
+}
+
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e94444;
+    color: #fff;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
+    display: none;
+}
+
+.notif-badge.show {
+    display: block;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.9; }
+}
+
+/* Notification Dropdown */
+.notif-dropdown {
+    position: fixed;
+    top: 60px;
+    right: 22px;
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    max-height: 500px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px var(--shadow-color);
+    z-index: 4000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.notif-dropdown.show {
+    display: flex;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notif-dropdown-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-tertiary);
+}
+
+.notif-dropdown-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.notif-clear-btn {
+    background: none;
+    border: none;
+    color: #3762c8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.notif-clear-btn:hover {
+    background: rgba(55, 98, 200, 0.1);
+}
+
+.notif-dropdown-body {
+    overflow-y: auto;
+    max-height: 420px;
+}
+
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: rgba(55, 98, 200, 0.3);
+    border-radius: 3px;
+}
+
+.notif-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.notif-item:hover {
+    background: rgba(55, 98, 200, 0.05);
+}
+
+.notif-item.unread {
+    background: rgba(55, 98, 200, 0.08);
+    border-left: 3px solid #3762c8;
+}
+
+.notif-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.notif-item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.notif-item-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+/* Hide timezone text on DESKTOP only */
+.desktop-top-nav .clock-timezone {
+    display: none;
 }
 body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
     max-width: calc(100vw - var(--sidebar-collapsed));
@@ -144,9 +390,10 @@ body.sidebar-collapsed .desktop-clock {
 .desktop-clock {
     font-size: 14px;
     font-weight: 500;
-    color: #222;
+    color: var(--text-primary);
     white-space: nowrap;
     position: relative;
+    transition: color 0.3s ease;
 }
 .desktop-clock .date-part {
     opacity: 0.6;
@@ -208,7 +455,10 @@ body {
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
     z-index: 0;
+    transition: background 0.3s ease;
 }
+
+
 body::before {
     content: "";
     position: fixed;
@@ -219,6 +469,11 @@ body::before {
     backdrop-filter: blur(6px);
     background: rgba(0,0,0,0.35);
     z-index: 0;
+    transition: background 0.3s ease;
+}
+
+[data-theme="dark"] body::before {
+    background: rgba(0,0,0,0.6);
 }
 
 .sidebar-nav,
@@ -283,9 +538,9 @@ body::before {
     min-width: 280px;
     max-width: 95vw;
     padding: 18px 32px;
-    background: #fff;
+    background: var(--bg-secondary);
     border-radius: 13px;
-    box-shadow: 0 8px 38px rgba(34,53,126,0.23);
+    box-shadow: 0 8px 38px var(--shadow-color);
     z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
     display: flex;
     align-items: center;
@@ -294,7 +549,9 @@ body::before {
     font-size: 17px;
     font-weight: 500;
     opacity: 1;
-    transition: opacity .35s;
+    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 .notif-popup .notif-icon { font-size: 23px; }
 .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
@@ -316,18 +573,18 @@ body::before {
     left: 0;
     width: 250px;
     height: 100vh;
-    background: rgba(255, 255, 255, 0.795);
+    background: var(--bg-secondary);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
-    color: #fff;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 25px var(--shadow-color);
+    color: var(--text-primary);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 0;
     z-index: 1000;
-    transition: width 0.3s ease, left 0.3s ease;
+    transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
     width: 70px;
@@ -455,7 +712,7 @@ body::before {
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #000000;
+    color: var(--text-primary);
     text-decoration: none;
     padding: 12px 20px;
     transition: all 0.3s ease;
@@ -535,6 +792,36 @@ body::before {
     margin: 20px 25px 0 25px;
     transition: all 0.3s ease;
 }
+
+[data-theme="dark"] .sidebar-divider {
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Dark Mode - Mobile Report Cards */
+[data-theme="dark"] .report-card {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    box-shadow: 0 6px 18px var(--shadow-color);
+}
+
+[data-theme="dark"] .report-card strong {
+    color: #5f8cff;
+}
+
+[data-theme="dark"] .report-card div {
+    color: var(--text-primary);
+}
+
+/* Dark Mode - Status Pills */
+[data-theme="dark"] .status.completed {
+    background: rgba(76, 175, 80, 0.2);
+    color: #81c784;
+}
+
+[data-theme="dark"] .status.on-going {
+    background: rgba(255, 235, 59, 0.2);
+    color: #fff176;
+}
 .sidebar-nav.collapsed .sidebar-divider {
     width: calc(100% - 20px);
     margin: 20px 10px 0 10px;
@@ -552,7 +839,7 @@ body::before {
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 5px;
@@ -622,6 +909,11 @@ body::before {
     white-space: normal;
     text-align: center;
     transition: none !important;
+}
+
+/* Hidden by default (desktop) */
+.mobile-dark-mode-btn {
+    display: none;
 }
 
 /* Logout Modal Custom Design (matching @sched.php) */
@@ -741,16 +1033,22 @@ body::before {
 }
 /* --- END FIX --- */
 
-.page-title{color:#fff;font-size:28px;margin-bottom:25px;margin-top:0;font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;}
+.page-title{
+    color: #fff;
+    font-size:28px;
+    margin-bottom:25px;
+    margin-top:0;
+    font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
+}
 
 .card {
     align-self: start;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--bg-secondary);
     backdrop-filter: blur(12px);
     border-radius: 18px;
     padding: 30px 35px;
     margin-bottom: 30px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 20px var(--shadow-color);
     transition: 0.2s;
     display: flex;
     flex-direction: column;
@@ -758,6 +1056,23 @@ body::before {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+    border: 1px solid var(--border-color);
+}
+
+.card h2, .card h3 {
+    color: var(--text-primary);
+}
+
+.card table {
+    color: var(--text-primary);
+}
+
+.card th {
+    color: #fff;
+}
+
+.card td {
+    color: var(--text-primary);
 }
 
 table {
@@ -795,65 +1110,226 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-    .desktop-top-nav {
+    /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
+        .desktop-top-nav {
         display: none;
     }
 
-    /* Clock inside existing mobile nav */
     .mobile-top-nav {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 64px;
+        width: 100%;
+        align-items: center;
         justify-content: center;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(12px);
+        z-index: 5000;
+        box-shadow: 0 4px 18px var(--shadow-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .mobile-toggle {
+        position: absolute;
+        left: 14px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
     }
     .mobile-clock {
         position: absolute;
-        right: 16px;
+        right: 56px;
         font-size: 14px;
-        font-weight: 500;
-        color: #222;
+        font-weight: 600;
+        color: var(--text-primary);
         white-space: nowrap;
+        transition: color 0.3s ease;
+    }
+    .mobile-notif-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 38px;
+        height: 38px;
+        z-index: 1;
     }
 
-    /* Show mobile top nav in mobile */
+    /* === MOBILE SIDEBAR DARK MODE POSITION === */
+    .mobile-dark-mode-btn {
+        display: flex;
+        position: absolute;
+        margin-top: 42px;
+        top: 18px;
+        right: 18px;
+        width: 38px;
+        height: 38px;
+        z-index: 1005;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Align profile properly */
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .sidebar-top {
+        position: relative; /* anchor for absolute children */
+    }
+
+    /* Center logo between profile & dark mode */
+    .site-logo {
+        margin-top: 60px;
+        text-align: center;
+    }
+
+    /* Show sidebar, sidebar nav rules */
+    .sidebar-nav {
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        transition: left 0.35s ease;
+        z-index: 4000;
+    }
+
+    .sidebar-nav.mobile-active {
+        left: 12px;
+    }
+
+    /* Disable desktop collapse behavior */
+    .sidebar-nav.collapsed {
+        width: calc(100% - 24px);
+    }
+    /* ----- END: Alignment fix ----- */
+
+    /* Show mobile dark mode button only in mobile view */
+    /* (leave this so desktop doesn't show, matches your original intent) */
+    /* Do NOT change the <769px override below */
+}
+
+/* Hide dark mode button in desktop sidebar */
+@media (min-width: 769px) {
+    .mobile-dark-mode-btn {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    
     .mobile-top-nav {
         display: flex;
     }
 
-/* Hide desktop sidebar initially */
-.sidebar-nav {
-    left: -110%;
-    width: calc(100% - 24px);
-    height: calc(100% - 24px);
-    top: 12px;
-    bottom: 12px;
-    border-radius: 18px;
-    transition: left 0.35s ease;
-    z-index: 4000;
-}
 
-/* Show sidebar when active */
-.sidebar-nav.mobile-active {
-    left: 12px;
-}
-
-/* Disable desktop collapse behavior */
-.sidebar-nav.collapsed {
-    width: calc(100% - 24px);
-}
-
-    /* MOBILE TOP NAV */
     .mobile-top-nav {
+        display: flex;
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
         height: 64px;
-        background: rgba(255,255,255,0.92);
-        backdrop-filter: blur(12px);
+        width: 100%;
         align-items: center;
         justify-content: center;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(12px);
         z-index: 5000;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 18px var(--shadow-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
 
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
+    }
+
+    .mobile-toggle {
+        position: absolute;
+        left: 16px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .mobile-dark-mode-btn {
+        display: flex;
+        position: absolute;
+        margin-top: 42px;
+        top: 18px;
+        right: 18px;           /* ✅ responsive */
+        width: 42px;
+        height: 42px;
+        z-index: 1005;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Sidebar internal layout for mobile */
+    .sidebar-top {
+        padding-top: 30px;
+    }
+        /* Show sidebar, sidebar nav rules */
+        .sidebar-nav {
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        transition: left 0.35s ease;
+        z-index: 4000;
+    }
+
+    .sidebar-nav.mobile-active {
+        left: 12px;
+    }
+
+    /* Disable desktop collapse behavior */
+    .sidebar-nav.collapsed {
+        width: calc(100% - 24px);
+    }
+
+        /* Align profile properly */
+        .sidebar-profile-btn {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        width: 42px;
+        height: 42px;
+    }
+
+    /* REMOVE THE BAD OVERRIDE:
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
+    (completely removed per instructions)
+    */
+    
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
@@ -881,7 +1357,6 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
         position: relative;
         margin: 10px 0 0 15px;
     }
-
     .site-logo {
         margin: 10px auto 20px auto;
     }
@@ -956,61 +1431,61 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
         font-size: 16px;
     }
 
-/* ===============================
+    /* ===============================
    📱 MOBILE REPORT CARD VIEW
 ================================ */
 
-/* Hide desktop table on mobile */
-.card table,
-.card thead,
-.card tbody,
-.card tr,
-.card th,
-.card td {
-    display: none;
-}
+    /* Hide desktop table on mobile */
+    .card table,
+    .card thead,
+    .card tbody,
+    .card tr,
+    .card th,
+    .card td {
+        display: none;
+    }
 
-h2 {
-    display: none;
-}
+    h2 {
+        display: none;
+    }
 
-/* Show card list */
-.mobile-report-list {
-    display: flex !important;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 0px;
-}
+    /* Show card list */
+    .mobile-report-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 0px;
+    }
 
-/* Individual report card */
-.report-card {
-    background: rgba(255,255,255,0.96);
-    border-radius: 16px;
-    padding: 16px 18px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-    font-size: 14px;
-}
+    /* Individual report card */
+    .report-card {
+        background: rgba(255,255,255,0.96);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        font-size: 14px;
+    }
 
-/* Label + value spacing */
-.report-card div {
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
+    /* Label + value spacing */
+    .report-card div {
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
 
-/* Make labels slightly muted */
-.report-card strong {
-    color: #3762c8;
-    font-weight: 600;
-}
+    /* Make labels slightly muted */
+    .report-card strong {
+        color: #3762c8;
+        font-weight: 600;
+    }
 
-/* Status pill spacing */
-.report-card .status {
-    display: inline-block;
-    margin-left: 6px;
+    /* Status pill spacing */
+    .report-card .status {
+        display: inline-block;
+        margin-left: 6px;
+    }
 }
 
 /* Hide the 'no reports found' card on desktop */
-}
 @media (min-width: 769px) {
     .mobile-report-list .report-card.no-mobile {
         display: none !important;
@@ -1020,6 +1495,14 @@ h2 {
 <script>
 // --- Server time for server-synced clock ---
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+
+// --- Apply theme immediately to prevent flickering ---
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
 </script>
 </head>
 
@@ -1029,14 +1512,38 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
         <div class="desktop-clock" id="desktopClock"></div>
+        <div class="nav-actions">
+            <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
+                <span class="dark-icon">🌙</span>
+                <span class="light-icon" style="display: none;">☀️</span>
+            </button>
+            <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
+                🔔
+                <span class="notif-badge" id="notifBadge"></span>
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- MOBILE TOP NAV -->
+<!-- Notification Dropdown -->
+<div class="notif-dropdown" id="notifDropdown">
+    <div class="notif-dropdown-header">
+        <h3>Notifications</h3>
+        <button class="notif-clear-btn" id="clearNotifBtn">Clear all</button>
+    </div>
+    <div class="notif-dropdown-body" id="notifBody">
+        <div class="notif-empty">No new notifications</div>
+    </div>
+</div>
+
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <img src="logocityhall.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
+    <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
+        🔔
+        <span class="notif-badge" id="mobileNotifBadge"></span>
+    </button>
 </div>
 
 <?php showNotification(); ?>
@@ -1055,6 +1562,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <img src="profile.png" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
+        <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
+            <span class="dark-icon">🌙</span>
+            <span class="light-icon" style="display: none;">☀️</span>
+        </button>
         <!-- Logo -->
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
@@ -1082,7 +1593,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($firstName) ?></div>
+        <div class="user-welcome">Welcome, <?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
@@ -1584,6 +2095,186 @@ setInterval(() => {
 startClock();
 </script>
 
+<script>
+// ===== DARK MODE TOGGLE =====
+(function() {
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
+    if (!darkModeBtn && !mobileDarkModeBtn) return;
+    
+    const darkIcon = darkModeBtn?.querySelector('.dark-icon') || mobileDarkModeBtn?.querySelector('.dark-icon');
+    const lightIcon = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
+    const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
+    const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
+    const html = document.documentElement;
+    
+    function updateTheme(isDark) {
+        if (isDark) {
+            html.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            if (darkIcon) darkIcon.style.display = 'none';
+            if (lightIcon) lightIcon.style.display = 'inline';
+            if (mobileDarkIcon) mobileDarkIcon.style.display = 'none';
+            if (mobileLightIcon) mobileLightIcon.style.display = 'inline';
+            if (darkModeBtn) darkModeBtn.classList.add('active');
+            if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
+        } else {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+            if (darkIcon) darkIcon.style.display = 'inline';
+            if (lightIcon) lightIcon.style.display = 'none';
+            if (mobileDarkIcon) mobileDarkIcon.style.display = 'inline';
+            if (mobileLightIcon) mobileLightIcon.style.display = 'none';
+            if (darkModeBtn) darkModeBtn.classList.remove('active');
+            if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
+        }
+    }
+    
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    updateTheme(savedTheme === 'dark');
+    
+    function toggleTheme() {
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        updateTheme(!isDark);
+    }
+    
+    if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
+    if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
+})();
+
+// ===== NOTIFICATION SYSTEM =====
+(function() {
+    const notifBtn = document.getElementById('notifBtn');
+    const mobileNotifBtn = document.getElementById('mobileNotifBtn');
+    const notifDropdown = document.getElementById('notifDropdown');
+    const notifBody = document.getElementById('notifBody');
+    const notifBadge = document.getElementById('notifBadge');
+    const mobileNotifBadge = document.getElementById('mobileNotifBadge');
+    const clearNotifBtn = document.getElementById('clearNotifBtn');
+    if ((!notifBtn && !mobileNotifBtn) || !notifDropdown) return;
+    
+    let notifications = [];
+    
+    // Fetch notifications from server
+    async function fetchNotifications() {
+        try {
+            const response = await fetch('api/notifications.php');
+            const data = await response.json();
+            notifications = data.notifications || [];
+            updateNotificationUI();
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            notifications = [];
+            updateNotificationUI();
+        }
+    }
+    
+    // Update notification UI
+    function updateNotificationUI() {
+        const unreadCount = notifications.filter(n => !n.read).length;
+        
+        // Update badge
+        const badgeText = unreadCount > 99 ? '99+' : unreadCount;
+        if (unreadCount > 0) {
+            if (notifBadge) {
+                notifBadge.textContent = badgeText;
+                notifBadge.classList.add('show');
+            }
+            if (mobileNotifBadge) {
+                mobileNotifBadge.textContent = badgeText;
+                mobileNotifBadge.classList.add('show');
+            }
+            if (notifBtn) notifBtn.classList.add('has-notif');
+            if (mobileNotifBtn) mobileNotifBtn.classList.add('has-notif');
+        } else {
+            if (notifBadge) notifBadge.classList.remove('show');
+            if (mobileNotifBadge) mobileNotifBadge.classList.remove('show');
+            if (notifBtn) notifBtn.classList.remove('has-notif');
+            if (mobileNotifBtn) mobileNotifBtn.classList.remove('has-notif');
+        }
+        
+        // Update dropdown content
+        if (notifications.length === 0) {
+            notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
+        } else {
+            notifBody.innerHTML = notifications.map(notif => `
+                <div class="notif-item ${notif.read ? '' : 'unread'}" data-id="${notif.id}">
+                    <div class="notif-item-title">${notif.title}</div>
+                    <div class="notif-item-desc">${notif.description}</div>
+                    <div class="notif-item-time">${notif.time}</div>
+                </div>
+            `).join('');
+            
+            // Add click handlers
+            notifBody.querySelectorAll('.notif-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    markAsRead(id);
+                    const notif = notifications.find(n => n.id == id);
+                    if (notif && notif.url) {
+                        window.location.href = notif.url;
+                    }
+                });
+            });
+        }
+    }
+    
+    // Mark notification as read
+    async function markAsRead(id) {
+        try {
+            await fetch('api/notifications.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'mark_read', id: id })
+            });
+            const notif = notifications.find(n => n.id == id);
+            if (notif) notif.read = true;
+            updateNotificationUI();
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    }
+    
+    // Toggle dropdown
+    function toggleDropdown(e) {
+        e.stopPropagation();
+        notifDropdown.classList.toggle('show');
+    }
+    if (notifBtn) notifBtn.addEventListener('click', toggleDropdown);
+    if (mobileNotifBtn) mobileNotifBtn.addEventListener('click', toggleDropdown);
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!notifDropdown.contains(e.target) && 
+            !(notifBtn && notifBtn.contains(e.target)) && 
+            !(mobileNotifBtn && mobileNotifBtn.contains(e.target))) {
+            notifDropdown.classList.remove('show');
+        }
+    });
+    
+    // Clear all notifications
+    if (clearNotifBtn) {
+        clearNotifBtn.addEventListener('click', async () => {
+            try {
+                await fetch('api/notifications.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'clear_all' })
+                });
+                notifications = [];
+                updateNotificationUI();
+            } catch (error) {
+                console.error('Error clearing notifications:', error);
+            }
+        });
+    }
+    
+    // Fetch notifications on load and every 30 seconds
+    fetchNotifications();
+    setInterval(fetchNotifications, 30000);
+})();
+</script>
 
 </body>
 </html>

@@ -257,7 +257,7 @@ if (isset($_POST['otp_submit'])) {
         unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 
         if ($email) {
-            $checkStmt = $conn->prepare("SELECT is_first_login FROM employees WHERE email = ?");
+            $checkStmt = $conn->prepare("SELECT is_first_login, role FROM employees WHERE email = ?");
             $checkStmt->bind_param("s", $email);
             $checkStmt->execute();
             $result = $checkStmt->get_result();
@@ -265,6 +265,7 @@ if (isset($_POST['otp_submit'])) {
             if ($result->num_rows === 1) {
                 $userData = $result->fetch_assoc();
                 $isFirstLogin = $userData['is_first_login'] ?? 0;
+                $_SESSION['employee_role'] = $userData['role'] ?? '';
 
                 if ($isFirstLogin == 1) {
                     $_SESSION['show_change_password_modal'] = true;
@@ -336,7 +337,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     // Step 3: Lazy-load (do NOT query DB if format invalid or locked out above): fetch user here if we reach this far
     $stmt = $conn->prepare("
-        SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at
+        SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at, role
         FROM employees
         WHERE LOWER(email) = LOWER(?)
     ");
@@ -390,6 +391,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     }
 
     $_SESSION['employee_first_name'] = $user['first_name'];
+    $_SESSION['employee_role'] = $user['role'] ?? '';
 
     // Only check password if not resending OTP
     $requireOtp = false;
