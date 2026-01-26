@@ -55,12 +55,28 @@ function showNotification() {
     }
 }
 
-$firstName = $_SESSION['employee_first_name'] ?? 'User';
-$employeeRole = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
-$displayName = $firstName;
-if ($employeeRole === 'Super Admin' || $employeeRole === 'Admin') {
-    $displayName = 'Admin - ' . $firstName;
+// Improved: Format display name as "Role - Name" if applicable
+function getDisplayName() {
+    // Fallbacks
+    $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
+    $lastName = isset($_SESSION['employee_last_name']) ? $_SESSION['employee_last_name'] : '';
+    $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
+    // Try to use full name if available
+    $name = trim($firstName . ' ' . $lastName);
+    if (!$name) $name = 'User';
+
+    // Determine formatting based on role (you can modify roles as needed)
+    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
+        return 'Admin - ' . $name;
+    } elseif ($role) {
+        // Show role for any other roles, e.g., "Employee - John Doe"
+        return $role . ' - ' . $name;
+    } else {
+        // No role: show plain name
+        return $name;
+    }
 }
+$displayName = getDisplayName();
 
 // Fetch reports with JOINs to get related data
 $sql = "SELECT 
@@ -1619,9 +1635,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 
     <div class="sidebar-divider"></div>
-
     <div class="user-info">
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($displayName) ?></div>
+        <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>

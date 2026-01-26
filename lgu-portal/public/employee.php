@@ -67,12 +67,28 @@ function showNotification() {
     }
 }
 
-$firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : 'User';
-$employeeRole = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
-$displayName = $firstName;
-if ($employeeRole === 'Super Admin' || $employeeRole === 'Admin') {
-    $displayName = 'Admin - ' . $firstName;
+// Improved: Format display name as "Role - Name" if applicable
+function getDisplayName() {
+    // Fallbacks
+    $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
+    $lastName = isset($_SESSION['employee_last_name']) ? $_SESSION['employee_last_name'] : '';
+    $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
+    // Try to use full name if available
+    $name = trim($firstName . ' ' . $lastName);
+    if (!$name) $name = 'User';
+
+    // Determine formatting based on role (you can modify roles as needed)
+    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
+        return 'Admin - ' . $name;
+    } elseif ($role) {
+        // Show role for any other roles, e.g., "Employee - John Doe"
+        return $role . ' - ' . $name;
+    } else {
+        // No role: show plain name
+        return $name;
+    }
 }
+$displayName = getDisplayName();
 
 ?>
 <!DOCTYPE html>
@@ -517,16 +533,12 @@ body::before {
     background: rgba(0,0,0,0.6);
 }
 
-body::-webkit-scrollbar {
-  display: none;
-}
 .sidebar-nav,
 .main-content,
 .mobile-top-nav {
     position: relative;
     z-index: 1;
 }
-
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* PROFILE BUTTON */
@@ -1094,7 +1106,7 @@ body::-webkit-scrollbar {
     transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .main-card .card {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--bg-secondary);
 }
 .main-card::-webkit-scrollbar {
     display: none;
@@ -1460,7 +1472,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
-        <div class="user-welcome">Welcome, <?= htmlspecialchars($displayName) ?></div>
+        <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
     </div>
 </div>
