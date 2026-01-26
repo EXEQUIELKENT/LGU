@@ -111,7 +111,33 @@ if ($employeeRole === 'Super Admin' || $employeeRole === 'Admin') {
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
+/* Logout Alert Modal */
+[data-theme="dark"] #logoutAlertModal {
+    background: var(--bg-secondary);
+}
 
+[data-theme="dark"] #logoutAlertModal .icon-wrap {
+    background: rgba(233, 68, 68, 0.15);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-desc {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-btn.cancel:hover {
+    background: rgba(55, 98, 200, 0.2);
+    color: #5f8cff;
+}
 /* =========================
    DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
 ========================= */

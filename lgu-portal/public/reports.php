@@ -822,6 +822,34 @@ body::before {
     background: rgba(255, 235, 59, 0.2);
     color: #fff176;
 }
+
+/* Logout Alert Modal */
+[data-theme="dark"] #logoutAlertModal {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] #logoutAlertModal .icon-wrap {
+    background: rgba(233, 68, 68, 0.15);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-desc {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #logoutAlertModal .alert-btn.cancel:hover {
+    background: rgba(55, 98, 200, 0.2);
+    color: #5f8cff;
+}
 .sidebar-nav.collapsed .sidebar-divider {
     width: calc(100% - 20px);
     margin: 20px 10px 0 10px;
