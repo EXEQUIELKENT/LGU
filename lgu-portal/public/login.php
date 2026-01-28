@@ -257,7 +257,8 @@ if (isset($_POST['otp_submit'])) {
         unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 
         if ($email) {
-            $checkStmt = $conn->prepare("SELECT is_first_login, role FROM employees WHERE email = ?");
+            // Fetch user_id, is_first_login, role for post-OTP session
+            $checkStmt = $conn->prepare("SELECT user_id, is_first_login, role, first_name FROM employees WHERE email = ?");
             $checkStmt->bind_param("s", $email);
             $checkStmt->execute();
             $result = $checkStmt->get_result();
@@ -266,6 +267,8 @@ if (isset($_POST['otp_submit'])) {
                 $userData = $result->fetch_assoc();
                 $isFirstLogin = $userData['is_first_login'] ?? 0;
                 $_SESSION['employee_role'] = $userData['role'] ?? '';
+                $_SESSION['employee_id'] = isset($userData['user_id']) ? (int)$userData['user_id'] : null;
+                $_SESSION['employee_first_name'] = $userData['first_name'] ?? '';
 
                 if ($isFirstLogin == 1) {
                     $_SESSION['show_change_password_modal'] = true;
@@ -337,7 +340,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     // Step 3: Lazy-load (do NOT query DB if format invalid or locked out above): fetch user here if we reach this far
     $stmt = $conn->prepare("
-        SELECT first_name, password, email_verified, is_first_login, last_otp_verified_at, role
+        SELECT user_id, first_name, password, email_verified, is_first_login, last_otp_verified_at, role
         FROM employees
         WHERE LOWER(email) = LOWER(?)
     ");
@@ -390,6 +393,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         exit;
     }
 
+    // 🔥 CRITICAL: Store employee_id in SESSION right after fetching the user
+    $_SESSION['employee_id'] = isset($user['user_id']) ? (int)$user['user_id'] : null;
     $_SESSION['employee_first_name'] = $user['first_name'];
     $_SESSION['employee_role'] = $user['role'] ?? '';
 
@@ -438,6 +443,10 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             if (!$requireOtp) {
                 $_SESSION['employee_logged_in'] = true;
                 $_SESSION['otp_verified'] = true;
+                // 🧑‍💻 Ensure all session variables set on direct login
+                $_SESSION['employee_id'] = isset($user['user_id']) ? (int)$user['user_id'] : null;
+                $_SESSION['employee_role'] = $user['role'];
+                $_SESSION['employee_first_name'] = $user['first_name'];
                 logLoginEvent($conn, $email, true, null, false, 0);
                 setNotification('success', 'Login successful! Redirecting...');
                 echo "<script>

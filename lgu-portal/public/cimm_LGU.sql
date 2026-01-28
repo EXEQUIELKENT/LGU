@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 27, 2026 at 11:54 AM
+-- Generation Time: Jan 28, 2026 at 06:00 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -50,13 +50,13 @@ CREATE TABLE `employees` (
 --
 
 INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`, `last_otp_verified_at`, `session_token`, `last_login`, `otp_resend_count`, `otp_last_sent`) VALUES
-(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-01-26 01:59:36', NULL, NULL, 0, NULL),
+(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-01-28 02:14:46', NULL, NULL, 0, NULL),
 (2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
 (3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
 (5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
 (8, 'Steph', 'Sagun', 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(10, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Manager', '$2y$10$yUqHLy3zjrCeOwRscBC46.v4vAscDi1CiG/LDIuafaTq/tH52qkl2', 0, 1, NULL, NULL, '2026-01-19 01:48:43', NULL, NULL, 0, NULL),
-(11, 'Mary Carl', 'Dagondong', 'marycarl.dagondong@example.com', 'Manager', '$2y$10$z8vP5dZk5Yqk4fY3J9vKTOwYzFQFZK2Yp4mR2Y3sY4J6P2d9r1mFi', 1, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL);
+(11, 'Mary Carl', 'Dagondong', 'marycarl.dagondong@example.com', 'Manager', '$2y$10$z8vP5dZk5Yqk4fY3J9vKTOwYzFQFZK2Yp4mR2Y3sY4J6P2d9r1mFi', 1, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(13, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-01-27 17:21:56', NULL, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -70,35 +70,6 @@ CREATE TABLE `evidence_images` (
   `img_path` varchar(255) NOT NULL,
   `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `evidence_images`
---
-
-INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VALUES
-(1, 3, 'uploads/evidence/evidence_3_697309dc465d5.jpg', '2026-01-23 05:40:44'),
-(2, 4, 'uploads/evidence/evidence_4_69730a44acef3.jpg', '2026-01-23 05:42:28'),
-(3, 4, 'uploads/evidence/evidence_4_69730a44ae447.jpg', '2026-01-23 05:42:28'),
-(4, 5, 'uploads/evidence/evidence_5_69730a6c00e04.jpg', '2026-01-23 05:43:08'),
-(5, 5, 'uploads/evidence/evidence_5_69730a6c0ae09.jpg', '2026-01-23 05:43:08'),
-(6, 5, 'uploads/evidence/evidence_5_69730a6c23885.jpg', '2026-01-23 05:43:08'),
-(7, 13, 'uploads/evidence/evidence_13_697314c2ac80b.png', '2026-01-23 06:27:14'),
-(8, 13, 'uploads/evidence/evidence_13_697314c2adc62.png', '2026-01-23 06:27:14'),
-(9, 17, 'uploads/evidence/evidence_17_69731a47c6e54.png', '2026-01-23 06:50:47'),
-(10, 17, 'uploads/evidence/evidence_17_69731a47c9214.png', '2026-01-23 06:50:47'),
-(11, 17, 'uploads/evidence/evidence_17_69731a47ca51c.png', '2026-01-23 06:50:47'),
-(12, 24, 'uploads/evidence/evidence_24_69732119c4412.png', '2026-01-23 07:19:53'),
-(13, 24, 'uploads/evidence/evidence_24_69732119c5ab7.png', '2026-01-23 07:19:53'),
-(14, 24, 'uploads/evidence/evidence_24_69732119c709a.png', '2026-01-23 07:19:53'),
-(15, 26, 'uploads/evidence/evidence_26_6973247ec321e.png', '2026-01-23 07:34:22'),
-(16, 26, 'uploads/evidence/evidence_26_6973247ec4c72.png', '2026-01-23 07:34:22'),
-(17, 26, 'uploads/evidence/evidence_26_6973247ec6596.png', '2026-01-23 07:34:22'),
-(18, 26, 'uploads/evidence/evidence_26_6973247ec796b.png', '2026-01-23 07:34:22'),
-(19, 27, 'uploads/evidence/evidence_27_6976c5e0e0810.jpg', '2026-01-26 01:39:44'),
-(20, 28, 'uploads/evidence/evidence_28_6976cbdb27517.jpg', '2026-01-26 02:05:15'),
-(21, 29, 'uploads/evidence/evidence_29_6976dc48877cd.jpg', '2026-01-26 03:15:20'),
-(22, 30, 'uploads/evidence/evidence_30_697716d3e027e.jpg', '2026-01-26 07:25:07'),
-(23, 31, 'uploads/evidence/evidence_31_69772c0c078c7.jpg', '2026-01-26 08:55:40');
 
 -- --------------------------------------------------------
 
@@ -176,7 +147,42 @@ INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_ad
 (51, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-26 15:17:10'),
 (52, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-26 15:25:12'),
 (53, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-26 15:38:11'),
-(54, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-26 16:39:16');
+(54, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-26 16:39:16'),
+(55, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-01-27 19:10:19'),
+(56, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 20:23:09'),
+(57, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 20:27:20'),
+(58, 'bartolomeexequielkent@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 20:27:27'),
+(59, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 20:27:43'),
+(60, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 20:27:50'),
+(61, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:06:59'),
+(62, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:07:02'),
+(63, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:07:27'),
+(64, 'bartolomstolome@gmail.com', 0, 'Email not verified', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:10:53'),
+(65, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:11:03'),
+(66, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:36:14'),
+(67, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:47:20'),
+(68, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:50:47'),
+(69, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 21:55:24'),
+(70, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 22:46:27'),
+(71, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:25:50'),
+(72, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:35:21'),
+(73, 'bartolomstolome@gmail.com', 0, 'Email not verified', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:35:39'),
+(74, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:36:45'),
+(75, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:36:57'),
+(76, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:37:35'),
+(77, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-27 23:37:39'),
+(78, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:18:23'),
+(79, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:19:01'),
+(80, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:21:04'),
+(81, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-01-28 00:21:56'),
+(82, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:22:54'),
+(83, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:23:13'),
+(84, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:23:23'),
+(85, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 00:23:53'),
+(86, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 09:14:24'),
+(87, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-01-28 09:14:46'),
+(88, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 09:27:59'),
+(89, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 10:58:33');
 
 -- --------------------------------------------------------
 
@@ -256,6 +262,23 @@ CREATE TABLE `materials_equipment_costs` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `url` varchar(255) DEFAULT NULL,
+  `request_type` varchar(50) DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `pending_registrations`
 --
 
@@ -324,43 +347,6 @@ CREATE TABLE `requests` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `requests`
---
-
-INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contact_number`, `name`, `approval_status`, `created_at`) VALUES
-(1, 'Roads', 'w', 'w', '09926569038', 'w', 'Pending', '2026-01-23 05:20:20'),
-(2, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', 'wwww', '09926569038', 'sss', 'Pending', '2026-01-23 05:40:12'),
-(3, 'Street Lights', 's', 'www', '09927373737', 'w', 'Pending', '2026-01-23 05:40:44'),
-(4, 'Roads', 'ss', 'ss', '09926569038', 'ssss', 'Pending', '2026-01-23 05:42:28'),
-(5, 'Roads', 's', 'w', '09675757575', 'w', 'Pending', '2026-01-23 05:43:07'),
-(6, 'Public Facilities', 's', 's', '09926569038', 's', 'Pending', '2026-01-23 05:44:04'),
-(7, 'Roads', 'sss', 'Kent', '09926569038', 'ss', 'Pending', '2026-01-23 05:52:41'),
-(8, 'Roads', 's', 'ssss', '09927377272', 's', 'Pending', '2026-01-23 05:58:59'),
-(9, 'Electrical', 'Cubao, EDSA, Socorro, Cubao, 3rd District, Quezon City, Eastern Manila District, Metro Manila, 1109, Philippines', '12313213', '09926569021', 'Kent', 'Pending', '2026-01-23 06:15:03'),
-(10, 'Street Lights', 'sssssssss', 'ssss', '09926569038', 'ssss', 'Pending', '2026-01-23 06:18:51'),
-(11, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', 'ss', '09329190299', 'qq', 'Pending', '2026-01-23 06:24:44'),
-(12, 'Roads', 'sss', 'ss', '09929292091', 's', 'Pending', '2026-01-23 06:25:59'),
-(13, 'Roads', 'ss', 'sss', '09929922929', 'ss', 'Pending', '2026-01-23 06:27:14'),
-(14, 'Street Lights', 'ww', '121212', '09922931312', 'kent', 'Pending', '2026-01-23 06:34:28'),
-(15, 'Roads', 'ss', 's', '09090099990', 's', 'Pending', '2026-01-23 06:42:48'),
-(16, 'Street Lights', 'ss', 'ss', '09666866877', 's', 'Pending', '2026-01-23 06:45:03'),
-(17, 'Roads', 'sss', 'ssss', '09926378891', 's', 'Pending', '2026-01-23 06:50:47'),
-(18, 'Roads', 'Quezon City Fil-Chi Volunteer Fire Brigade Ass\'n., Luntan Street, Araneta Village, Doña Imelda, Galas, 4th District, Quezon City, Eastern Manila District, Metro Manila, 1113, Philippines', 'aqw1w1wqw', '09902020191', 'ss', 'Pending', '2026-01-23 06:51:31'),
-(19, 'Street Lights', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', 'qwqw', '09301202199', 'ss', 'Pending', '2026-01-23 06:53:26'),
-(20, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', 'sqwqs', '09925698306', '1221', 'Pending', '2026-01-23 06:55:04'),
-(21, 'Roads', 'sss', 'sss', '09288821182', 'eee', 'Pending', '2026-01-23 07:00:02'),
-(22, 'Street Lights', 'sss', '121212', '09201201299', 'ss', 'Pending', '2026-01-23 07:08:40'),
-(23, 'Street Lights', 'sss', 'www', '09922922999', 'www', 'Pending', '2026-01-23 07:17:42'),
-(24, 'Street Lights', 'ss', 'sss', '09099099900', 'ss', 'Pending', '2026-01-23 07:19:53'),
-(25, 'Street Lights', 'locat', 'sss', '09929292222', 'www', 'Pending', '2026-01-23 07:27:41'),
-(26, 'Drainage', '21221', 'asq', '09099109022', 'ssss', 'Pending', '2026-01-23 07:34:22'),
-(27, 'Roads', 'Quezon City, Eastern Manila District, Metro Manila, Philippines', 'Road', '09992922991', 'Kent', 'Pending', '2026-01-26 01:39:44'),
-(28, 'Drainage', 'Fairview, 5th District, Quezon City, Eastern Manila District, Metro Manila, 1122, Philippines', 'Roads', '09201920920', 'Kent', 'Pending', '2026-01-26 02:05:15'),
-(29, 'Roads', 'sss', '1212', '09201920192', 'kent', 'Pending', '2026-01-26 03:15:20'),
-(30, 'Roads', 'ssss', '1212121', '09309301212', 'ss', 'Pending', '2026-01-26 07:25:07'),
-(31, 'Roads', 'ssss', 'sqsqs', '09999212121', 'sss', 'Pending', '2026-01-26 08:55:40');
-
 -- --------------------------------------------------------
 
 --
@@ -416,6 +402,12 @@ ALTER TABLE `materials_equipment_costs`
   ADD PRIMARY KEY (`cost_id`);
 
 --
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
@@ -462,19 +454,19 @@ ALTER TABLE `request_resolutions`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -489,10 +481,16 @@ ALTER TABLE `materials_equipment_costs`
   MODIFY `cost_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
+
+--
 -- AUTO_INCREMENT for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
-  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `repair_archive`
@@ -510,7 +508,7 @@ ALTER TABLE `reports`
 -- AUTO_INCREMENT for table `requests`
 --
 ALTER TABLE `requests`
-  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`

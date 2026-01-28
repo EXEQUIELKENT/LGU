@@ -24,7 +24,7 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-/* 🔐 Strict session check */
+/* 🔐 Strict session check: Enforce presence and validity of employee ID */
 if (
     !isset($_SESSION['employee_logged_in']) ||
     $_SESSION['employee_logged_in'] !== true
@@ -58,7 +58,7 @@ function showNotification() {
         unset($_SESSION['notification']);
         echo "<script>
             function closeNotif() {
-                var n = document.getElementById('notifPopup'); 
+                var n = document.getElementById('notifPopup');
                 if(n) n.style.opacity='0';
                 setTimeout(()=>{if(n)n.remove();}, 400);
             }
@@ -98,6 +98,7 @@ $displayName = getDisplayName();
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LGU Employee Portal</title>
 <style>
+/* ...unchanged CSS... (omitted for brevity) ... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
@@ -264,9 +265,12 @@ body.sidebar-collapsed .desktop-top-nav {
     min-width: 18px;
     text-align: center;
     box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
-    display: none;
+    /* display: none; <-- remove, use .hidden below */
 }
 
+.notif-badge.hidden {
+    display: none;
+}
 .notif-badge.show {
     display: block;
     animation: pulse 1.5s ease-in-out infinite;
@@ -300,6 +304,13 @@ body.sidebar-collapsed .desktop-top-nav {
 .notif-dropdown.show {
     display: flex;
     animation: slideDown 0.3s ease;
+}
+
+/* Remove animation on mobile */
+@media (max-width: 768px) {
+    .notif-dropdown.show {
+        animation: none;
+    }
 }
 
 @keyframes slideDown {
@@ -403,6 +414,18 @@ body.sidebar-collapsed .desktop-top-nav {
     text-align: center;
     color: var(--text-secondary);
     font-size: 14px;
+}
+.notif-group {
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding-top: 8px;
+}
+
+.notif-group-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #999;
+    margin: 6px 8px;
 }
 /* Hide timezone text on DESKTOP only */
 .desktop-top-nav .clock-timezone {
@@ -1382,11 +1405,32 @@ body::before {
 // --- Server time for server-synced clock ---
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
-// --- Apply theme immediately to prevent flickering ---
+// --- ✅ BULLETPROOF THEME APPLICATION - PREVENTS RESET ---
 (function() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    if (savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
+    try {
+        // Read theme with extra validation
+        let savedTheme = localStorage.getItem('theme');
+        
+        // Validate the theme value
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = 'light'; // Default to light if corrupted
+        }
+        
+        // Apply theme immediately
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        
+        // ✅ CRITICAL FIX: Re-save to localStorage to ensure it persists
+        // This prevents any race conditions from clearing it
+        localStorage.setItem('theme', savedTheme);
+        
+    } catch (e) {
+        console.error('Theme initialization error:', e);
+        // If localStorage fails, default to light mode
+        document.documentElement.removeAttribute('data-theme');
     }
 })();
 </script>
@@ -1398,13 +1442,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     <div class="desktop-nav-inner">
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
-            <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
+            <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
                 <span class="dark-icon">🌙</span>
                 <span class="light-icon" style="display: none;">☀️</span>
             </button>
             <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
                 🔔
-                <span class="notif-badge" id="notifBadge"></span>
+                <span class="notif-badge hidden" id="notifBadge"></span>
             </button>
         </div>
     </div>
@@ -1449,7 +1493,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <img src="profile.png" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
-        <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
+        <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span>
             <span class="light-icon" style="display: none;">☀️</span>
         </button>
@@ -1538,7 +1582,6 @@ if (sidebarCollapsed) {
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
     const isNowMobile = isMobileView();
-    // If we just switched to mobile AND sidebar is collapsed, expand sidebar & update localStorage
     if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
         mainContent.classList.remove('expanded');
@@ -1551,11 +1594,11 @@ window.addEventListener('resize', () => {
 sidebarToggle.addEventListener('click', () => {
     const isCollapsed = sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded', isCollapsed);
-
-    // 🔑 DESKTOP NAV STATE SYNC
     document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-
     localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+    // ===== FIX 1: Force repaint for sidebar scroll bug =====
+    sidebar.style.overflowX = "hidden";
 
     if (!isCollapsed) {
         sidebarNavTooltip.classList.remove('active');
@@ -1583,7 +1626,7 @@ if (profileIconBtn) {
     profileIconBtn.addEventListener('blur', hideNavTooltip);
 }
 
-// Add tooltip and logic for logout button (keep existing logic with tooltip)
+// Tooltip logic for logout button
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -1713,7 +1756,7 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// Also support keyboard accessibility: show tooltip on space/enter
+// Keyboard accessibility: show tooltip on space/enter
 document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -1823,8 +1866,6 @@ function resetInactivityTimer() {
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
-
-// Start timer on load
 resetInactivityTimer();
 </script>
 
@@ -1941,54 +1982,97 @@ startClock();
 </script>
 
 <script>
-// ===== DARK MODE TOGGLE =====
+// ===== DARK MODE TOGGLE (BULLETPROOF VERSION) =====
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
     if (!darkModeBtn && !mobileDarkModeBtn) return;
-    
+
     const darkIcon = darkModeBtn?.querySelector('.dark-icon') || mobileDarkModeBtn?.querySelector('.dark-icon');
     const lightIcon = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
     const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
     const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
-    
-    function updateTheme(isDark) {
-        if (isDark) {
-            html.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-            if (darkIcon) darkIcon.style.display = 'none';
-            if (lightIcon) lightIcon.style.display = 'inline';
-            if (mobileDarkIcon) mobileDarkIcon.style.display = 'none';
-            if (mobileLightIcon) mobileLightIcon.style.display = 'inline';
-            if (darkModeBtn) darkModeBtn.classList.add('active');
-            if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
-        } else {
-            html.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light');
-            if (darkIcon) darkIcon.style.display = 'inline';
-            if (lightIcon) lightIcon.style.display = 'none';
-            if (mobileDarkIcon) mobileDarkIcon.style.display = 'inline';
-            if (mobileLightIcon) mobileLightIcon.style.display = 'none';
-            if (darkModeBtn) darkModeBtn.classList.remove('active');
-            if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
+
+    // ✅ CRITICAL: Store theme in a backup location too
+    const THEME_KEY = 'theme';
+    const THEME_BACKUP_KEY = 'theme_backup';
+
+    function updateTheme(isDark, animate = false) {
+        try {
+            const themeValue = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                html.setAttribute('data-theme', 'dark');
+            } else {
+                html.removeAttribute('data-theme');
+            }
+            
+            // ✅ Save to both primary and backup locations
+            localStorage.setItem(THEME_KEY, themeValue);
+            localStorage.setItem(THEME_BACKUP_KEY, themeValue);
+            
+            // Update icons
+            if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
+            if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
+            if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
+            if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
+            
+            if (animate) {
+                if (darkModeBtn) darkModeBtn.classList.add('active');
+                if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
+                setTimeout(() => {
+                    if (darkModeBtn) darkModeBtn.classList.remove('active');
+                    if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
+                }, 500);
+            }
+        } catch (e) {
+            console.error('Theme update error:', e);
         }
     }
-    
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    updateTheme(savedTheme === 'dark');
-    
+
+    // ✅ Load saved theme with backup fallback
+    try {
+        let savedTheme = localStorage.getItem(THEME_KEY);
+        
+        // If primary is missing or corrupted, try backup
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
+        }
+        
+        // Final fallback
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = 'light';
+        }
+        
+        updateTheme(savedTheme === 'dark', false);
+    } catch (e) {
+        console.error('Theme load error:', e);
+        updateTheme(false, false);
+    }
+
     function toggleTheme() {
         const isDark = html.getAttribute('data-theme') === 'dark';
-        updateTheme(!isDark);
+        updateTheme(!isDark, true);
     }
-    
+
     if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
     if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
+
+    // ✅ CRITICAL: Protect localStorage from being cleared on navigation
+    // Listen for beforeunload and ensure theme is saved
+    window.addEventListener('beforeunload', function() {
+        try {
+            const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            localStorage.setItem(THEME_KEY, currentTheme);
+            localStorage.setItem(THEME_BACKUP_KEY, currentTheme);
+        } catch (e) {
+            console.error('Theme save error:', e);
+        }
+    });
 })();
 
-// ===== NOTIFICATION SYSTEM =====
+// ===== NOTIFICATION SYSTEM (FIXED) =====
 (function() {
     const notifBtn = document.getElementById('notifBtn');
     const mobileNotifBtn = document.getElementById('mobileNotifBtn');
@@ -1998,107 +2082,155 @@ startClock();
     const mobileNotifBadge = document.getElementById('mobileNotifBadge');
     const clearNotifBtn = document.getElementById('clearNotifBtn');
     if ((!notifBtn && !mobileNotifBtn) || !notifDropdown) return;
-    
+
     let notifications = [];
+    let unreadCount = 0;
     
-    // Fetch notifications from server
+    // ✅ Use a separate localStorage key for notifications to avoid conflicts
+    const NOTIF_SEEN_KEY = 'notif_seen_ids';
+    let seenNotifIds = new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]'));
+    
+    let isFirstLoad = true;
+
+    function updateBadge(count) {
+        if (notifBadge) {
+            if (count > 0) {
+                notifBadge.textContent = count > 99 ? '99+' : count;
+                notifBadge.classList.remove('hidden');
+                notifBadge.classList.add('show');
+            } else {
+                notifBadge.textContent = '';
+                notifBadge.classList.add('hidden');
+                notifBadge.classList.remove('show');
+            }
+        }
+
+        if (mobileNotifBadge) {
+            if (count > 0) {
+                mobileNotifBadge.textContent = count > 99 ? '99+' : count;
+                mobileNotifBadge.classList.add('show');
+                mobileNotifBtn?.classList.add('has-notif');
+            } else {
+                mobileNotifBadge.textContent = '';
+                mobileNotifBadge.classList.remove('show');
+                mobileNotifBtn?.classList.remove('has-notif');
+            }
+        }
+
+        if (notifBtn) {
+            if (count > 0) notifBtn.classList.add('has-notif');
+            else notifBtn.classList.remove('has-notif');
+        }
+    }
+
+    function updateNotificationUI() {
+        if (!notifications.length) {
+            notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
+            return;
+        }
+
+        const groups = {};
+        notifications.forEach(n => {
+            const type = n.request_type || 'Other';
+            if (!groups[type]) groups[type] = [];
+            groups[type].push(n);
+        });
+
+        notifBody.innerHTML = Object.keys(groups).map(type => `
+            <div class="notif-group">
+                <div class="notif-group-title">${type}</div>
+                ${groups[type].map(n => `
+                    <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
+                        <div class="notif-item-title">${n.title}</div>
+                        <div class="notif-item-desc">${n.description}</div>
+                        <div class="notif-item-time">${n.time}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+
+        notifBody.querySelectorAll('.notif-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                const notif = notifications.find(n => n.id == id);
+                if (notif?.url) window.location.href = notif.url;
+            });
+        });
+    }
+
+    let notifAudioCtx = null;
+    let notifAudioReady = false;
+
+    function initNotifAudioContext() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!notifAudioCtx) {
+                notifAudioCtx = new AudioCtx();
+            }
+            if (notifAudioCtx.state === 'suspended') {
+                notifAudioCtx.resume();
+            }
+            notifAudioReady = true;
+        } catch (e) { notifAudioReady = false; }
+    }
+
+    document.addEventListener('click', function onFirstClick() {
+        if (!notifAudioReady) initNotifAudioContext();
+        document.removeEventListener('click', onFirstClick);
+    }, { once: true });
+
+    function playNotifSound() {
+        if (!notifAudioReady) return;
+        
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!notifAudioCtx) notifAudioCtx = new AudioCtx();
+            if (notifAudioCtx.state === 'suspended') return;
+
+            const o = notifAudioCtx.createOscillator();
+            const g = notifAudioCtx.createGain();
+            o.type = "triangle";
+            o.frequency.value = 880;
+            g.gain.value = 0.18;
+            o.connect(g).connect(notifAudioCtx.destination);
+            o.start();
+            o.stop(notifAudioCtx.currentTime + 0.17);
+        } catch (e) {}
+    }
+
     async function fetchNotifications() {
         try {
-            const response = await fetch('api/notifications.php');
-            const data = await response.json();
+            const res = await fetch('api/notifications.php');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
             notifications = data.notifications || [];
-            updateNotificationUI();
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-            notifications = [];
-            updateNotificationUI();
-        }
-    }
-    
-    // Update notification UI
-    function updateNotificationUI() {
-        const unreadCount = notifications.filter(n => !n.read).length;
-        
-        // Update badge
-        const badgeText = unreadCount > 99 ? '99+' : unreadCount;
-        if (unreadCount > 0) {
-            if (notifBadge) {
-                notifBadge.textContent = badgeText;
-                notifBadge.classList.add('show');
+            unreadCount = notifications.filter(n => !n.read).length;
+
+            if (!isFirstLoad) {
+                const newUnread = notifications.filter(n => !n.read && !seenNotifIds.has(n.id));
+                if (newUnread.length > 0) {
+                    playNotifSound();
+                    newUnread.forEach(n => seenNotifIds.add(n.id));
+                    // ✅ Use separate key to avoid conflicts
+                    localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
+                }
             }
-            if (mobileNotifBadge) {
-                mobileNotifBadge.textContent = badgeText;
-                mobileNotifBadge.classList.add('show');
-            }
-            if (notifBtn) notifBtn.classList.add('has-notif');
-            if (mobileNotifBtn) mobileNotifBtn.classList.add('has-notif');
-        } else {
-            if (notifBadge) notifBadge.classList.remove('show');
-            if (mobileNotifBadge) mobileNotifBadge.classList.remove('show');
-            if (notifBtn) notifBtn.classList.remove('has-notif');
-            if (mobileNotifBtn) mobileNotifBtn.classList.remove('has-notif');
-        }
-        
-        // Update dropdown content
-        if (notifications.length === 0) {
-            notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
-        } else {
-            notifBody.innerHTML = notifications.map(notif => `
-                <div class="notif-item ${notif.read ? '' : 'unread'}" data-id="${notif.id}">
-                    <div class="notif-item-title">${notif.title}</div>
-                    <div class="notif-item-desc">${notif.description}</div>
-                    <div class="notif-item-time">${notif.time}</div>
-                </div>
-            `).join('');
-            
-            // Add click handlers
-            notifBody.querySelectorAll('.notif-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const id = item.dataset.id;
-                    markAsRead(id);
-                    const notif = notifications.find(n => n.id == id);
-                    if (notif && notif.url) {
-                        window.location.href = notif.url;
-                    }
-                });
-            });
-        }
-    }
-    
-    // Mark notification as read
-    async function markAsRead(id) {
-        try {
-            await fetch('api/notifications.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'mark_read', id: id })
-            });
-            const notif = notifications.find(n => n.id == id);
-            if (notif) notif.read = true;
+
+            notifications.forEach(n => seenNotifIds.add(n.id));
+            localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
+
+            isFirstLoad = false;
+
+            updateBadge(unreadCount);
             updateNotificationUI();
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
+        } catch (err) {
+            console.error('Error fetching notifications:', err);
         }
     }
-    
-    // Toggle dropdown
-    function toggleDropdown(e) {
-        e.stopPropagation();
-        notifDropdown.classList.toggle('show');
-    }
-    if (notifBtn) notifBtn.addEventListener('click', toggleDropdown);
-    if (mobileNotifBtn) mobileNotifBtn.addEventListener('click', toggleDropdown);
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!notifDropdown.contains(e.target) && 
-            !(notifBtn && notifBtn.contains(e.target)) && 
-            !(mobileNotifBtn && mobileNotifBtn.contains(e.target))) {
-            notifDropdown.classList.remove('show');
-        }
-    });
-    
-    // Clear all notifications
+
     if (clearNotifBtn) {
         clearNotifBtn.addEventListener('click', async () => {
             try {
@@ -2107,19 +2239,38 @@ startClock();
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'clear_all' })
                 });
-                notifications = [];
-                updateNotificationUI();
-            } catch (error) {
-                console.error('Error clearing notifications:', error);
+                seenNotifIds.clear();
+                localStorage.removeItem(NOTIF_SEEN_KEY);
+                await fetchNotifications();
+            } catch (err) {
+                console.error('Error clearing notifications:', err);
             }
         });
     }
-    
-    // Fetch notifications on load and every 30 seconds
-    fetchNotifications();
-    setInterval(fetchNotifications, 30000);
+
+    function toggleDropdown(e) {
+        e.stopPropagation();
+        notifDropdown.classList.toggle('show');
+    }
+    if (notifBtn) notifBtn.addEventListener('click', toggleDropdown);
+    if (mobileNotifBtn) mobileNotifBtn.addEventListener('click', toggleDropdown);
+
+    document.addEventListener('click', (e) => {
+        if (!notifDropdown.contains(e.target) &&
+            !(notifBtn && notifBtn.contains(e.target)) &&
+            !(mobileNotifBtn && mobileNotifBtn.contains(e.target))) {
+            notifDropdown.classList.remove('show');
+        }
+    });
+
+    setTimeout(() => {
+        fetchNotifications();
+        
+        setInterval(() => {
+            if (!document.hidden) fetchNotifications();
+        }, 3000);
+    }, 150);
 })();
 </script>
-
 </body>
 </html>

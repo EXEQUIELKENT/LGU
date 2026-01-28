@@ -32,6 +32,15 @@ function showNotification() {
 
 $error_message = '';
 
+// Assign employee by request type/location/department (placeholder: implement your own logic!)
+function assignEmployeeId($infrastructure, $location) {
+    // Example logic; you should replace this with your own queries or mapping.
+    // This demo code always assigns employee_id = 3 for everything.
+    // For real deployment, you can look up department by $infrastructure, or
+    // parse $location for zone/barangay, or any richer assignment rules.
+    return 3;
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Hybrid field: use infrastructure_other if filled, else dropdown value, else ''
@@ -66,9 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())"
             );
             $stmt->bind_param("sssss", $infrastructure, $location, $issue, $pure_number, $name);
+
+            // --- MODIFIED: ensure notification is correct, managers must see notification ---
             if ($stmt->execute()) {
-                $req_id = $stmt->insert_id;
-                $stmt->close();
+
+                $request_id = $conn->insert_id;
 
                 // Handle file uploads (merge/validate evidence[] input up to 4 images max)
                 if (
@@ -88,23 +99,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Normalize files array (VERY IMPORTANT)
                     $files = [];
 
-                    // Optional debug (remove after confirm): error_log(print_r($_FILES['evidence'], true));
-
-                    foreach ($_FILES['evidence']['name'] as $i => $name) {
+                    foreach ($_FILES['evidence']['name'] as $i => $ename) {
                         if (
-                            empty($name) ||
+                            empty($ename) ||
                             !isset($_FILES['evidence']['tmp_name'][$i]) ||
                             $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK
                         ) {
                             continue;
                         }
                         $files[] = [
-                            'name' => $name,
+                            'name' => $ename,
                             'tmp'  => $_FILES['evidence']['tmp_name'][$i]
                         ];
                     }
 
-                    // Optional hardening: enforce max of 4 before upload loop
+                    // Enforce max of 4 before upload loop
                     if (count($files) > 4) {
                         setNotification('error', 'Maximum of 4 images allowed.');
                         return;
@@ -115,14 +124,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (empty($file['tmp'])) continue;
                         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
                         if (!in_array($ext, $allowed_ext)) continue;
-                        $new_name = "evidence_{$req_id}_" . uniqid() . "." . $ext;
+                        $new_name = "evidence_{$request_id}_" . uniqid() . "." . $ext;
                         $path = $upload_dir . $new_name;
                         if (move_uploaded_file($file['tmp'], $path)) {
                             $stmtImg = $conn->prepare(
                                 "INSERT INTO evidence_images (req_id, img_path, uploaded_at)
                                  VALUES (?, ?, NOW())"
                             );
-                            $stmtImg->bind_param("is", $req_id, $path);
+                            $stmtImg->bind_param("is", $request_id, $path);
                             $stmtImg->execute();
                             $stmtImg->close();
                             $uploadedCount++;
@@ -130,7 +139,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                setNotification('success', 'Maintenance request submitted successfully! Request ID: ' . $req_id);
+                // Assign to employee based on infra/location
+                $assignedEmployeeId = assignEmployeeId($infrastructure, $location);
+
+                $title = "New Citizen Request";
+                $description = "A new request has been submitted and requires your review.";
+                $url = "employee.php?request_id=" . $request_id;
+                $requestType = $infrastructure; // can adjust to match your usage: type, infra, etc.
+
+                // 1. Notify assigned employee
+                $notif_stmt = $conn->prepare("
+                    INSERT INTO notifications
+                    (employee_id, title, description, request_type, url, is_read)
+                    VALUES (?, ?, ?, ?, ?, 0)
+                ");
+                $notif_stmt->bind_param(
+                    "issss",
+                    $assignedEmployeeId,
+                    $title,
+                    $description,
+                    $requestType,
+                    $url
+                );
+                $notif_stmt->execute();
+                $notif_stmt->close();
+
+                // 2. Notify all managers/admins by inserting a notification per employee (NO employee_id = NULL)
+                $employeesRes = $conn->query("SELECT user_id FROM employees WHERE role IN ('Manager','Super Admin')");
+                if ($employeesRes) {
+                    $stmt_mgr = $conn->prepare("
+                        INSERT INTO notifications
+                        (employee_id, title, description, request_type, url, is_read)
+                        VALUES (?, ?, ?, ?, ?, 0)
+                    ");
+                    while ($row = $employeesRes->fetch_assoc()) {
+                        $eid = $row['user_id'];
+                        $stmt_mgr->bind_param(
+                            "issss",
+                            $eid,
+                            $title,
+                            $description,
+                            $requestType,
+                            $url
+                        );
+                        $stmt_mgr->execute();
+                    }
+                    $stmt_mgr->close();
+                }
+
+                // Optional citizen success feedback and redirect
+                $_SESSION['notification'] = [
+                    'type' => 'success',
+                    'message' => 'Your request has been submitted successfully.'
+                ];
+
+                header("Location: citizenrepform.php");
+                exit;
             } else {
                 setNotification('error', 'Failed to submit request. Please try again.');
             }

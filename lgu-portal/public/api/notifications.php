@@ -1,142 +1,176 @@
 <?php
 session_start();
+require '../db.php';
+
 header('Content-Type: application/json');
 
-// Check if user is logged in (employee access only)
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    echo json_encode(['error' => 'Unauthorized']);
+if (!isset($_SESSION['employee_id'])) {
+    http_response_code(403);
     exit;
 }
 
-require __DIR__ . '/../db.php';
+$employeeId = $_SESSION['employee_id'];
+// Prefer the new key but remain backward-compatible if older session key exists
+$role       = $_SESSION['employee_role'] ?? ($_SESSION['role'] ?? '');
 
-// Handle POST requests (mark as read, clear all)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
+// Role flags are kept for possible UI use, but queries will always be per-employee.
+$isAdmin   = ($role === 'Super Admin');
+$isManager = ($role === 'Manager');
 
-    if (isset($data['action'])) {
-        if ($data['action'] === 'mark_read') {
-            // Mark specific notification as read (store in session)
-            if (!isset($_SESSION['read_notifications'])) {
-                $_SESSION['read_notifications'] = [];
-            }
-            if (!in_array($data['id'], $_SESSION['read_notifications'])) {
-                $_SESSION['read_notifications'][] = $data['id'];
-            }
-            echo json_encode(['success' => true]);
-            exit;
-        } elseif ($data['action'] === 'clear_all') {
-            // Update last checked time
-            $_SESSION['notif_last_checked'] = time();
-            $_SESSION['read_notifications'] = [];
-            echo json_encode(['success' => true]);
-            exit;
-        }
+$input = json_decode(file_get_contents('php://input'), true);
+
+/* =====================================================
+   POST ACTIONS
+===================================================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($input['action'])) {
+
+    /* 🔴 CLEAR ALL (only for this employee) */
+    if ($input['action'] === 'clear_all') {
+
+        $sql = "
+            UPDATE notifications
+            SET is_read = 1
+            WHERE employee_id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        // Always scope to the logged-in employee
+        $stmt->bind_param("i", $employeeId);
+
+        $stmt->execute();
+        echo json_encode(['status' => 'ok']);
+        exit;
+    }
+
+    /* 🟡 CLEAR ONLY THIS GROUP (per employee) */
+    if ($input['action'] === 'clear_group') {
+
+        $type = $input['request_type'];
+
+        $sql = "
+            UPDATE notifications
+            SET is_read = 1
+            WHERE request_type = ?
+              AND employee_id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        // Always scope to the logged-in employee
+        $stmt->bind_param("si", $type, $employeeId);
+
+        $stmt->execute();
+        echo json_encode(['status' => 'ok']);
+        exit;
+    }
+
+    /* 🟣 ARCHIVE (per employee)
+       The current notifications table (see notifications.sql) does not have an is_archived column,
+       so we implement archive as a hard delete scoped to this employee.
+    */
+    if ($input['action'] === 'archive') {
+
+        $notifId = (int)$input['id'];
+
+        $sql = "
+            DELETE FROM notifications
+            WHERE id = ?
+              AND employee_id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        // Always scope to the logged-in employee
+        $stmt->bind_param("ii", $notifId, $employeeId);
+
+        $stmt->execute();
+        echo json_encode(['status' => 'ok']);
+        exit;
+    }
+
+    /* 🔵 MARK AS READ (per employee) */
+    if ($input['action'] === 'mark_read') {
+
+        $notifId = (int)$input['id'];
+
+        $sql = "
+            UPDATE notifications
+            SET is_read = 1
+            WHERE id = ?
+              AND employee_id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+
+        // Always scope to the logged-in employee
+        $stmt->bind_param("ii", $notifId, $employeeId);
+
+        $stmt->execute();
+        echo json_encode(['status' => 'ok']);
+        exit;
     }
 }
 
-// ============= FETCH NOTIFICATIONS ============= //
+/* =====================================================
+   GET NOTIFICATIONS (per employee)
+===================================================== */
+$sql = "
+    SELECT id, title, description, url, request_type,
+           is_read,
+           DATE_FORMAT(created_at,'%h:%i %p') AS time
+    FROM notifications
+    WHERE employee_id = ?
+    ORDER BY created_at DESC
+";
 
-$lastChecked = isset($_SESSION['notif_last_checked']) ? $_SESSION['notif_last_checked'] : (time() - 3600);
-$lastCheckedDate = date('Y-m-d H:i:s', $lastChecked);
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $employeeId);
+
+$stmt->execute();
+$result = $stmt->get_result();
+
 $notifications = [];
-$readNotifs = isset($_SESSION['read_notifications']) ? $_SESSION['read_notifications'] : [];
-
-// --- 1. NEW REQUESTS (from CITIZEN submissions & others), always show latest pending ---
-// Also show unread, even if old, using $_SESSION['read_notifications']
-$sql = "SELECT req_id, infrastructure, location, created_at 
-        FROM requests 
-        WHERE approval_status = 'Pending'
-        ORDER BY created_at DESC 
-        LIMIT 20";
-$result = $conn->query($sql);
-
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $notifId = 'req_' . $row['req_id'];
-        $notifications[] = [
-            'id' => $notifId,
-            'type' => 'request',
-            'title' => 'New Maintenance Request',
-            'description' => $row['infrastructure'] . ' at ' . $row['location'],
-            'time' => date('M d, Y h:i A', strtotime($row['created_at'])),
-            'url' => 'requests.php',
-            'read' => in_array($notifId, $readNotifs)
-        ];
-    }
-}
-
-// --- 2. NEW REPORTS ---
-$sql = "SELECT rep_id, created_at 
-        FROM reports 
-        WHERE created_at > ? 
-        ORDER BY created_at DESC 
-        LIMIT 10";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $lastCheckedDate);
-$stmt->execute();
-$result = $stmt->get_result();
-
 while ($row = $result->fetch_assoc()) {
-    $notifId = 'rep_' . $row['rep_id'];
     $notifications[] = [
-        'id' => $notifId,
-        'type' => 'report',
-        'title' => 'New Maintenance Report',
-        'description' => 'Report #REP-' . $row['rep_id'] . ' has been created',
-        'time' => date('M d, Y h:i A', strtotime($row['created_at'])),
-        'url' => 'reports.php',
-        'read' => in_array($notifId, $readNotifs)
+        'id' => $row['id'],
+        'title' => $row['title'],
+        'description' => $row['description'],
+        'url' => $row['url'],
+        'request_type' => $row['request_type'],
+        'read' => (bool)$row['is_read'],
+        'time' => $row['time']
     ];
 }
-$stmt->close();
 
-// --- 3. UPCOMING SCHEDULES ---
-$sql = "SELECT schedule_id, task, location, starting_date, created_at 
-        FROM maintenance_schedule 
-        WHERE (starting_date >= CURDATE() 
-        AND starting_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY))
-        OR created_at > ? 
-        ORDER BY starting_date ASC 
-        LIMIT 10";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $lastCheckedDate);
-$stmt->execute();
-$result = $stmt->get_result();
+/* =====================================================
+   UNREAD COUNT PER REQUEST TYPE (per employee)
+===================================================== */
+$countSql = "
+    SELECT request_type, COUNT(*) AS total
+    FROM notifications
+    WHERE is_read = 0
+      AND employee_id = ?
+    GROUP BY request_type
+";
 
-while ($row = $result->fetch_assoc()) {
-    $notifId = 'sched_' . $row['schedule_id'];
-    $notifications[] = [
-        'id' => $notifId,
-        'type' => 'schedule',
-        'title' => 'Upcoming Maintenance',
-        'description' => $row['task'] . ' at ' . $row['location'] . ' on ' . date('M d, Y', strtotime($row['starting_date'])),
-        'time' => date('M d, Y h:i A', strtotime($row['starting_date'])),
-        'url' => 'sched.php',
-        'read' => in_array($notifId, $readNotifs)
-    ];
+$countStmt = $conn->prepare($countSql);
+$countStmt->bind_param("i", $employeeId);
+
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+
+$groupCounts = [];
+while ($row = $countResult->fetch_assoc()) {
+    $groupCounts[$row['request_type']] = (int)$row['total'];
 }
-$stmt->close();
 
-// --- Remove duplicate notifications based on ID (shouldn't be needed, but safe) ---
-$uniqueNotifs = [];
-foreach ($notifications as $notif) {
-    $uniqueNotifs[$notif['id']] = $notif;
-}
-$notifications = array_values($uniqueNotifs);
-
-// --- Sort: unread first (desc), then by time desc ---
-usort($notifications, function($a, $b) {
-    if ($a['read'] != $b['read']) {
-        // unread first
-        return $a['read'] - $b['read'];
-    }
-    // Newest first
-    return strtotime($b['time']) - strtotime($a['time']);
-});
-
-// Limit to 20 most recent
-$notifications = array_slice($notifications, 0, 20);
-
-echo json_encode(['notifications' => $notifications]);
-?>
+/* =====================================================
+   RESPONSE
+===================================================== */
+echo json_encode([
+    'notifications' => $notifications,
+    'group_counts'  => $groupCounts,
+    'is_admin'      => $isAdmin,
+    'is_manager'   => $isManager
+]);
