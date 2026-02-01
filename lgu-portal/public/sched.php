@@ -1809,7 +1809,7 @@ body.sidebar-collapsed .desktop-clock {
     border-radius: 14px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
     border: 1px solid #000;
-    padding: 12px 14px 30px;
+    padding: 12px 14px 35px;  /* ← INCREASED from 30px to 35px to give more room */
     max-height: 180px;
     overflow: hidden;
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
@@ -1836,16 +1836,20 @@ body.sidebar-collapsed .desktop-clock {
 /* Scroll indicator (fade + arrow) */
 .scroll-indicator {
     position: absolute;
-    bottom: 6px;
+    bottom: 10px;  /* ← INCREASED from 6px to 10px for better visibility */
     left: 50%;
     transform: translateX(-50%);
-    font-size: 18px;
-    color: #444;
-    opacity: 0.6;
+    font-size: 20px;  /* ← INCREASED from 18px to make it more visible */
+    color: #333;  /* ← DARKER color for better contrast */
+    opacity: 0.9;  /* ← HIGHER opacity */
     pointer-events: none;
     animation: scrollHint 1.6s infinite ease-in-out;
+    z-index: 10;
 }
-
+/* Dark Mode - Scroll Indicator */
+[data-theme="dark"] .scroll-indicator {
+    color: #bbb;  /* ← Make it lighter for dark mode */
+}
 /* Arrow bounce animation */
 @keyframes scrollHint {
     0%   { transform: translate(-50%, 0); opacity: 0.4; }
@@ -3510,13 +3514,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Optional: Auto-hide scroll indicator when not scrollable
     function updateCalendarDetailsScrollHint() {
-        const details = document.getElementById('calendarDetails');
-        const indicator = document.querySelector('.scroll-indicator');
-        if (!details || !indicator) return;
+    const details = document.getElementById('calendarDetails');
+    const indicator = document.querySelector('.scroll-indicator');
+    if (!details || !indicator) return;
 
-        indicator.style.display =
-            details.scrollHeight > details.clientHeight ? 'block' : 'none';
+    // Only show indicator when content is actually scrollable
+    if (details.scrollHeight > details.clientHeight) {
+        indicator.style.display = 'block';
+        indicator.style.opacity = '0.9';
+    } else {
+        // Keep indicator visible but dimmed when content is not scrollable
+        indicator.style.display = 'block';
+        indicator.style.opacity = '0.3';
     }
+}
 
     // Make sure to call renderCalendar on load and when month/view changes
     if (typeof prevMonthBtn !== "undefined" && prevMonthBtn && nextMonthBtn) {
