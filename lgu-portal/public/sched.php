@@ -26,6 +26,27 @@ if (
 
 require __DIR__ . '/db.php';
 
+// Get user profile picture
+function getProfilePicture($employeeId, $conn) {
+    if (!$employeeId) return 'profile.png';
+    $stmt = $conn->prepare("SELECT profile_picture FROM employees WHERE user_id = ?");
+    $stmt->bind_param("i", $employeeId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 1) {
+        $row = $result->fetch_assoc();
+        $profilePath = $row['profile_picture'] ?? null;
+        if ($profilePath && file_exists(__DIR__ . '/' . $profilePath)) {
+            $stmt->close();
+            return $profilePath;
+        }
+    }
+    $stmt->close();
+    return 'profile.png';
+}
+
+$profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
+
 // Notification system (copied from employee.php)
 function setNotification($type, $message) {
     $_SESSION['notification'] = [
@@ -59,10 +80,9 @@ function showNotification() {
 function getDisplayName() {
     // Fallbacks
     $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
-    $lastName = isset($_SESSION['employee_last_name']) ? $_SESSION['employee_last_name'] : '';
     $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
     // Try to use full name if available
-    $name = trim($firstName . ' ' . $lastName);
+    $name = trim($firstName);
     if (!$name) $name = 'User';
 
     // Determine formatting based on role (you can modify roles as needed)
@@ -862,6 +882,20 @@ body.sidebar-collapsed .desktop-clock {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    position: relative;
+    z-index: 2;
+}
+.profile-fallback-icon {
+    display: none;
+    font-size: 24px;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 /* Hover */
 
@@ -2665,8 +2699,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 
     <div class="sidebar-top">
-        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile">
-            <img src="profile.png" alt="Profile" id="profileImg">
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
@@ -3112,6 +3146,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     if (profileIconBtn) {
+        // Add click handler to navigate to profile page
+        profileIconBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'profile.php';
+        });
         profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
         profileIconBtn.addEventListener('focus', navTooltipHandler);
         profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
@@ -3804,14 +3843,63 @@ function handleProfilePicture() {
     const img = document.getElementById('profileImg');
     const fallback = document.getElementById('profileFallbackIcon');
     if (!img) return;
-    img.onerror = () => { img.style.display = 'none'; fallback && (fallback.style.display = 'flex'); };
-    img.onload = () => { img.style.display = 'block'; fallback && (fallback.style.display = 'none'); };
-    if (!img.src || img.src.endsWith('profile.png')) {
+    
+    // Set initial state
+    const checkImage = () => {
+        if (!img.src || img.src.endsWith('profile.png') || img.src.includes('profile.png')) {
+            img.style.display = 'none';
+            if (fallback) {
+                fallback.style.display = 'flex';
+            }
+        } else {
+            // Check if image actually loads
+            const testImg = new Image();
+            testImg.onload = () => {
+                img.style.display = 'block';
+                if (fallback) {
+                    fallback.style.display = 'none';
+                }
+            };
+            testImg.onerror = () => {
+                img.style.display = 'none';
+                if (fallback) {
+                    fallback.style.display = 'flex';
+                }
+            };
+            testImg.src = img.src;
+        }
+    };
+    
+    // Handle image load/error events
+    img.onerror = () => {
         img.style.display = 'none';
-        fallback && (fallback.style.display = 'flex');
-    }
+        if (fallback) {
+            fallback.style.display = 'flex';
+        }
+    };
+    
+    img.onload = () => {
+        // Only show image if it's not the default profile.png
+        if (img.src && !img.src.endsWith('profile.png') && !img.src.includes('profile.png')) {
+            img.style.display = 'block';
+            if (fallback) {
+                fallback.style.display = 'none';
+            }
+        } else {
+            img.style.display = 'none';
+            if (fallback) {
+                fallback.style.display = 'flex';
+            }
+        }
+    };
+    
+    // Initial check
+    checkImage();
 }
+
 document.addEventListener('DOMContentLoaded', handleProfilePicture);
+// Also run after a short delay to ensure image src is set
+setTimeout(handleProfilePicture, 100);
 </script>
 
 <script>

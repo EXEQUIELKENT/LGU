@@ -24,7 +24,7 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-/* 🔐 Strict session check: Enforce presence and validity of employee ID */
+/* 🔐 Strict session check */
 if (
     !isset($_SESSION['employee_logged_in']) ||
     $_SESSION['employee_logged_in'] !== true
@@ -56,8 +56,6 @@ function getProfilePicture($employeeId, $conn) {
     return 'profile.png';
 }
 
-$profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
-
 // Notification system
 function setNotification($type, $message) {
     $_SESSION['notification'] = [
@@ -70,7 +68,6 @@ function showNotification() {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
         $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
-        // ADD: Add a notification container for absolute positioning fixes
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -88,7 +85,209 @@ function showNotification() {
     }
 }
 
-// Improved: Format display name as "Role - Name" if applicable
+// Password validation functions (from login.php)
+function isStrongPassword($password) {
+    if (strlen($password) < 8) return false;
+    if (!preg_match('/[A-Z]/', $password)) return false;
+    if (!preg_match('/[a-z]/', $password)) return false;
+    if (!preg_match('/[0-9]/', $password)) return false;
+    if (!preg_match('/[^a-zA-Z0-9]/', $password)) return false;
+    if (preg_match('/^(\w)\1+$/', $password)) return false;
+    $common = [
+        'password','12345678','qwertyui','abcdefgh',
+        'iloveyou','asdfasdf','87654321'
+    ];
+    foreach ($common as $bad) {
+        if (stripos($password, $bad) !== false) return false;
+    }
+    if (count(array_unique(str_split($password))) < 5) return false;
+    for ($len = 1; $len <= 3; $len++) {
+        $pattern = substr($password, 0, $len);
+        if ($pattern && $pattern !== $password) {
+            $repeat = str_repeat($pattern, intdiv(strlen($password), $len));
+            if ($repeat === $password) return false;
+        }
+    }
+    return true;
+}
+
+// Check if new password is similar to old password
+function isPasswordSimilar($newPassword, $oldPasswordHash) {
+    // Check if new password matches old password
+    if (password_verify($newPassword, $oldPasswordHash)) {
+        return true;
+    }
+    // Additional similarity checks can be added here
+    return false;
+}
+
+// Get current user data
+$employeeId = $_SESSION['employee_id'] ?? null;
+$currentUser = null;
+if ($employeeId) {
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture FROM employees WHERE user_id = ?");
+    $stmt->bind_param("i", $employeeId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 1) {
+        $currentUser = $result->fetch_assoc();
+    }
+    $stmt->close();
+}
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    $firstName = trim($_POST['first_name'] ?? '');
+    $lastName = trim($_POST['last_name'] ?? '');
+    $currentPassword = $_POST['current_password'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    
+    $errors = [];
+    
+    // Validate first name and last name
+    if (empty($firstName)) {
+        $errors[] = 'First name is required.';
+    } elseif (strlen($firstName) > 50) {
+        $errors[] = 'First name must be 50 characters or less.';
+    }
+    
+    if (empty($lastName)) {
+        $errors[] = 'Last name is required.';
+    } elseif (strlen($lastName) > 50) {
+        $errors[] = 'Last name must be 50 characters or less.';
+    }
+    
+    // Handle profile picture upload
+    $profilePicturePath = $currentUser['profile_picture'] ?? null;
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['profile_picture'];
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!in_array($file['type'], $allowedTypes)) {
+            $errors[] = 'Invalid file type. Only JPEG, PNG, and GIF images are allowed.';
+        } elseif ($file['size'] > $maxSize) {
+            $errors[] = 'File size exceeds 5MB limit.';
+        } else {
+            // Create uploads/profile directory if it doesn't exist
+            $uploadDir = __DIR__ . '/uploads/profile/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // Generate unique filename
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = 'profile_' . $employeeId . '_' . time() . '.' . $extension;
+            $filepath = $uploadDir . $filename;
+            
+            if (move_uploaded_file($file['tmp_name'], $filepath)) {
+                // Delete old profile picture if exists
+                if ($profilePicturePath && file_exists(__DIR__ . '/' . $profilePicturePath)) {
+                    unlink(__DIR__ . '/' . $profilePicturePath);
+                }
+                $profilePicturePath = 'uploads/profile/' . $filename;
+            } else {
+                $errors[] = 'Failed to upload profile picture.';
+            }
+        }
+    }
+    
+    // Handle password change if provided
+    $passwordChanged = false;
+    if (!empty($currentPassword) || !empty($newPassword) || !empty($confirmPassword)) {
+        // All password fields must be provided
+        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+            $errors[] = 'All password fields are required to change password.';
+        } elseif (!password_verify($currentPassword, $currentUser['password'])) {
+            $errors[] = 'Current password is incorrect.';
+        } elseif ($newPassword !== $confirmPassword) {
+            $errors[] = 'New password and confirm password do not match.';
+        } elseif (!isStrongPassword($newPassword)) {
+            $errors[] = 'New password does not meet security requirements.';
+        } elseif (isPasswordSimilar($newPassword, $currentUser['password'])) {
+            $errors[] = 'New password must be different from your current password.';
+        } else {
+            $passwordChanged = true;
+        }
+    }
+    
+    // Update database if no errors
+    if (empty($errors)) {
+        $updateFields = [];
+        $updateValues = [];
+        $types = '';
+        
+        if ($firstName !== $currentUser['first_name']) {
+            $updateFields[] = "first_name = ?";
+            $updateValues[] = $firstName;
+            $types .= 's';
+        }
+        
+        if ($lastName !== $currentUser['last_name']) {
+            $updateFields[] = "last_name = ?";
+            $updateValues[] = $lastName;
+            $types .= 's';
+        }
+        
+        if ($profilePicturePath && $profilePicturePath !== ($currentUser['profile_picture'] ?? null)) {
+            $updateFields[] = "profile_picture = ?";
+            $updateValues[] = $profilePicturePath;
+            $types .= 's';
+        }
+        
+        if ($passwordChanged) {
+            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+            $updateFields[] = "password = ?";
+            $updateValues[] = $hashedPassword;
+            $types .= 's';
+        }
+        
+        if (!empty($updateFields)) {
+            $updateValues[] = $employeeId;
+            $types .= 'i';
+            
+            $sql = "UPDATE employees SET " . implode(', ', $updateFields) . " WHERE user_id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param($types, ...$updateValues);
+            
+            if ($stmt->execute()) {
+                // Update session variables
+                $_SESSION['employee_first_name'] = $firstName;
+                $_SESSION['employee_last_name'] = $lastName;
+                
+                $successMsg = 'Profile updated successfully!';
+                if ($passwordChanged) {
+                    $successMsg .= ' Your password has been changed.';
+                }
+                setNotification('success', $successMsg);
+                
+                // Refresh current user data
+                $stmt2 = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture FROM employees WHERE user_id = ?");
+                $stmt2->bind_param("i", $employeeId);
+                $stmt2->execute();
+                $result = $stmt2->get_result();
+                if ($result->num_rows === 1) {
+                    $currentUser = $result->fetch_assoc();
+                }
+                $stmt2->close();
+            } else {
+                setNotification('error', 'Failed to update profile: ' . $conn->error);
+            }
+            $stmt->close();
+        } else {
+            setNotification('info', 'No changes were made.');
+        }
+    } else {
+        setNotification('error', implode(' ', $errors));
+    }
+    
+    // Redirect to prevent form resubmission
+    header("Location: profile.php");
+    exit;
+}
+
+// Improved: Format display name
 function getDisplayName() {
     // Fallbacks
     $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
@@ -110,26 +309,28 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+// Get profile picture path
+$profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
+
+// Add: Check if we are on the profile page
+$isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LGU Employee Portal</title>
+<title>Profile Settings - LGU Employee Portal</title>
 <style>
-/* ...unchanged CSS... (omitted for brevity) ... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+/* ...all your other CSS as before... */
 
-/* =========================
-   SIDEBAR/CLOCK ALIGNMENT CONSTANTS
-========================= */
+/* Copy all CSS from employee.php - I'll include the essential parts */
 :root {
     --sidebar-expanded: 250px;
     --sidebar-collapsed: 70px;
-    
-    /* Dark Mode Variables */
     --bg-primary: #ffffff;
     --bg-secondary: rgba(255, 255, 255, 0.95);
     --bg-tertiary: rgba(255, 255, 255, 0.9);
@@ -148,409 +349,7 @@ $displayName = getDisplayName();
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
-/* Logout Alert Modal */
-[data-theme="dark"] #logoutAlertModal {
-    background: var(--bg-secondary);
-}
 
-[data-theme="dark"] #logoutAlertModal .icon-wrap {
-    background: rgba(233, 68, 68, 0.15);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-title {
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-desc {
-    color: var(--text-secondary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel:hover {
-    background: rgba(55, 98, 200, 0.2);
-    color: #5f8cff;
-}
-/* =========================
-   DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
-========================= */
-.desktop-top-nav {
-    position: fixed;
-    top: 0;
-    left: var(--sidebar-expanded);
-    right: 0;
-    height: 50px;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 18px var(--shadow-color);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 22px;
-    z-index: 3000;
-    transition: left 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
-    border-bottom: 1px solid var(--border-color);
-}
-body.sidebar-collapsed .desktop-top-nav {
-    left: var(--sidebar-collapsed);
-}
-/* Inner alignment */
-.desktop-top-nav .desktop-nav-inner {
-    width: 100%;
-    max-width: calc(100vw - var(--sidebar-expanded));
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    transition: max-width 0.3s ease, padding 0.3s ease;
-    padding-left: 12px;
-}
-
-/* Dark Mode & Notification Buttons */
-.nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.nav-btn {
-    position: relative;
-    width: 38px;
-    height: 38px;
-    border: none;
-    border-radius: 10px;
-    background: rgba(55, 98, 200, 0.1);
-    color: var(--text-primary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
-}
-
-.nav-btn:hover {
-    background: rgba(55, 98, 200, 0.2);
-    transform: scale(1.05);
-}
-
-.nav-btn:active {
-    transform: scale(0.95);
-}
-
-.nav-btn.dark-mode-btn {
-    animation: none;
-}
-
-.nav-btn.dark-mode-btn.active {
-    animation: rotateSun 0.5s ease;
-}
-
-@keyframes rotateSun {
-    0% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.2); }
-    100% { transform: rotate(360deg) scale(1); }
-}
-
-.nav-btn.notif-btn {
-    animation: none;
-}
-
-.nav-btn.notif-btn.has-notif {
-    animation: bellRing 0.5s ease-in-out;
-}
-
-@keyframes bellRing {
-    0%, 100% { transform: rotate(0deg); }
-    10%, 30% { transform: rotate(-10deg); }
-    20%, 40% { transform: rotate(10deg); }
-    50% { transform: rotate(0deg); }
-}
-
-.notif-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #e94444;
-    color: #fff;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 700;
-    min-width: 18px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
-    /* display: none; <-- remove, use .hidden below */
-}
-
-.notif-badge.hidden {
-    display: none;
-}
-.notif-badge.show {
-    display: block;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.9; }
-}
-
-/* Notification Dropdown */
-.notif-dropdown {
-    position: fixed;
-    top: 60px;
-    right: 22px;
-    width: 380px;
-    max-width: calc(100vw - 40px);
-    max-height: 500px;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(20px);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px var(--shadow-color);
-    z-index: 4000;
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.notif-dropdown.show {
-    display: flex;
-    animation: slideDown 0.3s ease;
-}
-
-/* Remove animation on mobile */
-@media (max-width: 768px) {
-    .notif-dropdown.show {
-        animation: none;
-    }
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.notif-dropdown-header {
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--bg-tertiary);
-}
-
-.notif-dropdown-header h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.notif-clear-btn {
-    background: none;
-    border: none;
-    color: #3762c8;
-    font-size: 12px;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: background 0.2s;
-}
-
-.notif-clear-btn:hover {
-    background: rgba(55, 98, 200, 0.1);
-}
-
-.notif-dropdown-body {
-    overflow-y: auto;
-    max-height: 420px;
-}
-
-.notif-dropdown-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.notif-dropdown-body::-webkit-scrollbar-thumb {
-    background: rgba(55, 98, 200, 0.3);
-    border-radius: 3px;
-}
-
-.notif-item {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.notif-item:hover {
-    background: rgba(55, 98, 200, 0.05);
-}
-
-.notif-item.unread {
-    background: rgba(55, 98, 200, 0.08);
-    border-left: 3px solid #3762c8;
-}
-
-.notif-item-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.notif-item-desc {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 0;
-    line-height: 1.4;
-}
-
-.notif-item-time {
-    font-size: 11px;
-    color: var(--text-secondary);
-    opacity: 0.7;
-    margin-top: 4px;
-}
-
-.notif-empty {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-.notif-group {
-    border-top: 1px solid rgba(255,255,255,.08);
-    padding-top: 8px;
-}
-
-.notif-group-title {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #999;
-    margin: 6px 8px;
-}
-/* Hide timezone text on DESKTOP only */
-.desktop-top-nav .clock-timezone {
-    display: none;
-}
-body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
-    max-width: calc(100vw - var(--sidebar-collapsed));
-}
-/* Micro-shift for polish */
-body.sidebar-collapsed .desktop-clock {
-    transform: translateX(-6px);
-}
-
-/* =========================
-   DESKTOP NAV INNER ALIGNMENT (rest unchanged)
-========================= */
-.desktop-clock {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-    position: relative;
-    transition: color 0.3s ease;
-}
-/* === Clock styling enhancements === */
-.desktop-clock .date-part {
-    opacity: 0.6;
-    font-weight: 400;
-}
-.desktop-clock .time-part {
-    font-weight: 700;
-    letter-spacing: 0.03em;
-}
-/* === REMOVE BLINKING SECONDS === */
-/* .desktop-clock .seconds {
-    animation: blinkSeconds 1s steps(1) infinite;
-}
-@keyframes blinkSeconds {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-} */
-/* === Clock styling enhancements === END */
-
-/* === Smooth digit flip === */
-.time-part span {
-    display: inline-block;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-}
-.time-part.flip span {
-    transform: translateY(-4px);
-    opacity: 0.6;
-}
-
-/* === "Server time" tooltip on clock === */
-.desktop-clock::after {
-    content: "Server time";
-    position: absolute;
-    bottom: -26px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #222;
-    color: #fff;
-    padding: 4px 8px;
-    font-size: 11px;
-    border-radius: 6px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    white-space: nowrap;
-}
-.desktop-clock:hover::after {
-    opacity: 1;
-}
-
-.clock-timezone {
-    margin-left: 6px;
-    font-size: 12px;
-    opacity: 0.65;
-    font-weight: 500;
-}
-
-/* Push main content down to avoid overlap */
-/* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
-.main-content {
-    margin-left: calc(var(--sidebar-expanded) + 20px);
-    margin-right: 18px;
-    padding-top: 60px;
-    height: 100vh;
-    box-sizing: border-box;
-    display: flex;
-    transition: margin-left 0.3s ease;
-}
-.main-content.expanded {
-    margin-left: calc(var(--sidebar-collapsed) + 20px);
-}
-/* --- END FIX --- */
-
-/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
-
-/* HIDE MOBILE TOP NAV ON DESKTOP */
-.mobile-top-nav {
-    display: none;
-}
-
-/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
 body {
     height: 100vh;
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
@@ -576,14 +375,616 @@ body::before {
     background: rgba(0,0,0,0.6);
 }
 
+/* Include all sidebar, nav, and other styles from employee.php */
+/* For brevity, I'll include the essential profile-specific styles */
+
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 20px);
+    margin-right: 18px;
+    padding-top: 60px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+
+.profile-container {
+    background: var(--bg-tertiary);
+    backdrop-filter: blur(14px);
+    border-radius: 26px;
+    padding: 40px;
+    margin: 20px;
+    box-shadow: 0 12px 35px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.profile-header h1 {
+    font-size: 32px;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.profile-picture-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.profile-picture-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #3762c8;
+    box-shadow: 0 4px 15px rgba(55, 98, 200, 0.3);
+}
+
+.profile-picture-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-picture-upload label {
+    padding: 10px 20px;
+    background: #3762c8;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.profile-picture-upload label:hover {
+    background: #2851b3;
+}
+
+.profile-picture-upload input[type="file"] {
+    display: none;
+}
+
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-group input {
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: border-color 0.3s, background 0.3s;
+    width: 100%;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #3762c8;
+    background: var(--bg-primary);
+}
+
+/* Ensure input-box inputs align with regular inputs */
+.input-box input {
+    padding: 12px 16px;
+    padding-right: 45px; /* Space for toggle button */
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: border-color 0.3s, background 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.input-box input:focus {
+    outline: none;
+    border-color: #3762c8;
+    background: var(--bg-primary);
+}
+
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    border-radius: 3px;
+    display: block;
+}
+
+.strength-fill.strength-weak {
+    background-color: #e94444 !important;
+    width: 33% !important;
+}
+
+.strength-fill.strength-fair {
+    background-color: #ffa726 !important;
+    width: 55% !important;
+}
+
+.strength-fill.strength-good {
+    background-color: #66bb6a !important;
+    width: 80% !important;
+}
+
+.strength-fill.strength-strong {
+    background-color: #4caf50 !important;
+    width: 100% !important;
+}
+
+.strength-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.password-requirements {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.req-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: color 0.3s;
+}
+
+.req-item .req-check {
+    width: 16px;
+    text-align: center;
+    color: #999;
+}
+
+/* Requirement check icon */
+.req-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #e5e7eb; /* default gray */
+    color: #9ca3af;
+    font-size: 12px;
+    transition: all .2s ease;
+}
+
+/* When requirement is satisfied */
+.req-item.satisfied .req-check {
+    background: #22c55e; /* green */
+    color: #ffffff;
+}
+
+.req-item.satisfied .req-text {
+    color: var(--text-primary);
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+}
+
+.input-box {
+    position: relative;
+}
+
+.save-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 5px;
+    width: 100%;
+}
+
+.submit-btn {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 200px;
+}
+
+.submit-btn:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.4);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Include notification popup styles from employee.php */
+.notif-popup {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: var(--bg-secondary);
+    border-radius: 13px;
+    box-shadow: 0 8px 38px var(--shadow-color);
+    z-index: 5001;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+        padding: 90px 20px 20px 20px;
+    }
+    
+    .profile-container {
+        margin: 0;
+        padding: 25px;
+    }
+    
+    .profile-header h1 {
+        font-size: 24px;
+    }
+}
+
+/* Copy all CSS from employee.php - adding essential sidebar and nav styles */
+.desktop-top-nav {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-expanded);
+    right: 0;
+    height: 50px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px var(--shadow-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 22px;
+    z-index: 3000;
+    transition: left 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
+}
+body.sidebar-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+.desktop-top-nav .desktop-nav-inner {
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-expanded));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    transition: max-width 0.3s ease, padding 0.3s ease;
+    padding-left: 12px;
+}
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.nav-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(55, 98, 200, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+.nav-btn:hover {
+    background: rgba(55, 98, 200, 0.2);
+    transform: scale(1.05);
+}
+.nav-btn:active {
+    transform: scale(0.95);
+}
+.nav-btn.dark-mode-btn.active {
+    animation: rotateSun 0.5s ease;
+}
+@keyframes rotateSun {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+.nav-btn.notif-btn.has-notif {
+    animation: bellRing 0.5s ease-in-out;
+}
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(-10deg); }
+    20%, 40% { transform: rotate(10deg); }
+    50% { transform: rotate(0deg); }
+}
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e94444;
+    color: #fff;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
+}
+.notif-badge.hidden {
+    display: none;
+}
+.notif-badge.show {
+    display: block;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.9; }
+}
+.notif-dropdown {
+    position: fixed;
+    top: 60px;
+    right: 22px;
+    width: 380px;
+    max-width: calc(100vw - 40px);
+    max-height: 500px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px var(--shadow-color);
+    z-index: 4000;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+.notif-dropdown.show {
+    display: flex;
+    animation: slideDown 0.3s ease;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.notif-dropdown-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-tertiary);
+}
+.notif-dropdown-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+.notif-clear-btn {
+    background: none;
+    border: none;
+    color: #3762c8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+.notif-clear-btn:hover {
+    background: rgba(55, 98, 200, 0.1);
+}
+.notif-dropdown-body {
+    overflow-y: auto;
+    max-height: 420px;
+}
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 6px;
+}
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: rgba(55, 98, 200, 0.3);
+    border-radius: 3px;
+}
+.notif-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.notif-item:hover {
+    background: rgba(55, 98, 200, 0.05);
+}
+.notif-item.unread {
+    background: rgba(55, 98, 200, 0.08);
+    border-left: 3px solid #3762c8;
+}
+.notif-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+.notif-item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+.notif-item-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    margin-top: 4px;
+}
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+.notif-group {
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding-top: 8px;
+}
+.notif-group-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #999;
+    margin: 6px 8px;
+}
+.desktop-top-nav .clock-timezone {
+    display: none;
+}
+body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+body.sidebar-collapsed .desktop-clock {
+    transform: translateX(-6px);
+}
+.desktop-clock {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    position: relative;
+    transition: color 0.3s ease;
+}
+.desktop-clock .date-part {
+    opacity: 0.6;
+    font-weight: 400;
+}
+.desktop-clock .time-part {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+.time-part span {
+    display: inline-block;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.time-part.flip span {
+    transform: translateY(-4px);
+    opacity: 0.6;
+}
+.desktop-clock::after {
+    content: "Server time";
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+.desktop-clock:hover::after {
+    opacity: 1;
+}
+.clock-timezone {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+    font-weight: 500;
+}
+.mobile-top-nav {
+    display: none;
+}
 .sidebar-nav,
 .main-content,
 .mobile-top-nav {
     position: relative;
     z-index: 1;
 }
-/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
-
 .sidebar-profile-btn {
     position: absolute;
     top: 18px;
@@ -601,12 +1002,16 @@ body::before {
     transition: all 0.3s ease;
     z-index: 1002;
 }
+/* Highlight the sidebar profile-btn/avatar if on profile page */
+.sidebar-profile-btn.active,
+.profile-btn.active {
+    border: 2px solid #4f46e5 !important;
+    box-shadow: 0 0 0 2px rgba(79,70,229,.3) !important;
+}
 .sidebar-profile-btn img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    position: relative;
-    z-index: 2;
 }
 .profile-fallback-icon {
     display: none;
@@ -620,26 +1025,24 @@ body::before {
     left: 0;
     z-index: 1;
 }
-/* Hover */
 
+.sidebar-profile-btn img {
+    position: relative;
+    z-index: 2;
+}
 .sidebar-profile-btn:hover {
     transform: scale(1.08);
     box-shadow: 0 4px 14px rgba(55,98,200,0.35);
 }
-
-/* COLLAPSED SIDEBAR PROFILE POSITION FIX */
 .sidebar-nav.collapsed .sidebar-profile-btn {
-    position: relative;       /* removes overlap */
+    position: relative;
     top: auto;
     left: auto;
-    margin: 52px auto 10px;   /* pushes profile BELOW toggle */
+    margin: 52px auto 10px;
 }
-
-/* COLLAPSED SIDEBAR LAYOUT PUSH-DOWN */
 .sidebar-nav.collapsed .sidebar-top {
     padding-top: 10px;
 }
-
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -662,7 +1065,6 @@ body::before {
 .sidebar-nav.collapsed {
     width: 70px;
 }
-/* Toggle Button */
 .sidebar-toggle {
     position: absolute;
     top: 20px;
@@ -695,61 +1097,20 @@ body::before {
 .sidebar-nav.collapsed .toggle-icon {
     transform: rotate(180deg);
 }
-
-.sidebar-top {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    padding: 20px 0;
-    overflow-y: auto;
-    position: relative;
-}
-
-/* --------- FIX FOR: "navlinks move at the top of the side bar fix it" ---------
-   We will enforce that .sidebar-top always stretches to fill remaining height,
-   and position nav-list at the correct vertical position below the logo,
-   not at the top after collapse.
-   Use a spacer div after .site-logo, then let nav-list and the rest flex naturally.
-*/
 .sidebar-top {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
     height: 100%;
-    /* Ensure that .sidebar-top always fills sidebar height */
+    padding: 20px 0;
+    overflow-y: auto;
+    position: relative;
 }
-
-/* Add a flex spacer below .site-logo to enforce consistent space above nav-list */
 .sidebar-logo-spacer {
     height: 16px;
     flex-shrink: 0;
 }
-
-/* --------- END FIX --------- */
-
-/* Divider just UNDER the toggle button */
-.sidebar-toggle-divider {
-    border-bottom: 2px solid rgba(0,0,0,0.18);
-    width: 60%;
-    margin: 15px auto 9px auto;
-    transition: opacity 0.3s, height 0.3s, margin 0.3s;
-    opacity: 0;
-    height: 0;
-    pointer-events: none;
-}
-.sidebar-nav.collapsed .sidebar-toggle-divider {
-    opacity: 1;
-    height: 0;
-    margin: 15px auto 14px auto;
-    pointer-events: auto;
-}
-/* There is no need for a duplicate .collapse-toggle-divider, replaced with .sidebar-toggle-divider for clear intent */
-
-.sidebar-divider.collapse-toggle-divider { display:none; } /* Remove the old divider line for collapsed */
-
-/* Other existing styles unchanged ... */
-/* -- LOGO VISIBILITY ON COLLAPSE -- */
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -786,10 +1147,8 @@ body::before {
     width: 40px;
     height: auto;
 }
-/* --------- MODIFIED: Make logo-divider visible when collapsed --------- */
 .sidebar-divider.logo-divider {
     transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
-    /* always display the divider; style changes below */
     opacity: 1;
     width: calc(100% - 50px);
     margin: 18px 25px 0 25px;
@@ -799,20 +1158,15 @@ body::before {
     width: 40px;
     margin: 5px 25px 0 25px;
 }
-/* --------- END MODIFICATION --------- */
-
-/* Navigation Links */
-/* Move nav-links a bit more to the left (reduce left/right padding) to fit maintenance schedule */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
-    padding: 0 15px; /* changed from 0 20px to 0 10px */
+    padding: 0 15px;
     margin: 0;
     display: flex;
     flex-direction: column;
     flex-grow: 0;
     flex-shrink: 0;
-    /* Ensures the nav-list stays together and never stretches vertically */
     transition: padding 0.3s ease;
 }
 .sidebar-nav.collapsed .nav-list {
@@ -834,9 +1188,7 @@ body::before {
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    /* The default size for nav links (14px font, 12px top/bottom, some left/right) */
 }
-
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
     background: #3762c8;
@@ -847,11 +1199,9 @@ body::before {
     background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
-
-/* Collapsed sidebar nav link style */
 .sidebar-nav.collapsed .nav-link {
     justify-content: center;
-    padding: 12px 10px;  /* This is the nav-link size in collapse: 14px font, 12px top/bottom, 10px left/right */
+    padding: 12px 10px;
     position: relative;
 }
 .sidebar-nav.collapsed .nav-link span:last-child {
@@ -860,8 +1210,6 @@ body::before {
 .sidebar-nav.collapsed .nav-link:hover {
     transform: translateX(0) scale(1.08);
 }
-
-/* SIDEBAR HOVER TOOLTIP: Shows navlink name as pop-up at side upon hover/collapsed */
 .sidebar-tooltip-pop {
     position: fixed;
     z-index: 5555;
@@ -882,14 +1230,11 @@ body::before {
     display:none;
     letter-spacing: 0.03em;
 }
-
-/* Show/animate tooltip */
 .sidebar-tooltip-pop.active {
     opacity: 1;
     display: block;
     transform: translateY(-50%) scale(1.03);
 }
-/* Optional: Add a little arrow - visually aligns tooltip */
 .sidebar-tooltip-pop::before {
     content:"";
     position:absolute;
@@ -900,14 +1245,12 @@ body::before {
     border-style:solid;
     border-color:transparent #3762c8 transparent transparent;
 }
-
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
     transition: all 0.3s ease;
 }
-
 [data-theme="dark"] .sidebar-divider {
     border-bottom-color: rgba(255, 255, 255, 0.3);
 }
@@ -915,7 +1258,6 @@ body::before {
     width: calc(100% - 20px);
     margin: 20px 10px 0 10px;
 }
-
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
@@ -924,7 +1266,6 @@ body::before {
     border-top: 1px solid rgba(255,255,255,0.2);
     transition: all 0.3s ease;
 }
-
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -939,8 +1280,6 @@ body::before {
 .sidebar-nav.collapsed .user-welcome {
     display: none;
 }
-
-/* --- LOGOUT BUTTON --- */
 .sidebar-nav .logout-btn {
     background: #3762c8;
     border: 1px solid rgba(255,255,255,0.3);
@@ -953,12 +1292,11 @@ body::before {
     font-size: 16px;
     min-width: 0;
 }
-/* Expanded state is normal, below is collapsed state */
 .sidebar-nav.collapsed .logout-btn {
-    padding: 12px 4px !important;       /* Match tightened .nav-link in collapsed */
-    width: 70%;                         /* Take full available width to match nav-links */
+    padding: 12px 4px !important;
+    width: 70%;
     border-radius: 8px;
-    font-size: 0 !important;             /* Hide text like .nav-link */
+    font-size: 0 !important;
     justify-content: center;
     align-items: center;
     min-width: 0;
@@ -980,25 +1318,23 @@ body::before {
     transform: scale(1.08);
     background: #2851b3;
 }
-
-/* Ensure the button does not shrink smaller than nav-link when collapsed */
 .sidebar-nav.collapsed .logout-btn {
     box-sizing: border-box;
     max-width: 100%;
 }
-
 .sidebar-nav.collapsed .logout-btn::after {
     display: none;
 }
-
-/* === MOBILE SIDEBAR DARK MODE POSITION === */
-/* Hidden by default (desktop) */
 .mobile-dark-mode-btn {
     display: none;
 }
-
-/* END LOGOUT BUTTON */
-
+.sidebar-tooltip-pop.logout-pop {
+    min-width: 120px;
+    max-width: 60vw;
+    white-space: normal;
+    text-align: center;
+    transition: none !important;
+}
 #logoutAlertBackdrop {
     position: fixed;
     z-index: 5000;
@@ -1096,29 +1432,119 @@ body::before {
     background: #c82d2d;
 }
 
-/* Notification Popup Styles (copied from login.php) */
-.notif-popup {
+/* Save Changes Confirmation Modal */
+#saveAlertBackdrop {
     position: fixed;
-    top: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 280px;
+    z-index: 5000;
+    inset: 0;
+    background: rgba(37, 59, 115, 0.20);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+}
+#saveAlertBackdrop.active {
+    display: flex;
+}
+#saveAlertModal {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
+    padding: 36px 28px 22px 28px;
+    width: 340px;
     max-width: 95vw;
-    padding: 18px 32px;
-    background: var(--bg-secondary);
-    border-radius: 13px;
-    box-shadow: 0 8px 38px var(--shadow-color);
-    z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
+    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#saveAlertModal .icon-wrap.save-icon-wrap {
+    background: #e8f5e9;
+    box-shadow: 0 2px 8px 0 rgba(76,175,80,0.11);   
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    font-family: 'Poppins', Arial, sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-    opacity: 1;
-    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid var(--border-color);
+    justify-content: center;
+}
+#saveAlertModal .icon-wrap.save-icon-wrap .icon.save-icon {
+    color: #4caf50;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+#saveAlertModal .alert-title {
+    font-size: 1.09rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    color: #23285c;
+    text-align: center;
+    margin-bottom: 8px;
+    margin-top: 6px;
+}
+#saveAlertModal .alert-desc {
+    color: #374565;
+    font-size: 0.99rem;
+    text-align: center;
+    margin-bottom: 19px;
+}
+#saveAlertModal .alert-btns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+#saveAlertModal .alert-btn {
+    min-width: 95px;
+    padding: 8px 0;
+    border-radius: 7px;
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+    outline: none;
+}
+#saveAlertModal .alert-btn.cancel {
+    background: #f3f4fa;
+    color: #353d52;
+    border: 1px solid #e3e6f1;
+}
+#saveAlertModal .alert-btn.cancel:hover {
+    background: #e9eeff;
+    color: #3650c7;
+    border-color: #c7d1f3;
+}
+#saveAlertModal .alert-btn.save {
+    color: #fff;
+    background: #4caf50;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(76,175,80,0.08);
+}
+#saveAlertModal .alert-btn.save:hover {
+    background: #43a047;
+}
+
+[data-theme="dark"] #saveAlertModal {
+    background: var(--bg-secondary);
+}
+[data-theme="dark"] #saveAlertModal .icon-wrap.save-icon-wrap {
+    background: rgba(76, 175, 80, 0.15);
+}
+[data-theme="dark"] #saveAlertModal .alert-title {
     color: var(--text-primary);
+}
+[data-theme="dark"] #saveAlertModal .alert-desc {
+    color: var(--text-secondary);
+}
+[data-theme="dark"] #saveAlertModal .alert-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] #saveAlertModal .alert-btn.cancel:hover {
+    background: rgba(55, 98, 200, 0.2);
+    color: #5f8cff;
 }
 .notif-popup .notif-icon { font-size: 23px; }
 .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
@@ -1133,7 +1559,6 @@ body::before {
     color: #888;
     cursor: pointer;
 }
-/* MAIN CONTENT SCROLLBAR/EXTRAS UNCHANGED */
 .main-content::-webkit-scrollbar { height: 8px; }
 .main-content::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.3);
@@ -1142,95 +1567,10 @@ body::before {
 .main-content::-webkit-scrollbar-track {
     background: rgba(255,255,255,0.1);
 }
-/* MAIN CONTAINER CARD */
-.main-card {
-    background: var(--bg-tertiary);
-    backdrop-filter: blur(14px);
-    border-radius: 26px;
-    padding: 40px;
-    margin: 20px;
-    width: 100%;
-    height: calc(100vh - 100px); /* ✅ fills screen even without content */
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    box-shadow: 0 12px 35px var(--shadow-color);
-    border: 1px solid var(--border-color);
-    transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-}
-.main-card .card {
-    background: var(--bg-secondary);
-}
-.main-card::-webkit-scrollbar {
-    display: none;
-}
-.card {
-    align-self: start;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
-    padding: 30px 35px;
-    box-shadow: 0 6px 20px var(--shadow-color);
-    transition: 0.2s;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    border: 1px solid var(--border-color);
-}
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-.card h3 {
-    margin-bottom: 12px;
-}
-.card p {
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.card h3 {
-    color: var(--text-primary);
-}
-/* Buttons */
-.btn-primary {
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    cursor: pointer;
-    transition: 0.25s;
-    text-decoration: none;
-    text-align: center;
-    align-items: center;
-}
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    text-decoration: none;
-}
-/* --- Custom: Logout Tooltip for Collapsed Sidebar --- */
-.sidebar-tooltip-pop.logout-pop {
-    min-width: 120px;
-    max-width: 60vw;
-    white-space: normal;
-    text-align: center;
-    transition: none !important; /* <--- FIX: prevent animation/resize on hide */
-}
-
-/* =========================
-   MOBILE RULES
-========================= */
 @media (max-width: 768px) {
-    /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
     .desktop-top-nav {
         display: none;
     }
-
     .mobile-top-nav {
         display: flex;
         position: fixed;
@@ -1281,8 +1621,6 @@ body::before {
         height: 38px;
         z-index: 1;
     }
-
-    /* === MOBILE SIDEBAR DARK MODE POSITION === */
     .mobile-dark-mode-btn {
         display: flex;
         position: absolute;
@@ -1295,8 +1633,6 @@ body::before {
         align-items: center;
         justify-content: center;
     }
-
-    /* Align profile properly */
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
@@ -1304,18 +1640,13 @@ body::before {
         width: 42px;
         height: 42px;
     }
-
     .sidebar-top {
-        position: relative; /* anchor for absolute children */
+        position: relative;
     }
-
-    /* Center logo between profile & dark mode */
     .site-logo {
         margin-top: 60px;
         text-align: center;
     }
-
-    /* Show sidebar, sidebar nav rules */
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
@@ -1326,103 +1657,65 @@ body::before {
         transition: left 0.35s ease;
         z-index: 4000;
     }
-
     .sidebar-nav.mobile-active {
         left: 12px;
     }
-
-    /* Disable desktop collapse behavior */
     .sidebar-nav.collapsed {
         width: calc(100% - 24px);
     }
-
     /* Main content always full width */
     .main-content,
     .main-content.expanded {
         margin-left: 0 !important;
-        padding-top: 90px;
+        margin-top: 60px !important;
     }
 
-    /* Sidebar internal layout for mobile */
-    .sidebar-top {
-        padding-top: 30px;
-    }
-
-    .sidebar-profile-btn {
-        position: relative;
-        margin: 10px 0 0 15px;
-    }
-
-    .site-logo {
-        margin: 10px auto 20px auto;
-    }
-
-    .nav-list {
-        padding: 0 20px;
-    }
-
-    .sidebar-divider,
-    .sidebar-toggle,
-    .sidebar-toggle-divider {
-        display: none !important;
-    }
-
-    /* Logout stays bottom */
-    .user-info {
-        padding-bottom: 20px;
-    }
-
-    /* Hide desktop toggle */
-    .sidebar-toggle {
-        display: none;
-    }
-
-    /* ===============================
-       🚩 MOBILE-ONLY MAIN CONTENT FIXES
-       =============================== */
-
-    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
     .main-content,
     .main-content.expanded {
         height: auto;
         min-height: 100vh;
-        overflow-y: auto;           /* allow scrolling */
-        padding: 0px;
+        overflow-y: auto;         /* allow scrolling */
+        padding: 20px;
         margin: 0px;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
     }
-
-    /* Hide main-content vertical (right) scrollbar but retain scrollability */
     .main-content::-webkit-scrollbar {
         width: 0 !important;
         background: transparent;
         display: none !important;
     }
     .main-content {
-        scrollbar-width: none;           /* Firefox */
-        -ms-overflow-style: none;        /* Edge/IE */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
-
-    /* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
-    .main-card {
-        margin-top: 85px;
-        padding: 20px;
-        border-radius: 18px;
+    .sidebar-top {
+        padding-top: 30px;
     }
-    .main-card::-webkit-scrollbar {
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
+    .site-logo {
+        margin: 10px auto 20px auto;
+    }
+    .nav-list {
+        padding: 0 20px;
+    }
+    .sidebar-divider,
+    .sidebar-toggle,
+    .sidebar-toggle-divider {
+        display: none !important;
+    }
+    .user-info {
+        padding-bottom: 20px;
+    }
+    .sidebar-toggle {
         display: none;
     }
-
-    /* 🧪 OPTIONAL: mobile card tighter padding for small screens */
-    .card {
-        padding: 22px;
-    }
-
-    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
-        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
-        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        top: 76px !important;
+        z-index: 5050 !important;
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 40px);
@@ -1435,33 +1728,23 @@ body::before {
 </style>
 <script>
 // --- Server time for server-synced clock ---
-const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
-// --- ✅ BULLETPROOF THEME APPLICATION - PREVENTS RESET ---
+// Theme initialization (from employee.php)
 (function() {
     try {
-        // Read theme with extra validation
         let savedTheme = localStorage.getItem('theme');
-        
-        // Validate the theme value
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light'; // Default to light if corrupted
+            savedTheme = 'light';
         }
-        
-        // Apply theme immediately
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         } else {
             document.documentElement.removeAttribute('data-theme');
         }
-        
-        // ✅ CRITICAL FIX: Re-save to localStorage to ensure it persists
-        // This prevents any race conditions from clearing it
         localStorage.setItem('theme', savedTheme);
-        
     } catch (e) {
         console.error('Theme initialization error:', e);
-        // If localStorage fails, default to light mode
         document.documentElement.removeAttribute('data-theme');
     }
 })();
@@ -1519,9 +1802,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
-
         <!-- Profile Button -->
-        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
+        <div class="sidebar-profile-btn<?= $isProfilePage ? ' active' : '' ?>" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
             <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
@@ -1537,10 +1819,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <div class="sidebar-logo-spacer"></div>
         <!-- Navigation -->
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
+            <!-- Remove profile link ONLY on profile page -->
+            <?php if (!$isProfilePage): ?>
+            <li>
+                <a href="profile.php" class="nav-link<?= $isProfilePage ? ' active' : '' ?>" data-tooltip="Profile"><span>👤</span><span>Profile</span></a>
+            </li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -1556,7 +1844,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- Tooltip container for sidebar nav-links, profile icon, and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
-<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
+<!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
         <div class="icon-wrap">
@@ -1571,38 +1859,388 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<div class="main-content">
-    <div class="main-card">
-        <div class="card">
-            <h3>Pending Requests</h3>
-            <p>Track and assign new community maintenance requests submitted by citizens.</p>
-            <a href="requests.php" class="btn-primary">View Requests</a>
+<!-- Save Changes Confirmation Alert Modal -->
+<div id="saveAlertBackdrop">
+    <div id="saveAlertModal">
+        <div class="icon-wrap save-icon-wrap">
+            <span class="icon save-icon">✓</span>
         </div>
-        <div class="card">
-            <h3>Facility Status</h3>
-            <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
-            <a href="reports.php" class="btn-primary">Update Status</a>
-        </div>
-        <div class="card">
-            <h3>Performance Reports</h3>
-            <p>Generate reports on completed requests and ongoing maintenance projects.</p>
-            <a href="reports.php" class="btn-primary">Generate Report</a>
+        <div class="alert-title">Save changes?</div>
+        <div class="alert-desc">Are you sure you want to save these changes to your profile?</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="saveCancelBtn">Cancel</button>
+            <button class="alert-btn save" id="saveConfirmBtn">Yes</button>
         </div>
     </div>
 </div>
 
+<div class="main-content">
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>Profile Settings</h1>
+            <p style="color: var(--text-secondary);">Manage your account information and preferences</p>
+        </div>
+
+        <form method="POST" action="" enctype="multipart/form-data" class="profile-form" id="profileForm">
+            <!-- Profile Picture Section -->
+            <div class="profile-picture-section">
+                <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile Picture" class="profile-picture-preview" id="profilePreview">
+                <div class="profile-picture-upload">
+                    <label for="profile_picture">Change Profile Picture</label>
+                    <input type="file" name="profile_picture" id="profile_picture" accept="image/jpeg,image/jpg,image/png,image/gif">
+                    <small style="color: var(--text-secondary); font-size: 12px;">Max size: 5MB (JPEG, PNG, GIF)</small>
+                </div>
+            </div>
+
+            <!-- First Name -->
+            <div class="form-group">
+                <label for="first_name">First Name</label>
+                <input type="text" name="first_name" id="first_name" value="<?= htmlspecialchars($currentUser['first_name'] ?? '') ?>" required maxlength="50">
+            </div>
+
+            <!-- Last Name -->
+            <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <input type="text" name="last_name" id="last_name" value="<?= htmlspecialchars($currentUser['last_name'] ?? '') ?>" required maxlength="50">
+            </div>
+
+            <!-- Email (read-only) -->
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email" value="<?= htmlspecialchars($currentUser['email'] ?? '') ?>" disabled style="background: var(--bg-tertiary); cursor: not-allowed;">
+                <small style="color: var(--text-secondary); font-size: 12px;">Email cannot be changed</small>
+            </div>
+
+            <!-- Password Change Section -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
+                <h3 style="color: var(--text-primary); margin-bottom: 20px; font-size: 18px;">Change Password</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">Leave blank if you don't want to change your password</p>
+
+                <div class="form-group">
+                    <label for="current_password">Current Password</label>
+                    <div class="input-box" style="margin-bottom: 25px;">
+                        <input type="password" name="current_password" id="current_password" placeholder="Enter current password" autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="toggleCurrentPassword" aria-label="Show password">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_password">New Password</label>
+                    <div class="input-box">
+                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" autocomplete="new-password">
+                        <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">👁️</button>
+                    </div>
+                    <!-- Password strength meter -->
+                    <div class="password-strength">
+                        <div class="strength-bar">
+                            <span class="strength-fill" id="strengthFill"></span>
+                        </div>
+                        <div class="strength-text" id="strengthText">Strength: —</div>
+                    </div>
+                    <div class="password-requirements" id="passwordRequirements">
+                        <div class="req-item" id="req-length">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">At least 8 characters</span>
+                        </div>
+                        <div class="req-item" id="req-uppercase">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">One uppercase letter</span>
+                        </div>
+                        <div class="req-item" id="req-lowercase">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">One lowercase letter</span>
+                        </div>
+                        <div class="req-item" id="req-number">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">One number</span>
+                        </div>
+                        <div class="req-item" id="req-symbol">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">One symbol</span>
+                        </div>
+                        <div class="req-item" id="req-unique" style="margin-bottom: 25px;">
+                            <span class="req-check">✓</span>
+                            <span class="req-text">Strong (no common patterns)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <div class="input-box">
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password">
+                        <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">👁️</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="save-wrapper">
+                <button type="button" class="submit-btn" id="submitBtn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+// Profile picture preview
+const profilePictureInput = document.getElementById('profile_picture');
+const profilePreview = document.getElementById('profilePreview');
+
+profilePictureInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profilePreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Password toggle functionality
+const toggleCurrentPassword = document.getElementById('toggleCurrentPassword');
+const toggleNewPassword = document.getElementById('toggleNewPassword');
+const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+const currentPasswordInput = document.getElementById('current_password');
+const newPasswordInput = document.getElementById('new_password');
+const confirmPasswordInput = document.getElementById('confirm_password');
+
+const iconShow = '👁️';
+const iconHide = '🛡️';
+
+toggleCurrentPassword.addEventListener('click', function() {
+    if (currentPasswordInput.type === 'password') {
+        currentPasswordInput.type = 'text';
+        toggleCurrentPassword.textContent = iconHide;
+    } else {
+        currentPasswordInput.type = 'password';
+        toggleCurrentPassword.textContent = iconShow;
+    }
+});
+
+toggleNewPassword.addEventListener('click', function() {
+    if (newPasswordInput.type === 'password') {
+        newPasswordInput.type = 'text';
+        toggleNewPassword.textContent = iconHide;
+    } else {
+        newPasswordInput.type = 'password';
+        toggleNewPassword.textContent = iconShow;
+    }
+});
+
+toggleConfirmPassword.addEventListener('click', function() {
+    if (confirmPasswordInput.type === 'password') {
+        confirmPasswordInput.type = 'text';
+        toggleConfirmPassword.textContent = iconHide;
+    } else {
+        confirmPasswordInput.type = 'password';
+        toggleConfirmPassword.textContent = iconShow;
+    }
+});
+
+// Password strength validation (from login.php)
+function isUniqueEnoughPasswordClient(pass) {
+    if (pass.length < 8) return false;
+    if (/^(\w)\1+$/.test(pass)) return false;
+    if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return false;
+    for (let len = 1; len <= 3; len++) {
+        let pattern = pass.slice(0, len);
+        if(pattern && pattern !== pass) {
+            let repeat = pattern.repeat(Math.floor(pass.length/len));
+            if (repeat === pass) return false;
+        }
+    }
+    let common = ['password','12345678','qwertyui','abcdefgh','iloveyou','asdfasdf','87654321'];
+    for(let bad of common) {
+        if (pass.toLowerCase().includes(bad)) return false;
+    }
+    let uniq = Array.from(new Set(pass.split('')));
+    if (uniq.length < 5) return false;
+    return true;
+}
+
+function calculatePasswordStrength(pass) {
+    let score = 0;
+    if (pass.length >= 8) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[a-z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^a-zA-Z0-9]/.test(pass)) score++;
+    if (isUniqueEnoughPasswordClient(pass)) score++;
+    return score;
+}
+
+function updatePasswordStrength() {
+    const pass = newPasswordInput.value;
+    const reqLength = document.getElementById('req-length');
+    const reqUppercase = document.getElementById('req-uppercase');
+    const reqLowercase = document.getElementById('req-lowercase');
+    const reqNumber = document.getElementById('req-number');
+    const reqSymbol = document.getElementById('req-symbol');
+    const reqUnique = document.getElementById('req-unique');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+
+    reqLength.classList.toggle('satisfied', pass.length >= 8);
+    reqUppercase.classList.toggle('satisfied', /[A-Z]/.test(pass));
+    reqLowercase.classList.toggle('satisfied', /[a-z]/.test(pass));
+    reqNumber.classList.toggle('satisfied', /[0-9]/.test(pass));
+    reqSymbol.classList.toggle('satisfied', /[^a-zA-Z0-9]/.test(pass));
+    reqUnique.classList.toggle('satisfied', pass.length >= 8 && isUniqueEnoughPasswordClient(pass));
+
+    const score = calculatePasswordStrength(pass);
+    strengthFill.className = 'strength-fill';
+
+    if (pass.length === 0) {
+        strengthFill.style.width = '0%';
+        strengthText.textContent = 'Strength: —';
+        return;
+    }
+
+    if (score <= 2) {
+        strengthFill.style.width = '33%';
+        strengthFill.classList.add('strength-weak');
+        strengthText.textContent = 'Strength: Weak';
+    } else if (score <= 4) {
+        strengthFill.style.width = '55%';
+        strengthFill.classList.add('strength-fair');
+        strengthText.textContent = 'Strength: Fair';
+    } else if (score === 5) {
+        strengthFill.style.width = '80%';
+        strengthFill.classList.add('strength-good');
+        strengthText.textContent = 'Strength: Good';
+    } else {
+        strengthFill.style.width = '100%';
+        strengthFill.classList.add('strength-strong');
+        strengthText.textContent = 'Strength: Strong';
+    }
+}
+
+function validatePasswords() {
+    const currentPwd = currentPasswordInput.value;
+    const newPwd = newPasswordInput.value;
+    const confirmPwd = confirmPasswordInput.value;
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!submitBtn) return;
+    
+    // If any password field is filled, all must be filled
+    if (currentPwd || newPwd || confirmPwd) {
+        if (!currentPwd || !newPwd || !confirmPwd) {
+            submitBtn.disabled = true;
+            return;
+        }
+        if (newPwd.length < 8 || !isUniqueEnoughPasswordClient(newPwd)) {
+            submitBtn.disabled = true;
+            return;
+        }
+        if (confirmPwd !== newPwd) {
+            submitBtn.disabled = true;
+            return;
+        }
+    }
+    submitBtn.disabled = false;
+}
+
+// Ensure password strength meter works on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordStrength();
+            validatePasswords();
+        });
+        
+        // Also trigger on keyup for better responsiveness
+        newPasswordInput.addEventListener('keyup', function() {
+            updatePasswordStrength();
+        });
+        
+        // Trigger on paste as well
+        newPasswordInput.addEventListener('paste', function() {
+            setTimeout(() => {
+                updatePasswordStrength();
+                validatePasswords();
+            }, 10);
+        });
+    }
+
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', validatePasswords);
+        confirmPasswordInput.addEventListener('paste', function() {
+            setTimeout(validatePasswords, 10);
+        });
+    }
+    if (currentPasswordInput) {
+        currentPasswordInput.addEventListener('input', validatePasswords);
+    }
+
+    // Initial validation and strength check
+    if (newPasswordInput && document.getElementById('strengthFill')) {
+        updatePasswordStrength();
+    }
+    validatePasswords();
+});
+
+// Save Changes Confirmation Modal
+const saveAlertBackdrop = document.getElementById('saveAlertBackdrop');
+const saveCancelBtn = document.getElementById('saveCancelBtn');
+const saveConfirmBtn = document.getElementById('saveConfirmBtn');
+const submitBtn = document.getElementById('submitBtn');
+const profileForm = document.getElementById('profileForm');
+
+if (submitBtn) {
+    submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (saveAlertBackdrop) {
+            saveAlertBackdrop.classList.add("active");
+        }
+    });
+}
+
+if (saveCancelBtn) {
+    saveCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (saveAlertBackdrop) {
+            saveAlertBackdrop.classList.remove("active");
+        }
+    });
+}
+
+if (saveConfirmBtn) {
+    saveConfirmBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (profileForm) {
+            // Create a hidden input to submit the form
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'update_profile';
+            hiddenInput.value = '1';
+            profileForm.appendChild(hiddenInput);
+            profileForm.submit();
+        }
+    });
+}
+
+if (saveAlertBackdrop) {
+    saveAlertBackdrop.addEventListener('mousedown', (e) => {
+        if (e.target === saveAlertBackdrop) {
+            saveAlertBackdrop.classList.remove("active");
+        }
+    });
+}
+</script>
+
+<script>
+// Sidebar functionality (from employee.php)
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
 const sidebarNav = document.getElementById('sidebarNav');
 
-// Helper to detect mobile view (update the breakpoint if needed)
 function isMobileView() {
-    return window.innerWidth <= 900; // or your specific mobile breakpoint
+    return window.innerWidth <= 900;
 }
 
-// Make sure sidebar collapsed state is persisted
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
@@ -1610,7 +2248,6 @@ if (sidebarCollapsed) {
     document.body.classList.add('sidebar-collapsed');
 }
 
-// --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
     const isNowMobile = isMobileView();
@@ -1628,10 +2265,7 @@ sidebarToggle.addEventListener('click', () => {
     mainContent.classList.toggle('expanded', isCollapsed);
     document.body.classList.toggle('sidebar-collapsed', isCollapsed);
     localStorage.setItem('sidebarCollapsed', isCollapsed);
-
-    // ===== FIX 1: Force repaint for sidebar scroll bug =====
     sidebar.style.overflowX = "hidden";
-
     if (!isCollapsed) {
         sidebarNavTooltip.classList.remove('active');
         sidebarNavTooltip.style.display = 'none';
@@ -1642,28 +2276,21 @@ const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-// Add tooltip listeners for nav-links
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
     link.addEventListener('mouseenter', navTooltipHandler);
     link.addEventListener('focus', navTooltipHandler);
     link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     link.addEventListener('blur', hideNavTooltip);
 });
-// Add tooltip for profile icon (on collapse, like employee.php)
+
 const profileIconBtn = document.getElementById('profileIconBtn');
 if (profileIconBtn) {
-    // Add click handler to navigate to profile page
-    profileIconBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = 'profile.php';
-    });
     profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
     profileIconBtn.addEventListener('focus', navTooltipHandler);
     profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     profileIconBtn.addEventListener('blur', hideNavTooltip);
 }
 
-// Tooltip logic for logout button
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -1680,10 +2307,7 @@ logoutBtn.addEventListener('focus', function(e) {
     showLogoutTooltip(e);
 });
 logoutBtn.addEventListener('mouseleave', function(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
+    if (e.relatedTarget === sidebarNavTooltip || (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))) {
         return;
     }
     sidebarNavTooltip.classList.remove('active');
@@ -1709,11 +2333,9 @@ function showLogoutTooltip(e) {
     const y = rect.top + rect.height / 2 + window.scrollY;
     sidebarNavTooltip.style.left = (x + 10) + 'px';
     sidebarNavTooltip.style.top = y + 'px';
-
     setTimeout(function(){
         sidebarNavTooltip.classList.add('active');
     }, 5);
-
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
@@ -1744,7 +2366,6 @@ function navTooltipHandler(e) {
         hideNavTooltip();
         return;
     }
-    // Show nav-link or profile icon name
     let tooltipText = this.getAttribute('data-tooltip');
     if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
     if (!tooltipText) return;
@@ -1758,21 +2379,16 @@ function navTooltipHandler(e) {
     const y = rect.top + rect.height / 2 + window.scrollY;
     sidebarNavTooltip.style.left = (x + 10) + 'px';
     sidebarNavTooltip.style.top = y + 'px';
-
     setTimeout(function(){
         sidebarNavTooltip.classList.add('active');
     }, 5);
-
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 }
 function navLinkMouseLeaveHandler(e) {
-    if (
-        e.relatedTarget === sidebarNavTooltip ||
-        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-    ) {
+    if (e.relatedTarget === sidebarNavTooltip || (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))) {
         return;
     }
     tooltipHideTimeout = setTimeout(() => {
@@ -1793,7 +2409,6 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// Keyboard accessibility: show tooltip on space/enter
 document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -1822,9 +2437,7 @@ const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 
-// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
 logoutBtn.addEventListener('click', (e) => {
-    // prevent default just in case (button not type=submit)
     e.preventDefault();
     logoutAlertBackdrop.classList.add("active");
     hideNavTooltipImmediate();
@@ -1850,15 +2463,13 @@ if (mobileToggle) {
     });
 }
 
-// --- Add step 3: force reload on browser bfcache to enforce session check ---
 window.addEventListener("pageshow", function (event) {
     if (event.persisted) {
         window.location.reload();
     }
 });
-</script>
 
-<script>
+// Profile picture handler - fix overlap issue
 function handleProfilePicture() {
     const img = document.getElementById('profileImg');
     const fallback = document.getElementById('profileFallbackIcon');
@@ -1916,36 +2527,31 @@ function handleProfilePicture() {
     // Initial check
     checkImage();
 }
-</script>
 
-<script>
-let inactivityTime = 20 * 60 * 1000; // 20 minutes
+document.addEventListener('DOMContentLoaded', handleProfilePicture);
+// Also run after a short delay to ensure image src is set
+setTimeout(handleProfilePicture, 100);
+
+// Inactivity timer
+let inactivityTime = 20 * 60 * 1000;
 let inactivityTimer;
-
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-        // Silent logout (no notification)
         window.location.href = 'logout.php';
     }, inactivityTime);
 }
-
-// Events that count as activity
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
 resetInactivityTimer();
-</script>
 
-<script>
-// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP, ETC. =====
-
-const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+// Clock functionality (from employee.php)
+const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
 let clockInterval = null;
 let lastSecond = null;
 
-// Get nice timezone label, e.g. Asia/Manila (GMT+8)
 function getTimezoneLabel() {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const offset = -new Date().getTimezoneOffset() / 60;
@@ -1960,32 +2566,22 @@ function renderClock(now) {
         month: 'long',
         day: 'numeric'
     });
-
-    // Always 2-digits for minutes/seconds so we can use flip animation
-    // Output: e.g. 4:07:44 PM
     const timeStr = now.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         second: '2-digit',
         hour12: true
     });
-
-    // Split into hour, minute, second, ampm - for flipping animation
-    // timeStr: "4:07:44 PM"
     const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
     let h = t ? t[1] : "--";
     let m = t ? t[2] : "--";
     let s = t ? t[3] : "--";
     let ampm = t ? t[4] : "";
-
     const desktopClock = document.getElementById('desktopClock');
     const mobileClock = document.getElementById('mobileClock');
-
-    // For the flip effect, wrap each digit in span
     function flipSpan(str) {
         return str.split('').map(chr => `<span>${chr}</span>`).join('');
     }
-
     if (desktopClock) {
         desktopClock.innerHTML = `
             <span class="date-part">${datePart}</span>
@@ -1996,7 +2592,6 @@ function renderClock(now) {
             <span class="clock-timezone">${getTimezoneLabel()}</span>
         `;
     }
-
     if (mobileClock) {
         mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
     }
@@ -2005,8 +2600,6 @@ function renderClock(now) {
 function tick() {
     const now = new Date(currentServerTime);
     const sec = now.getSeconds();
-
-    // Animate flips only on actual second changes
     if (sec !== lastSecond) {
         document.querySelectorAll('.time-part').forEach(el => {
             el.classList.add('flip');
@@ -2014,9 +2607,7 @@ function tick() {
         });
         lastSecond = sec;
     }
-
     renderClock(now);
-
     currentServerTime += 1000;
 }
 
@@ -2026,7 +2617,6 @@ function startClock() {
     clockInterval = setInterval(tick, 1000);
 }
 
-// Pause/resume flip and ticking for perf when page is hidden
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         clearInterval(clockInterval);
@@ -2036,21 +2626,16 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Resync with server every X minutes, anti-drift
 setInterval(() => {
     fetch(location.href, { method: 'HEAD' })
         .then(() => {
-            // New PHP time is available in global SERVER_TIME var (not perfect, but synchronous; see note)
-            // Since the page doesn't reload, just reset drift to starting value
             currentServerTime = SERVER_TIME;
         });
 }, RESYNC_MINUTES * 60 * 1000);
 
 startClock();
-</script>
 
-<script>
-// ===== DARK MODE TOGGLE (BULLETPROOF VERSION) =====
+// Dark mode toggle (from employee.php)
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
@@ -2062,30 +2647,23 @@ startClock();
     const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
 
-    // ✅ CRITICAL: Store theme in a backup location too
     const THEME_KEY = 'theme';
     const THEME_BACKUP_KEY = 'theme_backup';
 
     function updateTheme(isDark, animate = false) {
         try {
             const themeValue = isDark ? 'dark' : 'light';
-            
             if (isDark) {
                 html.setAttribute('data-theme', 'dark');
             } else {
                 html.removeAttribute('data-theme');
             }
-            
-            // ✅ Save to both primary and backup locations
             localStorage.setItem(THEME_KEY, themeValue);
             localStorage.setItem(THEME_BACKUP_KEY, themeValue);
-            
-            // Update icons
             if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
             if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
             if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
             if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
-            
             if (animate) {
                 if (darkModeBtn) darkModeBtn.classList.add('active');
                 if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
@@ -2099,20 +2677,14 @@ startClock();
         }
     }
 
-    // ✅ Load saved theme with backup fallback
     try {
         let savedTheme = localStorage.getItem(THEME_KEY);
-        
-        // If primary is missing or corrupted, try backup
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
         }
-        
-        // Final fallback
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = 'light';
         }
-        
         updateTheme(savedTheme === 'dark', false);
     } catch (e) {
         console.error('Theme load error:', e);
@@ -2127,8 +2699,6 @@ startClock();
     if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
     if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
 
-    // ✅ CRITICAL: Protect localStorage from being cleared on navigation
-    // Listen for beforeunload and ensure theme is saved
     window.addEventListener('beforeunload', function() {
         try {
             const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -2140,7 +2710,7 @@ startClock();
     });
 })();
 
-// ===== NOTIFICATION SYSTEM (FIXED) =====
+// Notification system (from employee.php)
 (function() {
     const notifBtn = document.getElementById('notifBtn');
     const mobileNotifBtn = document.getElementById('mobileNotifBtn');
@@ -2153,11 +2723,8 @@ startClock();
 
     let notifications = [];
     let unreadCount = 0;
-    
-    // ✅ Use a separate localStorage key for notifications to avoid conflicts
     const NOTIF_SEEN_KEY = 'notif_seen_ids';
     let seenNotifIds = new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]'));
-    
     let isFirstLoad = true;
 
     function updateBadge(count) {
@@ -2172,7 +2739,6 @@ startClock();
                 notifBadge.classList.remove('show');
             }
         }
-
         if (mobileNotifBadge) {
             if (count > 0) {
                 mobileNotifBadge.textContent = count > 99 ? '99+' : count;
@@ -2184,7 +2750,6 @@ startClock();
                 mobileNotifBtn?.classList.remove('has-notif');
             }
         }
-
         if (notifBtn) {
             if (count > 0) notifBtn.classList.add('has-notif');
             else notifBtn.classList.remove('has-notif');
@@ -2196,14 +2761,12 @@ startClock();
             notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
             return;
         }
-
         const groups = {};
         notifications.forEach(n => {
             const type = n.request_type || 'Other';
             if (!groups[type]) groups[type] = [];
             groups[type].push(n);
         });
-
         notifBody.innerHTML = Object.keys(groups).map(type => `
             <div class="notif-group">
                 <div class="notif-group-title">${type}</div>
@@ -2216,7 +2779,6 @@ startClock();
                 `).join('')}
             </div>
         `).join('');
-
         notifBody.querySelectorAll('.notif-item').forEach(item => {
             item.addEventListener('click', () => {
                 const id = item.dataset.id;
@@ -2250,13 +2812,11 @@ startClock();
 
     function playNotifSound() {
         if (!notifAudioReady) return;
-        
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
             if (!notifAudioCtx) notifAudioCtx = new AudioCtx();
             if (notifAudioCtx.state === 'suspended') return;
-
             const o = notifAudioCtx.createOscillator();
             const g = notifAudioCtx.createGain();
             o.type = "triangle";
@@ -2273,25 +2833,19 @@ startClock();
             const res = await fetch('api/notifications.php');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
-
             notifications = data.notifications || [];
             unreadCount = notifications.filter(n => !n.read).length;
-
             if (!isFirstLoad) {
                 const newUnread = notifications.filter(n => !n.read && !seenNotifIds.has(n.id));
                 if (newUnread.length > 0) {
                     playNotifSound();
                     newUnread.forEach(n => seenNotifIds.add(n.id));
-                    // ✅ Use separate key to avoid conflicts
                     localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
                 }
             }
-
             notifications.forEach(n => seenNotifIds.add(n.id));
             localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
-
             isFirstLoad = false;
-
             updateBadge(unreadCount);
             updateNotificationUI();
         } catch (err) {
@@ -2333,12 +2887,12 @@ startClock();
 
     setTimeout(() => {
         fetchNotifications();
-        
         setInterval(() => {
             if (!document.hidden) fetchNotifications();
         }, 3000);
     }, 150);
 })();
 </script>
+
 </body>
 </html>
