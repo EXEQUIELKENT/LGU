@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 28, 2026 at 06:00 AM
+-- Generation Time: Feb 01, 2026 at 11:44 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -31,6 +31,7 @@ CREATE TABLE `employees` (
   `user_id` int(10) UNSIGNED NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
+  `profile_picture` varchar(255) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
   `role` enum('Manager','Engineer','Office Staff','Super Admin') NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -49,14 +50,14 @@ CREATE TABLE `employees` (
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`, `last_otp_verified_at`, `session_token`, `last_login`, `otp_resend_count`, `otp_last_sent`) VALUES
-(1, 'Exequiel Kent', 'Bartolome', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-01-28 02:14:46', NULL, NULL, 0, NULL),
-(2, 'Warvie', 'Villa', 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(3, 'Jhoven', 'Las-ay', 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(5, 'Steven', 'Valera', 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(8, 'Steph', 'Sagun', 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(11, 'Mary Carl', 'Dagondong', 'marycarl.dagondong@example.com', 'Manager', '$2y$10$z8vP5dZk5Yqk4fY3J9vKTOwYzFQFZK2Yp4mR2Y3sY4J6P2d9r1mFi', 1, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL),
-(13, 'Exequiel', 'Bartolome', 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-01-27 17:21:56', NULL, NULL, 0, NULL);
+INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`, `last_otp_verified_at`, `session_token`, `last_login`, `otp_resend_count`, `otp_last_sent`) VALUES
+(1, 'Exequiel Kent', 'Bartolome', 'uploads/profile/profile_1_1769940651.jpeg', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-02-01 03:33:06', NULL, NULL, 0, NULL),
+(2, 'Warvie', 'Villa', NULL, 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(3, 'Jhoven', 'Las-ay', NULL, 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(5, 'Steven', 'Valera', NULL, 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(8, 'Steph', 'Sagun', NULL, 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(11, 'Mary Carl', 'Dagondong', NULL, 'marycarl.dagondong@example.com', 'Manager', '$2y$10$z8vP5dZk5Yqk4fY3J9vKTOwYzFQFZK2Yp4mR2Y3sY4J6P2d9r1mFi', 1, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL),
+(13, 'Exequiel', 'Bartolome', NULL, 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-01-27 17:21:56', NULL, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -70,6 +71,32 @@ CREATE TABLE `evidence_images` (
   `img_path` varchar(255) NOT NULL,
   `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `evidence_images`
+--
+
+INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VALUES
+(59, 67, 'uploads/evidence/evidence_67_69799eeb82839.jpeg', '2026-01-28 05:30:19'),
+(60, 68, 'uploads/evidence/evidence_68_69799f0b31531.jpeg', '2026-01-28 05:30:51'),
+(61, 69, 'uploads/evidence/evidence_69_69799fbf56ba4.png', '2026-01-28 05:33:51'),
+(62, 70, 'uploads/evidence/evidence_70_6979a0a7b6cd8.png', '2026-01-28 05:37:43'),
+(63, 71, 'uploads/evidence/evidence_71_6979a0c1575a7.jpeg', '2026-01-28 05:38:09'),
+(64, 72, 'uploads/evidence/evidence_72_6979a19f5912c.png', '2026-01-28 05:41:51'),
+(65, 73, 'uploads/evidence/evidence_73_6979a1f8df748.jpeg', '2026-01-28 05:43:20'),
+(66, 74, 'uploads/evidence/evidence_74_6979a2102e2a4.jpeg', '2026-01-28 05:43:44'),
+(67, 75, 'uploads/evidence/evidence_75_6979a2ca99469.png', '2026-01-28 05:46:50'),
+(68, 76, 'uploads/evidence/evidence_76_6979a36f82be0.png', '2026-01-28 05:49:35'),
+(69, 77, 'uploads/evidence/evidence_77_6979a3b015c7a.png', '2026-01-28 05:50:40'),
+(70, 78, 'uploads/evidence/evidence_78_6979a43ae8e41.png', '2026-01-28 05:52:58'),
+(71, 79, 'uploads/evidence/evidence_79_6979a5a302c19.jpeg', '2026-01-28 05:58:59'),
+(72, 80, 'uploads/evidence/evidence_80_6979a5eec26ec.jpeg', '2026-01-28 06:00:14'),
+(73, 81, 'uploads/evidence/evidence_81_6979a6076468b.jpeg', '2026-01-28 06:00:39'),
+(74, 82, 'uploads/evidence/evidence_82_6979a6d5476c3.jpeg', '2026-01-28 06:04:05'),
+(75, 83, 'uploads/evidence/evidence_83_6979a75406fbb.jpeg', '2026-01-28 06:06:12'),
+(76, 84, 'uploads/evidence/evidence_84_6979daf3d0ef5.jpeg', '2026-01-28 09:46:27'),
+(77, 85, 'uploads/evidence/evidence_85_6979db74d0eb0.jpeg', '2026-01-28 09:48:36'),
+(78, 86, 'uploads/evidence/evidence_86_6979db8c4f736.jpeg', '2026-01-28 09:49:00');
 
 -- --------------------------------------------------------
 
@@ -182,7 +209,15 @@ INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_ad
 (86, 'bartolomstolome@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 09:14:24'),
 (87, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-01-28 09:14:46'),
 (88, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 09:27:59'),
-(89, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 10:58:33');
+(89, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 10:58:33'),
+(90, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 13:23:52'),
+(91, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 13:43:11'),
+(92, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 14:00:25'),
+(93, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-01-28 17:43:39'),
+(94, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-02-01 10:33:06'),
+(95, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-02-01 10:37:52'),
+(96, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-02-01 16:24:04'),
+(97, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-02-01 16:53:54');
 
 -- --------------------------------------------------------
 
@@ -276,6 +311,112 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`, `request_type`, `is_read`, `created_at`) VALUES
+(150, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=67', 'Street Lights', 0, '2026-01-28 05:30:19'),
+(151, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=67', 'Street Lights', 0, '2026-01-28 05:30:19'),
+(152, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=67', 'Street Lights', 0, '2026-01-28 05:30:19'),
+(153, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=67', 'Street Lights', 0, '2026-01-28 05:30:19'),
+(154, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=67', 'Street Lights', 0, '2026-01-28 05:30:19'),
+(155, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=68', 'Roads', 0, '2026-01-28 05:30:51'),
+(156, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=68', 'Roads', 0, '2026-01-28 05:30:51'),
+(157, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=68', 'Roads', 0, '2026-01-28 05:30:51'),
+(158, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=68', 'Roads', 0, '2026-01-28 05:30:51'),
+(159, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=68', 'Roads', 0, '2026-01-28 05:30:51'),
+(160, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=69', 'Roads', 0, '2026-01-28 05:33:51'),
+(161, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=69', 'Roads', 0, '2026-01-28 05:33:51'),
+(162, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=69', 'Roads', 0, '2026-01-28 05:33:51'),
+(163, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=69', 'Roads', 0, '2026-01-28 05:33:51'),
+(164, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=69', 'Roads', 0, '2026-01-28 05:33:51'),
+(165, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=70', 'Street Lights', 0, '2026-01-28 05:37:43'),
+(166, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=70', 'Street Lights', 0, '2026-01-28 05:37:43'),
+(167, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=70', 'Street Lights', 0, '2026-01-28 05:37:43'),
+(168, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=70', 'Street Lights', 0, '2026-01-28 05:37:43'),
+(169, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=70', 'Street Lights', 0, '2026-01-28 05:37:43'),
+(170, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=71', 'Water Supply', 0, '2026-01-28 05:38:09'),
+(171, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=71', 'Water Supply', 0, '2026-01-28 05:38:09'),
+(172, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=71', 'Water Supply', 0, '2026-01-28 05:38:09'),
+(173, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=71', 'Water Supply', 0, '2026-01-28 05:38:09'),
+(174, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=71', 'Water Supply', 0, '2026-01-28 05:38:09'),
+(175, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=72', 'Drainage', 0, '2026-01-28 05:41:51'),
+(176, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=72', 'Drainage', 0, '2026-01-28 05:41:51'),
+(177, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=72', 'Drainage', 0, '2026-01-28 05:41:51'),
+(178, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=72', 'Drainage', 0, '2026-01-28 05:41:51'),
+(179, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=72', 'Drainage', 0, '2026-01-28 05:41:51'),
+(180, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=73', 'Street Lights', 0, '2026-01-28 05:43:20'),
+(181, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=73', 'Street Lights', 0, '2026-01-28 05:43:20'),
+(182, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=73', 'Street Lights', 0, '2026-01-28 05:43:20'),
+(183, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=73', 'Street Lights', 0, '2026-01-28 05:43:20'),
+(184, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=73', 'Street Lights', 0, '2026-01-28 05:43:20'),
+(185, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=74', 'Street Lights', 0, '2026-01-28 05:43:44'),
+(186, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=74', 'Street Lights', 0, '2026-01-28 05:43:44'),
+(187, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=74', 'Street Lights', 0, '2026-01-28 05:43:44'),
+(188, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=74', 'Street Lights', 0, '2026-01-28 05:43:44'),
+(189, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=74', 'Street Lights', 0, '2026-01-28 05:43:44'),
+(190, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=75', 'Street Lights', 0, '2026-01-28 05:46:50'),
+(191, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=75', 'Street Lights', 0, '2026-01-28 05:46:50'),
+(192, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=75', 'Street Lights', 0, '2026-01-28 05:46:50'),
+(193, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=75', 'Street Lights', 0, '2026-01-28 05:46:50'),
+(194, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=75', 'Street Lights', 0, '2026-01-28 05:46:50'),
+(195, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=76', 'Roads', 0, '2026-01-28 05:49:35'),
+(196, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=76', 'Roads', 0, '2026-01-28 05:49:35'),
+(197, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=76', 'Roads', 0, '2026-01-28 05:49:35'),
+(198, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=76', 'Roads', 0, '2026-01-28 05:49:35'),
+(199, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=76', 'Roads', 0, '2026-01-28 05:49:35'),
+(200, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=77', 'Roads', 0, '2026-01-28 05:50:40'),
+(201, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=77', 'Roads', 0, '2026-01-28 05:50:40'),
+(202, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=77', 'Roads', 0, '2026-01-28 05:50:40'),
+(203, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=77', 'Roads', 0, '2026-01-28 05:50:40'),
+(204, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=77', 'Roads', 0, '2026-01-28 05:50:40'),
+(205, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=78', 'Street Lights', 0, '2026-01-28 05:52:58'),
+(206, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=78', 'Street Lights', 0, '2026-01-28 05:52:58'),
+(207, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=78', 'Street Lights', 0, '2026-01-28 05:52:58'),
+(208, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=78', 'Street Lights', 0, '2026-01-28 05:52:58'),
+(209, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=78', 'Street Lights', 0, '2026-01-28 05:52:58'),
+(210, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=79', 'Street Lights', 0, '2026-01-28 05:58:59'),
+(211, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=79', 'Street Lights', 0, '2026-01-28 05:58:59'),
+(212, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=79', 'Street Lights', 0, '2026-01-28 05:58:59'),
+(213, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=79', 'Street Lights', 0, '2026-01-28 05:58:59'),
+(214, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=79', 'Street Lights', 0, '2026-01-28 05:58:59'),
+(215, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=80', 'Street Lights', 0, '2026-01-28 06:00:14'),
+(216, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=80', 'Street Lights', 0, '2026-01-28 06:00:14'),
+(217, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=80', 'Street Lights', 0, '2026-01-28 06:00:14'),
+(218, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=80', 'Street Lights', 0, '2026-01-28 06:00:14'),
+(219, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=80', 'Street Lights', 0, '2026-01-28 06:00:14'),
+(220, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=81', 'Roads', 0, '2026-01-28 06:00:39'),
+(221, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=81', 'Roads', 0, '2026-01-28 06:00:39'),
+(222, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=81', 'Roads', 0, '2026-01-28 06:00:39'),
+(223, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=81', 'Roads', 0, '2026-01-28 06:00:39'),
+(224, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=81', 'Roads', 0, '2026-01-28 06:00:39'),
+(225, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=82', 'Roads', 0, '2026-01-28 06:04:05'),
+(226, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=82', 'Roads', 0, '2026-01-28 06:04:05'),
+(227, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=82', 'Roads', 0, '2026-01-28 06:04:05'),
+(228, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=82', 'Roads', 0, '2026-01-28 06:04:05'),
+(229, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=82', 'Roads', 0, '2026-01-28 06:04:05'),
+(230, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=83', 'Roads', 0, '2026-01-28 06:06:12'),
+(231, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=83', 'Roads', 0, '2026-01-28 06:06:12'),
+(232, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=83', 'Roads', 0, '2026-01-28 06:06:12'),
+(233, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=83', 'Roads', 0, '2026-01-28 06:06:12'),
+(234, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=83', 'Roads', 0, '2026-01-28 06:06:12'),
+(235, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=84', 'Street Lights', 0, '2026-01-28 09:46:27'),
+(236, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=84', 'Street Lights', 0, '2026-01-28 09:46:27'),
+(237, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=84', 'Street Lights', 0, '2026-01-28 09:46:27'),
+(238, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=84', 'Street Lights', 0, '2026-01-28 09:46:27'),
+(239, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=84', 'Street Lights', 0, '2026-01-28 09:46:27'),
+(240, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=85', 'Street Lights', 0, '2026-01-28 09:48:36'),
+(241, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=85', 'Street Lights', 0, '2026-01-28 09:48:36'),
+(242, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=85', 'Street Lights', 0, '2026-01-28 09:48:36'),
+(243, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=85', 'Street Lights', 0, '2026-01-28 09:48:36'),
+(244, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=85', 'Street Lights', 0, '2026-01-28 09:48:36'),
+(245, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
+(246, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
+(247, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
+(248, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
+(249, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00');
+
 -- --------------------------------------------------------
 
 --
@@ -346,6 +487,32 @@ CREATE TABLE `requests` (
   `approval_status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `requests`
+--
+
+INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contact_number`, `name`, `approval_status`, `created_at`) VALUES
+(67, 'Street Lights', '122121', '1212', '09201212121', 'Kent', 'Pending', '2026-01-28 05:30:19'),
+(68, 'Roads', 'Kwww', '212', '09201920212', 'Kent', 'Pending', '2026-01-28 05:30:51'),
+(69, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '1212', '09212121212', '12122', 'Pending', '2026-01-28 05:33:51'),
+(70, 'Street Lights', 'ss', '2121221', '09212121212', 'sss', 'Pending', '2026-01-28 05:37:43'),
+(71, 'Water Supply', 'ssss', '1211221', '09209209121', '092121212121212122121122', 'Pending', '2026-01-28 05:38:09'),
+(72, 'Drainage', 'sss', '122112', '09212122122', 'sss', 'Pending', '2026-01-28 05:41:51'),
+(73, 'Street Lights', 'ss', 'sss', '09019222212', 'ss', 'Pending', '2026-01-28 05:43:20'),
+(74, 'Street Lights', 'ss', '21212', '09091212122', 'sss', 'Pending', '2026-01-28 05:43:44'),
+(75, 'Street Lights', '09212012921', '12121', '09221212121', '21212122', 'Pending', '2026-01-28 05:46:50'),
+(76, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '21121', '09090090990', 'sss', 'Pending', '2026-01-28 05:49:35'),
+(77, 'Roads', 'ss', '2212', '09090092929', 'ss', 'Pending', '2026-01-28 05:50:40'),
+(78, 'Street Lights', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '321212', '09090900900', 'ss', 'Pending', '2026-01-28 05:52:58'),
+(79, 'Street Lights', 'ssss', '21', '09212122121', '121212', 'Pending', '2026-01-28 05:58:59'),
+(80, 'Street Lights', 'ss', '212', '09090909090', 'w121', 'Pending', '2026-01-28 06:00:14'),
+(81, 'Roads', 'ss', '121212', '09090099009', 'ss', 'Pending', '2026-01-28 06:00:39'),
+(82, 'Roads', '12121212', '89889', '09090909090', '212112', 'Pending', '2026-01-28 06:04:05'),
+(83, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '090090', '09090909090', 'ss', 'Pending', '2026-01-28 06:06:12'),
+(84, 'Street Lights', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '1212', '09019212121', '1212', 'Pending', '2026-01-28 09:46:27'),
+(85, 'Street Lights', 'ss', '122112', '09212211212', 'ss', 'Pending', '2026-01-28 09:48:36'),
+(86, 'Street Lights', '2121212', '121212', '09212121212', '1212', 'Pending', '2026-01-28 09:49:00');
 
 -- --------------------------------------------------------
 
@@ -460,13 +627,13 @@ ALTER TABLE `employees`
 -- AUTO_INCREMENT for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=79;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=98;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -484,7 +651,7 @@ ALTER TABLE `materials_equipment_costs`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=250;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
@@ -508,7 +675,7 @@ ALTER TABLE `reports`
 -- AUTO_INCREMENT for table `requests`
 --
 ALTER TABLE `requests`
-  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
