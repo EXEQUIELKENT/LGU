@@ -812,10 +812,9 @@ body.sidebar-collapsed .desktop-top-nav {
     min-width: 18px;
     text-align: center;
     box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
-}
-.notif-badge.hidden {
     display: none;
 }
+
 .notif-badge.show {
     display: block;
     animation: pulse 1.5s ease-in-out infinite;

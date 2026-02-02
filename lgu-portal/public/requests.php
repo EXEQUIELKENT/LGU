@@ -1165,7 +1165,7 @@ body::before {
     padding-top: 60px;
     padding-left: 20px;
     padding-right: 20px;
-    min-height: 100vh;
+    min-height: 100vh;  
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -1181,8 +1181,7 @@ body::before {
     font-size:28px;
     margin-bottom:25px;
     margin-top:0;
-    font-weight: 900; 
-    text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
+    font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
 }
 
 /* CARD */
@@ -1756,7 +1755,7 @@ tbody tr:hover {
 
     /* 2️⃣ TABLE CARD no forced height; internal scroll not needed */
     .table-card {
-        margin-top: 85px;
+        margin-top: 65px;
         padding: 22px;
         border-radius: 18px;
     }

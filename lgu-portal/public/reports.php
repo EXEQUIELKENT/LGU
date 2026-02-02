@@ -1135,7 +1135,7 @@ body::before {
     color: #fff;
     font-size:28px;
     margin-bottom:25px;
-    margin-top:0;
+    margin-top:20px;
     font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
 }
 
