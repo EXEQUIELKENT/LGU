@@ -1916,6 +1916,10 @@ function handleProfilePicture() {
     // Initial check
     checkImage();
 }
+
+document.addEventListener('DOMContentLoaded', handleProfilePicture);
+// Also run after a short delay to ensure image src is set
+setTimeout(handleProfilePicture, 100);
 </script>
 
 <script>
