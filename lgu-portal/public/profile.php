@@ -6,8 +6,8 @@ date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
 $INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
-
-// If last activity is set and timeout exceeded
+//
+// Session timeout/inactivity handler
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
     session_unset();
     session_destroy();
@@ -15,16 +15,15 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
     exit;
 }
 
-// Update last activity time
 $_SESSION['last_activity'] = time();
 
-/* 🚫 Prevent browser caching of protected pages */
+// 🚫 Cache control for protected pages
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-/* 🔐 Strict session check */
+// 🔐 Strict session presence check
 if (
     !isset($_SESSION['employee_logged_in']) ||
     $_SESSION['employee_logged_in'] !== true
@@ -37,9 +36,40 @@ if (
 
 require __DIR__ . '/db.php';
 
-// Get user profile picture
+// --- Profile Cooldown Section (NEW) ---
+$employeeId = $_SESSION['employee_id'] ?? null;
+$currentUser = null;
+$isSuperAdmin = false;
+$cooldownActive = false;
+$nextAllowedDate = null;
+
+if ($employeeId) {
+    // Pull last_profile_update AND role at once
+    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture, last_profile_update, role FROM employees WHERE user_id = ?");
+    $stmt->bind_param("i", $employeeId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 1) {
+        $currentUser = $result->fetch_assoc();
+        $isSuperAdmin = isset($currentUser['role']) && strcasecmp($currentUser['role'], 'Super Admin') === 0;
+    }
+    $stmt->close();
+
+    // Only restrict if not Super Admin
+    if (!$isSuperAdmin && isset($currentUser['last_profile_update']) && $currentUser['last_profile_update']) {
+        $now = new DateTime();
+        $lastUpdate = new DateTime($currentUser['last_profile_update']);
+        $daysPassed = (int) $lastUpdate->diff($now)->days;
+        if ($daysPassed < 7) {
+            $cooldownActive = true;
+            $nextAllowedDate = $lastUpdate->modify('+7 days')->format('F j, Y');
+        }
+    }
+}
+
+// --- Utility & helper functions reused below ---
 function getProfilePicture($employeeId, $conn) {
-    if (!$employeeId) return 'profile.png';
+    if (!$employeeId) return '';
     $stmt = $conn->prepare("SELECT profile_picture FROM employees WHERE user_id = ?");
     $stmt->bind_param("i", $employeeId);
     $stmt->execute();
@@ -53,10 +83,9 @@ function getProfilePicture($employeeId, $conn) {
         }
     }
     $stmt->close();
-    return 'profile.png';
+    return '';
 }
 
-// Notification system
 function setNotification($type, $message) {
     $_SESSION['notification'] = [
         'type' => $type,
@@ -85,7 +114,7 @@ function showNotification() {
     }
 }
 
-// Password validation functions (from login.php)
+// Password helpers for strength and similarity
 function isStrongPassword($password) {
     if (strlen($password) < 8) return false;
     if (!preg_match('/[A-Z]/', $password)) return false;
@@ -110,10 +139,7 @@ function isStrongPassword($password) {
     }
     return true;
 }
-
-// Check if new password is similar to old password
 function isPasswordSimilar($newPassword, $oldPasswordHash) {
-    // Check if new password matches old password
     if (password_verify($newPassword, $oldPasswordHash)) {
         return true;
     }
@@ -121,68 +147,71 @@ function isPasswordSimilar($newPassword, $oldPasswordHash) {
     return false;
 }
 
-// Get current user data
-$employeeId = $_SESSION['employee_id'] ?? null;
-$currentUser = null;
-if ($employeeId) {
-    $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture FROM employees WHERE user_id = ?");
-    $stmt->bind_param("i", $employeeId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows === 1) {
-        $currentUser = $result->fetch_assoc();
+// For display
+function getDisplayName() {
+    $firstName = $_SESSION['employee_first_name'] ?? '';
+    $role = $_SESSION['employee_role'] ?? '';
+    $name = trim($firstName);
+    if (!$name) $name = 'User';
+    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
+        return 'Admin - ' . $name;
+    } elseif ($role) {
+        return $role . ' - ' . $name;
+    } else {
+        return $name;
     }
-    $stmt->close();
 }
+$displayName = getDisplayName();
+$profilePictureSrc = getProfilePicture($employeeId, $conn);
+$isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';
 
-// Handle form submission
+// --- New: Handle form submission with 7d cooldown restriction (block for cooldown for regulars, allow super admin) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $firstName = trim($_POST['first_name'] ?? '');
     $lastName = trim($_POST['last_name'] ?? '');
     $currentPassword = $_POST['current_password'] ?? '';
     $newPassword = $_POST['new_password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
-    
     $errors = [];
-    
-    // Validate first name and last name
+
+    // --- COOLDOWN: enforce (skip if super admin) ---
+    if ($cooldownActive) {
+        setNotification('warning', "You can only update your personal information once every 7 days. Next update allowed on " . htmlspecialchars($nextAllowedDate) . ".");
+        header("Location: profile.php");
+        exit;
+    }
+
+    // Form validation (same as before)
     if (empty($firstName)) {
         $errors[] = 'First name is required.';
     } elseif (strlen($firstName) > 50) {
         $errors[] = 'First name must be 50 characters or less.';
     }
-    
     if (empty($lastName)) {
         $errors[] = 'Last name is required.';
     } elseif (strlen($lastName) > 50) {
         $errors[] = 'Last name must be 50 characters or less.';
     }
-    
+
     // Handle profile picture upload
     $profilePicturePath = $currentUser['profile_picture'] ?? null;
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['profile_picture'];
-        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         $maxSize = 5 * 1024 * 1024; // 5MB
-        
         if (!in_array($file['type'], $allowedTypes)) {
-            $errors[] = 'Invalid file type. Only JPEG, PNG, and GIF images are allowed.';
+            $errors[] = 'Invalid file type. Only JPEG, PNG, & WEBP images are allowed.';
         } elseif ($file['size'] > $maxSize) {
             $errors[] = 'File size exceeds 5MB limit.';
         } else {
-            // Create uploads/profile directory if it doesn't exist
             $uploadDir = __DIR__ . '/uploads/profile/';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
-            
-            // Generate unique filename
             $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
             $filename = 'profile_' . $employeeId . '_' . time() . '.' . $extension;
             $filepath = $uploadDir . $filename;
-            
             if (move_uploaded_file($file['tmp_name'], $filepath)) {
-                // Delete old profile picture if exists
                 if ($profilePicturePath && file_exists(__DIR__ . '/' . $profilePicturePath)) {
                     unlink(__DIR__ . '/' . $profilePicturePath);
                 }
@@ -192,11 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             }
         }
     }
-    
-    // Handle password change if provided
+
+    // Password change
     $passwordChanged = false;
     if (!empty($currentPassword) || !empty($newPassword) || !empty($confirmPassword)) {
-        // All password fields must be provided
         if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
             $errors[] = 'All password fields are required to change password.';
         } elseif (!password_verify($currentPassword, $currentUser['password'])) {
@@ -211,59 +239,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $passwordChanged = true;
         }
     }
-    
-    // Update database if no errors
+
+    // --- Update DB if no errors ---
     if (empty($errors)) {
         $updateFields = [];
         $updateValues = [];
         $types = '';
-        
         if ($firstName !== $currentUser['first_name']) {
             $updateFields[] = "first_name = ?";
             $updateValues[] = $firstName;
             $types .= 's';
         }
-        
         if ($lastName !== $currentUser['last_name']) {
             $updateFields[] = "last_name = ?";
             $updateValues[] = $lastName;
             $types .= 's';
         }
-        
         if ($profilePicturePath && $profilePicturePath !== ($currentUser['profile_picture'] ?? null)) {
             $updateFields[] = "profile_picture = ?";
             $updateValues[] = $profilePicturePath;
             $types .= 's';
         }
-        
         if ($passwordChanged) {
             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
             $updateFields[] = "password = ?";
             $updateValues[] = $hashedPassword;
             $types .= 's';
         }
-        
+
+        // --- Always update last_profile_update if anything changed, unless only password is changed ---
+        // Only update last_profile_update if personal (not only password/pic) changed
+        $personalFieldsChanging = (
+            ($firstName !== $currentUser['first_name']) ||
+            ($lastName !== $currentUser['last_name']) ||
+            ($profilePicturePath && $profilePicturePath !== ($currentUser['profile_picture'] ?? null))
+        );
+        if ($personalFieldsChanging && !$isSuperAdmin) {
+            $updateFields[] = "last_profile_update = NOW()";
+            // No value needed, NOW() set directly.
+        }
+
         if (!empty($updateFields)) {
             $updateValues[] = $employeeId;
             $types .= 'i';
-            
             $sql = "UPDATE employees SET " . implode(', ', $updateFields) . " WHERE user_id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param($types, ...$updateValues);
-            
+
             if ($stmt->execute()) {
-                // Update session variables
                 $_SESSION['employee_first_name'] = $firstName;
                 $_SESSION['employee_last_name'] = $lastName;
-                
                 $successMsg = 'Profile updated successfully!';
                 if ($passwordChanged) {
                     $successMsg .= ' Your password has been changed.';
                 }
                 setNotification('success', $successMsg);
-                
-                // Refresh current user data
-                $stmt2 = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture FROM employees WHERE user_id = ?");
+
+                // Refresh current user data if needed
+                $stmt2 = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture, last_profile_update, role FROM employees WHERE user_id = ?");
                 $stmt2->bind_param("i", $employeeId);
                 $stmt2->execute();
                 $result = $stmt2->get_result();
@@ -281,41 +314,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     } else {
         setNotification('error', implode(' ', $errors));
     }
-    
-    // Redirect to prevent form resubmission
     header("Location: profile.php");
     exit;
 }
-
-// Improved: Format display name
-function getDisplayName() {
-    // Fallbacks
-    $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
-    $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
-    // Try to use full name if available
-    $name = trim($firstName);
-    if (!$name) $name = 'User';
-
-    // Determine formatting based on role (you can modify roles as needed)
-    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
-        return 'Admin - ' . $name;
-    } elseif ($role) {
-        // Show role for any other roles, e.g., "Employee - John Doe"
-        return $role . ' - ' . $name;
-    } else {
-        // No role: show plain name
-        return $name;
-    }
-}
-$displayName = getDisplayName();
-
-// Get profile picture path
-$profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
-
-// Add: Check if we are on the profile page
-$isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';
-
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -323,6 +326,8 @@ $isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile Settings - LGU Employee Portal</title>
 <style>
+/* ... CSS exactly as before ... (unchanged for brevity) */
+<?php /* Keep all existing style unchanged for correctness */ ?>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 /* ...all your other CSS as before... */
@@ -466,6 +471,22 @@ body::before {
     flex-direction: column;
     gap: 25px;
 }
+
+.profile-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.default-icon {
+    font-size: 60px;
+    background: #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 
 .form-group {
     display: flex;
@@ -698,7 +719,7 @@ body::before {
     }
     
     .profile-header h1 {
-        font-size: 24px;
+    font-size: 24px;
     }
 }
 
@@ -1525,6 +1546,250 @@ body.sidebar-collapsed .desktop-clock {
     background: #43a047;
 }
 
+.profile-picture-preview {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #3762c8;
+    box-shadow: 0 4px 15px rgba(55, 98, 200, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.profile-picture-preview:hover {
+    transform: scale(1.05);
+}
+
+.cropper-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 9500;
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.cropper-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cropper-container {
+    position: relative;
+    width: 90vw;
+    max-width: 600px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.cropper-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cropper-header h2 {
+    font-size: 24px;
+    color: var(--text-primary);
+    margin: 0 0 10px 0;
+    font-weight: 600;
+}
+
+.cropper-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.cropper-preview-wrapper {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #3762c8;
+    box-shadow: 0 4px 15px rgba(55, 98, 200, 0.3);
+    background: #f0f0f0;
+    cursor: move;
+}
+
+.cropper-image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+.cropper-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.cropper-zoom-control {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cropper-zoom-label {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: center;
+}
+
+.cropper-zoom-slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.zoom-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.zoom-btn:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.4);
+    transform: scale(1.05);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+.cropper-zoom-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: rgba(55, 98, 200, 0.2);
+    border-radius: 3px;
+    outline: none;
+}
+
+.cropper-zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #3762c8;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cropper-zoom-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(55, 98, 200, 0.2);
+}
+
+.cropper-zoom-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #3762c8;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.cropper-zoom-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(55, 98, 200, 0.2);
+}
+
+.cropper-zoom-value {
+    min-width: 50px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.cropper-instructions {
+    text-align: center;
+    padding: 12px;
+    background: rgba(55, 98, 200, 0.1);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.cropper-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.cropper-btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.cropper-btn-cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.cropper-btn-cancel:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.cropper-btn-apply {
+    background: linear-gradient(135deg, #6384d2, #285ccd);
+    color: #fff;
+}
+
+.cropper-btn-apply:hover {
+    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.4);
+}
+
+@media (max-width: 768px) {
+    .cropper-container {
+        width: 95vw;
+        padding: 20px;
+    }
+    
+    .cropper-preview-wrapper {
+        width: 250px;
+        height: 250px;
+    }
+    
+    .cropper-header h2 {
+        font-size: 20px;
+    }
+}
+
 [data-theme="dark"] #saveAlertModal {
     background: var(--bg-secondary);
 }
@@ -1572,14 +1837,14 @@ body.sidebar-collapsed .desktop-clock {
         display: none;
     }
     .mobile-top-nav {
-        display: flex;
+    display: flex;
         position: fixed;
         top: 0;
         left: 0;
         height: 64px;
         width: 100%;
         align-items: center;
-        justify-content: center;
+    justify-content: center;
         background: var(--bg-secondary);
         backdrop-filter: blur(12px);
         z-index: 5000;
@@ -1592,12 +1857,12 @@ body.sidebar-collapsed .desktop-clock {
         left: 14px;
         background: #3762c8;
         color: #fff;
-        border: none;
-        border-radius: 10px;
+    border: none;
+    border-radius: 10px;
         width: 38px;
         height: 38px;
         font-size: 20px;
-        cursor: pointer;
+    cursor: pointer;
     }
     .mobile-top-nav img {
         height: 42px;
@@ -1608,7 +1873,7 @@ body.sidebar-collapsed .desktop-clock {
         right: 56px;
         font-size: 14px;
         font-weight: 600;
-        color: var(--text-primary);
+    color: var(--text-primary);
         white-space: nowrap;
         transition: color 0.3s ease;
     }
@@ -1727,7 +1992,6 @@ body.sidebar-collapsed .desktop-clock {
 }
 </style>
 <script>
-// --- Server time for server-synced clock ---
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
 // Theme initialization (from employee.php)
@@ -1815,7 +2079,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
-        </div>
+    </div>
         <div class="sidebar-logo-spacer"></div>
         <!-- Navigation -->
         <ul class="nav-list">
@@ -1831,15 +2095,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
-    </div>
+</div>
 
     <div class="sidebar-divider"></div>
 
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
-    </div>
-</div>
+        </div>
+        </div>
 
 <!-- Tooltip container for sidebar nav-links, profile icon, and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
@@ -1849,15 +2113,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <div id="logoutAlertModal">
         <div class="icon-wrap">
             <span class="icon">&#9888;</span>
-        </div>
+                </div>
         <div class="alert-title">Log out of your account?</div>
         <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
         <div class="alert-btns">
             <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
             <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+            </div>
         </div>
-    </div>
-</div>
+        </div>
 
 <!-- Save Changes Confirmation Alert Modal -->
 <div id="saveAlertBackdrop">
@@ -1870,38 +2134,88 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <div class="alert-btns">
             <button class="alert-btn cancel" id="saveCancelBtn">Cancel</button>
             <button class="alert-btn save" id="saveConfirmBtn">Yes</button>
+    </div>
+</div>
+</div>
+
+<!-- Profile Picture Cropper Modal -->
+<div id="profileCropperModal" class="cropper-modal">
+    <div class="cropper-container">
+        <div class="cropper-header">
+            <h2>Adjust Your Profile Picture</h2>
+            <p>Drag to reposition • Use slider to zoom</p>
+        </div>
+        
+        <div class="cropper-preview-wrapper" id="cropperPreviewWrapper">
+            <img id="cropperImage" class="cropper-image" src="" alt="Crop preview">
+        </div>
+        
+        <div class="cropper-controls">
+            <div class="cropper-zoom-control">
+                <label class="cropper-zoom-label">Zoom Level</label>
+                <div class="cropper-zoom-slider-wrapper">
+                    <button type="button" class="zoom-btn" id="zoomOutBtn">−</button>
+                    <input type="range" id="cropperZoomSlider" class="cropper-zoom-slider" 
+                           min="100" max="300" value="100" step="1">
+                    <button type="button" class="zoom-btn" id="zoomInBtn">+</button>
+                    <span class="cropper-zoom-value" id="cropperZoomValue">100%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="cropper-instructions">
+            💡 Click and drag the image to reposition it within the circle
+        </div>
+        
+        <div class="cropper-actions">
+            <button type="button" class="cropper-btn cropper-btn-cancel" id="cropperCancelBtn">Cancel</button>
+            <button type="button" class="cropper-btn cropper-btn-apply" id="cropperApplyBtn">Apply</button>
         </div>
     </div>
 </div>
 
 <div class="main-content">
-    <div class="profile-container">
+<div class="profile-container">
         <div class="profile-header">
             <h1>Profile Settings</h1>
             <p style="color: var(--text-secondary);">Manage your account information and preferences</p>
         </div>
 
+        <?php if ($cooldownActive): ?>
+            <div style="margin-bottom: 18px; background: #fffbe6; border: 1px solid #ffe38f; color: #664d03; padding: 13px 18px; border-radius: 9px; font-size: 16px;">
+                <strong>Profile update is temporarily locked.</strong><br>
+                You can update your profile again on <b><?= htmlspecialchars($nextAllowedDate) ?></b>.
+            </div>
+        <?php endif; ?>
+
         <form method="POST" action="" enctype="multipart/form-data" class="profile-form" id="profileForm">
-            <!-- Profile Picture Section -->
             <div class="profile-picture-section">
-                <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile Picture" class="profile-picture-preview" id="profilePreview">
+                <?php if (!empty($profilePictureSrc)): ?>
+                    <img src="<?= htmlspecialchars($profilePictureSrc) ?>" 
+                        alt="Profile Picture" 
+                        class="profile-picture-preview" 
+                        id="profilePreview"
+                        title="Click to adjust position">
+                <?php else: ?>
+                    <div class="profile-picture-preview default-icon" 
+                        id="profilePreview">👤</div>
+                <?php endif; ?>
                 <div class="profile-picture-upload">
                     <label for="profile_picture">Change Profile Picture</label>
-                    <input type="file" name="profile_picture" id="profile_picture" accept="image/jpeg,image/jpg,image/png,image/gif">
-                    <small style="color: var(--text-secondary); font-size: 12px;">Max size: 5MB (JPEG, PNG, GIF)</small>
+                    <input type="file" name="profile_picture" id="profile_picture" accept="image/jpeg,image/jpg,image/png,image/webp" <?= $cooldownActive && !$isSuperAdmin ? 'disabled' : '' ?>>
+                    <small style="color: var(--text-secondary); font-size: 12px;">Max size: 5MB (JPEG, PNG, & WEBP)</small>
                 </div>
             </div>
-
             <!-- First Name -->
             <div class="form-group">
                 <label for="first_name">First Name</label>
-                <input type="text" name="first_name" id="first_name" value="<?= htmlspecialchars($currentUser['first_name'] ?? '') ?>" required maxlength="50">
+                <input type="text" name="first_name" id="first_name" value="<?= htmlspecialchars($currentUser['first_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
             </div>
 
             <!-- Last Name -->
             <div class="form-group">
                 <label for="last_name">Last Name</label>
-                <input type="text" name="last_name" id="last_name" value="<?= htmlspecialchars($currentUser['last_name'] ?? '') ?>" required maxlength="50">
+                <input type="text" name="last_name" id="last_name" value="<?= htmlspecialchars($currentUser['last_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
             </div>
 
             <!-- Email (read-only) -->
@@ -1919,7 +2233,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="form-group">
                     <label for="current_password">Current Password</label>
                     <div class="input-box" style="margin-bottom: 25px;">
-                        <input type="password" name="current_password" id="current_password" placeholder="Enter current password" autocomplete="current-password">
+                        <input type="password" name="current_password" id="current_password" placeholder="Enter current password" autocomplete="current-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
                         <button type="button" class="password-toggle" id="toggleCurrentPassword" aria-label="Show password">👁️</button>
                     </div>
                 </div>
@@ -1927,7 +2241,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="form-group">
                     <label for="new_password">New Password</label>
                     <div class="input-box">
-                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" autocomplete="new-password">
+                        <input type="password" name="new_password" id="new_password" placeholder="Enter new password" autocomplete="new-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
                         <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">👁️</button>
                     </div>
                     <!-- Password strength meter -->
@@ -1968,36 +2282,22 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="form-group">
                     <label for="confirm_password">Confirm New Password</label>
                     <div class="input-box">
-                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password">
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
                         <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">👁️</button>
                     </div>
                 </div>
             </div>
 
             <div class="save-wrapper">
-                <button type="button" class="submit-btn" id="submitBtn">Save Changes</button>
+                <button type="button" class="submit-btn" id="submitBtn" <?= $cooldownActive && !$isSuperAdmin ? 'disabled title="You can only update profile once every 7 days."' : '' ?>>Save Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-// Profile picture preview
-const profilePictureInput = document.getElementById('profile_picture');
-const profilePreview = document.getElementById('profilePreview');
 
-profilePictureInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            profilePreview.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Password toggle functionality
+// Password show/hide toggle (unchanged)
 const toggleCurrentPassword = document.getElementById('toggleCurrentPassword');
 const toggleNewPassword = document.getElementById('toggleNewPassword');
 const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
@@ -2008,37 +2308,386 @@ const confirmPasswordInput = document.getElementById('confirm_password');
 const iconShow = '👁️';
 const iconHide = '🛡️';
 
-toggleCurrentPassword.addEventListener('click', function() {
-    if (currentPasswordInput.type === 'password') {
-        currentPasswordInput.type = 'text';
-        toggleCurrentPassword.textContent = iconHide;
-    } else {
-        currentPasswordInput.type = 'password';
-        toggleCurrentPassword.textContent = iconShow;
+if (toggleCurrentPassword && currentPasswordInput) {
+    toggleCurrentPassword.addEventListener('click', function () {
+        if (currentPasswordInput.type === 'password') {
+            currentPasswordInput.type = 'text';
+            toggleCurrentPassword.textContent = iconHide;
+        } else {
+            currentPasswordInput.type = 'password';
+            toggleCurrentPassword.textContent = iconShow;
+        }
+    });
+}
+if (toggleNewPassword && newPasswordInput) {
+    toggleNewPassword.addEventListener('click', function () {
+        if (newPasswordInput.type === 'password') {
+            newPasswordInput.type = 'text';
+            toggleNewPassword.textContent = iconHide;
+        } else {
+            newPasswordInput.type = 'password';
+            toggleNewPassword.textContent = iconShow;
+        }
+    });
+}
+if (toggleConfirmPassword && confirmPasswordInput) {
+    toggleConfirmPassword.addEventListener('click', function () {
+        if (confirmPasswordInput.type === 'password') {
+            confirmPasswordInput.type = 'text';
+            toggleConfirmPassword.textContent = iconHide;
+        } else {
+            confirmPasswordInput.type = 'password';
+            toggleConfirmPassword.textContent = iconShow;
+        }
+    });
+}
+
+// ============================
+//  PROFILE PICTURE CROPPER (IMPROVED)
+// ============================
+const profilePictureInput = document.getElementById('profile_picture');
+const profilePreview = document.getElementById('profilePreview');
+const cropperModal = document.getElementById('profileCropperModal');
+const cropperImage = document.getElementById('cropperImage');
+const cropperPreviewWrapper = document.getElementById('cropperPreviewWrapper');
+const cropperZoomSlider = document.getElementById('cropperZoomSlider');
+const cropperZoomValue = document.getElementById('cropperZoomValue');
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
+const cropperCancelBtn = document.getElementById('cropperCancelBtn');
+const cropperApplyBtn = document.getElementById('cropperApplyBtn');
+
+let currentImageFile = null;
+let currentImageData = null;
+let originalImageData = null; // Store the ORIGINAL uncropped image
+let cropperScale = 1;
+let cropperX = 0;
+let cropperY = 0;
+let isDraggingCropper = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let isEditingExisting = false;
+let justUploaded = false;
+
+// CHANGE 1: Click on existing profile picture to edit it
+function attachProfilePreviewClickHandler() {
+    const preview = document.getElementById('profilePreview');
+    if (!preview) return;
+
+    preview.onclick = null;
+
+    if (preview.tagName === 'IMG' && preview.src && !preview.src.includes('data:image')) {
+        preview.onclick = function(e) {
+            if (justUploaded) {
+                justUploaded = false;
+                return;
+            }
+
+            e.preventDefault();
+            isEditingExisting = true;
+
+            // IMPORTANT: Use the original image data if available, not the cropped blob
+            if (originalImageData) {
+                currentImageData = originalImageData;
+            } else {
+                currentImageData = this.src;
+                originalImageData = this.src; // Store as original
+            }
+
+            openCropper(currentImageData);
+        };
+    }
+}
+
+document.addEventListener('DOMContentLoaded', attachProfilePreviewClickHandler);
+
+// When new file is uploaded, open cropper immediately
+if (profilePictureInput) {
+    profilePictureInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            currentImageFile = file;
+            isEditingExisting = false;
+            justUploaded = true;
+            const reader = new FileReader();
+            reader.onload = function(readerEvent) {
+                currentImageData = readerEvent.target.result;
+                originalImageData = readerEvent.target.result; // Store original
+                openCropper(currentImageData);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+function openCropper(imageSrc) {
+    cropperImage.src = imageSrc;
+    cropperModal.classList.add('active');
+
+    // Reset values
+    cropperScale = 1;
+    cropperX = 0;
+    cropperY = 0;
+    cropperZoomSlider.value = 100;
+    cropperZoomValue.textContent = '100%';
+
+    cropperImage.onload = function() {
+        updateCropperTransform();
+    };
+}
+
+function closeCropper() {
+    cropperModal.classList.remove('active');
+    if (!isEditingExisting && profilePictureInput) {
+        profilePictureInput.value = '';
+    }
+    isEditingExisting = false;
+}
+
+function updateCropperTransform() {
+    const wrapper = cropperPreviewWrapper;
+    const img = cropperImage;
+
+    const wrapperWidth = wrapper.offsetWidth;
+    const wrapperHeight = wrapper.offsetHeight;
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+
+    const minScale = Math.max(wrapperWidth / imgWidth, wrapperHeight / imgHeight);
+    const scale = minScale * cropperScale;
+
+    img.style.transform = `translate(-50%, -50%) translate(${cropperX}px, ${cropperY}px) scale(${scale})`;
+}
+
+cropperZoomSlider.addEventListener('input', function() {
+    cropperScale = this.value / 100;
+    cropperZoomValue.textContent = this.value + '%';
+    updateCropperTransform();
+});
+
+zoomInBtn.addEventListener('click', function() {
+    const newValue = Math.min(parseInt(cropperZoomSlider.value) + 10, 300);
+    cropperZoomSlider.value = newValue;
+    cropperScale = newValue / 100;
+    cropperZoomValue.textContent = newValue + '%';
+    updateCropperTransform();
+});
+
+zoomOutBtn.addEventListener('click', function() {
+    const newValue = Math.max(parseInt(cropperZoomSlider.value) - 10, 100);
+    cropperZoomSlider.value = newValue;
+    cropperScale = newValue / 100;
+    cropperZoomValue.textContent = newValue + '%';
+    updateCropperTransform();
+});
+
+cropperPreviewWrapper.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    isDraggingCropper = true;
+    dragStartX = e.clientX - cropperX;
+    dragStartY = e.clientY - cropperY;
+    cropperPreviewWrapper.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isDraggingCropper) return;
+    e.preventDefault();
+    cropperX = e.clientX - dragStartX;
+    cropperY = e.clientY - dragStartY;
+    updateCropperTransform();
+});
+
+document.addEventListener('mouseup', function() {
+    if (isDraggingCropper) {
+        isDraggingCropper = false;
+        cropperPreviewWrapper.style.cursor = 'move';
     }
 });
 
-toggleNewPassword.addEventListener('click', function() {
-    if (newPasswordInput.type === 'password') {
-        newPasswordInput.type = 'text';
-        toggleNewPassword.textContent = iconHide;
-    } else {
-        newPasswordInput.type = 'password';
-        toggleNewPassword.textContent = iconShow;
-    }
+cropperPreviewWrapper.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    isDraggingCropper = true;
+    dragStartX = touch.clientX - cropperX;
+    dragStartY = touch.clientY - cropperY;
 });
 
-toggleConfirmPassword.addEventListener('click', function() {
-    if (confirmPasswordInput.type === 'password') {
-        confirmPasswordInput.type = 'text';
-        toggleConfirmPassword.textContent = iconHide;
-    } else {
-        confirmPasswordInput.type = 'password';
-        toggleConfirmPassword.textContent = iconShow;
-    }
+document.addEventListener('touchmove', function(e) {
+    if (!isDraggingCropper) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    cropperX = touch.clientX - dragStartX;
+    cropperY = touch.clientY - dragStartY;
+    updateCropperTransform();
 });
 
-// Password strength validation (from login.php)
+document.addEventListener('touchend', function() {
+    isDraggingCropper = false;
+});
+
+cropperCancelBtn.addEventListener('click', function() {
+    closeCropper();
+    justUploaded = false;
+});
+
+// CROPPER MOUSE WHEEL TO ZOOM FOR DESKTOP VIEWS - updated to only trigger if mouse is in modal but not over the image
+cropperModal.addEventListener('wheel', function(e) {
+    if (
+        !cropperModal.classList.contains('active') ||
+        window.innerWidth < 900 // treat under 900px as mobile view
+    ) {
+        return;
+    }
+
+    // If mouse is over the image, do NOT zoom. Only zoom if in modal but not on the image.
+    // Use elementFromPoint to see what is directly under the mouse
+    const modalRect = cropperModal.getBoundingClientRect();
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const elUnderMouse = document.elementFromPoint(mouseX, mouseY);
+
+    // bail if over image (but allow anywhere else in modal)
+    if (elUnderMouse === cropperImage || cropperImage.contains(elUnderMouse)) {
+        return; // don't zoom
+    }
+
+    // Also ensure the event comes from the modal and not outside
+    if (!cropperModal.contains(e.target)) {
+        return;
+    }
+
+    e.preventDefault();
+
+    let zoomStep = 10;
+    let current = parseInt(cropperZoomSlider.value);
+    if (e.deltaY < 0) {
+        // zoom in
+        let newValue = Math.min(current + zoomStep, 300);
+        cropperZoomSlider.value = newValue;
+        cropperScale = newValue / 100;
+        cropperZoomValue.textContent = newValue + '%';
+        updateCropperTransform();
+    } else if (e.deltaY > 0) {
+        // zoom out
+        let newValue = Math.max(current - zoomStep, 100);
+        cropperZoomSlider.value = newValue;
+        cropperScale = newValue / 100;
+        cropperZoomValue.textContent = newValue + '%';
+        updateCropperTransform();
+    }
+}, { passive: false }); // passive: false is needed for preventDefault()
+
+cropperApplyBtn.addEventListener('click', function() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const outputSize = 500;
+
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+
+    const wrapper = cropperPreviewWrapper;
+    const img = cropperImage;
+    const wrapperSize = wrapper.offsetWidth;
+    const imgNaturalWidth = img.naturalWidth;
+    const imgNaturalHeight = img.naturalHeight;
+
+    // Calculate scales
+    const minScale = Math.max(wrapperSize / imgNaturalWidth, wrapperSize / imgNaturalHeight);
+    const totalScale = minScale * cropperScale;
+
+    // Calculate displayed size
+    const displayedWidth = imgNaturalWidth * totalScale;
+    const displayedHeight = imgNaturalHeight * totalScale;
+
+    // Calculate image position (center - half width + offset)
+    const imgLeft = (wrapperSize / 2) - (displayedWidth / 2) + cropperX;
+    const imgTop = (wrapperSize / 2) - (displayedHeight / 2) + cropperY;
+
+    // Circle bounds (what we want to capture)
+    const cropLeft = 0;
+    const cropTop = 0;
+
+    // Convert to image coordinates
+    const sourceLeft = cropLeft - imgLeft;
+    const sourceTop = cropTop - imgTop;
+
+    // Convert to natural image coordinates
+    const sx = sourceLeft / totalScale;
+    const sy = sourceTop / totalScale;
+    const sWidth = wrapperSize / totalScale;
+    const sHeight = wrapperSize / totalScale;
+
+    // Draw with circular clip
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = function() {
+        ctx.drawImage(
+            image,
+            sx, sy, sWidth, sHeight,
+            0, 0, outputSize, outputSize
+        );
+        ctx.restore();
+
+        canvas.toBlob(function(blob) {
+            const croppedUrl = URL.createObjectURL(blob);
+            updateProfilePreview(croppedUrl);
+
+            if (currentImageFile || isEditingExisting) {
+                const fileName = currentImageFile ? currentImageFile.name : 'profile_cropped.jpg';
+                const fileType = currentImageFile ? currentImageFile.type : 'image/jpeg';
+                const croppedFile = new File([blob], fileName, { type: fileType });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(croppedFile);
+                if (profilePictureInput) {
+                    profilePictureInput.files = dataTransfer.files;
+                }
+            }
+
+            closeCropper();
+
+            // Re-attach click handler after updating preview
+            setTimeout(() => {
+                attachProfilePreviewClickHandler();
+                setTimeout(() => {
+                    justUploaded = false;
+                }, 100);
+            }, 50);
+        }, currentImageFile ? currentImageFile.type : 'image/jpeg', 0.95);
+    };
+    image.onerror = function() {
+        console.error('Failed to load image for cropping');
+        closeCropper();
+        justUploaded = false;
+    };
+    // CRITICAL: Always use the ORIGINAL image data, not the cropped blob
+    image.src = originalImageData || currentImageData;
+});
+
+function updateProfilePreview(imageSrc) {
+    const currentPreview = document.getElementById('profilePreview');
+
+    if (currentPreview.tagName === 'DIV') {
+        const img = document.createElement('img');
+        img.src = imageSrc;
+        img.className = 'profile-picture-preview';
+        img.id = 'profilePreview';
+        img.alt = 'Profile Picture';
+        img.title = 'Click to adjust';
+        img.style.cursor = 'pointer';
+        currentPreview.parentNode.replaceChild(img, currentPreview);
+    } else {
+        currentPreview.src = imageSrc;
+        currentPreview.style.cursor = 'pointer';
+    }
+}
+// Password strength/validation is unchanged
 function isUniqueEnoughPasswordClient(pass) {
     if (pass.length < 8) return false;
     if (/^(\w)\1+$/.test(pass)) return false;
@@ -2058,7 +2707,6 @@ function isUniqueEnoughPasswordClient(pass) {
     if (uniq.length < 5) return false;
     return true;
 }
-
 function calculatePasswordStrength(pass) {
     let score = 0;
     if (pass.length >= 8) score++;
@@ -2069,7 +2717,6 @@ function calculatePasswordStrength(pass) {
     if (isUniqueEnoughPasswordClient(pass)) score++;
     return score;
 }
-
 function updatePasswordStrength() {
     const pass = newPasswordInput.value;
     const reqLength = document.getElementById('req-length');
@@ -2080,23 +2727,19 @@ function updatePasswordStrength() {
     const reqUnique = document.getElementById('req-unique');
     const strengthFill = document.getElementById('strengthFill');
     const strengthText = document.getElementById('strengthText');
-
     reqLength.classList.toggle('satisfied', pass.length >= 8);
     reqUppercase.classList.toggle('satisfied', /[A-Z]/.test(pass));
     reqLowercase.classList.toggle('satisfied', /[a-z]/.test(pass));
     reqNumber.classList.toggle('satisfied', /[0-9]/.test(pass));
     reqSymbol.classList.toggle('satisfied', /[^a-zA-Z0-9]/.test(pass));
     reqUnique.classList.toggle('satisfied', pass.length >= 8 && isUniqueEnoughPasswordClient(pass));
-
     const score = calculatePasswordStrength(pass);
     strengthFill.className = 'strength-fill';
-
     if (pass.length === 0) {
         strengthFill.style.width = '0%';
         strengthText.textContent = 'Strength: —';
         return;
     }
-
     if (score <= 2) {
         strengthFill.style.width = '33%';
         strengthFill.classList.add('strength-weak');
@@ -2115,15 +2758,12 @@ function updatePasswordStrength() {
         strengthText.textContent = 'Strength: Strong';
     }
 }
-
 function validatePasswords() {
     const currentPwd = currentPasswordInput.value;
     const newPwd = newPasswordInput.value;
     const confirmPwd = confirmPasswordInput.value;
     const submitBtn = document.getElementById('submitBtn');
-    
     if (!submitBtn) return;
-    
     // If any password field is filled, all must be filled
     if (currentPwd || newPwd || confirmPwd) {
         if (!currentPwd || !newPwd || !confirmPwd) {
@@ -2141,62 +2781,52 @@ function validatePasswords() {
     }
     submitBtn.disabled = false;
 }
-
-// Ensure password strength meter works on page load
 document.addEventListener('DOMContentLoaded', function() {
     if (newPasswordInput) {
-        newPasswordInput.addEventListener('input', function() {
+        newPasswordInput.addEventListener('input', function () {
             updatePasswordStrength();
             validatePasswords();
         });
-        
-        // Also trigger on keyup for better responsiveness
-        newPasswordInput.addEventListener('keyup', function() {
+        newPasswordInput.addEventListener('keyup', function () {
             updatePasswordStrength();
         });
-        
-        // Trigger on paste as well
-        newPasswordInput.addEventListener('paste', function() {
+        newPasswordInput.addEventListener('paste', function () {
             setTimeout(() => {
                 updatePasswordStrength();
                 validatePasswords();
             }, 10);
         });
     }
-
     if (confirmPasswordInput) {
         confirmPasswordInput.addEventListener('input', validatePasswords);
-        confirmPasswordInput.addEventListener('paste', function() {
+        confirmPasswordInput.addEventListener('paste', function () {
             setTimeout(validatePasswords, 10);
         });
     }
     if (currentPasswordInput) {
         currentPasswordInput.addEventListener('input', validatePasswords);
     }
-
-    // Initial validation and strength check
     if (newPasswordInput && document.getElementById('strengthFill')) {
         updatePasswordStrength();
     }
     validatePasswords();
 });
 
-// Save Changes Confirmation Modal
+// Save changes modal unchanged, but disables button if cooldownActive (except super admin)
 const saveAlertBackdrop = document.getElementById('saveAlertBackdrop');
 const saveCancelBtn = document.getElementById('saveCancelBtn');
 const saveConfirmBtn = document.getElementById('saveConfirmBtn');
 const submitBtn = document.getElementById('submitBtn');
 const profileForm = document.getElementById('profileForm');
-
 if (submitBtn) {
     submitBtn.addEventListener('click', function(e) {
+        if (submitBtn.disabled) return; // Reject click if disabled.
         e.preventDefault();
         if (saveAlertBackdrop) {
             saveAlertBackdrop.classList.add("active");
         }
     });
 }
-
 if (saveCancelBtn) {
     saveCancelBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -2205,12 +2835,10 @@ if (saveCancelBtn) {
         }
     });
 }
-
 if (saveConfirmBtn) {
     saveConfirmBtn.addEventListener('click', (e) => {
         e.preventDefault();
         if (profileForm) {
-            // Create a hidden input to submit the form
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'update_profile';
@@ -2220,7 +2848,6 @@ if (saveConfirmBtn) {
         }
     });
 }
-
 if (saveAlertBackdrop) {
     saveAlertBackdrop.addEventListener('mousedown', (e) => {
         if (e.target === saveAlertBackdrop) {
