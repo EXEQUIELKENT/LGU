@@ -216,7 +216,7 @@ if (isset($_POST['forgot_password_submit'])) {
 
         // Build reset link using getBaseURL() as per the instructions
         $baseURL = getBaseURL();
-        $resetLink = $baseURL . "/lgu-portal/public/reset-password.php?token=" . $resetToken;
+        $resetLink = $baseURL . "/lgu-portal/public/login.php?token=" . $resetToken;
         // This link goes to reset-password.php, not login, for best user experience.
 
         // Send reset email with text centered
