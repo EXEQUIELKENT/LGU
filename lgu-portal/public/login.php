@@ -19,6 +19,24 @@ define('OTP_RESEND_COOLDOWN', 30);
 define('OTP_MAX_RESENDS', 1);
 define('RESET_TOKEN_VALIDITY', 60 * 60);
 
+// --- BASE URL DETECTION FUNCTION (Reusable, as instructed) ---
+function getBaseURL() {
+    // Optional "hard lock" for production domain:
+    // Uncomment if you want to force production domain
+    /*
+    if ($_SERVER['HTTP_HOST'] === 'localhost') {
+        return "http://localhost";
+    }
+    return "https://cimm.infragovservices.com";
+    */
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        ? "https://"
+        : "http://";
+    $host = $_SERVER['HTTP_HOST'];
+    return $protocol . $host;
+}
+// --- END BASE URL DETECTION FUNCTION ---
+
 if (!isset($_SESSION['otp_resend_count'])) $_SESSION['otp_resend_count'] = 0;
 if (!isset($_SESSION['otp_last_sent_time'])) $_SESSION['otp_last_sent_time'] = 0;
 if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0; // For logging
@@ -196,6 +214,11 @@ if (isset($_POST['forgot_password_submit'])) {
         $updateStmt->execute();
         $updateStmt->close();
 
+        // Build reset link using getBaseURL() as per the instructions
+        $baseURL = getBaseURL();
+        $resetLink = $baseURL . "/lgu-portal/public/reset-password.php?token=" . $resetToken;
+        // This link goes to reset-password.php, not login, for best user experience.
+
         // Send reset email with text centered
         $mail = new PHPMailer(true);
         try {
@@ -230,11 +253,7 @@ if (isset($_POST['forgot_password_submit'])) {
             $mail->isHTML(true);
             $mail->Subject = 'LGU Portal - Password Reset Request';
 
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'];
-            $resetUrl = $protocol . '://' . $host . dirname($_SERVER['PHP_SELF']) . '/' . $loginUrl . '?reset_token=' . $resetToken;
-
-            // All text centered
+            // All text centered and new Reset Link
             $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
                 <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
                     <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
@@ -247,13 +266,13 @@ if (isset($_POST['forgot_password_submit'])) {
                         <br>Click the button below to proceed with resetting your password.
                     </p>
                     <div style="text-align:center;margin:30px 0">
-                        <a href="' . htmlspecialchars($resetUrl) . '" style="display:inline-block;background:#2b6cb0;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;text-align:center;">Reset Password</a>
+                        <a href="' . htmlspecialchars($resetLink) . '" style="display:inline-block;background:#2b6cb0;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;text-align:center;">Reset Password</a>
                     </div>
                     <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
                         Or copy and paste this link into your browser:
                     </p>
                     <p style="color:#2b6cb0;font-size:12px;word-break:break-all;background:#f0f4f8;padding:12px;border-radius:6px;margin:10px 0; text-align:center;">
-                        ' . htmlspecialchars($resetUrl) . '
+                        ' . htmlspecialchars($resetLink) . '
                     </p>
                     <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
                         This link is valid for <strong style="color:#174c86">1 hour</strong>.
@@ -273,7 +292,7 @@ if (isset($_POST['forgot_password_submit'])) {
                             "Hello " . $user['first_name'] . ",\n\n" .
                             "We received a request to reset your password.\n\n" .
                             "Click the link below to reset your password:\n" .
-                            $resetUrl . "\n\n" .
+                            $resetLink . "\n\n" .
                             "This link is valid for 1 hour.\n\n" .
                             "If you did not request a password reset, please ignore this email.\n\n" .
                             "© " . date('Y') . " LGU Portal";
