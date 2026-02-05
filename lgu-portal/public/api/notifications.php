@@ -118,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($input['action'])) {
 $sql = "
     SELECT id, title, description, url, request_type,
            is_read,
-           DATE_FORMAT(created_at,'%h:%i %p') AS time
+           DATE_FORMAT(created_at,'%h:%i %p') AS time,
+           DATE_FORMAT(created_at,'%M %d, %Y') AS date
     FROM notifications
     WHERE employee_id = ?
     ORDER BY created_at DESC
@@ -139,7 +140,8 @@ while ($row = $result->fetch_assoc()) {
         'url' => $row['url'],
         'request_type' => $row['request_type'],
         'read' => (bool)$row['is_read'],
-        'time' => $row['time']
+        'time' => $row['time'],
+        'date' => $row['date']
     ];
 }
 

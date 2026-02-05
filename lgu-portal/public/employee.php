@@ -420,11 +420,29 @@ body.sidebar-collapsed .desktop-top-nav {
     line-height: 1.4;
 }
 
+/* ✅ STEP 2A: Update notif-item-time to be a container for both time and date */
 .notif-item-time {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 11px;
     color: var(--text-secondary);
     opacity: 0.7;
     margin-top: 4px;
+    gap: 8px;
+}
+
+/* ✅ STEP 2B: Style the time span (left side) */
+.notif-time {
+    flex-shrink: 0;
+}
+
+/* ✅ STEP 2C: Style the date span (right side) */
+.notif-date {
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 10px;
+    opacity: 0.6;
 }
 
 .notif-empty {
@@ -2142,7 +2160,7 @@ startClock();
     });
 })();
 
-// ===== NOTIFICATION SYSTEM (FIXED) =====
+// ===== NOTIFICATION SYSTEM (FIXED WITH DATE) =====
 (function() {
     const notifBtn = document.getElementById('notifBtn');
     const mobileNotifBtn = document.getElementById('mobileNotifBtn');
@@ -2213,7 +2231,10 @@ startClock();
                     <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
                         <div class="notif-item-title">${n.title}</div>
                         <div class="notif-item-desc">${n.description}</div>
-                        <div class="notif-item-time">${n.time}</div>
+                        <div class="notif-item-time">
+                            <span class="notif-time">${n.time}</span>
+                            <span class="notif-date">${n.date}</span>
+                        </div>
                     </div>
                 `).join('')}
             </div>
