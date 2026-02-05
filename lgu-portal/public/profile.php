@@ -968,11 +968,29 @@ body.sidebar-collapsed .desktop-top-nav {
     margin: 0;
     line-height: 1.4;
 }
+/* ✅ STEP 2A: Update notif-item-time to be a container for both time and date */
 .notif-item-time {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 11px;
     color: var(--text-secondary);
     opacity: 0.7;
     margin-top: 4px;
+    gap: 8px;
+}
+
+/* ✅ STEP 2B: Style the time span (left side) */
+.notif-time {
+    flex-shrink: 0;
+}
+
+/* ✅ STEP 2C: Style the date span (right side) */
+.notif-date {
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 10px;
+    opacity: 0.6;
 }
 .notif-empty {
     padding: 40px 20px;
@@ -2771,6 +2789,78 @@ function updateProfilePreview(imageSrc) {
         if (sidebarFallback) sidebarFallback.style.display = 'none';
     }
 }
+
+(function() {
+    const wrapper = document.getElementById('cropperPreviewWrapper');
+    let lastTouchDist = null;
+    let pinchZooming = false;
+    let startScale = 1;
+    let startPinchScale = 1;
+    let initialCropperScale = 1;
+
+    function getDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    wrapper.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            // pinch start
+            pinchZooming = true;
+            wrapper.classList.add('pinch-zooming');
+            lastTouchDist = getDistance(e.touches[0], e.touches[1]);
+            startPinchScale = cropperScale;
+            e.preventDefault();
+        } else if (e.touches.length === 1) {
+            // one finger drag, let normal drag logic take over
+            pinchZooming = false;
+        }
+    }, { passive: false });
+
+    wrapper.addEventListener('touchmove', function(e) {
+        if (pinchZooming && e.touches.length === 2) {
+            const dist = getDistance(e.touches[0], e.touches[1]);
+            if (lastTouchDist && dist) {
+                let scaleDelta = dist / lastTouchDist;
+                let newScale = startPinchScale * scaleDelta;
+                // Clamp between 1.0 and 3.0
+                newScale = Math.max(1.0, Math.min(3.0, newScale));
+                cropperScale = newScale;
+                // Update slider UI and value display accordingly
+                if (window.cropperZoomSlider && window.cropperZoomValue) {
+                    let sliderVal = Math.round(newScale * 100);
+                    cropperZoomSlider.value = sliderVal;
+                    cropperZoomValue.textContent = sliderVal + '%';
+                }
+                updateCropperTransform();
+            }
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    wrapper.addEventListener('touchend', function(e) {
+        if (pinchZooming && e.touches.length < 2) {
+            pinchZooming = false;
+            wrapper.classList.remove('pinch-zooming');
+            lastTouchDist = null;
+            startPinchScale = cropperScale;
+        }
+    });
+
+    // Optionally, if both fingers are lifted, reset flag immediately
+    wrapper.addEventListener('touchcancel', function(e) {
+        pinchZooming = false;
+        wrapper.classList.remove('pinch-zooming');
+        lastTouchDist = null;
+        startPinchScale = cropperScale;
+    });
+
+    // Also prevent native browser zoom on certain browsers when in the modal
+    wrapper.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+    wrapper.addEventListener('gesturechange', function(e) { e.preventDefault(); });
+    wrapper.addEventListener('gestureend', function(e) { e.preventDefault(); });
+})();
 // Password strength/validation is unchanged
 function isUniqueEnoughPasswordClient(pass) {
     if (pass.length < 8) return false;
@@ -3485,7 +3575,10 @@ startClock();
                     <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
                         <div class="notif-item-title">${n.title}</div>
                         <div class="notif-item-desc">${n.description}</div>
-                        <div class="notif-item-time">${n.time}</div>
+                        <div class="notif-item-time">
+                            <span class="notif-time">${n.time}</span>
+                            <span class="notif-date">${n.date}</span>
+                        </div>
                     </div>
                 `).join('')}
             </div>
