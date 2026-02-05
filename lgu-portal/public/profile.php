@@ -195,7 +195,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
     // Handle profile picture upload
     $profilePicturePath = $currentUser['profile_picture'] ?? null;
-    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+    $pictureChanged = false; // ✅ FIX: explicit flag to track picture change
+
+    // --- FIX: Try $_FILES first, fall back to base64 hidden field ---
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK && $_FILES['profile_picture']['size'] > 0) {
+        // ✅ Standard file upload path (works when DataTransfer succeeds)
         $file = $_FILES['profile_picture'];
         $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         $maxSize = 5 * 1024 * 1024; // 5MB
@@ -216,8 +220,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     unlink(__DIR__ . '/' . $profilePicturePath);
                 }
                 $profilePicturePath = 'uploads/profile/' . $filename;
+                $pictureChanged = true; // ✅ mark as changed
             } else {
                 $errors[] = 'Failed to upload profile picture.';
+            }
+        }
+    } elseif (!empty($_POST['cropped_image_base64'])) {
+        // ✅ FALLBACK: base64 from the hidden input (reliable cross-browser)
+        $base64Data = $_POST['cropped_image_base64'];
+
+        // Strip the data URI prefix if present (e.g. "data:image/png;base64,...")
+        if (preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $base64Data, $matches)) {
+            $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+            $detectedExt = $matches[1] === 'jpg' ? 'jpeg' : $matches[1];
+        } else {
+            $detectedExt = 'jpeg'; // default
+        }
+
+        $imageData = base64_decode($base64Data);
+
+        if ($imageData === false || strlen($imageData) === 0) {
+            $errors[] = 'Invalid image data.';
+        } elseif (strlen($imageData) > 5 * 1024 * 1024) {
+            $errors[] = 'File size exceeds 5MB limit.';
+        } else {
+            // Verify it's actually an image
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->buffer($imageData);
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!in_array($mimeType, $allowedMimes)) {
+                $errors[] = 'Invalid file type. Only JPEG, PNG, & WEBP images are allowed.';
+            } else {
+                $uploadDir = __DIR__ . '/uploads/profile/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $extMap = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                $extension = $extMap[$mimeType] ?? 'jpg';
+                $filename = 'profile_' . $employeeId . '_' . time() . '.' . $extension;
+                $filepath = $uploadDir . $filename;
+
+                if (file_put_contents($filepath, $imageData) !== false) {
+                    // Delete old picture
+                    if ($profilePicturePath && file_exists(__DIR__ . '/' . $profilePicturePath)) {
+                        unlink(__DIR__ . '/' . $profilePicturePath);
+                    }
+                    $profilePicturePath = 'uploads/profile/' . $filename;
+                    $pictureChanged = true; // ✅ mark as changed
+                } else {
+                    $errors[] = 'Failed to save profile picture.';
+                }
             }
         }
     }
@@ -255,7 +308,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $updateValues[] = $lastName;
             $types .= 's';
         }
-        if ($profilePicturePath && $profilePicturePath !== ($currentUser['profile_picture'] ?? null)) {
+        // ✅ FIX: Use the explicit $pictureChanged flag instead of comparing paths
+        if ($pictureChanged) {
             $updateFields[] = "profile_picture = ?";
             $updateValues[] = $profilePicturePath;
             $types .= 's';
@@ -267,12 +321,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $types .= 's';
         }
 
-        // --- Always update last_profile_update if anything changed, unless only password is changed ---
-        // Only update last_profile_update if personal (not only password/pic) changed
+        // ✅ FIX: Use $pictureChanged flag here too
         $personalFieldsChanging = (
             ($firstName !== $currentUser['first_name']) ||
             ($lastName !== $currentUser['last_name']) ||
-            ($profilePicturePath && $profilePicturePath !== ($currentUser['profile_picture'] ?? null))
+            $pictureChanged
         );
         if ($personalFieldsChanging && !$isSuperAdmin) {
             $updateFields[] = "last_profile_update = NOW()";
@@ -2188,16 +2241,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <?php endif; ?>
 
         <form method="POST" action="" enctype="multipart/form-data" class="profile-form" id="profileForm">
+            <!-- ✅ FIX: Hidden input to carry base64 cropped image as reliable fallback -->
+            <input type="hidden" name="cropped_image_base64" id="croppedImageBase64" value="">
+
             <div class="profile-picture-section">
                 <?php if (!empty($profilePictureSrc)): ?>
                     <img src="<?= htmlspecialchars($profilePictureSrc) ?>" 
                         alt="Profile Picture" 
                         class="profile-picture-preview" 
                         id="profilePreview"
-                        title="Click to adjust position">
+                        title="Click to adjust position"
+                        <?php if($cooldownActive && !$isSuperAdmin) echo 'style="pointer-events:none;opacity:0.58;cursor:not-allowed;"'; ?> >
                 <?php else: ?>
                     <div class="profile-picture-preview default-icon" 
-                        id="profilePreview">👤</div>
+                        id="profilePreview"
+                        <?php if($cooldownActive && !$isSuperAdmin) echo 'style="pointer-events:none;opacity:0.58;cursor:not-allowed;"'; ?>>👤</div>
                 <?php endif; ?>
                 <div class="profile-picture-upload">
                     <label for="profile_picture">Change Profile Picture</label>
@@ -2355,6 +2413,8 @@ const zoomInBtn = document.getElementById('zoomInBtn');
 const zoomOutBtn = document.getElementById('zoomOutBtn');
 const cropperCancelBtn = document.getElementById('cropperCancelBtn');
 const cropperApplyBtn = document.getElementById('cropperApplyBtn');
+// ✅ FIX: Reference to the hidden base64 field
+const croppedImageBase64Input = document.getElementById('croppedImageBase64');
 
 let currentImageFile = null;
 let currentImageData = null;
@@ -2527,6 +2587,8 @@ document.addEventListener('touchend', function() {
 cropperCancelBtn.addEventListener('click', function() {
     closeCropper();
     justUploaded = false;
+    // ✅ FIX: Clear base64 hidden input on cancel
+    if (croppedImageBase64Input) croppedImageBase64Input.value = '';
 });
 
 // CROPPER MOUSE WHEEL TO ZOOM FOR DESKTOP VIEWS - updated to only trigger if mouse is in modal but not over the image
@@ -2633,20 +2695,34 @@ cropperApplyBtn.addEventListener('click', function() {
         );
         ctx.restore();
 
+        // ✅ FIX: Use 'image/png' always for toBlob to preserve transparency from circular crop
         canvas.toBlob(function(blob) {
             const croppedUrl = URL.createObjectURL(blob);
             updateProfilePreview(croppedUrl);
 
-            if (currentImageFile || isEditingExisting) {
-                const fileName = currentImageFile ? currentImageFile.name : 'profile_cropped.jpg';
-                const fileType = currentImageFile ? currentImageFile.type : 'image/jpeg';
-                const croppedFile = new File([blob], fileName, { type: fileType });
-
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(croppedFile);
-                if (profilePictureInput) {
-                    profilePictureInput.files = dataTransfer.files;
+            // ✅ FIX: ALWAYS write to the base64 hidden input (the reliable path)
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                if (croppedImageBase64Input) {
+                    croppedImageBase64Input.value = evt.target.result; // full data URI
                 }
+            };
+            reader.readAsDataURL(blob);
+
+            // Also still try DataTransfer as a secondary attempt (works on some browsers)
+            try {
+                if (currentImageFile || isEditingExisting) {
+                    const fileName = currentImageFile ? currentImageFile.name : 'profile_cropped.png';
+                    const croppedFile = new File([blob], fileName, { type: 'image/png' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(croppedFile);
+                    if (profilePictureInput) {
+                        profilePictureInput.files = dataTransfer.files;
+                    }
+                }
+            } catch(dtErr) {
+                // DataTransfer failed — that's fine, base64 fallback will handle it
+                console.warn('DataTransfer not supported, using base64 fallback:', dtErr);
             }
 
             closeCropper();
@@ -2658,7 +2734,7 @@ cropperApplyBtn.addEventListener('click', function() {
                     justUploaded = false;
                 }, 100);
             }, 50);
-        }, currentImageFile ? currentImageFile.type : 'image/jpeg', 0.95);
+        }, 'image/png', 0.95);
     };
     image.onerror = function() {
         console.error('Failed to load image for cropping');
@@ -2684,6 +2760,15 @@ function updateProfilePreview(imageSrc) {
     } else {
         currentPreview.src = imageSrc;
         currentPreview.style.cursor = 'pointer';
+    }
+
+    // ✅ FIX: Also update the sidebar avatar immediately for live feedback
+    const sidebarImg = document.getElementById('profileImg');
+    const sidebarFallback = document.getElementById('profileFallbackIcon');
+    if (sidebarImg) {
+        sidebarImg.src = imageSrc;
+        sidebarImg.style.display = 'block';
+        if (sidebarFallback) sidebarFallback.style.display = 'none';
     }
 }
 // Password strength/validation is unchanged
