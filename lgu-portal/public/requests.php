@@ -140,7 +140,7 @@ function format_datetime_ampm($datetime) {
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-/* =======================
+css/* =======================
    Custom SCROLLBAR STYLE
    (synced with employee.php)
 ========================== */
@@ -201,9 +201,19 @@ body::-webkit-scrollbar-thumb:hover,
     background: #4a7aef;
 }
 
+/* Mobile scrollbar - visible and functional */
 @media (max-width: 768px) {
+    body {
+        scrollbar-width: thin !important;
+        overflow-y: auto !important;
+    }
+    body::-webkit-scrollbar {
+        width: 6px !important;
+        display: block !important;
+    }
     .main-content, .main-content.expanded {
         scrollbar-width: none;
+        overflow-y: visible !important;
     }
     .main-content::-webkit-scrollbar {
         display: none !important;
@@ -239,9 +249,56 @@ body::-webkit-scrollbar-thumb:hover,
     --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
-/* =========================
-   DESKTOP NAV ↔ SIDEBAR SYNC
-========================= */
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar-preload-collapsed .sidebar-nav {
+    width: var(--sidebar-collapsed);
+}
+.sidebar-preload-collapsed .main-content {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+/* Desktop top nav alignment */
+.sidebar-preload-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+.sidebar-preload-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+/* Disable transitions during preload */
+.sidebar-preload-collapsed .sidebar-nav,
+.sidebar-preload-collapsed .main-content,
+.sidebar-preload-collapsed .desktop-top-nav,
+.sidebar-preload-collapsed .desktop-top-nav .desktop-nav-inner {
+    transition: none !important;
+}
+
+body {
+    height: 100vh;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
+    transition: background 0.3s ease;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+    transition: background 0.3s ease;
+}
 .desktop-top-nav {
     position: fixed;
     top: 0;
@@ -587,30 +644,6 @@ body.sidebar-collapsed .desktop-clock {
 /* Hide mobile cards by default (desktop) */
 .mobile-request-list {
     display: none;
-}
-
-
-/* Z-INDEX LAYERING SAFETY */
-body {
-    height: 100vh;
-    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
-    position: relative;
-    z-index: 0;
-    transition: background 0.3s ease;
-    overflow: hidden;
-}
-
-body::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    backdrop-filter: blur(6px);
-    background: rgba(0,0,0,0.35);
-    z-index: 0;
-    transition: background 0.3s ease;
 }
 
 [data-theme="dark"] body::before {
@@ -1250,9 +1283,6 @@ body::before {
     background: #2851b3;
 }
 
-/* Push main content down to avoid overlap */
-/* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
-
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
     margin-right: 18px;
@@ -1600,18 +1630,20 @@ tbody tr:hover {
 .nav-arrow.hidden {
     display: none;
 }
-
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-        /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
-        .desktop-top-nav {
-        display: none;
+    /* Enable body scrolling in mobile */
+    body {
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100vh !important;
     }
 
-    body {
-    overflow: auto;
+    /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
+    .desktop-top-nav {
+        display: none;
     }
 
     .mobile-top-nav {
@@ -1689,7 +1721,7 @@ tbody tr:hover {
     }
 
     .sidebar-top {
-        position: relative; /* anchor for absolute children */
+        position: relative;
     }
 
     /* Center logo between profile & dark mode */
@@ -1718,146 +1750,105 @@ tbody tr:hover {
     .sidebar-nav.collapsed {
         width: calc(100% - 24px);
     }
-    
-    /* Show mobile dark mode button only in mobile view */
-    @media (max-width: 768px) {
-        .mobile-dark-mode-btn {
-            display: flex;
-        }
-    }
-    
-    /* Hide dark mode button in desktop sidebar */
-    @media (min-width: 769px) {
-        .mobile-dark-mode-btn {
-            display: none !important;
-        }
-    }
 
-    /* Show mobile top nav in mobile */
+    /* MOBILE TOP NAV */
     .mobile-top-nav {
-        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 64px;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+        z-index: 5000;
+        box-shadow: 0 4px 18px var(--shadow-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
-.sidebar-nav {
-    left: -110%;
-    width: calc(100% - 24px);
-    height: calc(100% - 24px);
-    top: 12px;
-    bottom: 12px;
-    border-radius: 18px;
-    transition: left 0.35s ease;
-    z-index: 4000;
-}
-.sidebar-nav.mobile-active {
-    left: 12px;
-}
-.sidebar-nav.collapsed {
-    width: calc(100% - 24px);
-}
 
-/* MOBILE TOP NAV */
-.mobile-top-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 64px;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
-    align-items: center;
-    justify-content: center;
-    z-index: 5000;
-    box-shadow: 0 4px 18px var(--shadow-color);
-    border-bottom: 1px solid var(--border-color);
-    transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-}
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
+    }
 
-.mobile-top-nav img {
-    height: 42px;
-    object-fit: contain;
-}
+    .mobile-toggle {
+        position: absolute;
+        left: 16px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
 
-.mobile-toggle {
-    position: absolute;
-    left: 16px;
-    background: #3762c8;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    width: 38px;
-    height: 38px;
-    font-size: 20px;
-    cursor: pointer;
-}
+    /* Sidebar internal layout for mobile */
+    .sidebar-top {
+        padding-top: 30px;
+    }
 
-/* Sidebar internal layout for mobile */
-.sidebar-top {
-    padding-top: 30px;
-}
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
 
-.sidebar-profile-btn {
-    position: relative;
-    margin: 10px 0 0 15px;
-}
+    .site-logo {
+        margin: 10px auto 20px auto;
+    }
 
-.site-logo {
-    margin: 10px auto 20px auto;
-}
+    .nav-list {
+        padding: 0 20px;
+    }
 
-.nav-list {
-    padding: 0 20px;
-}
+    .sidebar-divider,
+    .sidebar-toggle,
+    .sidebar-toggle-divider {
+        display: none !important;
+    }
 
-.sidebar-divider,
-.sidebar-toggle,
-.sidebar-toggle-divider {
-    display: none !important;
-}
+    /* Logout stays bottom */
+    .user-info {
+        padding-bottom: 20px;
+    }
 
-/* Logout stays bottom */
-.user-info {
-    padding-bottom: 20px;
-}
-
-/* Hide desktop toggle */
-.sidebar-toggle {
-    display: none;
-}
+    /* Hide desktop toggle */
+    .sidebar-toggle {
+        display: none;
+    }
 
     /* ===============================
        🚩 MOBILE-ONLY MAIN CONTENT FIXES
        =============================== */
 
-    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
+    /* 1️⃣ MAIN CONTENT - no scroll, let body handle it */
     .main-content,
     .main-content.expanded {
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto;           /* allow scrolling */
-        padding: 20px;
-        margin: 0px;
-        margin-top: 0px !important;
+        height: auto !important;
+        min-height: calc(100vh - 64px) !important;
+        overflow-y: visible !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        margin-top: 43px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
-    }
-
-    /* Hide main-content vertical (right) scrollbar but retain scrollability */
-    .main-content::-webkit-scrollbar {
-        width: 0 !important;
-        height: 0 !important;
-        display: none;
     }
     
-    /* 2️⃣ TABLE CARD no forced height; internal scroll not needed */
+    /* 2️⃣ TABLE CARD */
     .table-card {
-        margin-top: 65px;
+        margin-top: 20px;
         padding: 22px;
         border-radius: 18px;
     }   
 
     /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
-        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
-        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        top: 76px !important;
+        z-index: 5050 !important;
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 40px);
@@ -1866,54 +1857,98 @@ tbody tr:hover {
         padding: 14px 12px;
         font-size: 16px;
     }
-/* MOBILE REQUEST CARD VIEW */
-table {
-    display: none !important;
+
+    /* MOBILE REQUEST CARD VIEW */
+    table {
+        display: none !important;
+    }
+    h2 {
+        display: none;
+    }
+    .mobile-request-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+    }
+    .request-card {
+        width: 100%;
+        background: rgba(255,255,255,0.96);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        font-size: 14px;
+    }
+    .request-card div {
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+    .request-card strong {
+        color: #3762c8;
+        font-weight: 600;
+    }
+    .request-card .status {
+        display: inline-block;
+        margin-left: 6px;
+    }
+    .request-actions {
+        margin-top: 10px;
+    }
+    .request-actions .btn-view {
+        display: inline-block;
+        padding: 6px 14px;
+        font-size: 13px;
+    }
+    .no-evidence {
+        font-size: 12px;
+        color: #777;
+    }
 }
-h2  {
-    display: none;
-}
-.mobile-request-list {
-    display: flex !important;
-    flex-direction: column;
-    gap: 16px;
-    width: 100%;
-}
-.request-card {
-    width: 100%;
-    background: rgba(255,255,255,0.96);
-    border-radius: 16px;
-    padding: 16px 18px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-    font-size: 14px;
-}
-.request-card div {
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
-.request-card strong {
-    color: #3762c8;
-    font-weight: 600;
-}
-.request-card .status {
-    display: inline-block;
-    margin-left: 6px;
-}
-.request-actions {
-    margin-top: 10px;
-}
-.request-actions .btn-view {
-    display: inline-block;
-    padding: 6px 14px;
-    font-size: 13px;
-}
-.no-evidence {
-    font-size: 12px;
-    color: #777;
-}
-}
+
+/* =========================
+   DESKTOP VIEW - Reset mobile styles
+========================= */
 @media (min-width: 769px) {
+    body {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+
     .mobile-no-requests {
+        display: none !important;
+    }
+    
+    /* Reset main content to desktop layout */
+    .main-content {
+        margin-left: calc(var(--sidebar-expanded) + 20px) !important;
+        margin-right: 18px !important;
+        padding-top: 80px !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        height: calc(100vh) !important;
+        overflow-y: auto !important;
+    }
+    
+    .main-content.expanded {
+        margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
+    }
+    
+    /* Reset table card */
+    .table-card {
+        margin-top: 0 !important;
+        padding: 30px 35px !important;
+    }
+    
+    /* Show desktop table, hide mobile cards */
+    table {
+        display: table !important;
+    }
+    
+    h2 {
+        display: block !important;
+    }
+    
+    .mobile-request-list {
         display: none !important;
     }
 }
@@ -1952,7 +1987,35 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 })();
 </script>
 </head>
-
+<script>
+// ===== FIX: Reset scroll position when switching from mobile to desktop =====
+(function() {
+    let lastMobileViewState = window.innerWidth <= 768;
+    
+    window.addEventListener('resize', function() {
+        const isNowMobile = window.innerWidth <= 768;
+        
+        // Switching from mobile to desktop
+        if (lastMobileViewState && !isNowMobile) {
+            // Reset body scroll to top
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            
+            // Force layout recalculation
+            document.body.style.overflow = 'hidden';
+            void document.body.offsetHeight; // Trigger reflow
+            
+            // Small delay to ensure proper reset
+            setTimeout(() => {
+                document.body.style.overflow = '';
+            }, 10);
+        }
+        
+        lastMobileViewState = isNowMobile;
+    });
+})();
+</script>
 <body>
 <!-- all navigation and notification markup ... -->
 

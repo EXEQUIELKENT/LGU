@@ -592,15 +592,6 @@ body::before {
     background: rgba(158, 158, 158, 0.2);
     color: #bdbdbd;
 }
-
-
-.sidebar-nav,
-.main-content,
-.mobile-top-nav {
-    position: relative;
-    z-index: 1;
-}
-
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* =========================
