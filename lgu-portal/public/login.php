@@ -1094,9 +1094,16 @@ body {
 /* Mobile responsive for Remember Me & Forgot Password */
 @media (max-width: 480px) {
     .input-rem-forgot-row {
-        flex-direction: column;
+        flex-direction: row;
         align-items: flex-start;
         gap: 12px;
+    }
+}
+
+/* ✅ MOBILE: keep SAME layout as desktop */
+@media (max-width: 768px) {
+    .input-rem-forgot-row {
+        flex-direction: row; /* do NOT stack */
     }
 }
 
