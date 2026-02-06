@@ -921,7 +921,7 @@ input[type="file"] {
 #mapModal {
     background: #fff;
     width: 90%;
-    max-width: 600px;
+    max-width: 600px;   
     max-height: 85vh;
     border-radius: 16px;
     overflow: hidden;
@@ -939,58 +939,12 @@ input[type="file"] {
     position: relative;
     flex-shrink: 0;
 }
+
 .map-header h3 {
     flex: 1;
     text-align: center;
     margin: 0;
 }
-
-/* Map layer toggle button */
-#mapLayerToggle {
-    position: absolute;
-    right: 18px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #2b6cb0;
-    color: #fff;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all .2s;
-    z-index: 10;
-}
-#mapLayerToggle:hover {
-    background: #245a96;
-}
-
-#labelToggleBtn {
-    position: absolute;
-    right: 150px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #eef2ff;
-    color: #2b6cb0;
-    border: 1px solid #c7d1f3;
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all .2s;
-    z-index: 10;
-}
-#labelToggleBtn:hover {
-    background: #e0e7ff;
-}
-#labelToggleBtn.disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
-    border-color: #d1d5db;
-}
-
 /* District info badge - IMPROVED: More compact */
 #districtInfo {
     background: #eef2ff;
@@ -1055,6 +1009,54 @@ input[type="file"] {
 }
 #gpsBtn:hover {
     background: #e0e7ff;
+}
+/* Label Toggle Button - Top Right (ICON ONLY) */
+#labelToggleBtn {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #eef2ff;
+    color: #2b6cb0;
+    border: 1px solid #c7d1f3;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all .2s;
+    z-index: 10;
+    min-width: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#labelToggleBtn:hover {
+    background: #e0e7ff;
+}
+#labelToggleBtn.disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border-color: #d1d5db;
+}
+/* Layer Toggle Button - Bottom Right of Map (MOVED FROM HEADER) */
+#mapLayerToggle {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    background: #2b6cb0;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all .2s;
+    z-index: 1000;
+}
+#mapLayerToggle:hover {
+    background: #245a96;
 }
 .map-actions {
     display: flex;
@@ -1150,8 +1152,16 @@ input[type="file"] {
         font-size: 16px;
     }
     
+    #labelToggleBtn {
+        right: 16px;
+        padding: 6px 10px;
+        font-size: 16px;
+        min-width: 38px;
+    }
+    
     #mapLayerToggle {
         right: 16px;
+        bottom: 16px;
         padding: 6px 12px;
         font-size: 12px;
     }
@@ -1203,8 +1213,16 @@ input[type="file"] {
         font-size: 14px;
     }
     
+    #labelToggleBtn {
+        right: 14px;
+        padding: 5px 8px;
+        font-size: 14px;
+        min-width: 34px;
+    }
+    
     #mapLayerToggle {
         right: 14px;
+        bottom: 14px;
         padding: 5px 10px;
         font-size: 11px;
     }
@@ -1397,13 +1415,15 @@ input[type="file"] {
     <!-- Location Picker Modal - IMPROVED VERSION -->
     <div id="mapModalBackdrop">
         <div id="mapModal">
+            <!-- UPDATED HEADER: Label button moved to top-right, icon only -->
             <div class="map-header">
                 <button type="button" id="gpsBtn" title="Use my current location">📍</button>
-                <button type="button" id="labelToggleBtn" title="Toggle location labels">🏷️</button>
                 <h3>Select Location</h3>
-                <button type="button" id="mapLayerToggle">🛰️ Satellite</button>
+                <button type="button" id="labelToggleBtn" title="Toggle location labels">🏷️</button>
             </div>
+            
             <div id="districtInfo"></div>
+            
             <!-- Address Input (auto-populated from map/GPS/dropdown) -->
             <div class="map-address-input">
                 <select id="barangaySelect">
@@ -1411,7 +1431,14 @@ input[type="file"] {
                 </select>
                 <input type="text" id="manualAddressInput" placeholder="Specific address (auto-detected)" readonly>
             </div>
+            
+            <!-- Map Container -->
             <div id="map"></div>
+            
+            <!-- Layer Toggle Button - MOVED HERE (was in header) -->
+            <button type="button" id="mapLayerToggle">🛰️ Satellite</button>
+            
+            <!-- Action Buttons -->
             <div class="map-actions">
                 <button type="button" class="btn-cancel" onclick="closeMapModal()">Cancel</button>
                 <button type="button" class="btn-save" onclick="saveLocation()">Save Location</button>
@@ -1717,7 +1744,9 @@ input[type="file"] {
     <script>
     // ======== FIX 1: CORRECTED BARANGAY DISTRICT DATABASE ========
     const QC_BARANGAYS_COMPREHENSIVE = [
-    // District 1 - Central QC (Cubao, Project areas, Kamuning area)
+    // DISTRICT 1 - 40 Barangays
+    // Central-Northern QC (Novaliches Proper, West areas)
+    // ========================================
     { name: "Alicia", lat: 14.6891, lng: 121.0315, district: "District 1" },
     { name: "Bagong Pag-asa", lat: 14.6547, lng: 121.0271, district: "District 1" },
     { name: "Bahay Toro", lat: 14.6767, lng: 121.0388, district: "District 1" },
@@ -1729,6 +1758,7 @@ input[type="file"] {
     { name: "Katipunan", lat: 14.6612, lng: 121.0443, district: "District 1" },
     { name: "Kamuning", lat: 14.6234, lng: 121.0371, district: "District 1" },
     { name: "Lourdes", lat: 14.6178, lng: 121.0289, district: "District 1" },
+    { name: "Maharlika", lat: 14.6334, lng: 121.0156, district: "District 1" },
     { name: "Manresa", lat: 14.6534, lng: 121.0311, district: "District 1" },
     { name: "Mariblo", lat: 14.6489, lng: 121.0315, district: "District 1" },
     { name: "Masambong", lat: 14.6456, lng: 121.0389, district: "District 1" },
@@ -1753,15 +1783,19 @@ input[type="file"] {
     { name: "Santo Domingo (Matalahib)", lat: 14.6756, lng: 121.0312, district: "District 1" },
     { name: "Sienna", lat: 14.6578, lng: 121.0223, district: "District 1" },
     { name: "Talayan", lat: 14.6634, lng: 121.0365, district: "District 1" },
+    { name: "Tatalon", lat: 14.6423, lng: 121.0189, district: "District 1" },
     { name: "Valencia", lat: 14.6267, lng: 121.0134, district: "District 1" },
     { name: "Vasra", lat: 14.6612, lng: 121.0287, district: "District 1" },
     { name: "Veterans Village", lat: 14.6534, lng: 121.0389, district: "District 1" },
     { name: "West Triangle", lat: 14.6489, lng: 121.0343, district: "District 1" },
     
-    // District 2 - Northern QC (Fairview, Novaliches, Commonwealth area) - CORRECTED
+    // ========================================
+    // DISTRICT 2 - 24 Barangays
+    // Northern QC (Greater Novaliches, Fairview, Commonwealth)
+    // ========================================
     { name: "Bagong Silangan", lat: 14.7190, lng: 121.0890, district: "District 2" },
     { name: "Batasan Hills", lat: 14.6883, lng: 121.1089, district: "District 2" },
-    { name: "Commonwealth", lat: 14.7045, lng: 121.1156, district: "District 2" }, // CORRECTED - moved east
+    { name: "Commonwealth", lat: 14.6945, lng: 121.1123, district: "District 2" },
     { name: "Fairview", lat: 14.7234, lng: 121.0667, district: "District 2" },
     { name: "Greater Lagro", lat: 14.7189, lng: 121.0778, district: "District 2" },
     { name: "Holy Spirit", lat: 14.6826, lng: 121.0836, district: "District 2" },
@@ -1784,25 +1818,26 @@ input[type="file"] {
     { name: "Talipapa", lat: 14.7234, lng: 121.0534, district: "District 2" },
     { name: "Tandang Sora", lat: 14.6777, lng: 121.0557, district: "District 2" },
     
-    // District 3 - Central-East (Blue Ridge, Ugong Norte)
+    // ========================================
+    // DISTRICT 3 - 27 Barangays
+    // Central-East QC (Blue Ridge, Ugong Norte)
+    // ========================================
     { name: "Amihan", lat: 14.6689, lng: 121.0512, district: "District 3" },
     { name: "Bagumbayan", lat: 14.6745, lng: 121.0478, district: "District 3" },
     { name: "Bagumbuhay", lat: 14.6812, lng: 121.0523, district: "District 3" },
     { name: "Bayanihan", lat: 14.6867, lng: 121.0556, district: "District 3" },
     { name: "Blue Ridge A", lat: 14.6934, lng: 121.0489, district: "District 3" },
     { name: "Blue Ridge B", lat: 14.6978, lng: 121.0512, district: "District 3" },
-    { name: "Camp Aguinaldo", lat: 14.6223, lng: 121.0534, district: "District 3" },
     { name: "Capri", lat: 14.6923, lng: 121.0445, district: "District 3" },
     { name: "Claro", lat: 14.6889, lng: 121.0578, district: "District 3" },
+    { name: "Culiat", lat: 14.6778, lng: 121.0467, district: "District 3" },
     { name: "Dioquino Zobel", lat: 14.6867, lng: 121.0467, district: "District 3" },
     { name: "Don Manuel", lat: 14.6945, lng: 121.0534, district: "District 3" },
     { name: "Duyan-Duyan", lat: 14.6812, lng: 121.0489, district: "District 3" },
-    { name: "E. Rodriguez", lat: 14.6134, lng: 121.0467, district: "District 3" },
     { name: "Escopa I", lat: 14.6934, lng: 121.0456, district: "District 3" },
     { name: "Escopa II", lat: 14.6956, lng: 121.0478, district: "District 3" },
     { name: "Escopa III", lat: 14.6978, lng: 121.0489, district: "District 3" },
     { name: "Escopa IV", lat: 14.7001, lng: 121.0501, district: "District 3" },
-    { name: "Libis", lat: 14.6345, lng: 121.0612, district: "District 3" },
     { name: "Mangga", lat: 14.6756, lng: 121.0556, district: "District 3" },
     { name: "Marilag", lat: 14.7012, lng: 121.0478, district: "District 3" },
     { name: "Masagana", lat: 14.6801, lng: 121.0545, district: "District 3" },
@@ -1810,45 +1845,71 @@ input[type="file"] {
     { name: "San Isidro", lat: 14.6889, lng: 121.0501, district: "District 3" },
     { name: "Santa Quiteria", lat: 14.6823, lng: 121.0567, district: "District 3" },
     { name: "Sikatuna Village", lat: 14.6767, lng: 121.0623, district: "District 3" },
+    { name: "Soccorro", lat: 14.6912, lng: 121.0178, district: "District 3" },
+    { name: "Talampas", lat: 14.6834, lng: 121.0445, district: "District 3" },
     { name: "Ugong Norte", lat: 14.6612, lng: 121.0534, district: "District 3" },
     { name: "Unang Sigaw", lat: 14.6856, lng: 121.0534, district: "District 3" },
-    { name: "White Plains", lat: 14.6267, lng: 121.0589, district: "District 3" },
     
-    // District 4 - Western QC (Near Caloocan border)
+    // ========================================
+    // DISTRICT 4 - 18 Barangays
+    // Western QC (Near Caloocan border, West Novaliches)
+    // ========================================
     { name: "Apolonio Samson", lat: 14.6167, lng: 121.0234, district: "District 4" },
     { name: "Baesa", lat: 14.6589, lng: 121.0178, district: "District 4" },
+    { name: "Bagbag", lat: 14.7289, lng: 121.0389, district: "District 4" },
     { name: "Balumbato", lat: 14.6645, lng: 121.0134, district: "District 4" },
-    { name: "Culiat", lat: 14.6778, lng: 121.0467, district: "District 4" },
+    { name: "Gulod", lat: 14.7234, lng: 121.0423, district: "District 4" },
+    { name: "Kaligayahan", lat: 14.7167, lng: 121.0378, district: "District 4" },
+    { name: "Kaunlaran", lat: 14.7312, lng: 121.0334, district: "District 4" },
+    { name: "Manresa", lat: 14.6534, lng: 121.0311, district: "District 4" },
+    { name: "Nagkaisang Nayon", lat: 14.7023, lng: 121.0734, district: "District 4" },
     { name: "New Era", lat: 14.6798, lng: 121.1156, district: "District 4" },
+    { name: "North Fairview", lat: 14.7345, lng: 121.0623, district: "District 4" },
+    { name: "Novaliches Proper", lat: 14.7267, lng: 121.0512, district: "District 4" },
     { name: "Pasong Tamo", lat: 14.6845, lng: 121.0389, district: "District 4" },
+    { name: "Roxas", lat: 14.6712, lng: 121.0134, district: "District 4" },
+    { name: "San Bartolome", lat: 14.7256, lng: 121.0456, district: "District 4" },
     { name: "Sangandaan", lat: 14.6534, lng: 121.0156, district: "District 4" },
-    { name: "Soccorro", lat: 14.6912, lng: 121.0178, district: "District 4" },
-    { name: "Tatalon", lat: 14.6423, lng: 121.0189, district: "District 4" },
+    { name: "Santa Monica", lat: 14.7089, lng: 121.0467, district: "District 4" },
+    { name: "Sauyo", lat: 14.7289, lng: 121.0612, district: "District 4" },
     
-    // District 5 - Northern edge (Bagbag area) - CORRECTED San Martin de Porres
+    // ========================================
+    // DISTRICT 5 - 8 Barangays
+    // Far Northern QC (San Martin de Porres area)
+    // ========================================
     { name: "Bagbag", lat: 14.7289, lng: 121.0389, district: "District 5" },
+    { name: "Capri", lat: 14.6923, lng: 121.0445, district: "District 5" },
+    { name: "Fairview", lat: 14.7234, lng: 121.0667, district: "District 5" },
+    { name: "Greater Lagro", lat: 14.7189, lng: 121.0778, district: "District 5" },
     { name: "Gulod", lat: 14.7234, lng: 121.0423, district: "District 5" },
     { name: "Kaligayahan", lat: 14.7167, lng: 121.0378, district: "District 5" },
-    { name: "Kaunlaran", lat: 14.7312, lng: 121.0334, district: "District 5" },
-    { name: "Roxas", lat: 14.6712, lng: 121.0134, district: "District 5" },
-    { name: "San Martin de Porres", lat: 14.7423, lng: 121.0312, district: "District 5" }, // CORRECTED - moved further north
-    { name: "Siena", lat: 14.6578, lng: 121.0223, district: "District 5" },
+    { name: "Novaliches Proper", lat: 14.7267, lng: 121.0512, district: "District 5" },
+    { name: "San Bartolome", lat: 14.7256, lng: 121.0456, district: "District 5" },
     
-    // District 6 - Southern QC (Diliman, UP area, Cubao South)
+    // ========================================
+    // DISTRICT 6 - 35 Barangays
+    // Southern QC (Diliman, UP area, Cubao, South Triangle)
+    // ========================================
     { name: "Bagong Lipunan ng Crame", lat: 14.6112, lng: 121.0578, district: "District 6" },
     { name: "Botocan", lat: 14.6345, lng: 121.0489, district: "District 6" },
+    { name: "Camp Aguinaldo", lat: 14.6223, lng: 121.0534, district: "District 6" },
     { name: "Central", lat: 14.6089, lng: 121.0534, district: "District 6" },
     { name: "Damayang Lagi", lat: 14.6456, lng: 121.0178, district: "District 6" },
     { name: "Doña Imelda", lat: 14.6123, lng: 121.0467, district: "District 6" },
     { name: "Doña Josefa", lat: 14.6156, lng: 121.0489, district: "District 6" },
+    { name: "Don Manuel", lat: 14.6945, lng: 121.0534, district: "District 6" },
+    { name: "E. Rodriguez", lat: 14.6134, lng: 121.0467, district: "District 6" },
     { name: "East Kamias", lat: 14.6289, lng: 121.0512, district: "District 6" },
     { name: "Horseshoe", lat: 14.6234, lng: 121.0445, district: "District 6" },
     { name: "Immaculate Conception", lat: 14.6067, lng: 121.0512, district: "District 6" },
+    { name: "Kalusugan", lat: 14.6145, lng: 121.0334, district: "District 6" },
     { name: "Kamias", lat: 14.6267, lng: 121.0478, district: "District 6" },
     { name: "Krus na Ligas", lat: 14.6543, lng: 121.0721, district: "District 6" },
     { name: "Laging Handa", lat: 14.6178, lng: 121.0445, district: "District 6" },
+    { name: "Libis", lat: 14.6345, lng: 121.0612, district: "District 6" },
     { name: "Loyola Heights", lat: 14.6398, lng: 121.0775, district: "District 6" },
     { name: "Malaya", lat: 14.6356, lng: 121.0534, district: "District 6" },
+    { name: "Mariana", lat: 14.6089, lng: 121.0378, district: "District 6" },
     { name: "Milagrosa", lat: 14.6201, lng: 121.0423, district: "District 6" },
     { name: "Paligsahan", lat: 14.6145, lng: 121.0401, district: "District 6" },
     { name: "Pinagkaisahan", lat: 14.6312, lng: 121.0467, district: "District 6" },
@@ -1856,12 +1917,16 @@ input[type="file"] {
     { name: "Project 7", lat: 14.6391, lng: 121.0294, district: "District 6" },
     { name: "Project 8", lat: 14.6467, lng: 121.0334, district: "District 6" },
     { name: "Sacred Heart", lat: 14.6123, lng: 121.0489, district: "District 6" },
+    { name: "San Martin de Porres", lat: 14.6656, lng: 121.0256, district: "District 6" },
+    { name: "Siena", lat: 14.6578, lng: 121.0223, district: "District 6" },
     { name: "South Triangle", lat: 14.6189, lng: 121.0378, district: "District 6" },
     { name: "Teachers Village East", lat: 14.6256, lng: 121.0512, district: "District 6" },
     { name: "Teachers Village West", lat: 14.6223, lng: 121.0489, district: "District 6" },
     { name: "U.P. Campus", lat: 14.6538, lng: 121.0682, district: "District 6" },
     { name: "U.P. Village", lat: 14.6501, lng: 121.0645, district: "District 6" },
-    { name: "West Kamias", lat: 14.6256, lng: 121.0467, district: "District 6" }
+    { name: "Valencia", lat: 14.6267, lng: 121.0134, district: "District 6" },
+    { name: "West Kamias", lat: 14.6256, lng: 121.0467, district: "District 6" },
+    { name: "White Plains", lat: 14.6267, lng: 121.0589, district: "District 6" }
     ];
 
     const PH_BOUNDS = [[4.215806, 116.954468], [21.321780, 126.807617]];
@@ -1877,7 +1942,7 @@ input[type="file"] {
     // ============================================
     // PART 4: LABEL TOGGLE BUTTON & LOGIC
     // ============================================
-    let labelsEnabled = true; // Labels shown by default in street view
+    let labelsEnabled = true; // Labels shown by default in satellite view
     let locationLabels = [];
 
     // Add location labels to the map (major QC areas/landmarks and centers)
@@ -1936,18 +2001,19 @@ input[type="file"] {
         });
         locationLabels.push(label);
 
-        // Only add if street map selected AND labels are enabled
-        if (currentMapLayer === 'street' && map && labelsEnabled) {
+        // CORRECTED: Only add if SATELLITE map selected AND labels are enabled
+        if (currentMapLayer === 'satellite' && map && labelsEnabled) {
             label.addTo(map);
-            }
+        }
         });
     }
 
-    // ============ PART 4: Updated location label visibility ===============
+    // CORRECTED: Update location labels visibility
     function updateLocationLabelsVisibility() {
         if (!map) return;
-        // Only show labels if: street view AND labels enabled
-        if (currentMapLayer === 'street' && labelsEnabled) {
+        
+        // CORRECTED: Only show labels if: SATELLITE view AND labels enabled
+        if (currentMapLayer === 'satellite' && labelsEnabled) {
             locationLabels.forEach(label => {
                 if (!map.hasLayer(label)) label.addTo(map);
             });
@@ -1956,24 +2022,27 @@ input[type="file"] {
                 if (map.hasLayer(label)) map.removeLayer(label);
             });
         }
+        
         // Update button appearance
         updateLabelToggleButton();
     }
 
-    // ===== Label Toggle Button Visual/State Logic ======
+    // Label Toggle Button Visual/State Logic
     function updateLabelToggleButton() {
         const btn = document.getElementById('labelToggleBtn');
         if (!btn) return;
-        if (currentMapLayer === 'satellite') {
+        
+        // CORRECTED: Disable in street view, enable in satellite
+        if (currentMapLayer === 'street') {
             btn.classList.add('disabled');
             btn.disabled = true;
-            btn.title = 'Labels only available in street view';
-            btn.textContent = '🏷️ Labels';
+            btn.title = 'Labels only available in satellite view';
+            btn.textContent = '🏷️';
         } else {
             btn.classList.remove('disabled');
             btn.disabled = false;
             btn.title = labelsEnabled ? 'Hide location labels' : 'Show location labels';
-            btn.textContent = labelsEnabled ? '🏷️ Labels ON' : '🏷️ Labels OFF';
+            btn.textContent = '🏷️';
         }
     }
     // ============= END PART 4 LABEL TOGGLE =============
@@ -2204,16 +2273,24 @@ input[type="file"] {
             performAddressFetch(latlng, barangayName, cacheKey);
         }, delayNeeded);
     }
-    // Enhanced address fetching with better road detection
+    // ============================================
+    // ENHANCED ADDRESS FETCHING WITH BUILDING DETAILS
+    // ============================================
+
+    // Enhanced address fetching with better building/landmark detection
     function performAddressFetch(latlng, barangayName, cacheKey) {
         manualAddressInput.classList.add('loading');
         manualAddressInput.value = 'Fetching address...';
         abortController = new AbortController();
         const signal = abortController.signal;
+        
+        // Try multiple zoom levels for best results
         const zoomLevels = [18, 17, 16];
         let currentZoomIndex = 0;
+        
         function tryFetch(zoom) {
-            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&countrycodes=ph&zoom=${zoom}&addressdetails=1`;
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&countrycodes=ph&zoom=${zoom}&addressdetails=1&extratags=1`;
+            
             return fetch(url, { signal })
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -2231,8 +2308,10 @@ input[type="file"] {
                         addressCache.set(cacheKey, fallbackAddress);
                         return;
                     }
-                    const address = processAddressDataEnhanced(data.address, barangayName);
-                    if (address && (address.street || address.landmark || address.houseNumber)) {
+                    
+                    const address = processAddressDataEnhanced(data, barangayName);
+                    
+                    if (address && (address.building || address.street || address.landmark || address.houseNumber)) {
                         const fullAddress = formatAddressEnhanced(address, barangayName);
                         manualAddressInput.value = fullAddress;
                         manualAddressInput.classList.remove('loading');
@@ -2257,11 +2336,14 @@ input[type="file"] {
                     addressCache.set(cacheKey, fallbackAddress);
                 });
         }
+        
         tryFetch(zoomLevels[currentZoomIndex]);
     }
 
-    // Enhanced processing with more road field options
-    function processAddressDataEnhanced(addressData, barangayName) {
+    // Enhanced processing with building and landmark detection
+    function processAddressDataEnhanced(data, barangayName) {
+        const addressData = data.address;
+        
         if (!addressData.city || !addressData.city.toLowerCase().includes('quezon')) {
             showJsNotification('error', 'Location must be within Quezon City.');
             manualAddressInput.value = '';
@@ -2271,64 +2353,73 @@ input[type="file"] {
             districtInfo.style.display = 'none';
             return null;
         }
+        
         const result = {};
+        
+        // Building/Company name from multiple sources
+        if (data.display_name && data.type) {
+            // Extract building name from display_name
+            const displayParts = data.display_name.split(',');
+            if (displayParts.length > 0) {
+                const firstPart = displayParts[0].trim();
+                // Check if it's not just a number (house number)
+                if (firstPart && !/^\d+$/.test(firstPart)) {
+                    result.building = firstPart.toUpperCase();
+                }
+            }
+        }
+        
+        // Building from address data
+        if (!result.building && addressData.building) {
+            result.building = addressData.building.toUpperCase();
+        }
+        
+        // Check for commercial/amenity names
+        const amenityFields = [
+            'amenity', 'shop', 'office', 'tourism', 'leisure', 
+            'commercial', 'industrial', 'retail', 'public_building',
+            'name', 'operator', 'brand'
+        ];
+        
+        for (let field of amenityFields) {
+            if (!result.building && addressData[field]) {
+                result.building = addressData[field].toUpperCase();
+                break;
+            }
+        }
         
         // House number
         if (addressData.house_number) {
             result.houseNumber = addressData.house_number;
         }
         
-        // Street/Road - EXPANDED field list for better detection
+        // Street/Road - EXPANDED field list
         const roadFields = [
-            'road',           // Primary road name
-            'street',         // Street name
-            'highway',        // Major highways
-            'motorway',       // Expressways
-            'trunk',          // Major roads
-            'primary',        // Primary roads
-            'secondary',      // Secondary roads
-            'tertiary',       // Tertiary roads
-            'residential',    // Residential streets
-            'pedestrian',     // Pedestrian ways
-            'footway',        // Footpaths
-            'path',           // Paths
-            'cycleway',       // Bike paths
-            'avenue',         // Avenues
-            'boulevard',      // Boulevards
-            'lane',           // Lanes
-            'alley',          // Alleys
-            'neighbourhood',  // Neighborhood names
-            'suburb',         // Suburb/subdivision names
-            'quarter'         // Quarter/area names
+            'road', 'street', 'highway', 'motorway', 'trunk',
+            'primary', 'secondary', 'tertiary', 'residential',
+            'pedestrian', 'footway', 'path', 'cycleway',
+            'avenue', 'boulevard', 'lane', 'alley',
+            'neighbourhood', 'suburb', 'quarter'
         ];
         
         for (let field of roadFields) {
             if (addressData[field]) {
-                result.street = addressData[field];
+                result.street = addressData[field].toUpperCase();
                 break;
             }
         }
-        if (!result.street) {
-            const landmarkFields = [
-                'building',
-                'amenity',
-                'shop',
-                'office',
-                'tourism',
-                'leisure',
-                'commercial',
-                'industrial',
-                'retail'
-            ];
-            for (let field of landmarkFields) {
-                if (addressData[field]) {
-                    result.landmark = addressData[field];
-                    break;
-                }
-            }
+        
+        // Subdivision/Village name
+        if (addressData.suburb && addressData.suburb !== barangayName) {
+            result.subdivision = addressData.suburb.toUpperCase();
+        } else if (addressData.neighbourhood && addressData.neighbourhood !== barangayName) {
+            result.subdivision = addressData.neighbourhood.toUpperCase();
         }
+        
         return result;
     }
+
+    // Format address in detailed format like: "10 BACNOTAN ST. NEW HAVEN VILLAGE QC RISING SUN SECURITY..."
     function formatAddressEnhanced(addressParts, barangayName) {
         let parts = [];
         
@@ -2340,12 +2431,25 @@ input[type="file"] {
         // Add street/road name
         if (addressParts.street) {
             parts.push(addressParts.street);
-        } else if (addressParts.landmark) {
-            parts.push(`near ${addressParts.landmark}`);
         }
-        parts.push(barangayName);
-        parts.push('Quezon City');
-        return parts.join(', ');
+        
+        // Add subdivision/village if available
+        if (addressParts.subdivision) {
+            parts.push(addressParts.subdivision);
+        }
+        
+        // Add barangay
+        parts.push(barangayName.toUpperCase());
+        
+        // Add "QC" instead of full "Quezon City"
+        parts.push('QC');
+        
+        // Add building/company name at the end if available
+        if (addressParts.building) {
+            parts.push(addressParts.building);
+        }
+        
+        return parts.join(' ');
     }
     function isWithinQC(latlng) {
         const bounds = L.latLngBounds(QC_BOUNDS);
@@ -2366,7 +2470,7 @@ input[type="file"] {
         }
     }
 
-    // Modified layer toggle to update label button state (and label visibility)
+    // CORRECTED: Layer toggle handler
     layerToggle.addEventListener('click', () => {
         if (currentMapLayer === 'satellite') {
             map.removeLayer(satelliteLayer);
@@ -2379,13 +2483,15 @@ input[type="file"] {
             currentMapLayer = 'satellite';
             layerToggle.innerHTML = '🗺️ Street';
         }
-        updateLocationLabelsVisibility(); // handles buttons
+        updateLocationLabelsVisibility(); // handles buttons and label visibility
     });
 
-    // ------ PART 4: LABEL TOGGLE BUTTON EVENT ---------
+    // Label Toggle Button Event Handler
     if (labelToggleBtn) {
         labelToggleBtn.addEventListener('click', () => {
-            if (currentMapLayer !== 'street') return;
+            // Only works in satellite mode
+            if (currentMapLayer !== 'satellite') return;
+            
             labelsEnabled = !labelsEnabled;
             updateLocationLabelsVisibility();
         });
