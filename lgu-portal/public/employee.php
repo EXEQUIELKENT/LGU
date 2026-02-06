@@ -457,10 +457,8 @@ body::-webkit-scrollbar-thumb:hover,
     right: 0;
     height: 50px;
     background: var(--bg-secondary);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
     box-shadow: 0 4px 18px var(--shadow-color);
-    will-change: left;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -808,13 +806,11 @@ body.sidebar-collapsed .desktop-clock {
     margin-left: calc(var(--sidebar-expanded) + 20px);
     margin-right: 18px;
     padding-top: 80px;
-    height: calc(100vh);
+    height: calc(100vh); /* account for top nav */ 
     box-sizing: border-box;
     display: flex;
     transition: margin-left 0.3s ease;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    will-change: scroll-position;
 }
 
 .main-content.expanded {
@@ -923,9 +919,8 @@ body::before {
     width: 250px;
     height: 100vh;
     background: var(--bg-secondary);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    will-change: width, left;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 4px 25px var(--shadow-color);
     color: var(--text-primary);
@@ -1390,10 +1385,8 @@ body::before {
 /* Card wrapper for all dashboard content */
 .dashboard-card {
     background: var(--bg-secondary);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(12px);
     border-radius: 18px;
-    transform: translateZ(0);
     padding: 30px 35px;
     box-shadow: 0 6px 20px var(--shadow-color);
     border: 1px solid var(--border-color);
@@ -1426,10 +1419,8 @@ body::before {
 
 .metric-card {
     background: var(--card-bg);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(12px);
     border-radius: 16px;
-    transform: translateZ(0);
     padding: 24px;
     box-shadow: 0 4px 16px var(--shadow-color);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -1575,10 +1566,8 @@ body::before {
 
 .chart-card {
     background: var(--card-bg);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(12px);
     border-radius: 16px;
-    transform: translateZ(0);
     padding: 24px;
     box-shadow: 0 4px 16px var(--shadow-color);
     border: 1px solid var(--border-color);
@@ -2585,156 +2574,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ===== CHART DATA FROM PHP =====
-const monthlyTrendsLabels = <?= json_encode($monthlyTrendsLabels) ?>;
-const monthlyTrendsData = <?= json_encode($monthlyTrendsData) ?>;
-const statusLabels = <?= json_encode($statusLabels) ?>;
-const statusData = <?= json_encode($statusData) ?>;
-
-// ===== REQUEST TRENDS CHART =====
-const trendsCtx = document.getElementById('trendsChart');
-if (trendsCtx) {
-    new Chart(trendsCtx, {
-        type: 'line',
-        data: {
-            labels: monthlyTrendsLabels,
-            datasets: [{
-                label: 'Total Requests',
-                data: monthlyTrendsData,
-                borderColor: '#3762c8',
-                backgroundColor: 'rgba(55, 98, 200, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 5,
-                pointBackgroundColor: '#3762c8',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-                        font: { size: 13, weight: '600' }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    cornerRadius: 8
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
-                        font: { size: 12 },
-                        stepSize: 1
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
-                        font: { size: 12 }
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-}
-
-// ===== STATUS BREAKDOWN CHART =====
-const statusCtx = document.getElementById('statusChart');
-if (statusCtx) {
-    new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-            labels: statusLabels,
-            datasets: [{
-                data: statusData,
-                backgroundColor: [
-                    '#ff9800',  // Pending - Orange
-                    '#4caf50',  // Approved - Green
-                    '#f44336'   // Rejected - Red
-                ],
-                borderWidth: 3,
-                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
-                hoverOffset: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-                        font: { size: 13, weight: '600' },
-                        padding: 15,
-                        usePointStyle: true,
-                        pointStyle: 'circle'
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed || 0;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                            return `${label}: ${value} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Make charts responsive on window resize
-let resizeTimeout;
-window.addEventListener('resize', function() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(function() {
-        // Get all Chart instances and update them
-        Chart.instances.forEach(function(chart) {
-            chart.resize();
-        });
-    }, 250);
-});
-
-// Mobile-specific chart optimization
-if (window.innerWidth <= 768) {
-    // Reduce animation for better performance on mobile
-    Chart.defaults.animation = {
-        duration: 200
-    };
-}
-</script>
-<script>
 // Sidebar & Navigation Scripts
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
@@ -3000,7 +2839,157 @@ window.addEventListener("pageshow", function (event) {
     }
 });
 </script>
+<script>
+// ===== CHART DATA FROM PHP =====
+const monthlyTrendsLabels = <?= json_encode($monthlyTrendsLabels) ?>;
+const monthlyTrendsData = <?= json_encode($monthlyTrendsData) ?>;
+const statusLabels = <?= json_encode($statusLabels) ?>;
+const statusData = <?= json_encode($statusData) ?>;
 
+// Make charts responsive on window resize
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        // Get all Chart instances and update them
+        Chart.instances.forEach(function(chart) {
+            chart.resize();
+        });
+    }, 250);
+});
+
+// Mobile-specific chart optimization
+if (window.innerWidth <= 768) {
+    // Reduce animation for better performance on mobile
+    Chart.defaults.animation = {
+        duration: 200
+    };
+}
+// ===== REQUEST TRENDS CHART =====
+const trendsCtx = document.getElementById('trendsChart');
+if (trendsCtx) {
+    new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: monthlyTrendsLabels,
+            datasets: [{
+                label: 'Total Requests',
+                data: monthlyTrendsData,
+                borderColor: '#3762c8',
+                backgroundColor: 'rgba(55, 98, 200, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#3762c8',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                        font: { size: 13, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    cornerRadius: 8
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ===== STATUS BREAKDOWN CHART =====
+const statusCtx = document.getElementById('statusChart');
+if (statusCtx) {
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: [
+                    '#ff9800',  // Pending - Orange
+                    '#4caf50',  // Approved - Green
+                    '#f44336'   // Rejected - Red
+                ],
+                borderWidth: 3,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                        font: { size: 13, weight: '600' },
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+</script>
 <script>
 function handleProfilePicture() {
     const img = document.getElementById('profileImg');
