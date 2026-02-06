@@ -945,7 +945,7 @@ input[type="file"] {
     text-align: center;
     margin: 0;
 }
-/* District info badge - IMPROVED: More compact */
+/* District info badge */
 #districtInfo {
     background: #eef2ff;
     border: 1px solid #c7d1f3;
@@ -994,6 +994,7 @@ input[type="file"] {
     font-size: 14px;
     background: #fff;
 }
+/* GPS Button - Top Left */
 #gpsBtn {
     position: absolute;
     left: 18px;
@@ -1010,10 +1011,10 @@ input[type="file"] {
 #gpsBtn:hover {
     background: #e0e7ff;
 }
-/* Label Toggle Button - Top Right (ICON ONLY) */
+/* Label Toggle Button - Middle Right (ICON ONLY) */
 #labelToggleBtn {
     position: absolute;
-    right: 18px;
+    left: 75px; /* Aligned to the left, spaced from #gpsBtn (left:18px, width+gap=50px) */
     top: 50%;
     transform: translateY(-50%);
     background: #eef2ff;
@@ -1039,11 +1040,12 @@ input[type="file"] {
     color: #9ca3af;
     border-color: #d1d5db;
 }
-/* Layer Toggle Button - Bottom Right of Map (MOVED FROM HEADER) */
+/* Layer Toggle Button - Far Right (MOVED TO HEADER) */
 #mapLayerToggle {
     position: absolute;
     right: 18px;
-    bottom: 18px;
+    top: 50%;
+    transform: translateY(-50%);
     background: #2b6cb0;
     color: #fff;
     border: none;
@@ -1053,8 +1055,9 @@ input[type="file"] {
     cursor: pointer;
     font-weight: 600;
     transition: all .2s;
-    z-index: 1000;
+    z-index: 10;
 }
+
 #mapLayerToggle:hover {
     background: #245a96;
 }
@@ -1153,7 +1156,7 @@ input[type="file"] {
     }
     
     #labelToggleBtn {
-        right: 16px;
+        left: 60px !important; /* Adjusted for mobile */
         padding: 6px 10px;
         font-size: 16px;
         min-width: 38px;
@@ -1161,7 +1164,6 @@ input[type="file"] {
     
     #mapLayerToggle {
         right: 16px;
-        bottom: 16px;
         padding: 6px 12px;
         font-size: 12px;
     }
@@ -1214,7 +1216,7 @@ input[type="file"] {
     }
     
     #labelToggleBtn {
-        right: 14px;
+        left: 55px !important;
         padding: 5px 8px;
         font-size: 14px;
         min-width: 34px;
@@ -1222,7 +1224,6 @@ input[type="file"] {
     
     #mapLayerToggle {
         right: 14px;
-        bottom: 14px;
         padding: 5px 10px;
         font-size: 11px;
     }
@@ -1418,8 +1419,9 @@ input[type="file"] {
             <!-- UPDATED HEADER: Label button moved to top-right, icon only -->
             <div class="map-header">
                 <button type="button" id="gpsBtn" title="Use my current location">📍</button>
-                <h3>Select Location</h3>
                 <button type="button" id="labelToggleBtn" title="Toggle location labels">🏷️</button>
+                <h3>Select Location</h3>
+                <button type="button" id="mapLayerToggle">🛰️ Satellite</button>
             </div>
             
             <div id="districtInfo"></div>
@@ -1434,9 +1436,6 @@ input[type="file"] {
             
             <!-- Map Container -->
             <div id="map"></div>
-            
-            <!-- Layer Toggle Button - MOVED HERE (was in header) -->
-            <button type="button" id="mapLayerToggle">🛰️ Satellite</button>
             
             <!-- Action Buttons -->
             <div class="map-actions">
@@ -2273,10 +2272,6 @@ input[type="file"] {
             performAddressFetch(latlng, barangayName, cacheKey);
         }, delayNeeded);
     }
-    // ============================================
-    // ENHANCED ADDRESS FETCHING WITH BUILDING DETAILS
-    // ============================================
-
     // Enhanced address fetching with better building/landmark detection
     function performAddressFetch(latlng, barangayName, cacheKey) {
         manualAddressInput.classList.add('loading');
@@ -2340,6 +2335,12 @@ input[type="file"] {
         tryFetch(zoomLevels[currentZoomIndex]);
     }
 
+    // Helper function to convert to Title Case
+    function toTitleCase(str) {
+        if (!str) return '';
+        return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+    }
+
     // Enhanced processing with building and landmark detection
     function processAddressDataEnhanced(data, barangayName) {
         const addressData = data.address;
@@ -2358,20 +2359,19 @@ input[type="file"] {
         
         // Building/Company name from multiple sources
         if (data.display_name && data.type) {
-            // Extract building name from display_name
             const displayParts = data.display_name.split(',');
             if (displayParts.length > 0) {
                 const firstPart = displayParts[0].trim();
                 // Check if it's not just a number (house number)
                 if (firstPart && !/^\d+$/.test(firstPart)) {
-                    result.building = firstPart.toUpperCase();
+                    result.building = toTitleCase(firstPart);
                 }
             }
         }
         
         // Building from address data
         if (!result.building && addressData.building) {
-            result.building = addressData.building.toUpperCase();
+            result.building = toTitleCase(addressData.building);
         }
         
         // Check for commercial/amenity names
@@ -2383,7 +2383,7 @@ input[type="file"] {
         
         for (let field of amenityFields) {
             if (!result.building && addressData[field]) {
-                result.building = addressData[field].toUpperCase();
+                result.building = toTitleCase(addressData[field]);
                 break;
             }
         }
@@ -2398,58 +2398,94 @@ input[type="file"] {
             'road', 'street', 'highway', 'motorway', 'trunk',
             'primary', 'secondary', 'tertiary', 'residential',
             'pedestrian', 'footway', 'path', 'cycleway',
-            'avenue', 'boulevard', 'lane', 'alley',
-            'neighbourhood', 'suburb', 'quarter'
+            'avenue', 'boulevard', 'lane', 'alley'
         ];
         
         for (let field of roadFields) {
             if (addressData[field]) {
-                result.street = addressData[field].toUpperCase();
+                result.street = toTitleCase(addressData[field]);
                 break;
             }
         }
         
-        // Subdivision/Village name
+        // Subdivision/Village/Neighborhood name
         if (addressData.suburb && addressData.suburb !== barangayName) {
-            result.subdivision = addressData.suburb.toUpperCase();
+            result.subdivision = toTitleCase(addressData.suburb);
         } else if (addressData.neighbourhood && addressData.neighbourhood !== barangayName) {
-            result.subdivision = addressData.neighbourhood.toUpperCase();
+            result.subdivision = toTitleCase(addressData.neighbourhood);
+        } else if (addressData.quarter && addressData.quarter !== barangayName) {
+            result.subdivision = toTitleCase(addressData.quarter);
+        }
+        
+        // School/University
+        if (addressData.university) {
+            result.landmark = toTitleCase(addressData.university);
+        } else if (addressData.school) {
+            result.landmark = toTitleCase(addressData.school);
         }
         
         return result;
     }
 
-    // Format address in detailed format like: "10 BACNOTAN ST. NEW HAVEN VILLAGE QC RISING SUN SECURITY..."
+    // Format address with commas, title case, and "Near" indicators
     function formatAddressEnhanced(addressParts, barangayName) {
         let parts = [];
+        let hasDetails = false;
         
         // Add house number if available
         if (addressParts.houseNumber) {
             parts.push(addressParts.houseNumber);
+            hasDetails = true;
         }
         
-        // Add street/road name
+        // Add street/road name (check for duplicates with building name)
         if (addressParts.street) {
-            parts.push(addressParts.street);
+            const streetName = addressParts.street;
+            // Don't add street if it's the same as building name
+            if (!addressParts.building || 
+                addressParts.building.toLowerCase() !== streetName.toLowerCase()) {
+                parts.push(streetName);
+                hasDetails = true;
+            }
         }
         
         // Add subdivision/village if available
         if (addressParts.subdivision) {
-            parts.push(addressParts.subdivision);
+            // Don't add if it's the same as street
+            if (!addressParts.street || 
+                addressParts.subdivision.toLowerCase() !== addressParts.street.toLowerCase()) {
+                parts.push(addressParts.subdivision);
+                hasDetails = true;
+            }
         }
         
         // Add barangay
-        parts.push(barangayName.toUpperCase());
+        parts.push(toTitleCase(barangayName));
         
-        // Add "QC" instead of full "Quezon City"
-        parts.push('QC');
+        // Add "Quezon City" (not QC for better readability)
+        parts.push('Quezon City');
         
-        // Add building/company name at the end if available
-        if (addressParts.building) {
-            parts.push(addressParts.building);
+        // If we have specific details, add building at the end
+        if (hasDetails && addressParts.building) {
+            // Don't add if building name is same as street or subdivision
+            const buildingLower = addressParts.building.toLowerCase();
+            const isDuplicate = parts.some(part => 
+                part.toLowerCase() === buildingLower
+            );
+            if (!isDuplicate) {
+                parts.push(addressParts.building);
+            }
         }
         
-        return parts.join(' ');
+        // If we don't have much detail, add "Near" landmark
+        if (!hasDetails && addressParts.building) {
+            parts.push('Near ' + addressParts.building);
+        } else if (!hasDetails && addressParts.landmark) {
+            parts.push('Near ' + addressParts.landmark);
+        }
+        
+        // Join with commas
+        return parts.join(', ');
     }
     function isWithinQC(latlng) {
         const bounds = L.latLngBounds(QC_BOUNDS);
