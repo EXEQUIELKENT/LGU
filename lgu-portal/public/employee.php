@@ -70,7 +70,6 @@ function showNotification() {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
         $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
-        // ADD: Add a notification container for absolute positioning fixes
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -90,25 +89,197 @@ function showNotification() {
 
 // Improved: Format display name as "Role - Name" if applicable
 function getDisplayName() {
-    // Fallbacks
     $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
     $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
-    // Try to use full name if available
     $name = trim($firstName);
     if (!$name) $name = 'User';
 
-    // Determine formatting based on role (you can modify roles as needed)
     if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
         return 'Admin - ' . $name;
     } elseif ($role) {
-        // Show role for any other roles, e.g., "Employee - John Doe"
         return $role . ' - ' . $name;
     } else {
-        // No role: show plain name
         return $name;
     }
 }
 $displayName = getDisplayName();
+
+// ===== DASHBOARD METRICS =====
+
+// Total Requests
+$totalRequestsQuery = "SELECT COUNT(*) as total FROM requests";
+$totalRequestsResult = $conn->query($totalRequestsQuery);
+$totalRequests = $totalRequestsResult->fetch_assoc()['total'] ?? 0;
+
+// Pending Requests
+$pendingRequestsQuery = "SELECT COUNT(*) as total FROM requests WHERE approval_status = 'Pending'";
+$pendingRequestsResult = $conn->query($pendingRequestsQuery);
+$pendingRequests = $pendingRequestsResult->fetch_assoc()['total'] ?? 0;
+
+// Completed Tasks
+$completedTasksQuery = "SELECT COUNT(*) as total FROM maintenance_schedule WHERE status = 'Completed'";
+$completedTasksResult = $conn->query($completedTasksQuery);
+$completedTasks = $completedTasksResult->fetch_assoc()['total'] ?? 0;
+
+// Active Users (employees)
+$activeUsersQuery = "SELECT COUNT(*) as total FROM employees";
+$activeUsersResult = $conn->query($activeUsersQuery);
+$activeUsers = $activeUsersResult->fetch_assoc()['total'] ?? 0;
+
+// ===== CHART DATA QUERIES =====
+
+// Status Breakdown Query
+$statusBreakdownQuery = "SELECT 
+    approval_status,
+    COUNT(*) as count 
+    FROM requests 
+    GROUP BY approval_status";
+
+// Monthly Trends Query (last 6 months)
+$monthlyTrendsQuery = "SELECT 
+    DATE_FORMAT(created_at, '%Y-%m') as month,
+    COUNT(*) as count 
+    FROM requests 
+    WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+    GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+    ORDER BY month ASC";
+
+// Execute Status Breakdown Query
+$statusBreakdownResult = $conn->query($statusBreakdownQuery);
+$statusBreakdown = [];
+$statusLabels = [];
+$statusData = [];
+$statusColors = [
+    'Pending' => '#ff9800',   // Orange
+    'Approved' => '#4caf50',  // Green
+    'Rejected' => '#f44336'   // Red
+];
+
+if ($statusBreakdownResult && $statusBreakdownResult->num_rows > 0) {
+    while ($row = $statusBreakdownResult->fetch_assoc()) {
+        $status = $row['approval_status'];
+        $count = (int)$row['count'];
+        
+        $statusBreakdown[$status] = $count;
+        $statusLabels[] = $status;
+        $statusData[] = $count;
+    }
+} else {
+    // Default empty state
+    $statusLabels = ['Pending', 'Approved', 'Rejected'];
+    $statusData = [0, 0, 0];
+}
+
+// Execute Monthly Trends Query
+$monthlyTrendsResult = $conn->query($monthlyTrendsQuery);
+$monthlyTrends = [];
+$monthlyTrendsLabels = [];
+$monthlyTrendsData = [];
+
+if ($monthlyTrendsResult && $monthlyTrendsResult->num_rows > 0) {
+    while ($row = $monthlyTrendsResult->fetch_assoc()) {
+        $monthlyTrends[$row['month']] = $row['count'];
+        // Format month for display (e.g., "Jan 2026")
+        $monthlyTrendsLabels[] = date('M Y', strtotime($row['month'] . '-01'));
+        $monthlyTrendsData[] = (int)$row['count'];
+    }
+} else {
+    // If no data, show last 6 months with 0 values
+    for ($i = 5; $i >= 0; $i--) {
+        $month = date('M Y', strtotime("-$i months"));
+        $monthlyTrendsLabels[] = $month;
+        $monthlyTrendsData[] = 0;
+    }
+}
+
+// Recent Activities
+$recentActivitiesQuery = "SELECT 
+    r.req_id,
+    r.infrastructure,
+    r.location,
+    r.approval_status,
+    r.created_at
+    FROM requests r
+    ORDER BY r.created_at DESC
+    LIMIT 5";
+$recentActivitiesResult = $conn->query($recentActivitiesQuery);
+
+// Top Facilities by Requests
+$topFacilitiesQuery = "SELECT 
+    infrastructure,
+    COUNT(*) as request_count
+    FROM requests
+    GROUP BY infrastructure
+    ORDER BY request_count DESC
+    LIMIT 5";
+$topFacilitiesResult = $conn->query($topFacilitiesQuery);
+
+// Calculate trend percentages (compare last month vs current month)
+$currentMonthQuery = "SELECT COUNT(*) as count FROM requests WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())";
+$lastMonthQuery = "SELECT COUNT(*) as count FROM requests WHERE MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))";
+
+$currentMonthResult = $conn->query($currentMonthQuery);
+$lastMonthResult = $conn->query($lastMonthQuery);
+
+$currentMonthCount = $currentMonthResult->fetch_assoc()['count'] ?? 0;
+$lastMonthCount = $lastMonthResult->fetch_assoc()['count'] ?? 1; // Avoid division by zero
+
+$requestsTrend = $lastMonthCount > 0 ? (($currentMonthCount - $lastMonthCount) / $lastMonthCount) * 100 : 0;
+
+// ===== UPDATED: Apply same logic as sched.php =====
+$upcomingSchedulesQuery = "SELECT 
+    task,
+    location,
+    starting_date,
+    status,
+    priority,
+    category,
+    assigned_team
+    FROM maintenance_schedule
+    WHERE status != 'Completed'
+    ORDER BY starting_date ASC
+    LIMIT 5";
+
+$upcomingSchedulesResult = $conn->query($upcomingSchedulesQuery);
+$upcomingSchedules = [];
+
+if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
+    $today = new DateTime('today');
+    
+    while ($row = $upcomingSchedulesResult->fetch_assoc()) {
+        // Apply same status computation logic as sched.php
+        $status_label = $row['status'];
+        $priority_label = $row['priority'];
+        
+        if ($row['status'] != 'Completed' && !empty($row['starting_date'])) {
+            try {
+                $dueDate = new DateTime($row['starting_date']);
+                $diffDays = (int)$today->diff($dueDate)->format('%r%a');
+                
+                // If task is overdue
+                if ($diffDays < 0) {
+                    $status_label = 'Delayed';
+                    $priority_label = 'Critical';
+                } 
+                // If task is today
+                elseif ($diffDays === 0) {
+                    $status_label = 'In Progress';
+                    $priority_label = 'High';
+                }
+                // If task is upcoming (future)
+                else {
+                    $status_label = 'Scheduled';
+                }
+            } catch (Exception $e) {
+                // Keep original status on error
+            }
+        }
+        
+        $row['status_label'] = $status_label;
+        $row['priority'] = $priority_label;
+        $upcomingSchedules[] = $row;
+    }
+}
 
 ?>
 <!DOCTYPE html>
@@ -116,11 +287,80 @@ $displayName = getDisplayName();
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LGU Employee Portal</title>
+<title>LGU Employee Portal - Dashboard</title>
 <style>
-/* ...unchanged CSS... (omitted for brevity) ... */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+
+/* =======================
+   Custom SCROLLBAR STYLE
+========================== */
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* End Custom SCROLLBAR STYLE */
 
 /* =========================
    SIDEBAR/CLOCK ALIGNMENT CONSTANTS
@@ -137,6 +377,23 @@ $displayName = getDisplayName();
     --text-secondary: #333333;
     --border-color: rgba(0, 0, 0, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.2);
+    
+    /* Dashboard specific colors - Enhanced */
+    --card-bg: #ffffff;
+    --metric-green: #4caf50;
+    --metric-green-light: #81c784;
+    --metric-blue: #2196f3;
+    --metric-blue-light: #64b5f6;
+    --metric-orange: #ff9800;
+    --metric-orange-light: #ffb74d;
+    --metric-red: #f44336;
+    --metric-red-light: #e57373;
+    --metric-purple: #9c27b0;
+    --metric-purple-light: #ba68c8;
+    --chart-color-1: #6384d2;
+    --chart-color-2: #90caf9;
+    --chart-color-3: #ffd54f;
+    --chart-color-4: #ef9a9a;
 }
 
 [data-theme="dark"] {
@@ -147,7 +404,21 @@ $displayName = getDisplayName();
     --text-secondary: #e0e0e0;
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    
+    /* Dashboard specific colors - dark mode - Enhanced */
+    --card-bg: rgba(30, 30, 30, 0.95);
+    --metric-green: #66bb6a;
+    --metric-green-light: #81c784;
+    --metric-blue: #42a5f5;
+    --metric-blue-light: #64b5f6;
+    --metric-orange: #ffa726;
+    --metric-orange-light: #ffb74d;
+    --metric-red: #ef5350;
+    --metric-red-light: #e57373;
+    --metric-purple: #ab47bc;
+    --metric-purple-light: #ba68c8;
 }
+
 /* Logout Alert Modal */
 [data-theme="dark"] #logoutAlertModal {
     background: var(--bg-secondary);
@@ -175,6 +446,7 @@ $displayName = getDisplayName();
     background: rgba(55, 98, 200, 0.2);
     color: #5f8cff;
 }
+
 /* =========================
    DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
 ========================= */
@@ -185,8 +457,10 @@ $displayName = getDisplayName();
     right: 0;
     height: 50px;
     background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 4px 18px var(--shadow-color);
+    will-change: left;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -198,7 +472,7 @@ $displayName = getDisplayName();
 body.sidebar-collapsed .desktop-top-nav {
     left: var(--sidebar-collapsed);
 }
-/* Inner alignment */
+
 .desktop-top-nav .desktop-nav-inner {
     width: 100%;
     max-width: calc(100vw - var(--sidebar-expanded));
@@ -293,7 +567,6 @@ body.sidebar-collapsed .desktop-top-nav {
     animation: pulse 1.5s ease-in-out infinite;
 }
 
-
 @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.1); opacity: 0.9; }
@@ -324,7 +597,6 @@ body.sidebar-collapsed .desktop-top-nav {
     animation: slideDown 0.3s ease;
 }
 
-/* Remove animation on mobile */
 @media (max-width: 768px) {
     .notif-dropdown.show {
         animation: none;
@@ -420,7 +692,6 @@ body.sidebar-collapsed .desktop-top-nav {
     line-height: 1.4;
 }
 
-/* ✅ STEP 2A: Update notif-item-time to be a container for both time and date */
 .notif-item-time {
     display: flex;
     justify-content: space-between;
@@ -432,12 +703,10 @@ body.sidebar-collapsed .desktop-top-nav {
     gap: 8px;
 }
 
-/* ✅ STEP 2B: Style the time span (left side) */
 .notif-time {
     flex-shrink: 0;
 }
 
-/* ✅ STEP 2C: Style the date span (right side) */
 .notif-date {
     flex-shrink: 0;
     text-align: right;
@@ -451,6 +720,7 @@ body.sidebar-collapsed .desktop-top-nav {
     color: var(--text-secondary);
     font-size: 14px;
 }
+
 .notif-group {
     border-top: 1px solid rgba(255,255,255,.08);
     padding-top: 8px;
@@ -463,59 +733,48 @@ body.sidebar-collapsed .desktop-top-nav {
     color: #999;
     margin: 6px 8px;
 }
-/* Hide timezone text on DESKTOP only */
+
 .desktop-top-nav .clock-timezone {
     display: none;
 }
+
 body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
     max-width: calc(100vw - var(--sidebar-collapsed));
 }
-/* Micro-shift for polish */
+
 body.sidebar-collapsed .desktop-clock {
     transform: translateX(-6px);
 }
 
-/* =========================
-   DESKTOP NAV INNER ALIGNMENT (rest unchanged)
-========================= */
 .desktop-clock {
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary);
-    white-space: nowrap;
+    whitespace: nowrap;
     position: relative;
     transition: color 0.3s ease;
 }
-/* === Clock styling enhancements === */
+
 .desktop-clock .date-part {
     opacity: 0.6;
     font-weight: 400;
 }
+
 .desktop-clock .time-part {
     font-weight: 700;
     letter-spacing: 0.03em;
 }
-/* === REMOVE BLINKING SECONDS === */
-/* .desktop-clock .seconds {
-    animation: blinkSeconds 1s steps(1) infinite;
-}
-@keyframes blinkSeconds {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-} */
-/* === Clock styling enhancements === END */
 
-/* === Smooth digit flip === */
 .time-part span {
     display: inline-block;
     transition: transform 0.25s ease, opacity 0.25s ease;
 }
+
 .time-part.flip span {
     transform: translateY(-4px);
     opacity: 0.6;
 }
 
-/* === "Server time" tooltip on clock === */
 .desktop-clock::after {
     content: "Server time";
     position: absolute;
@@ -532,6 +791,7 @@ body.sidebar-collapsed .desktop-clock {
     transition: opacity 0.2s ease;
     white-space: nowrap;
 }
+
 .desktop-clock:hover::after {
     opacity: 1;
 }
@@ -544,29 +804,29 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 /* Push main content down to avoid overlap */
-/* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
     margin-right: 18px;
-    padding-top: 60px;
-    height: 100vh;
+    padding-top: 80px;
+    height: calc(100vh);
     box-sizing: border-box;
     display: flex;
     transition: margin-left 0.3s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
 }
+
 .main-content.expanded {
     margin-left: calc(var(--sidebar-collapsed) + 20px);
 }
-/* --- END FIX --- */
-
-/* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* HIDE MOBILE TOP NAV ON DESKTOP */
 .mobile-top-nav {
     display: none;
 }
 
-/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+/* Z-INDEX LAYERING SAFETY */
 body {
     height: 100vh;
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
@@ -598,8 +858,6 @@ body::before {
     position: relative;
     z-index: 1;
 }
-/* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
-
 .sidebar-profile-btn {
     position: absolute;
     top: 18px;
@@ -617,12 +875,16 @@ body::before {
     transition: all 0.3s ease;
     z-index: 1002;
 }
+/* Highlight the sidebar profile-btn/avatar if on profile page */
+.sidebar-profile-btn.active,
+.profile-btn.active {
+    border: 2px solid #4f46e5 !important;
+    box-shadow: 0 0 0 2px rgba(79,70,229,.3) !important;
+}
 .sidebar-profile-btn img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    position: relative;
-    z-index: 2;
 }
 .profile-fallback-icon {
     display: none;
@@ -636,26 +898,24 @@ body::before {
     left: 0;
     z-index: 1;
 }
-/* Hover */
 
+.sidebar-profile-btn img {
+    position: relative;
+    z-index: 2;
+}
 .sidebar-profile-btn:hover {
     transform: scale(1.08);
     box-shadow: 0 4px 14px rgba(55,98,200,0.35);
 }
-
-/* COLLAPSED SIDEBAR PROFILE POSITION FIX */
 .sidebar-nav.collapsed .sidebar-profile-btn {
-    position: relative;       /* removes overlap */
+    position: relative;
     top: auto;
     left: auto;
-    margin: 52px auto 10px;   /* pushes profile BELOW toggle */
+    margin: 52px auto 10px;
 }
-
-/* COLLAPSED SIDEBAR LAYOUT PUSH-DOWN */
 .sidebar-nav.collapsed .sidebar-top {
     padding-top: 10px;
 }
-
 .sidebar-nav {
     position: fixed;
     top: 0;
@@ -663,8 +923,9 @@ body::before {
     width: 250px;
     height: 100vh;
     background: var(--bg-secondary);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    will-change: width, left;
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 4px 25px var(--shadow-color);
     color: var(--text-primary);
@@ -678,7 +939,6 @@ body::before {
 .sidebar-nav.collapsed {
     width: 70px;
 }
-/* Toggle Button */
 .sidebar-toggle {
     position: absolute;
     top: 20px;
@@ -711,61 +971,20 @@ body::before {
 .sidebar-nav.collapsed .toggle-icon {
     transform: rotate(180deg);
 }
-
-.sidebar-top {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    padding: 20px 0;
-    overflow-y: auto;
-    position: relative;
-}
-
-/* --------- FIX FOR: "navlinks move at the top of the side bar fix it" ---------
-   We will enforce that .sidebar-top always stretches to fill remaining height,
-   and position nav-list at the correct vertical position below the logo,
-   not at the top after collapse.
-   Use a spacer div after .site-logo, then let nav-list and the rest flex naturally.
-*/
 .sidebar-top {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
     height: 100%;
-    /* Ensure that .sidebar-top always fills sidebar height */
+    padding: 20px 0;
+    overflow-y: auto;
+    position: relative;
 }
-
-/* Add a flex spacer below .site-logo to enforce consistent space above nav-list */
 .sidebar-logo-spacer {
     height: 16px;
     flex-shrink: 0;
 }
-
-/* --------- END FIX --------- */
-
-/* Divider just UNDER the toggle button */
-.sidebar-toggle-divider {
-    border-bottom: 2px solid rgba(0,0,0,0.18);
-    width: 60%;
-    margin: 15px auto 9px auto;
-    transition: opacity 0.3s, height 0.3s, margin 0.3s;
-    opacity: 0;
-    height: 0;
-    pointer-events: none;
-}
-.sidebar-nav.collapsed .sidebar-toggle-divider {
-    opacity: 1;
-    height: 0;
-    margin: 15px auto 14px auto;
-    pointer-events: auto;
-}
-/* There is no need for a duplicate .collapse-toggle-divider, replaced with .sidebar-toggle-divider for clear intent */
-
-.sidebar-divider.collapse-toggle-divider { display:none; } /* Remove the old divider line for collapsed */
-
-/* Other existing styles unchanged ... */
-/* -- LOGO VISIBILITY ON COLLAPSE -- */
 .sidebar-nav .site-logo {
     margin-top: 5px;
     flex-direction: column;
@@ -802,10 +1021,8 @@ body::before {
     width: 40px;
     height: auto;
 }
-/* --------- MODIFIED: Make logo-divider visible when collapsed --------- */
 .sidebar-divider.logo-divider {
     transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
-    /* always display the divider; style changes below */
     opacity: 1;
     width: calc(100% - 50px);
     margin: 18px 25px 0 25px;
@@ -815,20 +1032,15 @@ body::before {
     width: 40px;
     margin: 5px 25px 0 25px;
 }
-/* --------- END MODIFICATION --------- */
-
-/* Navigation Links */
-/* Move nav-links a bit more to the left (reduce left/right padding) to fit maintenance schedule */
 .sidebar-nav .nav-list {
     list-style: none;
     font-size: 14px;
-    padding: 0 15px; /* changed from 0 20px to 0 10px */
+    padding: 0 15px;
     margin: 0;
     display: flex;
     flex-direction: column;
     flex-grow: 0;
     flex-shrink: 0;
-    /* Ensures the nav-list stays together and never stretches vertically */
     transition: padding 0.3s ease;
 }
 .sidebar-nav.collapsed .nav-list {
@@ -850,9 +1062,7 @@ body::before {
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    /* The default size for nav links (14px font, 12px top/bottom, some left/right) */
 }
-
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
     background: #3762c8;
@@ -863,11 +1073,9 @@ body::before {
     background: #97a4c2;
     transform: translateX(8px) scale(1.02);
 }
-
-/* Collapsed sidebar nav link style */
 .sidebar-nav.collapsed .nav-link {
     justify-content: center;
-    padding: 12px 10px;  /* This is the nav-link size in collapse: 14px font, 12px top/bottom, 10px left/right */
+    padding: 12px 10px;
     position: relative;
 }
 .sidebar-nav.collapsed .nav-link span:last-child {
@@ -876,8 +1084,6 @@ body::before {
 .sidebar-nav.collapsed .nav-link:hover {
     transform: translateX(0) scale(1.08);
 }
-
-/* SIDEBAR HOVER TOOLTIP: Shows navlink name as pop-up at side upon hover/collapsed */
 .sidebar-tooltip-pop {
     position: fixed;
     z-index: 5555;
@@ -898,14 +1104,11 @@ body::before {
     display:none;
     letter-spacing: 0.03em;
 }
-
-/* Show/animate tooltip */
 .sidebar-tooltip-pop.active {
     opacity: 1;
     display: block;
     transform: translateY(-50%) scale(1.03);
 }
-/* Optional: Add a little arrow - visually aligns tooltip */
 .sidebar-tooltip-pop::before {
     content:"";
     position:absolute;
@@ -916,14 +1119,12 @@ body::before {
     border-style:solid;
     border-color:transparent #3762c8 transparent transparent;
 }
-
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
     margin: 20px 25px 0 25px;
     transition: all 0.3s ease;
 }
-
 [data-theme="dark"] .sidebar-divider {
     border-bottom-color: rgba(255, 255, 255, 0.3);
 }
@@ -931,7 +1132,6 @@ body::before {
     width: calc(100% - 20px);
     margin: 20px 10px 0 10px;
 }
-
 .sidebar-nav .user-info {
     display: flex;
     flex-direction: column;
@@ -940,7 +1140,6 @@ body::before {
     border-top: 1px solid rgba(255,255,255,0.2);
     transition: all 0.3s ease;
 }
-
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -955,8 +1154,6 @@ body::before {
 .sidebar-nav.collapsed .user-welcome {
     display: none;
 }
-
-/* --- LOGOUT BUTTON --- */
 .sidebar-nav .logout-btn {
     background: #3762c8;
     border: 1px solid rgba(255,255,255,0.3);
@@ -969,12 +1166,11 @@ body::before {
     font-size: 16px;
     min-width: 0;
 }
-/* Expanded state is normal, below is collapsed state */
 .sidebar-nav.collapsed .logout-btn {
-    padding: 12px 4px !important;       /* Match tightened .nav-link in collapsed */
-    width: 70%;                         /* Take full available width to match nav-links */
+    padding: 12px 4px !important;
+    width: 70%;
     border-radius: 8px;
-    font-size: 0 !important;             /* Hide text like .nav-link */
+    font-size: 0 !important;
     justify-content: center;
     align-items: center;
     min-width: 0;
@@ -996,24 +1192,27 @@ body::before {
     transform: scale(1.08);
     background: #2851b3;
 }
-
-/* Ensure the button does not shrink smaller than nav-link when collapsed */
 .sidebar-nav.collapsed .logout-btn {
     box-sizing: border-box;
     max-width: 100%;
 }
-
 .sidebar-nav.collapsed .logout-btn::after {
     display: none;
 }
-
-/* === MOBILE SIDEBAR DARK MODE POSITION === */
-/* Hidden by default (desktop) */
 .mobile-dark-mode-btn {
     display: none;
 }
+.sidebar-tooltip-pop.logout-pop {
+    min-width: 120px;
+    max-width: 60vw;
+    white-space: normal;
+    text-align: center;
+    transition: none !important;
+}
 
-/* END LOGOUT BUTTON */
+.mobile-dark-mode-btn {
+    display: none;
+}
 
 #logoutAlertBackdrop {
     position: fixed;
@@ -1025,9 +1224,11 @@ body::before {
     justify-content: center;
     transition: background 0.18s;
 }
+
 #logoutAlertBackdrop.active {
     display: flex;
 }
+
 #logoutAlertModal {
     background: #fff;
     border-radius: 18px;
@@ -1041,10 +1242,12 @@ body::before {
     flex-direction: column;
     align-items: center;
 }
+
 @keyframes fadeIn {
     from{transform:translateY(34px) scale(.95); opacity:.24;}
     to  {transform:translateY(0) scale(1); opacity:1;}
 }
+
 #logoutAlertModal .icon-wrap {
     display: flex;
     justify-content: center;
@@ -1056,11 +1259,13 @@ body::before {
     margin: 0 auto 13px auto;
     box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
 }
+
 #logoutAlertModal .icon-wrap .icon {
     color: #e94444;
     font-size: 2.1rem;
     line-height: 1;
 }
+
 #logoutAlertModal .alert-title {
     font-size: 1.09rem;
     letter-spacing: 0.04em;
@@ -1070,17 +1275,20 @@ body::before {
     margin-bottom: 8px;
     margin-top: 6px;
 }
+
 #logoutAlertModal .alert-desc {
     color: #374565;
     font-size: 0.99rem;
     text-align: center;
     margin-bottom: 19px;
 }
+
 #logoutAlertModal .alert-btns {
     display: flex;
     gap: 15px;
     justify-content: center;
 }
+
 #logoutAlertModal .alert-btn {
     min-width: 95px;
     padding: 8px 0;
@@ -1092,27 +1300,30 @@ body::before {
     transition: background .18s, color .18s;
     outline: none;
 }
+
 #logoutAlertModal .alert-btn.cancel {
     background: #f3f4fa;
     color: #353d52;
     border: 1px solid #e3e6f1;
 }
+
 #logoutAlertModal .alert-btn.cancel:hover {
     background: #e9eeff;
     color: #3650c7;
     border-color: #c7d1f3;
 }
+
 #logoutAlertModal .alert-btn.logout {
     color: #fff;
     background: #e94444;
     border: none;
     box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
 }
+
 #logoutAlertModal .alert-btn.logout:hover {
     background: #c82d2d;
 }
 
-/* Notification Popup Styles (copied from login.php) */
 .notif-popup {
     position: fixed;
     top: 30px;
@@ -1124,7 +1335,7 @@ body::before {
     background: var(--bg-secondary);
     border-radius: 13px;
     box-shadow: 0 8px 38px var(--shadow-color);
-    z-index: 5001; /* Was 3001, bumped above mobile-top-nav */
+    z-index: 5001;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -1136,11 +1347,13 @@ body::before {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
+
 .notif-popup .notif-icon { font-size: 23px; }
 .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
 .notif-popup.notif-error { border-left: 5px solid #d73f52; }
 .notif-popup.notif-warning { border-left: 5px solid #dda203; }
 .notif-popup.notif-info { border-left: 5px solid #527cdf; }
+
 .notif-popup .notif-close {
     background: none;
     border: none;
@@ -1149,100 +1362,592 @@ body::before {
     color: #888;
     cursor: pointer;
 }
-/* MAIN CONTENT SCROLLBAR/EXTRAS UNCHANGED */
-.main-content::-webkit-scrollbar { height: 8px; }
+
+.main-content::-webkit-scrollbar { 
+    width: 8px; 
+}
+
 .main-content::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
+    background: rgba(55,98,200,0.3);
     border-radius: 4px;
 }
+
 .main-content::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
+    background: transparent;
 }
-/* MAIN CONTAINER CARD */
-.main-card {
-    background: var(--bg-tertiary);
-    backdrop-filter: blur(14px);
-    border-radius: 26px;
-    padding: 40px;
-    margin: 20px;
+
+/* ===========================
+   DASHBOARD STYLES - ENHANCED
+=========================== */
+
+.dashboard-container {
     width: 100%;
-    height: calc(100vh - 100px); /* ✅ fills screen even without content */
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    box-shadow: 0 12px 35px var(--shadow-color);
-    border: 1px solid var(--border-color);
-    transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
 }
-.main-card .card {
+
+/* Card wrapper for all dashboard content */
+.dashboard-card {
     background: var(--bg-secondary);
-}
-.main-card::-webkit-scrollbar {
-    display: none;
-}
-.card {
-    align-self: start;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     border-radius: 18px;
+    transform: translateZ(0);
     padding: 30px 35px;
     box-shadow: 0 6px 20px var(--shadow-color);
-    transition: 0.2s;
+    border: 1px solid var(--border-color);
+    margin-bottom: 30px;
+}
+
+.dashboard-header {
+    margin-bottom: 30px;
+}
+
+.dashboard-title {
+    color: var(--text-primary);
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.dashboard-subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 16px;
+    transform: translateZ(0);
+    padding: 24px;
+    box-shadow: 0 4px 16px var(--shadow-color);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+/* Enhanced metric card backgrounds with stronger colors */
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    opacity: 0.15;
+    transition: opacity 0.3s ease;
+}
+
+.metric-card:hover::before {
+    opacity: 0.25;
+}
+
+.metric-card.green::before {
+    background: var(--metric-green);
+}
+
+.metric-card.blue::before {
+    background: var(--metric-blue);
+}
+
+.metric-card.orange::before {
+    background: var(--metric-orange);
+}
+
+.metric-card.red::before {
+    background: var(--metric-red);
+}
+
+.metric-card.purple::before {
+    background: var(--metric-purple);
+}
+
+.metric-header {
     display: flex;
-    flex-direction: column;
-    gap: 18px;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.metric-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Enhanced metric icons with vibrant colors */
+.metric-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    transition: transform 0.3s ease;
+}
+
+.metric-card:hover .metric-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.metric-card.green .metric-icon {
+    background: linear-gradient(135deg, var(--metric-green), var(--metric-green-light));
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.metric-card.blue .metric-icon {
+    background: linear-gradient(135deg, var(--metric-blue), var(--metric-blue-light));
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.metric-card.orange .metric-icon {
+    background: linear-gradient(135deg, var(--metric-orange), var(--metric-orange-light));
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.metric-card.red .metric-icon {
+    background: linear-gradient(135deg, var(--metric-red), var(--metric-red-light));
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.metric-card.purple .metric-icon {
+    background: linear-gradient(135deg, var(--metric-purple), var(--metric-purple-light));
+    box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+.metric-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.metric-trend {
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.metric-trend.positive {
+    color: var(--metric-green);
+}
+
+.metric-trend.negative {
+    color: var(--metric-red);
+}
+
+.metric-trend-icon {
+    font-size: 14px;
+}
+
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 16px;
+    transform: translateZ(0);
+    padding: 24px;
+    box-shadow: 0 4px 16px var(--shadow-color);
     border: 1px solid var(--border-color);
 }
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-.card h3 {
-    margin-bottom: 12px;
-}
-.card p {
-    font-size: 14px;
-    color: var(--text-primary);
-}
 
-.card h3 {
-    color: var(--text-primary);
-}
-/* Buttons */
-.btn-primary {
-    padding: 10px 20px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
-    cursor: pointer;
-    transition: 0.25s;
-    text-decoration: none;
-    text-align: center;
+.chart-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-}
-.btn-primary:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
-    transform: translateY(-2px);
-    text-decoration: none;
-}
-/* --- Custom: Logout Tooltip for Collapsed Sidebar --- */
-.sidebar-tooltip-pop.logout-pop {
-    min-width: 120px;
-    max-width: 60vw;
-    white-space: normal;
-    text-align: center;
-    transition: none !important; /* <--- FIX: prevent animation/resize on hide */
+    margin-bottom: 20px;
 }
 
-/* =========================
-   MOBILE RULES
-========================= */
+.chart-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chart-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.chart-filters {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background: rgba(55, 98, 200, 0.1);
+    border-color: #3762c8;
+    color: #3762c8;
+}
+
+.filter-btn.active {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Recent Activity */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    border-left: 3px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: rgba(55, 98, 200, 0.05);
+    border-left-color: #3762c8;
+}
+
+.activity-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.activity-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.activity-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+/* Top Facilities */
+.facilities-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.facility-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.facility-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(55, 98, 200, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #3762c8;
+    flex-shrink: 0;
+}
+
+.facility-info {
+    flex: 1;
+}
+
+.facility-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.facility-bar-container {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.facility-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3762c8, #5f8cff);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+.facility-count {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Quick Actions */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.action-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--shadow-color);
+    border-color: #3762c8;
+}
+
+.action-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: rgba(55, 98, 200, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.action-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.action-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* Upcoming Schedules Section */
+.schedule-preview {
+    margin-top: 20px;
+}
+
+.schedule-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.schedule-preview-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.view-all-link {
+    font-size: 13px;
+    color: #3762c8;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.view-all-link:hover {
+    color: #2851b3;
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    border-left: 3px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.schedule-item:hover {
+    background: rgba(55, 98, 200, 0.05);
+    border-left-color: #3762c8;
+}
+
+.schedule-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.schedule-icon.high-priority {
+    background: linear-gradient(135deg, var(--metric-red), var(--metric-red-light));
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.schedule-icon.medium-priority {
+    background: linear-gradient(135deg, var(--metric-orange), var(--metric-orange-light));
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.schedule-icon.low-priority {
+    background: linear-gradient(135deg, var(--metric-blue), var(--metric-blue-light));
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.schedule-content {
+    flex: 1;
+}
+
+.schedule-task {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.schedule-location {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.schedule-date-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.schedule-date {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.schedule-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.schedule-badge.high {
+    background: rgba(244, 67, 54, 0.15);
+    color: var(--metric-red);
+}
+
+.schedule-badge.medium {
+    background: rgba(255, 152, 0, 0.15);
+    color: var(--metric-orange);
+}
+
+.schedule-badge.low {
+    background: rgba(33, 150, 243, 0.15);
+    color: var(--metric-blue);
+}
+
+.no-schedules {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Mobile Responsiveness */
 @media (max-width: 768px) {
-    /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
     .desktop-top-nav {
         display: none;
     }
@@ -1257,12 +1962,14 @@ body::before {
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);
         transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
     .mobile-toggle {
         position: absolute;
         left: 14px;
@@ -1275,10 +1982,12 @@ body::before {
         font-size: 20px;
         cursor: pointer;
     }
+
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
     }
+
     .mobile-clock {
         position: absolute;
         right: 56px;
@@ -1288,6 +1997,7 @@ body::before {
         white-space: nowrap;
         transition: color 0.3s ease;
     }
+
     .mobile-notif-btn {
         position: absolute;
         right: 12px;
@@ -1298,7 +2008,6 @@ body::before {
         z-index: 1;
     }
 
-    /* === MOBILE SIDEBAR DARK MODE POSITION === */
     .mobile-dark-mode-btn {
         display: flex;
         position: absolute;
@@ -1312,7 +2021,6 @@ body::before {
         justify-content: center;
     }
 
-    /* Align profile properly */
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
@@ -1322,16 +2030,14 @@ body::before {
     }
 
     .sidebar-top {
-        position: relative; /* anchor for absolute children */
+        position: relative;
     }
 
-    /* Center logo between profile & dark mode */
     .site-logo {
         margin-top: 60px;
         text-align: center;
     }
 
-    /* Show sidebar, sidebar nav rules */
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
@@ -1341,25 +2047,35 @@ body::before {
         border-radius: 18px;
         transition: left 0.35s ease;
         z-index: 4000;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     }
 
     .sidebar-nav.mobile-active {
         left: 12px;
     }
 
-    /* Disable desktop collapse behavior */
     .sidebar-nav.collapsed {
         width: calc(100% - 24px);
     }
 
-    /* Main content always full width */
     .main-content,
     .main-content.expanded {
         margin-left: 0 !important;
         padding-top: 90px;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0px;
     }
 
-    /* Sidebar internal layout for mobile */
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
+    }
+
     .sidebar-top {
         padding-top: 30px;
     }
@@ -1383,62 +2099,17 @@ body::before {
         display: none !important;
     }
 
-    /* Logout stays bottom */
     .user-info {
         padding-bottom: 20px;
     }
 
-    /* Hide desktop toggle */
     .sidebar-toggle {
         display: none;
     }
 
-    /* ===============================
-       🚩 MOBILE-ONLY MAIN CONTENT FIXES
-       =============================== */
-
-    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
-    .main-content,
-    .main-content.expanded {
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto;           /* allow scrolling */
-        padding: 0px;
-        margin: 0px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
-    }
-
-    /* Hide main-content vertical (right) scrollbar but retain scrollability */
-    .main-content::-webkit-scrollbar {
-        width: 0 !important;
-        background: transparent;
-        display: none !important;
-    }
-    .main-content {
-        scrollbar-width: none;           /* Firefox */
-        -ms-overflow-style: none;        /* Edge/IE */
-    }
-
-    /* 2️⃣ MAIN CARD no forced height; internal scroll not needed */
-    .main-card {
-        margin-top: 85px;
-        padding: 20px;
-        border-radius: 18px;
-    }
-    .main-card::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* 🧪 OPTIONAL: mobile card tighter padding for small screens */
-    .card {
-        padding: 22px;
-    }
-
-    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
-        top: 76px !important; /* 64px mobile-top-nav + 12px spacing */
-        z-index: 5050 !important; /* Above .mobile-top-nav (z-index:5000) */
+        top: 76px !important;
+        z-index: 5050 !important;
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 40px);
@@ -1447,37 +2118,121 @@ body::before {
         padding: 14px 12px;
         font-size: 16px;
     }
+
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    /* CRITICAL: Chart responsiveness fixes */
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .chart-container {
+        height: 250px !important;
+        width: 100% !important;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .chart-container canvas {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    .chart-card {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        padding: 16px;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .chart-title {
+        font-size: 16px;
+    }
+    
+    .chart-subtitle {
+        font-size: 12px;
+    }
+
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .dashboard-container {
+        padding: 0 16px 20px;
+    }
+
+    .dashboard-title {
+        font-size: 24px;
+    }
+
+    .dashboard-card {
+        padding: 20px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+    
+    /* Optimize facilities list on mobile */
+    .facilities-list {
+        width: 100%;
+    }
+    
+    .facility-item {
+        flex-wrap: nowrap;
+        gap: 12px;
+    }
+    
+    .facility-rank {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    .facility-info {
+        min-width: 0;
+        flex: 1;
+    }
+    
+    .facility-name {
+        font-size: 13px;
+    }
+    
+    .facility-count {
+        font-size: 13px;
+    }
 }
 </style>
 <script>
-// --- Server time for server-synced clock ---
-const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
-// --- ✅ BULLETPROOF THEME APPLICATION - PREVENTS RESET ---
 (function() {
     try {
-        // Read theme with extra validation
         let savedTheme = localStorage.getItem('theme');
         
-        // Validate the theme value
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light'; // Default to light if corrupted
+            savedTheme = 'light';
         }
         
-        // Apply theme immediately
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         } else {
             document.documentElement.removeAttribute('data-theme');
         }
         
-        // ✅ CRITICAL FIX: Re-save to localStorage to ensure it persists
-        // This prevents any race conditions from clearing it
         localStorage.setItem('theme', savedTheme);
         
     } catch (e) {
         console.error('Theme initialization error:', e);
-        // If localStorage fails, default to light mode
         document.documentElement.removeAttribute('data-theme');
     }
 })();
@@ -1533,10 +2288,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         </button>
     </div>
 
-    <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
-
-        <!-- Profile Button -->
         <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
             <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
@@ -1545,13 +2297,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <span class="dark-icon">🌙</span>
             <span class="light-icon" style="display: none;">☀️</span>
         </button>
-        <!-- Logo -->
+        
         <div class="site-logo">
             <img src="logocityhall.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
-        <!-- Navigation -->
+        
         <ul class="nav-list">
             <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a></li>
@@ -1569,10 +2321,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<!-- Tooltip container for sidebar nav-links, profile icon, and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
-<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
+<!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
         <div class="icon-wrap">
@@ -1588,37 +2339,412 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </div>
 
 <div class="main-content">
-    <div class="main-card">
-        <div class="card">
-            <h3>Pending Requests</h3>
-            <p>Track and assign new community maintenance requests submitted by citizens.</p>
-            <a href="requests.php" class="btn-primary">View Requests</a>
-        </div>
-        <div class="card">
-            <h3>Facility Status</h3>
-            <p>Monitor the condition of community infrastructure and update maintenance logs.</p>
-            <a href="reports.php" class="btn-primary">Update Status</a>
-        </div>
-        <div class="card">
-            <h3>Performance Reports</h3>
-            <p>Generate reports on completed requests and ongoing maintenance projects.</p>
-            <a href="reports.php" class="btn-primary">Generate Report</a>
+    <div class="dashboard-container">
+        <!-- Dashboard Header -->
+        <div class="dashboard-card">
+            <div class="dashboard-header">
+                <h1 class="dashboard-title">Dashboard Overview</h1>
+                <p class="dashboard-subtitle">Welcome back, <?= htmlspecialchars($displayName) ?></p>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card blue">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Total Requests</div>
+                        </div>
+                        <div class="metric-icon">📋</div>
+                    </div>
+                    <div class="metric-value"><?= number_format($totalRequests) ?></div>
+                    <div class="metric-trend <?= $requestsTrend >= 0 ? 'positive' : 'negative' ?>">
+                        <span class="metric-trend-icon"><?= $requestsTrend >= 0 ? '↗' : '↘' ?></span>
+                        <span><?= abs(round($requestsTrend, 1)) ?>%</span>
+                    </div>
+                </div>
+
+                <div class="metric-card orange">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Pending Requests</div>
+                        </div>
+                        <div class="metric-icon">⏳</div>
+                    </div>
+                    <div class="metric-value"><?= number_format($pendingRequests) ?></div>
+                    <div class="metric-trend">
+                        <span><?= $totalRequests > 0 ? round(($pendingRequests / $totalRequests) * 100, 1) : 0 ?>% of total</span>
+                    </div>
+                </div>
+
+                <div class="metric-card green">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Completed Tasks</div>
+                        </div>
+                        <div class="metric-icon">✅</div>
+                    </div>
+                    <div class="metric-value"><?= number_format($completedTasks) ?></div>
+                    <div class="metric-trend positive">
+                        <span class="metric-trend-icon">↗</span>
+                        <span>This month</span>
+                    </div>
+                </div>
+
+                <div class="metric-card purple">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Active Users</div>
+                        </div>
+                        <div class="metric-icon">👥</div>
+                    </div>
+                    <div class="metric-value"><?= number_format($activeUsers) ?></div>
+                    <div class="metric-trend">
+                        <span>Employees</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <a href="requests.php" class="action-btn">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">View Requests</div>
+                    <div class="action-subtitle">Manage pending requests</div>
+                </a>
+                <a href="sched.php" class="action-btn">
+                    <div class="action-icon">📅</div>
+                    <div class="action-title">Schedule</div>
+                    <div class="action-subtitle">Maintenance calendar</div>
+                </a>
+                <a href="reports.php" class="action-btn">
+                    <div class="action-icon">📊</div>
+                    <div class="action-title">Reports</div>
+                    <div class="action-subtitle">Generate reports</div>
+                </a>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <!-- Request Trends Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Request Trends</div>
+                            <div class="chart-subtitle">Total requests over the last 6 months</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Status Breakdown Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Status Breakdown</div>
+                            <div class="chart-subtitle">Distribution of request statuses</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Grid -->
+            <div class="charts-grid">
+                <!-- Top Facilities -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Top Facilities by Requests</div>
+                            <div class="chart-subtitle">Facilities with the highest number of requests</div>
+                        </div>
+                    </div>
+                    <div class="facilities-list">
+                        <?php 
+                        $rank = 1;
+                        $maxCount = 0;
+                        
+                        mysqli_data_seek($topFacilitiesResult, 0);
+                        if ($row = $topFacilitiesResult->fetch_assoc()) {
+                            $maxCount = $row['request_count'];
+                            mysqli_data_seek($topFacilitiesResult, 0);
+                        }
+                        
+                        while ($row = $topFacilitiesResult->fetch_assoc()): 
+                            $percentage = $maxCount > 0 ? ($row['request_count'] / $maxCount) * 100 : 0;
+                        ?>
+                        <div class="facility-item">
+                            <div class="facility-rank"><?= $rank++ ?></div>
+                            <div class="facility-info">
+                                <div class="facility-name"><?= htmlspecialchars($row['infrastructure']) ?></div>
+                                <div class="facility-bar-container">
+                                    <div class="facility-bar" style="width: <?= $percentage ?>%"></div>
+                                </div>
+                            </div>
+                            <div class="facility-count"><?= $row['request_count'] ?></div>
+                        </div>
+                        <?php endwhile; ?>
+                        
+                        <?php if ($topFacilitiesResult->num_rows == 0): ?>
+                        <p style="text-align: center; color: var(--text-secondary); padding: 20px;">No data available</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Upcoming Maintenance Schedules -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Upcoming Maintenance</div>
+                            <div class="chart-subtitle">Next scheduled tasks</div>
+                        </div>
+                        <a href="sched.php" class="view-all-link">View all →</a>
+                    </div>
+                    <div class="schedule-list">
+                        <?php 
+                        if (!empty($upcomingSchedules)):
+                            foreach ($upcomingSchedules as $schedule): 
+                                $priority = strtolower($schedule['priority'] ?? 'low');
+                                $iconClass = 'low-priority';
+                                if ($priority === 'high' || $priority === 'critical') {
+                                    $iconClass = 'high-priority';
+                                } elseif ($priority === 'medium') {
+                                    $iconClass = 'medium-priority';
+                                }
+                                
+                                $badgeClass = 'low';
+                                if ($priority === 'high' || $priority === 'critical') {
+                                    $badgeClass = 'high';
+                                } elseif ($priority === 'medium') {
+                                    $badgeClass = 'medium';
+                                }
+                        ?>
+                        <div class="schedule-item">
+                            <div class="schedule-icon <?= $iconClass ?>">📅</div>
+                            <div class="schedule-content">
+                                <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
+                                <div class="schedule-location"><?= htmlspecialchars($schedule['location']) ?></div>
+                            </div>
+                            <div class="schedule-date-container">
+                                <div class="schedule-date"><?= date('M d, Y', strtotime($schedule['starting_date'])) ?></div>
+                                <span class="schedule-badge <?= $badgeClass ?>"><?= ucfirst($priority) ?></span>
+                            </div>
+                        </div>
+                        <?php 
+                            endforeach;
+                        else:
+                        ?>
+                        <div class="no-schedules">No upcoming maintenance scheduled</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Recent Activity</div>
+                        <div class="chart-subtitle">Latest maintenance requests</div>
+                    </div>
+                </div>
+                <div class="activity-list">
+                    <?php 
+                    $avatarColors = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#e91e63'];
+                    $colorIndex = 0;
+                    while ($row = $recentActivitiesResult->fetch_assoc()): 
+                        $initial = substr($row['infrastructure'], 0, 1);
+                        $timeAgo = date('M d, Y', strtotime($row['created_at']));
+                    ?>
+                    <div class="activity-item">
+                        <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
+                            <?= $initial ?>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title"><?= htmlspecialchars($row['infrastructure']) ?></div>
+                            <div class="activity-description"><?= htmlspecialchars($row['location']) ?> - <?= htmlspecialchars($row['approval_status']) ?></div>
+                        </div>
+                        <div class="activity-time"><?= $timeAgo ?></div>
+                    </div>
+                    <?php 
+                    $colorIndex++;
+                    endwhile; 
+                    ?>
+                    
+                    <?php if ($recentActivitiesResult->num_rows == 0): ?>
+                    <p style="text-align: center; color: var(--text-secondary); padding: 20px;">No recent activity</p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// ===== CHART DATA FROM PHP =====
+const monthlyTrendsLabels = <?= json_encode($monthlyTrendsLabels) ?>;
+const monthlyTrendsData = <?= json_encode($monthlyTrendsData) ?>;
+const statusLabels = <?= json_encode($statusLabels) ?>;
+const statusData = <?= json_encode($statusData) ?>;
+
+// ===== REQUEST TRENDS CHART =====
+const trendsCtx = document.getElementById('trendsChart');
+if (trendsCtx) {
+    new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: monthlyTrendsLabels,
+            datasets: [{
+                label: 'Total Requests',
+                data: monthlyTrendsData,
+                borderColor: '#3762c8',
+                backgroundColor: 'rgba(55, 98, 200, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#3762c8',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                        font: { size: 13, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    cornerRadius: 8
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ===== STATUS BREAKDOWN CHART =====
+const statusCtx = document.getElementById('statusChart');
+if (statusCtx) {
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: [
+                    '#ff9800',  // Pending - Orange
+                    '#4caf50',  // Approved - Green
+                    '#f44336'   // Rejected - Red
+                ],
+                borderWidth: 3,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                        font: { size: 13, weight: '600' },
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Make charts responsive on window resize
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        // Get all Chart instances and update them
+        Chart.instances.forEach(function(chart) {
+            chart.resize();
+        });
+    }, 250);
+});
+
+// Mobile-specific chart optimization
+if (window.innerWidth <= 768) {
+    // Reduce animation for better performance on mobile
+    Chart.defaults.animation = {
+        duration: 200
+    };
+}
+</script>
+<script>
+// Sidebar & Navigation Scripts
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
 const sidebarNav = document.getElementById('sidebarNav');
 
-// Helper to detect mobile view (update the breakpoint if needed)
 function isMobileView() {
-    return window.innerWidth <= 900; // or your specific mobile breakpoint
+    return window.innerWidth <= 900;
 }
 
-// Make sure sidebar collapsed state is persisted
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
@@ -1626,7 +2752,6 @@ if (sidebarCollapsed) {
     document.body.classList.add('sidebar-collapsed');
 }
 
-// --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
     const isNowMobile = isMobileView();
@@ -1645,7 +2770,6 @@ sidebarToggle.addEventListener('click', () => {
     document.body.classList.toggle('sidebar-collapsed', isCollapsed);
     localStorage.setItem('sidebarCollapsed', isCollapsed);
 
-    // ===== FIX 1: Force repaint for sidebar scroll bug =====
     sidebar.style.overflowX = "hidden";
 
     if (!isCollapsed) {
@@ -1658,17 +2782,15 @@ const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
 
-// Add tooltip listeners for nav-links
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
     link.addEventListener('mouseenter', navTooltipHandler);
     link.addEventListener('focus', navTooltipHandler);
     link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     link.addEventListener('blur', hideNavTooltip);
 });
-// Add tooltip for profile icon (on collapse, like employee.php)
+
 const profileIconBtn = document.getElementById('profileIconBtn');
 if (profileIconBtn) {
-    // Add click handler to navigate to profile page
     profileIconBtn.addEventListener('click', function(e) {
         e.preventDefault();
         window.location.href = 'profile.php';
@@ -1679,7 +2801,6 @@ if (profileIconBtn) {
     profileIconBtn.addEventListener('blur', hideNavTooltip);
 }
 
-// Tooltip logic for logout button
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -1735,6 +2856,7 @@ function showLogoutTooltip(e) {
         tooltipHideTimeout = null;
     }
 }
+
 function hideNavTooltipImmediate() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1744,6 +2866,7 @@ function hideNavTooltipImmediate() {
         tooltipHideTimeout = null;
     }
 }
+
 function hideNavTooltip() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     setTimeout(function() {
@@ -1755,12 +2878,12 @@ function hideNavTooltip() {
         tooltipHideTimeout = null;
     }
 }
+
 function navTooltipHandler(e) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
         return;
     }
-    // Show nav-link or profile icon name
     let tooltipText = this.getAttribute('data-tooltip');
     if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
     if (!tooltipText) return;
@@ -1784,6 +2907,7 @@ function navTooltipHandler(e) {
         tooltipHideTimeout = null;
     }
 }
+
 function navLinkMouseLeaveHandler(e) {
     if (
         e.relatedTarget === sidebarNavTooltip ||
@@ -1796,12 +2920,14 @@ function navLinkMouseLeaveHandler(e) {
         tooltipActiveLink = null;
     }, 60);
 }
+
 sidebarNavTooltip.addEventListener('mouseleave', function() {
     tooltipHideTimeout = setTimeout(() => {
         hideNavTooltip();
         tooltipActiveLink = null;
     }, 60);
 });
+
 sidebarNavTooltip.addEventListener('mouseenter', function() {
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
@@ -1809,7 +2935,6 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// Keyboard accessibility: show tooltip on space/enter
 document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
     link.addEventListener('keydown', function(e) {
         if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -1818,12 +2943,14 @@ document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
         }
     });
 });
+
 logoutBtn.addEventListener('keydown', function(e) {
     if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
         e.preventDefault();
         this.focus();
     }
 });
+
 sidebarToggle.addEventListener('click', () => {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -1838,21 +2965,22 @@ const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
 const logoutCancelBtn = document.getElementById('logoutCancelBtn');
 const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
 
-// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
 logoutBtn.addEventListener('click', (e) => {
-    // prevent default just in case (button not type=submit)
     e.preventDefault();
     logoutAlertBackdrop.classList.add("active");
     hideNavTooltipImmediate();
 });
+
 logoutCancelBtn.addEventListener('click', (e) => {
     e.preventDefault();
     logoutAlertBackdrop.classList.remove("active");
 });
+
 logoutConfirmBtn.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'logout.php';
 });
+
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
     if (e.target === logoutAlertBackdrop) {
         logoutAlertBackdrop.classList.remove("active");
@@ -1866,7 +2994,6 @@ if (mobileToggle) {
     });
 }
 
-// --- Add step 3: force reload on browser bfcache to enforce session check ---
 window.addEventListener("pageshow", function (event) {
     if (event.persisted) {
         window.location.reload();
@@ -1880,7 +3007,6 @@ function handleProfilePicture() {
     const fallback = document.getElementById('profileFallbackIcon');
     if (!img) return;
     
-    // Set initial state
     const checkImage = () => {
         if (!img.src || img.src.endsWith('profile.png') || img.src.includes('profile.png')) {
             img.style.display = 'none';
@@ -1888,7 +3014,6 @@ function handleProfilePicture() {
                 fallback.style.display = 'flex';
             }
         } else {
-            // Check if image actually loads
             const testImg = new Image();
             testImg.onload = () => {
                 img.style.display = 'block';
@@ -1906,7 +3031,6 @@ function handleProfilePicture() {
         }
     };
     
-    // Handle image load/error events
     img.onerror = () => {
         img.style.display = 'none';
         if (fallback) {
@@ -1915,7 +3039,6 @@ function handleProfilePicture() {
     };
     
     img.onload = () => {
-        // Only show image if it's not the default profile.png
         if (img.src && !img.src.endsWith('profile.png') && !img.src.includes('profile.png')) {
             img.style.display = 'block';
             if (fallback) {
@@ -1929,28 +3052,24 @@ function handleProfilePicture() {
         }
     };
     
-    // Initial check
     checkImage();
 }
 
 document.addEventListener('DOMContentLoaded', handleProfilePicture);
-// Also run after a short delay to ensure image src is set
 setTimeout(handleProfilePicture, 100);
 </script>
 
 <script>
-let inactivityTime = 20 * 60 * 1000; // 20 minutes
+let inactivityTime = 20 * 60 * 1000;
 let inactivityTimer;
 
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-        // Silent logout (no notification)
         window.location.href = 'logout.php';
     }, inactivityTime);
 }
 
-// Events that count as activity
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
@@ -1958,14 +3077,12 @@ resetInactivityTimer();
 </script>
 
 <script>
-// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP, ETC. =====
-
-const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+// Clock Script
+const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
 let clockInterval = null;
 let lastSecond = null;
 
-// Get nice timezone label, e.g. Asia/Manila (GMT+8)
 function getTimezoneLabel() {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const offset = -new Date().getTimezoneOffset() / 60;
@@ -1981,8 +3098,6 @@ function renderClock(now) {
         day: 'numeric'
     });
 
-    // Always 2-digits for minutes/seconds so we can use flip animation
-    // Output: e.g. 4:07:44 PM
     const timeStr = now.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -1990,8 +3105,6 @@ function renderClock(now) {
         hour12: true
     });
 
-    // Split into hour, minute, second, ampm - for flipping animation
-    // timeStr: "4:07:44 PM"
     const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
     let h = t ? t[1] : "--";
     let m = t ? t[2] : "--";
@@ -2001,7 +3114,6 @@ function renderClock(now) {
     const desktopClock = document.getElementById('desktopClock');
     const mobileClock = document.getElementById('mobileClock');
 
-    // For the flip effect, wrap each digit in span
     function flipSpan(str) {
         return str.split('').map(chr => `<span>${chr}</span>`).join('');
     }
@@ -2026,7 +3138,6 @@ function tick() {
     const now = new Date(currentServerTime);
     const sec = now.getSeconds();
 
-    // Animate flips only on actual second changes
     if (sec !== lastSecond) {
         document.querySelectorAll('.time-part').forEach(el => {
             el.classList.add('flip');
@@ -2036,7 +3147,6 @@ function tick() {
     }
 
     renderClock(now);
-
     currentServerTime += 1000;
 }
 
@@ -2046,7 +3156,6 @@ function startClock() {
     clockInterval = setInterval(tick, 1000);
 }
 
-// Pause/resume flip and ticking for perf when page is hidden
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         clearInterval(clockInterval);
@@ -2056,12 +3165,9 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Resync with server every X minutes, anti-drift
 setInterval(() => {
     fetch(location.href, { method: 'HEAD' })
         .then(() => {
-            // New PHP time is available in global SERVER_TIME var (not perfect, but synchronous; see note)
-            // Since the page doesn't reload, just reset drift to starting value
             currentServerTime = SERVER_TIME;
         });
 }, RESYNC_MINUTES * 60 * 1000);
@@ -2070,7 +3176,7 @@ startClock();
 </script>
 
 <script>
-// ===== DARK MODE TOGGLE (BULLETPROOF VERSION) =====
+// Dark Mode Toggle
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
@@ -2082,7 +3188,6 @@ startClock();
     const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
 
-    // ✅ CRITICAL: Store theme in a backup location too
     const THEME_KEY = 'theme';
     const THEME_BACKUP_KEY = 'theme_backup';
 
@@ -2096,11 +3201,9 @@ startClock();
                 html.removeAttribute('data-theme');
             }
             
-            // ✅ Save to both primary and backup locations
             localStorage.setItem(THEME_KEY, themeValue);
             localStorage.setItem(THEME_BACKUP_KEY, themeValue);
             
-            // Update icons
             if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
             if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
             if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
@@ -2119,16 +3222,13 @@ startClock();
         }
     }
 
-    // ✅ Load saved theme with backup fallback
     try {
         let savedTheme = localStorage.getItem(THEME_KEY);
         
-        // If primary is missing or corrupted, try backup
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
         }
         
-        // Final fallback
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = 'light';
         }
@@ -2147,8 +3247,6 @@ startClock();
     if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
     if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
 
-    // ✅ CRITICAL: Protect localStorage from being cleared on navigation
-    // Listen for beforeunload and ensure theme is saved
     window.addEventListener('beforeunload', function() {
         try {
             const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -2363,5 +3461,6 @@ startClock();
     }, 150);
 })();
 </script>
+
 </body>
 </html>

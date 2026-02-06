@@ -90,10 +90,8 @@ function getDisplayName() {
     if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
         return 'Admin - ' . $name;
     } elseif ($role) {
-        // Show role for any other roles, e.g., "Employee - John Doe"
         return $role . ' - ' . $name;
     } else {
-        // No role: show plain name
         return $name;
     }
 }
@@ -137,9 +135,77 @@ $result = $conn->query($sql);
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-/* =========================
-   SIDEBAR/CLOCK ALIGNMENT CONSTANTS (from employee.php)
-========================= */
+/* =======================
+   Custom SCROLLBAR STYLE
+   (synced with employee.php)
+========================== */
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* End Custom SCROLLBAR STYLE */
+
 :root {
     --sidebar-expanded: 250px;
     --sidebar-collapsed: 70px;
@@ -522,15 +588,15 @@ body.sidebar-collapsed .desktop-clock {
     display: none;
 }
 
-/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+/* Z-INDEX LAYERING SAFETY */
 body {
     height: 100vh;
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
     z-index: 0;
     transition: background 0.3s ease;
+    overflow: hidden;
 }
-
 
 body::before {
     content: "";
@@ -1137,7 +1203,7 @@ body::before {
     padding-top: 60px;
     padding-left: 20px;
     padding-right: 20px;
-    min-height: 100vh;  
+    height: 100vh;  
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -1149,11 +1215,8 @@ body::before {
 /* --- END FIX --- */
 
 .page-title{
-    color: #fff;
     font-size:28px;
-    margin-bottom:25px;
-    margin-top:20px;
-    font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
+    color: var(--text-primary);
 }
 
 .card {
@@ -1163,6 +1226,7 @@ body::before {
     border-radius: 18px;
     padding: 30px 35px;
     margin-bottom: 30px;
+    margin-top: 28px;
     box-shadow: 0 6px 20px var(--shadow-color);
     transition: 0.2s;
     display: flex;
@@ -1349,7 +1413,9 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
 }
 
 @media (max-width: 768px) {
-    
+    body {
+    overflow: auto;
+    }
     .mobile-top-nav {
         display: flex;
     }
@@ -1528,9 +1594,6 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
         margin-top: 85px;
         padding: 22px;
         border-radius: 18px;
-    }
-    .card::-webkit-scrollbar {
-        display: none;
     }
 
     /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
@@ -1752,8 +1815,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </div>
 
 <div class="main-content">
-    <h2 class="page-title">Maintenance Reports</h2>
     <div class="card">
+    <h2 class="page-title">Maintenance Reports</h2>
         <table>
             <thead>
                 <tr>

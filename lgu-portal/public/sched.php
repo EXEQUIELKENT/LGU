@@ -186,6 +186,78 @@ if ($result && $result->num_rows > 0) {
 /* ...[UNCHANGED CSS CODE]... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+
+/* =======================
+   Custom SCROLLBAR STYLE
+   (synced with employee.php)
+========================== */
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* End Custom SCROLLBAR STYLE */
+
 /* --- BEGIN: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
 /* =========================
@@ -244,15 +316,15 @@ if ($result && $result->num_rows > 0) {
     display: none;
 }
 
-/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+/* Z-INDEX LAYERING SAFETY */
 body {
     height: 100vh;
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
     z-index: 0;
     transition: background 0.3s ease;
+    overflow: hidden;
 }
-
 
 body::before {
     content: "";
@@ -732,14 +804,7 @@ body.sidebar-collapsed .desktop-top-nav {
     max-height: 420px;
 }
 
-.notif-dropdown-body::-webkit-scrollbar {
-    width: 6px;
-}
 
-.notif-dropdown-body::-webkit-scrollbar-thumb {
-    background: rgba(55, 98, 200, 0.3);
-    border-radius: 3px;
-}
 
 .notif-item {
     padding: 16px 20px;
@@ -1443,11 +1508,12 @@ body.sidebar-collapsed .desktop-clock {
     padding-top: 85px;
     padding-left: 20px;
     padding-right: 20px;
-    min-height: 100vh;
+    height: calc(100vh); /* account for top nav */ 
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     transition: margin-left 0.3s ease;
+    overflow-y: auto;
 }
 .main-content.expanded {
     margin-left: calc(var(--sidebar-collapsed) + 20px);
@@ -1753,8 +1819,125 @@ body.sidebar-collapsed .desktop-clock {
     margin-top: auto;
     text-align: left;
 }
+/* Weekend styling - light red background */
+.calendar-day.weekend {
+    background: #ffe5e5 !important;
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
 
+[data-theme="dark"] .calendar-day.weekend {
+    background: rgba(244, 67, 54, 0.15) !important;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
 
+/* Holiday badge */
+.holiday-badge {
+    display: inline-block;
+    background: #ff5722;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    box-shadow: 0 1px 3px rgba(244, 67, 54, 0.3);
+}
+
+[data-theme="dark"] .holiday-badge {
+    background: #ff6b3d;
+    box-shadow: 0 1px 3px rgba(255, 107, 61, 0.4);
+}
+
+/* Event badge */
+.event-badge {
+    display: inline-block;
+    background: #2196f3;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    box-shadow: 0 1px 3px rgba(33, 150, 243, 0.3);
+}
+
+[data-theme="dark"] .event-badge {
+    background: #42a5f5;
+    box-shadow: 0 1px 3px rgba(66, 165, 245, 0.4);
+}
+
+/* Holiday/Event title in calendar day */
+.holiday-event-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #d32f2f;
+    margin-top: 2px;
+    line-height: 1.2;
+    text-align: center;
+}
+
+[data-theme="dark"] .holiday-event-title {
+    color: #ff6b6b;
+}
+
+.event-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #1565c0;
+    margin-top: 2px;
+    line-height: 1.2;
+    text-align: center;
+}
+
+[data-theme="dark"] .event-title {
+    color: #64b5f6;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+    .holiday-badge,
+    .event-badge {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+    
+    .holiday-event-title,
+    .event-title {
+        font-size: 9px;
+    }
+}
+
+/* Calendar day with holiday/event - enhanced visibility */
+.calendar-day.has-holiday {
+    border: 2px solid #ff5722;
+}
+
+[data-theme="dark"] .calendar-day.has-holiday {
+    border: 2px solid #ff6b3d;
+}
+
+.calendar-day.has-event-indicator {
+    border: 2px solid #2196f3;
+}
+
+[data-theme="dark"] .calendar-day.has-event-indicator {
+    border: 2px solid #42a5f5;
+}
+
+/* Combined weekend + holiday */
+.calendar-day.weekend.has-holiday {
+    background: #ffcccc !important;
+    border: 2px solid #ff5722;
+}
+
+[data-theme="dark"] .calendar-day.weekend.has-holiday {
+    background: rgba(244, 67, 54, 0.25) !important;
+    border: 2px solid #ff6b3d;
+}
 .task-btn {
     background: #3762c8;
     color: #fff;
@@ -1982,6 +2165,9 @@ body.sidebar-collapsed .desktop-clock {
    📱 FIX: Center Month Picker on Mobile
 ================================ */
 @media (max-width: 768px) {
+    body {
+    overflow: auto;
+    }
     [data-theme="dark"] #scheduleView {
         background: var(--bg-tertiary);
     }
@@ -2959,8 +3145,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-</script>
+window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
 
 <script>
@@ -3409,7 +3594,76 @@ document.addEventListener('DOMContentLoaded', function() {
         closeDropdown();
     });
 
-    // == Calendar Render ==
+    // ===== HOLIDAYS & EVENTS DATA =====
+    const HOLIDAYS_EVENTS = {
+        // Format: 'MM-DD': { name: 'Full Name', type: 'holiday|event' }
+        
+        // January
+        '01-01': { name: 'New Year\'s Day', type: 'holiday' },
+        
+        // February
+        '02-14': { name: 'Valentine\'s Day', type: 'event' },
+        '02-25': { name: 'EDSA People Power Revolution', type: 'holiday' },
+        
+        // March
+        '03-08': { name: 'International Women\'s Day', type: 'event' },
+        
+        // April
+        '04-09': { name: 'Araw ng Kagitingan', type: 'holiday' },
+        '04-20': { name: 'Maundy Thursday', type: 'holiday' }, // Update yearly
+        '04-21': { name: 'Good Friday', type: 'holiday' },      // Update yearly
+        '04-22': { name: 'Black Saturday', type: 'holiday' },   // Update yearly
+        
+        // May
+        '05-01': { name: 'Labor Day', type: 'holiday' },
+        
+        // June
+        '06-12': { name: 'Independence Day', type: 'holiday' },
+        
+        // July
+        '07-04': { name: 'Philippines-American Friendship Day', type: 'event' },
+        
+        // August
+        '08-21': { name: 'Ninoy Aquino Day', type: 'holiday' },
+        '08-26': { name: 'National Heroes Day', type: 'holiday' },
+        
+        // November
+        '11-01': { name: 'All Saints\' Day', type: 'holiday' },
+        '11-02': { name: 'All Souls\' Day', type: 'holiday' },
+        '11-30': { name: 'Bonifacio Day', type: 'holiday' },
+        
+        // December
+        '12-08': { name: 'Feast of the Immaculate Conception', type: 'holiday' },
+        '12-24': { name: 'Christmas Eve', type: 'event' },
+        '12-25': { name: 'Christmas Day', type: 'holiday' },
+        '12-30': { name: 'Rizal Day', type: 'holiday' },
+        '12-31': { name: 'New Year\'s Eve', type: 'event' }
+    };
+
+    // Helper function to get holiday/event for a date
+    function getHolidayOrEvent(date) {
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const key = `${month}-${day}`;
+        return HOLIDAYS_EVENTS[key] || null;
+    }
+
+    // Helper function to check if date is weekend
+    function isWeekend(date) {
+        const dayOfWeek = date.getDay();
+        return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+    }
+
+    // Helper function to get mobile-friendly initial
+    function getEventInitial(name, type) {
+        if (type === 'holiday') {
+            // Use first letter of each word
+            return name.split(' ').map(w => w[0]).join('').substring(0, 3);
+        }
+        // For events, use simpler approach
+        return name.substring(0, 3);
+    }
+
     function renderCalendar(){
         closeDropdown && closeDropdown();
         if (!calendarGrid || !calendarDetails) return;
@@ -3424,31 +3678,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const firstDay=new Date(year, month,1).getDay();
         const daysInMonth=new Date(year,month+1,0).getDate();
+        
+        // Empty cells for alignment
         for(let i=0;i<firstDay;i++) {
             const emptyDiv = document.createElement('div');
             emptyDiv.className = "calendar-day";
             calendarGrid.appendChild(emptyDiv);
         }
+        
+        // Render each day
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const currentDayDate = new Date(year, month, d);
+            
             const events = Array.isArray(window.scheduleData) && window.scheduleData.length
                 ? window.scheduleData.filter(e => e.schedule_date === dateStr)
-                : []; // Ensure always an array
+                : [];
 
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
-
-            // Use 'data-date' for debugging/lookup
             dayDiv.setAttribute('data-date', dateStr);
+
+            // ===== NEW: Check for weekend =====
+            if (isWeekend(currentDayDate)) {
+                dayDiv.classList.add('weekend');
+            }
+
+            // ===== NEW: Check for holiday/event =====
+            const holidayEvent = getHolidayOrEvent(currentDayDate);
+            if (holidayEvent) {
+                if (holidayEvent.type === 'holiday') {
+                    dayDiv.classList.add('has-holiday');
+                } else {
+                    dayDiv.classList.add('has-event-indicator');
+                }
+            }
 
             // Day number
             const dayNumDiv = document.createElement('div');
             dayNumDiv.textContent = d;
             dayDiv.appendChild(dayNumDiv);
 
-            // Show tasks in day box if present
+            // ===== NEW: Add holiday/event badge and title =====
+            if (holidayEvent) {
+                const isMobile = isMobileView();
+                
+                // Badge
+                const badge = document.createElement('div');
+                badge.className = holidayEvent.type === 'holiday' ? 'holiday-badge' : 'event-badge';
+                badge.textContent = isMobile 
+                    ? getEventInitial(holidayEvent.name, holidayEvent.type)
+                    : (holidayEvent.type === 'holiday' ? 'HOLIDAY' : 'EVENT');
+                dayDiv.appendChild(badge);
+                
+                // Title (desktop only for space)
+                if (!isMobile) {
+                    const title = document.createElement('div');
+                    title.className = holidayEvent.type === 'holiday' ? 'holiday-event-title' : 'event-title';
+                    title.textContent = holidayEvent.name.length > 18 
+                        ? holidayEvent.name.substring(0, 18) + '...' 
+                        : holidayEvent.name;
+                    title.title = holidayEvent.name; // Full name on hover
+                    dayDiv.appendChild(title);
+                }
+            }
+
+            // Show maintenance tasks if present
             if (events.length) {
-                // Create a tasks holder, always visible if day has events
                 const tasksDiv = document.createElement('div');
                 tasksDiv.className = 'day-tasks';
 
@@ -3466,10 +3762,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                     tasksDiv.appendChild(btn);
                 } else if (events.length > 1) {
-                    // --- FIX: correct render for >1 tasks in a day ---
                     const first = events[0];
 
-                    // First visible task
                     const firstBtn = document.createElement('button');
                     firstBtn.className = 'task-btn';
                     firstBtn.textContent = isMobileView() ? '1' : first.task;
@@ -3482,7 +3776,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                     tasksDiv.appendChild(firstBtn);
 
-                    // Arrow + counter wrapper
                     const moreWrap = document.createElement('div');
                     moreWrap.className = 'more-tasks-wrap';
 
@@ -3494,36 +3787,47 @@ document.addEventListener('DOMContentLoaded', function() {
                         toggleTaskDropdown(dayDiv, events, arrowBtn);
                     };
 
-                    // Start MODIFIED BLOCK
                     if (isMobileView()) {
-                        // On mobile, show only the arrow, no counter.
                         moreWrap.appendChild(arrowBtn);
                     } else {
-                        // On desktop, show arrow and counter.
                         moreWrap.appendChild(arrowBtn);
                         const counter = document.createElement('span');
                         counter.className = 'task-counter';
                         counter.textContent = `+${events.length - 1}`;
                         moreWrap.appendChild(counter);
                     }
-                    // End MODIFIED BLOCK
 
                     tasksDiv.appendChild(moreWrap);
                 }
                 dayDiv.appendChild(tasksDiv);
-            } // end events.length
+            }
 
+            // Click handler for day details
             dayDiv.addEventListener('click', function() {
-                // Show all event details in calendarDetails if exists
+                let detailsHtml = `<strong>${dateStr}</strong><br>`;
+                
+                // ===== NEW: Show holiday/event info =====
+                if (holidayEvent) {
+                    const typeLabel = holidayEvent.type === 'holiday' ? '🎉 Holiday' : '📅 Event';
+                    detailsHtml += `<div style="color: ${holidayEvent.type === 'holiday' ? '#d32f2f' : '#1565c0'}; font-weight: 600; margin: 8px 0;">${typeLabel}: ${holidayEvent.name}</div>`;
+                }
+                
+                // ===== NEW: Show weekend indicator =====
+                if (isWeekend(currentDayDate)) {
+                    detailsHtml += `<div style="color: #ff5722; font-size: 12px; margin: 4px 0;">Weekend</div>`;
+                }
+                
+                // Show maintenance tasks
                 if (events.length) {
-                    let detailsHtml = `<strong>${dateStr}</strong><br>`;
+                    detailsHtml += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);"><strong>Maintenance Tasks:</strong></div>`;
                     detailsHtml += events.map(e =>
                         `• ${e.task} – ${e.location ? e.location : ''}`
                     ).join('<br>');
-                    calendarDetails.innerHTML = detailsHtml;
-                } else {
-                    calendarDetails.innerHTML = `<strong>${dateStr}</strong><br>No scheduled maintenance.`;
+                } else if (!holidayEvent) {
+                    detailsHtml += 'No scheduled maintenance.';
                 }
+                
+                calendarDetails.innerHTML = detailsHtml;
             });
 
             calendarGrid.appendChild(dayDiv);

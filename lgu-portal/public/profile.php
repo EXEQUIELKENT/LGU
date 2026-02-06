@@ -371,7 +371,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     exit;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -379,13 +378,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile Settings - LGU Employee Portal</title>
 <style>
-/* ... CSS exactly as before ... (unchanged for brevity) */
-<?php /* Keep all existing style unchanged for correctness */ ?>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-/* ...all your other CSS as before... */
 
-/* Copy all CSS from employee.php - I'll include the essential parts */
+/* ===========================
+   Custom SCROLLBAR STYLE (fully match employee.php)
+=========================== */
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* End Custom SCROLLBAR STYLE */
+
+/* ...rest of your CSS unchanged — ensure it's below */
 :root {
     --sidebar-expanded: 250px;
     --sidebar-collapsed: 70px;
@@ -435,6 +501,28 @@ body::before {
 
 /* Include all sidebar, nav, and other styles from employee.php */
 /* For brevity, I'll include the essential profile-specific styles */
+html, body {
+    height: 100%;
+}
+
+body {
+    overflow-y: auto;
+}
+
+.main-content {
+    height: calc(100vh - 70px);
+    overflow-y: auto;
+}
+
+.sidebar-top {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+.notif-dropdown-body {
+    max-height: 300px;
+    overflow-y: auto;
+}
 
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
@@ -445,10 +533,24 @@ body::before {
     display: flex;
     flex-direction: column;
     transition: margin-left 0.3s ease;
+    overflow-y: auto; /* ← Ensure this is 'auto', not 'scroll' */
 }
 
 .main-content.expanded {
     margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+
+.main-content::-webkit-scrollbar { 
+    width: 8px; 
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: rgba(55,98,200,0.3);
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .profile-container {
@@ -932,13 +1034,6 @@ body.sidebar-collapsed .desktop-top-nav {
 .notif-dropdown-body {
     overflow-y: auto;
     max-height: 420px;
-}
-.notif-dropdown-body::-webkit-scrollbar {
-    width: 6px;
-}
-.notif-dropdown-body::-webkit-scrollbar-thumb {
-    background: rgba(55, 98, 200, 0.3);
-    border-radius: 3px;
 }
 .notif-item {
     padding: 16px 20px;
@@ -1893,14 +1988,6 @@ body.sidebar-collapsed .desktop-clock {
     margin-left: auto;
     color: #888;
     cursor: pointer;
-}
-.main-content::-webkit-scrollbar { height: 8px; }
-.main-content::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 4px;
-}
-.main-content::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
 }
 @media (max-width: 768px) {
     .desktop-top-nav {

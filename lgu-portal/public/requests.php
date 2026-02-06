@@ -1,4 +1,4 @@
-'<?php
+<?php
 session_start();
 
 // --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
@@ -115,6 +115,19 @@ LEFT JOIN evidence_images e ON e.req_id = r.req_id
 GROUP BY r.req_id
 ORDER BY r.created_at DESC";
 $result = $conn->query($sql);
+
+/**
+ * Always formats a MySQL datetime string to 12-hour format with AM/PM and readable date.
+ * @param string $datetime
+ * @return string
+ */
+function format_datetime_ampm($datetime) {
+    if (!$datetime) return "";
+    // Use PHP's date/time functions for am/pm output
+    $ts = strtotime($datetime);
+    if ($ts === false) return htmlspecialchars($datetime);
+    return date('F j, Y h:i A', $ts); // ex: June 21, 2024 04:33 PM
+}
 ?>
 
 <!DOCTYPE html>
@@ -126,11 +139,82 @@ $result = $conn->query($sql);
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-/* ... (other CSS unchanged for brevity) ... */
+
+/* =======================
+   Custom SCROLLBAR STYLE
+   (synced with employee.php)
+========================== */
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* End Custom SCROLLBAR STYLE */
 
 /* =========================
    SIDEBAR/CLOCK ALIGNMENT CONSTANTS (from employee.php)
 ========================= */
+
 :root {
     --sidebar-expanded: 250px;
     --sidebar-collapsed: 70px;
@@ -356,15 +440,6 @@ body.sidebar-collapsed .desktop-top-nav {
     max-height: 420px;
 }
 
-.notif-dropdown-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.notif-dropdown-body::-webkit-scrollbar-thumb {
-    background: rgba(55, 98, 200, 0.3);
-    border-radius: 3px;
-}
-
 .notif-item {
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -515,15 +590,15 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 
-/* Z-INDEX LAYERING SAFETY: Ensures UI is above background blur for all key elements */
+/* Z-INDEX LAYERING SAFETY */
 body {
     height: 100vh;
     background: url("cityhall.jpeg") center center / cover no-repeat fixed;
     position: relative;
     z-index: 0;
     transition: background 0.3s ease;
+    overflow: hidden;
 }
-
 
 body::before {
     content: "";
@@ -1177,29 +1252,29 @@ body::before {
 
 /* Push main content down to avoid overlap */
 /* --- FIX SIDEBAR/CLOCK/CONTENT ALIGNMENT --- */
+
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
     margin-right: 18px;
-    padding-top: 60px;
+    padding-top: 80px;
     padding-left: 20px;
     padding-right: 20px;
-    min-height: 100vh;  
+    height: calc(100vh); /* account for top nav */ 
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     transition: margin-left 0.3s ease;
+    overflow-y: auto;
 }
 .main-content.expanded {
     margin-left: calc(var(--sidebar-collapsed) + 20px);
 }
+
 /* --- END FIX --- */
 
 .page-title{
-    color: #fff;
     font-size:28px;
-    margin-bottom:25px;
-    margin-top:0;
-    font-weight: 900; text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
+    color: var(--text-primary);
 }
 
 /* CARD */
@@ -1535,6 +1610,10 @@ tbody tr:hover {
         display: none;
     }
 
+    body {
+    overflow: auto;
+    }
+
     .mobile-top-nav {
         display: flex;
         position: fixed;
@@ -1748,14 +1827,15 @@ tbody tr:hover {
        🚩 MOBILE-ONLY MAIN CONTENT FIXES
        =============================== */
 
-    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll, reduced top space) */
+    /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
     .main-content,
     .main-content.expanded {
         height: auto;
         min-height: 100vh;
         overflow-y: auto;           /* allow scrolling */
-        padding: 0px 20px 20px 20px; /* reduced top space: 10px */
+        padding: 20px;
         margin: 0px;
+        margin-top: 0px !important;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
     }
@@ -1763,23 +1843,16 @@ tbody tr:hover {
     /* Hide main-content vertical (right) scrollbar but retain scrollability */
     .main-content::-webkit-scrollbar {
         width: 0 !important;
-        background: transparent;
-        display: none !important;
+        height: 0 !important;
+        display: none;
     }
-    .main-content {
-        scrollbar-width: none;           /* Firefox */
-        -ms-overflow-style: none;        /* Edge/IE */
-    }
-
+    
     /* 2️⃣ TABLE CARD no forced height; internal scroll not needed */
     .table-card {
         margin-top: 65px;
         padding: 22px;
         border-radius: 18px;
-    }
-    .table-card::-webkit-scrollbar {
-        display: none;
-    }
+    }   
 
     /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
@@ -1881,6 +1954,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </head>
 
 <body>
+<!-- all navigation and notification markup ... -->
 
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
@@ -1971,10 +2045,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- CONTENT -->
 <div class="main-content">
-    <h2 class="page-title">Infrastructure Repair Requests</h2>
-
     <div class="table-card">
         <!-- 1️⃣ SEARCH INPUT -->
+        <h2 class="page-title">Infrastructure Repair Requests</h2>
+
         <input
             id="requestSearch"
             type="text"
@@ -2004,7 +2078,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </tr>
             <?php if ($result->num_rows > 0): ?>
                 <?php
-                // Move pointer to start (just in case)
                 mysqli_data_seek($result, 0);
                 while ($row = $result->fetch_assoc()):
                 ?>
@@ -2015,7 +2088,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <td class="searchable"><?php echo htmlspecialchars($row['infrastructure']); ?></td>
                     <td class="searchable"><?php echo htmlspecialchars($row['location']); ?></td>
                     <td class="searchable"><?php echo htmlspecialchars($row['issue']); ?></td>
-                    <td class="searchable"><?php echo $row['created_at'] ?? ''; ?></td>
+                    <td class="searchable">
+                        <?php echo format_datetime_ampm($row['created_at']); ?>
+                    </td>
                     <td>
                         <?php 
                         $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
@@ -2101,7 +2176,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     </div>
                     <div>
                         <strong>Date Submitted:</strong>
-                        <span class="searchable"><?php echo $row['created_at'] ?? ''; ?></span>
+                        <span class="searchable">
+                            <?php echo format_datetime_ampm($row['created_at']); ?>
+                        </span>
                     </div>
                     <div>
                         <strong>Status:</strong>
@@ -2118,19 +2195,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             <?= htmlspecialchars($status) ?>
                         </span>
                     </div>
-                    <div class="request-actions">
+                    <!-- Evidence View / No Evidence -->
+                    <div>
                         <?php 
                         $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
                         if (!empty($evidenceImages)): 
-                            $images = array_filter(explode(',', $evidenceImages)); // Filter out empty values
-                            $images = array_values($images); // Re-index array
+                            $images = array_filter(explode(',', $evidenceImages));
+                            $images = array_values($images);
                             if (!empty($images)):
                         ?>
-                            <button
-                                class="btn-view"
-                                onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
-                                View Evidence (<?= count($images) ?>)
-                            </button>
+                                <button
+                                    class="btn-view"
+                                    onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
+                                    View Evidence (<?= count($images) ?>)
+                                </button>
                         <?php 
                             else: 
                                 echo '<span class="no-evidence">No Evidence</span>';
@@ -2139,6 +2217,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             echo '<span class="no-evidence">No Evidence</span>';
                         endif; 
                         ?>
+                    </div>
+                    <!-- Action section for mobile - shown at the bottom -->
+                    <div class="mobile-card-actions" style="margin-top:10px;">
+                        <button class="btn-view">View</button>
                     </div>
                 </div>
         <?php
