@@ -2,13 +2,13 @@
 session_start();
 require_once 'db.php';
 
-// For local development
+// For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
+    $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
 } else {
-    // For domain, make sure this path matches where you uploaded the files
-    $BASE_URL = '/lgu-portal/public/'; // if public/ is root
-    // OR $BASE_URL = '/lgu-portal/public/'; // if domain points above public
+    $BASE_URL = '/lgu-portal/public/';
+    $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
 }
 
 // Get repairs count from repair_archive
@@ -54,6 +54,7 @@ if ($maintenance_result) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Citizen Dashboard - LGU Portal</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
@@ -760,7 +761,7 @@ if ($maintenance_result) {
 
 <header class="nav">
     <div class="site-logo">
-        <img src="<?= $BASE_URL ?>logocityhall.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">

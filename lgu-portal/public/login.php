@@ -903,6 +903,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
 <style>
 /* ... [existing styles above remain unchanged] ... */
@@ -2388,7 +2389,7 @@ body:has(#resetPasswordModal) {
 
 <header class="nav">
     <div class="site-logo">
-        <img src="logocityhall.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <img src="assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
@@ -2402,7 +2403,7 @@ body:has(#resetPasswordModal) {
 
 <div class="form-wrapper">
     <div class="card">
-        <img src="<?php echo htmlspecialchars($basePath); ?>logocityhall.png" class="icon-top">
+        <img src="<?php echo htmlspecialchars($basePath); ?>assets/img/officiallogo.png" class="icon-top">
         <h2 class="title">LGU Login</h2>
         <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
             <style>

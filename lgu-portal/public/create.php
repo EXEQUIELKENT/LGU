@@ -466,6 +466,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_account'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>Create Account | LGU Portal</title>  
 <!-- (Styles unchanged, keep your floating .notif-popup styles and all as in your current file) -->
 <style>
@@ -1288,7 +1289,7 @@ html, body {
 
 <div class="form-wrapper">
     <div class="card">
-        <img src="logocityhall.png" class="icon-top">
+        <img src="assets/img/officiallogo.png" class="icon-top">
         <h2 class="title">Create Employee Account</h2>
         <p class="subtitle">Register a new employee to access the LGU maintenance system.</p>
         <form method="POST" action="">

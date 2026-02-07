@@ -130,6 +130,7 @@ $result = $conn->query($sql);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>Maintenance Reports</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
@@ -1737,7 +1738,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <img src="logocityhall.png" alt="LGU Logo">
+    <img src="assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
         🔔
@@ -1767,7 +1768,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         </button>
         <!-- Logo -->
         <div class="site-logo">
-            <img src="logocityhall.png" alt="LGU Logo">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>

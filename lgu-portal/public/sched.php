@@ -182,6 +182,7 @@ if ($result && $result->num_rows > 0) {
 <meta charset="UTF-8">
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <style>
 /* ...[UNCHANGED CSS CODE]... */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
@@ -2889,7 +2890,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <img src="logocityhall.png" alt="LGU Logo">
+    <img src="assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
         🔔
@@ -2916,7 +2917,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <span class="light-icon" style="display: none;">☀️</span>
         </button>
         <div class="site-logo">
-            <img src="logocityhall.png" alt="LGU Logo">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
@@ -3594,45 +3595,23 @@ document.addEventListener('DOMContentLoaded', function() {
         closeDropdown();
     });
 
-    // ===== HOLIDAYS & EVENTS DATA =====
-    const HOLIDAYS_EVENTS = {
-        // Format: 'MM-DD': { name: 'Full Name', type: 'holiday|event' }
-        
-        // January
+    // ===== HOLIDAYS & EVENTS DATA (UPDATED FOR 2026 ACCURACY) =====
+
+    // Fixed holidays (same date every year)
+    const FIXED_HOLIDAYS = {
         '01-01': { name: 'New Year\'s Day', type: 'holiday' },
-        
-        // February
         '02-14': { name: 'Valentine\'s Day', type: 'event' },
         '02-25': { name: 'EDSA People Power Revolution', type: 'holiday' },
-        
-        // March
         '03-08': { name: 'International Women\'s Day', type: 'event' },
-        
-        // April
-        '04-09': { name: 'Araw ng Kagitingan', type: 'holiday' },
-        '04-20': { name: 'Maundy Thursday', type: 'holiday' }, // Update yearly
-        '04-21': { name: 'Good Friday', type: 'holiday' },      // Update yearly
-        '04-22': { name: 'Black Saturday', type: 'holiday' },   // Update yearly
-        
-        // May
+        '04-09': { name: 'Araw ng Kagitingan (Day of Valor)', type: 'holiday' },
         '05-01': { name: 'Labor Day', type: 'holiday' },
-        
-        // June
         '06-12': { name: 'Independence Day', type: 'holiday' },
-        
-        // July
         '07-04': { name: 'Philippines-American Friendship Day', type: 'event' },
-        
-        // August
         '08-21': { name: 'Ninoy Aquino Day', type: 'holiday' },
-        '08-26': { name: 'National Heroes Day', type: 'holiday' },
-        
-        // November
+        '08-31': { name: 'National Heroes Day', type: 'holiday' }, // Last Monday of August
         '11-01': { name: 'All Saints\' Day', type: 'holiday' },
-        '11-02': { name: 'All Souls\' Day', type: 'holiday' },
+        '11-02': { name: 'All Souls\' Day', type: 'event' }, // Not official holiday but widely observed
         '11-30': { name: 'Bonifacio Day', type: 'holiday' },
-        
-        // December
         '12-08': { name: 'Feast of the Immaculate Conception', type: 'holiday' },
         '12-24': { name: 'Christmas Eve', type: 'event' },
         '12-25': { name: 'Christmas Day', type: 'holiday' },
@@ -3640,12 +3619,76 @@ document.addEventListener('DOMContentLoaded', function() {
         '12-31': { name: 'New Year\'s Eve', type: 'event' }
     };
 
-    // Helper function to get holiday/event for a date
+    // Movable holidays for 2026 (these change every year)
+    const MOVABLE_HOLIDAYS_2026 = {
+        '04-02': { name: 'Maundy Thursday', type: 'holiday' },
+        '04-03': { name: 'Good Friday', type: 'holiday' },
+        '04-04': { name: 'Black Saturday', type: 'holiday' },
+        // Eid al-Fitr (approximate - usually announced by NCMF)
+        '03-31': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
+    };
+
+    // Function to get all holidays for current year
+    function getHolidaysForYear(year) {
+        if (year === 2026) {
+            // Merge fixed and movable holidays for 2026
+            return { ...FIXED_HOLIDAYS, ...MOVABLE_HOLIDAYS_2026 };
+        } else if (year === 2025) {
+            // 2025 movable holidays
+            const movable2025 = {
+                '04-17': { name: 'Maundy Thursday', type: 'holiday' },
+                '04-18': { name: 'Good Friday', type: 'holiday' },
+                '04-19': { name: 'Black Saturday', type: 'holiday' },
+                '03-31': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
+            };
+            return { ...FIXED_HOLIDAYS, ...movable2025 };
+        } else if (year === 2027) {
+            // 2027 movable holidays (planning ahead)
+            const movable2027 = {
+                '03-25': { name: 'Maundy Thursday', type: 'holiday' },
+                '03-26': { name: 'Good Friday', type: 'holiday' },
+                '03-27': { name: 'Black Saturday', type: 'holiday' },
+                '03-20': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
+            };
+            return { ...FIXED_HOLIDAYS, ...movable2027 };
+        }
+    
+    // Default: return only fixed holidays for other years
+    return FIXED_HOLIDAYS;
+    }
+
+    // Helper function to get National Heroes Day (last Monday of August)
+    function getNationalHeroesDay(year) {
+        const lastDayOfAugust = new Date(year, 8, 0); // Month 8 = September, day 0 = last day of August
+        const dayOfWeek = lastDayOfAugust.getDay();
+        
+        // Calculate how many days to subtract to get last Monday
+        let daysToSubtract = (dayOfWeek === 0) ? 6 : (dayOfWeek - 1);
+        const lastMonday = new Date(year, 7, lastDayOfAugust.getDate() - daysToSubtract);
+        
+        const month = String(lastMonday.getMonth() + 1).padStart(2, '0');
+        const day = String(lastMonday.getDate()).padStart(2, '0');
+        
+        return `${month}-${day}`;
+    }
+
+    // Updated helper function to get holiday/event for a date
     function getHolidayOrEvent(date) {
+        const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const key = `${month}-${day}`;
-        return HOLIDAYS_EVENTS[key] || null;
+        
+        // Get holidays for the current year
+        const holidays = getHolidaysForYear(year);
+        
+        // Check for National Heroes Day (dynamic calculation)
+        const heroesDay = getNationalHeroesDay(year);
+        if (key === heroesDay) {
+            return { name: 'National Heroes Day', type: 'holiday' };
+        }
+        
+        return holidays[key] || null;
     }
 
     // Helper function to check if date is weekend
@@ -3657,11 +3700,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Helper function to get mobile-friendly initial
     function getEventInitial(name, type) {
         if (type === 'holiday') {
-            // Use first letter of each word
+            // Special cases for better mobile display
+            if (name.includes('Christmas')) return 'XMS';
+            if (name.includes('New Year')) return 'NY';
+            if (name.includes('EDSA')) return 'EDSA';
+            if (name.includes('Independence')) return 'IND';
+            if (name.includes('Heroes')) return 'HRO';
+            if (name.includes('Rizal')) return 'RZL';
+            if (name.includes('Bonifacio')) return 'BON';
+            if (name.includes('Labor')) return 'LAB';
+            if (name.includes('Valor')) return 'VLR';
+            if (name.includes('Maundy')) return 'MT';
+            if (name.includes('Good Friday')) return 'GF';
+            if (name.includes('Black Saturday')) return 'BS';
+            if (name.includes('Eid')) return 'EID';
+            if (name.includes('All Saints')) return 'AS';
+            if (name.includes('Immaculate')) return 'IC';
+            
+            // Default: first letters
             return name.split(' ').map(w => w[0]).join('').substring(0, 3);
         }
-        // For events, use simpler approach
-        return name.substring(0, 3);
+        
+        // For events
+        if (name.includes('Valentine')) return '❤️';
+        if (name.includes('Women')) return '♀';
+        if (name.includes('Christmas Eve')) return 'CE';
+        if (name.includes('New Year\'s Eve')) return 'NYE';
+        
+        return name.substring(0, 3).toUpperCase();
     }
 
     function renderCalendar(){
