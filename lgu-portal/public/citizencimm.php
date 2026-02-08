@@ -2,34 +2,49 @@
 session_start();
 require_once 'db.php';
 
+// ========================================
+// IP WHITELISTING + SECRET URL FOR FIELD WORKERS
+// ========================================
+
+// Step 1: Define allowed office/static IPs
 $allowed_ips = [
-    // Localhost
-    '127.0.0.1',           // Localhost IPv4
-    '::1',                 // Localhost IPv6
+    // Localhost (for development)
+    '127.0.0.1',           
+    '::1',                 
     
-    // Your Personal Network
-    '136.158.42.109',         // Your WiFi IP (from screenshot)
+    // Office/Static IPs (Add your office public IP here)
+    '136.158.42.109',      // Example: Office WiFi
     
-    // Add office/team IPs below:
-    // '192.168.1.10',     // Example: Colleague's PC
-    // '192.168.1.15',     // Example: Admin laptop
-    // '203.177.168.123',  // Example: Office Public IP
+    // Add more office IPs below:
+    // '203.177.168.50',   // Example: Main Office
+    // '192.168.1.100',    // Example: Branch Office VPN
 ];
 
-// Get visitor's IP address
+// Step 2: Secret access key for field workers
+// Field workers can bookmark: yoursite.com/citizendash.php?staff=field2026
+$secret_key = "lgu2026";
+
+// Step 3: Get visitor's IP address
 $visitor_ip = $_SERVER['REMOTE_ADDR'];
 
-// Check if visitor is from allowed IP
-$show_login = in_array($visitor_ip, $allowed_ips);
+// Step 4: Check authorization (IP-based OR session-based OR secret URL)
+$show_login = false;
 
-// OPTIONAL: Secret URL parameter override (for remote employees)
-// Usage: citizendash.php?access=employee2026
-if (isset($_GET['access']) && $_GET['access'] === 'employee2026') {
+// Method A: IP Whitelist (for office workers)
+if (in_array($visitor_ip, $allowed_ips)) {
     $show_login = true;
-    $_SESSION['authorized_access'] = true;
+    $_SESSION['auth_method'] = 'ip_whitelist';
 }
 
-// Check session-based authorization
+// Method B: Secret URL (for field workers on mobile data)
+// Usage: citizendash.php?staff=field2026
+if (isset($_GET['staff']) && $_GET['staff'] === $secret_key) {
+    $show_login = true;
+    $_SESSION['authorized_access'] = true;
+    $_SESSION['auth_method'] = 'secret_url';
+}
+
+// Method C: Session persistence (once authenticated, stay authenticated)
 if (isset($_SESSION['authorized_access']) && $_SESSION['authorized_access'] === true) {
     $show_login = true;
 }
@@ -985,6 +1000,16 @@ document.querySelector('.menu-toggle')
     });
 </script>
 
+<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
+<script>
+// Clean URL after secret key authentication to prevent sharing
+if (window.location.search.includes('staff=field2026')) {
+    // Remove the parameter from URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+</script>
+
 <!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -1085,18 +1110,25 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <?php if ($show_login): ?>
-<!-- Debug Info (Remove in Production) -->
+<!-- Debug Info (Production Ready) -->
 <script>
-console.log('🔐 IP Authentication Active');
+console.log('🔐 IP WHITELISTING ACTIVE');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Login Link: Visible ✅');
+console.log('Auth Method: <?= isset($_SESSION["auth_method"]) ? $_SESSION["auth_method"] : "session" ?>');
+console.log('Login Access: GRANTED ✅');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
 </script>
 <?php else: ?>
 <script>
-console.log('🚫 IP Authentication Active');
+console.log('🚫 ACCESS RESTRICTED');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
 console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Login Link: Hidden ❌');
-console.log('💡 TIP: Add your IP to $allowed_ips array or use ?access=employee2026');
+console.log('Login Access: DENIED ❌');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('💡 FIELD WORKER ACCESS:');
+console.log('Use: <?= $_SERVER["HTTP_HOST"] ?>/citizendash.php?staff=field2026');
+console.log('Or add IP to whitelist in code');
 </script>
 <?php endif; ?>
 
