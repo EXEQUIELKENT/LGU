@@ -2,22 +2,55 @@
 session_start();
 require_once 'db.php';
 
+// ============================================
+// ENHANCED IP DETECTION & WHITELISTING
+// ============================================
+
+// Get all possible IP addresses (handles proxies, load balancers, etc.)
+function getVisitorIP() {
+    $ip_keys = [
+        'HTTP_CLIENT_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'HTTP_X_FORWARDED',
+        'HTTP_X_CLUSTER_CLIENT_IP',
+        'HTTP_FORWARDED_FOR',
+        'HTTP_FORWARDED',
+        'REMOTE_ADDR'
+    ];
+    
+    foreach ($ip_keys as $key) {
+        if (array_key_exists($key, $_SERVER) === true) {
+            foreach (explode(',', $_SERVER[$key]) as $ip) {
+                $ip = trim($ip);
+                if (filter_var($ip, FILTER_VALIDATE_IP) !== false) {
+                    return $ip;
+                }
+            }
+        }
+    }
+    
+    return $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+}
+
+$visitor_ip = getVisitorIP();
+
+// EXPANDED IP WHITELIST
 $allowed_ips = [
     // Localhost
     '127.0.0.1',           // Localhost IPv4
     '::1',                 // Localhost IPv6
     
-    // Your Personal Network
+    // Your Local Network IP
     '192.168.1.7',         // Your WiFi IP (from screenshot)
     
-    // Add office/team IPs below:
-    // '192.168.1.10',     // Example: Colleague's PC
-    // '192.168.1.15',     // Example: Admin laptop
-    // '203.177.168.123',  // Example: Office Public IP
+    // Common private network ranges (ADD YOUR ROUTER'S IP RANGE)
+    '192.168.1.1',         // Common router IP
+    '192.168.1.100',       // Example: Office Desktop
+    '192.168.1.101',       // Example: Office Laptop
+    
+    // Add your PUBLIC IP here (find it at whatismyip.com)
+    // 'xxx.xxx.xxx.xxx',  // Your public IP - UNCOMMENT AND REPLACE
 ];
-
-// Get visitor's IP address
-$visitor_ip = $_SERVER['REMOTE_ADDR'];
 
 // Check if visitor is from allowed IP
 $show_login = in_array($visitor_ip, $allowed_ips);
@@ -33,6 +66,9 @@ if (isset($_GET['access']) && $_GET['access'] === 'employee2026') {
 if (isset($_SESSION['authorized_access']) && $_SESSION['authorized_access'] === true) {
     $show_login = true;
 }
+
+// DIAGNOSTIC MODE: Uncomment to ALWAYS show login (for testing)
+// $show_login = true;
 
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
@@ -88,6 +124,74 @@ if ($maintenance_result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Citizen Dashboard - LGU Portal</title>
+    
+    <!-- ⚠️ DIAGNOSTIC INFO BANNER - REMOVE IN PRODUCTION -->
+    <style>
+        .diagnostic-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .diagnostic-banner strong {
+            color: #ffd700;
+            margin-right: 8px;
+        }
+        .diagnostic-banner .status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .diagnostic-banner .status.allowed {
+            background: #22c55e;
+            color: white;
+        }
+        .diagnostic-banner .status.denied {
+            background: #ef4444;
+            color: white;
+        }
+        .diagnostic-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .diagnostic-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* Adjust body to account for diagnostic banner */
+        body {
+            margin-top: 50px !important;
+        }
+        
+        @media (max-width: 768px) {
+            .diagnostic-banner {
+                font-size: 11px;
+                padding: 10px;
+            }
+            body {
+                margin-top: 80px !important;
+            }
+        }
+    </style>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
@@ -436,7 +540,7 @@ if ($maintenance_result) {
             border-bottom: 2px solid rgba(0, 0, 0, 0.6);
             box-shadow: 0 4px 25px rgba(0,0,0,0.25);
             position: fixed;
-            top: 0;
+            top: 50px; /* Adjusted for diagnostic banner */
             left: 0;
             z-index: 100;
         }
@@ -514,7 +618,10 @@ if ($maintenance_result) {
             }
         }
         @media (max-width: 768px) {
-            .dashboard-container { padding: 100px 13px 40px; }
+            .nav {
+                top: 80px; /* Adjusted for diagnostic banner on mobile */
+            }
+            .dashboard-container { padding: 180px 13px 40px; }
             .container { padding: 0 5px; }
             .nav { padding: 18px 13px;}
             .stats-grid {
@@ -790,6 +897,21 @@ if ($maintenance_result) {
     </style>
 </head>
 <body>
+
+<!-- ⚠️ DIAGNOSTIC BANNER - REMOVE IN PRODUCTION -->
+<div class="diagnostic-banner" id="diagnosticBanner">
+    <div>
+        <strong>🔍 IP DIAGNOSTIC:</strong>
+        Detected IP: <code><?= $visitor_ip ?></code> |
+        Host: <code><?= $_SERVER['HTTP_HOST'] ?></code> |
+        <span class="status <?= $show_login ? 'allowed' : 'denied' ?>">
+            <?= $show_login ? '✅ ACCESS GRANTED' : '❌ ACCESS DENIED' ?>
+        </span>
+    </div>
+    <button class="diagnostic-close" onclick="document.getElementById('diagnosticBanner').style.display='none'">
+        Close
+    </button>
+</div>
 
 <header class="nav">
     <div class="site-logo">
@@ -1084,21 +1206,18 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<?php if ($show_login): ?>
-<!-- Debug Info (Remove in Production) -->
+<!-- Enhanced Diagnostic Console Log -->
 <script>
-console.log('🔐 IP Authentication Active');
-console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Login Link: Visible ✅');
-</script>
-<?php else: ?>
-<script>
-console.log('🚫 IP Authentication Active');
-console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Login Link: Hidden ❌');
-console.log('💡 TIP: Add your IP to $allowed_ips array or use ?access=employee2026');
-</script>
+console.group('🔐 IP AUTHENTICATION DIAGNOSTIC');
+console.log('%c📍 Detected IP Address:', 'font-weight: bold; color: #3b82f6', '<?= $visitor_ip ?>');
+console.log('%c🌐 Host:', 'font-weight: bold; color: #3b82f6', '<?= $_SERVER['HTTP_HOST'] ?>');
+console.log('%c✅ Login Status:', 'font-weight: bold; color: <?= $show_login ? "#22c55e" : "#ef4444" ?>', '<?= $show_login ? "VISIBLE ✅" : "HIDDEN ❌" ?>');
+console.log('%c📋 Allowed IPs:', 'font-weight: bold; color: #8b5cf6', <?= json_encode($allowed_ips) ?>);
+<?php if (!$show_login): ?>
+console.log('%c💡 TIP:', 'font-weight: bold; color: #f59e0b', 'Add "<?= $visitor_ip ?>" to $allowed_ips or use ?access=employee2026');
 <?php endif; ?>
+console.groupEnd();
+</script>
 
 <footer class="footer">
     <div class="footer-links">
