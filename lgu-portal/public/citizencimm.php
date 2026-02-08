@@ -22,7 +22,7 @@ $allowed_ips = [
 
 // Step 2: Secret access key for field workers
 // Field workers can bookmark: yoursite.com/citizendash.php?staff=field2026
-$secret_key = "lgu2026";
+$secret_key = "field2026";
 
 // Step 3: Get visitor's IP address
 $visitor_ip = $_SERVER['REMOTE_ADDR'];
