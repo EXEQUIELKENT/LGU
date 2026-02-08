@@ -1,8 +1,6 @@
 <?php
-
-require_once 'auth_config.php';
-
 session_start();
+require_once 'auth_config.php';
 require_once 'db.php';
 
 // For local development and domain (show correct path for logo)
@@ -956,6 +954,16 @@ document.querySelector('.menu-toggle')
     });
 </script>
 
+<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
+<script>
+// Clean URL after secret key authentication to prevent sharing
+if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
+    // Remove the parameter from URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+</script>
+
 <!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -1062,16 +1070,6 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
     <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
-
-<?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
-<script>
-// Clean URL after secret key authentication
-if (window.location.search.includes('staff=<?= SECRET_ACCESS_KEY ?>')) {
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-}
-</script>
-<?php endif; ?>
 
 </body>
 </html>

@@ -1,8 +1,6 @@
 <?php
-
-require_once 'auth_config.php';
-
 session_start();
+require_once 'auth_config.php';
 require_once 'db.php';
 
 // Notification helpers
