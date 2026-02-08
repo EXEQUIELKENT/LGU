@@ -2,6 +2,38 @@
 session_start();
 require_once 'db.php';
 
+// ============================================
+// IP WHITELIST CONFIGURATION
+// ============================================
+// Define allowed IP addresses that can see the login link
+$allowed_ips = [
+    '127.0.0.1',           // Localhost IPv4
+    '::1',                 // Localhost IPv6
+    '192.168.1.100',       // Example: Office Desktop
+    '192.168.1.1',       // Example: Office Laptop
+    '203.177.168.xxx',     // Example: Office Public IP (replace xxx with actual)
+    // Add more allowed IPs here
+];
+
+// Get visitor's IP address
+$visitor_ip = $_SERVER['REMOTE_ADDR'];
+
+// Check if visitor is from allowed IP
+$show_login = in_array($visitor_ip, $allowed_ips);
+
+// OPTIONAL: Secret URL parameter override (for remote employees)
+// Usage: citizendash.php?access=employee2026
+if (isset($_GET['access']) && $_GET['access'] === 'employee2026') {
+    $show_login = true;
+    // Store in session to persist across page loads
+    $_SESSION['authorized_access'] = true;
+}
+
+// Check session-based authorization
+if (isset($_SESSION['authorized_access']) && $_SESSION['authorized_access'] === true) {
+    $show_login = true;
+}
+
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
@@ -765,7 +797,9 @@ if ($maintenance_result) {
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </div>
     <div class="nav-links">
-        <a href="<?= $BASE_URL ?>login.php">Log in</a>
+        <?php if ($show_login): ?>
+            <a href="<?= $BASE_URL ?>login.php">Log in</a>
+        <?php endif; ?>
         <a href="<?= $BASE_URL ?>citizendash.php" class="active">Home</a>
         <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
         <a href="<?= $BASE_URL ?>about.php">About</a>
@@ -1049,6 +1083,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 </script>
+
+<?php if ($show_login): ?>
+<!-- Debug Info (Remove in Production) -->
+<script>
+console.log('🔐 IP Authentication Active');
+console.log('Visitor IP: <?= $visitor_ip ?>');
+console.log('Login Link: Visible ✅');
+</script>
+<?php else: ?>
+<script>
+console.log('🚫 IP Authentication Active');
+console.log('Visitor IP: <?= $visitor_ip ?>');
+console.log('Login Link: Hidden ❌');
+console.log('💡 TIP: Add your IP to $allowed_ips array or use ?access=employee2026');
+</script>
+<?php endif; ?>
 
 <footer class="footer">
     <div class="footer-links">
