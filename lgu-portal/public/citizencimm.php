@@ -2,17 +2,18 @@
 session_start();
 require_once 'db.php';
 
-// ============================================
-// IP WHITELIST CONFIGURATION
-// ============================================
-// Define allowed IP addresses that can see the login link
 $allowed_ips = [
+    // Localhost
     '127.0.0.1',           // Localhost IPv4
     '::1',                 // Localhost IPv6
-    '192.168.1.100',       // Example: Office Desktop
-    '192.168.1.7',       // Example: Office Laptop
-    '203.177.168.xxx',     // Example: Office Public IP (replace xxx with actual)
-    // Add more allowed IPs here
+    
+    // Your Personal Network
+    '192.168.1.7',         // Your WiFi IP (from screenshot)
+    
+    // Add office/team IPs below:
+    // '192.168.1.10',     // Example: Colleague's PC
+    // '192.168.1.15',     // Example: Admin laptop
+    // '203.177.168.123',  // Example: Office Public IP
 ];
 
 // Get visitor's IP address
@@ -25,7 +26,6 @@ $show_login = in_array($visitor_ip, $allowed_ips);
 // Usage: citizendash.php?access=employee2026
 if (isset($_GET['access']) && $_GET['access'] === 'employee2026') {
     $show_login = true;
-    // Store in session to persist across page loads
     $_SESSION['authorized_access'] = true;
 }
 
