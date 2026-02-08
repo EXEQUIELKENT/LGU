@@ -2,6 +2,34 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// --- AUTH CONFIG BLOCK ---
+$localhostWhitelist = ['localhost', '127.0.0.1', '::1'];
+
+// Path to auth_config.php in the root (adjust path if needed)
+$authConfigFile = __DIR__ . 'auth_config.php';
+$authEnabled = false;
+
+// Detect if running on localhost or not
+$isLocalhost = in_array($_SERVER['SERVER_NAME'] ?? '', $localhostWhitelist) ||
+               (isset($_SERVER['HTTP_HOST']) && in_array(explode(':', $_SERVER['HTTP_HOST'])[0], $localhostWhitelist));
+
+if (!$isLocalhost && file_exists($authConfigFile)) {
+    // Restrict login.php access unless AUTH_ENABLED flag is defined and true
+    require $authConfigFile; // Should define AUTH_ENABLED to true/false in config
+    if (defined('AUTH_ENABLED') && AUTH_ENABLED) {
+        $authEnabled = true;
+    }
+} elseif ($isLocalhost) {
+    // Always enabled for localhost
+    $authEnabled = true;
+}
+
+if (!$authEnabled) {
+    // Silently return 403 Forbidden with NO content or details
+    http_response_code(403);
+    exit;
+}
+
 // --- DISABLE CACHING FOR LOGIN PAGE ---
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
