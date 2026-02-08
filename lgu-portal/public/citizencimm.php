@@ -13,7 +13,7 @@ $allowed_ips = [
     '::1',                 
     
     // Office/Static IPs (Add your office public IP here)
-    '136.158.42.109',      // Example: Office WiFi
+    //'136.158.42.109',      // Example: Office WiFi
     
     // Add more office IPs below:
     // '203.177.168.50',   // Example: Main Office
