@@ -10,7 +10,7 @@ $allowed_ips = [
     '127.0.0.1',           // Localhost IPv4
     '::1',                 // Localhost IPv6
     '192.168.1.100',       // Example: Office Desktop
-    '192.168.1.1',       // Example: Office Laptop
+    '192.168.1.7',       // Example: Office Laptop
     '203.177.168.xxx',     // Example: Office Public IP (replace xxx with actual)
     // Add more allowed IPs here
 ];
