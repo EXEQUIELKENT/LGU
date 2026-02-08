@@ -1,4 +1,7 @@
 <?php
+
+require_once 'auth_config.php';
+
 session_start();
 require_once 'db.php';
 
@@ -1349,7 +1352,9 @@ input[type="file"] {
             <span>InfraGovServices - Infrastructure and Utilities</span>
         </div>
         <div class="nav-links">
-            <a href="login.php">Log in</a>
+        <?php if ($show_login): ?>
+        <a href="login.php">Log in</a>
+        <?php endif; ?>
             <a href="citizencimm.php">Home</a>
             <a href="#" class="active">Requests</a>
             <a href="about.php">About</a>
@@ -2675,5 +2680,14 @@ input[type="file"] {
         </div>
         <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
     </footer>
+    <?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
+    <script>
+    // Clean URL after secret key authentication
+    if (window.location.search.includes('staff=<?= SECRET_ACCESS_KEY ?>')) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+    </script>
+    <?php endif; ?>
 </body>
 </html>

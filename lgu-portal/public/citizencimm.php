@@ -1,53 +1,9 @@
 <?php
+
+require_once 'auth_config.php';
+
 session_start();
 require_once 'db.php';
-
-// ========================================
-// IP WHITELISTING + SECRET URL FOR FIELD WORKERS
-// ========================================
-
-// Step 1: Define allowed office/static IPs
-$allowed_ips = [
-    // Localhost (for development)
-    '127.0.0.1',           
-    '::1',                 
-    
-    // Office/Static IPs (Add your office public IP here)
-    //'136.158.42.109',      // Example: Office WiFi
-    
-    // Add more office IPs below:
-    // '203.177.168.50',   // Example: Main Office
-    // '192.168.1.100',    // Example: Branch Office VPN
-];
-
-// Step 2: Secret access key for field workers
-// Field workers can bookmark: yoursite.com/citizendash.php?staff=field2026
-$secret_key = "field2026";
-
-// Step 3: Get visitor's IP address
-$visitor_ip = $_SERVER['REMOTE_ADDR'];
-
-// Step 4: Check authorization (IP-based OR session-based OR secret URL)
-$show_login = false;
-
-// Method A: IP Whitelist (for office workers)
-if (in_array($visitor_ip, $allowed_ips)) {
-    $show_login = true;
-    $_SESSION['auth_method'] = 'ip_whitelist';
-}
-
-// Method B: Secret URL (for field workers on mobile data)
-// Usage: citizendash.php?staff=field2026
-if (isset($_GET['staff']) && $_GET['staff'] === $secret_key) {
-    $show_login = true;
-    $_SESSION['authorized_access'] = true;
-    $_SESSION['auth_method'] = 'secret_url';
-}
-
-// Method C: Session persistence (once authenticated, stay authenticated)
-if (isset($_SESSION['authorized_access']) && $_SESSION['authorized_access'] === true) {
-    $show_login = true;
-}
 
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
@@ -1000,16 +956,6 @@ document.querySelector('.menu-toggle')
     });
 </script>
 
-<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
-<script>
-// Clean URL after secret key authentication to prevent sharing
-if (window.location.search.includes('staff=field2026')) {
-    // Remove the parameter from URL without reloading
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-}
-</script>
-
 <!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -1108,30 +1054,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 </script>
-
-<?php if ($show_login): ?>
-<!-- Debug Info (Production Ready) -->
-<script>
-console.log('🔐 IP WHITELISTING ACTIVE');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Auth Method: <?= isset($_SESSION["auth_method"]) ? $_SESSION["auth_method"] : "session" ?>');
-console.log('Login Access: GRANTED ✅');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
-</script>
-<?php else: ?>
-<script>
-console.log('🚫 ACCESS RESTRICTED');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('Visitor IP: <?= $visitor_ip ?>');
-console.log('Login Access: DENIED ❌');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('💡 FIELD WORKER ACCESS:');
-console.log('Use: <?= $_SERVER["HTTP_HOST"] ?>/citizendash.php?staff=field2026');
-console.log('Or add IP to whitelist in code');
-</script>
-<?php endif; ?>
-
 <footer class="footer">
     <div class="footer-links">
         <a href="#">Privacy Policy</a>
@@ -1140,6 +1062,16 @@ console.log('Or add IP to whitelist in code');
     </div>
     <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
 </footer>
+
+<?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
+<script>
+// Clean URL after secret key authentication
+if (window.location.search.includes('staff=<?= SECRET_ACCESS_KEY ?>')) {
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+</script>
+<?php endif; ?>
 
 </body>
 </html>
