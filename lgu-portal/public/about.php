@@ -1,4 +1,5 @@
 <?php
+require_once 'auth_config.php';
 // Same base path logic as other public pages (no DB required)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
@@ -17,20 +18,37 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <title>About - InfraGovServices | LGU Portal</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
         body {
-            background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            position: relative;
         }
+
         body::before {
             content: "";
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             backdrop-filter: blur(8px);
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0,0,0,0.4);
             z-index: -1;
+        }
+
+        body::-webkit-scrollbar {
+            display: none;
         }
         .nav {
             width: 100%;
@@ -38,8 +56,9 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.87);
+            background: rgba(255, 255, 255, 0.87);;
             backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-bottom: 2px solid rgba(0, 0, 0, 0.6);
             box-shadow: 0 4px 25px rgba(0,0,0,0.25);
             position: fixed;
@@ -47,8 +66,24 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             left: 0;
             z-index: 100;
         }
-        .site-logo { display: flex; align-items: center; gap: 10px; color: black; font-weight: 600; }
-        .site-logo img { width: 40px; height: auto; border-radius: 8px; }
+        .site-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: black;
+            font-weight: 600;
+        }
+        .site-logo img {
+            width: 40px; height: auto; border-radius: 8px;
+        }
+        .nav a {
+            margin-left: 25px;
+            color: black;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.85;
+            transition: 0.2s;
+        }
         .nav-links a {
             margin-left: 25px;
             text-decoration: none;
@@ -57,10 +92,24 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             opacity: .8;
             transition: .2s;
         }
-        .nav-links a.active { opacity: 1; font-weight: 600; }
-        .nav-links a:hover { opacity: 1; }
-        .menu-toggle { display: none; font-size: 26px; cursor: pointer; background: none; border: none; margin-left: 18px; color: black; }
-        /* Same container as Maintenance Request form (report-card) */
+        .nav-links a.active {
+            opacity: 1;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+            text-decoration: none;
+        }
+        .menu-toggle {
+            display: none;
+            font-size: 26px;
+            cursor: pointer;
+            color: #fff;
+            background: none;
+            border: none;
+            margin-left: 18px;
+        }
         .form-wrapper {
             position: relative;
             z-index: 1;
@@ -72,7 +121,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         .about-card {
             width: 100%;
             max-width: 900px;
-            background: #ffffff;
+            background: rgba(235, 234, 234, 0.95);
             padding: 48px 44px 44px;
             border-radius: 22px;
             box-shadow: 0 20px 45px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.06);
@@ -81,7 +130,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             border-top: 4px solid #2b6cb0;
         }
         .about-card h1 {
-            margin-bottom: 12px;
+            margin-bottom: 20px;
             font-size: 2rem;
             line-height: 1.25;
             color: #212121;
@@ -240,18 +289,140 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             }
         }
         @media (max-width: 768px) {
-            .nav { padding: 18px 13px; }
-            .nav-links { display: none; position: absolute; top: 60px; right: 10px; background: rgba(0,0,0,.86); border-radius: 12px; padding: 15px; flex-direction: column; min-width: 160px; z-index: 999; }
-            .nav-links.show { display: flex; }
-            .nav-links a { color: #fff !important; margin-left: 0; margin-bottom: 8px; }
-            .nav-links a:last-child { margin-bottom: 0; }
-            .menu-toggle { display: block; }
+            .dashboard-container { padding: 100px 13px 40px; }
+            .container { padding: 0 5px; }
+            .nav { padding: 18px 13px;}
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .welcome-section h1 {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 600;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 60px;
+                right: 10px;
+                background: rgba(0,0,0,.86);
+                border-radius: 12px;
+                padding: 15px;
+                flex-direction: column;
+                box-shadow: 0 4px 18px rgba(0,0,0,.25);
+                min-width: 160px;
+                z-index: 999;
+            }
+            .nav-links.show {
+                display: flex;
+            }
+            .nav-links a {
+                color: #fff !important;
+            }
+            .nav {
+            background: #fff;    /* softer glass */
+            }
+            .nav span{
+            color: black;  
+            }
+            .menu-toggle {
+            color: black;
+            margin-right: 10px;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            table { display: none !important; }
+            
+            .mobile-maintenance-list {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                width: 100%;
+                padding: 8px 20px;
+            }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
+            .dashboard-container { padding: 100px 13px 40px; }
+            .container { padding: 0 5px; }
+            .nav { padding: 18px 13px;}
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .welcome-section h1 {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 600;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 60px;
+                right: 10px;
+                background: rgba(0,0,0,.86);
+                border-radius: 12px;
+                padding: 15px;
+                flex-direction: column;
+                box-shadow: 0 4px 18px rgba(0,0,0,.25);
+                min-width: 160px;
+                z-index: 999;
+            }
+            .nav-links.show {
+                display: flex;
+            }
+            .nav-links a {
+                color: #fff !important;
+            }
+            .nav {
+            background: #fff;    /* softer glass */
+            }
+            .nav span{
+            color: black;  
+            }
+            .menu-toggle {
+            color: black;
+            margin-right: 10px;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            table { display: none !important; }
+            
+            .mobile-maintenance-list {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                width: 100%;
+                padding: 8px 20px;
+            }
+            .footer {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 18px 10px;
+            }
+            .footer-links {
+                justify-content: center;
+                margin-bottom: 10px;
+                gap: 12px;
+            }
             .form-wrapper {
                 margin-top: 20px !important;
                 padding: 100px 5vw 40px !important;
             }
             .about-card {
-                padding: 17px 5vw !important;
+                padding: 17px 0vw 17px 7vw !important; /* Added more left and right padding */
                 max-width: 99vw;
             }
             .about-card h1 {
@@ -260,9 +431,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             }
             .about-card h2 {
                 font-size: 1.25rem;
-            }
-            .footer { padding: 20px 15px; flex-direction: column; text-align: center; }
-            .footer-links { margin-bottom: 10px; }
+            }   
         }
         @media (max-width: 580px) {
             .about-card {
@@ -287,23 +456,24 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <body>
 
 <header class="nav">
-    <div class="site-logo">
-        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-        <span>InfraGovServices - Infrastructure and Utilities</span>
-    </div>
-    <div class="nav-links">
-        <a href="<?= $BASE_URL ?>login.php">Log in</a>
-        <a href="<?= $BASE_URL ?>citizendash.php">Home</a>
-        <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-        <a href="<?= $BASE_URL ?>about.php" class="active">About</a>
-    </div>
-    <div class="menu-toggle" aria-label="Menu">☰</div>
-</header>
+        <div class="site-logo">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+            <span>InfraGovServices - Infrastructure and Utilities</span>
+        </div>
+        <div class="nav-links">
+        <?php if ($show_login): ?>
+        <a href="login.php">Log in</a>
+        <?php endif; ?>
+            <a href="citizencimm.php">Home</a>
+            <a href="citizenrepform.php">Requests</a>
+            <a href="#" class="active">About</a>
+        </div>
+        <div class="menu-toggle">☰</div>
+    </header>
 
 <div class="form-wrapper">
     <div class="about-card">
         <h1>About CIMMS – Quezon City</h1>
-        <hr class="divider">
 
         <div class="section-box intro">
             <p>
@@ -378,10 +548,20 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 </footer>
 
 <script>
-    document.querySelector('.menu-toggle')?.addEventListener('click', function() {
+document.querySelector('.menu-toggle')
+    .addEventListener('click', () => {
         document.querySelector('.nav-links').classList.toggle('show');
-
     });
+</script>
+
+<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
+<script>
+// Clean URL after secret key authentication to prevent sharing
+if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
+    // Remove the parameter from URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
 </script>
 </body>
 </html>
