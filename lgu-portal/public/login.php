@@ -28,7 +28,9 @@ if (!$isLocalhost && file_exists($authConfigFile)) {
 } 
 // (always no restriction for localhost/dev: no block)
 
-
+// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
+date_default_timezone_set('Asia/Manila');
+$serverTimestamp = time();
 
 // --- DISABLE CACHING FOR LOGIN PAGE ---
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -934,8 +936,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
 <style>
-/* ... [existing styles above remain unchanged] ... */
-/* Base layout */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
 * {
@@ -945,75 +945,379 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     font-family: 'Poppins', sans-serif;
 }
 
+/* =======================
+   Dark Mode Variables
+========================== */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: rgba(255, 255, 255, 0.95);
+    --bg-tertiary: rgba(255, 255, 255, 0.9);
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --card-bg: #ffffff;
+    --nav-bg: rgba(255, 255, 255, 0.87);
+    --input-bg: #fff;
+    --input-border: #c0c9d1;
+    --input-focus-border: #2b6cb0;
+    --input-focus-shadow: rgba(43,108,176,.15);
+    --input-placeholder: #666666;
+    --modal-bg: rgba(255, 255, 255, 0.95);
+}
+
+/* Add to your [data-theme="dark"] section */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: rgba(26, 26, 26, 0.95);
+    --bg-tertiary: rgba(30, 30, 30, 0.9);
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --card-bg: rgba(30, 30, 30, 0.95);
+    --nav-bg: rgba(26, 26, 26, 0.87);
+    --input-bg: rgba(40, 40, 40, 0.9);
+    --input-border: rgba(255, 255, 255, 0.2);
+    --input-focus-border: #4a8fd8;
+    --input-focus-shadow: rgba(74, 143, 216, 0.25);
+    --input-placeholder: #888888;
+    --modal-bg: rgba(30, 30, 30, 0.95);
+}
+
 body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     height: 100vh;
     display: flex;
     flex-direction: column;
+    transition: background 0.3s ease;
 }
 
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+
+[data-theme="dark"] body::before {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* NAVIGATION */
 .nav {
     width: 100%;
     padding: 18px 60px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.87);
+    background: var(--nav-bg);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.6);
-    box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+    border-bottom: 2px solid var(--border-color);
+    box-shadow: 0 4px 25px var(--shadow-color);
     position: fixed;
     top: 0;
     left: 0;
     z-index: 100;
+    transition: all 0.3s ease;
 }
+
 .site-logo {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: black;
+    color: var(--text-primary);
     font-weight: 600;
-}
-.site-logo img {
-    width: 40px; height: auto; border-radius: 8px;
-}
-.nav a {
-    margin-left: 25px;
-    color: black;
     text-decoration: none;
-    font-weight: 500;
-    opacity: 0.85;
-    transition: 0.2s;
+    transition: color 0.3s ease;
 }
+
+.site-logo:hover {
+    opacity: 0.85;
+}
+
+.site-logo img {
+    width: 40px;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* Updated nav center section */
+.nav-center {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-left: auto;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
 .nav-links a {
-    margin-left: 25px;
+    margin-left: 0;
     text-decoration: none;
     cursor: pointer;
-    color: black;
+    color: var(--text-primary);
     opacity: .8;
     transition: .2s;
+    font-weight: 500;
 }
+
 .nav-links a.active {
     opacity: 1;
     text-decoration: none;
     font-weight: 600;
 }
+
 .nav-links a:hover {
     opacity: 1;
     text-decoration: none;
 }
+
+/* Nav divider */
+.nav-divider {
+    width: 2px;
+    height: 30px;
+    background: var(--border-color);
+    margin: 0;
+}
+
+/* Nav Actions (Clock and Dark Mode) */
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.desktop-clock {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    position: relative;
+    transition: color 0.3s ease;
+    text-align: right;
+    min-width: 420px;
+    display: inline-block;
+}
+
+.desktop-clock .date-part {
+    opacity: 0.6;
+    font-weight: 400;
+}
+
+.desktop-clock .time-part {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.time-part span {
+    display: inline-block;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.time-part.flip span {
+    transform: translateY(-4px);
+    opacity: 0.6;
+}
+
+.nav-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(55, 98, 200, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+.nav-btn:hover {
+    background: rgba(55, 98, 200, 0.2);
+    transform: scale(1.05);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+.nav-btn.dark-mode-btn {
+    animation: none;
+}
+
+.nav-btn.dark-mode-btn.active {
+    animation: rotateSun 0.5s ease;
+}
+
+@keyframes rotateSun {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* MOBILE TOP NAV */
+.mobile-top-nav {
+    display: none;
+}
+
 .menu-toggle {
     display: none;
     font-size: 26px;
     cursor: pointer;
-    color: black;
+    color: var(--text-primary);
     background: none;
     border: none;
     margin-left: 18px;
 }
 
-/* FORM WRAPPER - matching citizenrepform structure */
+/* ===========================
+MOBILE SIDEBAR STYLES
+=========================== */
+.sidebar-nav {
+    position: fixed;
+    top: 0;
+    left: -110%;
+    width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    top: 12px;
+    bottom: 12px;
+    border-radius: 18px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 25px var(--shadow-color);
+    color: var(--text-primary);
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0;
+    z-index: 4000;
+    transition: left 0.35s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+.sidebar-nav.mobile-active {
+    left: 12px;
+}
+
+.sidebar-top {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    height: 100%;
+    padding: 20px 0;
+    overflow-y: auto;
+    position: relative;
+}
+
+.sidebar-logo-spacer {
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.sidebar-nav .site-logo {
+    margin-top: 60px;
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding-bottom: 5px;
+    width: calc(100% - 50px);
+    margin-left: 25px;
+    margin-right: 25px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.sidebar-nav .site-logo img {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+    transition: all 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar-divider.logo-divider {
+    transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
+    opacity: 1;
+    width: calc(100% - 50px);
+    margin: 18px 25px 0 25px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.551);
+}
+
+[data-theme="dark"] .sidebar-divider.logo-divider {
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar-nav .nav-list {
+    list-style: none;
+    font-size: 14px;
+    padding: 0 15px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 0;
+    flex-shrink: 0;
+    transition: padding 0.3s ease;
+}
+
+.sidebar-nav .nav-list li {
+    width: 100%;
+    margin: 3px 0;
+}
+
+.sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+
+.sidebar-nav .nav-link.active,
+.sidebar-nav .nav-link.active:hover {
+    background: #3762c8;
+    color: #fff;
+    transform: translateX(2px);
+}
+
+.sidebar-nav .nav-link:hover {
+    background: #97a4c2;
+    transform: translateX(8px) scale(1.02);
+}
+
+/* FORM WRAPPER */
 .form-wrapper {
     position: relative;
     z-index: 1;
@@ -1023,14 +1327,14 @@ body {
     padding: 110px 16px 40px;
 }
 
-/* CARD - matching report-card from citizenrepform */
+/* CARD */
 .card {
     width: 100%;
     max-width: 390px;
-    background: rgba(235, 234, 234, 0.95);
+    background: var(--card-bg);
     padding: 30px;
     border-radius: 22px;
-    box-shadow: 0 20px 45px rgba(0,0,0,.25);
+    box-shadow: 0 20px 45px var(--shadow-color);
     transition: all .25s ease;
     text-align: center;
 }
@@ -1044,7 +1348,7 @@ body {
     margin-bottom: 24px;
     font-size: 2rem;
     line-height: 1.25;
-    color: #212121;
+    color: var(--text-primary);
     text-align: center;
     letter-spacing: .02em;
     font-weight: 700;
@@ -1053,11 +1357,10 @@ body {
 .subtitle {
     margin-bottom: 24px;
     font-size: 15px;
-    color: #666;
+    color: var(--text-secondary);
     text-align: center;
 }
 
-/* INPUT BOX - matching input-group from citizenrepform */
 .input-box {
     display: flex;
     flex-direction: column;
@@ -1071,27 +1374,132 @@ body {
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 6px;
-    color: #222;
+    color: var(--text-primary);
     letter-spacing: 0.01em;
+    transition: color 0.3s ease;
 }
 
 .input-box input {
     width: 100%;
     padding: 11px 38px 11px 14px;
     border-radius: 11px;
-    border: 1.5px solid #c0c9d1;
-    background: #fff;
+    border: 1.5px solid var(--input-border);
+    background: var(--input-bg);
     font-family: 'Poppins', sans-serif;
     font-size: 15px;
-    transition: all .2s ease;
+    transition: all .3s ease;
     box-sizing: border-box;
     outline: none;
+    color: var(--text-primary);
 }
 
+/* Placeholder text styling for both themes */
+.input-box input::placeholder {
+    color: var(--input-placeholder);
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+/* Focus state - different colors for light and dark mode */
 .input-box input:focus {
     outline: none;
-    border-color: #2b6cb0;
-    box-shadow: 0 0 0 3px rgba(43,108,176,.15);
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    background: var(--input-bg);
+}
+
+/* Hover state for better UX */
+.input-box input:hover:not(:focus) {
+    border-color: var(--input-border);
+    opacity: 0.9;
+}
+
+/* Dark mode specific hover enhancement */
+[data-theme="dark"] .input-box input:hover:not(:focus) {
+    background: rgba(50, 50, 50, 0.9);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Autofill styling for both themes */
+.input-box input:-webkit-autofill,
+.input-box input:-webkit-autofill:hover,
+.input-box input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-primary);
+    -webkit-box-shadow: 0 0 0px 1000px var(--input-bg) inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Dark mode autofill override */
+[data-theme="dark"] .input-box input:-webkit-autofill,
+[data-theme="dark"] .input-box input:-webkit-autofill:hover,
+[data-theme="dark"] .input-box input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0px 1000px rgba(40, 40, 40, 0.9) inset;
+}
+
+/* Input icon (if you have one) */
+.input-box .icon {
+    position: absolute;
+    right: 12px;
+    top: 50px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    opacity: 0.6;
+    pointer-events: none;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+/* Icon changes on input focus */
+.input-box input:focus ~ .icon {
+    opacity: 0.8;
+    color: var(--input-focus-border);
+}
+
+/* Disabled input state */
+.input-box input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--input-bg);
+}
+
+[data-theme="dark"] .input-box input:disabled {
+    background: rgba(30, 30, 30, 0.5);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Error state (if needed) */
+.input-box input.error {
+    border-color: #dc2626;
+}
+
+[data-theme="dark"] .input-box input.error {
+    border-color: #ef4444;
+}
+
+.input-box input.error:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+[data-theme="dark"] .input-box input.error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+}
+
+/* Success state (if needed) */
+.input-box input.success {
+    border-color: #16a34a;
+}
+
+[data-theme="dark"] .input-box input.success {
+    border-color: #22c55e;
+}
+
+.input-box input.success:focus {
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+[data-theme="dark"] .input-box input.success:focus {
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
 }
 
 .input-rem-forgot-row {
@@ -1105,7 +1513,7 @@ body {
 .input-rem-forgot-row label {
     margin: 0;
     font-weight: 500;
-    color: #222;
+    color: var(--text-primary);
 }
 
 .forgot-link {
@@ -1120,22 +1528,6 @@ body {
     text-decoration: underline;
 }
 
-/* Mobile responsive for Remember Me & Forgot Password */
-@media (max-width: 480px) {
-    .input-rem-forgot-row {
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 12px;
-    }
-}
-
-/* ✅ MOBILE: keep SAME layout as desktop */
-@media (max-width: 768px) {
-    .input-rem-forgot-row {
-        flex-direction: row; /* do NOT stack */
-    }
-}
-
 .icon {
     position: absolute;
     right: 12px;
@@ -1146,7 +1538,7 @@ body {
     pointer-events: none;
 }
 
-/* BUTTON - matching btn-primary from citizenrepform */
+/* BUTTON */
 .btn-container {
     display: flex;
     justify-content: center;
@@ -1179,39 +1571,48 @@ body {
 #timer {
     font-size: 16px;
     font-weight: 600;
-    color: #d9534f; /* red for urgency */
+    color: #d9534f;
     margin-bottom: 15px;
     text-align: center;
 }
 
-        /* FOOTER — same design as NAVBAR */
-        .footer {
-            width: 100%;
-            padding: 26px 0 22px;
-
+/* FOOTER */
+.footer {
+    width: 100%;
+    padding: 26px 0 22px;
     background: rgba(255,255,255,0.15);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -2px 12px var(--shadow-color);
+    margin-top: auto;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 20px 15px;
+    transition: all 0.3s ease;
+}
 
-    border-top: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
+[data-theme="dark"] .footer {
+    background: rgba(26, 26, 26, 0.15);
+}
 
-            margin-top: auto;      /* ⭐ KEY */
-            flex-shrink: 0;
-            position: relative;    /* ❌ NOT fixed */
-            z-index: 1;
-        }
-
-
-        /* Left-aligned links */
-        .footer-links {
-            position: absolute;
-            left: 60px;  /* same padding as header */
-        }
+.footer-links {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 0;
+}
 
 .footer-links a {
-    margin-right: 25px;
-    text-decoration: none;   /* ⛔ Removes underline */
+    margin: 0;
+    text-decoration: none;
     cursor: pointer;
     color: #fff;
     opacity: .8;
@@ -1220,68 +1621,16 @@ body {
 
 .footer-links a:hover {
     opacity: 1;
-    text-decoration: none;   /* ⛔ Removes underline */
+    text-decoration: none;
     font-weight: 600;
 }
 
-        /* Center copyright */
-        .footer-logo {
-            text-align: center;
-            font-weight: 500;
-            color: #fff;
-        }
-        /* FOOTER FIXES FOR MOBILE */
-        .footer {
-            display: flex;
-            flex-direction: row;       /* desktop: horizontal layout */
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;           /* allow wrapping on small screens */
-            padding: 20px 15px;
-        }
-
-        .footer-links {
-            position: static;          /* remove absolute positioning */
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 0;
-        }
-
-        .footer-links a {
-            margin: 0;
-        }
-
-        .footer-logo {
-            width: 100%;
-            text-align: center;
-            margin-top: 12px;
-        }
-
-body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
-    position: relative;
-    overflow-y: auto;
-    overflow-x: hidden;
-    margin: 0;
-}
-body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
+.footer-logo {
     width: 100%;
-    height: 100%;
-    backdrop-filter: blur(6px);
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 0;
-}
-
-body::-webkit-scrollbar {
-  display: none;
+    text-align: center;
+    margin-top: 12px;
+    font-weight: 500;
+    color: #fff;
 }
 
 /* Loading Screen Styles */
@@ -1322,12 +1671,8 @@ body::-webkit-scrollbar {
 }
 
 @keyframes spinLGU {
-    0% {
-        transform: rotateY(0deg);
-    }
-    100% {
-        transform: rotateY(360deg);
-    }
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
 }
 
 .loading-text {
@@ -1336,17 +1681,6 @@ body::-webkit-scrollbar {
     font-size: 16px;
     font-weight: 500;
     letter-spacing: 1px;
-}
-
-@media (max-width: 640px) {
-    .lgu-spinner {
-        font-size: 48px;
-        letter-spacing: 6px;
-    }
-    
-    .loading-text {
-        font-size: 14px;
-    }
 }
 
 /* Notification popup styles */
@@ -1372,20 +1706,29 @@ body::-webkit-scrollbar {
     border-left: 6.5px solid #2c64d7;
     font-family: 'Poppins', Arial, sans-serif;
 }
+
+[data-theme="dark"] .notif-popup {
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
 .notif-success { border-color: #10b759 !important; }
 .notif-warning { border-color: #fdc13f !important; }
-.notif-error { border-color: #de3f4a !important; color: #b0212a !important; }
+.notif-error { border-color: #de3f4a !important; }
 .notif-info { border-color: #2c64d7 !important; }
+
 .notif-icon {
     font-size: 23px;
     margin-right: 2px;
 }
+
 .notif-message {
     flex: 1;
     font-weight: 500;
     letter-spacing: 0.01em;
     line-height: 1.35;
 }
+
 .notif-close {
     background: none;
     border: none;
@@ -1396,38 +1739,13 @@ body::-webkit-scrollbar {
     padding: 0;
     transition: color 0.2s;
 }
+
 .notif-close:hover { color: #536ae2; }
-
-@media (max-width: 640px) {
-    .notif-popup {
-        top: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 32px);
-        max-width: 420px;
-        min-width: 0;
-        padding: 14px 16px 14px 14px;
-        gap: 10px;
-        font-size: 14px;
-        border-radius: 14px;
-        line-height: 1.35;
-    }
-    .notif-icon { font-size: 20px; }
-    .notif-close { font-size: 20px; }
-}
-
-    
-#timer     
-    {font-size: 16px;
-    font-weight: 600;
-    color: #d9534f; /* red for urgency */
-    margin-bottom: 15px;
-    text-align: center;}
 
 /* OTP Verification Form Styles */
 .otp-instruction {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 15px;
     text-align: center;
 }
@@ -1447,15 +1765,16 @@ body::-webkit-scrollbar {
     font-weight: 600;
     border: 2px solid rgba(99, 132, 210, 0.3);
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--input-bg);
     outline: none;
     transition: all 0.2s ease;
+    color: var(--text-primary);
 }
 
 .otp-input:focus {
     border-color: #6384d2;
     box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.1);
-    background: #fff;
+    background: var(--input-bg);
 }
 
 .otp-input.active {
@@ -1480,7 +1799,7 @@ body::-webkit-scrollbar {
     display: block;
 }
 
-.verify-code-btn{
+.verify-code-btn {
     margin-bottom: 12px;
 }
 
@@ -1495,8 +1814,6 @@ body::-webkit-scrollbar {
     cursor: not-allowed;
     transform: none;
 }
-
-/* Removed .btn-secondary (unused style) */
 
 /* Change Password Modal Styles */
 #changePasswordModal {
@@ -1522,7 +1839,6 @@ body::-webkit-scrollbar {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Prevent body scroll when modal is open */
 body:has(#changePasswordModal) {
     overflow: hidden;
 }
@@ -1538,17 +1854,13 @@ body:has(#changePasswordModal) {
     }
 }
 
-/* Remove repeated #changePasswordModal style block - duplicated below */
-
-/* Remove redundant repeated #changePasswordModal: this style is defined above already. Only keep one block. */
-
 #changePasswordModal .modal-content {
     width: 350px;
-    background: rgba(255, 255, 255, 0.795);
+    background: var(--modal-bg);
     padding: 28px 32px;
     border-radius: 18px;
     backdrop-filter: blur(15px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 25px var(--shadow-color);
     animation: slideUpModal 0.4s cubic-bezier(.34, 1.56, .64, 1);
     position: relative;
     margin: auto;
@@ -1601,7 +1913,7 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .modal-title {
     font-size: 26px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 6px;
     line-height: 1.3;
@@ -1609,7 +1921,7 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .modal-subtitle {
     font-size: 14px;
-    color: #000000;
+    color: var(--text-secondary);
     font-weight: 400;
     line-height: 1.4;
     margin: 0 0 18px 0;
@@ -1623,7 +1935,6 @@ body:has(#changePasswordModal) {
     margin-bottom: 14px;
     position: relative;
     text-align: left;
-    color: #000000;
 }
 
 #changePasswordModal .input-box:last-of-type {
@@ -1633,7 +1944,7 @@ body:has(#changePasswordModal) {
 #changePasswordModal .input-box label {
     display: block;
     margin-bottom: 5px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 500;
     font-size: 13px;
 }
@@ -1646,8 +1957,8 @@ body:has(#changePasswordModal) {
     font-size: 15px;
     outline: none;
     transition: all 0.25s ease;
-    background: rgba(255,255,255,0.7);
-    color: #000000;
+    background: var(--input-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
     font-family: 'Poppins', Arial, sans-serif;
     -webkit-appearance: none;
@@ -1656,17 +1967,17 @@ body:has(#changePasswordModal) {
 }
 
 #changePasswordModal .input-box input::placeholder {
-    color: #888;
+    color: var(--text-secondary);
     opacity: 0.7;
 }
 
 #changePasswordModal .input-box input:focus {
-    background: rgba(255,255,255,0.9);
+    background: var(--input-bg);
     box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
 }
 
 #changePasswordModal .input-box input:hover {
-    background: rgba(255,255,255,0.85);
+    background: var(--input-bg);
 }
 
 #changePasswordModal .password-toggle {
@@ -1700,11 +2011,12 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .password-requirements {
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     margin-top: 8px;
     padding-left: 0;
     line-height: 1.8;
 }
+
 #changePasswordModal .req-item {
     display: flex;
     align-items: center;
@@ -1712,6 +2024,7 @@ body:has(#changePasswordModal) {
     margin: 3px 0;
     transition: color 0.2s;
 }
+
 #changePasswordModal .req-check {
     display: inline-block;
     width: 16px;
@@ -1726,28 +2039,33 @@ body:has(#changePasswordModal) {
     flex-shrink: 0;
     transition: all 0.2s;
 }
+
 #changePasswordModal .req-item:not(.satisfied) .req-check {
     background: #e0e0e0;
     color: #666;
 }
+
 #changePasswordModal .req-item:not(.satisfied) .req-check::before {
     content: '○';
 }
+
 #changePasswordModal .req-item.satisfied .req-check {
     background: #10b759;
     color: #fff;
 }
+
 #changePasswordModal .req-item.satisfied .req-check::before {
     content: '✓';
 }
+
 #changePasswordModal .req-item.satisfied .req-text {
     color: #10b759;
     font-weight: 500;
 }
+
 #changePasswordModal .req-item:not(.satisfied) .req-text {
-    color: #666;
+    color: var(--text-secondary);
 }
-/* No unnecessary error-blocks that cause modal height expansion! */
 
 /* Password Strength Meter */
 #changePasswordModal .password-strength {
@@ -1762,34 +2080,29 @@ body:has(#changePasswordModal) {
     overflow: hidden;
 }
 
+[data-theme="dark"] #changePasswordModal .strength-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 #changePasswordModal .strength-fill {
     height: 100%;
     width: 0%;
     border-radius: 4px;
     transition: width 0.3s ease, background-color 0.3s ease;
-    display: block; /* ← THIS IS THE FIX */
+    display: block;
 }
 
 #changePasswordModal .strength-text {
     font-size: 12px;
     margin-top: 6px;
     font-weight: 500;
-    color: #555;
+    color: var(--text-secondary);
 }
 
-/* Strength colors */
-#changePasswordModal .strength-weak {
-    background: #ef4444;
-}
-#changePasswordModal .strength-fair {
-    background: #f59e0b;
-}
-#changePasswordModal .strength-good {
-    background: #3b82f6;
-}
-#changePasswordModal .strength-strong {
-    background: #10b759;
-}
+#changePasswordModal .strength-weak { background: #ef4444; }
+#changePasswordModal .strength-fair { background: #f59e0b; }
+#changePasswordModal .strength-good { background: #3b82f6; }
+#changePasswordModal .strength-strong { background: #10b759; }
 
 #changePasswordModal .modal-footer {
     display: flex;
@@ -1852,246 +2165,6 @@ body:has(#changePasswordModal) {
     background: linear-gradient(135deg, #6384d2, #285ccd);
 }
 
-/* Responsive Modal Styles */
-@media (max-width: 600px) {
-    #changePasswordModal {
-        padding: 15px;
-    }
-    
-    #changePasswordModal .modal-content {
-        width: 100%;
-        max-width: 350px;
-        padding: 24px 28px;
-        border-radius: 18px;
-    }
-    
-    #changePasswordModal .modal-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 24px;
-        margin-bottom: 8px;
-    }
-    
-    #changePasswordModal .modal-title {
-        font-size: 24px;
-    }
-    
-    #changePasswordModal .modal-subtitle {
-        font-size: 13px;
-        margin-bottom: 16px;
-    }
-    
-    #changePasswordModal .modal-body {
-        margin-bottom: 16px;
-    }
-    
-    #changePasswordModal .input-box {
-        margin-bottom: 12px;
-    }
-    
-    #changePasswordModal .input-box input {
-        padding: 10px 38px 10px 12px;
-        font-size: 14px;
-    }
-    
-    #changePasswordModal .password-toggle {
-        top: 35px;
-        right: 12px;
-        width: 26px;
-        height: 26px;
-        font-size: 16px;
-    }
-    
-    #changePasswordModal .btn-change-password {
-        padding: 12px;
-        font-size: 15px;
-    }
-}
-
-/* Ensure modal is always on top */
-#changePasswordModal * {
-    box-sizing: border-box;
-}
-
-
-@media (max-width: 950px) {
-    .card {
-        padding: 20px 8vw;
-    }
-}
-
-/* ===== Mobile-first refinements (like reference design) ===== */
-@media (max-width: 768px) {
-    .nav { padding: 18px 13px; }
-    
-    .nav-links {
-        display: none;
-        position: absolute;
-        top: 60px;
-        right: 10px;
-        background: rgba(0,0,0,.86);
-        border-radius: 12px;
-        padding: 15px;
-        flex-direction: column;
-        box-shadow: 0 4px 18px rgba(0,0,0,.25);
-        min-width: 160px;
-        z-index: 999;
-    }
-    .nav-links.show {
-        display: flex;
-    }
-    .nav-links a {
-        color: #fff !important;
-    }
-    .nav {
-        background: #fff;
-    }
-    .nav span {
-        color: black;  
-    }
-    .menu-toggle {
-        color: black;
-        margin-right: 10px;
-    }
-    .menu-toggle {
-        display: block;
-    }
-    .site-logo span {
-        font-size: 16px;
-        color: black;
-    }
-
-    .form-wrapper {
-        margin-top: 20px !important;
-        padding-left: 5vw !important;
-        padding-right: 5vw !important;
-        padding-top: 100px;
-    }
-
-    .card {
-        padding-left: 8vw !important;
-        padding-right: 8vw !important;
-        padding: 17px 5vw !important;
-        max-width: 99vw;
-    }
-    
-    .icon-top {
-        display: block;
-        width: 120px;
-        height: auto;
-        margin: 16px auto 28px;
-    }
-
-    .title {
-        font-size: 30px;
-        padding: 18px 6vw;
-        margin-bottom: 20px;
-    }
-
-    .subtitle {
-        font-size: 15px;
-        margin-bottom: 20px;
-    }
-
-    .input-box {
-        margin-bottom: 19px;
-    }
-
-    .input-box label {
-        font-size: 14px;
-        margin-bottom: 6px;
-    }
-
-    .input-box input {
-        padding: 11px 38px 11px 14px;
-        border-radius: 11px;
-        font-size: 15px;
-    }
-
-    .btn-primary {
-        font-size: 17px;
-        padding: 14px 14px;
-        margin-bottom: 20px;
-    }
-
-    .btn-container {
-        justify-content: center;
-    }
-
-    .small-text {
-        text-align: center;
-        margin-top: 16px;
-        font-size: 13px;
-    }
-
-    .footer {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 18px 10px;
-        margin-top: 20px;
-        position: relative;
-    }
-    .footer-links {
-        justify-content: center;
-        margin-bottom: 10px;
-        gap: 12px;
-    }
-}
-
-@media (max-width: 580px) {
-    .card {
-        padding: 12px 2vw;
-    }
-    .btn-primary {
-        font-size: 17px;
-        padding: 14px 14px;
-    }
-    .btn-container {
-        justify-content: center;
-    }
-    .footer {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 18px 10px;
-    }
-    .footer-links {
-        justify-content: center;
-        margin-bottom: 10px;
-        gap: 12px;
-    }
-}
-
-@media (max-width: 480px) {
-    .form-wrapper {
-        padding: 90px 3vw 24px;
-    }
-    .btn-container {
-        flex-direction: column;
-        gap: 0;
-        align-items: center;
-    }
-    .btn-primary {
-        padding: 14px 10px;
-        width: 90%;
-        font-size: 17px;
-    }
-    .btn-container {
-        align-items: center;
-    }
-    .footer {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 18px 10px;
-    }
-    .footer-links {
-        justify-content: center;
-        margin-bottom: 10px;
-        gap: 12px;
-    }
-}
 /* ==================== FORGOT PASSWORD MODAL ==================== */
 #forgotPasswordModal {
     position: fixed;
@@ -2112,28 +2185,32 @@ body:has(#changePasswordModal) {
     box-sizing: border-box;
     overflow-y: auto;
 }
+
 #forgotPasswordModal.show {
     display: flex;
     opacity: 1;
 }
+
 #forgotPasswordModal .modal-content {
     width: 420px;
     max-width: 90vw;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--modal-bg);
     padding: 32px 36px;
     border-radius: 18px;
     backdrop-filter: blur(15px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 25px var(--shadow-color);
     animation: slideUpModal 0.4s cubic-bezier(.34, 1.56, .64, 1);
     position: relative;
     margin: auto;
     box-sizing: border-box;
     text-align: center;
 }
+
 #forgotPasswordModal .modal-header {
     text-align: center;
     margin-bottom: 18px;
 }
+
 #forgotPasswordModal .modal-icon {
     width: 60px;
     height: 60px;
@@ -2146,47 +2223,55 @@ body:has(#changePasswordModal) {
     box-shadow: 0 4px 15px rgba(99, 132, 210, 0.3);
     font-size: 28px;
 }
+
 #forgotPasswordModal .modal-title {
     font-size: 26px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 6px;
 }
+
 #forgotPasswordModal .modal-subtitle {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     margin: 0 0 18px 0;
 }
+
 #forgotPasswordModal .input-box {
     margin-bottom: 14px;
     text-align: left;
 }
+
 #forgotPasswordModal .input-box label {
     display: block;
     margin-bottom: 5px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 500;
     font-size: 13px;
 }
+
 #forgotPasswordModal .input-box input {
     width: 100%;
     padding: 10px 12px;
     border: none;
     border-radius: 10px;
     font-size: 15px;
-    background: rgba(255,255,255,0.7);
-    color: #000000;
+    background: var(--input-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
 }
+
 #forgotPasswordModal .input-box input:focus {
-    background: rgba(255,255,255,0.9);
+    background: var(--input-bg);
     box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
 }
+
 #forgotPasswordModal .modal-footer {
     display: flex;
     gap: 10px;
     margin-top: 10px;
 }
+
 #forgotPasswordModal .btn-send-reset,
 #forgotPasswordModal .btn-cancel {
     flex: 1;
@@ -2198,22 +2283,36 @@ body:has(#changePasswordModal) {
     cursor: pointer;
     transition: 0.25s ease;
 }
+
 #forgotPasswordModal .btn-send-reset {
     background: linear-gradient(135deg, #6384d2, #285ccd);
     color: #fff;
 }
+
 #forgotPasswordModal .btn-send-reset:hover {
     background: linear-gradient(135deg, #4d76d6, #1651d0);
     transform: translateY(-2px);
 }
+
 #forgotPasswordModal .btn-cancel {
     background: #e5e7eb;
     color: #374151;
 }
+
+[data-theme="dark"] #forgotPasswordModal .btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
 #forgotPasswordModal .btn-cancel:hover {
     background: #d1d5db;
     transform: translateY(-2px);
 }
+
+[data-theme="dark"] #forgotPasswordModal .btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
 /* ==================== RESET PASSWORD MODAL ==================== */
 #resetPasswordModal {
     position: fixed;
@@ -2232,24 +2331,28 @@ body:has(#changePasswordModal) {
     box-sizing: border-box;
     overflow-y: auto;
 }
+
 body:has(#resetPasswordModal) {
     overflow: hidden;
 }
+
 #resetPasswordModal .modal-content {
     width: 350px;
-    background: rgba(255, 255, 255, 0.795);
+    background: var(--modal-bg);
     padding: 28px 32px;
     border-radius: 18px;
     backdrop-filter: blur(15px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 25px var(--shadow-color);
     animation: slideUpModal 0.4s cubic-bezier(.34, 1.56, .64, 1);
     margin: auto;
     text-align: center;
 }
+
 #resetPasswordModal .modal-header {
     text-align: center;
     margin-bottom: 18px;
 }
+
 #resetPasswordModal .modal-icon {
     width: 60px;
     height: 60px;
@@ -2262,26 +2365,30 @@ body:has(#resetPasswordModal) {
     box-shadow: 0 4px 15px rgba(99, 132, 210, 0.3);
     font-size: 28px;
 }
+
 #resetPasswordModal .modal-title {
     font-size: 26px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 6px;
 }
+
 #resetPasswordModal .modal-subtitle {
     font-size: 14px;
-    color: #000000;
+    color: var(--text-secondary);
     margin: 0 0 18px 0;
 }
+
 #resetPasswordModal .input-box {
     margin-bottom: 14px;
     position: relative;
     text-align: left;
 }
+
 #resetPasswordModal .input-box label {
     display: block;
     margin-bottom: 5px;
-    color: #000000;
+    color: var(--text-primary);
     font-weight: 500;
     font-size: 13px;
 }
@@ -2291,14 +2398,15 @@ body:has(#resetPasswordModal) {
     border: none;
     border-radius: 10px;
     font-size: 15px;
-    background: rgba(255,255,255,0.7);
-    color: #000000;
+    background: var(--input-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
 }
 #resetPasswordModal .input-box input:focus {
-    background: rgba(255,255,255,0.9);
+    background: var(--input-bg);
     box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
 }
+
 #resetPasswordModal .password-toggle {
     position: absolute;
     right: 12px;
@@ -2310,22 +2418,26 @@ body:has(#resetPasswordModal) {
     color: #888;
     opacity: 0.6;
 }
+
 #resetPasswordModal .password-toggle:hover {
     color: #6384d2;
     opacity: 1;
 }
+
 #resetPasswordModal .password-requirements {
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     margin-top: 8px;
     line-height: 1.8;
 }
+
 #resetPasswordModal .req-item {
     display: flex;
     align-items: center;
     gap: 6px;
     margin: 3px 0;
 }
+
 #resetPasswordModal .req-check {
     width: 16px;
     height: 16px;
@@ -2337,23 +2449,29 @@ body:has(#resetPasswordModal) {
     font-size: 10px;
     font-weight: bold;
 }
+
 #resetPasswordModal .req-item.satisfied .req-check {
     background: #10b759;
     color: #fff;
 }
+
 #resetPasswordModal .req-item.satisfied .req-check::before {
     content: '✓';
 }
+
 #resetPasswordModal .req-item:not(.satisfied) .req-check::before {
     content: '○';
 }
+
 #resetPasswordModal .req-item.satisfied .req-text {
     color: #10b759;
     font-weight: 500;
 }
+
 #resetPasswordModal .password-strength {
     margin-top: 10px;
 }
+
 #resetPasswordModal .strength-bar {
     width: 100%;
     height: 6px;
@@ -2361,6 +2479,11 @@ body:has(#resetPasswordModal) {
     border-radius: 4px;
     overflow: hidden;
 }
+
+[data-theme="dark"] #resetPasswordModal .strength-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 #resetPasswordModal .strength-fill {
     height: 100%;
     width: 0%;
@@ -2368,16 +2491,19 @@ body:has(#resetPasswordModal) {
     transition: width 0.3s ease, background-color 0.3s ease;
     display: block;
 }
+
 #resetPasswordModal .strength-text {
     font-size: 12px;
     margin-top: 6px;
     font-weight: 500;
-    color: #555;
+    color: var(--text-secondary);
 }
+
 #resetPasswordModal .strength-weak { background: #ef4444; }
 #resetPasswordModal .strength-fair { background: #f59e0b; }
 #resetPasswordModal .strength-good { background: #3b82f6; }
 #resetPasswordModal .strength-strong { background: #10b759; }
+
 #resetPasswordModal .btn-reset-password {
     width: 100%;
     padding: 12px;
@@ -2390,18 +2516,176 @@ body:has(#resetPasswordModal) {
     cursor: pointer;
     transition: 0.25s ease;
 }
+
 #resetPasswordModal .btn-reset-password:hover {
     background: linear-gradient(135deg, #4d76d6, #1651d0);
     transform: translateY(-2px);
 }
+
 #resetPasswordModal .btn-reset-password:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
 }
 
-/* ...[existing styles below remain unchanged]... */
+/* MOBILE RESPONSIVE */
+@media (max-width: 768px) {
+    .nav {
+        display: none;
+    }
+
+    .mobile-top-nav {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 64px;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        background: var(--nav-bg);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 5000;
+        box-shadow: 0 4px 18px var(--shadow-color);
+        border-bottom: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        padding: 0 14px;
+    }
+
+    .mobile-toggle {
+        position: absolute;
+        left: 14px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .mobile-top-nav img {
+        height: 42px;
+        object-fit: contain;
+    }
+
+    .mobile-clock {
+        position: absolute;
+        right: 56px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        transition: color 0.3s ease;
+    }
+
+    .mobile-dark-mode-btn {
+        position: absolute;
+        right: 12px;
+        width: 38px;
+        height: 38px;
+        z-index: 1;
+    }
+
+    .sidebar-nav {
+        display: flex;
+    }
+
+    .form-wrapper {
+        padding: 100px 13px 40px;
+    }
+
+    .card {
+        padding: 20px 8vw;
+        max-width: 99vw;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .input-rem-forgot-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    #changePasswordModal .modal-content,
+    #resetPasswordModal .modal-content,
+    #forgotPasswordModal .modal-content {
+        width: 100%;
+        max-width: 350px;
+        padding: 24px 28px;
+    }
+}
+
+@media (max-width: 640px) {
+    .lgu-spinner {
+        font-size: 48px;
+        letter-spacing: 6px;
+    }
+    
+    .loading-text {
+        font-size: 14px;
+    }
+
+    .notif-popup {
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 32px);
+        max-width: 420px;
+        min-width: 0;
+        padding: 14px 16px 14px 14px;
+        gap: 10px;
+        font-size: 14px;
+        border-radius: 14px;
+        line-height: 1.35;
+    }
+    
+    .notif-icon { font-size: 20px; }
+    .notif-close { font-size: 20px; }
+}
+
+@media (max-width: 500px) {
+    .card {
+        padding: 12px 2vw;
+    }
+
+    .btn-primary {
+        font-size: 17px;
+        padding: 14px 14px;
+    }
+}
 </style>
+
+<script>
+const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
+
+(function() {
+    try {
+        let savedTheme = localStorage.getItem('theme');
+        
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = 'light';
+        }
+        
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        
+        localStorage.setItem('theme', savedTheme);
+        
+    } catch (e) {
+        console.error('Theme initialization error:', e);
+        document.documentElement.removeAttribute('data-theme');
+    }
+})();
+</script>
 </head>
 <body>
 
@@ -2415,19 +2699,62 @@ body:has(#resetPasswordModal) {
 
 <?php showNotification(); ?>
 
+<!-- DESKTOP NAVIGATION -->
 <header class="nav">
-    <div class="site-logo">
-        <img src="assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+    <a href="citizencimm.php" class="site-logo">
+        <img src="<?php echo htmlspecialchars($basePath); ?>assets/img/officiallogo.png" alt="LGU Logo">
         <span>InfraGovServices - Infrastructure and Utilities</span>
+    </a>
+    
+    <div class="nav-center">
+        <div class="nav-links">
+            <a href="#" class="active">Log in</a>
+            <a href="citizencimm.php">Home</a>
+            <a href="citizenrepform.php">Requests</a>
+            <a href="about.php">About</a>
+        </div>
+        
+        <div class="nav-divider"></div>
+        
+        <div class="nav-actions">
+            <div class="desktop-clock" id="desktopClock"></div>
+            <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
+                <span class="dark-icon">🌙</span>
+                <span class="light-icon" style="display: none;">☀️</span>
+            </button>
+        </div>
     </div>
-    <div class="nav-links">
-        <a href="#" class="active">Log in</a>
-        <a href="citizencimm.php">Home</a>
-        <a href="citizenrepform.php">Requests</a>
-        <a href="about.php">About</a>
-    </div>
-    <div class="menu-toggle">☰</div>
 </header>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-nav" id="sidebarNav">
+    <div class="sidebar-top">
+        <a href="citizencimm.php" class="site-logo">
+            <img src="<?php echo htmlspecialchars($basePath); ?>assets/img/officiallogo.png" alt="LGU Logo">
+            <div class="sidebar-divider logo-divider"></div>
+        </a>
+        <div class="sidebar-logo-spacer"></div>
+        
+        <ul class="nav-list">
+            <li><a href="#" class="nav-link active"><span>🔐</span><span>Log in</span></a></li>
+            <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
+            <li><a href="citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
+            <li><a href="about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
+        </ul>
+        <div style="flex-grow:1;"></div>
+    </div>
+</div>
+
+<!-- MOBILE TOP NAV -->
+<div class="mobile-top-nav">
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <img src="<?php echo htmlspecialchars($basePath); ?>assets/img/officiallogo.png" alt="LGU Logo">
+    <div class="mobile-clock" id="mobileClock"></div>
+    <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
+        <span class="dark-icon">🌙</span>
+        <span class="light-icon" style="display: none;">☀️</span>
+    </button>
+</div>
 
 <div class="form-wrapper">
     <div class="card">
@@ -3278,10 +3605,217 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-document.querySelector('.menu-toggle')
-    .addEventListener('click', () => {
-        document.querySelector('.nav-links').classList.toggle('show');
+// Mobile sidebar toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileToggle = document.getElementById('mobileToggle');
+    const sidebar = document.getElementById('sidebarNav');
+    
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (sidebar) sidebar.classList.toggle('mobile-active');
+        });
+    }
+    
+    // Close sidebar when clicking outside
+    document.addEventListener('click', (e) => {
+        if (sidebar && sidebar.classList.contains('mobile-active')) {
+            if (!sidebar.contains(e.target) && e.target !== mobileToggle) {
+                sidebar.classList.remove('mobile-active');
+            }
+        }
     });
+    
+    // Prevent sidebar from closing when clicking inside it
+    if (sidebar) {
+        sidebar.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+    
+    // Close sidebar when clicking a link
+    const navLinks = sidebar?.querySelectorAll('.nav-link');
+    navLinks?.forEach(link => {
+        link.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-active');
+        });
+    });
+});
+</script>
+
+<script>
+// Clock Script
+const RESYNC_MINUTES = 5;
+let currentServerTime = SERVER_TIME;
+let clockInterval = null;
+let lastSecond = null;
+
+function renderClock(now) {
+    const datePart = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const timeStr = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+
+    const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
+    let h = t ? t[1] : "--";
+    let m = t ? t[2] : "--";
+    let s = t ? t[3] : "--";
+    let ampm = t ? t[4] : "";
+
+    const desktopClock = document.getElementById('desktopClock');
+    const mobileClock = document.getElementById('mobileClock');
+
+    function flipSpan(str) {
+        return str.split('').map(chr => `<span>${chr}</span>`).join('');
+    }
+
+    if (desktopClock) {
+        desktopClock.innerHTML = `
+            <span class="date-part">${datePart}</span>
+            &nbsp;&nbsp;&nbsp;
+            <span class="time-part">
+                ${flipSpan(h)}:${flipSpan(m)}:${flipSpan(s)} ${ampm}
+            </span>
+        `;
+    }
+
+    if (mobileClock) {
+        mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
+    }
+}
+
+function tick() {
+    const now = new Date(currentServerTime);
+    const sec = now.getSeconds();
+
+    if (sec !== lastSecond) {
+        document.querySelectorAll('.time-part').forEach(el => {
+            el.classList.add('flip');
+            setTimeout(() => el.classList.remove('flip'), 250);
+        });
+        lastSecond = sec;
+    }
+
+    renderClock(now);
+    currentServerTime += 1000;
+}
+
+function startClock() {
+    if (clockInterval) return;
+    tick();
+    clockInterval = setInterval(tick, 1000);
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    } else {
+        startClock();
+    }
+});
+
+setInterval(() => {
+    fetch(location.href, { method: 'HEAD' })
+        .then(() => {
+            currentServerTime = SERVER_TIME;
+        });
+}, RESYNC_MINUTES * 60 * 1000);
+
+startClock();
+</script>
+
+<script>
+// Dark Mode Toggle
+(function() {
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
+    if (!darkModeBtn && !mobileDarkModeBtn) return;
+
+    const darkIcon = darkModeBtn?.querySelector('.dark-icon') || mobileDarkModeBtn?.querySelector('.dark-icon');
+    const lightIcon = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
+    const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
+    const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
+    const html = document.documentElement;
+
+    const THEME_KEY = 'theme';
+    const THEME_BACKUP_KEY = 'theme_backup';
+
+    function updateTheme(isDark, animate = false) {
+        try {
+            const themeValue = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                html.setAttribute('data-theme', 'dark');
+            } else {
+                html.removeAttribute('data-theme');
+            }
+            
+            localStorage.setItem(THEME_KEY, themeValue);
+            localStorage.setItem(THEME_BACKUP_KEY, themeValue);
+            
+            if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
+            if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
+            if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
+            if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
+            
+            if (animate) {
+                if (darkModeBtn) darkModeBtn.classList.add('active');
+                if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
+                setTimeout(() => {
+                    if (darkModeBtn) darkModeBtn.classList.remove('active');
+                    if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
+                }, 500);
+            }
+        } catch (e) {
+            console.error('Theme update error:', e);
+        }
+    }
+
+    try {
+        let savedTheme = localStorage.getItem(THEME_KEY);
+        
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
+        }
+        
+        if (savedTheme !== 'dark' && savedTheme !== 'light') {
+            savedTheme = 'light';
+        }
+        
+        updateTheme(savedTheme === 'dark', false);
+    } catch (e) {
+        console.error('Theme load error:', e);
+        updateTheme(false, false);
+    }
+
+    function toggleTheme() {
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        updateTheme(!isDark, true);
+    }
+
+    if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
+    if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
+
+    window.addEventListener('beforeunload', function() {
+        try {
+            const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            localStorage.setItem(THEME_KEY, currentTheme);
+            localStorage.setItem(THEME_BACKUP_KEY, currentTheme);
+        } catch (e) {
+            console.error('Theme save error:', e);
+        }
+    });
+})();
 </script>
 
 <footer class="footer">
