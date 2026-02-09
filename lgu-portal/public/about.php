@@ -179,29 +179,58 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             box-shadow: 0 8px 22px rgba(43, 108, 176, 0.4);
             background: linear-gradient(135deg, #245a96 0%, #1d4ed8 100%);
         }
+        /* Footer */
         .footer {
             width: 100%;
-            padding: 26px 60px 22px;
+            padding: 26px 0 22px;
             background: rgba(255,255,255,0.15);
             backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             border-top: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 -2px 12px rgba(44,66,133,0.08);
             margin-top: auto;
             flex-shrink: 0;
             position: relative;
+            z-index: 1;
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: row;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            padding: 20px 15px;
+        }
+        .footer-links {
+            position: absolute;
+            left: 60px;
+        }
+        .footer-links {
+            position: static;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 0;
         }
         .footer-links a {
-            margin-right: 25px;
+            margin: 0;
             text-decoration: none;
+            cursor: pointer;
             color: #fff;
             opacity: .8;
             transition: .2s;
         }
-        .footer-links a:hover { opacity: 1; font-weight: 600; }
-        .footer-logo { color: #fff; font-weight: 500; }
+        .footer-links a:hover {
+            opacity: 1;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .footer-logo {
+            text-align: center;
+            font-weight: 500;
+            color: #fff;
+            width: 100%;
+            text-align: center;
+            margin-top: 12px;
+        }
         @media (max-width: 950px) {
             .about-card {
                 padding: 28px 8vw 32px;
@@ -333,7 +362,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="btn-wrap">
-            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">📨 Submit a Report</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">Submit a Report</a>
         </div>
     </div>
 </div>
