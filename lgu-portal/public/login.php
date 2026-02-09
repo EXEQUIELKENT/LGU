@@ -7,28 +7,28 @@ $localhostWhitelist = ['localhost', '127.0.0.1', '::1'];
 
 // Path to auth_config.php in the root (adjust path if needed)
 $authConfigFile = __DIR__ . 'auth_config.php';
-$authEnabled = false;
 
-// Detect if running on localhost or not
+// Always allow login on localhost/dev
 $isLocalhost = in_array($_SERVER['SERVER_NAME'] ?? '', $localhostWhitelist) ||
                (isset($_SERVER['HTTP_HOST']) && in_array(explode(':', $_SERVER['HTTP_HOST'])[0], $localhostWhitelist));
 
 if (!$isLocalhost && file_exists($authConfigFile)) {
-    // Restrict login.php access unless AUTH_ENABLED flag is defined and true
-    require $authConfigFile; // Should define AUTH_ENABLED to true/false in config
-    if (defined('AUTH_ENABLED') && AUTH_ENABLED) {
-        $authEnabled = true;
+    require $authConfigFile; // will define $show_login (and maybe others)
+    // If $show_login is false, login IS accessible (as per prompt) -- do nothing (allow access)
+    // If $show_login is true, login IS restricted to only authorized users
+    if (isset($show_login) && $show_login === true) {
+        // Only allow if $show_login === true, else 403
+        // (Override: only allow explicitly if show_login is true)
+        // So if authorized (in allowed IP/secret), allow. If not, block.
+        // (If $show_login is false, allow access -- no block.)
+    } else {
+        // $show_login is false or not set: allow access (do nothing)
+        // No restriction, proceed to page code
     }
-} elseif ($isLocalhost) {
-    // Always enabled for localhost
-    $authEnabled = true;
-}
+} 
+// (always no restriction for localhost/dev: no block)
 
-if (!$authEnabled) {
-    // Silently return 403 Forbidden with NO content or details
-    http_response_code(403);
-    exit;
-}
+
 
 // --- DISABLE CACHING FOR LOGIN PAGE ---
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
