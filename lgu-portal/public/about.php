@@ -60,45 +60,124 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         .nav-links a.active { opacity: 1; font-weight: 600; }
         .nav-links a:hover { opacity: 1; }
         .menu-toggle { display: none; font-size: 26px; cursor: pointer; background: none; border: none; margin-left: 18px; color: black; }
-        .about-section {
-            flex: 1;
-            padding: 120px 40px 60px;
+        /* Same container as Maintenance Request form (report-card) */
+        .form-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 110px 16px 40px;
+        }
+        .about-card {
+            width: 100%;
             max-width: 900px;
-            margin: 0 auto;
-            color: #fff;
+            background: #ffffff;
+            padding: 48px 44px 44px;
+            border-radius: 22px;
+            box-shadow: 0 20px 45px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.06);
+            transition: all .25s ease;
+            color: #333;
+            border-top: 4px solid #2b6cb0;
         }
-        .about-section h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 8px #000, 0 0 6px #000;
+        .about-card h1 {
+            margin-bottom: 12px;
+            font-size: 2rem;
+            line-height: 1.25;
+            color: #212121;
+            text-align: center;
+            letter-spacing: .02em;
+            font-weight: 700;
         }
-        .about-section .divider {
+        .about-card .divider {
             width: 80px;
             height: 4px;
-            background: rgba(255,255,255,0.8);
+            background: linear-gradient(90deg, #2b6cb0, #3b82f6);
             border: none;
-            margin: 0 0 1.5rem 0;
+            margin: 0 auto 32px auto;
             border-radius: 2px;
         }
-        .about-section p {
-            font-size: 1.1rem;
-            line-height: 1.7;
-            opacity: 0.95;
+        .about-card .section-box {
+            margin-bottom: 24px;
+            padding: 22px 24px;
+            background: #f8fafc;
+            border-radius: 14px;
+            border-left: 4px solid #2b6cb0;
+            transition: box-shadow .2s ease, transform .15s ease;
         }
-        .about-section a.btn {
-            display: inline-block;
-            margin-top: 1.5rem;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.95);
-            color: #1a1a1a;
-            text-decoration: none;
-            border-radius: 8px;
+        .about-card .section-box:hover {
+            box-shadow: 0 4px 12px rgba(43, 108, 176, 0.08);
+        }
+        .about-card .section-box.intro {
+            background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 100%);
+        }
+        .about-card h2 {
+            font-size: 1.35rem;
+            color: #1e3c72;
+            margin-bottom: 14px;
+            margin-top: 0;
             font-weight: 600;
-            transition: background .2s, transform .2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .about-section a.btn:hover {
-            background: #fff;
-            transform: translateY(-2px);
+        .about-card h2 .icon {
+            font-size: 1.4rem;
+            line-height: 1;
+        }
+        .about-card .section-box h2 { margin-top: 0; }
+        .about-card p {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+        .about-card .section-box p:last-child {
+            margin-bottom: 0;
+        }
+        .about-card .purpose-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 12px 0 0;
+        }
+        .about-card .purpose-list li {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 10px;
+            line-height: 1.7;
+            color: #374151;
+        }
+        .about-card .purpose-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #2b6cb0;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .about-card .btn-wrap {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .about-card a.btn {
+            display: inline-block;
+            width: fit-content;
+            margin: 0;
+            padding: 14px 38px;
+            background: linear-gradient(135deg, #2b6cb0 0%, #2563eb 100%);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 18px;
+            transition: all .25s;
+            text-align: center;
+            box-shadow: 0 4px 14px rgba(43, 108, 176, 0.35);
+        }
+        .about-card a.btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(43, 108, 176, 0.4);
+            background: linear-gradient(135deg, #245a96 0%, #1d4ed8 100%);
         }
         .footer {
             width: 100%;
@@ -123,6 +202,14 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         }
         .footer-links a:hover { opacity: 1; font-weight: 600; }
         .footer-logo { color: #fff; font-weight: 500; }
+        @media (max-width: 950px) {
+            .about-card {
+                padding: 28px 8vw 32px;
+            }
+            .about-card .section-box {
+                padding: 18px 20px;
+            }
+        }
         @media (max-width: 768px) {
             .nav { padding: 18px 13px; }
             .nav-links { display: none; position: absolute; top: 60px; right: 10px; background: rgba(0,0,0,.86); border-radius: 12px; padding: 15px; flex-direction: column; min-width: 160px; z-index: 999; }
@@ -130,10 +217,41 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             .nav-links a { color: #fff !important; margin-left: 0; margin-bottom: 8px; }
             .nav-links a:last-child { margin-bottom: 0; }
             .menu-toggle { display: block; }
-            .about-section { padding: 100px 20px 40px; }
-            .about-section h1 { font-size: 1.75rem; }
+            .form-wrapper {
+                margin-top: 20px !important;
+                padding: 100px 5vw 40px !important;
+            }
+            .about-card {
+                padding: 17px 5vw !important;
+                max-width: 99vw;
+            }
+            .about-card h1 {
+                font-size: 1.75rem;
+                padding: 18px 6vw 0;
+            }
+            .about-card h2 {
+                font-size: 1.25rem;
+            }
             .footer { padding: 20px 15px; flex-direction: column; text-align: center; }
             .footer-links { margin-bottom: 10px; }
+        }
+        @media (max-width: 580px) {
+            .about-card {
+                padding: 12px 2vw !important;
+            }
+        }
+        @media (max-width: 480px) {
+            .form-wrapper {
+                padding: 90px 3vw 24px !important;
+            }
+            .about-card h1 {
+                font-size: 1.5rem;
+            }
+            .about-card a.btn {
+                width: 90%;
+                padding: 14px 20px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -153,73 +271,72 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <div class="menu-toggle" aria-label="Menu">☰</div>
 </header>
 
-<section class="about-section">
+<div class="form-wrapper">
+    <div class="about-card">
+        <h1>About CIMMS – Quezon City</h1>
+        <hr class="divider">
 
-    <h1> About CIMMS – Quezon City</h1>
-    <hr class="divider">
+        <div class="section-box intro">
+            <p>
+                <b>Community Infrastructure Maintenance Management System (CIMMS)</b> is a modern digital platform developed for the 
+                <b>Local Government of Quezon City</b> to improve how infrastructure concerns are reported, managed, and resolved across the city.
+            </p>
+            <p>
+                CIMMS empowers Quezon City residents by providing a simple, fast, and transparent way to report public infrastructure problems 
+                such as damaged roads, broken streetlights, clogged drainage systems, and other community facility concerns.
+            </p>
+        </div>
 
-    <div class="section-box">
-        <p>
-            <b>Community Infrastructure Maintenance Management System (CIMMS)</b> is a modern digital platform developed for the 
-            <b>Local Government of Quezon City</b> to improve how infrastructure concerns are reported, managed, and resolved across the city.
-        </p>
-        <p>
-            CIMMS empowers Quezon City residents by providing a simple, fast, and transparent way to report public infrastructure problems 
-            such as damaged roads, broken streetlights, clogged drainage systems, and other community facility concerns.
-        </p>
-    </div>  <br><br>
-    
-    <div class="section-box">
-        <h2><b>🌐 Our Purpose</b></h2>
-        <p>
-            CIMMS was created to:
-        </p>
-        <p>
-            • Improve the efficiency of public infrastructure maintenance <br>
-            • Enhance communication between citizens and LGU offices <br>
-            • Ensure faster response times to reported issues <br>
-            • Promote transparency, accountability, and service quality
-        </p>
-    </div> <br><br>
-    <div class="section-box">
-        <h2><b>🛠 What CIMMS Offers</b></h2>
-        <p>
-            <b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence. 
-            <b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime. 
-            <b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators. 
-            <b>Secure Access</b> – Role-based system with strong data protection and authentication. 
-            <b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.
-        </p>
-    </div> <br><br>
+        <div class="section-box">
+            <h2><span class="icon">🌐</span> Our Purpose</h2>
+            <p>CIMMS was created to:</p>
+            <ul class="purpose-list">
+                <li>Improve the efficiency of public infrastructure maintenance</li>
+                <li>Enhance communication between citizens and LGU offices</li>
+                <li>Ensure faster response times to reported issues</li>
+                <li>Promote transparency, accountability, and service quality</li>
+            </ul>
+        </div>
 
-    <div class="section-box">
-        <h2><b>🤝 For Quezon City Citizens</b></h2>
-        <p>
-            This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
-            are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
-            responsive city government.
-        </p>
-    </div> <br><br>
+        <div class="section-box">
+            <h2><span class="icon">🛠</span> What CIMMS Offers</h2>
+            <p><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
+            <p><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
+            <p><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
+            <p><b>Secure Access</b> – Role-based system with strong data protection and authentication.</p>
+            <p><b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.</p>
+        </div>
 
-    <div class="section-box">
-        <h2><b>🎯 Our Vision</b></h2>
-        <p>
-            To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
-            infrastructure services for all Quezon City citizens.
-        </p>
-    </div> <br><br>
+        <div class="section-box">
+            <h2><span class="icon">🤝</span> For Quezon City Citizens</h2>
+            <p>
+                This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
+                are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
+                responsive city government.
+            </p>
+        </div>
 
-    <div class="section-box">
-        <h2><b>🚀 Our Mission</b></h2>
-        <p>
-            To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
-            accountability, and improves the overall quality of urban services in Quezon City.
-        </p>
-    </div> <br><br>
+        <div class="section-box">
+            <h2><span class="icon">🎯</span> Our Vision</h2>
+            <p>
+                To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
+                infrastructure services for all Quezon City citizens.
+            </p>
+        </div>
 
-    <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">📨 Submit a Report</a>
+        <div class="section-box">
+            <h2><span class="icon">🚀</span> Our Mission</h2>
+            <p>
+                To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
+                accountability, and improves the overall quality of urban services in Quezon City.
+            </p>
+        </div>
 
-</section>
+        <div class="btn-wrap">
+            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">📨 Submit a Report</a>
+        </div>
+    </div>
+</div>
 
 
 <footer class="footer">
@@ -234,6 +351,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <script>
     document.querySelector('.menu-toggle')?.addEventListener('click', function() {
         document.querySelector('.nav-links').classList.toggle('show');
+
     });
 </script>
 </body>
