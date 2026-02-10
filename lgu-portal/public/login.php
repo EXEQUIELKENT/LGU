@@ -571,9 +571,16 @@ if (isset($_POST['otp_submit'])) {
                     exit;
                 } else {
                     unset($_SESSION['show_change_password_modal']);
-                    setNotification('success', 'Login successful! Redirecting to Employee Portal...');
+                    unset($_SESSION['notification']); // Clear notification
+                    $_SESSION['show_welcome_animation'] = true; // ✅ SET FLAG FOR ANIMATION
                     echo "<script>
-                        setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1100);
+                        var overlay = document.getElementById('loadingOverlay');
+                        if (overlay) {
+                            overlay.classList.add('show');
+                        }
+                        setTimeout(function(){ 
+                            window.location.href = '" . htmlspecialchars($employeeUrl) . "'; 
+                        }, 0);
                     </script>";
                     exit;
                 }
@@ -742,9 +749,16 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 $_SESSION['employee_role'] = $user['role'];
                 $_SESSION['employee_first_name'] = $user['first_name'];
                 logLoginEvent($conn, $email, true, null, false, 0);
-                setNotification('success', 'Login successful! Redirecting...');
+                unset($_SESSION['notification']); // Clear notification
+                $_SESSION['show_welcome_animation'] = true; // ✅ SET FLAG FOR ANIMATION
                 echo "<script>
-                    setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 900);
+                    var overlay = document.getElementById('loadingOverlay');
+                    if (overlay) {
+                        overlay.classList.add('show');
+                    }
+                    setTimeout(function(){ 
+                        window.location.href = '" . htmlspecialchars($employeeUrl) . "'; 
+                    }, 0);
                 </script>";
                 exit;
             }
@@ -2528,14 +2542,31 @@ body:has(#resetPasswordModal) {
     transform: none;
 }
 
-/* MOBILE RESPONSIVE */
+/* ===========================
+   MOBILE RESPONSIVE FIX
+   Add this CSS to replace the existing mobile media queries
+=========================== */
+
+/* MOBILE TOP NAV - Hidden by default, shown on mobile */
+.mobile-top-nav {
+    display: none;
+}
+
+/* MOBILE SIDEBAR - Hidden by default */
+.sidebar-nav {
+    display: none;
+}
+
+/* ===== MOBILE BREAKPOINT (768px and below) ===== */
 @media (max-width: 768px) {
+    /* HIDE DESKTOP NAVIGATION */
     .nav {
-        display: none;
+        display: none !important;
     }
 
+    /* SHOW MOBILE TOP NAV */
     .mobile-top-nav {
-        display: flex;
+        display: flex !important;
         position: fixed;
         top: 0;
         left: 0;
@@ -2564,6 +2595,11 @@ body:has(#resetPasswordModal) {
         height: 38px;
         font-size: 20px;
         cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .mobile-toggle:active {
+        transform: scale(0.95);
     }
 
     .mobile-top-nav img {
@@ -2589,74 +2625,203 @@ body:has(#resetPasswordModal) {
         z-index: 1;
     }
 
+    /* SHOW MOBILE SIDEBAR */
     .sidebar-nav {
-        display: flex;
+        display: flex !important;
+        position: fixed;
+        top: 0;
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 25px var(--shadow-color);
+        color: var(--text-primary);
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0;
+        z-index: 4000;
+        transition: left 0.35s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid var(--border-color);
     }
 
+    .sidebar-nav.mobile-active {
+        left: 12px !important;
+    }
+
+    /* ADJUST FORM WRAPPER FOR MOBILE TOP NAV */
     .form-wrapper {
-        padding: 100px 13px 40px;
+        margin-top: 20px !important;
+        padding-left: 5vw !important;
+        padding-right: 5vw !important;
+        padding-top: 100px !important;
     }
 
+    /* CARD ADJUSTMENTS */
     .card {
-        padding: 20px 8vw;
+        padding: 20px 8vw !important;
         max-width: 99vw;
+    }
+    
+    .icon-top {
+        display: block;
+        width: 120px;
+        height: auto;
+        margin: 16px auto 28px;
     }
 
     .title {
-        font-size: 1.5rem;
+        font-size: 30px;
+        padding: 18px 6vw;
+        margin-bottom: 20px;
     }
 
-    .input-rem-forgot-row {
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 12px;
+    .subtitle {
+        font-size: 15px;
+        margin-bottom: 20px;
     }
 
-    #changePasswordModal .modal-content,
-    #resetPasswordModal .modal-content,
-    #forgotPasswordModal .modal-content {
-        width: 100%;
-        max-width: 350px;
-        padding: 24px 28px;
+    .input-box {
+        margin-bottom: 19px;
     }
-}
 
-@media (max-width: 640px) {
-    .lgu-spinner {
-        font-size: 48px;
-        letter-spacing: 6px;
-    }
-    
-    .loading-text {
+    .input-box label {
         font-size: 14px;
+        margin-bottom: 6px;
     }
 
-    .notif-popup {
-        top: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 32px);
-        max-width: 420px;
-        min-width: 0;
-        padding: 14px 16px 14px 14px;
-        gap: 10px;
-        font-size: 14px;
-        border-radius: 14px;
-        line-height: 1.35;
-    }
-    
-    .notif-icon { font-size: 20px; }
-    .notif-close { font-size: 20px; }
-}
-
-@media (max-width: 500px) {
-    .card {
-        padding: 12px 2vw;
+    .input-box input {
+        padding: 11px 38px 11px 14px;
+        border-radius: 11px;
+        font-size: 15px;
     }
 
     .btn-primary {
         font-size: 17px;
         padding: 14px 14px;
+        margin-bottom: 20px;
+    }
+
+    .btn-container {
+        justify-content: center;
+    }
+
+    .small-text {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+    }
+
+    /* FOOTER MOBILE */
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 18px 10px;
+        margin-top: 20px;
+        position: relative;
+    }
+    
+    .footer-links {
+        justify-content: center;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+
+    /* RESPONSIVE MODALS */
+    #changePasswordModal,
+    #resetPasswordModal,
+    #forgotPasswordModal {
+        padding: 15px;
+    }
+    
+    #changePasswordModal .modal-content,
+    #resetPasswordModal .modal-content,
+    #forgotPasswordModal .modal-content {
+        width: 100%;
+        max-width: 400px;
+        padding: 24px 28px;
+    }
+}
+
+/* ===== SMALLER MOBILE (580px and below) ===== */
+@media (max-width: 580px) {
+    .card {
+        padding: 17px 5vw !important;
+    }
+    
+    .btn-primary {
+        font-size: 17px;
+        padding: 14px 14px;
+    }
+    
+    .btn-container {
+        justify-content: center;
+    }
+}
+
+/* ===== EXTRA SMALL MOBILE (480px and below) ===== */
+@media (max-width: 480px) {
+    .form-wrapper {
+        padding: 90px 3vw 24px !important;
+    }
+    
+    .btn-container {
+        flex-direction: column;
+        gap: 0;
+        align-items: center;
+    }
+    
+    .btn-primary {
+        padding: 14px 10px;
+        width: 90%;
+        font-size: 17px;
+    }
+
+    .input-box input {
+        padding: 10px 38px 10px 12px;
+        font-size: 14px;
+    }
+    
+    .input-box label {
+        font-size: 13px;
+    }
+}
+
+/* ===== VERY SMALL MOBILE (360px and below) ===== */
+@media (max-width: 360px) {
+    .mobile-clock {
+        font-size: 12px;
+        right: 52px;
+    }
+
+    .title {
+        font-size: 26px;
+    }
+
+    .card {
+        padding: 15px 4vw !important;
+    }
+}
+
+/* ===== ENSURE DESKTOP NAV SHOWS ON LARGE SCREENS ===== */
+@media (min-width: 769px) {
+    /* HIDE MOBILE ELEMENTS */
+    .mobile-top-nav {
+        display: none !important;
+    }
+
+    .sidebar-nav {
+        display: none !important;
+    }
+
+    /* SHOW DESKTOP NAV */
+    .nav {
+        display: flex !important;
     }
 }
 </style>
@@ -2692,7 +2857,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <!-- Loading Overlay -->
 <div id="loadingOverlay">
     <div class="loading-content">
-        <div class="lgu-spinner">LGU</div>
+        <div class="lgu-spinner">CIMM</div>
         <div class="loading-text">Processing...</div>
     </div>
 </div>

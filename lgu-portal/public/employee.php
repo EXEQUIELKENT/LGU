@@ -1,6 +1,12 @@
 <?php
 session_start();
 
+// Check if we should show welcome animation
+$showWelcomeAnimation = isset($_SESSION['show_welcome_animation']) && $_SESSION['show_welcome_animation'] === true;
+if ($showWelcomeAnimation) {
+    unset($_SESSION['show_welcome_animation']); // Clear flag after reading
+}
+
 // --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
@@ -1936,6 +1942,61 @@ body::before {
     font-size: 14px;
 }
 
+/* ===========================
+   WELCOME ANIMATION STYLES
+=========================== */
+.animate-on-load .metric-card,
+.animate-on-load .chart-card,
+.animate-on-load .dashboard-card {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+}
+
+.animate-on-load.active .metric-card {
+    animation: popUpFade 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-on-load.active .chart-card {
+    animation: popUpFade 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-on-load.active .dashboard-card {
+    animation: popUpFade 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Stagger animation delays */
+.animate-on-load.active .metric-card:nth-child(1) { animation-delay: 0.1s; }
+.animate-on-load.active .metric-card:nth-child(2) { animation-delay: 0.2s; }
+.animate-on-load.active .metric-card:nth-child(3) { animation-delay: 0.3s; }
+.animate-on-load.active .metric-card:nth-child(4) { animation-delay: 0.4s; }
+
+.animate-on-load.active .chart-card:nth-child(1) { animation-delay: 0.5s; }
+.animate-on-load.active .chart-card:nth-child(2) { animation-delay: 0.6s; }
+
+.animate-on-load.active .dashboard-card { animation-delay: 0.15s; }
+
+@keyframes popUpFade {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Disable animations on mobile for better performance */
+@media (max-width: 768px) {
+    .animate-on-load .metric-card,
+    .animate-on-load .chart-card,
+    .animate-on-load .dashboard-card {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     .desktop-top-nav {
@@ -2329,7 +2390,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 
 <div class="main-content">
-    <div class="dashboard-container">
+    <div class="dashboard-container <?php echo $showWelcomeAnimation ? 'animate-on-load' : ''; ?>">
         <!-- Dashboard Header -->
         <div class="dashboard-card">
             <div class="dashboard-header">
@@ -2839,6 +2900,25 @@ window.addEventListener("pageshow", function (event) {
         window.location.reload();
     }
 });
+</script>
+
+<script>
+// ===== WELCOME ANIMATION TRIGGER =====
+(function() {
+    const dashboardContainer = document.querySelector('.dashboard-container');
+    
+    if (dashboardContainer && dashboardContainer.classList.contains('animate-on-load')) {
+        // Small delay to ensure DOM is ready
+        setTimeout(function() {
+            dashboardContainer.classList.add('active');
+            
+            // Remove animation class after animations complete
+            setTimeout(function() {
+                dashboardContainer.classList.remove('animate-on-load', 'active');
+            }, 2000);
+        }, 100);
+    }
+})();
 </script>
 <script>
 // ===== CHART DATA FROM PHP =====

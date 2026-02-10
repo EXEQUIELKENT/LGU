@@ -1213,7 +1213,7 @@ if ($maintenance_result) {
             <?php if ($show_login): ?>
                 <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizendash.php" class="nav-link active"><span>🏠</span><span>Home</span></a></li>
+            <li><a href="#" class="nav-link active"><span>🏠</span><span>Home</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
             <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>
