@@ -259,10 +259,19 @@ body.sidebar-collapsed .desktop-top-nav {
     max-width: calc(100vw - var(--sidebar-expanded));
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 12px;
     transition: max-width 0.3s ease, padding 0.3s ease;
     padding-left: 12px;
+}
+
+/* CIMM Label Styles */
+.desktop-cimm-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #3762c8;
+    letter-spacing: 0.05em;
+    margin-right: auto;
 }
 
 /* Dark Mode & Notification Buttons */
@@ -1323,6 +1332,17 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
         font-size: 20px;
         cursor: pointer;
     }
+    
+    /* Mobile CIMM Label */
+    .mobile-cimm-label {
+        position: absolute;
+        left: 70px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #3762c8;
+        letter-spacing: 0.05em;
+    }
+    
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
@@ -1711,6 +1731,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
+        <div class="desktop-cimm-label">CIMM</div>
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
@@ -1738,6 +1759,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <span class="mobile-cimm-label">CIMM</span>
     <img src="assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">

@@ -16,6 +16,8 @@ $role       = $_SESSION['employee_role'] ?? ($_SESSION['role'] ?? '');
 // Role flags are kept for possible UI use, but queries will always be per-employee.
 $isAdmin   = ($role === 'Super Admin');
 $isManager = ($role === 'Manager');
+$isEngineer = ($role === 'Engineer');
+
 
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -174,5 +176,6 @@ echo json_encode([
     'notifications' => $notifications,
     'group_counts'  => $groupCounts,
     'is_admin'      => $isAdmin,
-    'is_manager'   => $isManager
+    'is_manager'   => $isManager,
+    'is_engineer'  => $isEngineer,
 ]);

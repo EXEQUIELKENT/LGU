@@ -2875,6 +2875,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <div class="nav-links">
             <a href="#" class="active">Log in</a>
             <a href="citizencimm.php">Home</a>
+            <a href="citizenreports.php">Reports</a>
             <a href="citizenrepform.php">Requests</a>
             <a href="about.php">About</a>
         </div>
@@ -2903,6 +2904,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="#" class="nav-link active"><span>🔐</span><span>Log in</span></a></li>
             <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
+            <li><a href="citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
             <li><a href="citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
             <li><a href="about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>

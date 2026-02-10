@@ -17,7 +17,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
 }
 
-// Get repairs count from repair_archive
+// Get statistics for the landing page
 $repairs_count = 0;
 $repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
 if ($repairs_result) {
@@ -25,7 +25,6 @@ if ($repairs_result) {
     $repairs_count = $repairs_row['count'];
 }
 
-// Get ongoing count from maintenance_schedule (In Progress status)
 $ongoing_count = 0;
 $ongoing_result = $conn->query("SELECT COUNT(*) as count FROM maintenance_schedule WHERE status = 'In Progress'");
 if ($ongoing_result) {
@@ -33,7 +32,6 @@ if ($ongoing_result) {
     $ongoing_count = $ongoing_row['count'];
 }
 
-// Get pending count from requests (Pending approval status)
 $pending_count = 0;
 $pending_result = $conn->query("SELECT COUNT(*) as count FROM requests WHERE approval_status = 'Pending'");
 if ($pending_result) {
@@ -41,17 +39,17 @@ if ($pending_result) {
     $pending_count = $pending_row['count'];
 }
 
-// Get maintenance schedule data for table
-$maintenance_data = array();
+// Get recent maintenance for preview
+$recent_maintenance = array();
 $maintenance_result = $conn->query("
-    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date, budget 
+    SELECT sched_id, task, location, status, starting_date 
     FROM maintenance_schedule 
     ORDER BY starting_date DESC 
-    LIMIT 10
+    LIMIT 3
 ");
 if ($maintenance_result) {
     while ($row = $maintenance_result->fetch_assoc()) {
-        $maintenance_data[] = $row;
+        $recent_maintenance[] = $row;
     }
 }
 ?>
@@ -61,9 +59,9 @@ if ($maintenance_result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
-    <title>Citizen Dashboard - LGU Portal</title>
+    <title>InfraGovServices - Community Infrastructure Maintenance</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
 
         * {
             margin: 0;
@@ -72,9 +70,6 @@ if ($maintenance_result) {
             font-family: 'Poppins', sans-serif;
         }
 
-        /* =======================
-           Dark Mode Variables
-        ========================== */
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: rgba(255, 255, 255, 0.95);
@@ -85,8 +80,9 @@ if ($maintenance_result) {
             --shadow-color: rgba(0, 0, 0, 0.2);
             --card-bg: #ffffff;
             --nav-bg: rgba(255, 255, 255, 0.87);
-            --stat-card-bg: rgba(255, 255, 255, 0.2);
-            --content-card-bg: rgba(255, 255, 255, 0.9);
+            --accent-primary: #2b6cb0;
+            --accent-secondary: #3762c8;
+            --accent-light: #e6f0ff;
         }
 
         [data-theme="dark"] {
@@ -99,13 +95,14 @@ if ($maintenance_result) {
             --shadow-color: rgba(0, 0, 0, 0.5);
             --card-bg: rgba(30, 30, 30, 0.95);
             --nav-bg: rgba(26, 26, 26, 0.87);
-            --stat-card-bg: rgba(255, 255, 255, 0.1);
-            --content-card-bg: rgba(30, 30, 30, 0.95);
+            --accent-primary: #4a8fd8;
+            --accent-secondary: #5a9fe8;
+            --accent-light: #1e3a5f;
         }
 
         body {
             background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             transition: background 0.3s ease;
@@ -126,293 +123,174 @@ if ($maintenance_result) {
         }
 
         body::-webkit-scrollbar {
-            display: none;
-        }
-        
-        /* === Added for mobile/desktop label toggling === */
-        .show-on-mobile {
-            display: none;
-        }
-        .hide-on-mobile {
-            display: block;
+            width: 10px;
         }
 
-        /* Hide .show-on-mobile when in desktop view (i.e., min-width > 768px) */
-        @media (min-width: 769px) {
-            .show-on-mobile {
-                display: none !important;
-            }
+        body::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
         }
 
-        .dashboard-container {
-            padding: 100px 0 40px;
-            max-width: 100%;
-            margin: 0;
-            color: var(--text-primary);
-            transition: color 0.3s ease;
-        }
-        .container {
-            max-width: 1400px;
-            margin: auto;
-            padding: 0 40px;
-        }
-        .welcome-section {
-            margin-bottom: 30px;
-        }
-        .welcome-section h1 {
-            text-align: center;
-            font-size: 3rem;
-            font-weight: 900; 
-            text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
-            color: #fff;
-        }
-        /* STAT CARDS */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-bottom: 50px;
-        }
-        .stat-card {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            text-align: left;
-            background: var(--stat-card-bg);
-            backdrop-filter: blur(10px);
-            padding: 30px;
-            border-radius: 18px;
-            border: 1px solid var(--border-color);
-            transition: all .25s ease;
-            cursor: pointer;
-        }
-        .stat-card:hover {
-            transform: translateY(-4px);
-            background: rgba(255, 255, 255, 0.25);
-        }
-        [data-theme="dark"] .stat-card:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        .stat-icon {
-            font-size: 32px;
-            background: rgba(255,255,255,.25);
-            padding: 14px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        [data-theme="dark"] .stat-icon {
-            background: rgba(255,255,255,.15);
-        }
-        .stat-card h3 {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.8;
-            margin-bottom: 4px;
-            margin-top: 0;
-            color: var(--text-primary);
-        }
-        .stat-card .number {
-            font-size: 40px;
-            font-weight: 600;
-            color: var(--text-primary);
+        body::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 5px;
         }
 
-        /* RECENT ACTIVITY TABLE & MOBILE CARDS */
-        .content-card {
-            background: var(--content-card-bg);
-            border-radius: 18px;
-            padding: 50px 60px;
-            color: var(--text-secondary);
-            box-shadow: 0 10px 30px var(--shadow-color);
-            transition: all .25s ease;
-            border: 1px solid var(--border-color);
-        }       
-        .card-header {
+        /* NAVIGATION */
+        .nav {
+            width: 100%;
+            padding: 18px 60px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        /* Center card-header h2 */
-        .card-header h2 {
-            margin: 0 auto;
-            text-align: center;
-            width: 100%;
-            font-size: 30px;
-            color: var(--text-primary);
-        }
-        /* Make card-header h2 larger on mobile view for .show-on-mobile */
-        @media (max-width: 768px) {
-            .show-on-mobile.card-header h2 {
-                font-size: 30px !important;
-                font-weight: 700 !important;
-                margin-bottom: 10px !important;
-            }
-            .show-on-mobile {
-                display: block !important;
-            }
-            .hide-on-mobile {
-                display: none !important;
-            }
-        }
-
-        /* TABLE POLISH - IMPROVED TABLE CONTAINER */
-        .table-wrapper {
-            border-radius: 16px;
-            background: var(--card-bg);
-            box-shadow: inset 0 0 0 1px var(--border-color);
-            transition: background 0.3s ease;
-            overflow-x: visible;
-        }
-
-        @media (max-width: 1150px) {
-            .table-wrapper {
-                overflow-x: auto;
-            }
-            table {
-                min-width: 900px;
-            }
-        }
-
-        table {
-            width: 100%;
-            max-width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        /* MODERN TABLE HEADER - UPGRADE + STICKY */
-        thead th {
-            position: sticky;
+            background: var(--nav-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 2px solid var(--border-color);
+            box-shadow: 0 4px 25px var(--shadow-color);
+            position: fixed;
             top: 0;
-            background: linear-gradient(
-                to bottom,
-                #fdfdfd,
-                #f2f4f8
-            );
-            z-index: 2;
-            padding: 16px 18px;
-            border-bottom: 1px solid #e3e6ee;
-            color: #555;
-            font-size: 15px;
+            left: 0;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        .site-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
             font-weight: 600;
-            text-align: center;
-            white-space: nowrap;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
+            text-decoration: none;
+            cursor: pointer;
         }
-
-        [data-theme="dark"] thead th {
-            background: linear-gradient(
-                to bottom,
-                rgba(40, 40, 40, 0.95),
-                rgba(35, 35, 35, 0.95)
-            );
-            color: var(--text-secondary);
-            border-bottom-color: var(--border-color);
+        
+        .site-logo:hover {
+            opacity: 0.85;
         }
-
-        th:nth-child(1) { width: 100px; }
-        th:nth-child(2) { width: 130px; }
-        th:nth-child(3) { width: auto; min-width: 140px; }
-        th:nth-child(4) { width: auto; min-width: 150px; }
-        th:nth-child(5) { width: 120px; }
-        th:nth-child(6) { width: 110px; }
-        th:nth-child(7) { width: 100px; }
-
-        /* TABLE ZEBRA + HOVER LIFT */
-        td {
-            padding: 16px 18px;
-            border-bottom: 1px solid #eef0f5;
-            font-size: 15px;
-            color: #374151;
-            text-align: center;
-            white-space: nowrap;
+        
+        .site-logo img {
+            width: 40px; 
+            height: auto; 
+            border-radius: 8px;
         }
-
-        [data-theme="dark"] td {
-            border-bottom-color: var(--border-color);
-            color: var(--text-secondary);
+        
+        .nav-center {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: auto;
         }
-
-        td:nth-child(1) {
-            text-align: center;
+        
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 25px;
         }
-        td:nth-child(3),
-        td:nth-child(4) {
-            text-align: left;
+        
+        .nav-links a {
+            margin-left: 0;
+            text-decoration: none;
+            cursor: pointer;
+            color: var(--text-primary);
+            opacity: .8;
+            transition: .2s;
+            font-weight: 500;
         }
-
-        tbody tr {
-            transition: background .2s ease, transform .15s ease;
-        }
-        tbody tr:nth-child(even) {
-            background: #fafbff;
-        }
-        [data-theme="dark"] tbody tr:nth-child(even) {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        tbody tr:hover {
-            background: #eef3ff;
-        }
-        [data-theme="dark"] tbody tr:hover {
-            background: rgba(55, 98, 200, 0.1);
-        }
-
-        /* VIEW BUTTON UPGRADE */
-        td a.link {
-            padding: 7px 18px;
-            font-size: 14px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: #fff;
-            border-radius: 999px;
+        
+        .nav-links a.active {
+            opacity: 1;
             text-decoration: none;
             font-weight: 600;
-            box-shadow: 0 4px 10px rgba(59,130,246,.35);
-            transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+        }
+        
+        .nav-links a:hover {
+            opacity: 1;
+            text-decoration: none;
+        }
+
+        .nav-divider {
+            width: 2px;
+            height: 30px;
+            background: var(--border-color);
+            margin: 0;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .desktop-clock {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            position: relative;
+            transition: color 0.3s ease;
+            text-align: right;
+            min-width: 420px;
             display: inline-block;
         }
-        td a.link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59,130,246,.45);
+
+        .desktop-clock .date-part {
+            opacity: 0.6;
+            font-weight: 400;
         }
 
-        /* STATUS PILL - UPGRADED STYLE */
-        .status-pill {
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 600;
-            display: inline-flex;
+        .desktop-clock .time-part {
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .time-part span {
+            display: inline-block;
+            transition: transform 0.25s ease, opacity 0.25s ease;
+        }
+
+        .time-part.flip span {
+            transform: translateY(-4px);
+            opacity: 0.6;
+        }
+
+        .nav-btn {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(55, 98, 200, 0.1);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 95px;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
         }
-        .status-pill::before {
-            content: "●";
-            font-size: 10px;
-            margin-right: 6px;
-        }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-fixed { background: #d4edda; color: #155724; }
-        .status-progress { background: #cce5ff; color: #004085; }
-        .status-delayed { background: #f8d7da; color: #721c24; }
 
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 13px;
+        .nav-btn:hover {
+            background: rgba(55, 98, 200, 0.2);
+            transform: scale(1.05);
         }
-        /* Mobile maintenance list (hidden by default, replaces table on mobile) */
-        .mobile-maintenance-list {
-            display: none;
+
+        .nav-btn:active {
+            transform: scale(0.95);
         }
-        /* ===========================
-        MOBILE SIDEBAR STYLES
-        =========================== */
+
+        .nav-btn.dark-mode-btn.active {
+            animation: rotateSun 0.5s ease;
+        }
+
+        @keyframes rotateSun {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        /* MOBILE SIDEBAR */
         .sidebar-nav {
             position: fixed;
             top: 0;
@@ -449,11 +327,6 @@ if ($maintenance_result) {
             padding: 20px 0;
             overflow-y: auto;
             position: relative;
-        }
-
-        .sidebar-logo-spacer {
-            height: 16px;
-            flex-shrink: 0;
         }
 
         .sidebar-nav .site-logo {
@@ -537,306 +410,892 @@ if ($maintenance_result) {
             transform: translateX(8px) scale(1.02);
         }
 
-        @media (max-width: 768px) {
-            .sidebar-nav {
-                display: flex;
-            }
-            
-            .nav-links {
-                display: none !important;
-            }
-            
-            .menu-toggle {
-                display: none !important;
-            }
-        }
-
-        @media (min-width: 769px) {
-            .sidebar-nav {
-                display: none !important;
-            }
-        }
-        /* --- Begin drop-in mobile card layout --- */
-        .report-card {
-            width: 100%;
-            font-size: 14px;
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px 18px;
-            box-shadow: 0 8px 20px var(--shadow-color);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-        }
-        /* Modified report-row for mobile stack label and value inline instead of left/right */
-        .report-row {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            font-size: 14px;
-            line-height: 1.4;
-            gap: 7px;
-        }
-        .report-row .label {
-            font-weight: 600;
-            opacity: 0.7;
-            margin-right: 6px;
-            flex-shrink: 0;
-            color: var(--text-primary);
-        }
-        .report-row .value {
-            font-weight: 500;
-            text-align: left;
-            max-width: 100%;
-            margin-left: 0;
-            flex: 1 1 auto;
-            color: var(--text-secondary);
-        }
-        .report-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 8px;
-        }
-        .evidence-btn {
-            padding: 8px 14px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            background: #3762c8;
-            color: #fff;
-            transition: .2s ease;
-            border: none;
-            cursor: pointer;
-        }
-        .evidence-btn:hover {
-            background: #2851b3;
-        }
-        /* --- End drop-in mobile card layout --- */
-        .maintenance-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 15px;
-            box-shadow: 0 6px 18px var(--shadow-color);
-            color: var(--text-primary);
-            transition: all .25s ease;
-        }
-        .maintenance-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px var(--shadow-color);
-        }
-        .maintenance-card .status-pill {
-            margin-top: 8px;
-        }
-        .card-action {
-            display: inline-block;
-            margin-top: 10px;
-            font-weight: 600;
-            color: #005bb3;
-            text-decoration: none;
-        }
-        
-        /* DESKTOP NAVIGATION */
-        .nav {
-            width: 100%;
-            padding: 18px 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--nav-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom: 2px solid var(--border-color);
-            box-shadow: 0 4px 25px var(--shadow-color);
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 100;
-            transition: background 0.3s ease, border-color 0.3s ease;
-        }
-        
-        .site-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-            font-weight: 600;
-            transition: color 0.3s ease;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        
-        .site-logo:hover {
-            opacity: 0.85;
-        }
-        
-        .site-logo img {
-            width: 40px; 
-            height: auto; 
-            border-radius: 8px;
-        }
-        
-        /* Updated nav center section */
-        .nav-center {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-left: auto;
-        }
-        
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-        }
-        
-        .nav-links a {
-            margin-left: 0;
-            text-decoration: none;
-            cursor: pointer;
-            color: var(--text-primary);
-            opacity: .8;
-            transition: .2s;
-            font-weight: 500;
-        }
-        
-        .nav-links a.active {
-            opacity: 1;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .nav-links a:hover {
-            opacity: 1;
-            text-decoration: none;
-        }
-
-        /* Nav divider */
-        .nav-divider {
-            width: 2px;
-            height: 30px;
-            background: var(--border-color);
-            margin: 0;
-        }
-
-        /* Nav Actions (Clock and Dark Mode) */
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .desktop-clock {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
-            white-space: nowrap;
-            position: relative;
-            transition: color 0.3s ease;
-            text-align: right;
-            min-width: 420px;
-            display: inline-block;
-        }
-
-        .desktop-clock .date-part {
-            opacity: 0.6;
-            font-weight: 400;
-        }
-
-        .desktop-clock .time-part {
-            font-weight: 700;
-            letter-spacing: 0.03em;
-        }
-
-        .time-part span {
-            display: inline-block;
-            transition: transform 0.25s ease, opacity 0.25s ease;
-        }
-
-        .time-part.flip span {
-            transform: translateY(-4px);
-            opacity: 0.6;
-        }
-
-        .nav-btn {
-            position: relative;
-            width: 38px;
-            height: 38px;
-            border: none;
-            border-radius: 10px;
-            background: rgba(55, 98, 200, 0.1);
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(8px);
-        }
-
-        .nav-btn:hover {
-            background: rgba(55, 98, 200, 0.2);
-            transform: scale(1.05);
-        }
-
-        .nav-btn:active {
-            transform: scale(0.95);
-        }
-
-        .nav-btn.dark-mode-btn {
-            animation: none;
-        }
-
-        .nav-btn.dark-mode-btn.active {
-            animation: rotateSun 0.5s ease;
-        }
-
-        @keyframes rotateSun {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.2); }
-            100% { transform: rotate(360deg) scale(1); }
-        }
-
         /* MOBILE TOP NAV */
         .mobile-top-nav {
             display: none;
         }
 
-        .menu-toggle {
-            display: none;
-            font-size: 26px;
-            cursor: pointer;
-            color: var(--text-primary);
-            background: none;
-            border: none;
-            margin-left: 18px;
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            padding-top: 80px;
         }
 
-        @media (max-width: 1400px) {
-            .container {
-                max-width: 98%;
+        /* HERO SECTION */
+        .hero-section {
+            padding: 100px 20px 80px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px #000, 0 0 6px #000, 0 0 3px #000, 0 0 1px #fff;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 4px #000;
+            animation: fadeInUp 0.8s ease 0.2s backwards;
+        }
+
+        .hero-tagline {
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            text-shadow: 1px 1px 4px #000;
+            animation: fadeInUp 0.8s ease 0.3s backwards;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease 0.4s backwards;
+        }
+
+        .cta-button {
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 14px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, #2b6cb0, #1d4ed8);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(43, 108, 176, 0.35);
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(43, 108, 176, 0.45);
+        }
+
+        .cta-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 2px solid #fff;
+            backdrop-filter: blur(10px);
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
-        @media (max-width: 1150px) {
-            .container {
-                max-width: 100%;
-                padding: 0 10px;
+
+        /* STATISTICS SECTION */
+        .stats-section {
+            padding: 60px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px var(--shadow-color);
+        }
+
+        .stat-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* TRUST INDICATORS */
+        .trust-section {
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+            position: relative;
+        }
+
+        /* Connecting Lines - Desktop (Horizontal) */
+        .trust-item {
+            text-align: center;
+            padding: 30px 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 24px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Horizontal connecting line (desktop) */
+        .trust-item::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 30px;
+            height: 3px;
+            background: linear-gradient(90deg, #2b6cb0, #3b82f6);
+            transform: translateY(-50%);
+            z-index: 1;
+            opacity: 0;
+            animation: slideInLine 0.8s ease forwards;
+            box-shadow: 0 0 8px rgba(43, 108, 176, 0.5);
+        }
+
+        /* Animated dot traveling along the line */
+        .trust-item::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            opacity: 0;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+            animation: travelDot 2s ease-in-out infinite;
+            animation-delay: 0.8s;
+        }
+
+        /* Remove line from last item */
+        .trust-item:nth-child(4)::after,
+        .trust-item:nth-child(4)::before {
+            display: none;
+        }
+
+        @keyframes slideInLine {
+            from {
+                opacity: 0;
+                width: 0;
             }
-            .content-card {
-                padding: 30px 8px;
+            to {
+                opacity: 1;
+                width: 30px;
             }
         }
-        @media (max-width: 992px) {
-            .container {
-                max-width: 100%;
+
+        @keyframes travelDot {
+            0%, 100% {
+                opacity: 0;
+                left: 100%;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            50% {
+                left: calc(100% + 15px);
+                opacity: 1;
             }
         }
+
+        .trust-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 32px var(--shadow-color);
+        }
+
+        .trust-item:hover::after {
+            background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+            box-shadow: 0 0 15px rgba(43, 108, 176, 0.8);
+        }
+
+        .trust-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .trust-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .trust-desc {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* FEATURES SECTION */
+        .features-section {
+            padding: 80px 20px;
+            background: var(--bg-secondary);
+            backdrop-filter: blur(10px);
+            margin: 0 20px;
+            border-radius: 30px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 60px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px var(--shadow-color);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .feature-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-primary);
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .feature-link:hover {
+            gap: 12px;
+        }
+
+        /* HOW IT WORKS SECTION */
+        .how-it-works-section {
+            padding: 80px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .section-header-card .section-title {
+            margin-bottom: 15px;
+        }
+
+        .section-header-card .section-subtitle {
+            margin-bottom: 0;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .step-card {
+            text-align: center;
+            position: relative;
+            padding: 30px 25px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 24px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 32px var(--shadow-color);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 15px rgba(43, 108, 176, 0.3);
+        }
+
+        .step-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .step-description {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ABOUT SECTION - IMPROVED */
+        .about-section {
+            padding: 80px 20px;
+            background: var(--bg-secondary);
+            backdrop-filter: blur(10px);
+            margin: 0 20px;
+            border-radius: 30px;
+        }
+
+        .about-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .about-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .about-header h2 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .about-header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 60px;
+        }
+
+        .about-image-container {
+            position: relative;
+        }
+
+        .about-image-wrapper {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px var(--shadow-color);
+        }
+
+        .about-image-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 20px;
+        }
+
+        .about-image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            padding: 30px;
+            color: #fff;
+        }
+
+        .about-image-overlay h3 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .about-image-overlay p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .about-text {
+            padding: 20px 0;
+        }
+
+        .about-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .about-text p {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .about-highlights {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .highlight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 15px;
+            background: var(--accent-light);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .highlight-item:hover {
+            transform: translateX(5px);
+        }
+
+        .highlight-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .highlight-text {
+            flex: 1;
+        }
+
+        .highlight-text strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+
+        .highlight-text span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .about-mission {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 50px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            margin-top: 60px;
+        }
+
+        .mission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .mission-card {
+            text-align: center;
+        }
+
+        .mission-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 20px rgba(43, 108, 176, 0.3);
+        }
+
+        .mission-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .mission-description {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* RECENT ACTIVITY SECTION */
+        .activity-section {
+            padding: 80px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .activity-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px var(--shadow-color);
+        }
+
+        .activity-card .section-title {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .activity-card .section-subtitle {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .activity-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .activity-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item:hover {
+            background: var(--bg-tertiary);
+            padding-left: 30px;
+        }
+
+        .activity-info h4 {
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .activity-info p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-progress {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        /* FOOTER */
+        .footer {
+            width: 100%;
+            padding: 60px 20px 30px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 12px var(--shadow-color);
+            margin-top: auto;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-about h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .footer-about p {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .footer-contact {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+        }
+
+        .footer-links h4 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .footer-links ul {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .footer-links a:hover {
+            color: #fff;
+            padding-left: 5px;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            margin-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 15px;
+        }
+
+        .social-link {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-decoration: none;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            background: var(--accent-primary);
+            transform: translateY(-3px);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .about-content {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .trust-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            /* Adjust connecting lines for 2-column layout */
+            .trust-item:nth-child(2)::after,
+            .trust-item:nth-child(2)::before,
+            .trust-item:nth-child(4)::after,
+            .trust-item:nth-child(4)::before {
+                display: none;
+            }
+
+            .trust-item:nth-child(1)::after,
+            .trust-item:nth-child(1)::before,
+            .trust-item:nth-child(3)::after,
+            .trust-item:nth-child(3)::before {
+                display: block;
+            }
+        }
+
+        /* SCROLL ANIMATIONS */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .animate-on-scroll.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .animate-on-scroll.delay-1 {
+            transition-delay: 0.1s;
+        }
+
+        .animate-on-scroll.delay-2 {
+            transition-delay: 0.2s;
+        }
+
+        .animate-on-scroll.delay-3 {
+            transition-delay: 0.3s;
+        }
+
+        .animate-on-scroll.delay-4 {
+            transition-delay: 0.4s;
+        }
+
         @media (max-width: 768px) {
-            /* Hide desktop nav, show mobile nav */
             .nav {
                 display: none;
             }
@@ -852,11 +1311,9 @@ if ($maintenance_result) {
                 justify-content: center;
                 background: var(--nav-bg);
                 backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
                 z-index: 5000;
                 box-shadow: 0 4px 18px var(--shadow-color);
                 border-bottom: 1px solid var(--border-color);
-                transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
                 padding: 0 14px;
             }
 
@@ -884,8 +1341,6 @@ if ($maintenance_result) {
                 font-size: 14px;
                 font-weight: 600;
                 color: var(--text-primary);
-                white-space: nowrap;
-                transition: color 0.3s ease;
             }
 
             .mobile-dark-mode-btn {
@@ -893,255 +1348,147 @@ if ($maintenance_result) {
                 right: 12px;
                 width: 38px;
                 height: 38px;
-                z-index: 1;
             }
 
-            .dashboard-container { 
-                padding: 100px 13px 40px; 
-            }
-            .container { padding: 0 5px; }
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 18px;
-            }
-            .welcome-section h1 {
-                text-align: center;
-                font-size: 2rem;
-                font-weight: 600;
-            }
-            table { display: none !important; }
-            
-            .mobile-maintenance-list {
+            .sidebar-nav {
                 display: flex;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .hero-tagline {
+                font-size: 1rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }  
+
+            .about-text h3 {
+                font-size: 2rem;
+                text-align: center;
+            }
+
+            .about-text p {
+                font-size: 1.05rem;
+            }
+
+            .about-header h2 {
+                font-size: 2rem;
+            }
+
+            .about-highlights {
+                grid-template-columns: 1fr;
+            }
+
+            .about-mission {
+                padding: 30px 20px;
+            }
+
+            .mission-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-bottom {
                 flex-direction: column;
                 gap: 20px;
-                width: 100%;
-                padding: 8px 20px;
-            }
-            .footer {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                padding: 18px 10px;
-            }
-            .footer-links {
-                justify-content: center;
-                margin-bottom: 10px;
-                gap: 12px;
             }
 
-            /* === Maintenance card (same visual as request-card) === */
-            .report-card {
-                width: 100%;
-                background: var(--card-bg);
-                border-radius: 16px;
-                padding: 16px 18px;
-                box-shadow: 0 8px 20px var(--shadow-color);
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                font-size: 14px;
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
 
-            /* Row layout */
-            .report-row {
-                display: flex;
-                align-items: center;
-                gap: 7px;
-                line-height: 1.4;
+            .features-grid {
+                grid-template-columns: 1fr;
             }
 
-            /* Label & value formatting */
-            .report-row .label {
-                font-weight: 600;
-                opacity: 0.7;
-                flex-shrink: 0;
+            .steps-container {
+                grid-template-columns: 1fr;
             }
 
-            .report-row .value {
-                font-weight: 500;
-                flex: 1;
-                text-align: left;
+            .trust-grid {
+                grid-template-columns: 1fr;
             }
 
-            /* Footer (status + action button) */
-            .report-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-top: 8px;
+            /* Mobile: Vertical connecting lines */
+            .trust-item::after {
+                top: 100%;
+                left: 50%;
+                width: 3px;
+                height: 30px;
+                background: linear-gradient(180deg, #2b6cb0, #3b82f6);
+                transform: translateX(-50%);
+                animation: slideInLineVertical 0.8s ease forwards;
             }
 
-            /* View button */
-            .evidence-btn {
-                text-align: center;
-                width: 90px;
-                padding: 8px 14px;
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 600;
-                background: #3762c8;
-                color: #fff;
-                border: none;
-                cursor: pointer;
-                transition: background .2s ease;
+            .trust-item::before {
+                top: 100%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                animation: travelDotVertical 2s ease-in-out infinite;
+                animation-delay: 0.8s;
             }
 
-            .evidence-btn:hover {
-                background: #2851b3;
+            /* Remove line from last item in mobile */
+            .trust-item:nth-child(1)::after,
+            .trust-item:nth-child(1)::before,
+            .trust-item:nth-child(2)::after,
+            .trust-item:nth-child(2)::before,
+            .trust-item:nth-child(3)::after,
+            .trust-item:nth-child(3)::before {
+                display: block;
             }
 
-            /* Status pill spacing */
-            .report-footer .status-pill {
-                margin-right: 6px;
+            .trust-item:nth-child(4)::after,
+            .trust-item:nth-child(4)::before {
+                display: none;
             }
 
-            .content-card {
-                padding: 22px 6px;
-                border-radius: 12px;
+            @keyframes slideInLineVertical {
+                from {
+                    opacity: 0;
+                    height: 0;
+                }
+                to {
+                    opacity: 1;
+                    height: 30px;
+                }
+            }
+
+            @keyframes travelDotVertical {
+                0%, 100% {
+                    opacity: 0;
+                    top: 100%;
+                }
+                10% {
+                    opacity: 1;
+                }
+                90% {
+                    opacity: 1;
+                }
+                50% {
+                    top: calc(100% + 15px);
+                    opacity: 1;
+                }
+            }
+
+            .features-section,
+            .about-section {
+                margin: 0 10px;
+                border-radius: 20px;
             }
         }
-        @media (max-width: 500px) {
-            .stat-card { padding: 20px 10px; }
-            .stat-icon { font-size: 25px; padding: 8px; }
-            .stat-card .number { font-size: 28px; }
-            .card-header h2 { font-size: 1.0rem; }
-            .report-card { padding: 12px; }
-            .footer {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                padding: 18px 10px;
-            }
-            .footer-links {
-                justify-content: center;
-                margin-bottom: 10px;
-                gap: 12px;
-            }
-        }
-
-        /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
-        .table-search-wrapper {
-            width: 100%;
-            max-width: 100%;
-            margin-bottom: 18px;
-        }
-        #requestSearch {
-            width: 100%;
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid #d2d6db;
-            font-size: 15px;
-            outline: none;
-            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
-            background: var(--card-bg);
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] #requestSearch {
-            border-color: var(--border-color);
-        }
-        
-        #requestSearch:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-        }
-        /* === MOBILE SEARCH POSITIONING === */
-        @media (max-width: 768px) {
-            .table-search-wrapper {
-                order: 2;
-                margin-top: 10px;
-                margin-bottom: 18px;
-                padding: 0 10px;
-            }
-            .mobile-maintenance-list .card-header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-        /* Prevent overflow on very small screens */
-        @media (max-width: 500px) {
-            #requestSearch {
-                font-size: 14px;
-                padding: 9px 14px;
-            }
-        }
-        /* FOOTER — same design as NAVBAR */
-        .footer {
-            width: 100%;
-            padding: 26px 0 22px;
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-top: 1px solid var(--border-color);
-            box-shadow: 0 -2px 12px var(--shadow-color);
-            margin-top: auto;
-            flex-shrink: 0;
-            position: relative;
-            z-index: 1;
-            transition: background 0.3s ease, border-color 0.3s ease;
-        }
-
-        [data-theme="dark"] .footer {
-            background: rgba(26, 26, 26, 0.15);
-        }
-
-        /* Left-aligned links */
-        .footer-links {
-            position: absolute;
-            left: 60px;
-        }
-
-        .footer-links a {
-            margin-right: 25px;
-            text-decoration: none;
-            cursor: pointer;
-            color: #fff;
-            opacity: .8;
-            transition: .2s;
-        }
-
-        .footer-links a:hover {
-            opacity: 1;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        /* Center copyright */
-        .footer-logo {
-            text-align: center;
-            font-weight: 500;
-            color: #fff;
-        }
-        /* FOOTER FIXES FOR MOBILE */
-        .footer {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            padding: 20px 15px;
-        }
-
-        .footer-links {
-            position: static;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 0;
-        }
-
-        .footer-links a {
-            margin: 0;
-        }
-
-        .footer-logo {
-            width: 100%;
-            text-align: center;
-            margin-top: 12px;
-        }
-
     </style>
     <script>
     const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1174,7 +1521,7 @@ if ($maintenance_result) {
 <!-- DESKTOP NAVIGATION -->
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
-        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
         <span>InfraGovServices - Infrastructure and Utilities</span>
     </a>
     
@@ -1183,7 +1530,8 @@ if ($maintenance_result) {
             <?php if ($show_login): ?>
                 <a href="<?= $BASE_URL ?>login.php">Log in</a>
             <?php endif; ?>
-            <a href="<?= $BASE_URL ?>citizendash.php" class="active">Home</a>
+            <a href="#" class="active">Home</a>
+            <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
             <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
             <a href="<?= $BASE_URL ?>about.php">About</a>
         </div>
@@ -1192,7 +1540,7 @@ if ($maintenance_result) {
         
         <div class="nav-actions">
             <div class="desktop-clock" id="desktopClock"></div>
-            <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
+            <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
                 <span class="dark-icon">🌙</span>
                 <span class="light-icon" style="display: none;">☀️</span>
             </button>
@@ -1207,17 +1555,16 @@ if ($maintenance_result) {
             <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </a>
-        <div class="sidebar-logo-spacer"></div>
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
                 <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
             <?php endif; ?>
             <li><a href="#" class="nav-link active"><span>🏠</span><span>Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
             <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>
-        <div style="flex-grow:1;"></div>
     </div>
 </div>
 
@@ -1226,188 +1573,352 @@ if ($maintenance_result) {
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
-    <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
+    <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
         <span class="dark-icon">🌙</span>
         <span class="light-icon" style="display: none;">☀️</span>
     </button>
 </div>
 
 <div class="main-content">
-<div class="dashboard-container">
-    <div class="container">
-        <div class="welcome-section">
-            <h1>Welcome to InfraGovServices!</h1>
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+        <h1 class="hero-title">Welcome to InfraGovServices</h1>
+        <p class="hero-subtitle">Community Infrastructure Maintenance Management System</p>
+        <p class="hero-tagline">Empowering Quezon City residents with efficient, transparent, and responsive infrastructure services</p>
+        <div class="hero-cta">
+            <a href="<?= $BASE_URL ?>citizenrepform.php" class="cta-button cta-primary">Submit a Report</a>
+            <a href="#features" class="cta-button cta-secondary">Learn More</a>
         </div>
+    </section>
 
+    <!-- STATISTICS SECTION -->
+    <section class="stats-section animate-on-scroll">
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card animate-on-scroll delay-1">
                 <div class="stat-icon">🛠️</div>
-                <div>
-                    <h3>Repairs</h3>
-                    <div class="number"><?= $repairs_count ?></div>
-                </div>
+                <div class="stat-number"><?= $repairs_count ?></div>
+                <div class="stat-label">Completed Repairs</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card animate-on-scroll delay-2">
                 <div class="stat-icon">⏳</div>
-                <div>
-                    <h3>On-Going Repairs</h3>
-                    <div class="number"><?= $ongoing_count ?></div>
+                <div class="stat-number"><?= $ongoing_count ?></div>
+                <div class="stat-label">Ongoing Repairs</div>
+            </div>
+            <div class="stat-card animate-on-scroll delay-3">
+                <div class="stat-icon">📍</div>
+                <div class="stat-number"><?= $pending_count ?></div>
+                <div class="stat-label">Pending Requests</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRUST INDICATORS -->
+    <section class="trust-section animate-on-scroll">
+        <div class="trust-grid">
+            <div class="trust-item animate-on-scroll delay-1">
+                <div class="trust-icon">🔒</div>
+                <div class="trust-title">Secure & Private</div>
+                <div class="trust-desc">Your data is protected with enterprise-grade security</div>
+            </div>
+            <div class="trust-item animate-on-scroll delay-2">
+                <div class="trust-icon">⚡</div>
+                <div class="trust-title">Fast Response</div>
+                <div class="trust-desc">Average response time of 24-48 hours</div>
+            </div>
+            <div class="trust-item animate-on-scroll delay-3">
+                <div class="trust-icon">🎯</div>
+                <div class="trust-title">Verified Reports</div>
+                <div class="trust-desc">All submissions are reviewed and validated</div>
+            </div>
+            <div class="trust-item animate-on-scroll delay-4">
+                <div class="trust-icon">🏆</div>
+                <div class="trust-title">Award-Winning</div>
+                <div class="trust-desc">Recognized for excellence in public service</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS SECTION -->
+    <section class="how-it-works-section animate-on-scroll">
+        <div class="section-header-card">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">Simple, fast, and effective - report infrastructure issues in just a few steps</p>
+            <div class="steps-container">
+            <div class="step-card animate-on-scroll delay-1">
+                <div class="step-number">1</div>
+                <h3 class="step-title">Report the Issue</h3>
+                <p class="step-description">Spot a problem in your area? Submit a detailed report with photos and location information through our easy-to-use form.</p>
+            </div>
+            <div class="step-card animate-on-scroll delay-2">
+                <div class="step-number">2</div>
+                <h3 class="step-title">Review & Verification</h3>
+                <p class="step-description">Our team reviews your submission within 24 hours, verifies the details, and assigns priority based on urgency and impact.</p>
+            </div>
+            <div class="step-card animate-on-scroll delay-3">
+                <div class="step-number">3</div>
+                <h3 class="step-title">Maintenance Scheduled</h3>
+                <p class="step-description">Approved requests are added to our maintenance schedule, and you'll receive notifications about the progress and timeline.</p>
+            </div>
+            <div class="step-card animate-on-scroll delay-4">
+                <div class="step-number">4</div>
+                <h3 class="step-title">Problem Resolved</h3>
+                <p class="step-description">Our maintenance team completes the work, updates the status, and the issue is marked as resolved with documentation.</p>
+            </div>
+        </div>
+        </div>
+        
+        
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section class="features-section animate-on-scroll" id="features">
+        <h2 class="section-title">Our Services</h2>
+        <p class="section-subtitle">Empowering Quezon City residents with efficient infrastructure management tools</p>
+        
+        <div class="features-grid">
+            <div class="feature-card animate-on-scroll delay-1">
+                <div class="feature-icon">📋</div>
+                <h3 class="feature-title">Submit Requests</h3>
+                <p class="feature-description">Report infrastructure issues in your community with detailed descriptions and photo evidence. Our system ensures your concerns are heard and addressed promptly.</p>
+                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Submit Request →</a>
+            </div>
+
+            <div class="feature-card animate-on-scroll delay-2">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">Track Maintenance</h3>
+                <p class="feature-description">Monitor the status of maintenance schedules, view completed repairs, and stay informed about ongoing infrastructure improvements in your area.</p>
+                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link">View Reports →</a>
+            </div>
+
+            <div class="feature-card animate-on-scroll delay-3">
+                <div class="feature-icon">🗺️</div>
+                <h3 class="feature-title">Location-Based Reporting</h3>
+                <p class="feature-description">Use interactive maps to pinpoint exact locations of infrastructure issues, making it easier for maintenance teams to respond accurately.</p>
+                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Try It Now →</a>
+            </div>
+
+            <div class="feature-card animate-on-scroll delay-1">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">Real-Time Updates</h3>
+                <p class="feature-description">Receive instant notifications about the status of your submitted requests and stay updated on maintenance activities in your barangay.</p>
+                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link">Check Status →</a>
+            </div>
+
+            <div class="feature-card animate-on-scroll delay-2">
+                <div class="feature-icon">🤝</div>
+                <h3 class="feature-title">Community Engagement</h3>
+                <p class="feature-description">Join thousands of Quezon City residents in maintaining our city's infrastructure through active participation and transparent communication.</p>
+                <a href="<?= $BASE_URL ?>about.php" class="feature-link">Learn More →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- RECENT ACTIVITY SECTION -->
+    <section class="activity-section animate-on-scroll">
+        <div class="activity-card">
+            <h2 class="section-title">Recent Maintenance Activity</h2>
+            <p class="section-subtitle">Stay informed about the latest infrastructure maintenance in your community</p>
+            
+            <?php if (!empty($recent_maintenance)): ?>
+                <ul class="activity-list">
+                    <?php foreach ($recent_maintenance as $item): 
+                        $status_class = 'status-pending';
+                        if ($item['status'] === 'Completed') {
+                            $status_class = 'status-completed';
+                        } elseif ($item['status'] === 'In Progress') {
+                            $status_class = 'status-progress';
+                        }
+                    ?>
+                        <li class="activity-item">
+                            <div class="activity-info">
+                                <h4><?= htmlspecialchars($item['task']) ?></h4>
+                                <p><?= htmlspecialchars($item['location']) ?> • <?= date('M d, Y', strtotime($item['starting_date'])) ?></p>
+                            </div>
+                            <span class="status-badge <?= $status_class ?>"><?= htmlspecialchars($item['status']) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="<?= $BASE_URL ?>citizenreports.php" class="cta-button cta-primary">View All Reports</a>
+                </div>
+            <?php else: ?>
+                <p style="text-align: center; color: var(--text-secondary); padding: 40px;">No recent maintenance activities to display.</p>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- ABOUT SECTION - IMPROVED -->
+    <section class="about-section animate-on-scroll">
+        <div class="about-container">
+            <div class="about-header">
+                <h2>About CIMMS – Quezon City</h2>
+                <p>Building a smarter, more responsive city through innovative infrastructure management</p>
+            </div>
+
+            <div class="about-content">
+                <div class="about-image-container">
+                    <div class="about-image-wrapper">
+                        <img src="<?= $OFFICIAL_LOGO ?>" alt="CIMMS Logo">
+                        <div class="about-image-overlay">
+                            <h3>Serving Quezon City</h3>
+                            <p>Excellence in Public Infrastructure</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-text">
+                    <h3>Transforming Infrastructure Management</h3>
+                    <p>The <strong>Community Infrastructure Maintenance Management System (CIMMS)</strong> is a cutting-edge digital platform developed specifically for Quezon City's Local Government Unit to revolutionize how we manage, maintain, and improve our city's infrastructure.</p>
+                    
+                    <p>Our platform empowers residents by providing a direct, transparent channel to report infrastructure concerns ranging from damaged roads and broken streetlights to clogged drainage systems and deteriorating public facilities.</p>
+
+                    <div class="about-highlights">
+                        <div class="highlight-item">
+                            <div class="highlight-icon">📱</div>
+                            <div class="highlight-text">
+                                <strong>Easy Reporting</strong>
+                                <span>Submit issues in seconds from any device</span>
+                            </div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-icon">📍</div>
+                            <div class="highlight-text">
+                                <strong>GPS Tracking</strong>
+                                <span>Precise location mapping for faster response</span>
+                            </div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-icon">🔔</div>
+                            <div class="highlight-text">
+                                <strong>Real-Time Updates</strong>
+                                <span>Stay informed throughout the process</span>
+                            </div>
+                        </div>
+                        <div class="highlight-item">
+                            <div class="highlight-icon">📊</div>
+                            <div class="highlight-text">
+                                <strong>Transparent Tracking</strong>
+                                <span>Monitor progress from report to resolution</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 50px; text-align: center;">
+                        <a href="<?= $BASE_URL ?>about.php" class="cta-button cta-primary">Learn More About Us</a>
+                    </div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon">📍</div>
-                <div>
-                    <h3>Pending</h3>
-                    <div class="number"><?= $pending_count ?></div>
+
+            <div class="about-mission">
+                <h2 style="text-align: center; color: var(--text-primary); margin-bottom: 20px;">Our Mission & Values</h2>
+                <p style="text-align: center; color: var(--text-secondary); max-width: 800px; margin: 0 auto 40px; font-size: 1.1rem;">Committed to building a safer, more sustainable Quezon City for all residents</p>
+                
+                <div class="mission-grid">
+                    <div class="mission-card">
+                        <div class="mission-icon">🎯</div>
+                        <h3 class="mission-title">Efficiency</h3>
+                        <p class="mission-description">Streamlining maintenance workflows to reduce response times and maximize resource utilization for faster problem resolution.</p>
+                    </div>
+                    <div class="mission-card">
+                        <div class="mission-icon">🌟</div>
+                        <h3 class="mission-title">Transparency</h3>
+                        <p class="mission-description">Providing complete visibility into every stage of the maintenance process, from initial report to final completion.</p>
+                    </div>
+                    <div class="mission-card">
+                        <div class="mission-icon">🤝</div>
+                        <h3 class="mission-title">Community First</h3>
+                        <p class="mission-description">Prioritizing resident needs and fostering active civic participation in infrastructure maintenance and improvement.</p>
+                    </div>
+                    <div class="mission-card">
+                        <div class="mission-icon">🔒</div>
+                        <h3 class="mission-title">Security</h3>
+                        <p class="mission-description">Protecting citizen data with robust security measures while maintaining system reliability and accessibility.</p>
+                    </div>
                 </div>
             </div>
         </div>
+    </section>
+</div>
 
-        <div class="content-card">
-            <!-- Desktop/tablet label -->
-            <div class="card-header show-on-mobile">
-                <h2>Recent Maintenance Reports</h2>
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-about">
+            <h3>InfraGovServices</h3>
+            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <div class="footer-contact">
+                <div class="contact-item">
+                    <span>📧</span>
+                    <span>contact@infragovservices.com</span>
+                </div>
+                <div class="contact-item">
+                    <span>📞</span>
+                    <span>(02) 8988-4242</span>
+                </div>
+                <div class="contact-item">
+                    <span>📍</span>
+                    <span>Quezon City Hall, Quezon City</span>
+                </div>
             </div>
-            <div class="card-header">
-                <h2 class="hide-on-mobile">Recent Maintenance Reports</h2>
-            </div>
-
-            <!-- SEARCH BAR: replaced with wrapper for responsive width and positioning -->
-            <div class="table-search-wrapper">
-                <input
-                    id="requestSearch"
-                    type="text"
-                    placeholder="Search by Date, Type, Location, Budget, or Status..."
-                >
-            </div>
-
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Sched #</th>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Location</th>
-                            <th>Budget</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                        if (count($maintenance_data) > 0) {
-                            foreach ($maintenance_data as $item) {
-                                // Determine status pill class
-                                $status_class = 'status-pending';
-                                if ($item['status'] === 'Completed') {
-                                    $status_class = 'status-fixed';
-                                } elseif ($item['status'] === 'In Progress') {
-                                    $status_class = 'status-progress';
-                                } elseif ($item['status'] === 'Delayed') {
-                                    $status_class = 'status-delayed';
-                                }
-                                // Format date
-                                $date = date('M d, Y', strtotime($item['starting_date']));
-                        ?>
-                        <tr>
-                            <td>#SCH-<?php echo $item['sched_id']; ?></td>
-                            <td><?php echo $date; ?></td>
-                            <td><?php echo htmlspecialchars($item['task']); ?></td>
-                            <td><?php echo htmlspecialchars($item['location']); ?></td>
-                            <td>₱<?php echo number_format($item['budget'], 2); ?></td>
-                            <td><span class="status-pill <?php echo $status_class; ?>"><?php echo $item['status']; ?></span></td>
-                            <td><a href="#" class="link">View</a></td>
-                        </tr>
-                        <?php 
-                            }
-                        } else {
-                        ?>
-                        <tr>
-                            <td colspan="7" style="text-align: center; color: #999;">No maintenance schedules available</td>
-                        </tr>
-                        <?php } ?>
-                        <tr id="noRequestResult" style="display:none;">
-                            <td colspan="7" style="text-align:center; padding:20px; font-weight:500;">
-                                No matching data
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Mobile Maintenance Cards -->
-            <div class="mobile-maintenance-list">
-            <!-- Mobile-only header -->
-            <?php if (!empty($maintenance_data)): ?>
-                <?php foreach ($maintenance_data as $item): 
-                    // Status pill
-                    $status_class = 'status-pending';
-                    if ($item['status'] === 'Completed') {
-                        $status_class = 'status-fixed';
-                    } elseif ($item['status'] === 'In Progress') {
-                        $status_class = 'status-progress';
-                    } elseif ($item['status'] === 'Delayed') {
-                        $status_class = 'status-delayed';
-                    }
-                ?>
-                    <div class="report-card">
-
-                        <div class="report-row">
-                            <span class="label">Schedule ID:</span>
-                            <span class="value">#SCH-<?= $item['sched_id'] ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Category:</span>
-                            <span class="value"><?= htmlspecialchars($item['category']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Task:</span>
-                            <span class="value"><?= htmlspecialchars($item['task']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Location:</span>
-                            <span class="value"><?= htmlspecialchars($item['location']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Start Date:</span>
-                            <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Budget:</span>
-                            <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                        <span class="label">Status:</span>
-                            <span class="status-pill <?= $status_class ?>">
-                                <?= htmlspecialchars($item['status']) ?>
-                            </span>
-                        </div>
-
-                        <div class="report-footer">
-                            <a href="#" class="evidence-btn">View</a>
-                        </div>
-
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="report-card">No maintenance schedules available</div>
-            <?php endif; ?>
-            <!-- MOBILE "NO MATCHING DATA" PLACEHOLDER -->
-            <div id="noMobileResult" class="report-card" style="display:none; text-align:center; font-weight:600;">
-                No matching data
-            </div>
-            </div>
+        </div>
+        
+        <div class="footer-links">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php">About Us</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-links">
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="#">User Guide</a></li>
+                <li><a href="#">FAQs</a></li>
+                <li><a href="#">Service Areas</a></li>
+                <li><a href="#">Emergency Contacts</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-links">
+            <h4>Legal</h4>
+            <ul>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Terms of Service</a></li>
+                <li><a href="#">Data Protection</a></li>
+                <li><a href="#">Accessibility</a></li>
+            </ul>
         </div>
     </div>
-</div>
-</div>
+    
+    <div class="footer-bottom">
+        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div class="footer-social">
+            <a href="#" class="social-link" title="Facebook">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Twitter">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Instagram">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Email">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</footer>
 
 <script>
 // Mobile sidebar toggle
@@ -1422,7 +1933,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Close sidebar when clicking outside
     document.addEventListener('click', (e) => {
         if (sidebar && sidebar.classList.contains('mobile-active')) {
             if (!sidebar.contains(e.target) && e.target !== mobileToggle) {
@@ -1431,143 +1941,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Prevent sidebar from closing when clicking inside it
     if (sidebar) {
         sidebar.addEventListener('click', (e) => {
             e.stopPropagation();
         });
     }
     
-    // Close sidebar when clicking a link (for better UX)
     const navLinks = sidebar?.querySelectorAll('.nav-link');
     navLinks?.forEach(link => {
         link.addEventListener('click', () => {
             sidebar.classList.remove('mobile-active');
         });
     });
-});
-</script>
 
-<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
-<script>
-// Clean URL after secret key authentication to prevent sharing
-if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
-    // Remove the parameter from URL without reloading
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-}
-</script>
-
-<!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const table = document.querySelector("table");
-    if (!table || !searchInput) return;
-
-    const tbody = table.querySelector("tbody");
-    // Exclude no-result row from movable rows.
-    const rows = Array.from(tbody.querySelectorAll("tr"))
-        .filter(r => r.id !== "noRequestResult");
-    const noResultRow = document.getElementById("noRequestResult");
-
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
-
-        // Reset: show all, restore original order
-        if (query === "") {
-            rows.forEach(row => {
-                row.style.display = "";
-                tbody.appendChild(row);
-            });
-            if (noResultRow) noResultRow.style.display = "none";
-            return;
-        }
-
-        // Search and mark matches
-        rows.forEach(row => {
-            // Only search visible text content (all columns)
-            const rowText = row.innerText.toLowerCase();
-            if (rowText.includes(query)) {
-                matches.push(row);
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             }
         });
-
-        // Move all matching rows to the top (in entered order)
-        matches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
-
-        // Show/hide "No matching data"
-        if (noResultRow) noResultRow.style.display = matches.length === 0 ? "" : "none";
     });
 });
-</script>
 
-<!-- MOBILE CARD SEARCH + REORDER SCRIPT -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const mobileList = document.querySelector(".mobile-maintenance-list");
-    const cards = Array.from(document.querySelectorAll(".mobile-maintenance-list .report-card"))
-        .filter(card => card.id !== "noMobileResult");
-    const noMobileResult = document.getElementById("noMobileResult");
-
-    if (!searchInput || cards.length === 0) return;
-
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
-
-        // Reset state
-        if (query === "") {
-            cards.forEach(card => {
-                card.style.display = "";
-                mobileList.appendChild(card);
-            });
-            if (noMobileResult) noMobileResult.style.display = "none";
-            return;
-        }
-
-        // Search cards
-        cards.forEach(card => {
-            const cardText = card.innerText.toLowerCase();
-            if (cardText.includes(query)) {
-                matches.push(card);
-                card.style.display = "";
-            } else {
-                card.style.display = "none";
-            }
-        });
-
-        // Move matching cards to top
-        matches.forEach(card => {
-            mobileList.insertBefore(card, mobileList.firstChild);
-        });
-
-        // Show / hide "No matching data"
-        if (noMobileResult) {
-            noMobileResult.style.display = matches.length === 0 ? "" : "none";
-        }
-    });
-});
-</script>
-
-<script>
 // Clock Script
 const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
 let clockInterval = null;
 let lastSecond = null;
-
-function getTimezoneLabel() {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const offset = -new Date().getTimezoneOffset() / 60;
-    const sign = offset >= 0 ? '+' : '-';
-    return `${tz} (GMT${sign}${Math.abs(offset)})`;
-}
 
 function renderClock(now) {
     const datePart = now.toLocaleDateString('en-US', {
@@ -1651,9 +2057,7 @@ setInterval(() => {
 }, RESYNC_MINUTES * 60 * 1000);
 
 startClock();
-</script>
 
-<script>
 // Dark Mode Toggle
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
@@ -1737,14 +2141,29 @@ startClock();
 })();
 </script>
 
-<footer class="footer">
-    <div class="footer-links">
-        <a href="#">Privacy Policy</a>
-        <a href="#">About</a>
-        <a href="#">Help</a>
-    </div>
-    <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
-</footer>
+<script>
+// Scroll Animation
+document.addEventListener('DOMContentLoaded', function() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    const animateElements = document.querySelectorAll('.animate-on-scroll');
+    animateElements.forEach(element => {
+        observer.observe(element);
+    });
+});
+</script>
 
 </body>
 </html>

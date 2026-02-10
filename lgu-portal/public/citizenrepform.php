@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notif_stmt->close();
 
                 // 2. Notify all managers/admins
-                $employeesRes = $conn->query("SELECT user_id FROM employees WHERE role IN ('Manager','Super Admin')");
+                $employeesRes = $conn->query("SELECT user_id FROM employees WHERE role IN ('Manager','Super Admin','Engineer')");
                 if ($employeesRes) {
                     $stmt_mgr = $conn->prepare("
                         INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
@@ -288,7 +288,16 @@ body::before {
 }
 
 body::-webkit-scrollbar {
-    display: none;
+    width: 10px;
+}
+
+body::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #2b6cb0;
+    border-radius: 5px;
 }
 
 /* Notification Popup Styles */
@@ -1584,63 +1593,59 @@ input[type="file"] {
         display: flex !important;
     }
 
-    .dashboard-container {
-        padding: 100px 13px 40px;
-    }
-    .container {
-        padding: 0 5px;
-    }
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 18px;
-    }
-    
-    table {
-        display: none !important;
-    }
-    .mobile-maintenance-list {
-        display: block;
-    }
-    .content-card {
-        padding: 22px 6px;
-        border-radius: 12px;
-    }
-    
+    /* ADJUST FORM WRAPPER FOR MOBILE TOP NAV */
     .form-wrapper {
         margin-top: 20px !important;
         padding-left: 5vw !important;
         padding-right: 5vw !important;
         padding-top: 100px !important;
     }
-    
+
+    /* REPORT CARD ADJUSTMENTS */
     .report-card {
-        padding-left: 8vw !important;
-        padding-right: 8vw !important;
+        padding: 20px 8vw !important;
+        max-width: 99vw;
+    }
+    
+    .report-card h2 {
+        font-size: 30px;
+        padding: 18px 6vw;
+        margin-bottom: 20px;
     }
     
     .report-card form {
         grid-template-columns: 1fr;
         gap: 19px;
     }
-    
-    .report-card h2 {
-        font-size: 30px;
-        padding: 18px 6vw;
+
+    .input-group {
+        margin-bottom: 0px;
     }
-    
-    .report-card {
-        padding: 17px 5vw !important;
-        max-width: 99vw;
+
+    .input-group label {
+        font-size: 14px;
+        margin-bottom: 6px;
     }
-    
-    .btn-primary{
+
+    .input-group input,
+    .input-group select,
+    .input-group textarea {
+        padding: 11px 14px;
+        border-radius: 11px;
+        font-size: 15px;
+    }
+
+    .btn-primary {
+        font-size: 17px;
+        padding: 14px 14px;
         margin-bottom: 20px;
     }
     
     .btn-container {
         justify-content: center;
     }
-    
+
+    /* FOOTER MOBILE */
     .footer {
         flex-direction: column;
         align-items: center;
@@ -1655,23 +1660,10 @@ input[type="file"] {
     }
 }
 
-@media (max-width: 500px) {
-    .stat-card {
-        padding: 20px 10px;
-    }
-    .stat-icon {
-        font-size: 25px;
-        padding: 8px;
-    }
-    .stat-card .number {
-        font-size: 28px;
-    }
-    .card-header h2 {
-        font-size: 1.0rem;
-    }
-    
+/* ===== SMALLER MOBILE (580px and below) ===== */
+@media (max-width: 580px) {
     .report-card {
-        padding: 12px 2vw !important;
+        padding: 17px 5vw !important;
     }
     
     .btn-primary {
@@ -1681,6 +1673,60 @@ input[type="file"] {
     
     .btn-container {
         justify-content: center;
+    }
+}
+
+/* ===== EXTRA SMALL MOBILE (480px and below) ===== */
+@media (max-width: 480px) {
+    .form-wrapper {
+        padding: 90px 3vw 24px !important;
+    }
+    
+    .report-card {
+        padding: 15px 4vw !important;
+    }
+    
+    .btn-container {
+        flex-direction: column;
+        gap: 0;
+        align-items: center;
+    }
+    
+    .btn-primary {
+        padding: 14px 10px;
+        width: 90%;
+        font-size: 17px;
+    }
+
+    .input-group input,
+    .input-group select,
+    .input-group textarea {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .input-group label {
+        font-size: 13px;
+    }
+
+    .report-card h2 {
+        font-size: 26px;
+    }
+}
+
+/* ===== VERY SMALL MOBILE (360px and below) ===== */
+@media (max-width: 360px) {
+    .mobile-clock {
+        font-size: 12px;
+        right: 52px;
+    }
+
+    .report-card h2 {
+        font-size: 24px;
+    }
+
+    .report-card {
+        padding: 12px 3vw !important;
     }
 }
 
@@ -1735,7 +1781,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     
     <!-- DESKTOP NAVIGATION -->
     <header class="nav">
-        <a href="citizencimm.php" class="site-logo">
+        <a href="https://infragovservices.com/" class="site-logo">
             <img src="assets/img/officiallogo.png" alt="LGU Logo">
             <span>InfraGovServices - Infrastructure and Utilities</span>
         </a>
@@ -1746,6 +1792,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <a href="login.php">Log in</a>
                 <?php endif; ?>
                 <a href="citizencimm.php">Home</a>
+                <a href="citizenreports.php">Reports</a>
                 <a href="#" class="active">Requests</a>
                 <a href="about.php">About</a>
             </div>
@@ -1765,7 +1812,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <!-- MOBILE SIDEBAR -->
     <div class="sidebar-nav" id="sidebarNav">
         <div class="sidebar-top">
-            <a href="citizencimm.php" class="site-logo">
+            <a href="https://infragovservices.com/" class="site-logo">
                 <img src="assets/img/officiallogo.png" alt="LGU Logo">
                 <div class="sidebar-divider logo-divider"></div>
             </a>
@@ -1776,6 +1823,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <li><a href="login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
                 <?php endif; ?>
                 <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
+                <li><a href="citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
                 <li><a href="#" class="nav-link active"><span>📋</span><span>Requests</span></a></li>
                 <li><a href="about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
             </ul>
