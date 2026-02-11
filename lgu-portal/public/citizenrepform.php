@@ -546,36 +546,40 @@ body::-webkit-scrollbar-thumb {
     flex-wrap: wrap;
 }
 
-/* FIX 8: Responsive desktop clock - WITH FIXED WIDTH TO PREVENT JUMPING */
+/* FIX 8: Desktop clock - SINGLE LINE LAYOUT */
 .desktop-clock {
     font-size: clamp(12px, 1.3vw, 14px);
     font-weight: 500;
     color: var(--text-primary);
-    white-space: nowrap;
+    white-space: nowrap !important;    /* Force single line */
     position: relative;
     transition: color 0.3s ease;
     text-align: right;
-    min-width: 420px;              /* FIXED WIDTH - prevents navbar jumping */
+    min-width: 420px;
     display: inline-block;
+    overflow: visible;
+    line-height: 1.4;
 }
 
 .desktop-clock .date-part {
     opacity: 0.6;
     font-weight: 400;
     display: inline;
+    white-space: nowrap;
 }
-
 
 .desktop-clock .time-part {
     font-weight: 700;
     letter-spacing: 0.03em;
     display: inline;
-    font-variant-numeric: tabular-nums;  /* Fixed-width digits */
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .time-part span {
     display: inline-block;
     transition: transform 0.25s ease, opacity 0.25s ease;
+    white-space: nowrap;
 }
 
 .time-part.flip span {
@@ -1672,16 +1676,34 @@ input[type="file"] {
     }
 }
 
-/* FIX 11: Special handling for tall screens */
-@media (min-width: 769px) and (min-aspect-ratio: 9/16) {
+/* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .desktop-clock {
+        min-width: 380px;
+        font-size: clamp(11px, 1.2vw, 13px);
+        white-space: nowrap !important;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1000px) {
+    .desktop-clock {
+        min-width: 320px;
+        font-size: clamp(10px, 1.1vw, 12px);
+        white-space: nowrap !important;
+    }
+}
+
+/* FIX 11: Tall screens - only stack on VERY narrow screens */
+@media (min-width: 769px) and (min-aspect-ratio: 9/16) and (max-width: 500px) {
     .nav {
         padding: 12px clamp(15px, 3vw, 40px);
     }
     
     .desktop-clock {
-        min-width: 280px;  /* Fixed width when stacked */
+        min-width: 280px;
     }
     
+    /* Only stack when truly necessary */
     .desktop-clock .date-part {
         display: block;
         text-align: center;
@@ -1696,7 +1718,25 @@ input[type="file"] {
     }
 }
 
-/* FIX 12: Phones in desktop mode (narrow tall screens) */
+/* For wider tall screens - keep inline */
+@media (min-width: 769px) and (min-aspect-ratio: 9/16) and (min-width: 501px) {
+    .nav {
+        padding: 12px clamp(15px, 3vw, 40px);
+    }
+    
+    .desktop-clock {
+        min-width: 400px;
+        white-space: nowrap !important;
+    }
+    
+    .desktop-clock .date-part,
+    .desktop-clock .time-part {
+        display: inline;
+        white-space: nowrap;
+    }
+}
+
+/* FIX 12: Phones in desktop mode - stack vertically */
 @media (min-width: 769px) and (max-width: 600px) {
     .nav {
         flex-wrap: nowrap;
@@ -1720,7 +1760,7 @@ input[type="file"] {
         font-size: 11px;
         min-width: auto;
         max-width: 150px;
-        width: 150px;       /* Fixed width prevents jumping */
+        width: 150px;
     }
     
     .desktop-clock .date-part,
@@ -1737,6 +1777,7 @@ input[type="file"] {
         font-size: 16px;
     }
 }
+
 
 /* Make boundary more visible on mobile */
 @media (max-width: 768px) {
