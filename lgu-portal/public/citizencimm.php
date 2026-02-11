@@ -1270,6 +1270,23 @@ if ($maintenance_result) {
             transform: translateY(-3px);
         }
 
+        /* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
+        @media (min-width: 769px) and (max-width: 1200px) {
+            .desktop-clock {
+                min-width: 380px;
+                font-size: clamp(11px, 1.2vw, 13px);
+                white-space: nowrap !important;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1000px) {
+            .desktop-clock {
+                min-width: 320px;
+                font-size: clamp(10px, 1.1vw, 12px);
+                white-space: nowrap !important;
+            }
+        }
+
         /* FIX 11: Tall screens - only stack on VERY narrow screens */
         @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (max-width: 500px) {
             .nav {
