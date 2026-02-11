@@ -436,11 +436,10 @@ body::-webkit-scrollbar-thumb {
     cursor: pointer;
 }
 
-/* Navigation */
+/* FIX 3: Make navbar flexible with responsive spacing */
 .nav {
     width: 100%;
-    padding: 18px clamp(20px, 4vw, 60px);  /* Responsive padding */
-    gap: clamp(10px, 2vw, 20px);
+    padding: 18px clamp(20px, 4vw, 60px);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -454,19 +453,23 @@ body::-webkit-scrollbar-thumb {
     left: 0;
     z-index: 100;
     transition: all 0.3s ease;
+    gap: clamp(10px, 2vw, 20px);
+    flex-wrap: wrap;
 }
 
+/* FIX 4: Responsive site logo */
 .site-logo {
     display: flex;
-    font-size: clamp(12px, 1.5vw, 16px);
     align-items: center;
     gap: 10px;
     color: var(--text-primary);
     font-weight: 600;
     text-decoration: none;
     transition: color 0.3s ease;
-    flex-shrink: 1;                         /* Allow shrinking */
-    min-width: 0;  
+    font-size: clamp(12px, 1.5vw, 16px);
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .site-logo:hover {
@@ -474,30 +477,37 @@ body::-webkit-scrollbar-thumb {
 }
 
 .site-logo img {
-    width: clamp(30px, 5vw, 40px);         /* Responsive logo size */
-    flex-shrink: 0;                         /* Logo doesn't shrink */
+    width: clamp(30px, 5vw, 40px);
     height: auto;
     border-radius: 8px;
+    flex-shrink: 0;
 }
 
-/* Updated nav center section */
+.site-logo span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* FIX 5: Responsive nav center section */
 .nav-center {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: clamp(8px, 1.5vw, 15px);
     margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
+/* FIX 6: Responsive nav links */
 .nav-links {
-    gap: clamp(12px, 2vw, 25px);          /* Flexible spacing */
-    flex-wrap: wrap;
     display: flex;
     align-items: center;
+    gap: clamp(12px, 2vw, 25px);
+    flex-wrap: wrap;
 }
 
 .nav-links a {
-    font-size: clamp(13px, 1.4vw, 16px);  /* Responsive text */
-    white-space: nowrap;                   /* Prevent breaking */
     margin-left: 0;
     text-decoration: none;
     cursor: pointer;
@@ -505,6 +515,8 @@ body::-webkit-scrollbar-thumb {
     opacity: .8;
     transition: .2s;
     font-weight: 500;
+    font-size: clamp(13px, 1.4vw, 16px);
+    white-space: nowrap;
 }
 
 .nav-links a.active {
@@ -526,33 +538,39 @@ body::-webkit-scrollbar-thumb {
     margin: 0;
 }
 
-/* Nav Actions (Clock and Dark Mode) */
+/* FIX 7: Responsive nav actions */
 .nav-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: clamp(8px, 1.2vw, 12px);
+    flex-wrap: wrap;
 }
 
+/* FIX 8: Responsive desktop clock - WITH FIXED WIDTH TO PREVENT JUMPING */
 .desktop-clock {
-    font-size: clamp(12px, 1.3vw, 14px);  /* Responsive size */
+    font-size: clamp(12px, 1.3vw, 14px);
     font-weight: 500;
     color: var(--text-primary);
     white-space: nowrap;
     position: relative;
     transition: color 0.3s ease;
     text-align: right;
-    min-width: 0;                          /* Allow shrinking */
+    min-width: 420px;              /* FIXED WIDTH - prevents navbar jumping */
     display: inline-block;
 }
 
 .desktop-clock .date-part {
     opacity: 0.6;
     font-weight: 400;
+    display: inline;
 }
+
 
 .desktop-clock .time-part {
     font-weight: 700;
     letter-spacing: 0.03em;
+    display: inline;
+    font-variant-numeric: tabular-nums;  /* Fixed-width digits */
 }
 
 .time-part span {
@@ -565,12 +583,11 @@ body::-webkit-scrollbar-thumb {
     opacity: 0.6;
 }
 
+/* FIX 9: Responsive nav buttons */
 .nav-btn {
     position: relative;
-    width: clamp(34px, 5vw, 38px);        /* Flexible size */
+    width: clamp(34px, 5vw, 38px);
     height: clamp(34px, 5vw, 38px);
-    font-size: clamp(16px, 2vw, 18px);
-    flex-shrink: 0;
     border: none;
     border-radius: 10px;
     background: rgba(55, 98, 200, 0.1);
@@ -579,8 +596,10 @@ body::-webkit-scrollbar-thumb {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: clamp(16px, 2vw, 18px);
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
+    flex-shrink: 0;
 }
 
 .nav-btn:hover {
@@ -748,15 +767,16 @@ MOBILE SIDEBAR STYLES
     transform: translateX(8px) scale(1.02);
 }
 
+/* FIX 1: Center form vertically on all screens */
 .form-wrapper {
     position: relative;
     z-index: 1;
     display: flex;
     justify-content: center;
-    align-items: center;        /* NEW - centers vertically */
+    align-items: center;        /* CHANGED FROM: flex-start */
     padding: 110px 16px 40px;
-    flex: 1;                     /* NEW - allows it to grow */
-    min-height: 0;               /* NEW - prevents overflow */
+    flex: 1;                     /* ADDED */
+    min-height: 0;               /* ADDED */
 }
 .report-card {
     width: 100%;
@@ -1639,6 +1659,44 @@ input[type="file"] {
     pointer-events: none;
 }
 
+/* FIX 10: Clock width adjustments for different screen sizes */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .desktop-clock {
+        min-width: 350px;  /* Smaller fixed width for medium screens */
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1000px) {
+    .desktop-clock {
+        min-width: 300px;  /* Even smaller for narrower screens */
+    }
+}
+
+/* FIX 11: Special handling for tall screens */
+@media (min-width: 769px) and (min-aspect-ratio: 9/16) {
+    .nav {
+        padding: 12px clamp(15px, 3vw, 40px);
+    }
+    
+    .desktop-clock {
+        min-width: 280px;  /* Fixed width when stacked */
+    }
+    
+    .desktop-clock .date-part {
+        display: block;
+        text-align: center;
+        margin-bottom: 2px;
+        font-variant-numeric: tabular-nums;
+    }
+    
+    .desktop-clock .time-part {
+        display: block;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+/* FIX 12: Phones in desktop mode (narrow tall screens) */
 @media (min-width: 769px) and (max-width: 600px) {
     .nav {
         flex-wrap: nowrap;
@@ -1646,7 +1704,7 @@ input[type="file"] {
     }
     
     .site-logo span {
-        display: none;              /* Hide logo text on very narrow */
+        display: none;
     }
     
     .nav-links {
@@ -1662,36 +1720,21 @@ input[type="file"] {
         font-size: 11px;
         min-width: auto;
         max-width: 150px;
+        width: 150px;       /* Fixed width prevents jumping */
     }
     
     .desktop-clock .date-part,
     .desktop-clock .time-part {
-        display: block;            /* Stack date/time vertically */
+        display: block;
         text-align: right;
         line-height: 1.2;
+        font-variant-numeric: tabular-nums;
     }
     
     .nav-btn {
         width: 32px;
         height: 32px;
         font-size: 16px;
-    }
-}
-
-@media (min-width: 769px) and (min-aspect-ratio: 9/16) {
-    .nav {
-        padding: 12px clamp(15px, 3vw, 40px);
-    }
-    
-    .desktop-clock .date-part {
-        display: block;            /* Stack date part */
-        text-align: center;
-        margin-bottom: 2px;
-    }
-    
-    .desktop-clock .time-part {
-        display: block;            /* Stack time part */
-        text-align: center;
     }
 }
 
