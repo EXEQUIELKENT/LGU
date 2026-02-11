@@ -1706,7 +1706,9 @@ if ($maintenance_result) {
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
+    <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
+        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
+    </a>
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
         <span class="dark-icon">🌙</span>

@@ -2379,7 +2379,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <!-- MOBILE TOP NAV -->
     <div class="mobile-top-nav">
         <button class="mobile-toggle" id="mobileToggle">☰</button>
+        <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
         <img src="assets/img/officiallogo.png" alt="LGU Logo">
+        </a>
         <div class="mobile-clock" id="mobileClock"></div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span>
@@ -4179,6 +4181,8 @@ startClock();
     });
 })();
 </script>
+
 <?php include 'chatbot-widget.php'; ?>
+
 </body>
 </html>
