@@ -1198,6 +1198,7 @@ if ($maintenance_result) {
                 align-items: center;
             }
 
+            /* Add inside the existing section */
             .footer {
                 padding: 40px 20px 20px;
             }
@@ -1325,12 +1326,6 @@ if ($maintenance_result) {
 
             .nav {
                 display: flex !important;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .footer-content {
-                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
