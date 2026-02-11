@@ -660,7 +660,7 @@ if ($maintenance_result) {
             gap: clamp(10px, 2vw, 20px);
             flex-wrap: wrap;
         }
-        
+
         /* FIX 4: Responsive site logo */
         .site-logo {
             display: flex;
@@ -675,11 +675,11 @@ if ($maintenance_result) {
             flex-shrink: 1;
             min-width: 0;
         }
-        
+
         .site-logo:hover {
             opacity: 0.85;
         }
-        
+
         .site-logo img {
             width: clamp(30px, 5vw, 40px);
             height: auto;
@@ -692,7 +692,7 @@ if ($maintenance_result) {
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        
+
         /* FIX 5: Responsive nav center section */
         .nav-center {
             display: flex;
@@ -710,7 +710,7 @@ if ($maintenance_result) {
             gap: clamp(12px, 2vw, 25px);
             flex-wrap: wrap;
         }
-        
+
         .nav-links a {
             margin-left: 0;
             text-decoration: none;
@@ -722,13 +722,13 @@ if ($maintenance_result) {
             font-size: clamp(13px, 1.4vw, 16px);
             white-space: nowrap;
         }
-        
+
         .nav-links a.active {
             opacity: 1;
             text-decoration: none;
             font-weight: 600;
         }
-        
+
         .nav-links a:hover {
             opacity: 1;
             text-decoration: none;
@@ -847,7 +847,7 @@ if ($maintenance_result) {
             border: none;
             margin-left: 18px;
         }
-        /* FIX 2: Update footer positioning */
+        /* FOOTER - Updated from about.php */
         .footer {
             width: 100%;
             padding: 60px 20px 30px;
@@ -856,8 +856,8 @@ if ($maintenance_result) {
             -webkit-backdrop-filter: blur(8px);
             border-top: 1px solid var(--border-color);
             box-shadow: 0 -2px 12px var(--shadow-color);
-            margin-top: 0;
-            flex-shrink: 0;
+            margin-top: 0;      /* NEW - prevents pushing down */
+            flex-shrink: 0;     /* NEW - prevents shrinking */
         }
 
         .footer-content {
@@ -958,6 +958,25 @@ if ($maintenance_result) {
             background: #2b6cb0;
             transform: translateY(-3px);
         }
+
+        @media (max-width: 1024px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+                }
+        /* FIX 10: Clock width adjustments for different screen sizes */
+        @media (min-width: 769px) and (max-width: 1200px) {
+            .desktop-clock {
+                min-width: 350px;  /* Smaller fixed width for medium screens */
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1000px) {
+            .desktop-clock {
+                min-width: 300px;  /* Even smaller for narrower screens */
+            }
+        }
+
         /* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
         @media (min-width: 769px) and (max-width: 1200px) {
             .desktop-clock {
@@ -1018,7 +1037,7 @@ if ($maintenance_result) {
             }
         }
 
-        /* FIX 12: Phones in desktop mode - comprehensive portrait layout fixes */
+        /* FIX 12: Phones in desktop mode - stack vertically */
         @media (min-width: 769px) and (max-width: 600px) {
             .nav {
                 flex-wrap: nowrap;
@@ -1057,147 +1076,6 @@ if ($maintenance_result) {
                 width: 32px;
                 height: 32px;
                 font-size: 16px;
-            }
-            
-            /* Dashboard and content adjustments for portrait phones */
-            .dashboard-container {
-                padding: 90px 15px 40px;
-            }
-            
-            .container {
-                padding: 0 15px;
-                max-width: 100%;
-            }
-            
-            /* Stats grid - single column for narrow screens */
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
-                margin-bottom: 30px;
-            }
-            
-            .stat-card {
-                padding: 20px;
-                margin-top: 10px;
-            }
-            
-            .stat-icon {
-                font-size: 28px;
-                padding: 12px;
-            }
-            
-            .stat-card .number {
-                font-size: 32px;
-            }
-            
-            .stat-card h3 {
-                font-size: 13px;
-            }
-            
-            /* Content card adjustments */
-            .content-card {
-                padding: 30px 20px;
-                border-radius: 16px;
-            }
-            
-            .card-header h2 {
-                font-size: 24px;
-                text-align: center;
-            }
-            
-            /* Table wrapper - ensure horizontal scroll */
-            .table-wrapper {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            table {
-                min-width: 900px;
-                font-size: 13px;
-            }
-            
-            thead th {
-                padding: 12px 14px;
-                font-size: 13px;
-            }
-            
-            td {
-                padding: 12px 14px;
-                font-size: 13px;
-            }
-            
-            /* Search bar */
-            .table-search-wrapper {
-                margin-bottom: 15px;
-            }
-            
-            #requestSearch {
-                font-size: 14px;
-                padding: 10px 14px;
-            }
-            
-            /* Footer adjustments */
-            .footer {
-                padding: 40px 15px 20px;
-            }
-            
-            .footer-content {
-                grid-template-columns: 1fr;
-                gap: 25px;
-            }
-        }
-        
-        /* Additional fix for very narrow portrait phones (320px-480px) */
-        @media (min-width: 769px) and (max-width: 480px) {
-            .stats-grid {
-                gap: 10px;
-            }
-            
-            .stat-card {
-                padding: 18px 15px;
-            }
-            
-            .stat-card .number {
-                font-size: 28px;
-            }
-            
-            .stat-icon {
-                font-size: 24px;
-                padding: 10px;
-            }
-            
-            .content-card {
-                padding: 25px 15px;
-            }
-            
-            .card-header h2 {
-                font-size: 20px;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .footer-content {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 1400px) {
-            .container {
-                max-width: 98%;
-            }
-        }
-        @media (max-width: 1150px) {
-            .container {
-                max-width: 100%;
-                padding: 0 10px;
-            }
-            .content-card {
-                padding: 30px 8px;
-            }
-        }
-        @media (max-width: 992px) {
-            .container {
-                max-width: 100%;
             }
         }
         @media (max-width: 768px) {
