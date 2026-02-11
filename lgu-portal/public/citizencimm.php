@@ -1618,22 +1618,22 @@ if ($maintenance_result) {
             <div class="trust-item animate-on-scroll delay-1">
                 <div class="trust-icon">🔒</div>
                 <div class="trust-title">Secure & Private</div>
-                <div class="trust-desc">Your data is protected with enterprise-grade security</div>
+                <div class="trust-desc">Your data is protected with strong, trusted security.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-2">
                 <div class="trust-icon">⚡</div>
                 <div class="trust-title">Fast Response</div>
-                <div class="trust-desc">Average response time of 24-48 hours</div>
+                <div class="trust-desc">Reports are handled within 24–48 hours based on priority.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-3">
                 <div class="trust-icon">🎯</div>
                 <div class="trust-title">Verified Reports</div>
-                <div class="trust-desc">All submissions are reviewed and validated</div>
+                <div class="trust-desc">Every report is carefully checked for accuracy.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-4">
                 <div class="trust-icon">🏆</div>
-                <div class="trust-title">Award-Winning</div>
-                <div class="trust-desc">Recognized for excellence in public service</div>
+                <div class="trust-title">Service Excellence</div>
+                <div class="trust-desc">Committed to quality, transparency, and public service.</div>
             </div>
         </div>
     </section>
@@ -1641,28 +1641,28 @@ if ($maintenance_result) {
     <!-- HOW IT WORKS SECTION -->
     <section class="how-it-works-section animate-on-scroll">
         <div class="section-header-card">
-            <h2 class="section-title">How It Works</h2>
-            <p class="section-subtitle">Simple, fast, and effective - report infrastructure issues in just a few steps</p>
+            <h2 class="section-title">How CIMMS Works</h2>
+            <p class="section-subtitle">Simple, fast, and effective — report infrastructure issues in just a few steps.</p>
             <div class="steps-container">
             <div class="step-card animate-on-scroll delay-1">
                 <div class="step-number">1</div>
                 <h3 class="step-title">Report the Issue</h3>
-                <p class="step-description">Spot a problem in your area? Submit a detailed report with photos and location information through our easy-to-use form.</p>
+                <p class="step-description">Residents submit infrastructure concerns through the system using a simple form, including photos, descriptions, and exact location details.</p>
             </div>
             <div class="step-card animate-on-scroll delay-2">
                 <div class="step-number">2</div>
                 <h3 class="step-title">Review & Verification</h3>
-                <p class="step-description">Our team reviews your submission within 24 hours, verifies the details, and assigns priority based on urgency and impact.</p>
+                <p class="step-description">Office staff review submissions within 24 hours, validate the information, and determine urgency and service priority.</p>
             </div>
             <div class="step-card animate-on-scroll delay-3">
                 <div class="step-number">3</div>
                 <h3 class="step-title">Maintenance Scheduled</h3>
-                <p class="step-description">Approved requests are added to our maintenance schedule, and you'll receive notifications about the progress and timeline.</p>
+                <p class="step-description">Approved reports are forwarded to engineering and public works teams for scheduling and task assignment. Citizens receive progress updates.</p>
             </div>
             <div class="step-card animate-on-scroll delay-4">
                 <div class="step-number">4</div>
-                <h3 class="step-title">Problem Resolved</h3>
-                <p class="step-description">Our maintenance team completes the work, updates the status, and the issue is marked as resolved with documentation.</p>
+                <h3 class="step-title">Issue Resolved</h3>
+                <p class="step-description">Maintenance work is completed, documented, and marked as resolved, ensuring transparency and accountability.</p>
             </div>
         </div>
         </div>
@@ -1679,7 +1679,7 @@ if ($maintenance_result) {
             <div class="feature-card animate-on-scroll delay-1">
                 <div class="feature-icon">📋</div>
                 <h3 class="feature-title">Submit Requests</h3>
-                <p class="feature-description">Report infrastructure issues in your community with detailed descriptions and photo evidence. Our system ensures your concerns are heard and addressed promptly.</p>
+                <p class="feature-description">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Submit Request →</a>
             </div>
 
@@ -1693,21 +1693,21 @@ if ($maintenance_result) {
             <div class="feature-card animate-on-scroll delay-3">
                 <div class="feature-icon">🗺️</div>
                 <h3 class="feature-title">Location-Based Reporting</h3>
-                <p class="feature-description">Use interactive maps to pinpoint exact locations of infrastructure issues, making it easier for maintenance teams to respond accurately.</p>
+                <p class="feature-description">Use interactive maps and GPS-based tagging to accurately identify problem areas.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Try It Now →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-1">
                 <div class="feature-icon">⚡</div>
                 <h3 class="feature-title">Real-Time Updates</h3>
-                <p class="feature-description">Receive instant notifications about the status of your submitted requests and stay updated on maintenance activities in your barangay.</p>
+                <p class="feature-description">Receive instant notifications about report progress and maintenance activities.</p>
                 <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link">Check Status →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-2">
                 <div class="feature-icon">🤝</div>
                 <h3 class="feature-title">Community Engagement</h3>
-                <p class="feature-description">Join thousands of Quezon City residents in maintaining our city's infrastructure through active participation and transparent communication.</p>
+                <p class="feature-description">Encourage active participation of citizens in improving Quezon City’s infrastructure through transparency and collaboration.</p>
                 <a href="<?= $BASE_URL ?>about.php" class="feature-link">Learn More →</a>
             </div>
         </div>
@@ -1805,34 +1805,6 @@ if ($maintenance_result) {
 
                     <div style="margin-top: 50px; text-align: center;">
                         <a href="<?= $BASE_URL ?>about.php" class="cta-button cta-primary">Learn More About Us</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="about-mission">
-                <h2 style="text-align: center; color: var(--text-primary); margin-bottom: 20px;">Our Mission & Values</h2>
-                <p style="text-align: center; color: var(--text-secondary); max-width: 800px; margin: 0 auto 40px; font-size: 1.1rem;">Committed to building a safer, more sustainable Quezon City for all residents</p>
-                
-                <div class="mission-grid">
-                    <div class="mission-card">
-                        <div class="mission-icon">🎯</div>
-                        <h3 class="mission-title">Efficiency</h3>
-                        <p class="mission-description">Streamlining maintenance workflows to reduce response times and maximize resource utilization for faster problem resolution.</p>
-                    </div>
-                    <div class="mission-card">
-                        <div class="mission-icon">🌟</div>
-                        <h3 class="mission-title">Transparency</h3>
-                        <p class="mission-description">Providing complete visibility into every stage of the maintenance process, from initial report to final completion.</p>
-                    </div>
-                    <div class="mission-card">
-                        <div class="mission-icon">🤝</div>
-                        <h3 class="mission-title">Community First</h3>
-                        <p class="mission-description">Prioritizing resident needs and fostering active civic participation in infrastructure maintenance and improvement.</p>
-                    </div>
-                    <div class="mission-card">
-                        <div class="mission-icon">🔒</div>
-                        <h3 class="mission-title">Security</h3>
-                        <p class="mission-description">Protecting citizen data with robust security measures while maintaining system reliability and accessibility.</p>
                     </div>
                 </div>
             </div>

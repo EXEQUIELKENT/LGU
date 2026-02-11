@@ -926,6 +926,20 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             </p>
         </div>
 
+         <div class="section-box">
+    <h2><span class="icon">💙</span> Our Core Values</h2>
+    <p><b>Committed to building a safer, more sustainable Quezon City for every resident.</b></p>
+
+    <p><b>🎯 Efficiency</b> – We work smart and fast to ensure quick action and better service delivery.</p>
+
+    <p><b>🌟 Transparency</b> – We keep everything clear, open, and trackable from report to resolution.</p>
+
+    <p><b>🤝 Community First</b> – We listen, care, and prioritize the needs of Quezon City citizens.</p>
+
+    <p><b>🔒 Security</b> – We protect your personal data and ensure safe, reliable system access.</p>
+         </div>
+
+
         <div class="btn-wrap">
             <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">Submit a Report</a>
         </div>
