@@ -21,7 +21,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
-    <title>About - InfraGovServices | LGU Portal</title>
+    <title>Terms and Conditions - InfraGovServices | LGU Portal</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
         * {
@@ -818,7 +818,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <a href="<?= $BASE_URL ?>citizencimm.php">Home</a>
             <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
             <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php" class="active">About</a>
+            <a href="<?= $BASE_URL ?>about.php">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -849,7 +849,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><span>ℹ️</span><span>About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -868,66 +868,131 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 
 <div class="form-wrapper">
     <div class="about-card">
-        <h1>About CIMMS – Quezon City</h1>
+        <h1>Terms and Conditions</h1>
 
         <div class="section-box intro">
             <p>
-                <b>Community Infrastructure Maintenance Management System (CIMMS)</b> is a modern digital platform developed for the 
-                <b>Local Government of Quezon City</b> to improve how infrastructure concerns are reported, managed, and resolved across the city.
+                In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, its Implementing Rules and Regulations,
+                and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
+                Coordination and Data-Driven Infrastructure Planning Using AI-assisted Decision Support Technologies is committed
+                to protecting the privacy and security of all personal data collected, stored, and processed through the System.
             </p>
             <p>
-                CIMMS empowers Quezon City residents by providing a simple, fast, and transparent way to report public infrastructure problems 
-                such as damaged roads, broken streetlights, clogged drainage systems, and other community facility concerns.
+                All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
+                and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🌐</span> Our Purpose</h2>
-            <p>CIMMS was created to:</p>
+            <h2><span class="icon">🗂️</span> Information Collection</h2>
+            <p>
+                The System may collect personal and non-personal information including:
+            </p>
             <ul class="purpose-list">
-                <li>Improve the efficiency of public infrastructure maintenance</li>
-                <li>Enhance communication between citizens and LGU offices</li>
-                <li>Ensure faster response times to reported issues</li>
-                <li>Promote transparency, accountability, and service quality</li>
+                <li>Names or user identifiers</li>
+                <li>Usernames and account credentials</li>
+                <li>Contact information when applicable</li>
+                <li>Location data related to infrastructure reports</li>
+                <li>System activity logs and timestamps</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🛠</span> What CIMMS Offers</h2>
-            <p><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
-            <p><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
-            <p><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
-            <p><b>Secure Access</b> – Role-based system with strong data protection and authentication.</p>
-            <p><b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.</p>
-        </div>
-
-        <div class="section-box">
-            <h2><span class="icon">🤝</span> For Quezon City Citizens</h2>
-            <p>
-                This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
-                are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
-                responsive city government.
+            <h2><span class="icon">🎯</span> Purpose of Data Collection</h2>
+            <p>These data are collected solely to support:</p>
+            <ul class="purpose-list">
+                <li>System authentication and access control</li>
+                <li>Infrastructure reporting and coordination</li>
+                <li>Data analytics and AI-assisted decision support</li>
+                <li>Academic research and system improvement</li>
+                <li>Security monitoring and audit functions</li>
+            </ul>
+            <p style="margin-top: 12px;">
+                Personal data shall not be used for purposes beyond those stated without proper consent or a lawful basis as provided by law.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🎯</span> Our Vision</h2>
+            <h2><span class="icon">🔒</span> Data Processing and Storage</h2>
+            <p>All personal data collected shall be:</p>
+            <ul class="purpose-list">
+                <li>Processed only for specific and legitimate purposes</li>
+                <li>Stored securely using reasonable organizational, technical, and physical safeguards</li>
+                <li>Retained only for as long as necessary to fulfill their intended purpose</li>
+                <li>Securely deleted or anonymized when no longer required</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">🚫</span> Data Sharing and Disclosure</h2>
             <p>
-                To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
-                infrastructure services for all Quezon City citizens.
+                Personal data shall not be disclosed or shared with third parties without the data subject's consent, except when:
+            </p>
+            <ul class="purpose-list">
+                <li>Required by law or regulation</li>
+                <li>Ordered by competent government authorities</li>
+                <li>Necessary for legitimate business operations as permitted by law</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">⚖️</span> Data Subject Rights</h2>
+            <p>In accordance with RA 10173, data subjects are entitled to the following rights:</p>
+            <ul class="purpose-list">
+                <li><strong>Right to be Informed</strong> - Be notified about data collection and processing</li>
+                <li><strong>Right to Access</strong> - Access and obtain copies of your personal data</li>
+                <li><strong>Right to Correction</strong> - Request correction or update of inaccurate information</li>
+                <li><strong>Right to Object</strong> - Object to data processing under certain conditions</li>
+                <li><strong>Right to Erasure or Blocking</strong> - Request deletion or blocking of personal data, subject to system limitations and legal requirements</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">🔐</span> AI-Assisted Decision Support</h2>
+            <p>
+                The system utilizes AI-assisted decision support technologies to enhance infrastructure coordination and planning.
+                Users acknowledge and understand that:
+            </p>
+            <ul class="purpose-list">
+                <li>AI-generated recommendations are for decision support purposes only</li>
+                <li>AI recommendations do not replace human judgment or official authority</li>
+                <li>Final decisions remain the responsibility of authorized personnel</li>
+                <li>The system is designed to assist, not replace, professional expertise</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">📞</span> Contact and Data Privacy Concerns</h2>
+            <p>
+                Requests related to data privacy concerns, data subject rights, or questions about these Terms and Conditions
+                may be directed to:
+            </p>
+            <p style="margin-top: 12px;">
+                <strong>System Administrator</strong><br>
+                Email: admin@infragovservices.com<br>
+                Phone: (02) 8988-4242
+            </p>
+            <p style="margin-top: 12px;">
+                <strong>Data Protection Officer</strong><br>
+                Email: dpo@infragovservices.com<br>
+                Phone: (02) 8988-4242
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🚀</span> Our Mission</h2>
+            <h2><span class="icon">✅</span> Acceptance of Terms</h2>
             <p>
-                To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
-                accountability, and improves the overall quality of urban services in Quezon City.
+                By accessing and using this system, you acknowledge that you have read, understood, and agree to be bound by these
+                Terms and Conditions and the Privacy Policy. Continued use of the system constitutes acceptance of any updates
+                or modifications to these terms.
+            </p>
+            <p style="margin-top: 12px;">
+                <strong>Last Updated:</strong> February 2026
             </p>
         </div>
 
         <div class="btn-wrap">
-            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">Submit a Report</a>
+            <a href="<?= $BASE_URL ?>citizencimm.php" class="btn">Back to Home</a>
         </div>
     </div>
 </div>
@@ -977,8 +1042,8 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         <div class="footer-links">
             <h4>Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
+                <li><a href="<?= $BASE_URL ?>privacy.php">Privacy Policy</a></li>
+                <li><a href="<?= $BASE_URL ?>termscon.php">Terms of Service</a></li>
                 <li><a href="#">Data Protection</a></li>
                 <li><a href="#">Accessibility</a></li>
             </ul>

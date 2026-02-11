@@ -98,6 +98,11 @@ function getDisplayName() {
     }
 }
 $displayName = getDisplayName();
+
+// Get user role for validation button visibility
+$userRole = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
+$canValidate = (strcasecmp($userRole, 'Engineer') === 0 || strcasecmp($userRole, 'Admin') === 0 || strcasecmp($userRole, 'Super Admin') === 0);
+
 // ✅ Fetch requests from DB with ALL evidence images per request (GROUP_CONCAT)
 // Set GROUP_CONCAT max length to handle long paths (default is 1024)
 $conn->query("SET SESSION group_concat_max_len = 4096");
@@ -141,7 +146,7 @@ function format_datetime_ampm($datetime) {
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
-css/* =======================
+/* =======================
    Custom SCROLLBAR STYLE
    (synced with employee.php)
 ========================== */
@@ -1411,6 +1416,12 @@ tbody tr:hover {
     padding: 7px 14px;
     border-radius: 8px;
     cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-view:hover {
+    background: #2851b3;
+    transform: scale(1.05);
 }
 
 /* EVIDENCE */
@@ -1640,6 +1651,321 @@ tbody tr:hover {
 .nav-arrow.hidden {
     display: none;
 }
+
+/* =========================
+   📋 REQUEST DETAIL MODAL
+========================= */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 8000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-backdrop.active {
+    display: flex;
+}
+
+.detail-modal {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    box-shadow: 0 10px 50px var(--shadow-color);
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.detail-modal-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    border-radius: 20px 20px 0 0;
+}
+
+.detail-modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 auto;
+    text-align: center;
+    flex: 1;
+}
+
+.detail-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.detail-modal-close:hover {
+    background: rgba(55, 98, 200, 0.1);
+    color: #3762c8;
+}
+
+.detail-modal-body {
+    padding: 24px 28px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.detail-row {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.detail-row strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: #3762c8;
+    letter-spacing: 0.02em;
+}
+
+.detail-row span {
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.evidence-row {
+    margin-top: 8px;
+}
+
+#detailStatus {
+    display: inline-block;        /* prevents full width stretch */
+    width: auto;                  /* ensures it only fits content */
+    max-width: fit-content;
+}
+
+#detailStatus.status {
+    color: inherit !important;
+}
+
+/* Ensure status colors are preserved in detail modal */
+#detailStatus.pending {
+    color: #6b5500 !important;
+}
+
+#detailStatus.completed {
+    color: #1b5e20 !important;
+}
+
+#detailStatus.rejected {
+    color: #7f1d1d !important;
+}
+
+#detailEvidenceContainer {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.detail-evidence-thumb-wrapper {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+}
+
+.detail-evidence-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #eee;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid var(--border-color);
+}
+
+.detail-evidence-thumb:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(55, 98, 200, 0.3);
+}
+
+.detail-modal-footer {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    border-radius: 0 0 20px 20px;
+    display: none; /* Hidden by default, shown via JS if user can validate */
+}
+
+.btn-validate {
+    background: #47b066;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 55%;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(71, 176, 102, 0.3);
+    display: block;
+    margin: 0 auto;
+}
+
+
+.btn-validate:hover {
+    background: #3a9654;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(71, 176, 102, 0.4);
+}
+
+.btn-validate:active {
+    transform: translateY(0);
+}
+
+/* =========================
+   ✅ VALIDATION CONFIRMATION MODAL
+========================= */
+
+.alert-modal {
+    background: var(--bg-primary);
+    border-radius: 18px;
+    box-shadow: 0 8px 42px var(--shadow-color);
+    padding: 36px 28px 22px 28px;
+    width: 340px;
+    max-width: 95vw;
+    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--border-color);
+}
+
+.alert-modal .icon-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 62px;
+    height: 62px;
+    background: #e8f5e9;
+    border-radius: 50%;
+    margin: 0 auto 13px auto;
+    box-shadow: 0 2px 8px 0 rgba(71, 176, 102, 0.11);
+}
+
+[data-theme="dark"] .alert-modal .icon-wrap {
+    background: rgba(71, 176, 102, 0.15);
+}
+
+.alert-modal .icon-wrap.success-icon .icon {
+    color: #47b066;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+
+.alert-modal .alert-title {
+    font-size: 1.09rem;
+    letter-spacing: 0.04em;
+    font-weight: bold;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 8px;
+    margin-top: 6px;
+}
+
+.alert-modal .alert-desc {
+    color: var(--text-secondary);
+    font-size: 0.99rem;
+    text-align: center;
+    margin-bottom: 19px;
+    line-height: 1.5;
+}
+
+.alert-modal .alert-btns {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    width: 100%;
+}
+
+.alert-modal .alert-btn {
+    min-width: 95px;
+    padding: 8px 0;
+    border-radius: 7px;
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .18s, color .18s;
+    outline: none;
+    flex: 1;
+}
+
+.alert-modal .alert-btn.cancel {
+    background: #f3f4fa;
+    color: #353d52;
+    border: 1px solid #e3e6f1;
+}
+
+[data-theme="dark"] .alert-modal .alert-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.alert-modal .alert-btn.cancel:hover {
+    background: #e9eeff;
+    color: #3650c7;
+    border-color: #c7d1f3;
+}
+
+[data-theme="dark"] .alert-modal .alert-btn.cancel:hover {
+    background: rgba(55, 98, 200, 0.2);
+    color: #5f8cff;
+}
+
+.alert-modal .alert-btn.confirm {
+    color: #fff;
+    background: #47b066;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(71, 176, 102, 0.08);
+}
+
+.alert-modal .alert-btn.confirm:hover {
+    background: #3a9654;
+}
+
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
@@ -1922,6 +2248,27 @@ tbody tr:hover {
         font-size: 12px;
         color: #777;
     }
+
+    /* Mobile modal adjustments */
+    .detail-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .detail-modal-header,
+    .detail-modal-body,
+    .detail-modal-footer {
+        padding: 20px;
+    }
+
+    #detailEvidenceContainer {
+        gap: 10px;
+    }
+
+    .detail-evidence-thumb-wrapper {
+        width: 80px;
+        height: 80px;
+    }
 }
 
 /* =========================
@@ -1971,10 +2318,22 @@ tbody tr:hover {
         display: none !important;
     }
 }
+
+/* 🔥 Search Highlight */
+.search-highlight {
+    background: #fff176;
+    color: #000;
+    padding: 1px 3px;
+    border-radius: 4px;
+    font-weight: 600;
+}
 </style>
 <script>
 // --- Server time for server-synced clock ---
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
+
+// Pass user role and validation permission to JavaScript
+const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 
 // --- ✅ BULLETPROOF THEME APPLICATION - PREVENTS RESET ---
 (function() {
@@ -2036,7 +2395,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 })();
 </script>
 <body>
-<!-- all navigation and notification markup ... -->
 
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
@@ -2067,6 +2425,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
+<!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <span class="mobile-cimm-label">CIMM</span>
@@ -2080,6 +2439,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <?php showNotification(); ?>
 
+<!-- SIDEBAR NAVIGATION -->
 <div class="sidebar-nav" id="sidebarNav">
     <div class="sidebar-header">
         <button class="sidebar-toggle" id="sidebarToggle">
@@ -2087,11 +2447,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         </button>
     </div>
 
-    <!-- New Sidebar Top Section -->
     <div class="sidebar-top">
-
-    <!-- Profile Button -->
-    <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
+        <!-- Profile Button -->
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
             <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
         </div>
@@ -2099,12 +2457,14 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <span class="dark-icon">🌙</span>
             <span class="light-icon" style="display: none;">☀️</span>
         </button>
+        
         <!-- Logo -->
         <div class="site-logo">
-            <img src= "assets/img/officiallogo.png" alt="LGU Logo">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
+        
         <!-- Navigation -->
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a></li>
@@ -2126,10 +2486,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- Tooltip container for sidebar nav-links and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
-<!-- CONTENT -->
+<!-- MAIN CONTENT -->
 <div class="main-content">
     <div class="table-card">
-        <!-- 1️⃣ SEARCH INPUT -->
         <h2 class="page-title">Infrastructure Repair Requests</h2>
 
         <input
@@ -2138,6 +2497,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             placeholder="Search by Request ID, Infrastructure, Location, Issue, Date, or Status..."
         >
 
+        <!-- DESKTOP TABLE -->
         <table>
             <thead>
                 <tr>
@@ -2153,7 +2513,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </thead>
 
             <tbody>
-            <!-- 3️⃣ NO RESULT ROW (hidden by default) -->
             <tr id="noRequestResult" style="display:none;">
                 <td colspan="8" style="text-align:center; padding:20px; font-weight:500;">
                     No matching data or result
@@ -2163,8 +2522,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <?php
                 mysqli_data_seek($result, 0);
                 while ($row = $result->fetch_assoc()):
+                    $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
+                    $images = [];
+                    if (!empty($evidenceImages)) {
+                        $images = array_filter(explode(',', $evidenceImages));
+                        $images = array_values($images);
+                    }
                 ?>
-                <tr>
+                <tr class="request-row" 
+                    data-req-id="<?= $row['req_id'] ?>"
+                    data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
+                    data-location="<?= htmlspecialchars($row['location']) ?>"
+                    data-issue="<?= htmlspecialchars($row['issue']) ?>"
+                    data-date="<?= format_datetime_ampm($row['created_at']) ?>"
+                    data-status="<?= htmlspecialchars($row['approval_status']) ?>"
+                    data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'>
                     <td class="searchable">
                         #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
                     </td>
@@ -2176,13 +2548,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     </td>
                     <td>
                         <?php 
-                        $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
-                        if (!empty($evidenceImages)): 
-                            $images = array_filter(explode(',', $evidenceImages)); // Filter out empty values
-                            $images = array_values($images); // Re-index array
-                            if (!empty($images)):
-                                $firstImage = $images[0];
-                                $count = count($images);
+                        if (!empty($images)):
+                            $firstImage = $images[0];
+                            $count = count($images);
                         ?>
                             <div class="evidence-thumb-wrapper"
                                 onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
@@ -2197,9 +2565,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                 <?php endif; ?>
                             </div>
                         <?php 
-                            else: 
-                                echo 'No image';
-                            endif;
                         else: 
                             echo 'No image';
                         endif; 
@@ -2220,7 +2585,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         </span>
                     </td>
                     <td>
-                        <button class="btn-view">View</button>
+                        <button class="btn-view" onclick="openRequestDetail(this)">View</button>
                     </td>
                 </tr>
                 <?php endwhile; ?>
@@ -2232,15 +2597,27 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </tbody>
         </table>
 
-        <!-- 📱 MOBILE REQUEST CARD LIST -->
+        <!-- MOBILE REQUEST CARD LIST -->
         <div class="mobile-request-list">
         <?php
-        // Seek back to the beginning for second display
         if ($result->num_rows > 0) {
             mysqli_data_seek($result, 0);
             while ($row = $result->fetch_assoc()):
+                $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
+                $images = [];
+                if (!empty($evidenceImages)) {
+                    $images = array_filter(explode(',', $evidenceImages));
+                    $images = array_values($images);
+                }
         ?>
-                <div class="request-card">
+                <div class="request-card"
+                    data-req-id="<?= $row['req_id'] ?>"
+                    data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
+                    data-location="<?= htmlspecialchars($row['location']) ?>"
+                    data-issue="<?= htmlspecialchars($row['issue']) ?>"
+                    data-date="<?= format_datetime_ampm($row['created_at']) ?>"
+                    data-status="<?= htmlspecialchars($row['approval_status']) ?>"
+                    data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'>
                     <div>
                         <strong>Request ID:</strong>
                         <span class="searchable">#REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?></span>
@@ -2278,32 +2655,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             <?= htmlspecialchars($status) ?>
                         </span>
                     </div>
-                    <!-- Evidence View / No Evidence -->
                     <div>
-                        <?php 
-                        $evidenceImages = !empty($row['evidence_images']) ? trim($row['evidence_images']) : '';
-                        if (!empty($evidenceImages)): 
-                            $images = array_filter(explode(',', $evidenceImages));
-                            $images = array_values($images);
-                            if (!empty($images)):
-                        ?>
-                                <button
-                                    class="btn-view"
-                                    onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
-                                    View Evidence (<?= count($images) ?>)
-                                </button>
-                        <?php 
-                            else: 
-                                echo '<span class="no-evidence">No Evidence</span>';
-                            endif;
-                        else: 
-                            echo '<span class="no-evidence">No Evidence</span>';
-                        endif; 
-                        ?>
+                        <?php if (!empty($images)): ?>
+                            <button
+                                class="btn-view"
+                                onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
+                                View Evidence (<?= count($images) ?>)
+                            </button>
+                        <?php else: ?>
+                            <span class="no-evidence">No Evidence</span>
+                        <?php endif; ?>
                     </div>
-                    <!-- Action section for mobile - shown at the bottom -->
                     <div class="mobile-card-actions" style="margin-top:10px;">
-                        <button class="btn-view">View</button>
+                        <button class="btn-view" onclick="openRequestDetail(this)">View Details</button>
                     </div>
                 </div>
         <?php
@@ -2313,12 +2677,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="request-card mobile-no-requests">No requests found</div>
         <?php } ?>
         </div>
-        <!-- END MOBILE REQUEST CARD LIST -->
 
     </div>
 </div>
 
-<!-- Logout Confirmation Alert Modal (Redesigned based on sched.php) -->
+<!-- ========================================
+     MODALS SECTION
+     ======================================== -->
+
+<!-- LOGOUT CONFIRMATION MODAL -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
         <div class="icon-wrap">
@@ -2333,7 +2700,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<!-- 🖼 IMAGE VIEWER MODAL -->
+<!-- IMAGE VIEWER MODAL -->
 <div id="imageModal" class="image-modal">
     <div class="image-modal-backdrop"></div>
     <div class="image-modal-content">
@@ -2347,29 +2714,81 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<style>
-/* 🔥 Search Highlight */
-.search-highlight {
-    background: #fff176;
-    color: #000;
-    padding: 1px 3px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-</style>
+<!-- REQUEST DETAIL MODAL -->
+<div id="requestDetailBackdrop" class="modal-backdrop">
+    <div id="requestDetailModal" class="detail-modal">
+        <div class="detail-modal-header">
+            <h3 id="detailModalTitle">Request Details</h3>
+            <button class="detail-modal-close" id="detailModalClose">&times;</button>
+        </div>
+        <div class="detail-modal-body">
+            <div class="detail-row">
+                <strong>Request ID:</strong>
+                <span id="detailReqId"></span>
+            </div>
+            <div class="detail-row">
+                <strong>Infrastructure:</strong>
+                <span id="detailInfra"></span>
+            </div>
+            <div class="detail-row">
+                <strong>Location:</strong>
+                <span id="detailLocation"></span>
+            </div>
+            <div class="detail-row">
+                <strong>Issue:</strong>
+                <span id="detailIssue"></span>
+            </div>
+            <div class="detail-row">
+                <strong>Date Submitted:</strong>
+                <span id="detailDate"></span>
+            </div>
+            <div class="detail-row">
+                <strong>Status:</strong>
+                <span id="detailStatus"></span>
+            </div>
+            <div class="detail-row evidence-row">
+                <strong>Evidence:</strong>
+                <div id="detailEvidenceContainer"></div>
+            </div>
+        </div>
+        <div class="detail-modal-footer" id="detailModalFooter">
+            <button class="btn-validate" id="validateBtn">Validate Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- VALIDATION CONFIRMATION MODAL -->
+<div id="validateConfirmBackdrop" class="modal-backdrop">
+    <div id="validateConfirmModal" class="alert-modal">
+        <div class="icon-wrap success-icon">
+            <span class="icon">✓</span>
+        </div>
+        <div class="alert-title">Validate this request?</div>
+        <div class="alert-desc">Are you sure you want to mark this request as validated? This action will update the request status.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="validateCancelBtn">Cancel</button>
+            <button class="alert-btn confirm" id="validateConfirmBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================
+     JAVASCRIPT SECTION
+     ======================================== -->
 
 <script>
+// ============================
+//  SIDEBAR FUNCTIONALITY
+// ============================
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
 const sidebarNav = document.getElementById('sidebarNav');
 
-// Helper to detect mobile view (update the breakpoint if needed)
 function isMobileView() {
-    return window.innerWidth <= 900; // or your specific mobile breakpoint
+    return window.innerWidth <= 900;
 }
 
-// Make sure sidebar collapsed state is persisted
 const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
@@ -2377,11 +2796,9 @@ if (sidebarCollapsed) {
     document.body.classList.add('sidebar-collapsed');
 }
 
-// --- Fix: Track last mobile/desktop state and expand sidebar if mobile view is entered while sidebar is collapsed ---
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
     const isNowMobile = isMobileView();
-    // If we just switched to mobile AND sidebar is collapsed, expand sidebar & update localStorage
     if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
         mainContent.classList.remove('expanded');
@@ -2391,33 +2808,32 @@ window.addEventListener('resize', () => {
     lastMobileState = isNowMobile;
 });
 
-    sidebarToggle.addEventListener('click', () => { 
-        sidebar.classList.toggle('collapsed');
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        mainContent.classList.toggle('expanded', isCollapsed);
-        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-        localStorage.setItem('sidebarCollapsed', isCollapsed);
-        if (!isCollapsed) {
-            sidebarNavTooltip.classList.remove('active');
-            sidebarNavTooltip.style.display = 'none';
-        }
-    });
+sidebarToggle.addEventListener('click', () => { 
+    sidebar.classList.toggle('collapsed');
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    mainContent.classList.toggle('expanded', isCollapsed);
+    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+    if (!isCollapsed) {
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.style.display = 'none';
+    }
+});
 
-    const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
-    let tooltipActiveLink = null;
-    let tooltipHideTimeout = null;
+// Sidebar tooltips
+const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
+let tooltipActiveLink = null;
+let tooltipHideTimeout = null;
 
-// Add tooltip listeners for nav-links
 document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
     link.addEventListener('mouseenter', navTooltipHandler);
     link.addEventListener('focus', navTooltipHandler);
     link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
     link.addEventListener('blur', hideNavTooltip);
 });
-// Add tooltip for profile icon (on collapse, like employee.php)
+
 const profileIconBtn = document.getElementById('profileIconBtn');
 if (profileIconBtn) {
-    // Add click handler to navigate to profile page
     profileIconBtn.addEventListener('click', function(e) {
         e.preventDefault();
         window.location.href = 'profile.php';
@@ -2428,7 +2844,6 @@ if (profileIconBtn) {
     profileIconBtn.addEventListener('blur', hideNavTooltip);
 }
 
-// Add tooltip and logic for logout button (keep existing logic with tooltip)
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('mouseenter', function(e) {
     if (!sidebar.classList.contains('collapsed')) {
@@ -2462,28 +2877,29 @@ logoutBtn.addEventListener('mouseleave', function(e) {
 });
 logoutBtn.addEventListener('blur', hideNavTooltip);
 
-    function showLogoutTooltip(e) {
-        const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
-        tooltipActiveLink = logoutBtn;
-        sidebarNavTooltip.textContent = tooltipText;
-        sidebarNavTooltip.classList.add('logout-pop');
-        sidebarNavTooltip.style.display = 'block';
-        const rect = logoutBtn.getBoundingClientRect();
-        const sidebarRect = sidebar.getBoundingClientRect();
-        const x = sidebarRect.right + 5;
-        const y = rect.top + rect.height / 2 + window.scrollY;
-        sidebarNavTooltip.style.left = (x + 10) + 'px';
-        sidebarNavTooltip.style.top = y + 'px';
+function showLogoutTooltip(e) {
+    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+    tooltipActiveLink = logoutBtn;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = logoutBtn.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
 
-        setTimeout(function(){
-            sidebarNavTooltip.classList.add('active');
-        }, 5);
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
 
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 }
+
 function hideNavTooltipImmediate() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     sidebarNavTooltip.style.display = 'none';
@@ -2493,6 +2909,7 @@ function hideNavTooltipImmediate() {
         tooltipHideTimeout = null;
     }
 }
+
 function hideNavTooltip() {
     sidebarNavTooltip.classList.remove('active', 'logout-pop');
     setTimeout(function() {
@@ -2504,12 +2921,12 @@ function hideNavTooltip() {
         tooltipHideTimeout = null;
     }
 }
+
 function navTooltipHandler(e) {
     if (!sidebar.classList.contains('collapsed')) {
         hideNavTooltip();
         return;
     }
-    // Show nav-link or profile icon name
     let tooltipText = this.getAttribute('data-tooltip');
     if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
     if (!tooltipText) return;
@@ -2524,90 +2941,44 @@ function navTooltipHandler(e) {
     sidebarNavTooltip.style.left = (x + 10) + 'px';
     sidebarNavTooltip.style.top = y + 'px';
 
-        setTimeout(function(){
-            sidebarNavTooltip.classList.add('active');
-        }, 5);
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
 
-        if (tooltipHideTimeout) {
-            clearTimeout(tooltipHideTimeout);
-            tooltipHideTimeout = null;
-        }
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
     }
-    function navLinkMouseLeaveHandler(e) {
-        if (
-            e.relatedTarget === sidebarNavTooltip ||
-            (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
-        ) {
-            return;
-        }
-        tooltipHideTimeout = setTimeout(() => {
-            hideNavTooltip();
-            tooltipActiveLink = null;
-        }, 60);
-    }
-    sidebarNavTooltip.addEventListener('mouseleave', function() {
-        tooltipHideTimeout = setTimeout(() => {
-            hideNavTooltip();
-            tooltipActiveLink = null;
-        }, 60);
-    });
-    sidebarNavTooltip.addEventListener('mouseenter', function() {
-        if (tooltipHideTimeout) {
-            clearTimeout(tooltipHideTimeout);
-            tooltipHideTimeout = null;
-        }
-    });
+}
 
-// Also support keyboard accessibility: show tooltip on space/enter
-document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
-    link.addEventListener('keydown', function(e) {
-        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
-            e.preventDefault();
-            this.focus();
-        }
-    });
-});
-logoutBtn.addEventListener('keydown', function(e) {
-    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
-        e.preventDefault();
-        this.focus();
+function navLinkMouseLeaveHandler(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
     }
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60);
+}
+
+sidebarNavTooltip.addEventListener('mouseleave', function() {
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60);
 });
-sidebarToggle.addEventListener('click', () => {
-    sidebarNavTooltip.classList.remove('active', 'logout-pop');
-    sidebarNavTooltip.style.display = 'none';
-    tooltipActiveLink = null;
+
+sidebarNavTooltip.addEventListener('mouseenter', function() {
     if (tooltipHideTimeout) {
         clearTimeout(tooltipHideTimeout);
         tooltipHideTimeout = null;
     }
 });
 
-const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
-const logoutCancelBtn = document.getElementById('logoutCancelBtn');
-const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
-
-// NEW: Fix the logout logic so the user is only logged out when confirming in the modal
-logoutBtn.addEventListener('click', (e) => {
-    // prevent default just in case (button not type=submit)
-    e.preventDefault();
-    logoutAlertBackdrop.classList.add("active");
-    hideNavTooltipImmediate();
-});
-logoutCancelBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    logoutAlertBackdrop.classList.remove("active");
-});
-logoutConfirmBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = 'logout.php';
-});
-logoutAlertBackdrop.addEventListener('mousedown', (e) => {
-    if (e.target === logoutAlertBackdrop) {
-        logoutAlertBackdrop.classList.remove("active");
-    }
-});
-
+// Mobile toggle
 const mobileToggle = document.getElementById('mobileToggle');
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
@@ -2615,21 +2986,43 @@ if (mobileToggle) {
     });
 }
 
-// --- Add step 3: force reload on browser bfcache to enforce session check ---
-window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-        window.location.reload();
+// ============================
+//  LOGOUT MODAL FUNCTIONALITY
+// ============================
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+
+logoutBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.add("active");
+    hideNavTooltipImmediate();
+});
+
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'logout.php';
+});
+
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
     }
 });
-</script>
 
-<script>
+// ============================
+//  PROFILE PICTURE HANDLER
+// ============================
 function handleProfilePicture() {
     const img = document.getElementById('profileImg');
     const fallback = document.getElementById('profileFallbackIcon');
     if (!img) return;
     
-    // Set initial state
     const checkImage = () => {
         if (!img.src || img.src.endsWith('profile.png') || img.src.includes('profile.png')) {
             img.style.display = 'none';
@@ -2637,7 +3030,6 @@ function handleProfilePicture() {
                 fallback.style.display = 'flex';
             }
         } else {
-            // Check if image actually loads
             const testImg = new Image();
             testImg.onload = () => {
                 img.style.display = 'block';
@@ -2655,7 +3047,6 @@ function handleProfilePicture() {
         }
     };
     
-    // Handle image load/error events
     img.onerror = () => {
         img.style.display = 'none';
         if (fallback) {
@@ -2664,7 +3055,6 @@ function handleProfilePicture() {
     };
     
     img.onload = () => {
-        // Only show image if it's not the default profile.png
         if (img.src && !img.src.endsWith('profile.png') && !img.src.includes('profile.png')) {
             img.style.display = 'block';
             if (fallback) {
@@ -2678,51 +3068,54 @@ function handleProfilePicture() {
         }
     };
     
-    // Initial check
     checkImage();
 }
 
 document.addEventListener('DOMContentLoaded', handleProfilePicture);
-// Also run after a short delay to ensure image src is set
 setTimeout(handleProfilePicture, 100);
-</script>
 
-<script>
-let inactivityTime = 20 * 60 * 1000; // 20 minutes
+// ============================
+//  INACTIVITY TIMER
+// ============================
+let inactivityTime = 20 * 60 * 1000;
 let inactivityTimer;
 
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-        // Silent logout (no notification)
         window.location.href = 'logout.php';
     }, inactivityTime);
 }
 
-// Events that count as activity
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
 
-// Start timer on load
 resetInactivityTimer();
+
+// ============================
+//  PAGE SHOW EVENT (PREVENT BFCACHE)
+// ============================
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
 </script>
 
 <script>
 // ============================
-//  MODAL GALLERY & IMAGE LOGIC
+//  IMAGE GALLERY & MODAL LOGIC
 // ============================
 const lastViewedImageByRequest = {};
 let currentRequestId = null;
 
-// IMAGE MODAL ELEMENTS
 const imageModal = document.getElementById('imageModal');
 const imageModalImg = document.getElementById('imageModalImg');
 const imageModalClose = document.querySelector('.image-modal-close');
 const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
-const swipeIndicator = document.getElementById('swipeIndicator'); // ADDED
+const swipeIndicator = document.getElementById('swipeIndicator');
 
-// --- Zoom Constants & State ---
 const BASE_ZOOM = 2;
 const MAX_WHEEL_ZOOM = 5;
 const WHEEL_ZOOM_SPEED = 0.002;
@@ -2737,11 +3130,9 @@ let translateX = 0;
 let translateY = 0;
 let currentScale = 1;
 
-// --- DRAG BEHAVIOR FIXES ---
 imageModalImg.draggable = false;
 imageModalImg.addEventListener('dragstart', (e) => { e.preventDefault(); });
 
-// --- OPEN SINGLE IMAGE MODAL (fallback, legacy) ---
 function openImageModal(src) {
     imageModalImg.src = src;
     imageModal.classList.add('active');
@@ -2753,7 +3144,6 @@ function openImageModal(src) {
     }
 }
 
-// --- CLOSE MODAL: save last viewed image!
 function closeImageModal() {
     imageModal.classList.remove('active');
     if (currentRequestId !== null) {
@@ -2762,18 +3152,15 @@ function closeImageModal() {
     }
     resetZoom();
 }
+
 imageModalClose.addEventListener('click', closeImageModal);
 imageModalBackdrop.addEventListener('click', closeImageModal);
 
-// --- DESKTOP DOUBLE-CLICK TO ZOOM ---
+// Desktop double-click zoom
 imageModalImg.addEventListener('dblclick', (e) => {
     const rect = imageModalImg.getBoundingClientRect();
-
-    // Mouse position relative to image
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
-
-    // Convert to percentage
     const percentX = offsetX / rect.width;
     const percentY = offsetY / rect.height;
 
@@ -2782,13 +3169,8 @@ imageModalImg.addEventListener('dblclick', (e) => {
         translateX = (0.5 - percentX) * rect.width * (BASE_ZOOM - 1);
         translateY = (0.5 - percentY) * rect.height * (BASE_ZOOM - 1);
         currentScale = BASE_ZOOM;
-
         imageModalImg.classList.add('zoomed');
-        imageModalImg.style.transform = `
-            scale(${currentScale})
-            translate(${translateX}px, ${translateY}px)
-        `;
-
+        imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
         imageModalImg.style.cursor = 'grab';
         imageModalClose.style.display = 'none';
         imageModalClose.disabled = true;
@@ -2797,10 +3179,10 @@ imageModalImg.addEventListener('dblclick', (e) => {
     }
 });
 
-// --- DESKTOP CLICK + DRAG TO PAN ---
+// Desktop drag
 imageModalImg.addEventListener('mousedown', (e) => {
     if (!isZoomed) return;
-    if (e.button !== 0) return; // Only left mouse button
+    if (e.button !== 0) return;
     isDragging = true;
     startX = e.clientX - translateX;
     startY = e.clientY - translateY;
@@ -2809,20 +3191,13 @@ imageModalImg.addEventListener('mousedown', (e) => {
 
 window.addEventListener('mouseup', () => {
     if (!isZoomed) return;
-
     isDragging = false;
     imageModalImg.style.cursor = 'grab';
-
     if (isWheelZooming) {
         isWheelZooming = false;
         currentScale = BASE_ZOOM;
-
         imageModalImg.style.transition = 'transform 0.2s ease';
-        imageModalImg.style.transform = `
-            scale(${currentScale})
-            translate(${translateX}px, ${translateY}px)
-        `;
-
+        imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
         setTimeout(() => {
             imageModalImg.style.transition = '';
         }, 200);
@@ -2833,47 +3208,28 @@ window.addEventListener('mousemove', (e) => {
     if (!isZoomed || !isDragging) return;
     translateX = e.clientX - startX;
     translateY = e.clientY - startY;
-    imageModalImg.style.transform = `
-        scale(${currentScale})
-        translate(${translateX}px, ${translateY}px)
-    `;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
 });
 
-// --- DESKTOP MOUSE WHEEL DEEP ZOOM WHILE DRAGGING ---
+// Desktop wheel zoom
 imageModalImg.addEventListener('wheel', (e) => {
     if (!isZoomed || !isDragging) return;
-
     e.preventDefault();
     isWheelZooming = true;
-
     const rect = imageModalImg.getBoundingClientRect();
-
-    // Cursor position relative to image
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
     const percentX = offsetX / rect.width;
     const percentY = offsetY / rect.height;
-
     const delta = -e.deltaY * WHEEL_ZOOM_SPEED;
-    const newScale = Math.min(
-        Math.max(currentScale + delta, BASE_ZOOM),
-        MAX_WHEEL_ZOOM
-    );
-
-    // Adjust translate so zoom stays cursor-focused
+    const newScale = Math.min(Math.max(currentScale + delta, BASE_ZOOM), MAX_WHEEL_ZOOM);
     const scaleDiff = newScale / currentScale;
     translateX = translateX * scaleDiff + (0.5 - percentX) * rect.width * (scaleDiff - 1);
     translateY = translateY * scaleDiff + (0.5 - percentY) * rect.height * (scaleDiff - 1);
-
     currentScale = newScale;
-
-    imageModalImg.style.transform = `
-        scale(${currentScale})
-        translate(${translateX}px, ${translateY}px)
-    `;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
 }, { passive: false });
 
-// --- RESET ZOOM ---
 function resetZoom() {
     isZoomed = false;
     isDragging = false;
@@ -2889,7 +3245,7 @@ function resetZoom() {
     imageModalClose.disabled = false;
 }
 
-// --- MOBILE PINCH & SWIPE ---
+// Mobile pinch & swipe
 let initialDistance = null;
 let lastTouchY = null;
 
@@ -2909,7 +3265,7 @@ imageModalImg.addEventListener('touchmove', (e) => {
         imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
     } else if (e.touches.length === 1 && lastTouchY !== null) {
         const deltaY = e.touches[0].clientY - lastTouchY;
-        if (deltaY > 150) { // swipe down threshold
+        if (deltaY > 150) {
             closeImageModal();
         }
     }
@@ -2921,22 +3277,21 @@ imageModalImg.addEventListener('touchend', () => {
     initialDistance = null;
     lastTouchY = null;
 });
+
 function getDistance(touch1, touch2) {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
     return Math.sqrt(dx * dx + dy * dy);
 }
+
 imageModalImg.style.cursor = 'zoom-in';
 
-// --------- GALLERY LOGIC ---------
+// Gallery logic
 let galleryImages = [];
 let currentIndex = 0;
 
-// --- important: updateEvidenceThumbnail ---
 function updateEvidenceThumbnail(requestId) {
-    const thumbImg = document.querySelector(
-        `.evidence-thumb[data-request-id="${requestId}"]`
-    );
+    const thumbImg = document.querySelector(`.evidence-thumb[data-request-id="${requestId}"]`);
     if (!thumbImg) return;
     const newSrc = lastViewedImageByRequest[requestId];
     if (newSrc) {
@@ -2944,25 +3299,19 @@ function updateEvidenceThumbnail(requestId) {
     }
 }
 
-// 📱 Show swipe indicator on mobile when image modal opens
 function showSwipeIndicator() {
     const indicator = document.getElementById('swipeIndicator');
     if (!indicator || window.innerWidth > 768) return;
-
     indicator.classList.add('show');
-
-    // Auto-hide after 2.5 seconds
     setTimeout(() => {
         indicator.classList.remove('show');
     }, 2500);
 }
 
-// Accepts requestId
 function openGalleryModal(images, index, requestId) {
     galleryImages = images;
     currentIndex = index;
     currentRequestId = requestId;
-
     imageModal.classList.add('active');
     updateGalleryImage();
     showSwipeIndicator();
@@ -2972,26 +3321,26 @@ function updateGalleryImage() {
     if (!galleryImages.length) return;
     const img = document.getElementById('imageModalImg');
     img.src = galleryImages[currentIndex];
-
-    // Arrow visibility
     const leftArrow = document.querySelector('.nav-arrow.left');
     const rightArrow = document.querySelector('.nav-arrow.right');
     const isSingle = (galleryImages.length <= 1);
     leftArrow.classList.toggle('hidden', isSingle);
     rightArrow.classList.toggle('hidden', isSingle);
-
     resetZoom();
 }
+
 function nextImage() {
     if (!galleryImages.length || galleryImages.length <= 1) return;
     currentIndex = (currentIndex + 1) % galleryImages.length;
     updateGalleryImage();
 }
+
 function prevImage() {
     if (!galleryImages.length || galleryImages.length <= 1) return;
     currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
     updateGalleryImage();
 }
+
 document.addEventListener('keydown', function(e){
     if (!imageModal.classList.contains('active')) return;
     if (galleryImages.length > 1) {
@@ -3001,19 +3350,17 @@ document.addEventListener('keydown', function(e){
     if (e.key === "Escape") { closeImageModal(); }
 });
 
-/* === 📱 SWIPE LEFT/RIGHT TO NAVIGATE IMAGE GALLERY === */
+// Mobile swipe
 let touchStartX = 0;
 let touchEndX = 0;
-const SWIPE_THRESHOLD = 50; // minimum px distance
+const SWIPE_THRESHOLD = 50;
 
 imageModalImg.addEventListener('touchstart', (e) => {
-    // Only handle single-finger swipe (not pinch)
     if (e.touches.length !== 1) return;
     touchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
 
 imageModalImg.addEventListener('touchend', (e) => {
-    // Only handle single-finger swipe end
     if (e.changedTouches.length !== 1) return;
     touchEndX = e.changedTouches[0].screenX;
     handleSwipeGesture();
@@ -3023,104 +3370,250 @@ function handleSwipeGesture() {
     const deltaX = touchEndX - touchStartX;
     if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
     if (galleryImages.length <= 1) return;
-
     if (deltaX > 0) {
-        // 👉 Swipe RIGHT → previous image
         prevImage();
     } else {
-        // 👈 Swipe LEFT → next image
         nextImage();
     }
 }
 </script>
+
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
+// ============================
+//  REQUEST DETAIL MODAL FUNCTIONALITY
+// ============================
 
-const searchInput = document.getElementById("requestSearch");
+let currentRequestData = null;
 
-function escapeRegExp(text) {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+function openRequestDetail(button) {
+    // Get the parent row or card
+    const row = button.closest('tr.request-row') || button.closest('.request-card');
+    if (!row) return;
 
-function storeOriginal(el) {
-    if (!el.dataset.original) {
-        el.dataset.original = el.innerHTML;
+    // Extract data from attributes
+    const reqId = row.dataset.reqId;
+    const infrastructure = row.dataset.infrastructure;
+    const location = row.dataset.location;
+    const issue = row.dataset.issue;
+    const date = row.dataset.date;
+    const status = row.dataset.status;
+    const evidenceStr = row.dataset.evidence;
+    
+    let evidence = [];
+    try {
+        evidence = JSON.parse(evidenceStr);
+    } catch (e) {
+        evidence = [];
     }
-}
 
-function reset(el) {
-    if (el.dataset.original) {
-        el.innerHTML = el.dataset.original;
+    // Store current request data
+    currentRequestData = {
+        reqId: reqId,
+        infrastructure: infrastructure,
+        location: location,
+        issue: issue,
+        date: date,
+        status: status,
+        evidence: evidence
+    };
+
+    // Populate modal
+    document.getElementById('detailReqId').textContent = '#REQ-' + String(reqId).padStart(3, '0');
+    document.getElementById('detailInfra').textContent = infrastructure;
+    document.getElementById('detailLocation').textContent = location;
+    document.getElementById('detailIssue').textContent = issue;
+    document.getElementById('detailDate').textContent = date;
+    
+    // Status with color
+    const statusSpan = document.getElementById('detailStatus');
+    statusSpan.textContent = status;
+    statusSpan.className = 'status';
+    
+    const statusClass = status === 'Pending' ? 'pending' : 
+                       status === 'Approved' ? 'completed' : 
+                       status === 'Rejected' ? 'rejected' : 'pending';
+    statusSpan.classList.add(statusClass);
+
+    // Evidence images
+    const evidenceContainer = document.getElementById('detailEvidenceContainer');
+    evidenceContainer.innerHTML = '';
+    
+    if (evidence && evidence.length > 0) {
+        evidence.forEach((imgPath, index) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'detail-evidence-thumb-wrapper';
+            
+            const img = document.createElement('img');
+            img.src = imgPath;
+            img.className = 'detail-evidence-thumb';
+            img.alt = 'Evidence ' + (index + 1);
+            img.onclick = () => openGalleryModal(evidence, index, reqId);
+            
+            wrapper.appendChild(img);
+            evidenceContainer.appendChild(wrapper);
+        });
+    } else {
+        evidenceContainer.innerHTML = '<span style="color: var(--text-secondary);">No evidence available</span>';
     }
+
+    // Show/hide validate button based on user role
+    const footer = document.getElementById('detailModalFooter');
+    if (USER_CAN_VALIDATE) {
+        footer.style.display = 'block';
+    } else {
+        footer.style.display = 'none';
+    }
+
+    // Show modal
+    document.getElementById('requestDetailBackdrop').classList.add('active');
 }
 
-function highlight(el, keyword) {
-    if (!keyword) return;
-
-    const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
-    el.innerHTML = el.innerHTML.replace(
-        regex,
-        `<span class="search-highlight">$1</span>`
-    );
-}
-
-searchInput.addEventListener("input", () => {
-    const keyword = searchInput.value.trim().toLowerCase();
-
-    /* ========= DESKTOP TABLE ========= */
-    const rows = document.querySelectorAll("table tbody tr:not(#noRequestResult)");
-    let found = 0;
-
-    rows.forEach(row => {
-        const searchable = row.querySelectorAll(".searchable");
-        let rowText = "";
-
-        searchable.forEach(el => {
-            storeOriginal(el);
-            reset(el);
-            rowText += el.textContent.toLowerCase() + " ";
-        });
-
-        const match = rowText.includes(keyword);
-        row.style.display = match || !keyword ? "" : "none";
-
-        if (match && keyword) {
-            searchable.forEach(el => highlight(el, keyword));
-            found++;
-        }
-    });
-
-    document.getElementById("noRequestResult").style.display =
-        keyword && found === 0 ? "" : "none";
-
-    /* ========= MOBILE CARDS ========= */
-    document.querySelectorAll(".request-card").forEach(card => {
-        const searchable = card.querySelectorAll(".searchable");
-        let cardText = "";
-
-        searchable.forEach(el => {
-            storeOriginal(el);
-            reset(el);
-            cardText += el.textContent.toLowerCase() + " ";
-        });
-
-        const match = cardText.includes(keyword);
-        card.style.display = match || !keyword ? "" : "none";
-
-        if (match && keyword) {
-            searchable.forEach(el => highlight(el, keyword));
-        }
-    });
-
+// Close detail modal
+document.getElementById('detailModalClose').addEventListener('click', () => {
+    document.getElementById('requestDetailBackdrop').classList.remove('active');
 });
 
+document.getElementById('requestDetailBackdrop').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('requestDetailBackdrop')) {
+        document.getElementById('requestDetailBackdrop').classList.remove('active');
+    }
+});
+
+// ============================
+//  VALIDATION MODAL FUNCTIONALITY
+// ============================
+
+document.getElementById('validateBtn').addEventListener('click', () => {
+    // Show confirmation modal
+    document.getElementById('validateConfirmBackdrop').classList.add('active');
+});
+
+document.getElementById('validateCancelBtn').addEventListener('click', () => {
+    document.getElementById('validateConfirmBackdrop').classList.remove('active');
+});
+
+document.getElementById('validateConfirmBackdrop').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('validateConfirmBackdrop')) {
+        document.getElementById('validateConfirmBackdrop').classList.remove('active');
+    }
+});
+
+document.getElementById('validateConfirmBtn').addEventListener('click', () => {
+    // TODO: Add your validation logic here
+    // For now, just close modals
+    console.log('Validating request:', currentRequestData);
+    
+    // You can add AJAX call here to update the database
+    // Example:
+    // fetch('api/validate_request.php', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ req_id: currentRequestData.reqId })
+    // }).then(response => response.json())
+    //   .then(data => {
+    //       if (data.success) {
+    //           // Show success notification
+    //           // Reload page or update UI
+    //       }
+    //   });
+
+    // Close both modals
+    document.getElementById('validateConfirmBackdrop').classList.remove('active');
+    document.getElementById('requestDetailBackdrop').classList.remove('active');
+    
+    // Show success message (you can replace this with your notification system)
+    alert('Request validated successfully!');
 });
 </script>
 
 <script>
-// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP =====
+// ============================
+//  SEARCH FUNCTIONALITY
+// ============================
+document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("requestSearch");
 
-const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+    function escapeRegExp(text) {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function storeOriginal(el) {
+        if (!el.dataset.original) {
+            el.dataset.original = el.innerHTML;
+        }
+    }
+
+    function reset(el) {
+        if (el.dataset.original) {
+            el.innerHTML = el.dataset.original;
+        }
+    }
+
+    function highlight(el, keyword) {
+        if (!keyword) return;
+        const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
+        el.innerHTML = el.innerHTML.replace(
+            regex,
+            `<span class="search-highlight">$1</span>`
+        );
+    }
+
+    searchInput.addEventListener("input", () => {
+        const keyword = searchInput.value.trim().toLowerCase();
+
+        // Desktop table
+        const rows = document.querySelectorAll("table tbody tr:not(#noRequestResult)");
+        let found = 0;
+
+        rows.forEach(row => {
+            const searchable = row.querySelectorAll(".searchable");
+            let rowText = "";
+
+            searchable.forEach(el => {
+                storeOriginal(el);
+                reset(el);
+                rowText += el.textContent.toLowerCase() + " ";
+            });
+
+            const match = rowText.includes(keyword);
+            row.style.display = match || !keyword ? "" : "none";
+
+            if (match && keyword) {
+                searchable.forEach(el => highlight(el, keyword));
+                found++;
+            }
+        });
+
+        document.getElementById("noRequestResult").style.display =
+            keyword && found === 0 ? "" : "none";
+
+        // Mobile cards
+        document.querySelectorAll(".request-card").forEach(card => {
+            const searchable = card.querySelectorAll(".searchable");
+            let cardText = "";
+
+            searchable.forEach(el => {
+                storeOriginal(el);
+                reset(el);
+                cardText += el.textContent.toLowerCase() + " ";
+            });
+
+            const match = cardText.includes(keyword);
+            card.style.display = match || !keyword ? "" : "none";
+
+            if (match && keyword) {
+                searchable.forEach(el => highlight(el, keyword));
+            }
+        });
+    });
+});
+</script>
+
+<script>
+// ============================
+//  SERVER-SYNCED CLOCK
+// ============================
+const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
 let clockInterval = null;
 let lastSecond = null;
@@ -3218,7 +3711,9 @@ startClock();
 </script>
 
 <script>
-// ===== DARK MODE TOGGLE (BULLETPROOF VERSION) =====
+// ============================
+//  DARK MODE TOGGLE
+// ============================
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
@@ -3230,7 +3725,6 @@ startClock();
     const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
 
-    // ✅ CRITICAL: Store theme in a backup location too
     const THEME_KEY = 'theme';
     const THEME_BACKUP_KEY = 'theme_backup';
 
@@ -3244,11 +3738,9 @@ startClock();
                 html.removeAttribute('data-theme');
             }
             
-            // ✅ Save to both primary and backup locations
             localStorage.setItem(THEME_KEY, themeValue);
             localStorage.setItem(THEME_BACKUP_KEY, themeValue);
             
-            // Update icons
             if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
             if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
             if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
@@ -3267,16 +3759,13 @@ startClock();
         }
     }
 
-    // ✅ Load saved theme with backup fallback
     try {
         let savedTheme = localStorage.getItem(THEME_KEY);
         
-        // If primary is missing or corrupted, try backup
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
         }
         
-        // Final fallback
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = 'light';
         }
@@ -3295,8 +3784,6 @@ startClock();
     if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
     if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
 
-    // ✅ CRITICAL: Protect localStorage from being cleared on navigation
-    // Listen for beforeunload and ensure theme is saved
     window.addEventListener('beforeunload', function() {
         try {
             const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -3307,8 +3794,12 @@ startClock();
         }
     });
 })();
+</script>
 
-// ===== NOTIFICATION SYSTEM (FIXED) =====
+<script>
+// ============================
+//  NOTIFICATION SYSTEM
+// ============================
 (function() {
     const notifBtn = document.getElementById('notifBtn');
     const mobileNotifBtn = document.getElementById('mobileNotifBtn');
@@ -3322,7 +3813,6 @@ startClock();
     let notifications = [];
     let unreadCount = 0;
     
-    // ✅ Use a separate localStorage key for notifications to avoid conflicts
     const NOTIF_SEEN_KEY = 'notif_seen_ids';
     let seenNotifIds = new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]'));
     
@@ -3453,7 +3943,6 @@ startClock();
                 if (newUnread.length > 0) {
                     playNotifSound();
                     newUnread.forEach(n => seenNotifIds.add(n.id));
-                    // ✅ Use separate key to avoid conflicts
                     localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
                 }
             }
@@ -3513,4 +4002,4 @@ startClock();
 </script>
 
 </body>
-</html>'
+</html>

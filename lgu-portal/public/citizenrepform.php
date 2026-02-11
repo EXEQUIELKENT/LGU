@@ -14,6 +14,7 @@ function setNotification($type, $message) {
         'message' => $message
     ];
 }
+
 function showNotification() {
     if (!empty($_SESSION['notification'])) {
         $type = $_SESSION['notification']['type'];
@@ -21,7 +22,6 @@ function showNotification() {
         $icon = ($type === 'success') ? '✔️' :
             (($type === 'error') ? '❌' :
             (($type === 'warning') ? '⚠️' : 'ℹ️'));
-        // --- FIX 3: Ensure the notif-popup z-index is high enough in CSS below ---
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -41,14 +41,20 @@ function showNotification() {
 
 $error_message = '';
 
-// Assign employee by request type/location/department (placeholder: implement your own logic!)
+// Assign employee by request type/location/department
 function assignEmployeeId($infrastructure, $location) {
+    // Implement your assignment logic here
+    // For now, returning a default value
     return 3;
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Hybrid field: use infrastructure_other if filled, else dropdown value, else ''
+    // ========================================
+    // STEP 1: COLLECT AND SANITIZE INPUT DATA
+    // ========================================
+    
+    // Hybrid field: use infrastructure_other if filled, else dropdown value
     $infrastructure = isset($_POST['infrastructure_other']) && trim($_POST['infrastructure_other']) !== ''
         ? trim($_POST['infrastructure_other'])
         : (isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '');
@@ -57,17 +63,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    
+    // NEW: Get consent agreement checkbox value
+    $consent_agree = isset($_POST['consent_agree']) ? $_POST['consent_agree'] : '';
 
+    // Clean contact number to get pure digits
     $pure_number = preg_replace('/\D/', '', $contact_number);
 
-    if (!preg_match('/^09\d{9}$/', $pure_number)) {
+    // ========================================
+    // STEP 2: VALIDATION CHECKS (IN ORDER OF PRIORITY)
+    // ========================================
+    
+    // VALIDATION 1: Terms and Conditions Consent (HIGHEST PRIORITY)
+    if (empty($consent_agree)) {
+        $error_message = 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.';
+    }
+    // VALIDATION 2: Image Upload Required
+    elseif (!isset($_FILES['evidence']) || 
+            !isset($_FILES['evidence']['name']) || 
+            !is_array($_FILES['evidence']['name']) || 
+            count($_FILES['evidence']['name']) === 0 ||
+            (count($_FILES['evidence']['name']) === 1 && empty($_FILES['evidence']['name'][0]))) {
+        $error_message = 'At least one evidence image is required. Please upload or capture an image before submitting.';
+    }
+    // VALIDATION 3: Contact Number Format
+    elseif (!preg_match('/^09\d{9}$/', $pure_number)) {
         $error_message = 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.';
     }
+    // VALIDATION 4: Required Fields
     elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
         $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
     }
+    // ALL VALIDATIONS PASSED - PROCEED WITH SUBMISSION
     else {
-        // Check for duplicate submission in 24h
+        // ========================================
+        // STEP 3: CHECK FOR DUPLICATE SUBMISSIONS
+        // ========================================
         $check_stmt = $conn->prepare(
             "SELECT COUNT(*) as duplicate_count FROM requests
                 WHERE contact_number = ? AND infrastructure = ? AND location = ?
@@ -83,6 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = 'You have already submitted a request for this issue at this location within the last 24 hours. Please wait before submitting another request.';
         }
         else {
+            // ========================================
+            // STEP 4: INSERT REQUEST INTO DATABASE
+            // ========================================
             $stmt = $conn->prepare(
                 "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at)
                  VALUES (?, ?, ?, ?, ?, 'Pending', NOW())"
@@ -92,27 +126,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute()) {
                 $request_id = $conn->insert_id;
 
-                // Handle file uploads (merge/validate evidence[] input up to 4 images max)
-                if (
-                    isset($_FILES['evidence']) && 
-                    isset($_FILES['evidence']['name']) && 
-                    is_array($_FILES['evidence']['name']) && 
-                    count($_FILES['evidence']['name']) > 0
-                ) {
+                // ========================================
+                // STEP 5: HANDLE FILE UPLOADS (EVIDENCE IMAGES)
+                // ========================================
+                $upload_success = false;
+                $uploaded_count = 0;
+                
+                // Validate that we have actual files to upload
+                $has_valid_files = false;
+                foreach ($_FILES['evidence']['name'] as $i => $ename) {
+                    if (!empty($ename) && 
+                        isset($_FILES['evidence']['tmp_name'][$i]) &&
+                        $_FILES['evidence']['error'][$i] === UPLOAD_ERR_OK) {
+                        $has_valid_files = true;
+                        break;
+                    }
+                }
+
+                if ($has_valid_files) {
                     $upload_dir = 'uploads/evidence/';
+                    
+                    // Create upload directory if it doesn't exist
                     if (!is_dir($upload_dir)) {
                         mkdir($upload_dir, 0755, true);
                     }
+                    
                     $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
                     $max_files = 4;
-                    $uploadedCount = 0;
                     $files = [];
+                    
+                    // Collect valid files
                     foreach ($_FILES['evidence']['name'] as $i => $ename) {
-                        if (
-                            empty($ename) ||
+                        if (empty($ename) ||
                             !isset($_FILES['evidence']['tmp_name'][$i]) ||
-                            $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK
-                        ) {
+                            $_FILES['evidence']['error'][$i] !== UPLOAD_ERR_OK) {
                             continue;
                         }
                         $files[] = [
@@ -120,31 +167,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'tmp'  => $_FILES['evidence']['tmp_name'][$i]
                         ];
                     }
-                    // Enforce max of 4 before upload loop
-                    if (count($files) > 4) {
+                    
+                    // Enforce maximum of 4 images
+                    if (count($files) > $max_files) {
+                        // Rollback the request insert
+                        $delete_stmt = $conn->prepare("DELETE FROM requests WHERE request_id = ?");
+                        $delete_stmt->bind_param("i", $request_id);
+                        $delete_stmt->execute();
+                        $delete_stmt->close();
+                        
                         setNotification('error', 'Maximum of 4 images allowed.');
-                        return;
+                        header("Location: citizenrepform.php");
+                        exit;
                     }
+                    
+                    // Upload each file
                     foreach ($files as $file) {
-                        if ($uploadedCount >= $max_files) break;
+                        if ($uploaded_count >= $max_files) break;
                         if (empty($file['tmp'])) continue;
+                        
                         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                        if (!in_array($ext, $allowed_ext)) continue;
+                        
+                        // Validate file extension
+                        if (!in_array($ext, $allowed_ext)) {
+                            continue;
+                        }
+                        
+                        // Generate unique filename
                         $new_name = "evidence_{$request_id}_" . uniqid() . "." . $ext;
                         $path = $upload_dir . $new_name;
+                        
+                        // Move uploaded file
                         if (move_uploaded_file($file['tmp'], $path)) {
+                            // Insert into evidence_images table
                             $stmtImg = $conn->prepare(
                                 "INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())"
                             );
                             $stmtImg->bind_param("is", $request_id, $path);
                             $stmtImg->execute();
                             $stmtImg->close();
-                            $uploadedCount++;
+                            
+                            $uploaded_count++;
+                            $upload_success = true;
                         }
                     }
                 }
 
-                // Assign to employee based on infra/location
+                // Check if at least one image was uploaded successfully
+                if (!$upload_success || $uploaded_count === 0) {
+                    // Rollback the request insert if no images were uploaded
+                    $delete_stmt = $conn->prepare("DELETE FROM requests WHERE request_id = ?");
+                    $delete_stmt->bind_param("i", $request_id);
+                    $delete_stmt->execute();
+                    $delete_stmt->close();
+                    
+                    setNotification('error', 'Failed to upload evidence images. Please try again with valid image files (JPG, JPEG, PNG, WEBP).');
+                    header("Location: citizenrepform.php");
+                    exit;
+                }
+
+                // ========================================
+                // STEP 6: ASSIGN EMPLOYEE AND CREATE NOTIFICATIONS
+                // ========================================
+                
+                // Assign to employee based on infrastructure/location
                 $assignedEmployeeId = assignEmployeeId($infrastructure, $location);
                 $title = "New Citizen Request";
                 $description = "A new request has been submitted and requires your review.";
@@ -167,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $notif_stmt->execute();
                 $notif_stmt->close();
 
-                // 2. Notify all managers/admins
+                // 2. Notify all managers/admins/engineers
                 $employeesRes = $conn->query("SELECT user_id FROM employees WHERE role IN ('Manager','Super Admin','Engineer')");
                 if ($employeesRes) {
                     $stmt_mgr = $conn->prepare("
@@ -189,9 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt_mgr->close();
                 }
 
+                // ========================================
+                // STEP 7: SUCCESS - SET SUCCESS MESSAGE AND REDIRECT
+                // ========================================
                 $_SESSION['notification'] = [
                     'type' => 'success',
-                    'message' => 'Your request has been submitted successfully.'
+                    'message' => 'Your request has been submitted successfully with ' . $uploaded_count . ' evidence image(s).'
                 ];
                 header("Location: citizenrepform.php");
                 exit;
@@ -350,7 +439,8 @@ body::-webkit-scrollbar-thumb {
 /* Navigation */
 .nav {
     width: 100%;
-    padding: 18px 60px;
+    padding: 18px clamp(20px, 4vw, 60px);  /* Responsive padding */
+    gap: clamp(10px, 2vw, 20px);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -368,12 +458,15 @@ body::-webkit-scrollbar-thumb {
 
 .site-logo {
     display: flex;
+    font-size: clamp(12px, 1.5vw, 16px);
     align-items: center;
     gap: 10px;
     color: var(--text-primary);
     font-weight: 600;
     text-decoration: none;
     transition: color 0.3s ease;
+    flex-shrink: 1;                         /* Allow shrinking */
+    min-width: 0;  
 }
 
 .site-logo:hover {
@@ -381,7 +474,8 @@ body::-webkit-scrollbar-thumb {
 }
 
 .site-logo img {
-    width: 40px;
+    width: clamp(30px, 5vw, 40px);         /* Responsive logo size */
+    flex-shrink: 0;                         /* Logo doesn't shrink */
     height: auto;
     border-radius: 8px;
 }
@@ -395,12 +489,15 @@ body::-webkit-scrollbar-thumb {
 }
 
 .nav-links {
+    gap: clamp(12px, 2vw, 25px);          /* Flexible spacing */
+    flex-wrap: wrap;
     display: flex;
     align-items: center;
-    gap: 25px;
 }
 
 .nav-links a {
+    font-size: clamp(13px, 1.4vw, 16px);  /* Responsive text */
+    white-space: nowrap;                   /* Prevent breaking */
     margin-left: 0;
     text-decoration: none;
     cursor: pointer;
@@ -437,14 +534,14 @@ body::-webkit-scrollbar-thumb {
 }
 
 .desktop-clock {
-    font-size: 14px;
+    font-size: clamp(12px, 1.3vw, 14px);  /* Responsive size */
     font-weight: 500;
     color: var(--text-primary);
     white-space: nowrap;
     position: relative;
     transition: color 0.3s ease;
     text-align: right;
-    min-width: 420px;
+    min-width: 0;                          /* Allow shrinking */
     display: inline-block;
 }
 
@@ -470,8 +567,10 @@ body::-webkit-scrollbar-thumb {
 
 .nav-btn {
     position: relative;
-    width: 38px;
-    height: 38px;
+    width: clamp(34px, 5vw, 38px);        /* Flexible size */
+    height: clamp(34px, 5vw, 38px);
+    font-size: clamp(16px, 2vw, 18px);
+    flex-shrink: 0;
     border: none;
     border-radius: 10px;
     background: rgba(55, 98, 200, 0.1);
@@ -480,7 +579,6 @@ body::-webkit-scrollbar-thumb {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
     transition: all 0.3s ease;
     backdrop-filter: blur(8px);
 }
@@ -650,14 +748,15 @@ MOBILE SIDEBAR STYLES
     transform: translateX(8px) scale(1.02);
 }
 
-/* Form/Card Styles */
 .form-wrapper {
     position: relative;
     z-index: 1;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;        /* NEW - centers vertically */
     padding: 110px 16px 40px;
+    flex: 1;                     /* NEW - allows it to grow */
+    min-height: 0;               /* NEW - prevents overflow */
 }
 .report-card {
     width: 100%;
@@ -761,6 +860,245 @@ input[type="file"] {
 .evidence-upload-wrapper input[type="file"] {
     flex: 1;
     padding-right: 55px;
+}
+/* Consent checkbox - positioned based on viewport */
+.consent-row {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.consent-label {
+    display: inline-flex;
+    align-items: flex-start;  /* Changed from 'center' */
+    justify-content: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: left;
+    /* REMOVED: flex-wrap: wrap; */
+}
+
+.consent-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;  /* Added to align with text baseline */
+    cursor: pointer;
+    flex-shrink: 0;  /* Added to prevent shrinking */
+}
+
+.consent-text-inline {
+    line-height: 1.7;
+    flex: 1;  /* Added to allow text to use remaining space */
+}
+
+.consent-text-inline button.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: #2563eb;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.consent-text-inline button.link-button:hover {
+    opacity: 0.9;
+}
+
+/* Desktop: position bottom-left of evidence upload */
+@media (min-width: 769px) {
+    .consent-row {
+        justify-content: flex-start;
+    }
+}
+
+/* Mobile: position bottom-right of evidence upload */
+@media (max-width: 768px) {
+    .consent-row {
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 360px) {
+    .consent-label {
+        font-size: 13px;
+        gap: 6px;
+    }
+    
+    .consent-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+    }
+}
+
+/* Floating legal modals (Terms & Privacy) */
+.legal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 7000;
+}
+
+.legal-backdrop.show {
+    display: flex;
+}
+
+.legal-modal {
+    background: var(--modal-bg);
+    border-radius: 18px;
+    max-width: 780px;
+    width: 92vw;
+    max-height: 80vh;
+    box-shadow: 0 20px 45px var(--shadow-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.legal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.legal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.legal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+[data-theme="dark"] .legal-close {
+    color: var(--text-secondary);
+}
+
+.legal-content {
+    padding: 16px 22px 20px;
+    overflow-y: auto;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.legal-content h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.legal-content p {
+    margin-bottom: 10px;
+}
+
+.legal-content ul {
+    padding-left: 20px;
+    margin-bottom: 10px;
+}
+
+/* Consent reminder modal (if checkbox not checked) */
+.consent-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 6500;
+}
+
+.consent-backdrop.show {
+    display: flex;
+}
+
+.consent-modal {
+    background: var(--modal-bg);
+    border-radius: 20px;
+    padding: 26px 26px 22px;
+    max-width: 420px;
+    width: 90vw;
+    box-shadow: 0 20px 45px var(--shadow-color);
+    text-align: center;
+}
+
+.consent-message {
+    font-size: 0.98rem;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.consent-message span.highlight-link {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.consent-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-consent-agree {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 0;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #2b6cb0 0%, #2563eb 100%);
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(37,99,235,0.45);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.btn-consent-agree:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(37,99,235,0.55);
+}
+
+.btn-consent-cancel {
+    border-radius: 999px;
+    padding: 11px 0;
+    font-weight: 500;
+    font-size: 15px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.btn-consent-cancel:hover {
+    background: var(--bg-secondary);
 }
 #cameraBtn {
     position: absolute;
@@ -1301,6 +1639,62 @@ input[type="file"] {
     pointer-events: none;
 }
 
+@media (min-width: 769px) and (max-width: 600px) {
+    .nav {
+        flex-wrap: nowrap;
+        padding: 12px 15px;
+    }
+    
+    .site-logo span {
+        display: none;              /* Hide logo text on very narrow */
+    }
+    
+    .nav-links {
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+    
+    .nav-links a {
+        font-size: 13px;
+    }
+    
+    .desktop-clock {
+        font-size: 11px;
+        min-width: auto;
+        max-width: 150px;
+    }
+    
+    .desktop-clock .date-part,
+    .desktop-clock .time-part {
+        display: block;            /* Stack date/time vertically */
+        text-align: right;
+        line-height: 1.2;
+    }
+    
+    .nav-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 769px) and (min-aspect-ratio: 9/16) {
+    .nav {
+        padding: 12px clamp(15px, 3vw, 40px);
+    }
+    
+    .desktop-clock .date-part {
+        display: block;            /* Stack date part */
+        text-align: center;
+        margin-bottom: 2px;
+    }
+    
+    .desktop-clock .time-part {
+        display: block;            /* Stack time part */
+        text-align: center;
+    }
+}
+
 /* Make boundary more visible on mobile */
 @media (max-width: 768px) {
     .leaflet-container .leaflet-interactive {
@@ -1455,59 +1849,122 @@ input[type="file"] {
     background: rgba(55, 98, 200, 0.2);
 }
 
-/* Footer */
+/* FOOTER - Updated from about.php */
 .footer {
     width: 100%;
-    padding: 26px 0 22px;
-    background: rgba(255,255,255,0.15);
+    padding: 60px 20px 30px;
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-top: 1px solid var(--border-color);
     box-shadow: 0 -2px 12px var(--shadow-color);
-    margin-top: auto;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
+    margin-top: 0;      /* NEW - prevents pushing down */
+    flex-shrink: 0;     /* NEW - prevents shrinking */
+}
+
+.footer-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.footer-about h3 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.footer-about p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.footer-contact {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+}
+
+.footer-links h4 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.footer-links ul {
+    list-style: none;
+}
+
+.footer-links li {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.footer-links a:hover {
+    color: #fff;
+    padding-left: 5px;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 30px;
+    margin-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    padding: 20px 15px;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.footer-social {
+    display: flex;
+    gap: 15px;
+}
+
+.social-link {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+    font-size: 18px;
     transition: all 0.3s ease;
 }
 
-[data-theme="dark"] .footer {
-    background: rgba(26, 26, 26, 0.15);
+.social-link:hover {
+    background: #2b6cb0;
+    transform: translateY(-3px);
 }
 
-.footer-links {
-    position: static;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 0;
-}
-.footer-links a {
-    margin: 0;
-    text-decoration: none;
-    cursor: pointer;
-    color: #fff;
-    opacity: .8;
-    transition: .2s;
-}
-.footer-links a:hover {
-    opacity: 1;
-    text-decoration: none;
-    font-weight: 600;
-}
-.footer-logo {
-    text-align: center;
-    font-weight: 500;
-    color: #fff;
-    width: 100%;
-    text-align: center;
-    margin-top: 12px;
+@media (max-width: 1024px) {
+    .footer-content {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 @media (min-width: 769px) {
     #cameraBtn {
@@ -1645,18 +2102,22 @@ input[type="file"] {
         justify-content: center;
     }
 
-    /* FOOTER MOBILE */
+    /* Add inside the existing section */
     .footer {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 18px 10px;
+        padding: 40px 20px 20px;
     }
-    
-    .footer-links {
-        justify-content: center;
-        margin-bottom: 10px;
-        gap: 12px;
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 20px;
+        margin-top: 20px;
     }
 }
 
@@ -1891,6 +2352,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                     <small id="cameraHelperText">Tap 📷 to capture</small>
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
+                    <!-- Consent checkbox -->
+                    <div class="consent-row">
+                        <label class="consent-label">
+                            <input type="checkbox" id="consent_agree" name="consent_agree">
+                            <span class="consent-text-inline">
+                                I agree to the 
+                                <button type="button" class="link-button js-open-terms">Terms and Conditions</button>
+                                and
+                                <button type="button" class="link-button js-open-privacy">Privacy Policy</button>
+                            </span>
+                        </label>
+                    </div>
                 </div>
                 <!-- End Revised Evidence Upload Section -->
                 <div class="btn-container">
@@ -2219,6 +2692,179 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         });
     }
     </script>
+
+    <script>
+    // ===== TERMS & PRIVACY FLOATING MODALS =====
+    function openLegalModal(type) {
+        const legalBackdrop = document.getElementById('legalBackdrop');
+        const legalTitleEl = document.getElementById('legalTitle');
+        const legalBodyEl = document.getElementById('legalBody');
+        const termsTemplate = document.getElementById('termsTemplate');
+        const privacyTemplate = document.getElementById('privacyTemplate');
+        
+        if (!legalBackdrop || !legalTitleEl || !legalBodyEl) return;
+        
+        let source;
+        if (type === 'terms') {
+            legalTitleEl.textContent = 'Terms and Conditions';
+            source = termsTemplate;
+        } else {
+            legalTitleEl.textContent = 'Privacy Policy';
+            source = privacyTemplate;
+        }
+        
+        if (source) {
+            legalBodyEl.innerHTML = source.innerHTML;
+        }
+        
+        legalBackdrop.classList.add('show');
+    }
+
+    function closeLegalModal() {
+        const legalBackdrop = document.getElementById('legalBackdrop');
+        if (legalBackdrop) {
+            legalBackdrop.classList.remove('show');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const legalBackdrop = document.getElementById('legalBackdrop');
+        const legalCloseBtn = document.getElementById('legalClose');
+        const openTermsBtns = document.querySelectorAll('.js-open-terms');
+        const openPrivacyBtns = document.querySelectorAll('.js-open-privacy');
+
+        openTermsBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openLegalModal('terms');
+            });
+        });
+        
+        openPrivacyBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openLegalModal('privacy');
+            });
+        });
+        
+        if (legalCloseBtn) {
+            legalCloseBtn.addEventListener('click', closeLegalModal);
+        }
+        
+        if (legalBackdrop) {
+            legalBackdrop.addEventListener('click', (e) => {
+                if (e.target === legalBackdrop) {
+                    closeLegalModal();
+                }
+            });
+        }
+
+        // Consent reminder modal wiring
+        const consentBackdrop = document.getElementById('consentBackdrop');
+        const consentAgreeBtn = document.getElementById('consentAgreeBtn');
+        const consentCancelBtn = document.getElementById('consentCancelBtn');
+        const consentLinks = consentBackdrop ? consentBackdrop.querySelectorAll('.highlight-link') : [];
+
+        function closeConsentModal() {
+            if (consentBackdrop) consentBackdrop.classList.remove('show');
+        }
+
+        if (consentAgreeBtn) {
+            consentAgreeBtn.addEventListener('click', () => {
+                const cb = document.getElementById('consent_agree');
+                if (cb) cb.checked = true;
+                closeConsentModal();
+            });
+        }
+        
+        if (consentCancelBtn) {
+            consentCancelBtn.addEventListener('click', closeConsentModal);
+        }
+        
+        if (consentBackdrop) {
+            consentBackdrop.addEventListener('click', (e) => {
+                if (e.target === consentBackdrop) {
+                    closeConsentModal();
+                }
+            });
+        }
+        
+        consentLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const type = link.classList.contains('js-open-terms') ? 'terms' : 'privacy';
+                openLegalModal(type);
+            });
+        });
+    });
+    </script>
+
+    <!-- Consent reminder modal -->
+    <div id="consentBackdrop" class="consent-backdrop">
+        <div class="consent-modal">
+            <p class="consent-message">
+                Please agree to the
+                <span class="highlight-link js-open-terms">Terms and Conditions</span>
+                and
+                <span class="highlight-link js-open-privacy">Privacy Policy</span>
+                before submitting your request.
+            </p>
+            <div class="consent-actions">
+                <button type="button" id="consentAgreeBtn" class="btn-consent-agree">Agree</button>
+                <button type="button" id="consentCancelBtn" class="btn-consent-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Terms & Privacy modal -->
+    <div id="legalBackdrop" class="legal-backdrop">
+        <div class="legal-modal">
+            <div class="legal-header">
+                <h3 id="legalTitle">Legal</h3>
+                <button type="button" id="legalClose" class="legal-close">&times;</button>
+            </div>
+            <div id="legalBody" class="legal-content">
+                <!-- Filled dynamically from the templates below -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden templates for Terms and Privacy content -->
+    <div id="termsTemplate" style="display:none;">
+        <h4>Terms and Conditions</h4>
+        <p>
+            In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations,
+            and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
+            Coordination and Data-Driven Infrastructure Planning Using AI-assisted Decision Support Technologies is committed
+            to protecting the privacy and security of all personal data collected, stored, and processed through the System.
+        </p>
+        <p>
+            All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
+            and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
+        </p>
+        <p>
+            The System may collect personal and non-personal information such as names or user identifiers, usernames and account
+            credentials, contact information when applicable, location data related to infrastructure reports, and system activity
+            logs and timestamps.
+        </p>
+    </div>
+
+    <div id="privacyTemplate" style="display:none;">
+        <h4>Privacy Policy</h4>
+        <p>
+            This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
+            and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
+        </p>
+        <p>
+            This Privacy Policy shall be governed by and construed in accordance with the laws of the Republic of the Philippines,
+            particularly the Data Privacy Act of 2012 (RA 10173).
+        </p>
+        <p><strong>User Consent and Agreement</strong></p>
+        <p>
+            By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
+            AI-Assisted Public Works Coordination and Infrastructure Management System.
+        </p>
+    </div>
 
     <!-- ============================================ -->
     <!-- ENHANCED MAP SCRIPT WITH OPTIMIZED ADDRESS FETCHING + LOCATION LABELS + LABEL TOGGLE -->
@@ -3149,14 +3795,84 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     });
     <?php endif; ?>
     </script>
-    <footer class="footer">
-        <div class="footer-links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">About</a>
-            <a href="#">Help</a>
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-about">
+            <h3>InfraGovServices</h3>
+            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <div class="footer-contact">
+                <div class="contact-item">
+                    <span>📧</span>
+                    <span>contact@infragovservices.com</span>
+                </div>
+                <div class="contact-item">
+                    <span>📞</span>
+                    <span>(02) 8988-4242</span>
+                </div>
+                <div class="contact-item">
+                    <span>📍</span>
+                    <span>Quezon City Hall, Quezon City</span>
+                </div>
+            </div>
         </div>
-        <div class="footer-logo">© 2026 LGU Citizen Portal · All Rights Reserved</div>
-    </footer>
+        
+        <div class="footer-links">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizencimm.php">Home</a></li>
+                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenreports.php">Reports</a></li>
+                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenrepform.php">Submit Request</a></li>
+                <li><a href="<?php echo htmlspecialchars($basePath); ?>about.php">About Us</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-links">
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="#">User Guide</a></li>
+                <li><a href="#">FAQs</a></li>
+                <li><a href="#">Service Areas</a></li>
+                <li><a href="#">Emergency Contacts</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-links">
+            <h4>Legal</h4>
+            <ul>
+                <li><a href="privacy.php">Privacy Policy</a></li>
+                <li><a href="termcon.php">Terms of Service</a></li>
+                <li><a href="#">Data Protection</a></li>
+                <li><a href="#">Accessibility</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="footer-bottom">
+        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div class="footer-social">
+            <a href="#" class="social-link" title="Facebook">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Twitter">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Instagram">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+            </a>
+            <a href="#" class="social-link" title="Email">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</footer>
     <?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
     <script>
     // Clean URL after secret key authentication

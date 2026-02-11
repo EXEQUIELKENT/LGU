@@ -21,7 +21,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
-    <title>About - InfraGovServices | LGU Portal</title>
+    <title>Privacy Policy - InfraGovServices | LGU Portal</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
         * {
@@ -818,7 +818,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <a href="<?= $BASE_URL ?>citizencimm.php">Home</a>
             <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
             <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php" class="active">About</a>
+            <a href="<?= $BASE_URL ?>about.php">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -849,7 +849,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><span>ℹ️</span><span>About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -868,66 +868,107 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 
 <div class="form-wrapper">
     <div class="about-card">
-        <h1>About CIMMS – Quezon City</h1>
+        <h1>Privacy Policy</h1>
 
         <div class="section-box intro">
             <p>
-                <b>Community Infrastructure Maintenance Management System (CIMMS)</b> is a modern digital platform developed for the 
-                <b>Local Government of Quezon City</b> to improve how infrastructure concerns are reported, managed, and resolved across the city.
+                This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
+                and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
             </p>
             <p>
-                CIMMS empowers Quezon City residents by providing a simple, fast, and transparent way to report public infrastructure problems 
-                such as damaged roads, broken streetlights, clogged drainage systems, and other community facility concerns.
+                This Privacy Policy shall be governed by and construed in accordance with the laws of the Republic of the
+                Philippines, particularly the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🌐</span> Our Purpose</h2>
-            <p>CIMMS was created to:</p>
+            <h2><span class="icon">📋</span> Data Collection and Processing</h2>
+            <p>
+                In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations,
+                and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
+                Coordination and Data-Driven Infrastructure Planning Using AI-assisted Decision Support Technologies is committed
+                to protecting the privacy and security of all personal data collected, stored, and processed through the System.
+            </p>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">⚖️</span> Lawful Processing Principles</h2>
+            <p>
+                All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
+                and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
+            </p>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">🔍</span> Types of Information Collected</h2>
+            <p>The System may collect personal and non-personal information including:</p>
             <ul class="purpose-list">
-                <li>Improve the efficiency of public infrastructure maintenance</li>
-                <li>Enhance communication between citizens and LGU offices</li>
-                <li>Ensure faster response times to reported issues</li>
-                <li>Promote transparency, accountability, and service quality</li>
+                <li>Names or user identifiers</li>
+                <li>Usernames and account credentials</li>
+                <li>Contact information when applicable</li>
+                <li>Location data related to infrastructure reports</li>
+                <li>System activity logs and timestamps</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🛠</span> What CIMMS Offers</h2>
-            <p><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
-            <p><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
-            <p><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
-            <p><b>Secure Access</b> – Role-based system with strong data protection and authentication.</p>
-            <p><b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.</p>
-        </div>
-
-        <div class="section-box">
-            <h2><span class="icon">🤝</span> For Quezon City Citizens</h2>
+            <h2><span class="icon">🔐</span> Data Security and Protection</h2>
             <p>
-                This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
-                are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
-                responsive city government.
+                We implement appropriate technical and organizational measures to ensure the security of your personal data
+                against unauthorized access, alteration, disclosure, or destruction. All data is encrypted during transmission
+                and storage.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🎯</span> Our Vision</h2>
+            <h2><span class="icon">👤</span> Your Rights as a Data Subject</h2>
+            <p>Under the Data Privacy Act of 2012, you have the right to:</p>
+            <ul class="purpose-list">
+                <li>Be informed about the collection and processing of your personal data</li>
+                <li>Access your personal data and request corrections</li>
+                <li>Object to the processing of your personal data</li>
+                <li>Request erasure or blocking of your personal data</li>
+                <li>File a complaint with the National Privacy Commission</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">🤝</span> User Consent and Agreement</h2>
+            <p>By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
+                AI-Assisted Public Works Coordination and Infrastructure Management System.</p>
+            <p>I voluntarily consent to:</p>
+            <ul class="purpose-list">
+                <li>The collection, processing, and storage of my personal data in accordance with the Data Privacy Act of 2012 (RA 10173)</li>
+                <li>The use of AI-generated recommendations for decision support purposes only</li>
+                <li>Understanding that AI recommendations do not replace human judgment or official authority</li>
+            </ul>
+        </div>
+
+        <div class="section-box">
+            <h2><span class="icon">📞</span> Contact Information</h2>
             <p>
-                To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
-                infrastructure services for all Quezon City citizens.
+                For questions or concerns regarding this Privacy Policy or the handling of your personal data, please contact our
+                Data Protection Officer at:
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>Email:</strong> dpo@infragovservices.com<br>
+                <strong>Phone:</strong> (02) 8988-4242
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🚀</span> Our Mission</h2>
+            <h2><span class="icon">📅</span> Policy Updates</h2>
             <p>
-                To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
-                accountability, and improves the overall quality of urban services in Quezon City.
+                This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
+                and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>Last Updated:</strong> February 2026
             </p>
         </div>
 
         <div class="btn-wrap">
-            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">Submit a Report</a>
+            <a href="<?= $BASE_URL ?>citizencimm.php" class="btn">Back to Home</a>
         </div>
     </div>
 </div>
@@ -977,8 +1018,8 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         <div class="footer-links">
             <h4>Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="<?= $BASE_URL ?>termcon.php">Terms of Service</a></li>
                 <li><a href="#">Data Protection</a></li>
                 <li><a href="#">Accessibility</a></li>
             </ul>

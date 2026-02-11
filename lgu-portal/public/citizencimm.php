@@ -1841,7 +1841,7 @@ if ($maintenance_result) {
 </div>
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer" style="margin-top: 50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
@@ -1885,8 +1885,8 @@ if ($maintenance_result) {
         <div class="footer-links">
             <h4>Legal</h4>
             <ul>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="privacy.php">Privacy Policy</a></li>
+                <li><a href="termcon.php">Terms of Service</a></li>
                 <li><a href="#">Data Protection</a></li>
                 <li><a href="#">Accessibility</a></li>
             </ul>
