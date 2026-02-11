@@ -105,7 +105,7 @@ if ($maintenance_result) {
 
         body {
             background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             transition: background 0.3s ease;
@@ -159,6 +159,7 @@ if ($maintenance_result) {
             margin: 0;
             color: var(--text-primary);
             transition: color 0.3s ease;
+            flex: 1;
         }
         .container {
             max-width: 1400px;
@@ -1017,7 +1018,7 @@ if ($maintenance_result) {
             }
         }
 
-        /* FIX 12: Phones in desktop mode - stack vertically */
+        /* FIX 12: Phones in desktop mode - comprehensive portrait layout fixes */
         @media (min-width: 769px) and (max-width: 600px) {
             .nav {
                 flex-wrap: nowrap;
@@ -1056,6 +1057,121 @@ if ($maintenance_result) {
                 width: 32px;
                 height: 32px;
                 font-size: 16px;
+            }
+            
+            /* Dashboard and content adjustments for portrait phones */
+            .dashboard-container {
+                padding: 90px 15px 40px;
+            }
+            
+            .container {
+                padding: 0 15px;
+                max-width: 100%;
+            }
+            
+            /* Stats grid - single column for narrow screens */
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin-bottom: 30px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+                margin-top: 10px;
+            }
+            
+            .stat-icon {
+                font-size: 28px;
+                padding: 12px;
+            }
+            
+            .stat-card .number {
+                font-size: 32px;
+            }
+            
+            .stat-card h3 {
+                font-size: 13px;
+            }
+            
+            /* Content card adjustments */
+            .content-card {
+                padding: 30px 20px;
+                border-radius: 16px;
+            }
+            
+            .card-header h2 {
+                font-size: 24px;
+                text-align: center;
+            }
+            
+            /* Table wrapper - ensure horizontal scroll */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table {
+                min-width: 900px;
+                font-size: 13px;
+            }
+            
+            thead th {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            
+            td {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            
+            /* Search bar */
+            .table-search-wrapper {
+                margin-bottom: 15px;
+            }
+            
+            #requestSearch {
+                font-size: 14px;
+                padding: 10px 14px;
+            }
+            
+            /* Footer adjustments */
+            .footer {
+                padding: 40px 15px 20px;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }
+        }
+        
+        /* Additional fix for very narrow portrait phones (320px-480px) */
+        @media (min-width: 769px) and (max-width: 480px) {
+            .stats-grid {
+                gap: 10px;
+            }
+            
+            .stat-card {
+                padding: 18px 15px;
+            }
+            
+            .stat-card .number {
+                font-size: 28px;
+            }
+            
+            .stat-icon {
+                font-size: 24px;
+                padding: 10px;
+            }
+            
+            .content-card {
+                padding: 25px 15px;
+            }
+            
+            .card-header h2 {
+                font-size: 20px;
             }
         }
 
@@ -1997,4 +2113,3 @@ startClock();
 
 </body>
 </html>
-
