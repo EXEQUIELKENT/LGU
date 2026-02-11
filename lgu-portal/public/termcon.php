@@ -1441,5 +1441,8 @@ if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
     window.history.replaceState({}, document.title, cleanUrl);
 }
 </script>
+
+<?php include 'chatbot-widget.php'; ?>
+
 </body>
 </html>

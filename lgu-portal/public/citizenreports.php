@@ -2111,5 +2111,7 @@ startClock();
     </div>
 </footer>
 
+<?php include 'chatbot-widget.php'; ?>
+
 </body>
 </html>
