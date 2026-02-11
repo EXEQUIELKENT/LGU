@@ -104,19 +104,25 @@ if ($maintenance_result) {
         }
 
         body {
-            background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            position: relative;
             transition: background 0.3s ease;
         }
 
         body::before {
             content: "";
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             backdrop-filter: blur(8px);
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0,0,0,0.4);
             z-index: -1;
             transition: background 0.3s ease;
         }
@@ -755,7 +761,7 @@ if ($maintenance_result) {
             font-size: clamp(12px, 1.3vw, 14px);
             font-weight: 500;
             color: var(--text-primary);
-            white-space: nowrap !important;    /* Force single line */
+            white-space: nowrap !important;
             position: relative;
             transition: color 0.3s ease;
             text-align: right;
@@ -847,7 +853,8 @@ if ($maintenance_result) {
             border: none;
             margin-left: 18px;
         }
-        /* FOOTER - Updated from about.php */
+        
+        /* FOOTER - Updated from citizenrepform.php */
         .footer {
             width: 100%;
             padding: 60px 20px 30px;
@@ -856,8 +863,8 @@ if ($maintenance_result) {
             -webkit-backdrop-filter: blur(8px);
             border-top: 1px solid var(--border-color);
             box-shadow: 0 -2px 12px var(--shadow-color);
-            margin-top: 0;      /* NEW - prevents pushing down */
-            flex-shrink: 0;     /* NEW - prevents shrinking */
+            margin-top: 0;
+            flex-shrink: 0;
         }
 
         .footer-content {
@@ -959,24 +966,6 @@ if ($maintenance_result) {
             transform: translateY(-3px);
         }
 
-        @media (max-width: 1024px) {
-            .footer-content {
-                grid-template-columns: 1fr 1fr;
-            }
-                }
-        /* FIX 10: Clock width adjustments for different screen sizes */
-        @media (min-width: 769px) and (max-width: 1200px) {
-            .desktop-clock {
-                min-width: 350px;  /* Smaller fixed width for medium screens */
-            }
-        }
-
-        @media (min-width: 769px) and (max-width: 1000px) {
-            .desktop-clock {
-                min-width: 300px;  /* Even smaller for narrower screens */
-            }
-        }
-
         /* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
         @media (min-width: 769px) and (max-width: 1200px) {
             .desktop-clock {
@@ -1004,7 +993,6 @@ if ($maintenance_result) {
                 min-width: 280px;
             }
             
-            /* Only stack when truly necessary */
             .desktop-clock .date-part {
                 display: block;
                 text-align: center;
@@ -1078,14 +1066,44 @@ if ($maintenance_result) {
                 font-size: 16px;
             }
         }
+
+        /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
+        .table-search-wrapper {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 18px;
+        }
+        #requestSearch {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid #d2d6db;
+            font-size: 15px;
+            outline: none;
+            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+        
+        [data-theme="dark"] #requestSearch {
+            border-color: var(--border-color);
+        }
+        
+        #requestSearch:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+        }
+
+        /* ===== MOBILE BREAKPOINT (768px and below) ===== */
         @media (max-width: 768px) {
-            /* Hide desktop nav, show mobile nav */
+            /* HIDE DESKTOP NAVIGATION */
             .nav {
-                display: none;
+                display: none !important;
             }
 
+            /* SHOW MOBILE TOP NAV */
             .mobile-top-nav {
-                display: flex;
+                display: flex !important;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -1099,7 +1117,7 @@ if ($maintenance_result) {
                 z-index: 5000;
                 box-shadow: 0 4px 18px var(--shadow-color);
                 border-bottom: 1px solid var(--border-color);
-                transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+                transition: all 0.3s ease;
                 padding: 0 14px;
             }
 
@@ -1114,6 +1132,11 @@ if ($maintenance_result) {
                 height: 38px;
                 font-size: 20px;
                 cursor: pointer;
+                transition: all 0.3s ease;
+            }
+
+            .mobile-toggle:active {
+                transform: scale(0.95);
             }
 
             .mobile-top-nav img {
@@ -1161,7 +1184,20 @@ if ($maintenance_result) {
                 width: 100%;
                 padding: 8px 20px;
             }
-            /* Add inside the existing section */
+
+            /* === MOBILE SEARCH POSITIONING === */
+            .table-search-wrapper {
+                order: 2;
+                margin-top: 10px;
+                margin-bottom: 18px;
+                padding: 0 10px;
+            }
+            .mobile-maintenance-list .card-header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
             .footer {
                 padding: 40px 20px 20px;
             }
@@ -1250,73 +1286,53 @@ if ($maintenance_result) {
                 border-radius: 12px;
             }
         }
+
+        /* ===== SMALLER MOBILE (500px and below) ===== */
         @media (max-width: 500px) {
             .stat-card { padding: 20px 10px; }
             .stat-icon { font-size: 25px; padding: 8px; }
             .stat-card .number { font-size: 28px; }
             .card-header h2 { font-size: 1.0rem; }
             .report-card { padding: 12px; }
-            .footer {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                padding: 18px 10px;
-            }
-            .footer-links {
-                justify-content: center;
-                margin-bottom: 10px;
-                gap: 12px;
-            }
-        }
-
-        /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
-        .table-search-wrapper {
-            width: 100%;
-            max-width: 100%;
-            margin-bottom: 18px;
-        }
-        #requestSearch {
-            width: 100%;
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid #d2d6db;
-            font-size: 15px;
-            outline: none;
-            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
-            background: var(--card-bg);
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] #requestSearch {
-            border-color: var(--border-color);
-        }
-        
-        #requestSearch:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-        }
-        /* === MOBILE SEARCH POSITIONING === */
-        @media (max-width: 768px) {
-            .table-search-wrapper {
-                order: 2;
-                margin-top: 10px;
-                margin-bottom: 18px;
-                padding: 0 10px;
-            }
-            .mobile-maintenance-list .card-header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-        /* Prevent overflow on very small screens */
-        @media (max-width: 500px) {
+            
             #requestSearch {
                 font-size: 14px;
                 padding: 9px 14px;
             }
         }
 
+        /* ===== VERY SMALL MOBILE (360px and below) ===== */
+        @media (max-width: 360px) {
+            .mobile-clock {
+                font-size: 12px;
+                right: 52px;
+            }
+
+            .report-card {
+                padding: 12px 3vw !important;
+            }
+        }
+
+        /* ===== ENSURE DESKTOP NAV SHOWS ON LARGE SCREENS ===== */
+        @media (min-width: 769px) {
+            .mobile-top-nav {
+                display: none !important;
+            }
+
+            .sidebar-nav {
+                display: none !important;
+            }
+
+            .nav {
+                display: flex !important;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
     </style>
     <script>
     const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
