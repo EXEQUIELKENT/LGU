@@ -135,10 +135,10 @@ if ($maintenance_result) {
             border-radius: 5px;
         }
 
-        /* NAVIGATION */
+        /* FIX 3: Make navbar flexible with responsive spacing */
         .nav {
             width: 100%;
-            padding: 18px 60px;
+            padding: 18px clamp(20px, 4vw, 60px);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -152,17 +152,23 @@ if ($maintenance_result) {
             left: 0;
             z-index: 100;
             transition: all 0.3s ease;
+            gap: clamp(10px, 2vw, 20px);
+            flex-wrap: wrap;
         }
-        
+                
+        /* FIX 4: Responsive site logo */
         .site-logo {
             display: flex;
             align-items: center;
             gap: 10px;
             color: var(--text-primary);
             font-weight: 600;
-            transition: color 0.3s ease;
             text-decoration: none;
-            cursor: pointer;
+            transition: color 0.3s ease;
+            font-size: clamp(12px, 1.5vw, 16px);
+            white-space: nowrap;
+            flex-shrink: 1;
+            min-width: 0;
         }
         
         .site-logo:hover {
@@ -170,22 +176,34 @@ if ($maintenance_result) {
         }
         
         .site-logo img {
-            width: 40px; 
-            height: auto; 
+            width: clamp(30px, 5vw, 40px);
+            height: auto;
             border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .site-logo span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
+        /* FIX 5: Responsive nav center section */
         .nav-center {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: clamp(8px, 1.5vw, 15px);
             margin-left: auto;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
         
+        /* FIX 6: Responsive nav links */
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 25px;
+            gap: clamp(12px, 2vw, 25px);
+            flex-wrap: wrap;
         }
         
         .nav-links a {
@@ -196,6 +214,8 @@ if ($maintenance_result) {
             opacity: .8;
             transition: .2s;
             font-weight: 500;
+            font-size: clamp(13px, 1.4vw, 16px);
+            white-space: nowrap;
         }
         
         .nav-links a.active {
@@ -216,37 +236,48 @@ if ($maintenance_result) {
             margin: 0;
         }
 
+        /* FIX 7: Responsive nav actions */
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: clamp(8px, 1.2vw, 12px);
+            flex-wrap: wrap;
         }
 
+        /* FIX 8: Desktop clock - SINGLE LINE LAYOUT */
         .desktop-clock {
-            font-size: 14px;
+            font-size: clamp(12px, 1.3vw, 14px);
             font-weight: 500;
             color: var(--text-primary);
-            white-space: nowrap;
+            white-space: nowrap !important;    /* Force single line */
             position: relative;
             transition: color 0.3s ease;
             text-align: right;
             min-width: 420px;
             display: inline-block;
+            overflow: visible;
+            line-height: 1.4;
         }
 
         .desktop-clock .date-part {
             opacity: 0.6;
             font-weight: 400;
+            display: inline;
+            white-space: nowrap;
         }
 
         .desktop-clock .time-part {
             font-weight: 700;
             letter-spacing: 0.03em;
+            display: inline;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
 
         .time-part span {
             display: inline-block;
             transition: transform 0.25s ease, opacity 0.25s ease;
+            white-space: nowrap;
         }
 
         .time-part.flip span {
@@ -254,10 +285,11 @@ if ($maintenance_result) {
             opacity: 0.6;
         }
 
+        /* FIX 9: Responsive nav buttons */
         .nav-btn {
             position: relative;
-            width: 38px;
-            height: 38px;
+            width: clamp(34px, 5vw, 38px);
+            height: clamp(34px, 5vw, 38px);
             border: none;
             border-radius: 10px;
             background: rgba(55, 98, 200, 0.1);
@@ -266,9 +298,10 @@ if ($maintenance_result) {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: clamp(16px, 2vw, 18px);
             transition: all 0.3s ease;
             backdrop-filter: blur(8px);
+            flex-shrink: 0;
         }
 
         .nav-btn:hover {
@@ -1125,8 +1158,7 @@ if ($maintenance_result) {
             background: #d4edda;
             color: #155724;
         }
-
-        /* FOOTER */
+        /* FIX 2: Update footer positioning */
         .footer {
             width: 100%;
             padding: 60px 20px 30px;
@@ -1135,7 +1167,8 @@ if ($maintenance_result) {
             -webkit-backdrop-filter: blur(8px);
             border-top: 1px solid var(--border-color);
             box-shadow: 0 -2px 12px var(--shadow-color);
-            margin-top: auto;
+            margin-top: 0;
+            flex-shrink: 0;
         }
 
         .footer-content {
@@ -1235,6 +1268,91 @@ if ($maintenance_result) {
         .social-link:hover {
             background: var(--accent-primary);
             transform: translateY(-3px);
+        }
+
+        /* FIX 11: Tall screens - only stack on VERY narrow screens */
+        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (max-width: 500px) {
+            .nav {
+                padding: 12px clamp(15px, 3vw, 40px);
+            }
+            
+            .desktop-clock {
+                min-width: 280px;
+            }
+            
+            /* Only stack when truly necessary */
+            .desktop-clock .date-part {
+                display: block;
+                text-align: center;
+                margin-bottom: 2px;
+                font-variant-numeric: tabular-nums;
+            }
+            
+            .desktop-clock .time-part {
+                display: block;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
+        }
+
+        /* For wider tall screens - keep inline */
+        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (min-width: 501px) {
+            .nav {
+                padding: 12px clamp(15px, 3vw, 40px);
+            }
+            
+            .desktop-clock {
+                min-width: 400px;
+                white-space: nowrap !important;
+            }
+            
+            .desktop-clock .date-part,
+            .desktop-clock .time-part {
+                display: inline;
+                white-space: nowrap;
+            }
+        }
+
+        /* FIX 12: Phones in desktop mode - stack vertically */
+        @media (min-width: 769px) and (max-width: 600px) {
+            .nav {
+                flex-wrap: nowrap;
+                padding: 12px 15px;
+            }
+            
+            .site-logo span {
+                display: none;
+            }
+            
+            .nav-links {
+                flex-wrap: nowrap;
+                gap: 10px;
+            }
+            
+            .nav-links a {
+                font-size: 13px;
+            }
+            
+            .desktop-clock {
+                font-size: 11px;
+                min-width: auto;
+                max-width: 150px;
+                width: 150px;
+            }
+            
+            .desktop-clock .date-part,
+            .desktop-clock .time-part {
+                display: block;
+                text-align: right;
+                line-height: 1.2;
+                font-variant-numeric: tabular-nums;
+            }
+            
+            .nav-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
         }
 
         /* RESPONSIVE */
