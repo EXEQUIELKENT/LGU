@@ -1789,7 +1789,7 @@ if ($maintenance_result) {
             <div class="step-card animate-on-scroll delay-2">
                 <div class="step-number">2</div>
                 <h3 class="step-title">Review & Verification</h3>
-                <p class="step-description">Office staff review submissions within 24 hours, validate the information, and determine urgency and service priority.</p>
+                <p class="step-description">Office staff review submissions within 24 hours, validate the information, and AI will determine urgency and service priority.</p>
             </div>
             <div class="step-card animate-on-scroll delay-3">
                 <div class="step-number">3</div>
@@ -1799,7 +1799,7 @@ if ($maintenance_result) {
             <div class="step-card animate-on-scroll delay-4">
                 <div class="step-number">4</div>
                 <h3 class="step-title">Issue Resolved</h3>
-                <p class="step-description">Maintenance work is completed, documented, and marked as resolved, ensuring transparency and accountability.</p>
+                <p class="step-description">Maintenance work is completed, documented, and marked as completed, ensuring transparency and accountability.</p>
             </div>
         </div>
         </div>
