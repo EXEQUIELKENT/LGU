@@ -122,26 +122,17 @@ if ($maintenance_result) {
             background: rgba(0, 0, 0, 0.6);
         }
 
-        body::-webkit-scrollbar {
-            width: 10px;
-        }
+        body::-webkit-scrollbar { width: 10px; }
+        body::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        body::-webkit-scrollbar-thumb { background: var(--accent-primary); border-radius: 5px; }
 
-        body::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-        }
-
-        body::-webkit-scrollbar-thumb {
-            background: var(--accent-primary);
-            border-radius: 5px;
-        }
-
-        /* FIX 3: Make navbar flexible with responsive spacing */
         .nav {
             width: 100%;
-            padding: 18px clamp(20px, 4vw, 60px);
+            padding: 0 clamp(16px, 3vw, 48px);
+            height: 68px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             background: var(--nav-bg);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
@@ -152,11 +143,11 @@ if ($maintenance_result) {
             left: 0;
             z-index: 100;
             transition: all 0.3s ease;
-            gap: clamp(10px, 2vw, 20px);
-            flex-wrap: wrap;
+            gap: 0;
+            flex-wrap: nowrap;
+            overflow: visible; /* FIXED: Allow buttons to transform without clipping */
         }
                 
-        /* FIX 4: Responsive site logo */
         .site-logo {
             display: flex;
             align-items: center;
@@ -165,18 +156,17 @@ if ($maintenance_result) {
             font-weight: 600;
             text-decoration: none;
             transition: color 0.3s ease;
-            font-size: clamp(12px, 1.5vw, 16px);
+            font-size: clamp(11px, 1.2vw, 14px);
             white-space: nowrap;
-            flex-shrink: 1;
+            flex-shrink: 0;
             min-width: 0;
+            max-width: clamp(180px, 22vw, 320px);
         }
         
-        .site-logo:hover {
-            opacity: 0.85;
-        }
+        .site-logo:hover { opacity: 0.85; }
         
         .site-logo img {
-            width: clamp(30px, 5vw, 40px);
+            width: clamp(28px, 3.5vw, 38px);
             height: auto;
             border-radius: 8px;
             flex-shrink: 0;
@@ -188,22 +178,23 @@ if ($maintenance_result) {
             white-space: nowrap;
         }
         
-        /* FIX 5: Responsive nav center section */
         .nav-center {
             display: flex;
             align-items: center;
-            gap: clamp(8px, 1.5vw, 15px);
+            gap: clamp(6px, 1vw, 14px);
             margin-left: auto;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            flex-wrap: nowrap;
+            flex-shrink: 1;
+            min-width: 0;
+            overflow: visible; /* FIXED: Allow children to overflow */
         }
         
-        /* FIX 6: Responsive nav links */
         .nav-links {
             display: flex;
             align-items: center;
-            gap: clamp(12px, 2vw, 25px);
-            flex-wrap: wrap;
+            gap: clamp(10px, 1.4vw, 22px);
+            flex-wrap: nowrap;
+            flex-shrink: 0;
         }
         
         .nav-links a {
@@ -214,49 +205,43 @@ if ($maintenance_result) {
             opacity: .8;
             transition: .2s;
             font-weight: 500;
-            font-size: clamp(13px, 1.4vw, 16px);
+            font-size: clamp(12px, 1.2vw, 15px);
             white-space: nowrap;
         }
         
-        .nav-links a.active {
-            opacity: 1;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .nav-links a:hover {
-            opacity: 1;
-            text-decoration: none;
-        }
+        .nav-links a.active { opacity: 1; font-weight: 600; }
+        .nav-links a:hover { opacity: 1; }
 
         .nav-divider {
             width: 2px;
-            height: 30px;
+            height: 28px;
             background: var(--border-color);
-            margin: 0;
+            flex-shrink: 0;
         }
 
-        /* FIX 7: Responsive nav actions */
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: clamp(8px, 1.2vw, 12px);
-            flex-wrap: wrap;
+            gap: clamp(6px, 0.9vw, 10px);
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+            overflow: visible; /* FIXED: Allow buttons to transform without clipping */
         }
 
-        /* FIX 8: Desktop clock - SINGLE LINE LAYOUT */
         .desktop-clock {
-            font-size: clamp(12px, 1.3vw, 14px);
+            font-size: clamp(12px, 1.1vw, 14px);
             font-weight: 500;
             color: var(--text-primary);
-            white-space: nowrap !important;    /* Force single line */
+            white-space: nowrap !important;
             position: relative;
             transition: color 0.3s ease;
             text-align: right;
-            min-width: 420px;
+            min-width: 0;
+            width: clamp(200px, 28vw, 380px);
             display: inline-block;
             overflow: visible;
             line-height: 1.4;
+            flex-shrink: 1;
         }
 
         .desktop-clock .date-part {
@@ -285,7 +270,6 @@ if ($maintenance_result) {
             opacity: 0.6;
         }
 
-        /* FIX 9: Responsive nav buttons */
         .nav-btn {
             position: relative;
             width: clamp(34px, 5vw, 38px);
@@ -302,6 +286,7 @@ if ($maintenance_result) {
             transition: all 0.3s ease;
             backdrop-filter: blur(8px);
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .nav-btn:hover {
@@ -309,9 +294,7 @@ if ($maintenance_result) {
             transform: scale(1.05);
         }
 
-        .nav-btn:active {
-            transform: scale(0.95);
-        }
+        .nav-btn:active { transform: scale(0.95); }
 
         .nav-btn.dark-mode-btn.active {
             animation: rotateSun 0.5s ease;
@@ -323,7 +306,225 @@ if ($maintenance_result) {
             100% { transform: rotate(360deg) scale(1); }
         }
 
-        /* MOBILE SIDEBAR */
+        /* ============================================
+           TRANSLATE BUTTON STYLES
+           ============================================ */
+        .translate-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 12px;
+            height: clamp(34px, 5vw, 38px);
+            border: 1.5px solid rgba(55, 98, 200, 0.35);
+            border-radius: 10px;
+            background: rgba(55, 98, 200, 0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: clamp(12px, 1.3vw, 13px);
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.04em;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(8px);
+            flex-shrink: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .translate-btn:hover {
+            background: rgba(55, 98, 200, 0.18);
+            border-color: rgba(55, 98, 200, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(55, 98, 200, 0.25);
+        }
+
+        .translate-btn:active {
+            transform: scale(0.96) translateY(0);
+        }
+
+        /* Globe SVG icon */
+        .translate-btn .globe-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .translate-btn .globe-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .translate-btn.translating .globe-icon {
+            animation: globeSpin 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes globeSpin {
+            0%   { transform: rotate(0deg) scale(1); }
+            30%  { transform: rotate(180deg) scale(1.3); }
+            60%  { transform: rotate(340deg) scale(0.9); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        /* Language label text */
+        .translate-btn .lang-label {
+            transition: all 0.3s ease;
+            font-variant-numeric: tabular-nums;
+            min-width: 26px;
+            text-align: left;
+        }
+
+        /* Active / Filipino mode pill */
+        .translate-btn.lang-active {
+            background: linear-gradient(135deg, rgba(0, 56, 168, 0.15), rgba(206, 17, 38, 0.12));
+            border-color: rgba(0, 56, 168, 0.45);
+        }
+
+        .translate-btn.lang-active:hover {
+            background: linear-gradient(135deg, rgba(0, 56, 168, 0.25), rgba(206, 17, 38, 0.2));
+            border-color: rgba(0, 56, 168, 0.7);
+        }
+
+        /* Ripple effect on click */
+        .translate-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(55, 98, 200, 0.35);
+            transform: scale(0);
+            animation: rippleOut 0.55s linear;
+            pointer-events: none;
+        }
+
+        @keyframes rippleOut {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Page content fade-swap during translation */
+        .translating-page {
+            animation: contentSwap 0.35s ease;
+        }
+
+        @keyframes contentSwap {
+            0%   { opacity: 1; }
+            40%  { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        /* Flag badge that appears briefly */
+        .lang-badge {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        .lang-badge.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .lang-badge .badge-flag {
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        /* Mobile translate button - compact with language indicator */
+        .mobile-translate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 0 10px;
+            min-width: 60px; /* Changed from fixed width to accommodate text */
+            height: 38px;
+            border: 1.5px solid rgba(55, 98, 200, 0.35);
+            border-radius: 10px;
+            background: rgba(55, 98, 200, 0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: absolute;
+            left: 60px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .mobile-translate-btn .mobile-lang-label {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+            min-width: 12px;
+            text-align: center;
+        }
+
+        .mobile-translate-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        .mobile-translate-btn:hover {
+            background: rgba(55, 98, 200, 0.2);
+        }
+
+        .mobile-translate-btn.translating svg {
+            animation: globeSpin 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .mobile-translate-btn.lang-active {
+            background: linear-gradient(135deg, rgba(0, 56, 168, 0.18), rgba(206, 17, 38, 0.12));
+            border-color: rgba(0, 56, 168, 0.5);
+        }
+
+        .mobile-translate-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(55, 98, 200, 0.35);
+            transform: scale(0);
+            animation: rippleOut 0.55s linear;
+            pointer-events: none;
+        }
+
+        /* ============================================
+           SIDEBAR
+           ============================================ */
         .sidebar-nav {
             position: fixed;
             top: 0;
@@ -347,9 +548,7 @@ if ($maintenance_result) {
             border: 1px solid var(--border-color);
         }
 
-        .sidebar-nav.mobile-active {
-            left: 12px;
-        }
+        .sidebar-nav.mobile-active { left: 12px; }
 
         .sidebar-top {
             display: flex;
@@ -370,9 +569,9 @@ if ($maintenance_result) {
             justify-content: center;
             gap: 7px;
             padding-bottom: 5px;
-            width: calc(100% - 50px);
-            margin-left: 25px;
-            margin-right: 25px;
+            width: 100%; /* Changed from calc(100% - 50px) */
+            margin-left: auto; /* Changed from 25px */
+            margin-right: auto; /* Changed from 25px */
             box-sizing: border-box;
             margin-bottom: 20px;
             color: var(--text-primary);
@@ -391,8 +590,8 @@ if ($maintenance_result) {
         .sidebar-divider.logo-divider {
             transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
             opacity: 1;
-            width: calc(100% - 50px);
-            margin: 18px 25px 0 25px;
+            width: calc(100% - 30px); /* Changed from calc(100% - 50px) */
+            margin: 18px 15px 0 15px; /* Changed from 18px 25px 0 25px */
             border-bottom: 2px solid rgba(0, 0, 0, 0.551);
         }
 
@@ -412,10 +611,7 @@ if ($maintenance_result) {
             transition: padding 0.3s ease;
         }
 
-        .sidebar-nav .nav-list li {
-            width: 100%;
-            margin: 3px 0;
-        }
+        .sidebar-nav .nav-list li { width: 100%; margin: 3px 0; }
 
         .sidebar-nav .nav-link {
             display: flex;
@@ -444,15 +640,10 @@ if ($maintenance_result) {
         }
 
         /* MOBILE TOP NAV */
-        .mobile-top-nav {
-            display: none;
-        }
+        .mobile-top-nav { display: none; }
 
         /* MAIN CONTENT */
-        .main-content {
-            flex: 1;
-            padding-top: 80px;
-        }
+        .main-content { flex: 1; padding-top: 80px; }
 
         /* HERO SECTION */
         .hero-section {
@@ -530,14 +721,8 @@ if ($maintenance_result) {
         }
 
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* STATISTICS SECTION */
@@ -571,10 +756,7 @@ if ($maintenance_result) {
             box-shadow: 0 15px 40px var(--shadow-color);
         }
 
-        .stat-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
+        .stat-icon { font-size: 48px; margin-bottom: 20px; }
 
         .stat-number {
             font-size: 48px;
@@ -605,7 +787,6 @@ if ($maintenance_result) {
             position: relative;
         }
 
-        /* Connecting Lines - Desktop (Horizontal) */
         .trust-item {
             text-align: center;
             padding: 30px 20px;
@@ -619,7 +800,6 @@ if ($maintenance_result) {
             z-index: 2;
         }
 
-        /* Horizontal connecting line (desktop) */
         .trust-item::after {
             content: '';
             position: absolute;
@@ -635,7 +815,6 @@ if ($maintenance_result) {
             box-shadow: 0 0 8px rgba(43, 108, 176, 0.5);
         }
 
-        /* Animated dot traveling along the line */
         .trust-item::before {
             content: '';
             position: absolute;
@@ -653,38 +832,19 @@ if ($maintenance_result) {
             animation-delay: 0.8s;
         }
 
-        /* Remove line from last item */
         .trust-item:nth-child(4)::after,
-        .trust-item:nth-child(4)::before {
-            display: none;
-        }
+        .trust-item:nth-child(4)::before { display: none; }
 
         @keyframes slideInLine {
-            from {
-                opacity: 0;
-                width: 0;
-            }
-            to {
-                opacity: 1;
-                width: 30px;
-            }
+            from { opacity: 0; width: 0; }
+            to { opacity: 1; width: 30px; }
         }
 
         @keyframes travelDot {
-            0%, 100% {
-                opacity: 0;
-                left: 100%;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            50% {
-                left: calc(100% + 15px);
-                opacity: 1;
-            }
+            0%, 100% { opacity: 0; left: 100%; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            50% { left: calc(100% + 15px); opacity: 1; }
         }
 
         .trust-item:hover {
@@ -697,10 +857,7 @@ if ($maintenance_result) {
             box-shadow: 0 0 15px rgba(43, 108, 176, 0.8);
         }
 
-        .trust-icon {
-            font-size: 36px;
-            margin-bottom: 15px;
-        }
+        .trust-icon { font-size: 36px; margin-bottom: 15px; }
 
         .trust-title {
             font-size: 1.1rem;
@@ -773,19 +930,14 @@ if ($maintenance_result) {
             transition: transform 0.3s ease;
         }
 
-        .feature-card:hover::before {
-            transform: scaleX(1);
-        }
+        .feature-card:hover::before { transform: scaleX(1); }
 
         .feature-card:hover {
             transform: translateY(-8px);
             box-shadow: 0 15px 40px var(--shadow-color);
         }
 
-        .feature-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
+        .feature-icon { font-size: 48px; margin-bottom: 20px; }
 
         .feature-title {
             font-size: 1.5rem;
@@ -811,9 +963,7 @@ if ($maintenance_result) {
             transition: all 0.2s ease;
         }
 
-        .feature-link:hover {
-            gap: 12px;
-        }
+        .feature-link:hover { gap: 12px; }
 
         /* HOW IT WORKS SECTION */
         .how-it-works-section {
@@ -833,13 +983,8 @@ if ($maintenance_result) {
             text-align: center;
         }
 
-        .section-header-card .section-title {
-            margin-bottom: 15px;
-        }
-
-        .section-header-card .section-subtitle {
-            margin-bottom: 0;
-        }
+        .section-header-card .section-title { margin-bottom: 15px; }
+        .section-header-card .section-subtitle { margin-bottom: 0; }
 
         .steps-container {
             display: grid;
@@ -893,7 +1038,7 @@ if ($maintenance_result) {
             line-height: 1.6;
         }
 
-        /* ABOUT SECTION - IMPROVED */
+        /* ABOUT SECTION */
         .about-section {
             padding: 80px 20px;
             background: var(--bg-secondary);
@@ -902,10 +1047,7 @@ if ($maintenance_result) {
             border-radius: 30px;
         }
 
-        .about-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+        .about-container { max-width: 1400px; margin: 0 auto; }
 
         .about-header {
             text-align: center;
@@ -935,9 +1077,7 @@ if ($maintenance_result) {
             margin-bottom: 60px;
         }
 
-        .about-image-container {
-            position: relative;
-        }
+        .about-image-container { position: relative; }
 
         .about-image-wrapper {
             position: relative;
@@ -963,19 +1103,10 @@ if ($maintenance_result) {
             color: #fff;
         }
 
-        .about-image-overlay h3 {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-        }
+        .about-image-overlay h3 { font-size: 1.5rem; margin-bottom: 5px; }
+        .about-image-overlay p { font-size: 0.95rem; opacity: 0.9; }
 
-        .about-image-overlay p {
-            font-size: 0.95rem;
-            opacity: 0.9;
-        }
-
-        .about-text {
-            padding: 20px 0;
-        }
+        .about-text { padding: 20px 0; }
 
         .about-text h3 {
             font-size: 2rem;
@@ -1008,18 +1139,9 @@ if ($maintenance_result) {
             transition: all 0.3s ease;
         }
 
-        .highlight-item:hover {
-            transform: translateX(5px);
-        }
-
-        .highlight-icon {
-            font-size: 24px;
-            flex-shrink: 0;
-        }
-
-        .highlight-text {
-            flex: 1;
-        }
+        .highlight-item:hover { transform: translateX(5px); }
+        .highlight-icon { font-size: 24px; flex-shrink: 0; }
+        .highlight-text { flex: 1; }
 
         .highlight-text strong {
             display: block;
@@ -1049,9 +1171,7 @@ if ($maintenance_result) {
             margin-top: 40px;
         }
 
-        .mission-card {
-            text-align: center;
-        }
+        .mission-card { text-align: center; }
 
         .mission-icon {
             width: 80px;
@@ -1094,20 +1214,10 @@ if ($maintenance_result) {
             box-shadow: 0 10px 30px var(--shadow-color);
         }
 
-        .activity-card .section-title {
-            text-align: center;
-            margin-bottom: 15px;
-        }
+        .activity-card .section-title { text-align: center; margin-bottom: 15px; }
+        .activity-card .section-subtitle { text-align: center; margin-bottom: 40px; }
 
-        .activity-card .section-subtitle {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .activity-list {
-            list-style: none;
-            padding: 0;
-        }
+        .activity-list { list-style: none; padding: 0; }
 
         .activity-item {
             padding: 20px;
@@ -1118,24 +1228,15 @@ if ($maintenance_result) {
             transition: all 0.2s ease;
         }
 
-        .activity-item:last-child {
-            border-bottom: none;
-        }
+        .activity-item:last-child { border-bottom: none; }
 
         .activity-item:hover {
             background: var(--bg-tertiary);
             padding-left: 30px;
         }
 
-        .activity-info h4 {
-            color: var(--text-primary);
-            margin-bottom: 5px;
-        }
-
-        .activity-info p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
+        .activity-info h4 { color: var(--text-primary); margin-bottom: 5px; }
+        .activity-info p { color: var(--text-secondary); font-size: 0.9rem; }
 
         .status-badge {
             padding: 8px 16px;
@@ -1144,21 +1245,11 @@ if ($maintenance_result) {
             font-weight: 600;
         }
 
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-progress { background: #cce5ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
 
-        .status-progress {
-            background: #cce5ff;
-            color: #004085;
-        }
-
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-        /* FIX 2: Update footer positioning */
+        /* FOOTER */
         .footer {
             width: 100%;
             padding: 60px 20px 30px;
@@ -1180,64 +1271,38 @@ if ($maintenance_result) {
             margin-bottom: 40px;
         }
 
-        .footer-about h3 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
+        .footer-about h3 { color: #fff; margin-bottom: 15px; font-size: 1.3rem; }
+        .footer-about p { color: rgba(255,255,255,0.8); line-height: 1.7; margin-bottom: 20px; }
 
-        .footer-about p {
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.7;
-            margin-bottom: 20px;
-        }
-
-        .footer-contact {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .footer-contact { display: flex; flex-direction: column; gap: 10px; }
 
         .contact-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255,255,255,0.8);
             font-size: 0.95rem;
         }
 
-        .footer-links h4 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-
-        .footer-links ul {
-            list-style: none;
-        }
-
-        .footer-links li {
-            margin-bottom: 10px;
-        }
+        .footer-links h4 { color: #fff; margin-bottom: 15px; font-size: 1.1rem; }
+        .footer-links ul { list-style: none; }
+        .footer-links li { margin-bottom: 10px; }
 
         .footer-links a {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255,255,255,0.8);
             text-decoration: none;
             transition: all 0.2s ease;
             font-size: 0.95rem;
         }
 
-        .footer-links a:hover {
-            color: #fff;
-            padding-left: 5px;
-        }
+        .footer-links a:hover { color: #fff; padding-left: 5px; }
 
         .footer-bottom {
             text-align: center;
             padding-top: 30px;
             margin-top: 30px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.8);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.8);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1246,15 +1311,12 @@ if ($maintenance_result) {
             margin-right: auto;
         }
 
-        .footer-social {
-            display: flex;
-            gap: 15px;
-        }
+        .footer-social { display: flex; gap: 15px; }
 
         .social-link {
             width: 40px;
             height: 40px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1270,136 +1332,25 @@ if ($maintenance_result) {
             transform: translateY(-3px);
         }
 
-        /* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
+        /* RESPONSIVE */
         @media (min-width: 769px) and (max-width: 1200px) {
-            .desktop-clock {
-                min-width: 380px;
-                font-size: clamp(11px, 1.2vw, 13px);
-                white-space: nowrap !important;
-            }
+            .desktop-clock { width: clamp(160px, 24vw, 300px); font-size: clamp(9px, 1vw, 11px); white-space: nowrap !important; }
+            .site-logo span { max-width: 160px; }
         }
 
         @media (min-width: 769px) and (max-width: 1000px) {
-            .desktop-clock {
-                min-width: 320px;
-                font-size: clamp(10px, 1.1vw, 12px);
-                white-space: nowrap !important;
-            }
+            .desktop-clock { width: clamp(130px, 20vw, 240px); font-size: 9px; white-space: nowrap !important; }
+            .site-logo span { display: none; }
         }
 
-        /* FIX 11: Tall screens - only stack on VERY narrow screens */
-        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (max-width: 500px) {
-            .nav {
-                padding: 12px clamp(15px, 3vw, 40px);
-            }
-            
-            .desktop-clock {
-                min-width: 280px;
-            }
-            
-            /* Only stack when truly necessary */
-            .desktop-clock .date-part {
-                display: block;
-                text-align: center;
-                margin-bottom: 2px;
-                font-variant-numeric: tabular-nums;
-            }
-            
-            .desktop-clock .time-part {
-                display: block;
-                text-align: center;
-                font-variant-numeric: tabular-nums;
-            }
-        }
-
-        /* For wider tall screens - keep inline */
-        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (min-width: 501px) {
-            .nav {
-                padding: 12px clamp(15px, 3vw, 40px);
-            }
-            
-            .desktop-clock {
-                min-width: 400px;
-                white-space: nowrap !important;
-            }
-            
-            .desktop-clock .date-part,
-            .desktop-clock .time-part {
-                display: inline;
-                white-space: nowrap;
-            }
-        }
-
-        /* FIX 12: Phones in desktop mode - stack vertically */
-        @media (min-width: 769px) and (max-width: 600px) {
-            .nav {
-                flex-wrap: nowrap;
-                padding: 12px 15px;
-            }
-            
-            .site-logo span {
-                display: none;
-            }
-            
-            .nav-links {
-                flex-wrap: nowrap;
-                gap: 10px;
-            }
-            
-            .nav-links a {
-                font-size: 13px;
-            }
-            
-            .desktop-clock {
-                font-size: 11px;
-                min-width: auto;
-                max-width: 150px;
-                width: 150px;
-            }
-            
-            .desktop-clock .date-part,
-            .desktop-clock .time-part {
-                display: block;
-                text-align: right;
-                line-height: 1.2;
-                font-variant-numeric: tabular-nums;
-            }
-            
-            .nav-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 16px;
-            }
-        }
-
-        /* RESPONSIVE */
         @media (max-width: 1024px) {
-            .about-content {
-                grid-template-columns: 1fr;
-            }
-
-            .footer-content {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .trust-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            /* Adjust connecting lines for 2-column layout */
-            .trust-item:nth-child(2)::after,
-            .trust-item:nth-child(2)::before,
-            .trust-item:nth-child(4)::after,
-            .trust-item:nth-child(4)::before {
-                display: none;
-            }
-
-            .trust-item:nth-child(1)::after,
-            .trust-item:nth-child(1)::before,
-            .trust-item:nth-child(3)::after,
-            .trust-item:nth-child(3)::before {
-                display: block;
-            }
+            .about-content { grid-template-columns: 1fr; }
+            .footer-content { grid-template-columns: 1fr 1fr; }
+            .trust-grid { grid-template-columns: repeat(2, 1fr); }
+            .trust-item:nth-child(2)::after, .trust-item:nth-child(2)::before,
+            .trust-item:nth-child(4)::after, .trust-item:nth-child(4)::before { display: none; }
+            .trust-item:nth-child(1)::after, .trust-item:nth-child(1)::before,
+            .trust-item:nth-child(3)::after, .trust-item:nth-child(3)::before { display: block; }
         }
 
         /* SCROLL ANIMATIONS */
@@ -1409,31 +1360,14 @@ if ($maintenance_result) {
             transition: opacity 0.8s ease, transform 0.8s ease;
         }
 
-        .animate-on-scroll.animate-in {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .animate-on-scroll.delay-1 {
-            transition-delay: 0.1s;
-        }
-
-        .animate-on-scroll.delay-2 {
-            transition-delay: 0.2s;
-        }
-
-        .animate-on-scroll.delay-3 {
-            transition-delay: 0.3s;
-        }
-
-        .animate-on-scroll.delay-4 {
-            transition-delay: 0.4s;
-        }
+        .animate-on-scroll.animate-in { opacity: 1; transform: translateY(0); }
+        .animate-on-scroll.delay-1 { transition-delay: 0.1s; }
+        .animate-on-scroll.delay-2 { transition-delay: 0.2s; }
+        .animate-on-scroll.delay-3 { transition-delay: 0.3s; }
+        .animate-on-scroll.delay-4 { transition-delay: 0.4s; }
 
         @media (max-width: 768px) {
-            .nav {
-                display: none;
-            }
+            .nav { display: none; }
 
             .mobile-top-nav {
                 display: flex;
@@ -1463,12 +1397,10 @@ if ($maintenance_result) {
                 height: 38px;
                 font-size: 20px;
                 cursor: pointer;
+                z-index: 2;
             }
 
-            .mobile-top-nav img {
-                height: 42px;
-                object-fit: contain;
-            }
+            .mobile-top-nav img { height: 42px; object-fit: contain; }
 
             .mobile-clock {
                 position: absolute;
@@ -1485,78 +1417,27 @@ if ($maintenance_result) {
                 height: 38px;
             }
 
-            .sidebar-nav {
-                display: flex;
-            }
+            .sidebar-nav { display: flex; }
 
-            .hero-title {
-                font-size: 2.5rem;
-            }
+            .hero-title { font-size: 2.5rem; }
+            .hero-subtitle { font-size: 1.2rem; }
+            .hero-tagline { font-size: 1rem; }
+            .section-title { font-size: 2rem; }
 
-            .hero-subtitle {
-                font-size: 1.2rem;
-            }
+            .about-text h3 { font-size: 2rem; text-align: center; }
+            .about-text p { font-size: 1.05rem; }
+            .about-header h2 { font-size: 2rem; }
+            .about-highlights { grid-template-columns: 1fr; }
+            .about-mission { padding: 30px 20px; }
+            .mission-grid { grid-template-columns: 1fr; gap: 30px; }
+            .footer-content { grid-template-columns: 1fr; }
+            .footer-bottom { flex-direction: column; gap: 20px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .steps-container { grid-template-columns: 1fr; }
 
-            .hero-tagline {
-                font-size: 1rem;
-            }
+            .trust-grid { grid-template-columns: 1fr; }
 
-            .section-title {
-                font-size: 2rem;
-            }  
-
-            .about-text h3 {
-                font-size: 2rem;
-                text-align: center;
-            }
-
-            .about-text p {
-                font-size: 1.05rem;
-            }
-
-            .about-header h2 {
-                font-size: 2rem;
-            }
-
-            .about-highlights {
-                grid-template-columns: 1fr;
-            }
-
-            .about-mission {
-                padding: 30px 20px;
-            }
-
-            .mission-grid {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-
-            .footer-content {
-                grid-template-columns: 1fr;
-            }
-
-            .footer-bottom {
-                flex-direction: column;
-                gap: 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .steps-container {
-                grid-template-columns: 1fr;
-            }
-
-            .trust-grid {
-                grid-template-columns: 1fr;
-            }
-
-            /* Mobile: Vertical connecting lines */
             .trust-item::after {
                 top: 100%;
                 left: 50%;
@@ -1575,54 +1456,24 @@ if ($maintenance_result) {
                 animation-delay: 0.8s;
             }
 
-            /* Remove line from last item in mobile */
-            .trust-item:nth-child(1)::after,
-            .trust-item:nth-child(1)::before,
-            .trust-item:nth-child(2)::after,
-            .trust-item:nth-child(2)::before,
-            .trust-item:nth-child(3)::after,
-            .trust-item:nth-child(3)::before {
-                display: block;
-            }
-
-            .trust-item:nth-child(4)::after,
-            .trust-item:nth-child(4)::before {
-                display: none;
-            }
+            .trust-item:nth-child(1)::after, .trust-item:nth-child(1)::before,
+            .trust-item:nth-child(2)::after, .trust-item:nth-child(2)::before,
+            .trust-item:nth-child(3)::after, .trust-item:nth-child(3)::before { display: block; }
+            .trust-item:nth-child(4)::after, .trust-item:nth-child(4)::before { display: none; }
 
             @keyframes slideInLineVertical {
-                from {
-                    opacity: 0;
-                    height: 0;
-                }
-                to {
-                    opacity: 1;
-                    height: 30px;
-                }
+                from { opacity: 0; height: 0; }
+                to { opacity: 1; height: 30px; }
             }
 
             @keyframes travelDotVertical {
-                0%, 100% {
-                    opacity: 0;
-                    top: 100%;
-                }
-                10% {
-                    opacity: 1;
-                }
-                90% {
-                    opacity: 1;
-                }
-                50% {
-                    top: calc(100% + 15px);
-                    opacity: 1;
-                }
+                0%, 100% { opacity: 0; top: 100%; }
+                10% { opacity: 1; }
+                90% { opacity: 1; }
+                50% { top: calc(100% + 15px); opacity: 1; }
             }
 
-            .features-section,
-            .about-section {
-                margin: 0 10px;
-                border-radius: 20px;
-            }
+            .features-section, .about-section { margin: 0 10px; border-radius: 20px; }
         }
     </style>
     <script>
@@ -1631,21 +1482,14 @@ if ($maintenance_result) {
     (function() {
         try {
             let savedTheme = localStorage.getItem('theme');
-            
-            if (savedTheme !== 'dark' && savedTheme !== 'light') {
-                savedTheme = 'light';
-            }
-            
+            if (savedTheme !== 'dark' && savedTheme !== 'light') savedTheme = 'light';
             if (savedTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
             } else {
                 document.documentElement.removeAttribute('data-theme');
             }
-            
             localStorage.setItem('theme', savedTheme);
-            
         } catch (e) {
-            console.error('Theme initialization error:', e);
             document.documentElement.removeAttribute('data-theme');
         }
     })();
@@ -1653,31 +1497,45 @@ if ($maintenance_result) {
 </head>
 <body>
 
+<!-- Globe SVG snippet reused inline -->
 <!-- DESKTOP NAVIGATION -->
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
-        <span>InfraGovServices - Infrastructure and Utilities</span>
+        <span data-i18n="site_title_short">InfraGovServices</span>
     </a>
     
     <div class="nav-center">
         <div class="nav-links">
             <?php if ($show_login): ?>
-                <a href="<?= $BASE_URL ?>login.php">Log in</a>
+                <a href="<?= $BASE_URL ?>login.php" data-i18n="nav_login">Log in</a>
             <?php endif; ?>
-            <a href="#" class="active">Home</a>
-            <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
-            <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php">About</a>
+            <a href="#" class="active" data-i18n="nav_home">Home</a>
+            <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>about.php" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
         
         <div class="nav-actions">
             <div class="desktop-clock" id="desktopClock"></div>
+
+            <!-- TRANSLATE BUTTON (desktop) -->
+            <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
+                <span class="globe-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                </span>
+                <span class="lang-label" id="langLabel">EN</span>
+            </button>
+
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
                 <span class="dark-icon">🌙</span>
-                <span class="light-icon" style="display: none;">☀️</span>
+                <span class="light-icon" style="display:none;">☀️</span>
             </button>
         </div>
     </div>
@@ -1693,12 +1551,12 @@ if ($maintenance_result) {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="#" class="nav-link active"><span>🏠</span><span>Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
+            <li><a href="#" class="nav-link active"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -1706,25 +1564,42 @@ if ($maintenance_result) {
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
+
+    <!-- MOBILE TRANSLATE BUTTON -->
+    <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="mobile-lang-label" id="mobileLangLabel">E</span>
+    </button>
+
     <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
     </a>
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
         <span class="dark-icon">🌙</span>
-        <span class="light-icon" style="display: none;">☀️</span>
+        <span class="light-icon" style="display:none;">☀️</span>
     </button>
+</div>
+
+<!-- LANGUAGE BADGE (toast) -->
+<div class="lang-badge" id="langBadge">
+    <span class="badge-flag" id="badgeFlag">🇺🇸</span>
+    <span id="badgeText">Switched to English</span>
 </div>
 
 <div class="main-content">
     <!-- HERO SECTION -->
     <section class="hero-section">
-        <h1 class="hero-title">Welcome to InfraGovServices</h1>
-        <p class="hero-subtitle">Community Infrastructure Maintenance Management System</p>
-        <p class="hero-tagline">Empowering Quezon City residents with efficient, transparent, and responsive infrastructure services</p>
+        <h1 class="hero-title" data-i18n="hero_title">Welcome to InfraGovServices</h1>
+        <p class="hero-subtitle" data-i18n="hero_subtitle">Community Infrastructure Maintenance Management System</p>
+        <p class="hero-tagline" data-i18n="hero_tagline">Empowering Quezon City residents with efficient, transparent, and responsive infrastructure services</p>
         <div class="hero-cta">
-            <a href="<?= $BASE_URL ?>citizenrepform.php" class="cta-button cta-primary">Submit a Report</a>
-            <a href="#features" class="cta-button cta-secondary">Learn More</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" class="cta-button cta-primary" data-i18n="cta_submit_report">Submit a Report</a>
+            <a href="#features" class="cta-button cta-secondary" data-i18n="cta_learn_more">Learn More</a>
         </div>
     </section>
 
@@ -1734,17 +1609,17 @@ if ($maintenance_result) {
             <div class="stat-card animate-on-scroll delay-1">
                 <div class="stat-icon">🛠️</div>
                 <div class="stat-number"><?= $repairs_count ?></div>
-                <div class="stat-label">Completed Repairs</div>
+                <div class="stat-label" data-i18n="stat_completed">Completed Repairs</div>
             </div>
             <div class="stat-card animate-on-scroll delay-2">
                 <div class="stat-icon">⏳</div>
                 <div class="stat-number"><?= $ongoing_count ?></div>
-                <div class="stat-label">Ongoing Repairs</div>
+                <div class="stat-label" data-i18n="stat_ongoing">Ongoing Repairs</div>
             </div>
             <div class="stat-card animate-on-scroll delay-3">
                 <div class="stat-icon">📍</div>
                 <div class="stat-number"><?= $pending_count ?></div>
-                <div class="stat-label">Pending Requests</div>
+                <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
             </div>
         </div>
     </section>
@@ -1754,23 +1629,23 @@ if ($maintenance_result) {
         <div class="trust-grid">
             <div class="trust-item animate-on-scroll delay-1">
                 <div class="trust-icon">🔒</div>
-                <div class="trust-title">Secure & Private</div>
-                <div class="trust-desc">Your data is protected with strong, trusted security.</div>
+                <div class="trust-title" data-i18n="trust_secure_title">Secure &amp; Private</div>
+                <div class="trust-desc" data-i18n="trust_secure_desc">Your data is protected with strong, trusted security.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-2">
                 <div class="trust-icon">⚡</div>
-                <div class="trust-title">Fast Response</div>
-                <div class="trust-desc">Reports are handled within 24–48 hours based on priority.</div>
+                <div class="trust-title" data-i18n="trust_fast_title">Fast Response</div>
+                <div class="trust-desc" data-i18n="trust_fast_desc">Reports are handled within 24–48 hours based on priority.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-3">
                 <div class="trust-icon">🎯</div>
-                <div class="trust-title">Verified Reports</div>
-                <div class="trust-desc">Every report is carefully checked for accuracy.</div>
+                <div class="trust-title" data-i18n="trust_verified_title">Verified Reports</div>
+                <div class="trust-desc" data-i18n="trust_verified_desc">Every report is carefully checked for accuracy.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-4">
                 <div class="trust-icon">🏆</div>
-                <div class="trust-title">Service Excellence</div>
-                <div class="trust-desc">Committed to quality, transparency, and public service.</div>
+                <div class="trust-title" data-i18n="trust_excellence_title">Service Excellence</div>
+                <div class="trust-desc" data-i18n="trust_excellence_desc">Committed to quality, transparency, and public service.</div>
             </div>
         </div>
     </section>
@@ -1778,74 +1653,72 @@ if ($maintenance_result) {
     <!-- HOW IT WORKS SECTION -->
     <section class="how-it-works-section animate-on-scroll">
         <div class="section-header-card">
-            <h2 class="section-title">How CIMMS Works</h2>
-            <p class="section-subtitle">Simple, fast, and effective — report infrastructure issues in just a few steps.</p>
+            <h2 class="section-title" data-i18n="hiw_title">How CIMMS Works</h2>
+            <p class="section-subtitle" data-i18n="hiw_subtitle">Simple, fast, and effective — report infrastructure issues in just a few steps.</p>
             <div class="steps-container">
-            <div class="step-card animate-on-scroll delay-1">
-                <div class="step-number">1</div>
-                <h3 class="step-title">Report the Issue</h3>
-                <p class="step-description">Residents submit infrastructure concerns through the system using a simple form, including photos, descriptions, and exact location details.</p>
-            </div>
-            <div class="step-card animate-on-scroll delay-2">
-                <div class="step-number">2</div>
-                <h3 class="step-title">Review & Verification</h3>
-                <p class="step-description">Office staff review submissions within 24 hours, validate the information, and AI will determine urgency and service priority.</p>
-            </div>
-            <div class="step-card animate-on-scroll delay-3">
-                <div class="step-number">3</div>
-                <h3 class="step-title">Maintenance Scheduled</h3>
-                <p class="step-description">Approved reports are forwarded to engineering and public works teams for scheduling and task assignment. Citizens receive progress updates.</p>
-            </div>
-            <div class="step-card animate-on-scroll delay-4">
-                <div class="step-number">4</div>
-                <h3 class="step-title">Issue Resolved</h3>
-                <p class="step-description">Maintenance work is completed, documented, and marked as completed, ensuring transparency and accountability.</p>
+                <div class="step-card animate-on-scroll delay-1">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title" data-i18n="step1_title">Report the Issue</h3>
+                    <p class="step-description" data-i18n="step1_desc">Residents submit infrastructure concerns through the system using a simple form, including photos, descriptions, and exact location details.</p>
+                </div>
+                <div class="step-card animate-on-scroll delay-2">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title" data-i18n="step2_title">Review &amp; Verification</h3>
+                    <p class="step-description" data-i18n="step2_desc">Office staff review submissions within 24 hours, validate the information, and AI will determine urgency and service priority.</p>
+                </div>
+                <div class="step-card animate-on-scroll delay-3">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title" data-i18n="step3_title">Maintenance Scheduled</h3>
+                    <p class="step-description" data-i18n="step3_desc">Approved reports are forwarded to engineering and public works teams for scheduling and task assignment. Citizens receive progress updates.</p>
+                </div>
+                <div class="step-card animate-on-scroll delay-4">
+                    <div class="step-number">4</div>
+                    <h3 class="step-title" data-i18n="step4_title">Issue Resolved</h3>
+                    <p class="step-description" data-i18n="step4_desc">Maintenance work is completed, documented, and marked as completed, ensuring transparency and accountability.</p>
+                </div>
             </div>
         </div>
-        </div>
-        
-        
     </section>
 
     <!-- FEATURES SECTION -->
     <section class="features-section animate-on-scroll" id="features">
-        <h2 class="section-title">Our Services</h2>
-        <p class="section-subtitle">Empowering Quezon City residents with efficient infrastructure management tools</p>
+        <h2 class="section-title" data-i18n="features_title">Our Services</h2>
+        <p class="section-subtitle" data-i18n="features_subtitle">Empowering Quezon City residents with efficient infrastructure management tools</p>
         
         <div class="features-grid">
             <div class="feature-card animate-on-scroll delay-1">
                 <div class="feature-icon">📋</div>
-                <h3 class="feature-title">Submit Requests</h3>
-                <p class="feature-description">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
-                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Submit Request →</a>
+                <h3 class="feature-title" data-i18n="feat1_title">Submit Requests</h3>
+                <p class="feature-description" data-i18n="feat1_desc">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
+                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-2">
                 <div class="feature-icon">📊</div>
-                <h3 class="feature-title">Track Maintenance</h3>
-                <p class="feature-description">Monitor the status of maintenance schedules, view completed repairs, and stay informed about ongoing infrastructure improvements in your area.</p>
-                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link">View Reports →</a>
+                <h3 class="feature-title" data-i18n="feat2_title">Track Maintenance</h3>
+                <p class="feature-description" data-i18n="feat2_desc">Monitor the status of maintenance schedules, view completed repairs, and stay informed about ongoing infrastructure improvements in your area.</p>
+                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link" data-i18n="feat2_link">View Reports →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-3">
                 <div class="feature-icon">🗺️</div>
-                <h3 class="feature-title">Location-Based Reporting</h3>
-                <p class="feature-description">Use interactive maps and GPS-based tagging to accurately identify problem areas.</p>
-                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link">Try It Now →</a>
+                <h3 class="feature-title" data-i18n="feat3_title">Location-Based Reporting</h3>
+                <p class="feature-description" data-i18n="feat3_desc">Use interactive maps and GPS-based tagging to accurately identify problem areas.</p>
+                <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat3_link">Try It Now →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-1">
                 <div class="feature-icon">⚡</div>
-                <h3 class="feature-title">Real-Time Updates</h3>
-                <p class="feature-description">Receive instant notifications about report progress and maintenance activities.</p>
-                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link">Check Status →</a>
+                <h3 class="feature-title" data-i18n="feat4_title">Real-Time Updates</h3>
+                <p class="feature-description" data-i18n="feat4_desc">Receive instant notifications about report progress and maintenance activities.</p>
+                <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link" data-i18n="feat4_link">Check Status →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-2">
                 <div class="feature-icon">🤝</div>
-                <h3 class="feature-title">Community Engagement</h3>
-                <p class="feature-description">Encourage active participation of citizens in improving Quezon City’s infrastructure through transparency and collaboration.</p>
-                <a href="<?= $BASE_URL ?>about.php" class="feature-link">Learn More →</a>
+                <h3 class="feature-title" data-i18n="feat5_title">Community Engagement</h3>
+                <p class="feature-description" data-i18n="feat5_desc">Encourage active participation of citizens in improving Quezon City's infrastructure through transparency and collaboration.</p>
+                <a href="<?= $BASE_URL ?>about.php" class="feature-link" data-i18n="feat5_link">Learn More →</a>
             </div>
         </div>
     </section>
@@ -1853,8 +1726,8 @@ if ($maintenance_result) {
     <!-- RECENT ACTIVITY SECTION -->
     <section class="activity-section animate-on-scroll">
         <div class="activity-card">
-            <h2 class="section-title">Recent Maintenance Activity</h2>
-            <p class="section-subtitle">Stay informed about the latest infrastructure maintenance in your community</p>
+            <h2 class="section-title" data-i18n="activity_title">Recent Maintenance Activity</h2>
+            <p class="section-subtitle" data-i18n="activity_subtitle">Stay informed about the latest infrastructure maintenance in your community</p>
             
             <?php if (!empty($recent_maintenance)): ?>
                 <ul class="activity-list">
@@ -1875,21 +1748,21 @@ if ($maintenance_result) {
                         </li>
                     <?php endforeach; ?>
                 </ul>
-                <div style="text-align: center; margin-top: 30px;">
-                    <a href="<?= $BASE_URL ?>citizenreports.php" class="cta-button cta-primary">View All Reports</a>
+                <div style="text-align:center;margin-top:30px;">
+                    <a href="<?= $BASE_URL ?>citizenreports.php" class="cta-button cta-primary" data-i18n="activity_view_all">View All Reports</a>
                 </div>
             <?php else: ?>
-                <p style="text-align: center; color: var(--text-secondary); padding: 40px;">No recent maintenance activities to display.</p>
+                <p style="text-align:center;color:var(--text-secondary);padding:40px;" data-i18n="activity_empty">No recent maintenance activities to display.</p>
             <?php endif; ?>
         </div>
     </section>
 
-    <!-- ABOUT SECTION - IMPROVED -->
+    <!-- ABOUT SECTION -->
     <section class="about-section animate-on-scroll">
         <div class="about-container">
             <div class="about-header">
-                <h2>About CIMMS – Quezon City</h2>
-                <p>Building a smarter, more responsive city through innovative infrastructure management</p>
+                <h2 data-i18n="about_title">About CIMMS – Quezon City</h2>
+                <p data-i18n="about_subtitle">Building a smarter, more responsive city through innovative infrastructure management</p>
             </div>
 
             <div class="about-content">
@@ -1897,51 +1770,51 @@ if ($maintenance_result) {
                     <div class="about-image-wrapper">
                         <img src="<?= $OFFICIAL_LOGO ?>" alt="CIMMS Logo">
                         <div class="about-image-overlay">
-                            <h3>Serving Quezon City</h3>
-                            <p>Excellence in Public Infrastructure</p>
+                            <h3 data-i18n="overlay_title">Serving Quezon City</h3>
+                            <p data-i18n="overlay_subtitle">Excellence in Public Infrastructure</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="about-text">
-                    <h3>Transforming Infrastructure Management</h3>
-                    <p>The <strong>Community Infrastructure Maintenance Management System (CIMMS)</strong> is a cutting-edge digital platform developed specifically for Quezon City's Local Government Unit to revolutionize how we manage, maintain, and improve our city's infrastructure.</p>
+                    <h3 data-i18n="about_transform_title">Transforming Infrastructure Management</h3>
+                    <p data-i18n-html="about_p1">The <strong>Community Infrastructure Maintenance Management System (CIMMS)</strong> is a cutting-edge digital platform developed specifically for Quezon City's Local Government Unit to revolutionize how we manage, maintain, and improve our city's infrastructure.</p>
                     
-                    <p>Our platform empowers residents by providing a direct, transparent channel to report infrastructure concerns ranging from damaged roads and broken streetlights to clogged drainage systems and deteriorating public facilities.</p>
+                    <p data-i18n="about_p2">Our platform empowers residents by providing a direct, transparent channel to report infrastructure concerns ranging from damaged roads and broken streetlights to clogged drainage systems and deteriorating public facilities.</p>
 
                     <div class="about-highlights">
                         <div class="highlight-item">
                             <div class="highlight-icon">📱</div>
                             <div class="highlight-text">
-                                <strong>Easy Reporting</strong>
-                                <span>Submit issues in seconds from any device</span>
+                                <strong data-i18n="highlight1_title">Easy Reporting</strong>
+                                <span data-i18n="highlight1_desc">Submit issues in seconds from any device</span>
                             </div>
                         </div>
                         <div class="highlight-item">
                             <div class="highlight-icon">📍</div>
                             <div class="highlight-text">
-                                <strong>GPS Tracking</strong>
-                                <span>Precise location mapping for faster response</span>
+                                <strong data-i18n="highlight2_title">GPS Tracking</strong>
+                                <span data-i18n="highlight2_desc">Precise location mapping for faster response</span>
                             </div>
                         </div>
                         <div class="highlight-item">
                             <div class="highlight-icon">🔔</div>
                             <div class="highlight-text">
-                                <strong>Real-Time Updates</strong>
-                                <span>Stay informed throughout the process</span>
+                                <strong data-i18n="highlight3_title">Real-Time Updates</strong>
+                                <span data-i18n="highlight3_desc">Stay informed throughout the process</span>
                             </div>
                         </div>
                         <div class="highlight-item">
                             <div class="highlight-icon">📊</div>
                             <div class="highlight-text">
-                                <strong>Transparent Tracking</strong>
-                                <span>Monitor progress from report to resolution</span>
+                                <strong data-i18n="highlight4_title">Transparent Tracking</strong>
+                                <span data-i18n="highlight4_desc">Monitor progress from report to resolution</span>
                             </div>
                         </div>
                     </div>
 
-                    <div style="margin-top: 50px; text-align: center;">
-                        <a href="<?= $BASE_URL ?>about.php" class="cta-button cta-primary">Learn More About Us</a>
+                    <div style="margin-top:50px;text-align:center;">
+                        <a href="<?= $BASE_URL ?>about.php" class="cta-button cta-primary" data-i18n="about_learn_more">Learn More About Us</a>
                     </div>
                 </div>
             </div>
@@ -1950,60 +1823,51 @@ if ($maintenance_result) {
 </div>
 
 <!-- FOOTER -->
-<footer class="footer" style="margin-top: 50px;">
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <span>📧</span>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <span>📞</span>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <span>📍</span>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         
         <div class="footer-links">
-            <h4>Quick Links</h4>
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= $BASE_URL ?>citizencimm.php">Home</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenreports.php">Reports</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenrepform.php">Submit Request</a></li>
-                <li><a href="<?= $BASE_URL ?>about.php">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer_resources">Resources</h4>
             <ul>
-                <li><a href="#">User Guide</a></li>
-                <li><a href="#">FAQs</a></li>
-                <li><a href="#">Service Areas</a></li>
-                <li><a href="#">Emergency Contacts</a></li>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Legal</h4>
+            <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
-                <li><a href="#">Data Protection</a></li>
-                <li><a href="#">Accessibility</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
         </div>
     </div>
     
     <div class="footer-bottom">
-        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
         <div class="footer-social">
             <a href="#" class="social-link" title="Facebook">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -2029,20 +1893,194 @@ if ($maintenance_result) {
     </div>
 </footer>
 
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
 <script>
-// Mobile sidebar toggle
+/* ---------------------------------------------------------------
+   TRANSLATIONS ENGINE
+   --------------------------------------------------------------- */
+   (function() {
+    'use strict';
+
+    const BASE = '<?= $BASE_URL ?>';
+    const JSON_PATH = BASE + 'translations.json';
+
+    let translations = null;
+    let currentLang = localStorage.getItem('lang') || 'en';
+
+    const translateBtn       = document.getElementById('translateBtn');
+    const mobileTranslateBtn = document.getElementById('mobileTranslateBtn');
+    const langLabel          = document.getElementById('langLabel');
+    const mobileLangLabel    = document.getElementById('mobileLangLabel'); // NEW
+    const langBadge          = document.getElementById('langBadge');
+    const badgeFlag          = document.getElementById('badgeFlag');
+    const badgeText          = document.getElementById('badgeText');
+
+    let badgeTimer = null;
+
+    /* --- Ripple helper --- */
+    function createRipple(btn, e) {
+        const rect   = btn.getBoundingClientRect();
+        const size   = Math.max(rect.width, rect.height) * 2;
+        const x      = (e ? e.clientX - rect.left : rect.width / 2) - size / 2;
+        const y      = (e ? e.clientY - rect.top  : rect.height / 2) - size / 2;
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px;`;
+        btn.appendChild(ripple);
+        ripple.addEventListener('animationend', () => ripple.remove());
+    }
+
+    /* --- Show toast badge --- */
+    function showBadge(lang) {
+        if (lang === 'tl') {
+            badgeFlag.textContent = '🇵🇭';
+            badgeText.textContent = 'Isinalin sa Filipino';
+        } else {
+            badgeFlag.textContent = '🇺🇸';
+            badgeText.textContent = 'Switched to English';
+        }
+        langBadge.classList.add('show');
+        clearTimeout(badgeTimer);
+        badgeTimer = setTimeout(() => langBadge.classList.remove('show'), 2500);
+    }
+
+    /* --- Apply translations to DOM --- */
+    function applyTranslations(lang) {
+        if (!translations) return;
+        const t = translations[lang];
+        if (!t) return;
+
+        // data-i18n  → textContent
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key] !== undefined) el.textContent = t[key];
+        });
+
+        // data-i18n-html → innerHTML
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+            const key = el.getAttribute('data-i18n-html');
+            if (t[key] !== undefined) el.innerHTML = t[key];
+        });
+
+        // data-i18n-placeholder → placeholder attribute
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (t[key] !== undefined) el.placeholder = t[key];
+        });
+
+        // data-i18n-title → title attribute
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            if (t[key] !== undefined) el.title = t[key];
+        });
+
+        // Update button labels & state
+        const isFilipino = lang === 'tl';
+        const labelText = isFilipino ? 'F' : 'E'; // SHORT: E for English, F for Filipino
+        
+        if (langLabel) langLabel.textContent = t['lang_label'] || (lang === 'en' ? 'EN' : 'FIL');
+        if (mobileLangLabel) mobileLangLabel.textContent = labelText; // NEW
+
+        [translateBtn, mobileTranslateBtn].forEach(btn => {
+            if (!btn) return;
+            btn.classList.toggle('lang-active', isFilipino);
+            btn.title = t['translate_btn_title'] || '';
+        });
+
+        // html lang attribute
+        document.documentElement.lang = lang === 'tl' ? 'tl' : 'en';
+
+        // Notify chatbot widget
+        if (typeof window.__chatbotRefreshLang === 'function') {
+            window.__chatbotRefreshLang();
+        }
+    }
+
+    /* --- Toggle language --- */
+    function toggleLanguage(e) {
+        const btn = e.currentTarget;
+
+        // Ripple
+        createRipple(btn, e);
+
+        // Spin animation
+        btn.classList.add('translating');
+        setTimeout(() => btn.classList.remove('translating'), 650);
+
+        // Content fade swap
+        document.body.classList.add('translating-page');
+        setTimeout(() => document.body.classList.remove('translating-page'), 360);
+
+        const newLang = currentLang === 'en' ? 'tl' : 'en';
+
+        function afterLoad() {
+            currentLang = newLang;
+            localStorage.setItem('lang', currentLang);
+            applyTranslations(currentLang);
+            showBadge(currentLang);
+            if (typeof renderClock === 'function') renderClock(new Date(currentServerTime));
+        }
+
+        if (!translations) {
+            fetch(JSON_PATH)
+                .then(r => {
+                    if (!r.ok) throw new Error('Failed to load translations.json');
+                    return r.json();
+                })
+                .then(data => {
+                    translations = data;
+                    afterLoad();
+                })
+                .catch(err => {
+                    console.error('[i18n]', err);
+                });
+        } else {
+            afterLoad();
+        }
+    }
+
+    /* --- Init --- */
+    function init() {
+        if (currentLang === 'tl') {
+            fetch(JSON_PATH)
+                .then(r => r.json())
+                .then(data => {
+                    translations = data;
+                    applyTranslations('tl');
+                })
+                .catch(() => { /* silently fail */ });
+        } else {
+            // Set initial label even without translations loaded
+            if (mobileLangLabel) mobileLangLabel.textContent = 'E';
+        }
+
+        // Wire up buttons
+        if (translateBtn)       translateBtn.addEventListener('click', toggleLanguage);
+        if (mobileTranslateBtn) mobileTranslateBtn.addEventListener('click', toggleLanguage);
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
+<script>
+/* ---------------------------------------------------------------
+   MOBILE SIDEBAR TOGGLE
+   --------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', function() {
     const mobileToggle = document.getElementById('mobileToggle');
-    const sidebar = document.getElementById('sidebarNav');
+    const sidebar      = document.getElementById('sidebarNav');
     
     if (mobileToggle) {
-        mobileToggle.addEventListener('click', (e) => {
+        mobileToggle.addEventListener('click', e => {
             e.stopPropagation();
             if (sidebar) sidebar.classList.toggle('mobile-active');
         });
     }
     
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
         if (sidebar && sidebar.classList.contains('mobile-active')) {
             if (!sidebar.contains(e.target) && e.target !== mobileToggle) {
                 sidebar.classList.remove('mobile-active');
@@ -2050,87 +2088,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    if (sidebar) {
-        sidebar.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    }
+    if (sidebar) sidebar.addEventListener('click', e => e.stopPropagation());
     
-    const navLinks = sidebar?.querySelectorAll('.nav-link');
-    navLinks?.forEach(link => {
-        link.addEventListener('click', () => {
-            sidebar.classList.remove('mobile-active');
-        });
+    sidebar?.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => sidebar.classList.remove('mobile-active'));
     });
 
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
+        anchor.addEventListener('click', function(e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
 });
+</script>
 
-// Clock Script
+<script>
+/* ---------------------------------------------------------------
+   CLOCK
+   --------------------------------------------------------------- */
 const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
-let clockInterval = null;
-let lastSecond = null;
+let clockInterval     = null;
+let lastSecond        = null;
+
+// Tagalog day and month names
+const TL_DAYS   = ['Linggo','Lunes','Martes','Miyerkules','Huwebes','Biyernes','Sabado'];
+const TL_MONTHS = ['Enero','Pebrero','Marso','Abril','Mayo','Hunyo','Hulyo','Agosto','Setyembre','Oktubre','Nobyembre','Disyembre'];
 
 function renderClock(now) {
-    const datePart = now.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const lang = localStorage.getItem('lang') || 'en';
+
+    let datePart;
+    if (lang === 'tl') {
+        const dayName   = TL_DAYS[now.getDay()];
+        const monthName = TL_MONTHS[now.getMonth()];
+        const day       = now.getDate();
+        const year      = now.getFullYear();
+        datePart = `${dayName}, ${monthName} ${day}, ${year}`;
+    } else {
+        datePart = now.toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+    }
 
     const timeStr = now.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
     });
-
-    const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
-    let h = t ? t[1] : "--";
-    let m = t ? t[2] : "--";
-    let s = t ? t[3] : "--";
-    let ampm = t ? t[4] : "";
+    const t    = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
+    const h    = t ? t[1] : '--';
+    const m    = t ? t[2] : '--';
+    const s    = t ? t[3] : '--';
+    const ampm = t ? t[4] : '';
 
     const desktopClock = document.getElementById('desktopClock');
-    const mobileClock = document.getElementById('mobileClock');
+    const mobileClock  = document.getElementById('mobileClock');
 
-    function flipSpan(str) {
-        return str.split('').map(chr => `<span>${chr}</span>`).join('');
-    }
+    const flip = str => str.split('').map(c => `<span>${c}</span>`).join('');
 
     if (desktopClock) {
         desktopClock.innerHTML = `
             <span class="date-part">${datePart}</span>
             &nbsp;&nbsp;&nbsp;
-            <span class="time-part">
-                ${flipSpan(h)}:${flipSpan(m)}:${flipSpan(s)} ${ampm}
-            </span>
+            <span class="time-part">${flip(h)}:${flip(m)}:${flip(s)} ${ampm}</span>
         `;
     }
-
-    if (mobileClock) {
-        mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
-    }
+    if (mobileClock) mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
 }
 
 function tick() {
     const now = new Date(currentServerTime);
     const sec = now.getSeconds();
-
     if (sec !== lastSecond) {
         document.querySelectorAll('.time-part').forEach(el => {
             el.classList.add('flip');
@@ -2138,7 +2168,6 @@ function tick() {
         });
         lastSecond = sec;
     }
-
     renderClock(now);
     currentServerTime += 1000;
 }
@@ -2150,127 +2179,83 @@ function startClock() {
 }
 
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        clearInterval(clockInterval);
-        clockInterval = null;
-    } else {
-        startClock();
-    }
+    if (document.hidden) { clearInterval(clockInterval); clockInterval = null; }
+    else startClock();
 });
 
 setInterval(() => {
-    fetch(location.href, { method: 'HEAD' })
-        .then(() => {
-            currentServerTime = SERVER_TIME;
-        });
+    fetch(location.href, { method: 'HEAD' }).then(() => { currentServerTime = SERVER_TIME; });
 }, RESYNC_MINUTES * 60 * 1000);
 
 startClock();
+</script>
 
-// Dark Mode Toggle
+<script>
+/* ---------------------------------------------------------------
+   DARK MODE
+   --------------------------------------------------------------- */
 (function() {
-    const darkModeBtn = document.getElementById('darkModeBtn');
+    const darkModeBtn       = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
     if (!darkModeBtn && !mobileDarkModeBtn) return;
 
-    const darkIcon = darkModeBtn?.querySelector('.dark-icon') || mobileDarkModeBtn?.querySelector('.dark-icon');
-    const lightIcon = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
-    const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
-    const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
+    const THEME_KEY = 'theme', BACKUP_KEY = 'theme_backup';
 
-    const THEME_KEY = 'theme';
-    const THEME_BACKUP_KEY = 'theme_backup';
-
-    function updateTheme(isDark, animate = false) {
+    function updateTheme(isDark, animate) {
         try {
-            const themeValue = isDark ? 'dark' : 'light';
-            
-            if (isDark) {
-                html.setAttribute('data-theme', 'dark');
-            } else {
-                html.removeAttribute('data-theme');
-            }
-            
-            localStorage.setItem(THEME_KEY, themeValue);
-            localStorage.setItem(THEME_BACKUP_KEY, themeValue);
-            
-            if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
-            if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
-            if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
-            if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
-            
-            if (animate) {
-                if (darkModeBtn) darkModeBtn.classList.add('active');
-                if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
-                setTimeout(() => {
-                    if (darkModeBtn) darkModeBtn.classList.remove('active');
-                    if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
-                }, 500);
-            }
-        } catch (e) {
-            console.error('Theme update error:', e);
-        }
+            isDark ? html.setAttribute('data-theme','dark') : html.removeAttribute('data-theme');
+            localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+            localStorage.setItem(BACKUP_KEY, isDark ? 'dark' : 'light');
+
+            [darkModeBtn, mobileDarkModeBtn].forEach(btn => {
+                if (!btn) return;
+                btn.querySelector('.dark-icon').style.display  = isDark ? 'none'   : 'inline';
+                btn.querySelector('.light-icon').style.display = isDark ? 'inline' : 'none';
+                if (animate) {
+                    btn.classList.add('active');
+                    setTimeout(() => btn.classList.remove('active'), 500);
+                }
+            });
+        } catch(e) {}
     }
 
     try {
-        let savedTheme = localStorage.getItem(THEME_KEY);
-        
-        if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
-        }
-        
-        if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light';
-        }
-        
-        updateTheme(savedTheme === 'dark', false);
-    } catch (e) {
-        console.error('Theme load error:', e);
-        updateTheme(false, false);
-    }
+        let t = localStorage.getItem(THEME_KEY);
+        if (t !== 'dark' && t !== 'light') t = localStorage.getItem(BACKUP_KEY);
+        if (t !== 'dark' && t !== 'light') t = 'light';
+        updateTheme(t === 'dark', false);
+    } catch(e) { updateTheme(false, false); }
 
-    function toggleTheme() {
-        const isDark = html.getAttribute('data-theme') === 'dark';
-        updateTheme(!isDark, true);
-    }
+    function toggle() { updateTheme(html.getAttribute('data-theme') !== 'dark', true); }
+    if (darkModeBtn)       darkModeBtn.addEventListener('click', toggle);
+    if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggle);
 
-    if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
-    if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
-
-    window.addEventListener('beforeunload', function() {
+    window.addEventListener('beforeunload', () => {
         try {
-            const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-            localStorage.setItem(THEME_KEY, currentTheme);
-            localStorage.setItem(THEME_BACKUP_KEY, currentTheme);
-        } catch (e) {
-            console.error('Theme save error:', e);
-        }
+            const v = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            localStorage.setItem(THEME_KEY, v);
+            localStorage.setItem(BACKUP_KEY, v);
+        } catch(e) {}
     });
 })();
 </script>
 
 <script>
-// Scroll Animation
+/* ---------------------------------------------------------------
+   SCROLL ANIMATIONS
+   --------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', function() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver(function(entries) {
+    const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('animate-in');
                 observer.unobserve(entry.target);
             }
         });
-    }, observerOptions);
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-    const animateElements = document.querySelectorAll('.animate-on-scroll');
-    animateElements.forEach(element => {
-        observer.observe(element);
-    });
+    document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
 });
 </script>
 
