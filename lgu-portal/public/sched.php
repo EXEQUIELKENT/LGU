@@ -3612,7 +3612,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', () => {
         closeDropdown();
     });
-
     // ===== HOLIDAYS & EVENTS DATA (UPDATED FOR 2026 ACCURACY) =====
 
     // Fixed holidays (same date every year)
@@ -3639,6 +3638,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Movable holidays for 2026 (these change every year)
     const MOVABLE_HOLIDAYS_2026 = {
+        '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Horse
         '04-02': { name: 'Maundy Thursday', type: 'holiday' },
         '04-03': { name: 'Good Friday', type: 'holiday' },
         '04-04': { name: 'Black Saturday', type: 'holiday' },
@@ -3654,6 +3654,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (year === 2025) {
             // 2025 movable holidays
             const movable2025 = {
+                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Snake
                 '04-17': { name: 'Maundy Thursday', type: 'holiday' },
                 '04-18': { name: 'Good Friday', type: 'holiday' },
                 '04-19': { name: 'Black Saturday', type: 'holiday' },
@@ -3663,16 +3664,27 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (year === 2027) {
             // 2027 movable holidays (planning ahead)
             const movable2027 = {
+                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Goat
                 '03-25': { name: 'Maundy Thursday', type: 'holiday' },
                 '03-26': { name: 'Good Friday', type: 'holiday' },
                 '03-27': { name: 'Black Saturday', type: 'holiday' },
                 '03-20': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
             };
             return { ...FIXED_HOLIDAYS, ...movable2027 };
+        } else if (year === 2024) {
+            // 2024 movable holidays (for reference)
+            const movable2024 = {
+                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Dragon
+                '03-28': { name: 'Maundy Thursday', type: 'holiday' },
+                '03-29': { name: 'Good Friday', type: 'holiday' },
+                '03-30': { name: 'Black Saturday', type: 'holiday' },
+                '04-10': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
+            };
+            return { ...FIXED_HOLIDAYS, ...movable2024 };
         }
     
-    // Default: return only fixed holidays for other years
-    return FIXED_HOLIDAYS;
+        // Default: return only fixed holidays for other years
+        return FIXED_HOLIDAYS;
     }
 
     // Helper function to get National Heroes Day (last Monday of August)
@@ -3720,7 +3732,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'holiday') {
             // Special cases for better mobile display
             if (name.includes('Christmas')) return 'XMS';
-            if (name.includes('New Year')) return 'NY';
+            if (name.includes('New Year\'s Day')) return 'NY';
+            if (name.includes('Chinese New Year')) return 'CNY';
             if (name.includes('EDSA')) return 'EDSA';
             if (name.includes('Independence')) return 'IND';
             if (name.includes('Heroes')) return 'HRO';

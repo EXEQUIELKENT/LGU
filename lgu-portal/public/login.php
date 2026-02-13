@@ -14,19 +14,12 @@ $isLocalhost = in_array($_SERVER['SERVER_NAME'] ?? '', $localhostWhitelist) ||
 
 if (!$isLocalhost && file_exists($authConfigFile)) {
     require $authConfigFile; // will define $show_login (and maybe others)
-    // If $show_login is false, login IS accessible (as per prompt) -- do nothing (allow access)
-    // If $show_login is true, login IS restricted to only authorized users
     if (isset($show_login) && $show_login === true) {
-        // Only allow if $show_login === true, else 403
-        // (Override: only allow explicitly if show_login is true)
-        // So if authorized (in allowed IP/secret), allow. If not, block.
-        // (If $show_login is false, allow access -- no block.)
+        // Authorized access only
     } else {
-        // $show_login is false or not set: allow access (do nothing)
-        // No restriction, proceed to page code
+        // Allow access
     }
 } 
-// (always no restriction for localhost/dev: no block)
 
 // --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
 date_default_timezone_set('Asia/Manila');
@@ -48,13 +41,11 @@ session_start();
 define('OTP_RESEND_COOLDOWN', 30);
 define('OTP_MAX_RESENDS', 1);
 define('RESET_TOKEN_VALIDITY', 60 * 60);
+define('UNLOCK_TOKEN_VALIDITY', 60 * 60 * 24); // 24 hours to unlock account
 
 if (!isset($_SESSION['otp_resend_count'])) $_SESSION['otp_resend_count'] = 0;
 if (!isset($_SESSION['otp_last_sent_time'])) $_SESSION['otp_last_sent_time'] = 0;
-if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0; // For logging
-if (!isset($_SESSION['otp_total_resends'])) {
-    $_SESSION['otp_total_resends'] = 0;
-}
+if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0;
 
 // 2⃣ Login Event Logger
 function logLoginEvent(
@@ -93,8 +84,9 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     setNotification('success', 'Successfully logged out.');
 }
 
-// OTP validity window set to 12 hours
-define('OTP_VALIDITY_SECONDS', 60 * 60 * 12);
+// 🔥 CHANGE #1: OTP is now REQUIRED on EVERY login - removed 12-hour bypass
+// 🔥 CHANGE #2: PERMANENT ACCOUNT LOCK - removed 10-minute session lockout
+// 🔥 CHANGE #3: REMOVED "Remember Me" functionality completely
 
 $basePath = '';
 $loginUrl = 'login.php';
@@ -164,36 +156,226 @@ function isUniqueEnoughPassword($password) {
     return isStrongPassword($password);
 }
 
-// Session-based failed login tracking
-function isLoginLockedOut($email) {
-    if (!isset($_SESSION['failed_logins'])) return false;
-    $emailKey = strtolower($email);
-    $info = $_SESSION['failed_logins'][$emailKey] ?? null;
-    if (!$info || !isset($info['count']) || !isset($info['time'])) return false;
-    if ($info['count'] < 3) return false;
-    if ((time() - $info['time']) > 600) {
-        unset($_SESSION['failed_logins'][$emailKey]);
+// 🔥 CHANGE #2: New function to check if account is locked in DATABASE
+function isAccountLocked(mysqli $conn, string $email): bool {
+    $stmt = $conn->prepare("SELECT account_locked FROM employees WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        $stmt->close();
+        return ($user['account_locked'] == 1);
+    }
+    
+    $stmt->close();
+    return false;
+}
+
+// 🔥 CHANGE #2: New function to lock account permanently in database
+function lockAccount(mysqli $conn, string $email): void {
+    $stmt = $conn->prepare("UPDATE employees SET account_locked = 1, failed_login_attempts = 3 WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// 🔥 CHANGE #2: New function to track failed login attempts in database
+function registerFailedLogin(mysqli $conn, string $email): int {
+    // Get current failed attempts
+    $stmt = $conn->prepare("SELECT failed_login_attempts FROM employees WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        $currentAttempts = $user['failed_login_attempts'] ?? 0;
+        $newAttempts = $currentAttempts + 1;
+        $stmt->close();
+        
+        // Update failed attempts
+        $updateStmt = $conn->prepare("UPDATE employees SET failed_login_attempts = ? WHERE LOWER(email) = LOWER(?)");
+        $updateStmt->bind_param("is", $newAttempts, $email);
+        $updateStmt->execute();
+        $updateStmt->close();
+        
+        // Lock account if 3 or more failed attempts
+        if ($newAttempts >= 3) {
+            lockAccount($conn, $email);
+        }
+        
+        return $newAttempts;
+    }
+    
+    $stmt->close();
+    return 0;
+}
+
+// 🔥 CHANGE #2: New function to reset failed login attempts on successful login
+function resetFailedLoginAttempts(mysqli $conn, string $email): void {
+    $stmt = $conn->prepare("UPDATE employees SET failed_login_attempts = 0 WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// 🔥 CHANGE #2: New function to send account unlock email
+function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
+    global $loginUrl;
+    
+    // Generate unlock token
+    $unlockToken = bin2hex(random_bytes(32));
+    $unlockTokenExpires = date('Y-m-d H:i:s', time() + UNLOCK_TOKEN_VALIDITY);
+    
+    // Store unlock token in database
+    $stmt = $conn->prepare("UPDATE employees SET unlock_token = ?, unlock_token_expires = ? WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("sss", $unlockToken, $unlockTokenExpires, $email);
+    $stmt->execute();
+    $stmt->close();
+    
+    // Send unlock email
+    $mail = new PHPMailer(true);
+    try {
+        $mail->SMTPDebug = 0;
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'lguportalph@gmail.com';
+        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->SMTPSecure = 'tls';
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'quoted-printable';
+        $mail->Timeout    = 30;
+
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true,
+                'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
+            )
+        );
+
+        $mail->SMTPAutoTLS = true;
+        $mail->SMTPKeepAlive = false;
+        $mail->WordWrap = 0;
+
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->addAddress($email);
+
+        $mail->isHTML(true);
+        $mail->Subject = 'LGU Portal - Account Locked - Security Alert';
+
+        // Detect domain vs localhost and generate appropriate URL
+        $host = $_SERVER['HTTP_HOST'];
+        $isDomain = (strpos($host, 'infragovservices.com') !== false);
+        
+        if ($isDomain) {
+            $protocol = 'https';
+            $unlockUrl = $protocol . '://' . $host . '/lgu-portal/public/login.php?unlock_token=' . $unlockToken;
+        } else {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $scriptPath = dirname($_SERVER['PHP_SELF']);
+            $scriptPath = rtrim($scriptPath, '/');
+            $unlockUrl = $protocol . '://' . $host . $scriptPath . '/' . $loginUrl . '?unlock_token=' . $unlockToken;
+        }
+
+        // Email body with centered text and security alert styling
+        $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
+            <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1);border-top:4px solid #dc2626">
+                <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px;text-align:center;">LGU Portal</h1>
+                <h2 style="color:#dc2626;margin:0 0 30px 0;font-size:18px;font-weight:600;text-align:center;">🔒 Account Locked - Security Alert</h2>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
+                    Hello <strong style="color:#174c86">' . htmlspecialchars($firstName) . '</strong>,
+                </p>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
+                    Your account has been <strong style="color:#dc2626">permanently locked</strong> due to <strong>3 consecutive failed login attempts</strong>.
+                </p>
+                <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:15px;margin:20px 0;border-radius:4px;">
+                    <p style="color:#991b1b;font-size:13px;margin:0;font-weight:600;">Security Notice:</p>
+                    <p style="color:#991b1b;font-size:13px;margin:5px 0 0 0;">If you did not attempt to log in, someone may be trying to access your account. Please unlock your account and change your password immediately.</p>
+                </div>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
+                    Click the button below to <strong>unlock your account</strong>:
+                </p>
+                <div style="text-align:center;margin:30px 0">
+                    <a href="' . htmlspecialchars($unlockUrl) . '" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;text-align:center;">Unlock My Account</a>
+                </div>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
+                    Or copy and paste this link into your browser:
+                </p>
+                <p style="color:#2b6cb0;font-size:12px;word-break:break-all;background:#f0f4f8;padding:12px;border-radius:6px;margin:10px 0;text-align:center;">
+                    ' . htmlspecialchars($unlockUrl) . '
+                </p>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
+                    This unlock link is valid for <strong style="color:#174c86">24 hours</strong>.
+                </p>
+                <p style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0;text-align:center;">
+                    After unlocking, you will be able to log in again. We recommend changing your password for security.
+                </p>
+                <p style="color:#999;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:20px;text-align:center;">
+                    This is an automated security message. Please do not reply to this email.
+                </p>
+                <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; '.date('Y').' LGU Portal</p>
+            </div>
+        </body></html>';
+
+        $mail->Body = $htmlBody;
+        $mail->AltBody = "LGU Portal - Account Locked\n\n" .
+                        "Hello " . $firstName . ",\n\n" .
+                        "Your account has been permanently locked due to 3 consecutive failed login attempts.\n\n" .
+                        "Click the link below to unlock your account:\n" .
+                        $unlockUrl . "\n\n" .
+                        "This link is valid for 24 hours.\n\n" .
+                        "If you did not attempt to log in, someone may be trying to access your account.\n\n" .
+                        "© " . date('Y') . " LGU Portal";
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log('Account unlock email error: ' . $e->getMessage());
         return false;
     }
-    return true;
 }
-function registerLoginFail($email) {
-    $emailKey = strtolower($email);
-    if (!isset($_SESSION['failed_logins'])) {
-        $_SESSION['failed_logins'] = [];
-    }
-    if (!isset($_SESSION['failed_logins'][$emailKey])) {
-        $_SESSION['failed_logins'][$emailKey] = ['count' => 1, 'time' => time()];
+
+// 🔥 CHANGE #2: Handle account unlock token
+if (isset($_GET['unlock_token']) && !empty($_GET['unlock_token'])) {
+    $unlockToken = $_GET['unlock_token'];
+
+    $stmt = $conn->prepare("SELECT user_id, email, first_name, unlock_token_expires FROM employees WHERE unlock_token = ? AND account_locked = 1");
+    $stmt->bind_param("s", $unlockToken);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        if (strtotime($user['unlock_token_expires']) > time()) {
+            // Unlock the account
+            $unlockStmt = $conn->prepare("UPDATE employees SET account_locked = 0, failed_login_attempts = 0, unlock_token = NULL, unlock_token_expires = NULL WHERE unlock_token = ?");
+            $unlockStmt->bind_param("s", $unlockToken);
+            $unlockStmt->execute();
+            $unlockStmt->close();
+            
+            setNotification('success', 'Your account has been successfully unlocked! You can now log in. We recommend changing your password for security.');
+            header("Location: " . strtok($_SERVER["REQUEST_URI"], '?'));
+            exit;
+        } else {
+            setNotification('error', 'Account unlock link has expired. Please contact support for assistance.');
+            // Clean up expired token
+            $cleanupStmt = $conn->prepare("UPDATE employees SET unlock_token = NULL, unlock_token_expires = NULL WHERE unlock_token = ?");
+            $cleanupStmt->bind_param("s", $unlockToken);
+            $cleanupStmt->execute();
+            $cleanupStmt->close();
+        }
     } else {
-        $_SESSION['failed_logins'][$emailKey]['count'] += 1;
-        $_SESSION['failed_logins'][$emailKey]['time'] = time();
+        setNotification('error', 'Invalid or already used unlock link. If your account is locked, request a new unlock email.');
     }
-}
-function resetLoginFail($email) {
-    $emailKey = strtolower($email);
-    if (isset($_SESSION['failed_logins'][$emailKey])) {
-        unset($_SESSION['failed_logins'][$emailKey]);
-    }
+    $stmt->close();
+    header("Location: " . $loginUrl);
+    exit;
 }
 
 // ==================== FORGOT PASSWORD FUNCTIONALITY ====================
@@ -226,7 +408,7 @@ if (isset($_POST['forgot_password_submit'])) {
         $updateStmt->execute();
         $updateStmt->close();
 
-        // Send reset email with text centered
+        // Send reset email
         $mail = new PHPMailer(true);
         try {
             $mail->SMTPDebug = 0;
@@ -260,24 +442,19 @@ if (isset($_POST['forgot_password_submit'])) {
             $mail->isHTML(true);
             $mail->Subject = 'LGU Portal - Password Reset Request';
 
-            // 🔥 MODIFIED: Detect domain vs localhost and generate appropriate URL
             $host = $_SERVER['HTTP_HOST'];
             $isDomain = (strpos($host, 'infragovservices.com') !== false);
             
             if ($isDomain) {
-                // Domain format: https://cimm.infragovservices.com/lgu-portal/public/login.php
                 $protocol = 'https';
                 $resetUrl = $protocol . '://' . $host . '/lgu-portal/public/login.php?reset_token=' . $resetToken;
             } else {
-                // Localhost format: use current path structure
                 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $scriptPath = dirname($_SERVER['PHP_SELF']);
-                // Clean up double slashes
                 $scriptPath = rtrim($scriptPath, '/');
                 $resetUrl = $protocol . '://' . $host . $scriptPath . '/' . $loginUrl . '?reset_token=' . $resetToken;
             }
 
-            // All text centered
             $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
                 <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
                     <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
@@ -334,7 +511,7 @@ if (isset($_POST['forgot_password_submit'])) {
     exit;
 }
 
-// ========== RESET TOKEN HANDLING (WITH SESSION, CLEANUP, & REDIRECT PATCH) ==========
+// ========== RESET TOKEN HANDLING ==========
 if (isset($_GET['reset_token']) && !empty($_GET['reset_token'])) {
     $resetToken = $_GET['reset_token'];
 
@@ -349,9 +526,8 @@ if (isset($_GET['reset_token']) && !empty($_GET['reset_token'])) {
             $_SESSION['reset_token_valid'] = true;
             $_SESSION['reset_email'] = $user['email'];
             $_SESSION['reset_user_id'] = $user['user_id'];
-            $_SESSION['reset_token'] = $resetToken; // For POST verification
+            $_SESSION['reset_token'] = $resetToken;
             $_SESSION['show_reset_password_modal'] = true;
-            // Remove token from URL immediately (for security, sharing, reload)
             header("Location: " . strtok($_SERVER["REQUEST_URI"], '?'));
             exit;
         } else {
@@ -367,7 +543,7 @@ if (isset($_GET['reset_token']) && !empty($_GET['reset_token'])) {
     $stmt->close();
 }
 
-// ========== RESET PASSWORD SUBMIT PATCH (TOKEN/SESSION/SECURITY): ==========
+// ========== RESET PASSWORD SUBMIT ==========
 if (isset($_POST['reset_password_submit'])) {
     $newPassword = $_POST['reset_new_password'] ?? '';
     $confirmPassword = $_POST['reset_confirm_password'] ?? '';
@@ -388,7 +564,6 @@ if (isset($_POST['reset_password_submit'])) {
         $_SESSION['show_reset_password_modal'] = true;
         exit;
     } elseif ($email && $userId && $resetToken) {
-        // --- Verify token is still valid ---
         $verifyStmt = $conn->prepare("SELECT reset_token_expires FROM employees WHERE user_id = ? AND email = ? AND reset_token = ?");
         $verifyStmt->bind_param("iss", $userId, $email, $resetToken);
         $verifyStmt->execute();
@@ -397,13 +572,11 @@ if (isset($_POST['reset_password_submit'])) {
         if ($verifyResult->num_rows === 1) {
             $tokenData = $verifyResult->fetch_assoc();
             if (strtotime($tokenData['reset_token_expires']) > time()) {
-                // Token valid: update password
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
                 $stmt = $conn->prepare("UPDATE employees SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE user_id = ? AND email = ?");
                 $stmt->bind_param("sis", $hashedPassword, $userId, $email);
 
                 if ($stmt->execute()) {
-                    // Clear ALL reset session variables
                     unset(
                         $_SESSION['show_reset_password_modal'],
                         $_SESSION['reset_token_valid'],
@@ -422,7 +595,6 @@ if (isset($_POST['reset_password_submit'])) {
                 }
                 $stmt->close();
             } else {
-                // expired token even though session existed (should not happen)
                 setNotification('error', 'Password reset link expired. Please request a new one.');
                 unset(
                     $_SESSION['show_reset_password_modal'],
@@ -461,9 +633,7 @@ if (isset($_POST['reset_password_submit'])) {
     }
 }
 
-// ==================== END FORGOT PASSWORD FUNCTIONALITY ====================
-
-// Handle password change submission (as before)
+// Handle password change submission
 if (isset($_POST['change_password_submit'])) {
     $newPassword = $_POST['new_password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
@@ -502,13 +672,13 @@ if (isset($_POST['change_password_submit'])) {
     }
 }
 
-// Reset OTP/session state logic (unchanged)
+// Reset OTP/session state logic
 if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_password_modal']) && !isset($_SESSION['show_otp_form']) && !isset($_SESSION['show_reset_password_modal'])) {
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_verified']);
     unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 }
 
-// OTP verification (no perf change needed for this section)
+// OTP verification
 if (isset($_POST['otp_submit'])) {
     $entered_otp = trim($_POST['otp']);
     $current_time = time();
@@ -533,25 +703,14 @@ if (isset($_POST['otp_submit'])) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
 
-        // Log successful OTP login with resend count
         logLoginEvent($conn, $_SESSION['login_email'], true, null, true, $_SESSION['otp_total_resends'] ?? 0);
 
         $email = $_SESSION['login_email'];
-        $now = date('Y-m-d H:i:s');
-        $updateOtpStmt = $conn->prepare("
-            UPDATE employees
-            SET last_otp_verified_at = ?
-            WHERE email = ?
-        ");
-        $updateOtpStmt->bind_param("ss", $now, $email);
-        $updateOtpStmt->execute();
-        $updateOtpStmt->close();
 
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
         unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 
         if ($email) {
-            // Fetch user_id, is_first_login, role for post-OTP session
             $checkStmt = $conn->prepare("SELECT user_id, is_first_login, role, first_name FROM employees WHERE email = ?");
             $checkStmt->bind_param("s", $email);
             $checkStmt->execute();
@@ -564,6 +723,9 @@ if (isset($_POST['otp_submit'])) {
                 $_SESSION['employee_id'] = isset($userData['user_id']) ? (int)$userData['user_id'] : null;
                 $_SESSION['employee_first_name'] = $userData['first_name'] ?? '';
 
+                // 🔥 CHANGE #2: Reset failed login attempts on successful login
+                resetFailedLoginAttempts($conn, $email);
+
                 if ($isFirstLogin == 1) {
                     $_SESSION['show_change_password_modal'] = true;
                     setNotification('info', 'Please change your password to continue.');
@@ -571,8 +733,8 @@ if (isset($_POST['otp_submit'])) {
                     exit;
                 } else {
                     unset($_SESSION['show_change_password_modal']);
-                    unset($_SESSION['notification']); // Clear notification
-                    $_SESSION['show_welcome_animation'] = true; // ✅ SET FLAG FOR ANIMATION
+                    unset($_SESSION['notification']);
+                    $_SESSION['show_welcome_animation'] = true;
                     echo "<script>
                         var overlay = document.getElementById('loadingOverlay');
                         if (overlay) {
@@ -611,37 +773,31 @@ if (isset($_POST['otp_submit'])) {
     }
 }
 
-// --- Login submission logic with performance improvements ---
+// --- Login submission logic ---
 if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'] ?? '';
-    $remember = isset($_POST['remember_me']) ? true : false;
 
-    // Step 1: Validate email format FIRST
+    // 🔥 CHANGE #3: No remember_me handling - completely removed
+
+    // Validate email format
     if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/', $email)) {
         setNotification('warning', 'Only @gmail.com email addresses are allowed');
         header("Location: " . $loginUrl);
         exit;
     }
 
-    // Step 2: Check session-cached failed login attempts before DB query (session cache, per lowercase email)
-    $emailKey = strtolower($email);
-    if (!isset($_SESSION['failed_logins'])) $_SESSION['failed_logins'] = [];
-    $failedInfo = $_SESSION['failed_logins'][$emailKey] ?? ['count' => 0, 'time' => 0];
-    if (
-        isset($_POST['login_submit']) &&
-        $failedInfo['count'] >= 3 && (time() - $failedInfo['time'] < 600)
-    ) {
-        $minutesLeft = floor((600 - (time() - $failedInfo['time'])) / 60);
-        $secondsLeft = (600 - (time() - $failedInfo['time'])) % 60;
-        setNotification('error', "Too many incorrect password attempts. Login is disabled for this account for 10 minutes. Please try again after " . sprintf('%02d:%02d', $minutesLeft, $secondsLeft) . ".");
+    // 🔥 CHANGE #2: Check if account is locked in DATABASE (not session)
+    if (isset($_POST['login_submit']) && isAccountLocked($conn, $email)) {
+        logLoginEvent($conn, $email, false, 'Account locked');
+        setNotification('error', 'Your account has been permanently locked due to multiple failed login attempts. Please check your email for instructions to unlock your account.');
         header("Location: " . $loginUrl);
         exit;
     }
 
-    // Step 3: Lazy-load (do NOT query DB if format invalid or locked out above): fetch user here if we reach this far
+    // Fetch user from database
     $stmt = $conn->prepare("
-        SELECT user_id, first_name, password, email_verified, is_first_login, last_otp_verified_at, role
+        SELECT user_id, first_name, password, email_verified, is_first_login, role, account_locked, failed_login_attempts
         FROM employees
         WHERE LOWER(email) = LOWER(?)
     ");
@@ -651,7 +807,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     if ($result->num_rows !== 1) {
         $stmt->close();
-        // Check in pending_registrations ONLY if not found in employees
+        // Check in pending_registrations
         $pendingStmt = $conn->prepare("SELECT penreg_id, email, verification_token_expires FROM pending_registrations WHERE LOWER(email) = LOWER(?)");
         $pendingStmt->bind_param("s", $email);
         $pendingStmt->execute();
@@ -670,7 +826,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 setNotification('error', 'Email not found. Your verification link has expired. Please register again.');
             } else {
                 logLoginEvent($conn, $email, false, 'Email not verified');
-                setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the \"Confirm Email\" button to activate your account. Your account will be created after verification.');
+                setNotification('error', 'Your account registration is pending email verification. Please check your email (' . htmlspecialchars($pendingRow['email']) . ') and click the "Confirm Email" button to activate your account. Your account will be created after verification.');
             }
             $pendingStmt->close();
             header("Location: " . $loginUrl);
@@ -689,40 +845,38 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
     if (!isset($user['email_verified']) || $user['email_verified'] != 1) {
         logLoginEvent($conn, $email, false, 'Email not verified');
-        setNotification('error', 'Your email address has not been verified yet. Please check your email and click the \"Confirm Email\" button to activate your account.');
+        setNotification('error', 'Your email address has not been verified yet. Please check your email and click the "Confirm Email" button to activate your account.');
         header("Location: " . $loginUrl);
         exit;
     }
 
-    // 🔥 CRITICAL: Store employee_id in SESSION right after fetching the user
     $_SESSION['employee_id'] = isset($user['user_id']) ? (int)$user['user_id'] : null;
     $_SESSION['employee_first_name'] = $user['first_name'];
     $_SESSION['employee_role'] = $user['role'] ?? '';
 
-    // Only check password if not resending OTP
-    $requireOtp = false;
+    // Check password if not resending OTP
     if (isset($_POST['login_submit'])) {
         if (!password_verify($password, $user['password'])) {
             logLoginEvent($conn, $email, false, 'Incorrect password');
-            registerLoginFail($email);
-            // Check updated fail count for current login/lockout state
-            $failCount = $_SESSION['failed_logins'][strtolower($email)]['count'] ?? 1;
-            $triesLeft = max(0, 3 - $failCount);
-            $msg = 'Incorrect password';
-            if (isLoginLockedOut($email)) {
-                $msg .= ". You have reached 3 failed attempts. Login is locked for 10 minutes for this account.";
+            
+            // 🔥 CHANGE #2: Register failed login in DATABASE
+            $failedAttempts = registerFailedLogin($conn, $email);
+            $triesLeft = max(0, 3 - $failedAttempts);
+            
+            if ($failedAttempts >= 3) {
+                // Account is now locked - send unlock email
+                sendUnlockEmail($conn, $email, $user['first_name']);
+                setNotification('error', 'Your account has been locked due to 3 failed login attempts. An unlock link has been sent to your email address.');
             } else {
-                if ($triesLeft > 0) {
-                    $msg .= ". You have $triesLeft attempt" . ($triesLeft > 1 ? "s" : "") . " remaining before lockout.";
-                } else {
-                    $msg .= ". Login is now locked for 10 minutes for this account.";
-                }
+                $msg = 'Incorrect password. You have ' . $triesLeft . ' attempt' . ($triesLeft > 1 ? 's' : '') . ' remaining before your account is locked.';
+                setNotification('error', $msg);
             }
-            setNotification('error', $msg);
+            
             header("Location: " . $loginUrl);
             exit;
         } else {
-            resetLoginFail($email);
+            // 🔥 CHANGE #2: Reset failed login attempts on successful password verification
+            resetFailedLoginAttempts($conn, $email);
 
             if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
                 $newHash = password_hash($password, PASSWORD_DEFAULT);
@@ -732,48 +886,11 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 $rehashStmt->close();
             }
 
-            if ($user['last_otp_verified_at'] === null) {
-                $requireOtp = true;
-            } else {
-                $lastOtpTime = strtotime($user['last_otp_verified_at']);
-                if ((time() - $lastOtpTime) > OTP_VALIDITY_SECONDS) {
-                    $requireOtp = true;
-                }
-            }
-
-            if (!$requireOtp) {
-                $_SESSION['employee_logged_in'] = true;
-                $_SESSION['otp_verified'] = true;
-                // 🧑‍💻 Ensure all session variables set on direct login
-                $_SESSION['employee_id'] = isset($user['user_id']) ? (int)$user['user_id'] : null;
-                $_SESSION['employee_role'] = $user['role'];
-                $_SESSION['employee_first_name'] = $user['first_name'];
-                logLoginEvent($conn, $email, true, null, false, 0);
-                unset($_SESSION['notification']); // Clear notification
-                $_SESSION['show_welcome_animation'] = true; // ✅ SET FLAG FOR ANIMATION
-                echo "<script>
-                    var overlay = document.getElementById('loadingOverlay');
-                    if (overlay) {
-                        overlay.classList.add('show');
-                    }
-                    setTimeout(function(){ 
-                        window.location.href = '" . htmlspecialchars($employeeUrl) . "'; 
-                    }, 0);
-                </script>";
-                exit;
-            }
+            // 🔥 CHANGE #1: ALWAYS require OTP
+            $requireOtp = true;
         }
-    }
-
-    // Remember Me: Store credentials cookie if chosen
-    if (isset($_POST['login_submit'])) {
-        if ($remember) {
-            setcookie('remember_email', $email, time() + (60 * 60 * 24 * 7), "/");
-            setcookie('remember_password', base64_encode($password), time() + (60 * 60 * 24 * 7), "/");
-        } else {
-            setcookie('remember_email', '', time() - 3600, "/");
-            setcookie('remember_password', '', time() - 3600, "/");
-        }
+    } else {
+        $requireOtp = true;
     }
 
     $_SESSION['login_email'] = $email;
@@ -783,17 +900,13 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $currentTime = time();
         $isResend = isset($_POST['resend_otp']);
 
-        // ONLY CHECK COOLDOWN FOR RESEND REQUESTS (not initial OTP)
         if ($isResend) {
-            // Check if cooldown period has passed (30 seconds)
             $timeSinceLastSend = $currentTime - ($_SESSION['otp_last_sent_time'] ?? 0);
 
-            // If 30 seconds have passed, reset the resend counter
             if ($timeSinceLastSend >= OTP_RESEND_COOLDOWN) {
                 $_SESSION['otp_resend_count'] = 0;
             }
 
-            // Check resend cooldown
             $remainingCooldown = max(0, OTP_RESEND_COOLDOWN - $timeSinceLastSend);
 
             if ($remainingCooldown > 0) {
@@ -803,7 +916,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 exit;
             }
 
-            // Check max resends within cooldown period
             if ($_SESSION['otp_resend_count'] >= OTP_MAX_RESENDS) {
                 setNotification('error', 'Maximum OTP resend attempts reached. Please wait 30 seconds before trying again.');
                 $_SESSION['show_otp_form'] = true;
@@ -888,7 +1000,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
             $mail->send();
 
-            // Update counters AFTER successful send
             $_SESSION['otp_last_sent_time'] = time();
             
             if ($isResend) {
@@ -908,7 +1019,6 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
             setNotification('success', 'OTP sent! Please check your email.' . $resendInfo);
 
-            // KEEP USER ON OTP FORM
             $_SESSION['show_otp_form'] = true;
             header("Location: " . $loginUrl);
             exit;
@@ -1559,18 +1669,12 @@ MOBILE SIDEBAR STYLES
     box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
 }
 
-.input-rem-forgot-row {
+/* 🔥 CHANGE #3: Forgot password link now in place of remember me */
+.forgot-password-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-start;
     margin-bottom: 24px;
     font-size: 14px;
-}
-
-.input-rem-forgot-row label {
-    margin: 0;
-    font-weight: 500;
-    color: var(--text-primary);
 }
 
 .forgot-link {
@@ -3297,21 +3401,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <form method="post" action="" id="mainLoginForm">
                 <div class="input-box">
                     <label>Email Address</label>
-                    <input type="email" name="email" id="loginEmail" placeholder="yourname@gmail.com" required
-                        value="<?php echo isset($_COOKIE['remember_email']) ? htmlspecialchars($_COOKIE['remember_email'], ENT_QUOTES) : ''; ?>">
+                    <input type="email" name="email" id="loginEmail" placeholder="yourname@gmail.com" required>
                     <span class="icon">📧</span>
                 </div>
                 <div class="input-box" style="position: relative;">
                     <label>Password</label>
                     <input type="password" name="password" id="passwordInput"
-                        placeholder="•••••••" required
-                        value="<?php
-                           if (isset($_COOKIE['remember_password']) && isset($_COOKIE['remember_email'])) {
-                               if (is_string($_COOKIE['remember_password'])) {
-                                   echo htmlspecialchars(base64_decode($_COOKIE['remember_password']), ENT_QUOTES);
-                               }
-                           }
-                        ?>">
+                        placeholder="•••••••" required>
                     <button type="button" id="togglePassword"
                             style="
                                 position: absolute;
@@ -3327,14 +3423,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <span id="togglePwdIcon" aria-hidden="true">👁️</span>
                     </button>
                 </div>
-                <!-- PATCHED: Row for Remember me left, Forgot Password right -->
-                <div class="input-rem-forgot-row">
-                    <label style="display:flex;align-items:center;cursor:pointer;">
-                        <input type="checkbox" name="remember_me" id="rememberMe"
-                            style="margin-right:7px;width:18px;height:18px;"
-                            <?php if (isset($_COOKIE['remember_email'])) echo 'checked'; ?>>
-                        Remember me
-                    </label>
+                <!-- 🔥 CHANGE #3: Forgot Password link moved to where Remember Me was -->
+                <div class="forgot-password-container">
                     <a href="#" id="forgotPasswordLink" class="forgot-link">Forgot Password?</a>
                 </div>
                 <div class="btn-container">
@@ -3363,13 +3453,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     }
                 });
                 toggleIcon.textContent = iconShow;
-
-                document.addEventListener('DOMContentLoaded', function() {
-                    var emailInput = document.getElementById('loginEmail');
-                    var passInput = document.getElementById('passwordInput');
-                    var rememberChk = document.getElementById('rememberMe');
-                    if(emailInput.value && passInput.value) rememberChk.checked = true;
-                });
 
                 <?php if($disableLogin): ?>
                 let lockoutSeconds = <?php echo isset($remain) ? (int)$remain : 600; ?>;
