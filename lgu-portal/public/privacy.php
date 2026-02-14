@@ -347,34 +347,34 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-        <span>InfraGovServices</span>
+        <span data-i18n="site_title">InfraGovServices</span>
     </a>
     
     <div class="nav-center">
         <div class="nav-links">
             <?php if ($show_login): ?>
-                <a href="<?= $BASE_URL ?>login.php">Log in</a>
+                <a href="<?= $BASE_URL ?>login.php" data-i18n="nav_login">Log in</a>
             <?php endif; ?>
-            <a href="<?= $BASE_URL ?>citizencimm.php">Home</a>
-            <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
-            <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php">About</a>
+            <a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="nav_home">Home</a>
+            <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>about.php" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
         
         <div class="nav-actions">
             <div class="desktop-clock" id="desktopClock"></div>
-                        <!-- TRANSLATE BUTTON (desktop) -->
-                        <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
-                    <span class="globe-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="2" y1="12" x2="22" y2="12"/>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                        </svg>
-                    </span>
-                    <span class="lang-label" id="langLabel">EN</span>
+            <!-- TRANSLATE BUTTON (desktop) -->
+            <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
+                <span class="globe-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                </span>
+                <span class="lang-label" id="langLabel" data-i18n="lang_label">EN</span>
             </button>
             <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
                 <span class="dark-icon">🌙</span>
@@ -395,12 +395,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -408,15 +408,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-        <!-- MOBILE TRANSLATE BUTTON -->
-        <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <span class="mobile-lang-label" id="mobileLangLabel">E</span>
-        </button>
+    <!-- MOBILE TRANSLATE BUTTON -->
+    <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="mobile-lang-label" id="mobileLangLabel">E</span>
+    </button>
     <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
     </a>
@@ -427,24 +427,30 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     </button>
 </div>
 
+<!-- LANGUAGE BADGE (toast) -->
+<div class="lang-badge" id="langBadge">
+    <span class="badge-flag" id="badgeFlag">🇺🇸</span>
+    <span id="badgeText">Switched to English</span>
+</div>
+
 <div class="form-wrapper">
     <div class="about-card">
-        <h1>Privacy Policy</h1>
+        <h1 data-i18n="privacy_title">Privacy Policy</h1>
 
         <div class="section-box intro">
-            <p>
+            <p data-i18n="privacy_intro_p1">
                 This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
                 and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
             </p>
-            <p>
+            <p data-i18n-html="privacy_intro_p2">
                 This Privacy Policy shall be governed by and construed in accordance with the laws of the Republic of the
                 Philippines, particularly the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📋</span> Data Collection and Processing</h2>
-            <p>
+            <h2><span class="icon">📋</span> <span data-i18n="privacy_collection_title">Data Collection and Processing</span></h2>
+            <p data-i18n="privacy_collection_desc">
                 In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations,
                 and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
                 Coordination and Data-Driven Infrastructure Planning Using AI-assisted Decision Support Technologies is committed
@@ -453,28 +459,28 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">⚖️</span> Lawful Processing Principles</h2>
-            <p>
+            <h2><span class="icon">⚖️</span> <span data-i18n="privacy_lawful_title">Lawful Processing Principles</span></h2>
+            <p data-i18n="privacy_lawful_desc">
                 All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
                 and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔍</span> Types of Information Collected</h2>
-            <p>The System may collect personal and non-personal information including:</p>
+            <h2><span class="icon">🔍</span> <span data-i18n="privacy_types_title">Types of Information Collected</span></h2>
+            <p data-i18n="privacy_types_intro">The System may collect personal and non-personal information including:</p>
             <ul class="purpose-list">
-                <li>Names or user identifiers</li>
-                <li>Usernames and account credentials</li>
-                <li>Contact information when applicable</li>
-                <li>Location data related to infrastructure reports</li>
-                <li>System activity logs and timestamps</li>
+                <li data-i18n="privacy_types_item1">Names or user identifiers</li>
+                <li data-i18n="privacy_types_item2">Usernames and account credentials</li>
+                <li data-i18n="privacy_types_item3">Contact information when applicable</li>
+                <li data-i18n="privacy_types_item4">Location data related to infrastructure reports</li>
+                <li data-i18n="privacy_types_item5">System activity logs and timestamps</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔐</span> Data Security and Protection</h2>
-            <p>
+            <h2><span class="icon">🔐</span> <span data-i18n="privacy_security_title">Data Security and Protection</span></h2>
+            <p data-i18n="privacy_security_desc">
                 We implement appropriate technical and organizational measures to ensure the security of your personal data
                 against unauthorized access, alteration, disclosure, or destruction. All data is encrypted during transmission
                 and storage.
@@ -482,64 +488,64 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">👤</span> Your Rights as a Data Subject</h2>
-            <p>Under the Data Privacy Act of 2012, you have the right to:</p>
+            <h2><span class="icon">👤</span> <span data-i18n="privacy_rights_title">Your Rights as a Data Subject</span></h2>
+            <p data-i18n="privacy_rights_intro">Under the Data Privacy Act of 2012, you have the right to:</p>
             <ul class="purpose-list">
-                <li>Be informed about the collection and processing of your personal data</li>
-                <li>Access your personal data and request corrections</li>
-                <li>Object to the processing of your personal data</li>
-                <li>Request erasure or blocking of your personal data</li>
-                <li>File a complaint with the National Privacy Commission</li>
+                <li data-i18n="privacy_rights_item1">Be informed about the collection and processing of your personal data</li>
+                <li data-i18n="privacy_rights_item2">Access your personal data and request corrections</li>
+                <li data-i18n="privacy_rights_item3">Object to the processing of your personal data</li>
+                <li data-i18n="privacy_rights_item4">Request erasure or blocking of your personal data</li>
+                <li data-i18n="privacy_rights_item5">File a complaint with the National Privacy Commission</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🤝</span> User Consent and Agreement</h2>
-            <p>By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
+            <h2><span class="icon">🤝</span> <span data-i18n="privacy_consent_title">User Consent and Agreement</span></h2>
+            <p data-i18n="privacy_consent_p1">By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
                 AI-Assisted Public Works Coordination and Infrastructure Management System.</p>
-            <p>I voluntarily consent to:</p>
+            <p data-i18n="privacy_consent_p2">I voluntarily consent to:</p>
             <ul class="purpose-list">
-                <li>The collection, processing, and storage of my personal data in accordance with the Data Privacy Act of 2012 (RA 10173)</li>
-                <li>The use of AI-generated recommendations for decision support purposes only</li>
-                <li>Understanding that AI recommendations do not replace human judgment or official authority</li>
+                <li data-i18n="privacy_consent_item1">The collection, processing, and storage of my personal data in accordance with the Data Privacy Act of 2012 (RA 10173)</li>
+                <li data-i18n="privacy_consent_item2">The use of AI-generated recommendations for decision support purposes only</li>
+                <li data-i18n="privacy_consent_item3">Understanding that AI recommendations do not replace human judgment or official authority</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📞</span> Contact Information</h2>
-            <p>
+            <h2><span class="icon">📞</span> <span data-i18n="privacy_contact_title">Contact Information</span></h2>
+            <p data-i18n="privacy_contact_intro">
                 For questions or concerns regarding this Privacy Policy or the handling of your personal data, please contact our
                 Data Protection Officer at:
             </p>
             <p style="margin-top: 10px;">
-                <strong>Email:</strong> dpo@infragovservices.com<br>
-                <strong>Phone:</strong> (02) 8988-4242
+                <strong><span data-i18n="privacy_contact_email">Email:</span></strong> dpo@infragovservices.com<br>
+                <strong><span data-i18n="privacy_contact_phone">Phone:</span></strong> (02) 8988-4242
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📅</span> Policy Updates</h2>
-            <p>
+            <h2><span class="icon">📅</span> <span data-i18n="privacy_updates_title">Policy Updates</span></h2>
+            <p data-i18n="privacy_updates_p1">
                 This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
                 and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
             </p>
             <p style="margin-top: 10px;">
-                <strong>Last Updated:</strong> February 2026
+                <strong><span data-i18n="privacy_updates_label">Last Updated:</span></strong> <span data-i18n="privacy_updates_date">February 2026</span>
             </p>
         </div>
 
         <div class="btn-wrap">
-            <a href="<?= $BASE_URL ?>citizencimm.php" class="btn">Back to Home</a>
+            <a href="<?= $BASE_URL ?>citizencimm.php" class="btn" data-i18n="privacy_back_button">Back to Home</a>
         </div>
     </div>
 </div>
 
-<!-- FOOTER - Updated from citizencimm.php -->
+<!-- FOOTER -->
 <footer class="footer">
     <div class="footer-content">
         <div class="footer-about">
-            <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <h3 data-i18n="site_title">InfraGovServices</h3>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
                     <span>📧</span>
@@ -557,38 +563,38 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
         
         <div class="footer-links">
-            <h4>Quick Links</h4>
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= $BASE_URL ?>citizencimm.php">Home</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenreports.php">Reports</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenrepform.php">Submit Request</a></li>
-                <li><a href="<?= $BASE_URL ?>about.php">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer_resources">Resources</h4>
             <ul>
-                <li><a href="#">User Guide</a></li>
-                <li><a href="#">FAQs</a></li>
-                <li><a href="#">Service Areas</a></li>
-                <li><a href="#">Emergency Contacts</a></li>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Legal</h4>
+            <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="<?= $BASE_URL ?>termcon.php">Terms of Service</a></li>
-                <li><a href="#">Data Protection</a></li>
-                <li><a href="#">Accessibility</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="<?= $BASE_URL ?>termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
         </div>
     </div>
     
     <div class="footer-bottom">
-        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
         <div class="footer-social">
             <a href="#" class="social-link" title="Facebook">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

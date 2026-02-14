@@ -2,7 +2,7 @@
 /* ---------------------------------------------------------------
    TRANSLATIONS ENGINE
    --------------------------------------------------------------- */
-   (function() {
+(function() {
     'use strict';
 
     const BASE = '<?= $BASE_URL ?>';
@@ -35,13 +35,15 @@
         ripple.addEventListener('animationend', () => ripple.remove());
     }
 
-    /* --- Show toast badge --- */
+    /* --- Show toast badge with proper flag emoji rendering --- */
     function showBadge(lang) {
         if (lang === 'tl') {
-            badgeFlag.textContent = '🇵🇭';
+            // Use individual regional indicator symbols for better cross-platform support
+            badgeFlag.innerHTML = '&#x1F1F5;&#x1F1ED;'; // 🇵🇭
             badgeText.textContent = 'Isinalin sa Filipino';
         } else {
-            badgeFlag.textContent = '🇺🇸';
+            // Use individual regional indicator symbols for better cross-platform support
+            badgeFlag.innerHTML = '&#x1F1FA;&#x1F1F8;'; // 🇺🇸
             badgeText.textContent = 'Switched to English';
         }
         langBadge.classList.add('show');
@@ -51,32 +53,73 @@
 
     /* --- Apply translations to DOM --- */
     function applyTranslations(lang) {
-        if (!translations) return;
-        const t = translations[lang];
-        if (!t) return;
+        console.log('[i18n] Applying translations for:', lang);
+        
+        if (!translations) {
+            console.error('[i18n] Translations object is null/undefined!');
+            // Try to get from preloaded
+            if (window.__preloadedTranslations) {
+                translations = window.__preloadedTranslations;
+                console.log('[i18n] Recovered translations from window.__preloadedTranslations');
+            } else {
+                return;
+            }
+        }
 
-        // data-i18n  → textContent
-        document.querySelectorAll('[data-i18n]').forEach(el => {
+        if (typeof updateMapLayerToggleText === 'function') {
+            updateMapLayerToggleText();
+        }
+        
+        const t = translations[lang];
+        if (!t) {
+            console.error('[i18n] No translations found for language:', lang);
+            return;
+        }
+
+        let count = 0;
+
+        // data-i18n → textContent
+        const dataI18nElements = document.querySelectorAll('[data-i18n]');
+        console.log('[i18n] Processing', dataI18nElements.length, '[data-i18n] elements');
+        dataI18nElements.forEach(el => {
             const key = el.getAttribute('data-i18n');
-            if (t[key] !== undefined) el.textContent = t[key];
+            if (t[key] !== undefined) {
+                el.textContent = t[key];
+                count++;
+            }
         });
 
-        // data-i18n-html → innerHTML
-        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        // data-i18n-html → innerHTML (CRITICAL FOR SECTION BOXES)
+        const dataI18nHtmlElements = document.querySelectorAll('[data-i18n-html]');
+        console.log('[i18n] Processing', dataI18nHtmlElements.length, '[data-i18n-html] elements');
+        dataI18nHtmlElements.forEach(el => {
             const key = el.getAttribute('data-i18n-html');
-            if (t[key] !== undefined) el.innerHTML = t[key];
+            if (t[key] !== undefined) {
+                el.innerHTML = t[key];
+                count++;
+            }
         });
 
         // data-i18n-placeholder → placeholder attribute
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const dataI18nPlaceholderElements = document.querySelectorAll('[data-i18n-placeholder]');
+        console.log('[i18n] Processing', dataI18nPlaceholderElements.length, '[data-i18n-placeholder] elements');
+        dataI18nPlaceholderElements.forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
-            if (t[key] !== undefined) el.placeholder = t[key];
+            if (t[key] !== undefined) {
+                el.placeholder = t[key];
+                count++;
+            }
         });
 
         // data-i18n-title → title attribute
-        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const dataI18nTitleElements = document.querySelectorAll('[data-i18n-title]');
+        console.log('[i18n] Processing', dataI18nTitleElements.length, '[data-i18n-title] elements');
+        dataI18nTitleElements.forEach(el => {
             const key = el.getAttribute('data-i18n-title');
-            if (t[key] !== undefined) el.title = t[key];
+            if (t[key] !== undefined) {
+                el.title = t[key];
+                count++;
+            }
         });
 
         // Update button labels & state
@@ -95,6 +138,8 @@
         // html lang attribute
         document.documentElement.lang = lang === 'tl' ? 'tl' : 'en';
 
+        console.log('[i18n] ✅ Total elements translated:', count);
+
         // Notify chatbot widget
         if (typeof window.__chatbotRefreshLang === 'function') {
             window.__chatbotRefreshLang();
@@ -112,9 +157,9 @@
         btn.classList.add('translating');
         setTimeout(() => btn.classList.remove('translating'), 650);
 
-        // Content fade swap
-        document.body.classList.add('translating-page');
-        setTimeout(() => document.body.classList.remove('translating-page'), 360);
+        // REMOVED: Content fade swap animation that was causing backdrop filter issues
+        // document.body.classList.add('translating-page');
+        // setTimeout(() => document.body.classList.remove('translating-page'), 360);
 
         const newLang = currentLang === 'en' ? 'tl' : 'en';
 
@@ -127,6 +172,7 @@
         }
 
         if (!translations) {
+            console.log('[i18n] No translations loaded, fetching...');
             fetch(JSON_PATH)
                 .then(r => {
                     if (!r.ok) throw new Error('Failed to load translations.json');
@@ -146,29 +192,59 @@
 
     /* --- Init --- */
     function init() {
-        // If translations were preloaded and language is Filipino, they're already applied
+        console.log('[i18n] init() called');
+        console.log('[i18n] currentLang:', currentLang);
+        console.log('[i18n] translations exist:', !!translations);
+        
+        // Ensure translations are loaded
+        if (!translations && window.__preloadedTranslations) {
+            translations = window.__preloadedTranslations;
+            console.log('[i18n] Loaded translations from window.__preloadedTranslations');
+        }
+        
         if (!translations && currentLang === 'tl') {
+            console.log('[i18n] No translations, fetching for Filipino...');
             fetch(JSON_PATH)
                 .then(r => r.json())
                 .then(data => {
                     translations = data;
                     applyTranslations('tl');
+                    // Make page visible after translations are applied
+                    document.documentElement.style.visibility = 'visible';
                 })
-                .catch(() => { /* silently fail */ });
+                .catch((err) => {
+                    console.error('[i18n] Failed to fetch translations:', err);
+                    // Make page visible even if translations fail
+                    document.documentElement.style.visibility = 'visible';
+                });
         } else if (translations && currentLang === 'tl') {
-            // Already applied during preload, just ensure buttons are correct
-            applyTranslations('tl');
+            // Wait a bit to ensure DOM is fully ready
+            console.log('[i18n] Translations exist, applying Filipino after delay...');
+            setTimeout(() => {
+                applyTranslations('tl');
+                // Make page visible after translations are applied
+                document.documentElement.style.visibility = 'visible';
+            }, 200);
         } else {
-            // English mode - set initial label
+            // English mode - set initial label and make visible immediately
             if (mobileLangLabel) mobileLangLabel.textContent = 'E';
+            document.documentElement.style.visibility = 'visible';
+            console.log('[i18n] English mode - no translation needed');
         }
-
+        
         // Wire up buttons
-        if (translateBtn)       translateBtn.addEventListener('click', toggleLanguage);
+        if (translateBtn) translateBtn.addEventListener('click', toggleLanguage);
         if (mobileTranslateBtn) mobileTranslateBtn.addEventListener('click', toggleLanguage);
+        
+        console.log('[i18n] init() completed');
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    // Make sure this runs AFTER DOMContentLoaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        setTimeout(init, 100);
+    }
 })();
 
 /* ---------------------------------------------------------------
@@ -359,5 +435,4 @@ if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
         window.history.replaceState({}, document.title, cleanUrl);
     }
     </script>
-    <?php endif; ?>
-<script>
+<?php endif; ?>

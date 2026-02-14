@@ -347,18 +347,18 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-        <span>InfraGovServices</span>
+        <span data-i18n="site_title">InfraGovServices</span>
     </a>
     
     <div class="nav-center">
         <div class="nav-links">
             <?php if ($show_login): ?>
-                <a href="<?= $BASE_URL ?>login.php">Log in</a>
+                <a href="<?= $BASE_URL ?>login.php" data-i18n="nav_login">Log in</a>
             <?php endif; ?>
-            <a href="<?= $BASE_URL ?>citizencimm.php">Home</a>
-            <a href="<?= $BASE_URL ?>citizenreports.php">Reports</a>
-            <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php" class="active">About</a>
+            <a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="nav_home">Home</a>
+            <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>about.php" class="active" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -367,15 +367,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <div class="desktop-clock" id="desktopClock"></div>
 
             <!-- TRANSLATE BUTTON (desktop) -->
-            <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
-                    <span class="globe-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="2" y1="12" x2="22" y2="12"/>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                        </svg>
-                    </span>
-                    <span class="lang-label" id="langLabel">EN</span>
+            <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
+                <span class="globe-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                </span>
+                <span class="lang-label" id="langLabel" data-i18n="lang_label">EN</span>
             </button>
 
             <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
@@ -397,12 +397,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><span>ℹ️</span><span>About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -411,14 +411,14 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
     <!-- MOBILE TRANSLATE BUTTON -->
-    <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <span class="mobile-lang-label" id="mobileLangLabel">E</span>
-        </button>
+    <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="mobile-lang-label" id="mobileLangLabel">E</span>
+    </button>
 
     <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
@@ -430,44 +430,50 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     </button>
 </div>
 
+<!-- LANGUAGE BADGE (toast) -->
+<div class="lang-badge" id="langBadge">
+    <span class="badge-flag" id="badgeFlag">🇺🇸</span>
+    <span id="badgeText">Switched to English</span>
+</div>
+
 <div class="form-wrapper">
     <div class="about-card">
-        <h1>About CIMMS – Quezon City</h1>
+        <h1 data-i18n="about_title">About CIMMS – Quezon City</h1>
 
         <div class="section-box intro">
-            <p>
+            <p data-i18n-html="about_intro_p1">
                 <b>Community Infrastructure Maintenance Management System (CIMMS)</b> is a modern digital platform developed for the 
                 <b>Local Government of Quezon City</b> to improve how infrastructure concerns are reported, managed, and resolved across the city.
             </p>
-            <p>
+            <p data-i18n-html="about_intro_p2">
                 CIMMS empowers Quezon City residents by providing a simple, fast, and transparent way to report public infrastructure problems 
                 such as damaged roads, broken streetlights, clogged drainage systems, and other community facility concerns.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🌐</span> Our Purpose</h2>
-            <p>CIMMS was created to:</p>
+            <h2><span class="icon">🌐</span> <span data-i18n="about_purpose_title">Our Purpose</span></h2>
+            <p data-i18n="about_purpose_intro">CIMMS was created to:</p>
             <ul class="purpose-list">
-                <li>Improve the efficiency of public infrastructure maintenance</li>
-                <li>Enhance communication between citizens and LGU offices</li>
-                <li>Ensure faster response times to reported issues</li>
-                <li>Promote transparency, accountability, and service quality</li>
+                <li data-i18n="about_purpose_item1">Improve the efficiency of public infrastructure maintenance</li>
+                <li data-i18n="about_purpose_item2">Enhance communication between citizens and LGU offices</li>
+                <li data-i18n="about_purpose_item3">Ensure faster response times to reported issues</li>
+                <li data-i18n="about_purpose_item4">Promote transparency, accountability, and service quality</li>
             </ul>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🛠</span> What CIMMS Offers</h2>
-            <p><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
-            <p><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
-            <p><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
-            <p><b>Secure Access</b> – Role-based system with strong data protection and authentication.</p>
-            <p><b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.</p>
+            <h2><span class="icon">🛠</span> <span data-i18n="about_offers_title">What CIMMS Offers</span></h2>
+            <p data-i18n-html="about_offers_feature1"><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
+            <p data-i18n-html="about_offers_feature2"><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
+            <p data-i18n-html="about_offers_feature3"><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
+            <p data-i18n-html="about_offers_feature4"><b>Secure Access</b> – Role-based system with strong data protection and authentication.</p>
+            <p data-i18n-html="about_offers_feature5"><b>Transparent Monitoring</b> – Dashboards and reports for performance tracking.</p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🤝</span> For Quezon City Citizens</h2>
-            <p>
+            <h2><span class="icon">🤝</span> <span data-i18n="about_citizens_title">For Quezon City Citizens</span></h2>
+            <p data-i18n-html="about_citizens_desc">
                 This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
                 are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
                 responsive city government.
@@ -475,47 +481,46 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🎯</span> Our Vision</h2>
-            <p>
+            <h2><span class="icon">🎯</span> <span data-i18n="about_vision_title">Our Vision</span></h2>
+            <p data-i18n="about_vision_desc">
                 To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
                 infrastructure services for all Quezon City citizens.
             </p>
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🚀</span> Our Mission</h2>
-            <p>
+            <h2><span class="icon">🚀</span> <span data-i18n="about_mission_title">Our Mission</span></h2>
+            <p data-i18n="about_mission_desc">
                 To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
                 accountability, and improves the overall quality of urban services in Quezon City.
             </p>
         </div>
 
-         <div class="section-box">
-    <h2><span class="icon">💙</span> Our Core Values</h2>
-    <p><b>Committed to building a safer, more sustainable Quezon City for every resident.</b></p>
+        <div class="section-box">
+            <h2><span class="icon">💙</span> <span data-i18n="about_values_title">Our Core Values</span></h2>
+            <p data-i18n-html="about_values_intro"><b>Committed to building a safer, more sustainable Quezon City for every resident.</b></p>
 
-    <p><b>🎯 Efficiency</b> – We work smart and fast to ensure quick action and better service delivery.</p>
+            <p data-i18n-html="about_values_efficiency"><b>🎯 Efficiency</b> – We work smart and fast to ensure quick action and better service delivery.</p>
 
-    <p><b>🌟 Transparency</b> – We keep everything clear, open, and trackable from report to resolution.</p>
+            <p data-i18n-html="about_values_transparency"><b>🌟 Transparency</b> – We keep everything clear, open, and trackable from report to resolution.</p>
 
-    <p><b>🤝 Community First</b> – We listen, care, and prioritize the needs of Quezon City citizens.</p>
+            <p data-i18n-html="about_values_community"><b>🤝 Community First</b> – We listen, care, and prioritize the needs of Quezon City citizens.</p>
 
-    <p><b>🔒 Security</b> – We protect your personal data and ensure safe, reliable system access.</p>
-         </div>
-
+            <p data-i18n-html="about_values_security"><b>🔒 Security</b> – We protect your personal data and ensure safe, reliable system access.</p>
+        </div>
 
         <div class="btn-wrap">
-            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn">Submit a Report</a>
+            <a href="<?= $BASE_URL ?>citizenrepform.php" class="btn" data-i18n="about_cta_button">Submit a Report</a>
         </div>
     </div>
 </div>
 
-<!-- FOOTER - Updated from citizencimm.php -->
+<!-- FOOTER -->
 <footer class="footer">
     <div class="footer-content">
         <div class="footer-about">
-            <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <h3 data-i18n="site_title">InfraGovServices</h3>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
                     <span>📧</span>
@@ -533,38 +538,38 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
         
         <div class="footer-links">
-            <h4>Quick Links</h4>
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= $BASE_URL ?>citizencimm.php">Home</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenreports.php">Reports</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenrepform.php">Submit Request</a></li>
-                <li><a href="<?= $BASE_URL ?>about.php">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer_resources">Resources</h4>
             <ul>
-                <li><a href="#">User Guide</a></li>
-                <li><a href="#">FAQs</a></li>
-                <li><a href="#">Service Areas</a></li>
-                <li><a href="#">Emergency Contacts</a></li>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Legal</h4>
+            <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
-                <li><a href="#">Data Protection</a></li>
-                <li><a href="#">Accessibility</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
         </div>
     </div>
     
     <div class="footer-bottom">
-        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
         <div class="footer-social">
             <a href="#" class="social-link" title="Facebook">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -589,6 +594,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
     </div>
 </footer>
+
 
 <?php include 'citizen_global.php'; ?>
 <?php include 'chatbot-widget.php'; ?>

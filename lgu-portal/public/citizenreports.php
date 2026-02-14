@@ -757,268 +757,274 @@ if ($maintenance_result) {
 
 <!-- DESKTOP NAVIGATION -->
 <header class="nav">
-    <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
-        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-        <span>InfraGovServices</span>
-    </a>
-    
-    <div class="nav-center">
-        <div class="nav-links">
-            <?php if ($show_login): ?>
-                <a href="<?= $BASE_URL ?>login.php">Log in</a>
-            <?php endif; ?>
-            <a href="<?= $BASE_URL ?>citizencimm.php">Home</a>
-            <a href="#" class="active">Reports</a>
-            <a href="<?= $BASE_URL ?>citizenrepform.php">Requests</a>
-            <a href="<?= $BASE_URL ?>about.php">About</a>
-        </div>
-        
-        <div class="nav-divider"></div>
-        
-        <div class="nav-actions">
-            <div class="desktop-clock" id="desktopClock"></div>
-
-             <!-- TRANSLATE BUTTON (desktop) -->
-             <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
-                <span class="globe-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="2" y1="12" x2="22" y2="12"/>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                </span>
-                <span class="lang-label" id="langLabel">EN</span>
-            </button>
-
-            <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
-                <span class="dark-icon">🌙</span>
-                <span class="light-icon" style="display: none;">☀️</span>
-            </button>
-        </div>
-    </div>
-</header>
-
-<!-- MOBILE SIDEBAR -->
-<div class="sidebar-nav" id="sidebarNav">
-    <div class="sidebar-top">
         <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
-            <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
-            <div class="sidebar-divider logo-divider"></div>
+            <img src="assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+            <span data-i18n="site_title">InfraGovServices</span>
         </a>
-        <div class="sidebar-logo-spacer"></div>
         
-        <ul class="nav-list">
-            <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
-            <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
-            <li><a href="#" class="nav-link active"><span>📄</span><span>Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
-        </ul>
-        <div style="flex-grow:1;"></div>
+        <div class="nav-center">
+            <div class="nav-links">
+                <?php if ($show_login): ?>
+                <a href="login.php" data-i18n="nav_login">Log in</a>
+                <?php endif; ?>
+                <a href="citizencimm.php" data-i18n="nav_home">Home</a>
+                <a href="#" class="active" data-i18n="nav_reports">Reports</a>
+                <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
+                <a href="about.php" data-i18n="nav_about">About</a>
+            </div>
+            
+            <div class="nav-divider"></div>
+            
+            <div class="nav-actions">
+                <div class="desktop-clock" id="desktopClock"></div>
+
+                <!-- TRANSLATE BUTTON (desktop) -->
+                <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
+                    <span class="globe-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </span>
+                    <span class="lang-label" id="langLabel" data-i18n="lang_label">EN</span>
+                </button>
+                <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
+                    <span class="dark-icon">🌙</span>
+                    <span class="light-icon" style="display: none;">☀️</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MOBILE SIDEBAR -->
+    <div class="sidebar-nav" id="sidebarNav">
+        <div class="sidebar-top">
+            <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
+                <img src="assets/img/officiallogo.png" alt="LGU Logo">
+                <div class="sidebar-divider logo-divider"></div>
+            </a>
+            <div class="sidebar-logo-spacer"></div>
+            
+            <ul class="nav-list">
+                <?php if ($show_login): ?>
+                <li><a href="login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <?php endif; ?>
+                <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
+                <li><a href="#"class="nav-link active"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
+                <li><a href="about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            </ul>
+        </div>
     </div>
-</div>
 
-<!-- MOBILE TOP NAV -->
-<div class="mobile-top-nav">
-    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    <!-- MOBILE TOP NAV -->
+    <div class="mobile-top-nav">
+        <button class="mobile-toggle" id="mobileToggle">☰</button>
 
-    <!-- MOBILE TRANSLATE BUTTON -->
-    <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </svg>
-        <span class="mobile-lang-label" id="mobileLangLabel">E</span>
-    </button>
+        <!-- MOBILE TRANSLATE BUTTON -->
+        <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="mobile-lang-label" id="mobileLangLabel">E</span>
+        </button>
 
-    <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
-        <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
-    </a>
-    <div class="mobile-clock" id="mobileClock"></div>
-    <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
-        <span class="dark-icon">🌙</span>
-        <span class="light-icon" style="display: none;">☀️</span>
-    </button>
-</div>
+        <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo">
+        </a>
+        <div class="mobile-clock" id="mobileClock"></div>
+        <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
+            <span class="dark-icon">🌙</span>
+            <span class="light-icon" style="display: none;">☀️</span>
+        </button>
+    </div>
 
-<!-- LANGUAGE BADGE (toast) -->
-<div class="lang-badge" id="langBadge">
-    <span class="badge-flag" id="badgeFlag">🇺🇸</span>
-    <span id="badgeText">Switched to English</span>
-</div>
+    <!-- LANGUAGE BADGE (toast) -->
+    <div class="lang-badge" id="langBadge">
+        <span class="badge-flag" id="badgeFlag">🇺🇸</span>
+        <span id="badgeText">Switched to English</span>
+    </div>
 
 <div class="main-content">
 <div class="dashboard-container">
     <div class="container">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">🛠️</div>
-                <div>
-                    <h3>Repairs</h3>
-                    <div class="number"><?= $repairs_count ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">⏳</div>
-                <div>
-                    <h3>On-Going Repairs</h3>
-                    <div class="number"><?= $ongoing_count ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📍</div>
-                <div>
-                    <h3>Pending</h3>
-                    <div class="number"><?= $pending_count ?></div>
-                </div>
-            </div>
+    <div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">🛠️</div>
+        <div>
+            <h3 data-i18n="reports_stat_repairs">Repairs</h3>
+            <div class="number"><?= $repairs_count ?></div>
         </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div>
+            <h3 data-i18n="reports_stat_ongoing">On-Going Repairs</h3>
+            <div class="number"><?= $ongoing_count ?></div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📍</div>
+        <div>
+            <h3 data-i18n="reports_stat_pending">Pending</h3>
+            <div class="number"><?= $pending_count ?></div>
+        </div>
+    </div>
+</div>
 
-        <div class="content-card">
-            <!-- Desktop/tablet label -->
-            <div class="card-header show-on-mobile">
-                <h2>Recent Maintenance Reports</h2>
-            </div>
-            <div class="card-header">
-                <h2 class="hide-on-mobile">Recent Maintenance Reports</h2>
-            </div>
+<!-- Update the content card header -->
+<div class="content-card">
+    <!-- Desktop/tablet label -->
+    <div class="card-header show-on-mobile">
+        <h2 data-i18n="reports_page_title">Recent Maintenance Reports</h2>
+    </div>
+    <div class="card-header">
+        <h2 class="hide-on-mobile" data-i18n="reports_page_title">Recent Maintenance Reports</h2>
+    </div>
 
-            <!-- SEARCH BAR: replaced with wrapper for responsive width and positioning -->
-            <div class="table-search-wrapper">
-                <input
-                    id="requestSearch"
-                    type="text"
-                    placeholder="Search by Date, Type, Location, Budget, or Status..."
-                >
-            </div>
+    <!-- Update search input -->
+    <div class="table-search-wrapper">
+        <input
+            id="requestSearch"
+            type="text"
+            data-i18n-placeholder="reports_search_placeholder"
+            placeholder="Search by Date, Type, Location, Budget, or Status..."
+        >
+    </div>
 
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Sched #</th>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Location</th>
-                            <th>Budget</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                        if (count($maintenance_data) > 0) {
-                            foreach ($maintenance_data as $item) {
-                                // Determine status pill class
-                                $status_class = 'status-pending';
-                                if ($item['status'] === 'Completed') {
-                                    $status_class = 'status-fixed';
-                                } elseif ($item['status'] === 'In Progress') {
-                                    $status_class = 'status-progress';
-                                } elseif ($item['status'] === 'Delayed') {
-                                    $status_class = 'status-delayed';
-                                }
-                                // Format date
-                                $date = date('M d, Y', strtotime($item['starting_date']));
-                        ?>
-                        <tr>
-                            <td>#SCH-<?php echo $item['sched_id']; ?></td>
-                            <td><?php echo $date; ?></td>
-                            <td><?php echo htmlspecialchars($item['task']); ?></td>
-                            <td><?php echo htmlspecialchars($item['location']); ?></td>
-                            <td>₱<?php echo number_format($item['budget'], 2); ?></td>
-                            <td><span class="status-pill <?php echo $status_class; ?>"><?php echo $item['status']; ?></span></td>
-                            <td><a href="#" class="link">View</a></td>
-                        </tr>
-                        <?php 
-                            }
-                        } else {
-                        ?>
-                        <tr>
-                            <td colspan="7" style="text-align: center; color: #999;">No maintenance schedules available</td>
-                        </tr>
-                        <?php } ?>
-                        <tr id="noRequestResult" style="display:none;">
-                            <td colspan="7" style="text-align:center; padding:20px; font-weight:500;">
-                                No matching data
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Mobile Maintenance Cards -->
-            <div class="mobile-maintenance-list">
-            <!-- Mobile-only header -->
-            <?php if (!empty($maintenance_data)): ?>
-                <?php foreach ($maintenance_data as $item): 
-                    // Status pill
-                    $status_class = 'status-pending';
-                    if ($item['status'] === 'Completed') {
-                        $status_class = 'status-fixed';
-                    } elseif ($item['status'] === 'In Progress') {
-                        $status_class = 'status-progress';
-                    } elseif ($item['status'] === 'Delayed') {
-                        $status_class = 'status-delayed';
-                    }
+    <!-- Update table headers -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th data-i18n="reports_table_sched">Sched #</th>
+                    <th data-i18n="reports_table_date">Date</th>
+                    <th data-i18n="reports_table_type">Type</th>
+                    <th data-i18n="reports_table_location">Location</th>
+                    <th data-i18n="reports_table_budget">Budget</th>
+                    <th data-i18n="reports_table_status">Status</th>
+                    <th data-i18n="reports_table_action">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                if (count($maintenance_data) > 0) {
+                    foreach ($maintenance_data as $item) {
+                        // Determine status pill class
+                        $status_class = 'status-pending';
+                        $status_key = 'reports_status_pending';
+                        if ($item['status'] === 'Completed') {
+                            $status_class = 'status-fixed';
+                            $status_key = 'reports_status_completed';
+                        } elseif ($item['status'] === 'In Progress') {
+                            $status_class = 'status-progress';
+                            $status_key = 'reports_status_in_progress';
+                        } elseif ($item['status'] === 'Delayed') {
+                            $status_class = 'status-delayed';
+                            $status_key = 'reports_status_delayed';
+                        }
+                        // Format date
+                        $date = date('M d, Y', strtotime($item['starting_date']));
                 ?>
-                    <div class="report-card">
+                <tr>
+                    <td>#SCH-<?php echo $item['sched_id']; ?></td>
+                    <td><?php echo $date; ?></td>
+                    <td><?php echo htmlspecialchars($item['task']); ?></td>
+                    <td><?php echo htmlspecialchars($item['location']); ?></td>
+                    <td>₱<?php echo number_format($item['budget'], 2); ?></td>
+                    <td><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
+                    <td><a href="#" class="link" data-i18n="reports_view_button">View</a></td>
+                </tr>
+                <?php 
+                    }
+                } else {
+                ?>
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #999;" data-i18n="reports_no_data">No maintenance schedules available</td>
+                </tr>
+                <?php } ?>
+                <tr id="noRequestResult" style="display:none;">
+                    <td colspan="7" style="text-align:center; padding:20px; font-weight:500;" data-i18n="reports_no_match">
+                        No matching data
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-                        <div class="report-row">
-                            <span class="label">Schedule ID:</span>
-                            <span class="value">#SCH-<?= $item['sched_id'] ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Category:</span>
-                            <span class="value"><?= htmlspecialchars($item['category']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Task:</span>
-                            <span class="value"><?= htmlspecialchars($item['task']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Location:</span>
-                            <span class="value"><?= htmlspecialchars($item['location']) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Start Date:</span>
-                            <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                            <span class="label">Budget:</span>
-                            <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
-                        </div>
-
-                        <div class="report-row">
-                        <span class="label">Status:</span>
-                            <span class="status-pill <?= $status_class ?>">
-                                <?= htmlspecialchars($item['status']) ?>
-                            </span>
-                        </div>
-
-                        <div class="report-footer">
-                            <a href="#" class="evidence-btn">View</a>
-                        </div>
-
+    <!-- Update mobile cards -->
+    <div class="mobile-maintenance-list">
+        <?php if (!empty($maintenance_data)): ?>
+            <?php foreach ($maintenance_data as $item): 
+                // Status pill
+                $status_class = 'status-pending';
+                $status_key = 'reports_status_pending';
+                if ($item['status'] === 'Completed') {
+                    $status_class = 'status-fixed';
+                    $status_key = 'reports_status_completed';
+                } elseif ($item['status'] === 'In Progress') {
+                    $status_class = 'status-progress';
+                    $status_key = 'reports_status_in_progress';
+                } elseif ($item['status'] === 'Delayed') {
+                    $status_class = 'status-delayed';
+                    $status_key = 'reports_status_delayed';
+                }
+            ?>
+                <div class="report-card">
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_schedule_id">Schedule ID:</span>
+                        <span class="value">#SCH-<?= $item['sched_id'] ?></span>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="report-card">No maintenance schedules available</div>
-            <?php endif; ?>
-            <!-- MOBILE "NO MATCHING DATA" PLACEHOLDER -->
-            <div id="noMobileResult" class="report-card" style="display:none; text-align:center; font-weight:600;">
-                No matching data
-            </div>
-            </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_category">Category:</span>
+                        <span class="value"><?= htmlspecialchars($item['category']) ?></span>
+                    </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_task">Task:</span>
+                        <span class="value"><?= htmlspecialchars($item['task']) ?></span>
+                    </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_location">Location:</span>
+                        <span class="value"><?= htmlspecialchars($item['location']) ?></span>
+                    </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_start_date">Start Date:</span>
+                        <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
+                    </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_budget">Budget:</span>
+                        <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
+                    </div>
+
+                    <div class="report-row">
+                        <span class="label" data-i18n="reports_mobile_status">Status:</span>
+                        <span class="status-pill <?= $status_class ?>" data-i18n="<?= $status_key ?>">
+                            <?= htmlspecialchars($item['status']) ?>
+                        </span>
+                    </div>
+
+                    <div class="report-footer">
+                        <a href="#" class="evidence-btn" data-i18n="reports_view_button">View</a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="report-card" data-i18n="reports_no_data">No maintenance schedules available</div>
+        <?php endif; ?>
+        <!-- MOBILE "NO MATCHING DATA" PLACEHOLDER -->
+        <div id="noMobileResult" class="report-card" style="display:none; text-align:center; font-weight:600;" data-i18n="reports_no_match">
+            No matching data
         </div>
+    </div>
+</div>
     </div>
 </div>
 </div>
@@ -1120,60 +1126,52 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<footer class="footer">
+<!-- FOOTER -->
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <span>📧</span>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <span>📞</span>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <span>📍</span>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         
         <div class="footer-links">
-            <h4>Quick Links</h4>
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizencimm.php">Home</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenreports.php">Reports</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenrepform.php">Submit Request</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>about.php">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer_resources">Resources</h4>
             <ul>
-                <li><a href="#">User Guide</a></li>
-                <li><a href="#">FAQs</a></li>
-                <li><a href="#">Service Areas</a></li>
-                <li><a href="#">Emergency Contacts</a></li>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Legal</h4>
+            <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
-                <li><a href="#">Data Protection</a></li>
-                <li><a href="#">Accessibility</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
         </div>
     </div>
     
     <div class="footer-bottom">
-        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
         <div class="footer-social">
             <a href="#" class="social-link" title="Facebook">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -1198,7 +1196,6 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     </div>
 </footer>
-
 <?php include 'citizen_global.php'; ?>
 <?php include 'chatbot-widget.php'; ?>
 

@@ -1732,20 +1732,20 @@ input[type="file"] {
     
     <!-- DESKTOP NAVIGATION -->
     <header class="nav">
-    <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
+        <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
             <img src="assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-            <span>InfraGovServices</span>
+            <span data-i18n="site_title">InfraGovServices</span>
         </a>
         
         <div class="nav-center">
             <div class="nav-links">
                 <?php if ($show_login): ?>
-                <a href="login.php">Log in</a>
+                <a href="login.php" data-i18n="nav_login">Log in</a>
                 <?php endif; ?>
-                <a href="citizencimm.php">Home</a>
-                <a href="citizenreports.php">Reports</a>
-                <a href="#" class="active">Requests</a>
-                <a href="about.php">About</a>
+                <a href="citizencimm.php" data-i18n="nav_home">Home</a>
+                <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+                <a href="#" class="active" data-i18n="nav_requests">Requests</a>
+                <a href="about.php" data-i18n="nav_about">About</a>
             </div>
             
             <div class="nav-divider"></div>
@@ -1754,7 +1754,7 @@ input[type="file"] {
                 <div class="desktop-clock" id="desktopClock"></div>
 
                 <!-- TRANSLATE BUTTON (desktop) -->
-                <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
+                <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
                     <span class="globe-icon">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <circle cx="12" cy="12" r="10"/>
@@ -1762,7 +1762,7 @@ input[type="file"] {
                             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                         </svg>
                     </span>
-                    <span class="lang-label" id="langLabel">EN</span>
+                    <span class="lang-label" id="langLabel" data-i18n="lang_label">EN</span>
                 </button>
                 <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
                     <span class="dark-icon">🌙</span>
@@ -1775,7 +1775,7 @@ input[type="file"] {
     <!-- MOBILE SIDEBAR -->
     <div class="sidebar-nav" id="sidebarNav">
         <div class="sidebar-top">
-            <a href="https://infragovservices.com/" class="site-logo" class="site-logo" target="_blank" rel="noopener noreferrer">
+            <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
                 <img src="assets/img/officiallogo.png" alt="LGU Logo">
                 <div class="sidebar-divider logo-divider"></div>
             </a>
@@ -1783,12 +1783,12 @@ input[type="file"] {
             
             <ul class="nav-list">
                 <?php if ($show_login): ?>
-                <li><a href="login.php" class="nav-link"><span>🔐</span><span>Log in</span></a></li>
+                <li><a href="login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
                 <?php endif; ?>
-                <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span>Home</span></a></li>
-                <li><a href="citizenreports.php" class="nav-link"><span>📄</span><span>Reports</span></a></li>
-                <li><a href="#" class="nav-link active"><span>📋</span><span>Requests</span></a></li>
-                <li><a href="about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
+                <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
+                <li><a href="citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="#" class="nav-link active"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
+                <li><a href="about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
             </ul>
         </div>
     </div>
@@ -1798,7 +1798,7 @@ input[type="file"] {
         <button class="mobile-toggle" id="mobileToggle">☰</button>
 
         <!-- MOBILE TRANSLATE BUTTON -->
-        <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
+        <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
@@ -1808,7 +1808,7 @@ input[type="file"] {
         </button>
 
         <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
-        <img src="assets/img/officiallogo.png" alt="LGU Logo">
+            <img src="assets/img/officiallogo.png" alt="LGU Logo">
         </a>
         <div class="mobile-clock" id="mobileClock"></div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
@@ -1826,58 +1826,64 @@ input[type="file"] {
     
     <div class="form-wrapper">
         <div class="report-card">
-            <h2>Maintenance Request</h2>
+            <h2 data-i18n="form_title">Maintenance Request</h2>
             <?php if ($error_message): ?>
                 <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <!-- Hybrid dropdown/input: Infrastructure -->
                 <div class="input-group">
-                    <label for="infrastructureSelect">Infrastructure Type *</label>
+                    <label for="infrastructureSelect" data-i18n="form_infrastructure_label">Infrastructure Type *</label>
                     <select id="infrastructureSelect" name="infrastructure">
-                        <option value="">Select infrastructure</option>
-                        <option value="Roads">Roads</option>
-                        <option value="Street Lights">Street Lights</option>
-                        <option value="Drainage">Drainage</option>
-                        <option value="Public Facilities">Public Facilities</option>
-                        <option value="Water Supply">Water Supply</option>
-                        <option value="Electrical">Electrical</option>
-                        <option value="Other">Other</option>
+                        <option value="" data-i18n="form_infrastructure_placeholder">Select infrastructure</option>
+                        <option value="Roads" data-i18n="form_infrastructure_roads">Roads</option>
+                        <option value="Street Lights" data-i18n="form_infrastructure_lights">Street Lights</option>
+                        <option value="Drainage" data-i18n="form_infrastructure_drainage">Drainage</option>
+                        <option value="Public Facilities" data-i18n="form_infrastructure_facilities">Public Facilities</option>
+                        <option value="Water Supply" data-i18n="form_infrastructure_water">Water Supply</option>
+                        <option value="Electrical" data-i18n="form_infrastructure_electrical">Electrical</option>
+                        <option value="Other" data-i18n="form_infrastructure_other">Other</option>
                     </select>
-                    <input type="text" id="infrastructureOther" name="infrastructure_other" placeholder="Specify infrastructure" style="display:none;" autocomplete="off" >
+                    <input type="text" id="infrastructureOther" name="infrastructure_other" data-i18n-placeholder="form_infrastructure_specify" placeholder="Specify infrastructure" style="display:none;" autocomplete="off">
                 </div>
+                
                 <div class="input-group" style="position:relative;">
-                    <label for="locationInput">Location *</label>
-                    <input type="text" id="locationInput" name="location" placeholder="Click to select location" autocomplete="off" required readonly style="background: var(--input-bg); cursor:pointer;" >
+                    <label for="locationInput" data-i18n="form_location_label">Location *</label>
+                    <input type="text" id="locationInput" name="location" data-i18n-placeholder="form_location_placeholder" placeholder="Click to select location" autocomplete="off" required readonly style="background: var(--input-bg); cursor:pointer;">
                     <div id="locationSuggestions" class="location-suggestions"></div>
                 </div>
+                
                 <div class="input-group">
-                    <label for="name">Name (Optional)</label>
-                    <input type="text" id="name" name="name" placeholder="Your name">
+                    <label for="name" data-i18n="form_name_label">Name (Optional)</label>
+                    <input type="text" id="name" name="name" data-i18n-placeholder="form_name_placeholder" placeholder="Your name">
                 </div>
+                
                 <div class="input-group">
-                    <label for="contact_number">Contact Number *</label>
-                    <input type="tel" id="contact_number" name="contact_number" placeholder="09XX-XXX-XXXX" maxlength="13" required >
+                    <label for="contact_number" data-i18n="form_contact_label">Contact Number *</label>
+                    <input type="tel" id="contact_number" name="contact_number" data-i18n-placeholder="form_contact_placeholder" placeholder="09XX-XXX-XXXX" maxlength="13" required>
                 </div>
+                
                 <div class="input-group full-width">
-                    <label for="issue">Issue / Damage Description *</label>
-                    <textarea id="issue" name="issue" placeholder="Describe the problem in detail..." required></textarea>
+                    <label for="issue" data-i18n="form_issue_label">Issue / Damage Description *</label>
+                    <textarea id="issue" name="issue" data-i18n-placeholder="form_issue_placeholder" placeholder="Describe the problem in detail..." required></textarea>
                 </div>
-                <!-- Begin Revised Evidence Upload Section -->
+                
+                <!-- Evidence Upload Section -->
                 <div class="input-group full-width">
-                    <label for="evidence">Evidence - Upload Images (up to 4 images accepted)</label>
+                    <label for="evidence" data-i18n="form_evidence_label">Evidence - Upload Images (up to 4 images accepted)</label>
                     <div class="evidence-upload-wrapper">
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
-                        <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;" >
+                        <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;">
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
-                    <small id="cameraHelperText">Tap 📷 to capture</small>
+                    <small id="cameraHelperText" data-i18n="form_camera_helper">Tap 📷 to capture</small>
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
+                    
                     <!-- Consent checkbox -->
                     <div class="consent-row">
                         <label class="consent-label">
                             <input type="checkbox" id="consent_agree" name="consent_agree">
-                            <span class="consent-text-inline">
+                            <span class="consent-text-inline" data-i18n-html="form_consent_text">
                                 I agree to the 
                                 <button type="button" class="link-button js-open-terms">Terms and Conditions</button>
                                 and
@@ -1886,62 +1892,72 @@ input[type="file"] {
                         </label>
                     </div>
                 </div>
-                <!-- End Revised Evidence Upload Section -->
+                
                 <div class="btn-container">
-                    <button type="submit" class="btn-primary" id="submit-btn">Submit Request</button>
+                    <button type="submit" class="btn-primary" id="submit-btn" data-i18n="form_submit_button">Submit Request</button>
                 </div>
             </form>
         </div>
     </div>
     
-    <!-- Location Picker Modal - IMPROVED VERSION -->
+    <!-- Location Picker Modal -->
     <div id="mapModalBackdrop">
         <div id="mapModal">
-            <!-- UPDATED HEADER: Label button moved to top-right, icon only -->
             <div class="map-header">
-                <button type="button" id="gpsBtn" title="Use my current location">📍</button>
-                <button type="button" id="labelToggleBtn" title="Toggle location labels">🏷️</button>
-                <h3>Select Location</h3>
-                <button type="button" id="mapLayerToggle">🛰️ Satellite</button>
+                <button type="button" id="gpsBtn" data-i18n-title="map_gps_title" title="Use my current location">📍</button>
+                <button type="button" id="labelToggleBtn" data-i18n-title="map_label_toggle_title" title="Toggle location labels">🏷️</button>
+                <h3 data-i18n="map_modal_title">Select Location</h3>
+                <button type="button" id="mapLayerToggle"></button>
             </div>
             
             <div id="districtInfo"></div>
             
-            <!-- Address Input (auto-populated from map/GPS/dropdown) -->
             <div class="map-address-input">
                 <select id="barangaySelect">
-                    <option value="">Select Barangay (Quezon City)</option>
+                    <option value="" data-i18n="map_barangay_placeholder">Select Barangay (Quezon City)</option>
                 </select>
-                <input type="text" id="manualAddressInput" placeholder="Specific address (auto-detected)" readonly>
+                <input type="text" id="manualAddressInput" data-i18n-placeholder="map_address_placeholder" placeholder="Specific address (auto-detected)" readonly>
             </div>
             
-            <!-- Map Container -->
             <div id="map"></div>
             
-            <!-- Action Buttons -->
             <div class="map-actions">
-                <button type="button" class="btn-cancel" onclick="closeMapModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="saveLocation()">Save Location</button>
+                <button type="button" class="btn-cancel" onclick="closeMapModal()" data-i18n="map_modal_cancel">Cancel</button>
+                <button type="button" class="btn-save" onclick="saveLocation()" data-i18n="map_modal_save">Save Location</button>
             </div>
         </div>
     </div>
-    
+
     <!-- Submit Confirmation Modal -->
     <div id="submitAlertBackdrop">
         <div id="submitAlertModal">
             <div class="icon-wrap">
                 <span class="icon">✅</span>
             </div>
-            <div class="alert-title">Confirm Submission</div>
-            <div class="alert-desc">Are you sure you want to submit this maintenance request?</div>
+            <div class="alert-title" data-i18n="submit_modal_title">Confirm Submission</div>
+            <div class="alert-desc" data-i18n="submit_modal_desc">Are you sure you want to submit this maintenance request?</div>
             <div class="alert-btns">
-                <button class="alert-btn cancel" type="button" onclick="closeSubmitModal()">Cancel</button>
-                <button class="alert-btn logout" type="button" id="submitConfirmBtn">Submit</button>
+                <button class="alert-btn cancel" type="button" onclick="closeSubmitModal()" data-i18n="submit_modal_cancel">Cancel</button>
+                <button class="alert-btn logout" type="button" id="submitConfirmBtn" data-i18n="submit_modal_confirm">Submit</button>
             </div>
         </div>
-    </div> 
+    </div>
 
     <?php include 'citizen_global.php'; ?>
+
+    <!-- TRANSLATION HELPER SCRIPT - Place right after citizen_global.php -->
+    <script>
+    // Translation helper function
+    function getTranslation(key) {
+        const currentLang = localStorage.getItem('lang') || 'en';
+        const translations = window.__preloadedTranslations;
+        if (translations && translations[currentLang] && translations[currentLang][key]) {
+            return translations[currentLang][key];
+        }
+        return key; // Fallback to key if translation not found
+    }
+    </script>
+
     <!-- Hybrid infrastructure dropdown/input logic with improved draft-restore sync -->
     <script>
     const infraSelect = document.getElementById('infrastructureSelect');
@@ -2040,7 +2056,7 @@ input[type="file"] {
             return true;
         });
         if (selectedFiles.length > MAX_FILES) {
-            showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
+            showJsNotification('error', getTranslation('alert_max_images'));
             selectedFiles.length = MAX_FILES;
         }
         syncInputWithState();
@@ -2166,7 +2182,7 @@ input[type="file"] {
             e.preventDefault();
             const val = phoneInput.value.replace(/\D/g,'');
             if (!/^09\d{9}$/.test(val)) {
-                showJsNotification('error', 'Contact number must be 11 digits and start with 09.');
+                showJsNotification('error', getTranslation('alert_contact_invalid'));
                 phoneInput.focus();
                 return false;
             }
@@ -2215,6 +2231,7 @@ input[type="file"] {
     }
     </script>
 
+    <!-- TERMS & PRIVACY MODAL SCRIPT - BEFORE </body> -->
     <script>
     // ===== TERMS & PRIVACY FLOATING MODALS =====
     function openLegalModal(type) {
@@ -2249,30 +2266,38 @@ input[type="file"] {
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const legalBackdrop = document.getElementById('legalBackdrop');
-        const legalCloseBtn = document.getElementById('legalClose');
-        const openTermsBtns = document.querySelectorAll('.js-open-terms');
-        const openPrivacyBtns = document.querySelectorAll('.js-open-privacy');
-
-        openTermsBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+    // CRITICAL: Use EVENT DELEGATION to handle dynamically created buttons
+    // This works even after translation system replaces innerHTML
+    function setupLegalModalListeners() {
+        console.log('[Legal Modals] Setting up event delegation...');
+        
+        // Use event delegation on document body for dynamically created buttons
+        document.body.addEventListener('click', function(e) {
+            // Check if clicked element or its parent has the class
+            const termsBtn = e.target.closest('.js-open-terms');
+            const privacyBtn = e.target.closest('.js-open-privacy');
+            
+            if (termsBtn) {
+                console.log('[Legal Modals] Terms button clicked via delegation');
                 e.preventDefault();
+                e.stopPropagation();
                 openLegalModal('terms');
-            });
-        });
-        
-        openPrivacyBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            } else if (privacyBtn) {
+                console.log('[Legal Modals] Privacy button clicked via delegation');
                 e.preventDefault();
+                e.stopPropagation();
                 openLegalModal('privacy');
-            });
+            }
         });
         
+        // Close button
+        const legalCloseBtn = document.getElementById('legalClose');
         if (legalCloseBtn) {
             legalCloseBtn.addEventListener('click', closeLegalModal);
         }
         
+        // Backdrop click to close
+        const legalBackdrop = document.getElementById('legalBackdrop');
         if (legalBackdrop) {
             legalBackdrop.addEventListener('click', (e) => {
                 if (e.target === legalBackdrop) {
@@ -2281,11 +2306,20 @@ input[type="file"] {
             });
         }
 
+        console.log('[Legal Modals] Event delegation setup complete');
+    }
+
+    // Set up event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('[Legal Modals] DOMContentLoaded - initializing...');
+        
+        // Setup event delegation for legal modals
+        setupLegalModalListeners();
+
         // Consent reminder modal wiring
         const consentBackdrop = document.getElementById('consentBackdrop');
         const consentAgreeBtn = document.getElementById('consentAgreeBtn');
         const consentCancelBtn = document.getElementById('consentCancelBtn');
-        const consentLinks = consentBackdrop ? consentBackdrop.querySelectorAll('.highlight-link') : [];
 
         function closeConsentModal() {
             if (consentBackdrop) consentBackdrop.classList.remove('show');
@@ -2311,20 +2345,25 @@ input[type="file"] {
             });
         }
         
-        consentLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
+        // Consent modal links - also use delegation
+        consentBackdrop?.addEventListener('click', (e) => {
+            const link = e.target.closest('.highlight-link');
+            if (link) {
+                e.preventDefault();
                 e.stopPropagation();
                 const type = link.classList.contains('js-open-terms') ? 'terms' : 'privacy';
                 openLegalModal(type);
-            });
+            }
         });
+        
+        console.log('[Legal Modals] All modals initialized');
     });
     </script>
 
     <!-- Consent reminder modal -->
     <div id="consentBackdrop" class="consent-backdrop">
         <div class="consent-modal">
-            <p class="consent-message">
+            <p class="consent-message" data-i18n-html="consent_modal_message">
                 Please agree to the
                 <span class="highlight-link js-open-terms">Terms and Conditions</span>
                 and
@@ -2332,8 +2371,8 @@ input[type="file"] {
                 before submitting your request.
             </p>
             <div class="consent-actions">
-                <button type="button" id="consentAgreeBtn" class="btn-consent-agree">Agree</button>
-                <button type="button" id="consentCancelBtn" class="btn-consent-cancel">Cancel</button>
+                <button type="button" id="consentAgreeBtn" class="btn-consent-agree" data-i18n="consent_modal_agree">Agree</button>
+                <button type="button" id="consentCancelBtn" class="btn-consent-cancel" data-i18n="consent_modal_cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -2353,18 +2392,18 @@ input[type="file"] {
 
     <!-- Hidden templates for Terms and Privacy content -->
     <div id="termsTemplate" style="display:none;">
-        <h4>Terms and Conditions</h4>
-        <p>
-            In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations,
+        <h4 data-i18n="terms_title">Terms and Conditions</h4>
+        <p data-i18n-html="terms_intro_p1">
+            In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, its Implementing Rules and Regulations,
             and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
             Coordination and Data-Driven Infrastructure Planning Using AI-assisted Decision Support Technologies is committed
             to protecting the privacy and security of all personal data collected, stored, and processed through the System.
         </p>
-        <p>
+        <p data-i18n-html="terms_intro_p2">
             All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
             and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
         </p>
-        <p>
+        <p data-i18n-html="terms_collection_intro">
             The System may collect personal and non-personal information such as names or user identifiers, usernames and account
             credentials, contact information when applicable, location data related to infrastructure reports, and system activity
             logs and timestamps.
@@ -2372,25 +2411,22 @@ input[type="file"] {
     </div>
 
     <div id="privacyTemplate" style="display:none;">
-        <h4>Privacy Policy</h4>
-        <p>
+        <h4 data-i18n="privacy_title">Privacy Policy</h4>
+        <p data-i18n-html="privacy_intro_p1">
             This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
             and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
         </p>
-        <p>
+        <p data-i18n-html="privacy_intro_p2">
             This Privacy Policy shall be governed by and construed in accordance with the laws of the Republic of the Philippines,
-            particularly the Data Privacy Act of 2012 (RA 10173).
+            particularly the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
         </p>
-        <p><strong>User Consent and Agreement</strong></p>
-        <p>
+        <p><strong data-i18n="privacy_consent_title">User Consent and Agreement</strong></p>
+        <p data-i18n-html="privacy_consent_p1">
             By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
             AI-Assisted Public Works Coordination and Infrastructure Management System.
         </p>
     </div>
 
-    <!-- ============================================ -->
-    <!-- ENHANCED MAP SCRIPT WITH OPTIMIZED ADDRESS FETCHING + LOCATION LABELS + LABEL TOGGLE -->
-    <!-- ============================================ -->
     <script>
     // ============================================
     // QUEZON CITY BOUNDARY - FROM OFFICIAL GEOJSON
@@ -2939,15 +2975,65 @@ input[type="file"] {
                 map.removeLayer(satelliteLayer);
                 map.addLayer(streetLayer);
                 currentMapLayer = 'street';
-                layerToggle.innerHTML = '🛰️ Satellite';
             } else {
                 map.removeLayer(streetLayer);
                 map.addLayer(satelliteLayer);
                 currentMapLayer = 'satellite';
-                layerToggle.innerHTML = '🗺️ Street';
             }
             updateLocationLabelsVisibility();
+            syncMapLayerToggleButton(); // Sync after toggling
         });
+    }
+
+    // NEW function to sync button text with current state:
+    function syncMapLayerToggleButton() {
+        if (!layerToggle) return;
+        
+        if (currentMapLayer === 'satellite') {
+            // When showing satellite, button should say "Street View"
+            layerToggle.innerHTML = getTranslation('map_layer_toggle_street');
+        } else {
+            // When showing street, button should say "Satellite"
+            layerToggle.innerHTML = getTranslation('map_layer_toggle_satellite');
+        }
+    }
+
+    // This function is called by the translation system when language changes
+    function updateMapLayerToggleText() {
+        syncMapLayerToggleButton();
+    }
+
+    // Update the openMapModal function:
+    function openMapModal() {
+
+        syncMapLayerToggleButton();
+
+        document.getElementById('mapModalBackdrop').classList.add('show');
+        manualAddressInput.value = '';
+        locationSource = null;
+        barangaySelect.value = '';
+        districtInfo.style.display = 'none';
+        lastUpdatePosition = null;
+        
+        const TEN_MINUTES = 10 * 60 * 1000;
+        const now = Date.now();
+        if (addressCache && addressCache.size > 50) {
+            addressCache.clear();
+        }
+        
+        setTimeout(() => {
+            if (!map) {
+                initializeMap();
+            } else {
+                map.invalidateSize();
+                if (accuracyCircle) {
+                    map.removeLayer(accuracyCircle);
+                    accuracyCircle = null;
+                }
+                updateLocationLabelsVisibility();
+                syncMapLayerToggleButton(); // Sync button text when modal opens
+            }
+        }, 200);
     }
 
     if (labelToggleBtn) {
@@ -3110,35 +3196,6 @@ input[type="file"] {
     // ============================================
     // MAP INITIALIZATION
     // ============================================
-
-    function openMapModal() {
-        document.getElementById('mapModalBackdrop').classList.add('show');
-        manualAddressInput.value = '';
-        locationSource = null;
-        barangaySelect.value = '';
-        districtInfo.style.display = 'none';
-        lastUpdatePosition = null;
-        
-        const TEN_MINUTES = 10 * 60 * 1000;
-        const now = Date.now();
-        if (addressCache && addressCache.size > 50) {
-            addressCache.clear();
-        }
-        
-        setTimeout(() => {
-            if (!map) {
-                initializeMap();
-            } else {
-                map.invalidateSize();
-                if (accuracyCircle) {
-                    map.removeLayer(accuracyCircle);
-                    accuracyCircle = null;
-                }
-                updateLocationLabelsVisibility();
-            }
-        }, 200);
-    }
-
     function initializeMap() {
         map = L.map('map', { 
             maxBounds: QC_BOUNDS, 
@@ -3221,6 +3278,7 @@ input[type="file"] {
         addLocationLabels();
         updateLocationLabelsVisibility();
         updateLabelToggleButton();
+        syncMapLayerToggleButton(); // Sync on initial map creation
     }
 
     // ============================================
@@ -3583,8 +3641,247 @@ input[type="file"] {
         if (prevLoc && locationInput) {
             locationInput.value = prevLoc;
         }
+        
+        // Initialize map layer toggle button text on page load
+        syncMapLayerToggleButton();
     });
-</script>
+    </script>
+
+    <script>
+    // ===== JS notification helper for errors (contact #, images, etc) =====
+    function showJsNotification(type, message) {
+        const notif = document.createElement('div');
+        notif.className = 'notif-popup notif-' + type;
+        const icon = (type === 'success') ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
+        notif.innerHTML = `<span class='notif-icon'>${icon}</span>
+            <span class='notif-message'>${message}</span>
+            <button class='notif-close'>&times;</button>`;
+        document.body.appendChild(notif);
+        notif.querySelector('.notif-close').addEventListener('click', () => {
+            notif.style.opacity = '0';
+            setTimeout(()=> notif.remove(), 400);
+        });
+        setTimeout(() => {
+            notif.style.opacity = '0';
+            setTimeout(()=> notif.remove(), 400);
+        }, 2200);
+    }
+
+    // IMAGE preview/file state – unchanged from original
+    const evidenceInput = document.getElementById('evidence');
+    const cameraInput = document.getElementById('evidence-camera');
+    const previewDiv = document.getElementById('image-preview');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const MAX_FILES = 4;
+    let selectedFiles = [];
+
+    function updateUploadButton() {
+        const currentCount = selectedFiles.length;
+        if (currentCount >= MAX_FILES) {
+            evidenceInput.style.pointerEvents = 'none';
+            evidenceInput.style.opacity = '0.5';
+            if (cameraBtn) {
+                cameraBtn.disabled = true;
+                cameraBtn.style.opacity = '0.5';
+            }
+        } else {
+            evidenceInput.style.pointerEvents = 'auto';
+            evidenceInput.style.opacity = '1';
+            if (cameraBtn) {
+                cameraBtn.disabled = false;
+                cameraBtn.style.opacity = '1';
+            }
+        }
+    }
+
+    function mergeAndPreviewFiles(e) {
+        let incoming = Array.from(e.target.files || []);
+        if (e.target === cameraInput) cameraInput.value = '';
+        selectedFiles = selectedFiles.concat(incoming);
+        const seen = new Set();
+        selectedFiles = selectedFiles.filter(f => {
+            const key = f.name + f.size + f.lastModified;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        if (selectedFiles.length > MAX_FILES) {
+            showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
+            selectedFiles.length = MAX_FILES;
+        }
+        syncInputWithState();
+    }
+
+    function removeImageAtIndex(index) {
+        selectedFiles.splice(index, 1);
+        syncInputWithState();
+    }
+
+    function syncInputWithState() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(f => dt.items.add(f));
+        evidenceInput.files = dt.files;
+        renderImagePreview();
+    }
+
+    if (evidenceInput) { evidenceInput.addEventListener('change', mergeAndPreviewFiles); }
+    if (cameraInput)  { cameraInput.addEventListener('change', mergeAndPreviewFiles); }
+
+    function renderImagePreview() {
+        previewDiv.innerHTML = '';
+        const files = selectedFiles;
+        Array.from(files).forEach((file, index) => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-item';
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.title = 'Click to view full image';
+                img.addEventListener('click', () => openFullImage(e.target.result));
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'preview-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeImageAtIndex(index);
+                });
+                wrapper.appendChild(img);
+                wrapper.appendChild(removeBtn);
+                previewDiv.appendChild(wrapper);
+            };
+            reader.readAsDataURL(file);
+        });
+        updateUploadButton();
+    }
+
+    function openFullImage(src) {
+        const modalBackdrop = document.createElement('div');
+        modalBackdrop.style.position = 'fixed';
+        modalBackdrop.style.inset = '0';
+        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
+        modalBackdrop.style.display = 'flex';
+        modalBackdrop.style.alignItems = 'center';
+        modalBackdrop.style.justifyContent = 'center';
+        modalBackdrop.style.zIndex = '8000';
+        const fullImg = document.createElement('img');
+        fullImg.src = src;
+        fullImg.style.maxWidth = '90%';
+        fullImg.style.maxHeight = '90%';
+        fullImg.style.borderRadius = '12px';
+        modalBackdrop.appendChild(fullImg);
+        document.body.appendChild(modalBackdrop);
+        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
+    }
+
+    function isMobile() {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+    if (cameraBtn && isMobile() && cameraInput) {
+        cameraBtn.addEventListener('click', () => {
+            if(!cameraBtn.disabled) cameraInput.click();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (evidenceInput && evidenceInput.files.length > 0) {
+            selectedFiles = Array.from(evidenceInput.files);
+            renderImagePreview();
+        }
+    });
+
+    // Contact number logic: auto-format and validate
+    const phoneInput = document.getElementById('contact_number');
+    const form = document.getElementById('maintenanceRequestForm');
+    const submitBtn = document.getElementById('submit-btn');
+    let realSubmit = false;
+
+    if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+            const input = e.target;
+            const cursorPos = input.selectionStart;
+            let digits = input.value.replace(/\D/g, '').slice(0, 11);
+            let formatted = '';
+            if (digits.length <= 4) {
+                formatted = digits;
+            } else if (digits.length <= 7) {
+                formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+            } else {
+                formatted = digits.slice(0, 4) + '-' + digits.slice(4, 7) + '-' + digits.slice(7);
+            }
+            const digitsBeforeCursor = input.value
+                .slice(0, cursorPos)
+                .replace(/\D/g, '')
+                .length;
+            input.value = formatted;
+            let newCursor = 0, digitCount = 0;
+            for (let i = 0; i < formatted.length; i++) {
+                if (/\d/.test(formatted[i])) digitCount++;
+                if (digitCount === digitsBeforeCursor) {
+                    newCursor = i + 1;
+                    break;
+                }
+            }
+            input.setSelectionRange(newCursor, newCursor);
+        });
+    }
+    if (form && phoneInput) {
+        form.addEventListener('submit', e => {
+            if (realSubmit) return;
+            e.preventDefault();
+            const val = phoneInput.value.replace(/\D/g,'');
+            if (!/^09\d{9}$/.test(val)) {
+                showJsNotification('error', 'Contact number must be 11 digits and start with 09.');
+                phoneInput.focus();
+                return false;
+            }
+            showSubmitModal();
+        });
+    }
+
+    function showSubmitModal() {
+        const backdrop = document.getElementById('submitAlertBackdrop');
+        backdrop.classList.add('active');
+        document.getElementById('submitConfirmBtn').focus();
+        document.getElementById('submitConfirmBtn').onclick = function () {
+            backdrop.classList.remove('active');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            localStorage.clear();
+            realSubmit = true;
+            if (phoneInput) {
+                let val = phoneInput.value.replace(/\D/g, '');
+                if (val.length === 11)
+                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
+            }
+            setTimeout(() => form.submit(), 200);
+        };
+    }
+    function closeSubmitModal() {
+        document.getElementById('submitAlertBackdrop').classList.remove('active');
+    }
+
+    // ===== DRAFT SAVE =====
+    if (form) {
+        const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
+        inputs.forEach(input => {
+            const saved = localStorage.getItem(input.name);
+            if (saved !== null) {
+                input.value = saved;
+            }
+            input.addEventListener('input', () => {
+                if (input.name === 'infrastructure_other' && input.value.trim() === '') {
+                    localStorage.removeItem('infrastructure_other');
+                    return;
+                }
+                localStorage.setItem(input.name, input.value);
+            });
+        });
+    }
+    </script>
+
+
     <!-- Auto-clear form after successful submission & notification -->
     <script>
     <?php if (!empty($_SESSION['notification']) && $_SESSION['notification']['type'] === 'success'): ?>
@@ -3615,60 +3912,53 @@ input[type="file"] {
     });
     <?php endif; ?>
     </script>
-<footer class="footer">
+
+<!-- FOOTER -->
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <span>📧</span>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <span>📞</span>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <span>📍</span>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         
         <div class="footer-links">
-            <h4>Quick Links</h4>
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizencimm.php">Home</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenreports.php">Reports</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenrepform.php">Submit Request</a></li>
-                <li><a href="<?php echo htmlspecialchars($basePath); ?>about.php">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Resources</h4>
+            <h4 data-i18n="footer_resources">Resources</h4>
             <ul>
-                <li><a href="#">User Guide</a></li>
-                <li><a href="#">FAQs</a></li>
-                <li><a href="#">Service Areas</a></li>
-                <li><a href="#">Emergency Contacts</a></li>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
             </ul>
         </div>
         
         <div class="footer-links">
-            <h4>Legal</h4>
+            <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php">Privacy Policy</a></li>
-                <li><a href="termcon.php">Terms of Service</a></li>
-                <li><a href="#">Data Protection</a></li>
-                <li><a href="#">Accessibility</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
         </div>
     </div>
     
     <div class="footer-bottom">
-        <div>© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
         <div class="footer-social">
             <a href="#" class="social-link" title="Facebook">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
