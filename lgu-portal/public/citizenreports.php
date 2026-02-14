@@ -438,12 +438,6 @@ if ($maintenance_result) {
             flex: 1 1 auto;
             color: var(--text-secondary);
         }
-        .report-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 8px;
-        }
         .evidence-btn {
             padding: 8px 14px;
             border-radius: 10px;
