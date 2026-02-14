@@ -22,15 +22,17 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Privacy Policy - InfraGovServices | LGU Portal</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
+    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
 
+    <script>
+    (function() {
+        const currentLang = localStorage.getItem('lang') || 'en';
+        if (currentLang === 'tl') {
+            document.documentElement.style.cssText = 'visibility: hidden !important;';
+        }
+    })();
+    </script>
+    <style>
         /* =======================
            Dark Mode Variables
         ========================== */
@@ -72,239 +74,6 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             position: relative;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backdrop-filter: blur(8px);
-            background: rgba(0,0,0,0.4);
-            z-index: -1;
-            transition: background 0.3s ease;
-        }
-
-        [data-theme="dark"] body::before {
-            background: rgba(0, 0, 0, 0.6);
-        }
-
-        body::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        body::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-        }
-
-        body::-webkit-scrollbar-thumb {
-            background: #2b6cb0;
-            border-radius: 5px;
-        }
-
-        /* FIX 3: Make navbar flexible with responsive spacing */
-        .nav {
-            width: 100%;
-            padding: 18px clamp(20px, 4vw, 60px);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--nav-bg);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom: 2px solid var(--border-color);
-            box-shadow: 0 4px 25px var(--shadow-color);
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 100;
-            transition: all 0.3s ease;
-            gap: clamp(10px, 2vw, 20px);
-            flex-wrap: wrap;
-        }
-        
-        /* FIX 4: Responsive site logo */
-        .site-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-            font-weight: 600;
-            text-decoration: none;
-            transition: color 0.3s ease;
-            font-size: clamp(12px, 1.5vw, 16px);
-            white-space: nowrap;
-            flex-shrink: 1;
-            min-width: 0;
-        }
-        
-        .site-logo:hover {
-            opacity: 0.85;
-        }
-        
-        .site-logo img {
-            width: clamp(30px, 5vw, 40px);
-            height: auto;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-
-        .site-logo img {
-            width: clamp(30px, 5vw, 40px);
-            height: auto;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-        
-        /* FIX 5: Responsive nav center section */
-        .nav-center {
-            display: flex;
-            align-items: center;
-            gap: clamp(8px, 1.5vw, 15px);
-            margin-left: auto;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-        
-        /* FIX 6: Responsive nav links */
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: clamp(12px, 2vw, 25px);
-            flex-wrap: wrap;
-        }
-        
-        .nav-links a {
-            margin-left: 0;
-            text-decoration: none;
-            cursor: pointer;
-            color: var(--text-primary);
-            opacity: .8;
-            transition: .2s;
-            font-weight: 500;
-            font-size: clamp(13px, 1.4vw, 16px);
-            white-space: nowrap;
-        }
-        
-        .nav-links a.active {
-            opacity: 1;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .nav-links a:hover {
-            opacity: 1;
-            text-decoration: none;
-        }
-
-        /* Nav divider */
-        .nav-divider {
-            width: 2px;
-            height: 30px;
-            background: var(--border-color);
-            margin: 0;
-        }
-
-        /* FIX 7: Responsive nav actions */
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: clamp(8px, 1.2vw, 12px);
-            flex-wrap: wrap;
-        }
-
-        /* FIX 8: Desktop clock - SINGLE LINE LAYOUT */
-        .desktop-clock {
-            font-size: clamp(12px, 1.3vw, 14px);
-            font-weight: 500;
-            color: var(--text-primary);
-            white-space: nowrap !important;    /* Force single line */
-            position: relative;
-            transition: color 0.3s ease;
-            text-align: right;
-            min-width: 420px;
-            display: inline-block;
-            overflow: visible;
-            line-height: 1.4;
-        }
-
-        .desktop-clock .date-part {
-            opacity: 0.6;
-            font-weight: 400;
-            display: inline;
-            white-space: nowrap;
-        }
-
-        .desktop-clock .time-part {
-            font-weight: 700;
-            letter-spacing: 0.03em;
-            display: inline;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-        }
-
-        .time-part span {
-            display: inline-block;
-            transition: transform 0.25s ease, opacity 0.25s ease;
-            white-space: nowrap;
-        }
-
-        .time-part.flip span {
-            transform: translateY(-4px);
-            opacity: 0.6;
-        }
-
-        /* FIX 9: Responsive nav buttons */
-        .nav-btn {
-            position: relative;
-            width: clamp(34px, 5vw, 38px);
-            height: clamp(34px, 5vw, 38px);
-            border: none;
-            border-radius: 10px;
-            background: rgba(55, 98, 200, 0.1);
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: clamp(16px, 2vw, 18px);
-            transition: all 0.3s ease;
-            backdrop-filter: blur(8px);
-            flex-shrink: 0;
-        }
-
-        .nav-btn:hover {
-            background: rgba(55, 98, 200, 0.2);
-            transform: scale(1.05);
-        }
-
-        .nav-btn:active {
-            transform: scale(0.95);
-        }
-
-        .nav-btn.dark-mode-btn {
-            animation: none;
-        }
-
-        .nav-btn.dark-mode-btn.active {
-            animation: rotateSun 0.5s ease;
-        }
-
-        @keyframes rotateSun {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.2); }
-            100% { transform: rotate(360deg) scale(1); }
-        }
-
-        .menu-toggle {
-            display: none;
-            font-size: 26px;
-            cursor: pointer;
-            color: var(--text-primary);
-            background: none;
-            border: none;
-            margin-left: 18px;
-        }
         .form-wrapper {
             position: relative;
             z-index: 1;
@@ -312,132 +81,6 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             justify-content: center;
             align-items: flex-start;
             padding: 110px 16px 40px;
-        }
-        /* ===========================
-        MOBILE SIDEBAR STYLES
-        =========================== */
-        .sidebar-nav {
-            position: fixed;
-            top: 0;
-            left: -110%;
-            width: calc(100% - 24px);
-            height: calc(100% - 24px);
-            top: 12px;
-            bottom: 12px;
-            border-radius: 18px;
-            background: var(--bg-secondary);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 4px 25px var(--shadow-color);
-            color: var(--text-primary);
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 0;
-            z-index: 4000;
-            transition: left 0.35s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid var(--border-color);
-        }
-
-        .sidebar-nav.mobile-active {
-            left: 12px;
-        }
-
-        .sidebar-top {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            min-height: 0;
-            height: 100%;
-            padding: 20px 0;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .sidebar-logo-spacer {
-            height: 16px;
-            flex-shrink: 0;
-        }
-
-        .sidebar-nav .site-logo {
-            margin-top: 60px;
-            flex-direction: column;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            padding-bottom: 5px;
-            width: calc(100% - 50px);
-            margin-left: 25px;
-            margin-right: 25px;
-            box-sizing: border-box;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .sidebar-nav .site-logo img {
-            width: 120px;
-            height: auto;
-            object-fit: contain;
-            border-radius: 10px;
-            transition: all 0.3s ease, opacity 0.3s ease;
-        }
-
-        .sidebar-divider.logo-divider {
-            transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
-            opacity: 1;
-            width: calc(100% - 50px);
-            margin: 18px 25px 0 25px;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.551);
-        }
-
-        [data-theme="dark"] .sidebar-divider.logo-divider {
-            border-bottom-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .sidebar-nav .nav-list {
-            list-style: none;
-            font-size: 14px;
-            padding: 0 15px;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 0;
-            flex-shrink: 0;
-            transition: padding 0.3s ease;
-        }
-
-        .sidebar-nav .nav-list li {
-            width: 100%;
-            margin: 3px 0;
-        }
-
-        .sidebar-nav .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--text-primary);
-            text-decoration: none;
-            padding: 12px 20px;
-            transition: all 0.3s ease;
-            border-radius: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .sidebar-nav .nav-link.active,
-        .sidebar-nav .nav-link.active:hover {
-            background: #3762c8;
-            color: #fff;
-            transform: translateX(2px);
-        }
-
-        .sidebar-nav .nav-link:hover {
-            background: #97a4c2;
-            transform: translateX(8px) scale(1.02);
         }
 
         @media (max-width: 768px) {
@@ -633,219 +276,6 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             background: linear-gradient(135deg, #245a96 0%, #1d4ed8 100%);
         }
 
-        /* FOOTER - Updated from citizencimm.php */
-        .footer {
-            width: 100%;
-            padding: 60px 20px 30px;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-top: 1px solid var(--border-color);
-            box-shadow: 0 -2px 12px var(--shadow-color);
-            margin-top: auto;
-        }
-
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 40px;
-        }
-
-        .footer-about h3 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-
-        .footer-about p {
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.7;
-            margin-bottom: 20px;
-        }
-
-        .footer-contact {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .contact-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.95rem;
-        }
-
-        .footer-links h4 {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-
-        .footer-links ul {
-            list-style: none;
-        }
-
-        .footer-links li {
-            margin-bottom: 10px;
-        }
-
-        .footer-links a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            transition: all 0.2s ease;
-            font-size: 0.95rem;
-        }
-
-        .footer-links a:hover {
-            color: #fff;
-            padding-left: 5px;
-        }
-
-        .footer-bottom {
-            text-align: center;
-            padding-top: 30px;
-            margin-top: 30px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .footer-social {
-            display: flex;
-            gap: 15px;
-        }
-
-        .social-link {
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            text-decoration: none;
-            font-size: 18px;
-            transition: all 0.3s ease;
-        }
-
-        .social-link:hover {
-            background: #2b6cb0;
-            transform: translateY(-3px);
-        }
-
-        /* FIX 10: Clock width adjustments - KEEP SINGLE LINE */
-        @media (min-width: 769px) and (max-width: 1200px) {
-            .desktop-clock {
-                min-width: 380px;
-                font-size: clamp(11px, 1.2vw, 13px);
-                white-space: nowrap !important;
-            }
-        }
-
-        @media (min-width: 769px) and (max-width: 1000px) {
-            .desktop-clock {
-                min-width: 320px;
-                font-size: clamp(10px, 1.1vw, 12px);
-                white-space: nowrap !important;
-            }
-        }
-
-        /* FIX 11: Tall screens - only stack on VERY narrow screens */
-        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (max-width: 500px) {
-            .nav {
-                padding: 12px clamp(15px, 3vw, 40px);
-            }
-            
-            .desktop-clock {
-                min-width: 280px;
-            }
-            
-            /* Only stack when truly necessary */
-            .desktop-clock .date-part {
-                display: block;
-                text-align: center;
-                margin-bottom: 2px;
-                font-variant-numeric: tabular-nums;
-            }
-            
-            .desktop-clock .time-part {
-                display: block;
-                text-align: center;
-                font-variant-numeric: tabular-nums;
-            }
-        }
-
-        /* For wider tall screens - keep inline */
-        @media (min-width: 769px) and (min-aspect-ratio: 9/16) and (min-width: 501px) {
-            .nav {
-                padding: 12px clamp(15px, 3vw, 40px);
-            }
-            
-            .desktop-clock {
-                min-width: 400px;
-                white-space: nowrap !important;
-            }
-            
-            .desktop-clock .date-part,
-            .desktop-clock .time-part {
-                display: inline;
-                white-space: nowrap;
-            }
-        }
-
-        /* FIX 12: Phones in desktop mode - stack vertically */
-        @media (min-width: 769px) and (max-width: 600px) {
-            .nav {
-                flex-wrap: nowrap;
-                padding: 12px 15px;
-            }
-            
-            .site-logo span {
-                display: none;
-            }
-            
-            .nav-links {
-                flex-wrap: nowrap;
-                gap: 10px;
-            }
-            
-            .nav-links a {
-                font-size: 13px;
-            }
-            
-            .desktop-clock {
-                font-size: 11px;
-                min-width: auto;
-                max-width: 150px;
-                width: 150px;
-            }
-            
-            .desktop-clock .date-part,
-            .desktop-clock .time-part {
-                display: block;
-                text-align: right;
-                line-height: 1.2;
-                font-variant-numeric: tabular-nums;
-            }
-            
-            .nav-btn {
-                width: 32px;
-                height: 32px;
-                font-size: 16px;
-            }
-        }
-
         @media (max-width: 1024px) {
             .footer-content {
                 grid-template-columns: 1fr 1fr;
@@ -909,31 +339,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             }
         }
     </style>
-    <script>
-    const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
-
-    (function() {
-        try {
-            let savedTheme = localStorage.getItem('theme');
-            
-            if (savedTheme !== 'dark' && savedTheme !== 'light') {
-                savedTheme = 'light';
-            }
-            
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-            }
-            
-            localStorage.setItem('theme', savedTheme);
-            
-        } catch (e) {
-            console.error('Theme initialization error:', e);
-            document.documentElement.removeAttribute('data-theme');
-        }
-    })();
-    </script>
+    <?php include 'citizen_rendering.php'; ?>
 </head>
 <body>
 
@@ -941,7 +347,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
-        <span>InfraGovServices - Infrastructure and Utilities</span>
+        <span>InfraGovServices</span>
     </a>
     
     <div class="nav-center">
@@ -959,6 +365,17 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <div class="nav-actions">
             <div class="desktop-clock" id="desktopClock"></div>
+                        <!-- TRANSLATE BUTTON (desktop) -->
+                        <button class="translate-btn" id="translateBtn" title="Translate to Filipino">
+                    <span class="globe-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </span>
+                    <span class="lang-label" id="langLabel">EN</span>
+            </button>
             <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
                 <span class="dark-icon">🌙</span>
                 <span class="light-icon" style="display: none;">☀️</span>
@@ -985,13 +402,21 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span>Requests</span></a></li>
             <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span>About</span></a></li>
         </ul>
-        <div style="flex-grow:1;"></div>
     </div>
 </div>
 
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
+        <!-- MOBILE TRANSLATE BUTTON -->
+        <button class="mobile-translate-btn" id="mobileTranslateBtn" title="Translate">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="mobile-lang-label" id="mobileLangLabel">E</span>
+        </button>
     <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
         <img src="<?= $OFFICIAL_LOGO ?>" alt="LGU Logo">
     </a>
@@ -1189,237 +614,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     </div>
 </footer>
 
-<script>
-// Mobile sidebar toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const mobileToggle = document.getElementById('mobileToggle');
-    const sidebar = document.getElementById('sidebarNav');
-    
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (sidebar) sidebar.classList.toggle('mobile-active');
-        });
-    }
-    
-    // Close sidebar when clicking outside
-    document.addEventListener('click', (e) => {
-        if (sidebar && sidebar.classList.contains('mobile-active')) {
-            if (!sidebar.contains(e.target) && e.target !== mobileToggle) {
-                sidebar.classList.remove('mobile-active');
-            }
-        }
-    });
-    
-    // Prevent sidebar from closing when clicking inside it
-    if (sidebar) {
-        sidebar.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    }
-    
-    // Close sidebar when clicking a link (for better UX)
-    const navLinks = sidebar?.querySelectorAll('.nav-link');
-    navLinks?.forEach(link => {
-        link.addEventListener('click', () => {
-            sidebar.classList.remove('mobile-active');
-        });
-    });
-});
-</script>
-
-<script>
-// Clock Script
-const RESYNC_MINUTES = 5;
-let currentServerTime = SERVER_TIME;
-let clockInterval = null;
-let lastSecond = null;
-
-function getTimezoneLabel() {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const offset = -new Date().getTimezoneOffset() / 60;
-    const sign = offset >= 0 ? '+' : '-';
-    return `${tz} (GMT${sign}${Math.abs(offset)})`;
-}
-
-function renderClock(now) {
-    const datePart = now.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
-    const timeStr = now.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-    });
-
-    const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
-    let h = t ? t[1] : "--";
-    let m = t ? t[2] : "--";
-    let s = t ? t[3] : "--";
-    let ampm = t ? t[4] : "";
-
-    const desktopClock = document.getElementById('desktopClock');
-    const mobileClock = document.getElementById('mobileClock');
-
-    function flipSpan(str) {
-        return str.split('').map(chr => `<span>${chr}</span>`).join('');
-    }
-
-    if (desktopClock) {
-        desktopClock.innerHTML = `
-            <span class="date-part">${datePart}</span>
-            &nbsp;&nbsp;&nbsp;
-            <span class="time-part">
-                ${flipSpan(h)}:${flipSpan(m)}:${flipSpan(s)} ${ampm}
-            </span>
-        `;
-    }
-
-    if (mobileClock) {
-        mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
-    }
-}
-
-function tick() {
-    const now = new Date(currentServerTime);
-    const sec = now.getSeconds();
-
-    if (sec !== lastSecond) {
-        document.querySelectorAll('.time-part').forEach(el => {
-            el.classList.add('flip');
-            setTimeout(() => el.classList.remove('flip'), 250);
-        });
-        lastSecond = sec;
-    }
-
-    renderClock(now);
-    currentServerTime += 1000;
-}
-
-function startClock() {
-    if (clockInterval) return;
-    tick();
-    clockInterval = setInterval(tick, 1000);
-}
-
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        clearInterval(clockInterval);
-        clockInterval = null;
-    } else {
-        startClock();
-    }
-});
-
-setInterval(() => {
-    fetch(location.href, { method: 'HEAD' })
-        .then(() => {
-            currentServerTime = SERVER_TIME;
-        });
-}, RESYNC_MINUTES * 60 * 1000);
-
-startClock();
-</script>
-
-<script>
-// Dark Mode Toggle
-(function() {
-    const darkModeBtn = document.getElementById('darkModeBtn');
-    const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
-    if (!darkModeBtn && !mobileDarkModeBtn) return;
-
-    const darkIcon = darkModeBtn?.querySelector('.dark-icon') || mobileDarkModeBtn?.querySelector('.dark-icon');
-    const lightIcon = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
-    const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
-    const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
-    const html = document.documentElement;
-
-    const THEME_KEY = 'theme';
-    const THEME_BACKUP_KEY = 'theme_backup';
-
-    function updateTheme(isDark, animate = false) {
-        try {
-            const themeValue = isDark ? 'dark' : 'light';
-            
-            if (isDark) {
-                html.setAttribute('data-theme', 'dark');
-            } else {
-                html.removeAttribute('data-theme');
-            }
-            
-            localStorage.setItem(THEME_KEY, themeValue);
-            localStorage.setItem(THEME_BACKUP_KEY, themeValue);
-            
-            if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
-            if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
-            if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
-            if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
-            
-            if (animate) {
-                if (darkModeBtn) darkModeBtn.classList.add('active');
-                if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
-                setTimeout(() => {
-                    if (darkModeBtn) darkModeBtn.classList.remove('active');
-                    if (mobileDarkModeBtn) mobileDarkModeBtn.classList.remove('active');
-                }, 500);
-            }
-        } catch (e) {
-            console.error('Theme update error:', e);
-        }
-    }
-
-    try {
-        let savedTheme = localStorage.getItem(THEME_KEY);
-        
-        if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
-        }
-        
-        if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light';
-        }
-        
-        updateTheme(savedTheme === 'dark', false);
-    } catch (e) {
-        console.error('Theme load error:', e);
-        updateTheme(false, false);
-    }
-
-    function toggleTheme() {
-        const isDark = html.getAttribute('data-theme') === 'dark';
-        updateTheme(!isDark, true);
-    }
-
-    if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
-    if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
-
-    window.addEventListener('beforeunload', function() {
-        try {
-            const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-            localStorage.setItem(THEME_KEY, currentTheme);
-            localStorage.setItem(THEME_BACKUP_KEY, currentTheme);
-        } catch (e) {
-            console.error('Theme save error:', e);
-        }
-    });
-})();
-</script>
-
-<!-- URL CLEANER: Removes ?staff=field2026 from address bar after authentication -->
-<script>
-// Clean URL after secret key authentication to prevent sharing
-if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
-    // Remove the parameter from URL without reloading
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-}
-</script>
-
+<?php include 'citizen_global.php'; ?>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>

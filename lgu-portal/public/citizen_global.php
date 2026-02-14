@@ -1,3 +1,4 @@
+<script>
 /* ---------------------------------------------------------------
    TRANSLATIONS ENGINE
    --------------------------------------------------------------- */
@@ -339,3 +340,24 @@ startClock();
         } catch(e) {}
     });
 })();
+</script>
+
+<script>
+// Clean URL after secret key authentication to prevent sharing
+if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
+    // Remove the parameter from URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+</script>
+
+<?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
+    <script>
+    // Clean URL after secret key authentication
+    if (window.location.search.includes('staff=<?= SECRET_ACCESS_KEY ?>')) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+    </script>
+    <?php endif; ?>
+<script>
