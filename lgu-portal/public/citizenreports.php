@@ -438,6 +438,12 @@ if ($maintenance_result) {
             flex: 1 1 auto;
             color: var(--text-secondary);
         }
+        .report-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
         .evidence-btn {
             padding: 8px 14px;
             border-radius: 10px;
@@ -504,6 +510,11 @@ if ($maintenance_result) {
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59,130,246,.15);
         }
+        @media (max-width: 1024px) {
+        .footer-content {
+            grid-template-columns: 1fr 1fr;
+        }
+}
 
     /* ===== MOBILE BREAKPOINT (768px and below) ===== */
     @media (max-width: 768px) {
