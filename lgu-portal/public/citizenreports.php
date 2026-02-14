@@ -130,7 +130,7 @@ if ($maintenance_result) {
         }
 
         .dashboard-container {
-            padding: 100px 0 40px;
+            padding: 30px 0 40px;
             max-width: 100%;
             margin: 0;
             color: var(--text-primary);
@@ -510,7 +510,7 @@ if ($maintenance_result) {
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59,130,246,.15);
         }
-        @media (max-width: 1024px) {
+        @media (max-width: 1024px) {    
         .footer-content {
             grid-template-columns: 1fr 1fr;
         }
