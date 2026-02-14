@@ -585,7 +585,7 @@ if ($maintenance_result) {
             }
 
             .dashboard-container { 
-                padding: 30px 13px 40px; 
+                padding: 20px 13px 40px; 
             }
             .container { padding: 0 5px; }
             .stats-grid {
