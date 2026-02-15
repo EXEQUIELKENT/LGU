@@ -2988,21 +2988,24 @@ input[type="file"] {
     function syncMapLayerToggleButton() {
         if (!layerToggle) return;
         
-        // Check if translations are loaded and provide fallbacks
-        let streetText, satelliteText;
+        // Get current language
+        const currentLang = localStorage.getItem('lang') || 'en';
         
-        if (window.__preloadedTranslations) {
-            streetText = getTranslation('map_layer_toggle_street');
-            satelliteText = getTranslation('map_layer_toggle_satellite');
-            
-            // If translation returns the key itself, use fallback
-            if (streetText === 'map_layer_toggle_street') streetText = '🗺️ Street';
-            if (satelliteText === 'map_layer_toggle_satellite') satelliteText = '🛰️ Satellite';
-        } else {
-            // Translations not loaded yet, use defaults
-            streetText = '🗺️ Kalye';
-            satelliteText = '🛰️ Satellite';
-        }
+        // Define translations for both languages (hardcoded as reliable fallback)
+        const translations = {
+            en: {
+                street: '🗺️ Street',
+                satellite: '🛰️ Satellite'
+            },
+            tl: {
+                street: '🗺️ Kalye',
+                satellite: '🛰️ Satellite'
+            }
+        };
+        
+        // Get the appropriate text based on current language
+        const streetText = translations[currentLang]?.street || translations.en.street;
+        const satelliteText = translations[currentLang]?.satellite || translations.en.satellite;
         
         if (currentMapLayer === 'satellite') {
             layerToggle.innerHTML = streetText;
@@ -3010,12 +3013,7 @@ input[type="file"] {
             layerToggle.innerHTML = satelliteText;
         }
     }
-
-    // This function is called by the translation system when language changes
-    function updateMapLayerToggleText() {
-        syncMapLayerToggleButton();
-    }
-
+    
     // Update the openMapModal function:
     function openMapModal() {
 
