@@ -74,7 +74,7 @@ if ($maintenance_result) {
     
     <style>
         body {
-            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
