@@ -2986,12 +2986,28 @@ input[type="file"] {
     }
 
     function syncMapLayerToggleButton() {
-        if (!layerToggle || !window.__preloadedTranslations) return;  // Add translation check
+        if (!layerToggle) return;
+        
+        // Check if translations are loaded and provide fallbacks
+        let streetText, satelliteText;
+        
+        if (window.__preloadedTranslations) {
+            streetText = getTranslation('map_layer_toggle_street');
+            satelliteText = getTranslation('map_layer_toggle_satellite');
+            
+            // If translation returns the key itself, use fallback
+            if (streetText === 'map_layer_toggle_street') streetText = '🗺️ Street';
+            if (satelliteText === 'map_layer_toggle_satellite') satelliteText = '🛰️ Satellite';
+        } else {
+            // Translations not loaded yet, use defaults
+            streetText = '🗺️ Kalye';
+            satelliteText = '🛰️ Satellite';
+        }
         
         if (currentMapLayer === 'satellite') {
-            layerToggle.innerHTML = getTranslation('map_layer_toggle_street');
+            layerToggle.innerHTML = streetText;
         } else {
-            layerToggle.innerHTML = getTranslation('map_layer_toggle_satellite');
+            layerToggle.innerHTML = satelliteText;
         }
     }
 
