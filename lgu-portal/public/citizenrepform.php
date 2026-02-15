@@ -2985,15 +2985,12 @@ input[type="file"] {
         });
     }
 
-    // NEW function to sync button text with current state:
     function syncMapLayerToggleButton() {
-        if (!layerToggle) return;
+        if (!layerToggle || !window.__preloadedTranslations) return;  // Add translation check
         
         if (currentMapLayer === 'satellite') {
-            // When showing satellite, button should say "Street View"
             layerToggle.innerHTML = getTranslation('map_layer_toggle_street');
         } else {
-            // When showing street, button should say "Satellite"
             layerToggle.innerHTML = getTranslation('map_layer_toggle_satellite');
         }
     }
