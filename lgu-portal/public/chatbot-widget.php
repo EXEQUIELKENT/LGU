@@ -15,7 +15,7 @@
 /* Chatbot Widget Styles */
 .chatbot-toggle {
     position: fixed;
-    bottom: 24px;
+    bottom: 75px;
     right: 24px;
     width: 60px;
     height: 60px;
@@ -364,7 +364,7 @@
     }
     
     .chatbot-toggle {
-        bottom: 16px;
+        bottom: 40px;
         right: 16px;
         width: 56px;
         height: 56px;
