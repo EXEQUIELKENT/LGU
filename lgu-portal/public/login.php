@@ -2,24 +2,44 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// --- START SESSION FIRST (required for auth_config.php) ---
+session_start();
+
 // --- AUTH CONFIG BLOCK ---
 $localhostWhitelist = ['localhost', '127.0.0.1', '::1'];
 
 // Path to auth_config.php in the root (adjust path if needed)
-$authConfigFile = __DIR__ . 'auth_config.php';
+$authConfigFile = __DIR__ . '/auth_config.php';
 
 // Always allow login on localhost/dev
 $isLocalhost = in_array($_SERVER['SERVER_NAME'] ?? '', $localhostWhitelist) ||
                (isset($_SERVER['HTTP_HOST']) && in_array(explode(':', $_SERVER['HTTP_HOST'])[0], $localhostWhitelist));
 
+// 🔒 SECURITY: Block unauthorized direct access to login.php
 if (!$isLocalhost && file_exists($authConfigFile)) {
     require $authConfigFile; // will define $show_login (and maybe others)
-    if (isset($show_login) && $show_login === true) {
-        // Authorized access only
-    } else {
-        // Allow access
+    
+    if (!isset($show_login) || $show_login !== true) {
+        // Unauthorized access attempt - redirect to home page
+        if ($_SERVER['HTTP_HOST'] === 'localhost') {
+            $redirectUrl = '/LGU/lgu-portal/public/citizencimm.php';
+        } else {
+            $redirectUrl = '/lgu-portal/public/citizencimm.php';
+        }
+        
+        // Log unauthorized access attempt (optional)
+        error_log('🚨 UNAUTHORIZED LOGIN ACCESS ATTEMPT - IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN') . ' | Time: ' . date('Y-m-d H:i:s'));
+        
+        // Redirect with no error message to avoid revealing the page exists
+        header("Location: " . $redirectUrl);
+        exit;
     }
-} 
+    
+    // Clean URL if accessed via secret key
+    if (function_exists('cleanAuthURL')) {
+        cleanAuthURL();
+    }
+}
 
 // --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
 date_default_timezone_set('Asia/Manila');
@@ -35,8 +55,6 @@ require __DIR__ . '/db.php';
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
-
-session_start();
 
 define('OTP_RESEND_COOLDOWN', 30);
 define('OTP_MAX_RESENDS', 1);
@@ -84,17 +102,17 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     setNotification('success', 'Successfully logged out.');
 }
 
-// 🔥 CHANGE #1: OTP is now REQUIRED on EVERY login - removed 12-hour bypass
-// 🔥 CHANGE #2: PERMANENT ACCOUNT LOCK - removed 10-minute session lockout
-// 🔥 CHANGE #3: REMOVED "Remember Me" functionality completely
-
-// For local development and domain (show correct path for logo)
+// For local development and domain (show correct path for logo and URLs)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
     $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
+    $loginUrl = '/LGU/lgu-portal/public/login.php';
+    $employeeUrl = '/LGU/lgu-portal/public/employee.php';
 } else {
     $BASE_URL = '/lgu-portal/public/';
     $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
+    $loginUrl = '/lgu-portal/public/login.php';
+    $employeeUrl = '/lgu-portal/public/employee.php';
 }
 
 function setNotification($type, $message) {
@@ -155,7 +173,6 @@ function isUniqueEnoughPassword($password) {
     return isStrongPassword($password);
 }
 
-// 🔥 CHANGE #2: New function to check if account is locked in DATABASE
 function isAccountLocked(mysqli $conn, string $email): bool {
     $stmt = $conn->prepare("SELECT account_locked FROM employees WHERE LOWER(email) = LOWER(?)");
     $stmt->bind_param("s", $email);
@@ -172,7 +189,6 @@ function isAccountLocked(mysqli $conn, string $email): bool {
     return false;
 }
 
-// 🔥 CHANGE #2: New function to lock account permanently in database
 function lockAccount(mysqli $conn, string $email): void {
     $stmt = $conn->prepare("UPDATE employees SET account_locked = 1, failed_login_attempts = 3 WHERE LOWER(email) = LOWER(?)");
     $stmt->bind_param("s", $email);
@@ -180,7 +196,6 @@ function lockAccount(mysqli $conn, string $email): void {
     $stmt->close();
 }
 
-// 🔥 CHANGE #2: New function to track failed login attempts in database
 function registerFailedLogin(mysqli $conn, string $email): int {
     // Get current failed attempts
     $stmt = $conn->prepare("SELECT failed_login_attempts FROM employees WHERE LOWER(email) = LOWER(?)");
@@ -212,7 +227,6 @@ function registerFailedLogin(mysqli $conn, string $email): int {
     return 0;
 }
 
-// 🔥 CHANGE #2: New function to reset failed login attempts on successful login
 function resetFailedLoginAttempts(mysqli $conn, string $email): void {
     $stmt = $conn->prepare("UPDATE employees SET failed_login_attempts = 0 WHERE LOWER(email) = LOWER(?)");
     $stmt->bind_param("s", $email);
@@ -220,7 +234,6 @@ function resetFailedLoginAttempts(mysqli $conn, string $email): void {
     $stmt->close();
 }
 
-// 🔥 CHANGE #2: New function to send account unlock email
 function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
     global $loginUrl;
     
@@ -277,9 +290,7 @@ function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
             $unlockUrl = $protocol . '://' . $host . '/lgu-portal/public/login.php?unlock_token=' . $unlockToken;
         } else {
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $scriptPath = dirname($_SERVER['PHP_SELF']);
-            $scriptPath = rtrim($scriptPath, '/');
-            $unlockUrl = $protocol . '://' . $host . $scriptPath . '/' . $loginUrl . '?unlock_token=' . $unlockToken;
+            $unlockUrl = $protocol . '://' . $host . $loginUrl . '?unlock_token=' . $unlockToken;
         }
 
         // Email body with centered text and security alert styling
@@ -340,7 +351,7 @@ function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
     }
 }
 
-// 🔥 CHANGE #2: Handle account unlock token
+// Handle account unlock token
 if (isset($_GET['unlock_token']) && !empty($_GET['unlock_token'])) {
     $unlockToken = $_GET['unlock_token'];
 
@@ -440,18 +451,16 @@ if (isset($_POST['forgot_password_submit'])) {
 
             $mail->isHTML(true);
             $mail->Subject = 'LGU Portal - Password Reset Request';
-
+            
             $host = $_SERVER['HTTP_HOST'];
             $isDomain = (strpos($host, 'infragovservices.com') !== false);
-            
+
             if ($isDomain) {
                 $protocol = 'https';
                 $resetUrl = $protocol . '://' . $host . '/lgu-portal/public/login.php?reset_token=' . $resetToken;
             } else {
                 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                $scriptPath = dirname($_SERVER['PHP_SELF']);
-                $scriptPath = rtrim($scriptPath, '/');
-                $resetUrl = $protocol . '://' . $host . $scriptPath . '/' . $loginUrl . '?reset_token=' . $resetToken;
+                $resetUrl = $protocol . '://' . $host . $loginUrl . '?reset_token=' . $resetToken;
             }
 
             $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
@@ -510,8 +519,8 @@ if (isset($_POST['forgot_password_submit'])) {
     exit;
 }
 
-// ========== RESET TOKEN HANDLING ==========
-if (isset($_GET['reset_token']) && !empty($_GET['reset_token'])) {
+// ========== RESET TOKEN HANDLING - FIXED VERSION ==========
+if (isset($_GET['reset_token']) && !empty($_GET['reset_token']) && !isset($_POST['reset_password_submit'])) {
     $resetToken = $_GET['reset_token'];
 
     $stmt = $conn->prepare("SELECT user_id, email, first_name, reset_token_expires FROM employees WHERE reset_token = ?");
@@ -522,27 +531,36 @@ if (isset($_GET['reset_token']) && !empty($_GET['reset_token'])) {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
         if (strtotime($user['reset_token_expires']) > time()) {
+            // Token is valid - set session variables to show modal
             $_SESSION['reset_token_valid'] = true;
             $_SESSION['reset_email'] = $user['email'];
             $_SESSION['reset_user_id'] = $user['user_id'];
             $_SESSION['reset_token'] = $resetToken;
             $_SESSION['show_reset_password_modal'] = true;
-            header("Location: " . strtok($_SERVER["REQUEST_URI"], '?'));
+            
+            // Redirect to clean URL (remove token from URL)
+            header("Location: " . $loginUrl);
             exit;
         } else {
             setNotification('error', 'Password reset link has expired. Please request a new one.');
+            // Clean up expired token
             $cleanupStmt = $conn->prepare("UPDATE employees SET reset_token = NULL, reset_token_expires = NULL WHERE reset_token = ?");
             $cleanupStmt->bind_param("s", $resetToken);
             $cleanupStmt->execute();
             $cleanupStmt->close();
+            
+            header("Location: " . $loginUrl);
+            exit;
         }
     } else {
         setNotification('error', 'Invalid password reset link.');
+        header("Location: " . $loginUrl);
+        exit;
     }
     $stmt->close();
 }
 
-// ========== RESET PASSWORD SUBMIT ==========
+// ========== RESET PASSWORD SUBMIT - FIXED VERSION ==========
 if (isset($_POST['reset_password_submit'])) {
     $newPassword = $_POST['reset_new_password'] ?? '';
     $confirmPassword = $_POST['reset_confirm_password'] ?? '';
@@ -553,16 +571,20 @@ if (isset($_POST['reset_password_submit'])) {
     if (empty($newPassword) || empty($confirmPassword)) {
         setNotification('error', 'Both password fields are required.');
         $_SESSION['show_reset_password_modal'] = true;
+        header("Location: " . $loginUrl);
         exit;
     } elseif ($newPassword !== $confirmPassword) {
         setNotification('error', 'Passwords do not match. Please try again.');
         $_SESSION['show_reset_password_modal'] = true;
+        header("Location: " . $loginUrl);
         exit;
     } elseif (!isStrongPassword($newPassword)) {
         setNotification('error', 'Password does not meet requirements.');
         $_SESSION['show_reset_password_modal'] = true;
+        header("Location: " . $loginUrl);
         exit;
     } elseif ($email && $userId && $resetToken) {
+        // Verify token is still valid
         $verifyStmt = $conn->prepare("SELECT reset_token_expires FROM employees WHERE user_id = ? AND email = ? AND reset_token = ?");
         $verifyStmt->bind_param("iss", $userId, $email, $resetToken);
         $verifyStmt->execute();
@@ -571,11 +593,13 @@ if (isset($_POST['reset_password_submit'])) {
         if ($verifyResult->num_rows === 1) {
             $tokenData = $verifyResult->fetch_assoc();
             if (strtotime($tokenData['reset_token_expires']) > time()) {
+                // Token is still valid - update password
                 $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
                 $stmt = $conn->prepare("UPDATE employees SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE user_id = ? AND email = ?");
                 $stmt->bind_param("sis", $hashedPassword, $userId, $email);
 
                 if ($stmt->execute()) {
+                    // Clear all reset session variables
                     unset(
                         $_SESSION['show_reset_password_modal'],
                         $_SESSION['reset_token_valid'],
@@ -591,6 +615,8 @@ if (isset($_POST['reset_password_submit'])) {
                 } else {
                     setNotification('error', 'Failed to update password. Please try again.');
                     $_SESSION['show_reset_password_modal'] = true;
+                    header("Location: " . $loginUrl);
+                    exit;
                 }
                 $stmt->close();
             } else {
@@ -671,8 +697,13 @@ if (isset($_POST['change_password_submit'])) {
     }
 }
 
-// Reset OTP/session state logic
-if ($_SERVER["REQUEST_METHOD"] === "GET" && !isset($_SESSION['show_change_password_modal']) && !isset($_SESSION['show_otp_form']) && !isset($_SESSION['show_reset_password_modal'])) {
+// Reset OTP/session state logic - FIXED: Don't clear reset password sessions
+if ($_SERVER["REQUEST_METHOD"] === "GET" && 
+    !isset($_SESSION['show_change_password_modal']) && 
+    !isset($_SESSION['show_otp_form']) && 
+    !isset($_SESSION['show_reset_password_modal']) &&
+    !isset($_GET['reset_token'])) {
+    // Only clear OTP sessions, not reset password sessions
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_verified']);
     unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 }
