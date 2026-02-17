@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 16, 2026 at 01:51 AM
+-- Generation Time: Feb 17, 2026 at 04:59 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -104,7 +104,20 @@ INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VA
 (75, 83, 'uploads/evidence/evidence_83_6979a75406fbb.jpeg', '2026-01-28 06:06:12'),
 (76, 84, 'uploads/evidence/evidence_84_6979daf3d0ef5.jpeg', '2026-01-28 09:46:27'),
 (77, 85, 'uploads/evidence/evidence_85_6979db74d0eb0.jpeg', '2026-01-28 09:48:36'),
-(78, 86, 'uploads/evidence/evidence_86_6979db8c4f736.jpeg', '2026-01-28 09:49:00');
+(78, 86, 'uploads/evidence/evidence_86_6979db8c4f736.jpeg', '2026-01-28 09:49:00'),
+(79, 87, 'uploads/evidence/evidence_87_6994774e99baf.jpg', '2026-02-17 14:12:30'),
+(80, 88, 'uploads/evidence/evidence_88_699477c29ddfa.jpg', '2026-02-17 14:14:26'),
+(81, 89, 'uploads/evidence/evidence_89_69947c4723635.jpg', '2026-02-17 14:33:43'),
+(82, 90, 'uploads/evidence/evidence_90_69947ef17d671.jpg', '2026-02-17 14:45:05'),
+(83, 91, 'uploads/evidence/evidence_91_699482fb237bf.jpg', '2026-02-17 15:02:19'),
+(84, 92, 'uploads/evidence/evidence_92_699485b9e9169.jpg', '2026-02-17 15:14:01'),
+(85, 93, 'uploads/evidence/evidence_93_699486085a185.jpg', '2026-02-17 15:15:20'),
+(86, 94, 'uploads/evidence/evidence_94_6994888fba2ca.jpg', '2026-02-17 15:26:07'),
+(87, 95, 'uploads/evidence/evidence_95_69948cb966330.jpg', '2026-02-17 15:43:53'),
+(88, 96, 'uploads/evidence/evidence_96_69948d0bba802.jpg', '2026-02-17 15:45:15'),
+(89, 97, 'uploads/evidence/evidence_97_69948d4b7d9b3.jpg', '2026-02-17 15:46:19'),
+(90, 98, 'uploads/evidence/evidence_98_69948fcb84bc8.jpg', '2026-02-17 15:56:59'),
+(91, 99, 'uploads/evidence/evidence_99_69949030c569b.jpg', '2026-02-17 15:58:40');
 
 -- --------------------------------------------------------
 
@@ -436,7 +449,111 @@ INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`,
 (246, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
 (247, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
 (248, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
-(249, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00');
+(249, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=86', 'Street Lights', 0, '2026-01-28 09:49:00'),
+(250, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(251, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(252, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(253, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(254, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(255, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(256, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(257, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=87', 'Roads', 0, '2026-02-17 14:12:30'),
+(258, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(259, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(260, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(261, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(262, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(263, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(264, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(265, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=88', 'roads', 0, '2026-02-17 14:14:26'),
+(266, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(267, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(268, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(269, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(270, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(271, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(272, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(273, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=89', 'Roads', 0, '2026-02-17 14:33:43'),
+(274, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(275, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(276, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(277, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(278, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(279, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(280, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(281, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=90', 'Roads', 0, '2026-02-17 14:45:05'),
+(282, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(283, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(284, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(285, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(286, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(287, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(288, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(289, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=91', 'Roads', 0, '2026-02-17 15:02:19'),
+(290, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(291, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(292, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(293, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(294, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(295, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(296, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(297, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=92', 'Roads', 0, '2026-02-17 15:14:01'),
+(298, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(299, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(300, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(301, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(302, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(303, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(304, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(305, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=93', 'Electrical', 0, '2026-02-17 15:15:20'),
+(306, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(307, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(308, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(309, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(310, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(311, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(312, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(313, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=94', 'Roads', 0, '2026-02-17 15:26:07'),
+(314, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(315, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(316, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(317, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(318, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(319, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(320, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(321, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=95', 'Roads', 0, '2026-02-17 15:43:53'),
+(322, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(323, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(324, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(325, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(326, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(327, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(328, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(329, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=96', 'Roads', 0, '2026-02-17 15:45:15'),
+(330, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(331, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(332, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(333, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(334, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(335, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(336, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(337, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=97', 'Roads', 0, '2026-02-17 15:46:19'),
+(338, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(339, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(340, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(341, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(342, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(343, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(344, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(345, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=98', 'Roads', 0, '2026-02-17 15:56:59'),
+(346, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(347, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(348, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(349, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(350, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(351, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(352, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(353, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40');
 
 -- --------------------------------------------------------
 
@@ -548,7 +665,69 @@ INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contac
 (83, 'Roads', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '090090', '09090909090', 'ss', 'Pending', '2026-01-28 06:06:12'),
 (84, 'Street Lights', 'SSS, Fernando Poe Jr. Avenue, Paraiso, San Francisco del Monte, 1st District, Quezon City, Eastern Manila District, Metro Manila, 1104, Philippines', '1212', '09019212121', '1212', 'Pending', '2026-01-28 09:46:27'),
 (85, 'Street Lights', 'ss', '122112', '09212211212', 'ss', 'Pending', '2026-01-28 09:48:36'),
-(86, 'Street Lights', '2121212', '121212', '09212121212', '1212', 'Pending', '2026-01-28 09:49:00');
+(86, 'Street Lights', '2121212', '121212', '09212121212', '1212', 'Pending', '2026-01-28 09:49:00'),
+(87, 'Roads', 'Pag-ibig sa Nayon, Quezon City', '121221', '09090192212', 'Kent', 'Pending', '2026-02-17 14:12:30'),
+(88, 'roads', 'Holy Spirit, Quezon City', '121', '09221212121', 'Kent', 'Pending', '2026-02-17 14:14:26'),
+(89, 'Roads', 'Pasong Tamo, Quezon City', '1212', '09121212212', 'Kent', 'Pending', '2026-02-17 14:33:43'),
+(90, 'Roads', 'Roxas, Quezon City', '121', '09212122122', 'Kent', 'Pending', '2026-02-17 14:45:05'),
+(91, 'Roads', 'Santo Domingo (Matalahib), Quezon City', '212', '09212122121', 'Kent', 'Pending', '2026-02-17 15:02:19'),
+(92, 'Roads', 'Pag-ibig sa Nayon, Quezon City', '212212', '09321221212', 'Kent', 'Pending', '2026-02-17 15:14:01'),
+(93, 'Electrical', 'Nayong Kanluran, Quezon City', '22121212', '09221212212', 'Kent', 'Pending', '2026-02-17 15:15:20'),
+(94, 'Roads', 'Sikatuna Village, Quezon City', '1212', '09212122121', 'Kent', 'Pending', '2026-02-17 15:26:07'),
+(95, 'Roads', 'Tandang Sora, Quezon City', '121122', '09212121212', 'Kent', 'Pending', '2026-02-17 15:43:53'),
+(96, 'Roads', 'Mangga, Quezon City', 'kkk', '09212212212', 'Kent', 'Pending', '2026-02-17 15:45:15'),
+(97, 'Roads', 'Unang Sigaw, Quezon City', '1221', '09212121221', 'Kent', 'Pending', '2026-02-17 15:46:19'),
+(98, 'Roads', 'Duyan-Duyan, Quezon City', '1212', '09121212212', 'Kent', 'Pending', '2026-02-17 15:56:59'),
+(99, 'Roads', 'Bayanihan, Quezon City', 'Roads', '09212121221', 'Kent', 'Pending', '2026-02-17 15:58:40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `request_ai_analysis`
+--
+
+CREATE TABLE `request_ai_analysis` (
+  `analysis_id` int(10) UNSIGNED NOT NULL,
+  `req_id` int(10) UNSIGNED NOT NULL,
+  `declared_infrastructure` varchar(100) DEFAULT NULL,
+  `detected_infrastructure` varchar(100) DEFAULT NULL,
+  `infrastructure_match` tinyint(1) DEFAULT NULL,
+  `match_confidence` decimal(4,3) DEFAULT NULL,
+  `is_legitimate` tinyint(1) DEFAULT NULL,
+  `legitimacy_score` decimal(4,3) DEFAULT NULL,
+  `legitimacy_notes` varchar(255) DEFAULT NULL,
+  `damage_severity` tinyint(2) DEFAULT NULL,
+  `priority_recommendation` enum('Low','Medium','High','Critical') DEFAULT NULL,
+  `damage_description` varchar(255) DEFAULT NULL,
+  `confidence_score` decimal(4,3) DEFAULT NULL,
+  `anomaly_flags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`anomaly_flags`)),
+  `combined_assessment` text DEFAULT NULL,
+  `estimated_repair_complexity` enum('Simple','Moderate','Complex','Major') DEFAULT NULL,
+  `requires_immediate_action` tinyint(1) DEFAULT 0,
+  `images_analyzed` tinyint(2) DEFAULT 0,
+  `analysis_status` enum('pending','completed','failed') DEFAULT 'pending',
+  `analyzed_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `request_ai_analysis`
+--
+
+INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastructure`, `detected_infrastructure`, `infrastructure_match`, `match_confidence`, `is_legitimate`, `legitimacy_score`, `legitimacy_notes`, `damage_severity`, `priority_recommendation`, `damage_description`, `confidence_score`, `anomaly_flags`, `combined_assessment`, `estimated_repair_complexity`, `requires_immediate_action`, `images_analyzed`, `analysis_status`, `analyzed_at`, `created_at`) VALUES
+(1, 87, NULL, NULL, NULL, NULL, NULL, NULL, 'API call failed or timed out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 'failed', '2026-02-17 14:12:30', '2026-02-17 14:12:30'),
+(2, 88, NULL, NULL, NULL, NULL, NULL, NULL, 'API call failed or timed out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 'failed', '2026-02-17 14:14:26', '2026-02-17 14:14:26'),
+(3, 89, NULL, NULL, NULL, NULL, NULL, NULL, 'Gemini API call failed or timed out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 'failed', '2026-02-17 14:33:43', '2026-02-17 14:33:43'),
+(4, 90, NULL, NULL, NULL, NULL, NULL, NULL, 'Gemini API failed after 2 attempts — see PHP error log for cURL details', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 'failed', '2026-02-17 14:45:08', '2026-02-17 14:45:08'),
+(5, 91, '', 'Roads', 1, 0.100, 1, 0.050, 'Low AI confidence — image may not clearly show infrastructure damage. Manual review advised.', 1, 'Low', 'Roads issue detected across 1 image. Minor damage detected.', 0.000, '[\"low_model_confidence\",\"no_infrastructure_detected\"]', 'geyser (21%); lakeside, lakeshore (13%); volcano (12%); valley, vale (3%); spider web, spider\'s web (2%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:02:19', '2026-02-17 15:02:19'),
+(6, 92, '', 'Drainage', 0, 0.100, 1, 0.050, 'Low AI confidence — image may not clearly show infrastructure damage. Manual review advised.', 9, 'Critical', 'Drainage issue detected across 1 image. Water damage/flooding signs. Burn or char marks detected. High crack/fracture density. Severe — immediate action required.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"immediate_action_required\",\"burn_marks_detected\",\"water_damage_detected\"]', 'geyser (21%); lakeside, lakeshore (13%); volcano (12%); valley, vale (3%); spider web, spider\'s web (2%); wreck (2%)', 'Major', 1, 1, 'completed', '2026-02-17 15:14:02', '2026-02-17 15:14:02'),
+(7, 93, '', 'Roads', 0, 0.260, 1, 0.210, 'AI confidence: 16%. Infrastructure signals detected in submitted images.', 10, 'Critical', 'Roads issue detected across 1 image. Indicators: alley. Water damage/flooding signs. Burn or char marks detected. High crack/fracture density. Severe — immediate action required.', 0.160, '[\"immediate_action_required\",\"burn_marks_detected\",\"water_damage_detected\"]', 'wing (12%); alp (11%); valley, vale (11%); volcano (7%); radio telescope, radio reflector (4%); mountain tent (3%)', 'Major', 1, 1, 'completed', '2026-02-17 15:15:20', '2026-02-17 15:15:20'),
+(8, 94, '', 'Drainage', 0, 0.100, 1, 0.050, 'Low AI confidence — image may not clearly show infrastructure damage. Manual review advised.', 9, 'Critical', 'Drainage issue detected across 1 image. Water damage/flooding signs. Burn or char marks detected. High crack/fracture density. Severe — immediate action required.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"immediate_action_required\",\"burn_marks_detected\",\"water_damage_detected\"]', 'geyser (21%); lakeside, lakeshore (13%); volcano (12%); valley, vale (3%); spider web, spider\'s web (2%); wreck (2%)', 'Major', 1, 1, 'completed', '2026-02-17 15:26:07', '2026-02-17 15:26:07'),
+(9, 95, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Significant crack/fracture density. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:43:53', '2026-02-17 15:43:53'),
+(10, 96, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Significant crack/fracture density. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\",\"burn_marks_detected\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:45:15', '2026-02-17 15:45:15'),
+(11, 97, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Significant crack/fracture density. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:46:19', '2026-02-17 15:46:19'),
+(12, 98, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"non_infrastructure_images\",\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '2026-02-17 15:56:59', '2026-02-17 15:56:59'),
+(13, 99, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\",\"burn_marks_detected\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:58:40', '2026-02-17 15:58:40');
 
 -- --------------------------------------------------------
 
@@ -642,6 +821,17 @@ ALTER TABLE `requests`
   ADD PRIMARY KEY (`req_id`);
 
 --
+-- Indexes for table `request_ai_analysis`
+--
+ALTER TABLE `request_ai_analysis`
+  ADD PRIMARY KEY (`analysis_id`),
+  ADD UNIQUE KEY `uq_req` (`req_id`),
+  ADD KEY `idx_status` (`analysis_status`),
+  ADD KEY `idx_priority` (`priority_recommendation`),
+  ADD KEY `idx_legitimate` (`is_legitimate`),
+  ADD KEY `idx_severity` (`damage_severity`);
+
+--
 -- Indexes for table `request_resolutions`
 --
 ALTER TABLE `request_resolutions`
@@ -663,7 +853,7 @@ ALTER TABLE `employees`
 -- AUTO_INCREMENT for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=79;
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
@@ -687,7 +877,7 @@ ALTER TABLE `materials_equipment_costs`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=250;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=354;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
@@ -711,7 +901,13 @@ ALTER TABLE `reports`
 -- AUTO_INCREMENT for table `requests`
 --
 ALTER TABLE `requests`
-  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+
+--
+-- AUTO_INCREMENT for table `request_ai_analysis`
+--
+ALTER TABLE `request_ai_analysis`
+  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
@@ -740,6 +936,12 @@ ALTER TABLE `maintenance_schedule`
 --
 ALTER TABLE `repair_archive`
   ADD CONSTRAINT `fk_arc_engineer` FOREIGN KEY (`engineer_id`) REFERENCES `employees` (`user_id`);
+
+--
+-- Constraints for table `request_ai_analysis`
+--
+ALTER TABLE `request_ai_analysis`
+  ADD CONSTRAINT `fk_ai_request` FOREIGN KEY (`req_id`) REFERENCES `requests` (`req_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
