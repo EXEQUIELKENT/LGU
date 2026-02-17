@@ -283,7 +283,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $stmt_mgr->close();
                 }
-
                 // ========================================
                 // STEP 7: SUCCESS - SET SUCCESS MESSAGE AND REDIRECT
                 // ========================================
@@ -291,6 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'type' => 'success',
                     'message' => 'Your request has been submitted successfully with ' . $uploaded_count . ' evidence image(s).'
                 ];
+                $_SESSION['last_req_id'] = $request_id;   // ← ADD THIS LINE
                 header("Location: citizenrepform.php");
                 exit;
             }
@@ -368,6 +368,53 @@ body {
     background: url("cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
     transition: background 0.3s ease;
+}
+
+/* Loading Overlay — same as login.php */
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+#loadingOverlay.show {
+    display: flex;
+    opacity: 1;
+}
+.loading-content {
+    text-align: center;
+}
+.lgu-spinner {
+    display: inline-block;
+    font-size: 64px;
+    font-weight: 800;
+    color: #6384d2;
+    letter-spacing: 8px;
+    animation: spinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
+    font-family: 'Poppins', Arial, sans-serif;
+}
+@keyframes spinLGU {
+    0%   { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+}
+.loading-text {
+    margin-top: 20px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    font-family: 'Poppins', Arial, sans-serif;
 }
 
 /* Notification Popup Styles */
@@ -1725,10 +1772,22 @@ input[type="file"] {
 </style>
     <!-- Leaflet (FREE, NO API KEY) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <script src="ai_tfjs_analysis.js"></script>
     <?php include 'citizen_rendering.php'; ?>
 </head>
 <body>
     <?php showNotification(); ?>
+
+    <!-- Loading Overlay — same as login.php -->
+    <div id="loadingOverlay">
+        <div class="loading-content">
+            <div class="lgu-spinner">CIMM</div>
+            <div class="loading-text" id="loadingText">Processing...</div>
+        </div>
+    </div>
     
     <!-- DESKTOP NAVIGATION -->
     <header class="nav">
@@ -1831,6 +1890,10 @@ input[type="file"] {
                 <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
             <?php endif; ?>
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
+                <?php if (!empty($_SESSION['last_req_id'])): ?>
+                <input type="hidden" id="latestReqId" value="<?= (int)$_SESSION['last_req_id'] ?>">
+                <?php unset($_SESSION['last_req_id']); ?>
+                <?php endif; ?>
                 <!-- Hybrid dropdown/input: Infrastructure -->
                 <div class="input-group">
                     <label for="infrastructureSelect" data-i18n="form_infrastructure_label">Infrastructure Type *</label>
@@ -2190,28 +2253,96 @@ input[type="file"] {
         });
     }
 
-    function showSubmitModal() {
-        const backdrop = document.getElementById('submitAlertBackdrop');
-        backdrop.classList.add('active');
-        document.getElementById('submitConfirmBtn').focus();
-        document.getElementById('submitConfirmBtn').onclick = function () {
-            backdrop.classList.remove('active');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-            localStorage.clear();
-            realSubmit = true;
-            if (phoneInput) {
-                let val = phoneInput.value.replace(/\D/g, '');
-                if (val.length === 11)
-                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
-            }
-            setTimeout(() => form.submit(), 200);
-        };
-    }
-    function closeSubmitModal() {
-        document.getElementById('submitAlertBackdrop').classList.remove('active');
+    // ── Overlay helpers ─────────────────────────────────────────────────────────
+    function showOverlay(msg) {
+        const overlay = document.getElementById('loadingOverlay');
+        const text    = document.getElementById('loadingText');
+        if (text)    text.textContent = msg || 'Processing…';
+        if (overlay) {
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => overlay.classList.add('show'));
+        }
     }
 
+    function updateOverlayText(msg) {
+        const text = document.getElementById('loadingText');
+        if (text) text.textContent = msg;
+    }
+
+    function hideOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('show');
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+
+    // ── Submit confirmation modal ────────────────────────────────────────────────
+    function showSubmitModal() {
+        const backdrop = document.getElementById('submitAlertBackdrop');
+        if (!backdrop) return;
+        backdrop.classList.add('active');
+        const confirmBtn = document.getElementById('submitConfirmBtn');
+        if (confirmBtn) confirmBtn.focus();
+
+        confirmBtn.onclick = async function () {
+            // Close confirmation modal
+            backdrop.classList.remove('active');
+
+            // Show CIMM loading overlay immediately
+            showOverlay('Preparing submission…');
+
+            // ── Phase 1: TF.js AI analysis ────────────────────────────────────────
+            let aiResult = null;
+            if (typeof InfraAI !== 'undefined' && selectedFiles.length > 0) {
+                updateOverlayText('Initialising AI engine…');
+                try {
+                    const declaredType = (
+                        document.getElementById('infrastructureOther')?.value.trim() ||
+                        document.getElementById('infrastructureSelect')?.value         ||
+                        'Other'
+                    );
+                    aiResult = await InfraAI.analyzeImages(
+                        selectedFiles,
+                        declaredType,
+                        (msg) => updateOverlayText(msg)   // live progress text in overlay
+                    );
+                } catch (e) {
+                    console.warn('[InfraAI] Analysis failed (non-fatal):', e);
+                }
+            }
+
+            // ── Phase 2: Persist AI result & submit form ──────────────────────────
+            updateOverlayText('Submitting your request…');
+
+            if (aiResult) {
+                sessionStorage.setItem('pendingAiResult', JSON.stringify(aiResult));
+            }
+
+            // Clear drafts so form resets cleanly after redirect
+            localStorage.clear();
+
+            // Un-gate the real form submit
+            realSubmit = true;
+
+            // Normalise phone number for PHP validation
+            if (phoneInput) {
+                const val = phoneInput.value.replace(/\D/g, '');
+                if (val.length === 11) {
+                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
+                }
+            }
+
+            // Submit — overlay remains visible until PHP redirect clears the page
+            form.submit();
+        };
+    }
+
+    function closeSubmitModal() {
+        const backdrop = document.getElementById('submitAlertBackdrop');
+        if (backdrop) backdrop.classList.remove('active');
+        // Make sure overlay is also hidden if user cancels mid-analysis
+        hideOverlay();
+    }
     // ===== DRAFT SAVE =====
     if (form) {
         const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
@@ -3850,29 +3981,6 @@ input[type="file"] {
             showSubmitModal();
         });
     }
-
-    function showSubmitModal() {
-        const backdrop = document.getElementById('submitAlertBackdrop');
-        backdrop.classList.add('active');
-        document.getElementById('submitConfirmBtn').focus();
-        document.getElementById('submitConfirmBtn').onclick = function () {
-            backdrop.classList.remove('active');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-            localStorage.clear();
-            realSubmit = true;
-            if (phoneInput) {
-                let val = phoneInput.value.replace(/\D/g, '');
-                if (val.length === 11)
-                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
-            }
-            setTimeout(() => form.submit(), 200);
-        };
-    }
-    function closeSubmitModal() {
-        document.getElementById('submitAlertBackdrop').classList.remove('active');
-    }
-
     // ===== DRAFT SAVE =====
     if (form) {
         const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
@@ -3994,6 +4102,38 @@ input[type="file"] {
         </div>
     </div>
 </footer>
+
+<script>
+    (function() {
+        const pending = sessionStorage.getItem('pendingAiResult');
+        if (!pending) return;
+
+        // Only send once per page load
+        sessionStorage.removeItem('pendingAiResult');
+
+        let result;
+        try { result = JSON.parse(pending); } catch(e) { return; }
+
+        // Get the req_id from the PHP success notification that was just set
+        // We read it from the URL or from a hidden meta tag.
+        // The safest way: add a hidden input to the form with the latest req_id.
+        // PHP already sets $_SESSION after success — read via a tiny endpoint,
+        // OR: embed it directly in PHP with a data attribute.
+        const reqIdEl = document.getElementById('latestReqId');
+        if (!reqIdEl) return;
+        result.req_id = parseInt(reqIdEl.value, 10);
+        if (!result.req_id) return;
+
+        fetch('save_ai_analysis.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(result),
+        })
+        .then(r => r.json())
+        .then(d => console.log('[InfraAI-TFJS] Saved to DB:', d))
+        .catch(e => console.warn('[InfraAI-TFJS] Save failed (non-fatal):', e));
+    })();
+    </script>
 
 <?php include 'chatbot-widget.php'; ?>
 
