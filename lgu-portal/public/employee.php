@@ -940,9 +940,9 @@ body::before {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     padding: 0;
     z-index: 1000;
-    overflow: hidden;
     transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
@@ -1131,8 +1131,7 @@ body::before {
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
-    margin: 0 25px;
-    flex-shrink: 0;
+    margin: 20px 25px 0 25px;
     transition: all 0.3s ease;
 }
 [data-theme="dark"] .sidebar-divider {
@@ -1140,7 +1139,7 @@ body::before {
 }
 .sidebar-nav.collapsed .sidebar-divider {
     width: calc(100% - 20px);
-    margin: 0 10px;
+    margin: 20px 10px 0 10px;
 }
 .sidebar-nav .user-info {
     display: flex;
@@ -1148,8 +1147,6 @@ body::before {
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
-    flex-shrink: 0;
-    width: 100%;
     transition: all 0.3s ease;
 }
 .sidebar-nav .user-welcome,
@@ -1993,126 +1990,6 @@ body::before {
     100% {
         opacity: 1;
         transform: translateY(0) scale(1);
-    }
-}
-
-@media (min-width: 769px) and (max-width: 1200px) {
-    .desktop-top-nav {
-        padding: 0 16px;
-    }
-
-    .desktop-clock {
-        font-size: clamp(10px, 1vw, 13px);
-        white-space: nowrap;
-    }
-
-    .desktop-cimm-label {
-        font-size: 15px;
-    }
-
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-
-    .charts-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .quick-actions {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    }
-
-    .dashboard-card {
-        padding: 22px 24px;
-    }
-
-    .chart-container {
-        height: 260px;
-    }
-
-    .metric-value {
-        font-size: 30px;
-    }
-
-    .dashboard-title {
-        font-size: 24px;
-    }
-}
-
-@media (min-width: 769px) and (max-width: 1000px) {
-    .desktop-top-nav {
-        padding: 0 12px;
-    }
-
-    .desktop-clock {
-        font-size: 9px;
-        white-space: nowrap;
-    }
-
-    .desktop-cimm-label {
-        font-size: 13px;
-    }
-
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-
-    .charts-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .quick-actions {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-
-    .dashboard-card {
-        padding: 18px 20px;
-    }
-
-    .chart-container {
-        height: 230px;
-    }
-
-    .metric-value {
-        font-size: 26px;
-    }
-
-    .metric-icon {
-        width: 46px;
-        height: 46px;
-        font-size: 22px;
-    }
-
-    .dashboard-title {
-        font-size: 20px;
-    }
-
-    .dashboard-subtitle {
-        font-size: 13px;
-    }
-
-    .action-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 22px;
-    }
-
-    .action-title {
-        font-size: 13px;
-    }
-
-    .action-subtitle {
-        font-size: 11px;
-    }
-
-    .chart-title {
-        font-size: 15px;
     }
 }
 
