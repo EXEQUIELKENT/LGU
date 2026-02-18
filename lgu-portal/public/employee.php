@@ -940,10 +940,9 @@ body::before {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* keeps user-info pinned to bottom */
+    justify-content: space-between;
     padding: 0;
     z-index: 1000;
-    overflow: hidden; /* ← ADD THIS - prevents sidebar itself from scrolling */
     transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
@@ -984,11 +983,11 @@ body::before {
 .sidebar-top {
     display: flex;
     flex-direction: column;
-    flex: 1 1 0;       /* ← replaces flex-grow: 1 */
-    min-height: 0;     /* ← critical: allows it to shrink below content size */
+    flex-grow: 1;
+    min-height: 0;
+    height: 100%;
     padding: 20px 0;
-    overflow-y: auto;  /* scrolls internally if needed */
-    overflow-x: hidden;
+    overflow-y: auto;
     position: relative;
 }
 .sidebar-logo-spacer {
@@ -1146,12 +1145,10 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px 0;
+    padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
-    flex-shrink: 0;    /* ← ADD THIS - never squishes or pushes off screen */
     transition: all 0.3s ease;
 }
-
 .sidebar-nav .user-welcome,
 .sidebar-nav .user-rights {
     text-align: center;
@@ -2040,12 +2037,6 @@ body::before {
     .dashboard-title {
         font-size: 24px;
     }
-    .sidebar-nav .site-logo img { width: 90px; }
-    .sidebar-nav .site-logo { margin-bottom: 10px; }
-    .sidebar-logo-spacer { height: 6px; }
-    .sidebar-nav .nav-link { padding: 10px 16px; }
-    .sidebar-nav .user-info { padding: 12px 0; }
-    .sidebar-divider { margin-top: 10px; }
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -2120,15 +2111,6 @@ body::before {
     .chart-title {
         font-size: 15px;
     }
-    .sidebar-nav .site-logo img { width: 70px; }
-    .sidebar-nav .site-logo { margin-bottom: 6px; margin-top: 2px; }
-    .sidebar-logo-spacer { height: 2px; }
-    .sidebar-nav .nav-link { padding: 9px 14px; font-size: 13px; }
-    .sidebar-nav .user-info { padding: 10px 0; }
-    .sidebar-nav .user-welcome { font-size: 0.82rem; }
-    .sidebar-nav .logout-btn { font-size: 13px; padding: 7px 10px; }
-    .sidebar-divider { margin-top: 6px; }
-    .sidebar-profile-btn { width: 36px; height: 36px; }
 }
 
 /* Disable animations on mobile for better performance */
