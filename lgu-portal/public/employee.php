@@ -2037,28 +2037,6 @@ body::before {
     .dashboard-title {
         font-size: 24px;
     }
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        overflow: hidden;
-    }
-
-    .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;        /* Critical: allows shrinking below content size */
-        overflow-y: auto;
-        height: auto;         /* Override the height: 100% */
-    }
-
-    .sidebar-divider {
-        flex-shrink: 0;
-    }
-
-    .user-info {
-        flex-shrink: 0;       /* Prevent it from being squished */
-        padding: 12px 0;
-    }
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -2132,28 +2110,6 @@ body::before {
 
     .chart-title {
         font-size: 15px;
-    }
-    .sidebar-top {
-        height: auto;
-        min-height: 0;
-    }
-
-    .sidebar-nav .nav-link {
-        padding: 9px 14px;    /* Tighter padding to save vertical space */
-        font-size: 13px;
-    }
-
-    .site-logo img {
-        width: 90px;
-    }
-
-    .user-info {
-        flex-shrink: 0;
-        padding: 10px 0;
-    }
-
-    .sidebar-nav .user-welcome {
-        font-size: 0.82rem;
     }
 }
 
