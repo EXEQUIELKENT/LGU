@@ -2037,22 +2037,6 @@ body::before {
     .dashboard-title {
         font-size: 24px;
     }
-    /* Fix logout visibility - prevent sidebar-top from overflowing */
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow-y: auto;
-    }
-
-    .user-info {
-        flex-shrink: 0;
-    }
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -2126,59 +2110,6 @@ body::before {
 
     .chart-title {
         font-size: 15px;
-    }
-    /* Same fix for smaller intermediate screens */
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow-y: auto;
-    }
-
-    .user-info {
-        flex-shrink: 0;
-    }
-
-    /* Compact the sidebar contents to reduce scroll need */
-    .sidebar-nav .site-logo img {
-        width: 90px;
-    }
-
-    .sidebar-nav .site-logo {
-        margin-bottom: 12px;
-    }
-
-    .sidebar-logo-spacer {
-        height: 8px;
-    }
-
-    .sidebar-nav .nav-link {
-        padding: 9px 16px;
-    }
-
-    .sidebar-nav .user-info {
-        padding: 14px 0;
-    }
-
-    .sidebar-nav .logout-btn {
-        font-size: 14px;
-        padding: 7px 10px;
-    }
-
-    /* Collapsed sidebar fix */
-    .sidebar-nav.collapsed .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow-y: auto;
-    }
-
-    .sidebar-nav.collapsed .user-info {
-        flex-shrink: 0;
     }
 }
 
