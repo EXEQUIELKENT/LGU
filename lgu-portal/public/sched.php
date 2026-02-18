@@ -2334,7 +2334,7 @@ body.sidebar-collapsed .desktop-clock {
     padding: 20px 16px !important;
 }
 
-/* Calendar grid - tighter gap */s
+/* Calendar grid - tighter gap */
 .calendar-grid {
     gap: 5px !important;
 }
@@ -2345,9 +2345,8 @@ body.sidebar-collapsed .desktop-clock {
     padding: 6px 4px !important;
     font-size: 12px !important;
     border-radius: 8px !important;
-    overflow: hidden !important;
+    overflow: hidden !important;       /* KEY: clip content inside cell */
     word-break: break-word !important;
-    position: relative !important; /* Needed for dropdown absolute positioning */
 }
 
 /* Day number */
@@ -2356,7 +2355,7 @@ body.sidebar-collapsed .desktop-clock {
     font-weight: 600;
 }
 
-/* Task buttons inside calendar cells */
+/* Task buttons inside calendar cells - CRITICAL FIX */
 .calendar-day .task-btn {
     font-size: 9px !important;
     padding: 3px 4px !important;
@@ -2427,29 +2426,19 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 /* Task dropdown (overflow panel) */
-/* Place dropdown just below the clicked date cell (reference: desktop/mobile behavior) */
-.calendar-day {
-    position: relative !important;
-}
 .task-dropdown {
-    width: 130% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 9999 !important;
-    position: absolute !important; /* Attach to .calendar-day */
-    top: 100% !important; /* Directly below the cell */
-    margin-top: 4px !important; /* Small gap below date cell */
-    box-shadow: 0 8px 24px rgba(0,0,0,0.24);
-    /* Prevent dropdown from being clipped */
-    background: #fff;
-}
+        position: fixed !important;
+        width: 200px !important;
+        z-index: 9999 !important;
+        /* top/left set dynamically by JS */
+    }
 
-/* Make task dropdown wrap its content nicely */
-.task-dropdown .task-btn {
-    white-space: normal !important;
-    font-size: 11px !important;
-    padding: 6px 8px !important;
-}
+
+    .task-dropdown .task-btn {
+        white-space: normal !important;
+        font-size: 11px !important;
+        padding: 6px 8px !important;
+    }
 
 /* Calendar details card */
 .calendar-details-card {
@@ -2489,6 +2478,7 @@ Sidebar (250px) takes the most relative space here.
 ------------------------------------------------------- */
 @media (min-width: 769px) and (max-width: 1000px) {
 
+
 .card {
     padding: 14px 10px !important;
 }
@@ -2504,7 +2494,6 @@ Sidebar (250px) takes the most relative space here.
     padding: 4px 3px !important;
     font-size: 11px !important;
     overflow: hidden !important;
-    position: relative !important; /* For dropdown positioning */
 }
 
 .calendar-day > div:first-child {
@@ -2541,6 +2530,7 @@ Sidebar (250px) takes the most relative space here.
 .calendar-weekdays div {
     font-size: 10px !important;
     padding: 3px 0 !important;
+    /* Abbreviate to 3 chars at this size */
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -2562,20 +2552,11 @@ Sidebar (250px) takes the most relative space here.
     display: none !important;
 }
 
-/* Task dropdown - always directly below the date cell */
-.calendar-day {
-    position: relative !important;
-}
+/* Task dropdown - wider to be readable */
 .task-dropdown {
     width: 160% !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 9999 !important;
-    position: absolute !important; /* Attach to the cell */
-    top: 100% !important;
-    margin-top: 4px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.24);
-    background: #fff;
+    left: -30% !important;
+    z-index: 200 !important;
 }
 
 .task-dropdown .task-btn {
@@ -3833,9 +3814,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Calendar render & dropdown logic ---
     let openDropdown = null;
     let openDropdownDay = null;
-    function closeDropdown(){
+    function closeDropdown() {
         if (openDropdown) {
-            openDropdown.remove();
+            openDropdown.remove(); // removes from body now
             openDropdown = null;
             openDropdownDay = null;
             document.querySelectorAll('.more-tasks-btn.open').forEach(b => b.classList.remove('open'));
@@ -3850,22 +3831,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const dropdown = document.createElement('div');
         dropdown.className = 'task-dropdown';
-        dropdown.setAttribute('role','menu');
-
-        // FIX 2: Stop dropdown auto-closing by stopping propagation
-        dropdown.addEventListener('click', ev => {
-            ev.stopPropagation();
-        });
+        dropdown.setAttribute('role', 'menu');
+        dropdown.addEventListener('click', ev => ev.stopPropagation());
 
         events.slice(1).forEach((e, i) => {
             const btn = document.createElement('button');
             btn.className = 'task-btn';
-            btn.setAttribute('role','menuitem');
-            if (isMobileView()) {
-                btn.textContent = i + 2;
-            } else {
-                btn.textContent = e.task;
-            }
+            btn.setAttribute('role', 'menuitem');
+            btn.textContent = isMobileView() ? (i + 2) : e.task;
             const key = getStatusKey(e.status_label || '');
             if (key) btn.classList.add('status-' + key + '-bg');
             btn.onclick = (ev) => {
@@ -3875,10 +3848,26 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             dropdown.appendChild(btn);
         });
-        dayDiv.appendChild(dropdown);
+
+        // Append to body so it escapes overflow:hidden
+        document.body.appendChild(dropdown);
         openDropdown = dropdown;
         openDropdownDay = dayDiv;
         if (arrowBtn) arrowBtn.classList.add('open');
+
+        // Position using fixed coords from the cell's bounding rect
+        const rect = dayDiv.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (rect.bottom + 4) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = Math.max(rect.width, 160) + 'px';
+        dropdown.style.zIndex = '9999';
+
+        // Prevent going off-screen right
+        const dropRect = dropdown.getBoundingClientRect();
+        if (dropRect.right > window.innerWidth - 8) {
+            dropdown.style.left = (window.innerWidth - dropRect.width - 8) + 'px';
+        }
     }
     // Clicking anywhere closes dropdown (still ok with new fix)
     document.addEventListener('click', () => {
