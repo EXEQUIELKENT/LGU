@@ -940,9 +940,9 @@ body::before {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* ← changed from space-between */
     padding: 0;
     z-index: 1000;
+    overflow: hidden;
     transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
@@ -984,7 +984,7 @@ body::before {
     display: flex;
     flex-direction: column;
     flex: 1 1 0;
-    min-height: 0;      /* ← allows shrinking */
+    min-height: 0;
     padding: 20px 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1131,8 +1131,8 @@ body::before {
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
-    margin: 0 25px;     /* ← removed top margin that was pushing layout */
-    flex-shrink: 0;     /* ← ADD THIS */
+    margin: 0 25px;
+    flex-shrink: 0;
     transition: all 0.3s ease;
 }
 [data-theme="dark"] .sidebar-divider {
@@ -1148,9 +1148,8 @@ body::before {
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
-    flex-shrink: 0;     /* ← never compressed */
+    flex-shrink: 0;
     width: 100%;
-    background: var(--bg-secondary); /* ← stays visible over content */
     transition: all 0.3s ease;
 }
 .sidebar-nav .user-welcome,
@@ -2501,7 +2500,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><span>📄</span><span>Reports</span></a></li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a></li>
         </ul>
-        <div style="flex-grow:1;"></div>
     </div>
 
     <div class="sidebar-divider"></div>
