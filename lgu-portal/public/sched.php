@@ -2345,7 +2345,7 @@ body.sidebar-collapsed .desktop-clock {
     padding: 6px 4px !important;
     font-size: 12px !important;
     border-radius: 8px !important;
-    overflow: visible !important;
+    overflow: hidden !important;       /* KEY: clip content inside cell */
     word-break: break-word !important;
 }
 
@@ -2427,9 +2427,14 @@ body.sidebar-collapsed .desktop-clock {
 
 /* Task dropdown (overflow panel) */
 .task-dropdown {
-    width: 130% !important;     /* slightly wider than cell */
-    left: -15% !important;
-    z-index: 200 !important;
+    position: absolute !important;
+    top: 100% !important;      /* below the cell */
+    left: 0 !important;
+    width: 220px !important;   /* fixed width */
+    max-width: 90vw !important;
+    z-index: 9999 !important;
+
+    overflow: visible !important; 
 }
 
 .task-dropdown .task-btn {
@@ -2491,7 +2496,7 @@ Sidebar (250px) takes the most relative space here.
     min-height: 70px !important;
     padding: 4px 3px !important;
     font-size: 11px !important;
-    overflow: visible !important;
+    overflow: hidden !important;
 }
 
 .calendar-day > div:first-child {
