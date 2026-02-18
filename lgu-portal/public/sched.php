@@ -2328,6 +2328,283 @@ body.sidebar-collapsed .desktop-clock {
     text-decoration: underline;
 }
 
+@media (min-width: 769px) and (max-width: 1200px) {
+
+/* Main content margins tighten */
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 10px) !important;
+    margin-right: 10px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-top: 70px !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 10px) !important;
+}
+
+/* Card padding reduction */
+.card {
+    padding: 20px 16px !important;
+}
+
+/* Calendar grid - tighter gap */
+.calendar-grid {
+    gap: 5px !important;
+}
+
+/* Calendar day cells - constrain so they don't overflow */
+.calendar-day {
+    min-height: 80px !important;
+    padding: 6px 4px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;       /* KEY: clip content inside cell */
+    word-break: break-word !important;
+}
+
+/* Day number */
+.calendar-day > div:first-child {
+    font-size: 12px !important;
+    font-weight: 600;
+}
+
+/* Task buttons inside calendar cells - CRITICAL FIX */
+.calendar-day .task-btn {
+    font-size: 9px !important;
+    padding: 3px 4px !important;
+    border-radius: 5px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    margin: 1px 0 !important;
+}
+
+/* Day tasks wrapper */
+.calendar-day .day-tasks {
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* More tasks wrap (arrow + counter) */
+.more-tasks-wrap {
+    gap: 3px !important;
+    margin-top: 2px !important;
+}
+
+.more-tasks-btn {
+    font-size: 11px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.task-counter {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+}
+
+/* Holiday/event badges in cells */
+.holiday-badge,
+.event-badge {
+    font-size: 8px !important;
+    padding: 1px 4px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: block !important;
+}
+
+.holiday-event-title,
+.event-title {
+    font-size: 9px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Weekday label row */
+.calendar-weekdays div {
+    font-size: 11px !important;
+    padding: 4px 0 !important;
+}
+
+/* Calendar header */
+.calendar-header {
+    margin-bottom: 10px !important;
+}
+
+/* Task dropdown (overflow panel) */
+.task-dropdown {
+    width: 130% !important;     /* slightly wider than cell */
+    left: -15% !important;
+    z-index: 200 !important;
+}
+
+.task-dropdown .task-btn {
+    white-space: normal !important;    /* allow wrap inside dropdown */
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+}
+
+/* Calendar details card */
+.calendar-details-card {
+    padding: 10px 12px 32px !important;
+}
+
+.calendar-details {
+    font-size: 13px !important;
+}
+
+/* Schedule list view */
+.schedule-btn {
+    width: auto !important;
+    padding: 8px 14px !important;
+}
+
+/* Search input in list view */
+#scheduleSearch {
+    font-size: 0.9rem !important;
+}
+
+/* Schedule items in list view */
+.schedule-item {
+    padding: 12px 0 !important;
+    font-size: 13px !important;
+}
+
+.badge {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+}
+}
+
+/* -------------------------------------------------------
+769px – 1000px  (narrowest non-mobile range)
+Sidebar (250px) takes the most relative space here.
+------------------------------------------------------- */
+@media (min-width: 769px) and (max-width: 1000px) {
+
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 6px) !important;
+    margin-right: 6px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 6px) !important;
+}
+
+.card {
+    padding: 14px 10px !important;
+}
+
+/* Even tighter grid gap */
+.calendar-grid {
+    gap: 3px !important;
+}
+
+/* Cells shorter and more compact */
+.calendar-day {
+    min-height: 70px !important;
+    padding: 4px 3px !important;
+    font-size: 11px !important;
+    overflow: hidden !important;
+}
+
+.calendar-day > div:first-child {
+    font-size: 11px !important;
+}
+
+/* Task buttons even smaller */
+.calendar-day .task-btn {
+    font-size: 8px !important;
+    padding: 2px 3px !important;
+    border-radius: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    margin: 1px 0 !important;
+}
+
+.more-tasks-btn {
+    font-size: 10px !important;
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.task-counter {
+    font-size: 9px !important;
+    padding: 1px 3px !important;
+}
+
+/* Weekday labels */
+.calendar-weekdays div {
+    font-size: 10px !important;
+    padding: 3px 0 !important;
+    /* Abbreviate to 3 chars at this size */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Holiday badges - minimal */
+.holiday-badge,
+.event-badge {
+    font-size: 7px !important;
+    padding: 1px 3px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    display: block !important;
+}
+
+/* Hide long holiday title text at this size - too cramped */
+.holiday-event-title,
+.event-title {
+    display: none !important;
+}
+
+/* Task dropdown - wider to be readable */
+.task-dropdown {
+    width: 160% !important;
+    left: -30% !important;
+    z-index: 200 !important;
+}
+
+.task-dropdown .task-btn {
+    font-size: 11px !important;
+    padding: 5px 7px !important;
+    white-space: normal !important;
+}
+
+/* Schedule list items */
+.schedule-item {
+    padding: 10px 0 !important;
+    font-size: 12px !important;
+}
+
+.badge {
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+}
+
+#scheduleSearch {
+    font-size: 0.85rem !important;
+}
+}
+
 @media (max-width: 768px) {
     .desktop-top-nav {
         display: none;
