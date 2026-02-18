@@ -940,9 +940,9 @@ body::before {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    justify-content: flex-start; /* ← changed from space-between */
     padding: 0;
     z-index: 1000;
-    overflow: hidden; /* ← KEY: sidebar never overflows */
     transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
@@ -983,9 +983,8 @@ body::before {
 .sidebar-top {
     display: flex;
     flex-direction: column;
-    flex: 1 1 0;       /* ← takes all remaining space */
-    min-height: 0;     /* ← CRITICAL: allows shrinking, fixes the overflow */
-    /* REMOVED: height: 100% ← this was the culprit */
+    flex: 1 1 0;
+    min-height: 0;      /* ← allows shrinking */
     padding: 20px 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1132,7 +1131,8 @@ body::before {
 .sidebar-divider {
     border-bottom: 2px solid rgba(0, 0, 0, 0.551);
     width: calc(100% - 50px);
-    margin: 20px 25px 0 25px;
+    margin: 0 25px;     /* ← removed top margin that was pushing layout */
+    flex-shrink: 0;     /* ← ADD THIS */
     transition: all 0.3s ease;
 }
 [data-theme="dark"] .sidebar-divider {
@@ -1140,7 +1140,7 @@ body::before {
 }
 .sidebar-nav.collapsed .sidebar-divider {
     width: calc(100% - 20px);
-    margin: 20px 10px 0 10px;
+    margin: 0 10px;
 }
 .sidebar-nav .user-info {
     display: flex;
@@ -1148,7 +1148,9 @@ body::before {
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
-    flex-shrink: 0;    /* ← CRITICAL: never pushed off screen */
+    flex-shrink: 0;     /* ← never compressed */
+    width: 100%;
+    background: var(--bg-secondary); /* ← stays visible over content */
     transition: all 0.3s ease;
 }
 .sidebar-nav .user-welcome,
