@@ -2427,18 +2427,16 @@ body.sidebar-collapsed .desktop-clock {
 
 /* Task dropdown (overflow panel) */
 .task-dropdown {
-        position: fixed !important;
-        width: 200px !important;
-        z-index: 9999 !important;
-        /* top/left set dynamically by JS */
-    }
+    position: fixed !important;
+    width: 220px !important;
+    z-index: 9999 !important;
+}
 
-
-    .task-dropdown .task-btn {
-        white-space: normal !important;
-        font-size: 11px !important;
-        padding: 6px 8px !important;
-    }
+.task-dropdown .task-btn {
+    white-space: normal !important;    /* allow wrap inside dropdown */
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+}
 
 /* Calendar details card */
 .calendar-details-card {
@@ -3814,9 +3812,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Calendar render & dropdown logic ---
     let openDropdown = null;
     let openDropdownDay = null;
-    function closeDropdown() {
+    function closeDropdown(){
         if (openDropdown) {
-            openDropdown.remove(); // removes from body now
+            openDropdown.remove();
             openDropdown = null;
             openDropdownDay = null;
             document.querySelectorAll('.more-tasks-btn.open').forEach(b => b.classList.remove('open'));
@@ -3831,14 +3829,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const dropdown = document.createElement('div');
         dropdown.className = 'task-dropdown';
-        dropdown.setAttribute('role', 'menu');
-        dropdown.addEventListener('click', ev => ev.stopPropagation());
+        dropdown.setAttribute('role','menu');
+
+        // FIX 2: Stop dropdown auto-closing by stopping propagation
+        dropdown.addEventListener('click', ev => {
+            ev.stopPropagation();
+        });
 
         events.slice(1).forEach((e, i) => {
             const btn = document.createElement('button');
             btn.className = 'task-btn';
-            btn.setAttribute('role', 'menuitem');
-            btn.textContent = isMobileView() ? (i + 2) : e.task;
+            btn.setAttribute('role','menuitem');
+            if (isMobileView()) {
+                btn.textContent = i + 2;
+            } else {
+                btn.textContent = e.task;
+            }
             const key = getStatusKey(e.status_label || '');
             if (key) btn.classList.add('status-' + key + '-bg');
             btn.onclick = (ev) => {
@@ -3848,26 +3854,10 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             dropdown.appendChild(btn);
         });
-
-        // Append to body so it escapes overflow:hidden
-        document.body.appendChild(dropdown);
+        dayDiv.appendChild(dropdown);
         openDropdown = dropdown;
         openDropdownDay = dayDiv;
         if (arrowBtn) arrowBtn.classList.add('open');
-
-        // Position using fixed coords from the cell's bounding rect
-        const rect = dayDiv.getBoundingClientRect();
-        dropdown.style.position = 'fixed';
-        dropdown.style.top = (rect.bottom + 4) + 'px';
-        dropdown.style.left = rect.left + 'px';
-        dropdown.style.width = Math.max(rect.width, 160) + 'px';
-        dropdown.style.zIndex = '9999';
-
-        // Prevent going off-screen right
-        const dropRect = dropdown.getBoundingClientRect();
-        if (dropRect.right > window.innerWidth - 8) {
-            dropdown.style.left = (window.innerWidth - dropRect.width - 8) + 'px';
-        }
     }
     // Clicking anywhere closes dropdown (still ok with new fix)
     document.addEventListener('click', () => {
