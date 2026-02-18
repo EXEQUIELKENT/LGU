@@ -1965,6 +1965,155 @@ tbody tr:hover {
 .alert-modal .alert-btn.confirm:hover {
     background: #3a9654;
 }
+/* =====================================================
+   MEDIUM SCREEN FIXES FOR requests.php
+   Insert these BEFORE the existing:
+   "@media (max-width: 768px)" block
+   ===================================================== */
+
+/* -------------------------------------------------------
+   769px – 1200px  (tablet / small laptop)
+------------------------------------------------------- */
+@media (min-width: 769px) and (max-width: 1200px) {
+
+/* Keep sidebar at correct width, main content fills rest */
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 12px) !important;
+    margin-right: 12px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 66px !important;
+    height: calc(100vh) !important;
+    overflow-y: auto !important;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 12px) !important;
+}
+
+/* Card: reduce padding so table has more room */
+.table-card {
+    padding: 20px 18px !important;
+    border-radius: 14px;
+}
+
+/* Page title */
+.page-title {
+    font-size: 22px !important;
+}
+
+/* Allow table to scroll horizontally inside the card */
+.table-card > table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    /* Ensure table content doesn't force card wider */
+    max-width: 100%;
+}
+
+/* Tighten cell padding */
+th, td {
+    padding: 10px 10px !important;
+    font-size: 13px !important;
+}
+
+/* Constrain evidence thumbnail so it doesn't push columns */
+.evidence-thumb {
+    width: 54px !important;
+    height: 54px !important;
+}
+
+.evidence-thumb-wrapper {
+    width: 56px !important;
+    height: 56px !important;
+}
+
+/* Status pill */
+.status {
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+}
+
+/* Action button */
+.btn-view {
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+}
+
+/* Search bar */
+#requestSearch {
+    font-size: 0.92rem !important;
+}
+}
+
+/* -------------------------------------------------------
+769px – 1000px  (narrow tablet / small laptop)
+------------------------------------------------------- */
+@media (min-width: 769px) and (max-width: 1000px) {
+
+/* With a collapsed or standard sidebar the content area is tight;
+   keep overflow-x on the table wrapper */
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 8px) !important;
+    margin-right: 8px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 8px) !important;
+}
+
+/* Card padding even tighter */
+.table-card {
+    padding: 16px 12px !important;
+}
+
+/* Even smaller cells */
+th, td {
+    padding: 8px 8px !important;
+    font-size: 12px !important;
+    white-space: nowrap; /* prevents text wrapping that pushes rows taller */
+}
+
+/* Issue and Infrastructure columns can wrap – override nowrap selectively */
+td:nth-child(2),   /* Infrastructure */
+td:nth-child(3),   /* Location */
+td:nth-child(4) {  /* Issue */
+    white-space: normal;
+    min-width: 90px;
+    max-width: 160px;
+    word-break: break-word;
+}
+
+/* Thumbnail even smaller */
+.evidence-thumb {
+    width: 46px !important;
+    height: 46px !important;
+}
+
+.evidence-thumb-wrapper {
+    width: 48px !important;
+    height: 48px !important;
+}
+
+.multi-indicator {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+}
+
+/* Status + button */
+.status {
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+}
+
+.btn-view {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+}
+}
 
 /* =========================
    MOBILE VIEW ONLY
