@@ -2037,44 +2037,6 @@ body::before {
     .dashboard-title {
         font-size: 24px;
     }
-        /* Fix logout visibility */
-        .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    .sidebar-nav .user-info {
-        flex-shrink: 0;
-        padding: 14px 0;
-    }
-
-    .sidebar-nav .site-logo img {
-        width: 90px;
-    }
-
-    .sidebar-logo-spacer {
-        height: 8px;
-    }
-
-    .sidebar-nav .site-logo {
-        margin-bottom: 12px;
-    }
-
-    .sidebar-nav .nav-link {
-        padding: 10px 16px;
-    }
-
-    .sidebar-divider {
-        margin-top: 12px;
-    }
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
@@ -2148,79 +2110,6 @@ body::before {
 
     .chart-title {
         font-size: 15px;
-    }
-        /* Fix logout visibility - tighter */
-        .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .sidebar-top {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    .sidebar-nav .user-info {
-        flex-shrink: 0;
-        padding: 10px 0;
-    }
-
-    .sidebar-nav .user-welcome {
-        font-size: 0.82rem;
-        padding: 0 8px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-    }
-
-    .sidebar-nav .logout-btn {
-        font-size: 13px;
-        padding: 7px 10px;
-    }
-
-    .sidebar-nav .site-logo img {
-        width: 70px;
-    }
-
-    .sidebar-logo-spacer {
-        height: 4px;
-    }
-
-    .sidebar-nav .site-logo {
-        margin-bottom: 8px;
-        margin-top: 2px;
-    }
-
-    .sidebar-nav .nav-link {
-        padding: 9px 14px;
-        font-size: 13px;
-    }
-
-    .sidebar-nav .nav-list {
-        gap: 1px;
-    }
-
-    .sidebar-divider {
-        margin-top: 8px;
-    }
-
-    /* Collapsed sidebar logout fix */
-    .sidebar-nav.collapsed .user-info {
-        padding: 10px 0;
-        flex-shrink: 0;
-    }
-
-    .sidebar-nav.collapsed .logout-btn {
-        padding: 10px 4px !important;
-    }
-
-    .sidebar-profile-btn {
-        width: 36px;
-        height: 36px;
     }
 }
 
