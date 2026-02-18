@@ -1965,154 +1965,222 @@ tbody tr:hover {
 .alert-modal .alert-btn.confirm:hover {
     background: #3a9654;
 }
-/* =====================================================
-   MEDIUM SCREEN FIXES FOR requests.php
-   Insert these BEFORE the existing:
-   "@media (max-width: 768px)" block
-   ===================================================== */
+/* =======================================================
+   MEDIUM SCREEN TABLE OVERFLOW FIX
+   Place this block BEFORE the existing mobile media query:
+   "/* =========================
+      MOBILE VIEW ONLY
+   ========================= */"
+   ======================================================= */
 
-/* -------------------------------------------------------
-   769px – 1200px  (tablet / small laptop)
-------------------------------------------------------- */
 @media (min-width: 769px) and (max-width: 1200px) {
 
-/* Keep sidebar at correct width, main content fills rest */
-.main-content {
-    margin-left: calc(var(--sidebar-expanded) + 12px) !important;
-    margin-right: 12px !important;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    padding-top: 66px !important;
-    height: calc(100vh) !important;
-    overflow-y: auto !important;
+    .main-content {
+        margin-left: calc(var(--sidebar-expanded) + 10px) !important;
+        margin-right: 10px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 66px !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    .main-content.expanded {
+        margin-left: calc(var(--sidebar-collapsed) + 10px) !important;
+    }
+
+    /* Card must not overflow the viewport */
+    .table-card {
+        padding: 20px 16px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    /* 🔑 THE KEY FIX: wrap the table in a scrollable div by making
+       the table itself scroll — display:block enables overflow-x */
+    .table-card table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        /* Restore table layout for thead/tbody children */
+        border-collapse: separate !important;
+    }
+
+    /* thead and tbody must stay as proper table sections */
+    .table-card table thead,
+    .table-card table tbody {
+        display: table !important;
+        width: 100% !important;
+        table-layout: fixed !important;
+    }
+
+    /* Column widths — prevents any column from being too greedy */
+    .table-card table th:nth-child(1),
+    .table-card table td:nth-child(1) { width: 80px; }   /* Req ID */
+
+    .table-card table th:nth-child(2),
+    .table-card table td:nth-child(2) { width: 120px; }  /* Infrastructure */
+
+    .table-card table th:nth-child(3),
+    .table-card table td:nth-child(3) { width: 140px; }  /* Location */
+
+    .table-card table th:nth-child(4),
+    .table-card table td:nth-child(4) { width: 120px; }  /* Issue */
+
+    .table-card table th:nth-child(5),
+    .table-card table td:nth-child(5) { width: 150px; }  /* Date */
+
+    .table-card table th:nth-child(6),
+    .table-card table td:nth-child(6) { width: 70px; }   /* Evidence */
+
+    .table-card table th:nth-child(7),
+    .table-card table td:nth-child(7) { width: 80px; }   /* Status */
+
+    .table-card table th:nth-child(8),
+    .table-card table td:nth-child(8) { width: 65px; }   /* Action */
+
+    /* Text truncation for long text columns */
+    .table-card table td:nth-child(2),
+    .table-card table td:nth-child(3),
+    .table-card table td:nth-child(4) {
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    /* Other columns: no wrap */
+    .table-card table td:nth-child(1),
+    .table-card table td:nth-child(5),
+    .table-card table td:nth-child(7),
+    .table-card table td:nth-child(8) {
+        white-space: nowrap !important;
+    }
+
+    /* Tighter cell padding and font */
+    .table-card th,
+    .table-card td {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+
+    /* Smaller evidence thumbnail */
+    .evidence-thumb {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .evidence-thumb-wrapper {
+        width: 50px !important;
+        height: 50px !important;
+    }
+
+    .multi-indicator {
+        font-size: 10px !important;
+        padding: 1px 4px !important;
+    }
+
+    /* Status pill */
+    .status {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+        white-space: nowrap !important;
+    }
+
+    /* View button */
+    .btn-view {
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    /* Page title */
+    .page-title {
+        font-size: 20px !important;
+    }
+
+    /* Search bar */
+    #requestSearch {
+        font-size: 0.9rem !important;
+    }
 }
 
-.main-content.expanded {
-    margin-left: calc(var(--sidebar-collapsed) + 12px) !important;
-}
-
-/* Card: reduce padding so table has more room */
-.table-card {
-    padding: 20px 18px !important;
-    border-radius: 14px;
-}
-
-/* Page title */
-.page-title {
-    font-size: 22px !important;
-}
-
-/* Allow table to scroll horizontally inside the card */
-.table-card > table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-    /* Ensure table content doesn't force card wider */
-    max-width: 100%;
-}
-
-/* Tighten cell padding */
-th, td {
-    padding: 10px 10px !important;
-    font-size: 13px !important;
-}
-
-/* Constrain evidence thumbnail so it doesn't push columns */
-.evidence-thumb {
-    width: 54px !important;
-    height: 54px !important;
-}
-
-.evidence-thumb-wrapper {
-    width: 56px !important;
-    height: 56px !important;
-}
-
-/* Status pill */
-.status {
-    padding: 4px 10px !important;
-    font-size: 11px !important;
-}
-
-/* Action button */
-.btn-view {
-    padding: 5px 10px !important;
-    font-size: 12px !important;
-}
-
-/* Search bar */
-#requestSearch {
-    font-size: 0.92rem !important;
-}
-}
-
-/* -------------------------------------------------------
-769px – 1000px  (narrow tablet / small laptop)
-------------------------------------------------------- */
+/* Narrower range — sidebar takes more relative space */
 @media (min-width: 769px) and (max-width: 1000px) {
 
-/* With a collapsed or standard sidebar the content area is tight;
-   keep overflow-x on the table wrapper */
-.main-content {
-    margin-left: calc(var(--sidebar-expanded) + 8px) !important;
-    margin-right: 8px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-}
+    .main-content {
+        margin-left: calc(var(--sidebar-expanded) + 6px) !important;
+        margin-right: 6px !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
 
-.main-content.expanded {
-    margin-left: calc(var(--sidebar-collapsed) + 8px) !important;
-}
+    .main-content.expanded {
+        margin-left: calc(var(--sidebar-collapsed) + 6px) !important;
+    }
 
-/* Card padding even tighter */
-.table-card {
-    padding: 16px 12px !important;
-}
+    .table-card {
+        padding: 14px 10px !important;
+    }
 
-/* Even smaller cells */
-th, td {
-    padding: 8px 8px !important;
-    font-size: 12px !important;
-    white-space: nowrap; /* prevents text wrapping that pushes rows taller */
-}
+    /* Narrower fixed widths to fit smaller viewport */
+    .table-card table th:nth-child(1),
+    .table-card table td:nth-child(1) { width: 70px; }
 
-/* Issue and Infrastructure columns can wrap – override nowrap selectively */
-td:nth-child(2),   /* Infrastructure */
-td:nth-child(3),   /* Location */
-td:nth-child(4) {  /* Issue */
-    white-space: normal;
-    min-width: 90px;
-    max-width: 160px;
-    word-break: break-word;
-}
+    .table-card table th:nth-child(2),
+    .table-card table td:nth-child(2) { width: 100px; }
 
-/* Thumbnail even smaller */
-.evidence-thumb {
-    width: 46px !important;
-    height: 46px !important;
-}
+    .table-card table th:nth-child(3),
+    .table-card table td:nth-child(3) { width: 110px; }
 
-.evidence-thumb-wrapper {
-    width: 48px !important;
-    height: 48px !important;
-}
+    .table-card table th:nth-child(4),
+    .table-card table td:nth-child(4) { width: 100px; }
 
-.multi-indicator {
-    font-size: 10px !important;
-    padding: 1px 4px !important;
-}
+    .table-card table th:nth-child(5),
+    .table-card table td:nth-child(5) { width: 130px; }
 
-/* Status + button */
-.status {
-    padding: 3px 8px !important;
-    font-size: 11px !important;
-}
+    .table-card table th:nth-child(6),
+    .table-card table td:nth-child(6) { width: 60px; }
 
-.btn-view {
-    padding: 5px 8px !important;
-    font-size: 11px !important;
-}
+    .table-card table th:nth-child(7),
+    .table-card table td:nth-child(7) { width: 70px; }
+
+    .table-card table th:nth-child(8),
+    .table-card table td:nth-child(8) { width: 58px; }
+
+    .table-card th,
+    .table-card td {
+        padding: 8px 6px !important;
+        font-size: 11px !important;
+    }
+
+    .evidence-thumb {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .evidence-thumb-wrapper {
+        width: 42px !important;
+        height: 42px !important;
+    }
+
+    .btn-view {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+    }
+
+    .status {
+        padding: 3px 6px !important;
+        font-size: 10px !important;
+    }
+
+    .page-title {
+        font-size: 18px !important;
+    }
 }
 
 /* =========================
