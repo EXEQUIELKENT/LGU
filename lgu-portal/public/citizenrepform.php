@@ -1781,11 +1781,11 @@ input[type="file"] {
 <body>
     <?php showNotification(); ?>
 
-    <!-- Loading Overlay — same as login.php -->
+    <!-- Loading Overlay -->
     <div id="loadingOverlay">
         <div class="loading-content">
             <div class="lgu-spinner">CIMM</div>
-            <div class="loading-text" id="loadingText">Processing...</div>
+            <div class="loading-text" id="loadingText">Submitting your request</div>
         </div>
     </div>
     
@@ -1886,9 +1886,13 @@ input[type="file"] {
     <div class="form-wrapper">
         <div class="report-card">
             <h2 data-i18n="form_title">Maintenance Request</h2>
-            <?php if ($error_message): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error_message) ?></div>
-            <?php endif; ?>
+            <?php 
+            if ($error_message) {
+                setNotification('error', $error_message);
+                // Clear the error so it doesn't persist
+                $error_message = '';
+            }
+            ?>
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <?php if (!empty($_SESSION['last_req_id'])): ?>
                 <input type="hidden" id="latestReqId" value="<?= (int)$_SESSION['last_req_id'] ?>">
@@ -2010,14 +2014,29 @@ input[type="file"] {
 
     <!-- TRANSLATION HELPER SCRIPT - Place right after citizen_global.php -->
     <script>
-    // Translation helper function
     function getTranslation(key) {
         const currentLang = localStorage.getItem('lang') || 'en';
-        const translations = window.__preloadedTranslations;
-        if (translations && translations[currentLang] && translations[currentLang][key]) {
-            return translations[currentLang][key];
+        if (window.__preloadedTranslations && window.__preloadedTranslations[currentLang]) {
+            const val = window.__preloadedTranslations[currentLang][key];
+            if (val) return val;
         }
-        return key; // Fallback to key if translation not found
+        const fallbacks = {
+            en: {
+                alert_consent_required: 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.',
+                alert_contact_invalid: 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.',
+                alert_max_images: 'Maximum of 4 images allowed.',
+                alert_image_required: 'At least one evidence image is required. Please upload or capture an image before submitting.',
+            },
+            tl: {
+                alert_consent_required: 'Dapat kang sumang-ayon sa Mga Tuntunin at Kondisyon at Patakaran sa Privacy bago magsumite ng iyong kahilingan.',
+                alert_contact_invalid: 'Ang numero ng kontak ay dapat 11 digits at nagsisimula sa 09.',
+                alert_max_images: 'Hanggang 4 na larawan lamang ang pinapayagan.',
+                alert_image_required: 'Kailangan ng kahit isang larawan ng ebidensya. Mangyaring mag-upload o kumuha ng larawan bago magsumite.',
+            }
+        };
+        return (fallbacks[currentLang] && fallbacks[currentLang][key])
+            || (fallbacks['en'][key])
+            || key;
     }
     </script>
 
@@ -2061,50 +2080,81 @@ input[type="file"] {
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-    // ===== JS notification helper for errors (contact #, images, etc) =====
+    // ── JS notification helper ──────────────────────────────────────────
     function showJsNotification(type, message) {
         const notif = document.createElement('div');
         notif.className = 'notif-popup notif-' + type;
-        const icon = (type === 'success') ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
+        const icon = type === 'success' ? '✔️' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
         notif.innerHTML = `<span class='notif-icon'>${icon}</span>
             <span class='notif-message'>${message}</span>
             <button class='notif-close'>&times;</button>`;
         document.body.appendChild(notif);
         notif.querySelector('.notif-close').addEventListener('click', () => {
             notif.style.opacity = '0';
-            setTimeout(()=> notif.remove(), 400);
+            setTimeout(() => notif.remove(), 400);
         });
         setTimeout(() => {
             notif.style.opacity = '0';
-            setTimeout(()=> notif.remove(), 400);
+            setTimeout(() => notif.remove(), 400);
         }, 2200);
     }
 
-    // IMAGE preview/file state – unchanged from original
+    // ── Animated loading overlay ────────────────────────────────────────
+    let dotsInterval = null;
+
+    function showOverlay(msg) {
+        const overlay = document.getElementById('loadingOverlay');
+        const text    = document.getElementById('loadingText');
+        if (text) {
+            const baseMsg = (msg || 'Processing').replace(/\.+$/, '');
+            text.textContent = baseMsg;
+            let dotCount = 0;
+            if (dotsInterval) clearInterval(dotsInterval);
+            dotsInterval = setInterval(() => {
+                dotCount = (dotCount + 1) % 4;
+                text.textContent = baseMsg + '.'.repeat(dotCount);
+            }, 400);
+        }
+        if (overlay) {
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => overlay.classList.add('show'));
+        }
+    }
+
+    function updateOverlayText(msg) {
+        const text = document.getElementById('loadingText');
+        if (text) {
+            const baseMsg = (msg || '').replace(/\.+$/, '');
+            if (dotsInterval) clearInterval(dotsInterval);
+            let dotCount = 0;
+            dotsInterval = setInterval(() => {
+                dotCount = (dotCount + 1) % 4;
+                text.textContent = baseMsg + '.'.repeat(dotCount);
+            }, 400);
+        }
+    }
+
+    function hideOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (!overlay) return;
+        if (dotsInterval) { clearInterval(dotsInterval); dotsInterval = null; }
+        overlay.classList.remove('show');
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+
+    // ── Image management ────────────────────────────────────────────────
     const evidenceInput = document.getElementById('evidence');
-    const cameraInput = document.getElementById('evidence-camera');
-    const previewDiv = document.getElementById('image-preview');
-    const cameraBtn = document.getElementById('cameraBtn');
-    const MAX_FILES = 4;
-    let selectedFiles = [];
+    const cameraInput   = document.getElementById('evidence-camera');
+    const previewDiv    = document.getElementById('image-preview');
+    const cameraBtn     = document.getElementById('cameraBtn');
+    const MAX_FILES     = 4;
+    let selectedFiles   = [];
 
     function updateUploadButton() {
-        const currentCount = selectedFiles.length;
-        if (currentCount >= MAX_FILES) {
-            evidenceInput.style.pointerEvents = 'none';
-            evidenceInput.style.opacity = '0.5';
-            if (cameraBtn) {
-                cameraBtn.disabled = true;
-                cameraBtn.style.opacity = '0.5';
-            }
-        } else {
-            evidenceInput.style.pointerEvents = 'auto';
-            evidenceInput.style.opacity = '1';
-            if (cameraBtn) {
-                cameraBtn.disabled = false;
-                cameraBtn.style.opacity = '1';
-            }
-        }
+        const full = selectedFiles.length >= MAX_FILES;
+        evidenceInput.style.pointerEvents = full ? 'none' : 'auto';
+        evidenceInput.style.opacity       = full ? '0.5'  : '1';
+        if (cameraBtn) { cameraBtn.disabled = full; cameraBtn.style.opacity = full ? '0.5' : '1'; }
     }
 
     function mergeAndPreviewFiles(e) {
@@ -2115,8 +2165,7 @@ input[type="file"] {
         selectedFiles = selectedFiles.filter(f => {
             const key = f.name + f.size + f.lastModified;
             if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+            seen.add(key); return true;
         });
         if (selectedFiles.length > MAX_FILES) {
             showJsNotification('error', getTranslation('alert_max_images'));
@@ -2125,10 +2174,7 @@ input[type="file"] {
         syncInputWithState();
     }
 
-    function removeImageAtIndex(index) {
-        selectedFiles.splice(index, 1);
-        syncInputWithState();
-    }
+    function removeImageAtIndex(index) { selectedFiles.splice(index, 1); syncInputWithState(); }
 
     function syncInputWithState() {
         const dt = new DataTransfer();
@@ -2137,32 +2183,26 @@ input[type="file"] {
         renderImagePreview();
     }
 
-    if (evidenceInput) { evidenceInput.addEventListener('change', mergeAndPreviewFiles); }
-    if (cameraInput)  { cameraInput.addEventListener('change', mergeAndPreviewFiles); }
+    if (evidenceInput) evidenceInput.addEventListener('change', mergeAndPreviewFiles);
+    if (cameraInput)   cameraInput.addEventListener('change', mergeAndPreviewFiles);
 
     function renderImagePreview() {
         previewDiv.innerHTML = '';
-        const files = selectedFiles;
-        Array.from(files).forEach((file, index) => {
+        selectedFiles.forEach((file, index) => {
             if (!file.type.startsWith('image/')) return;
             const reader = new FileReader();
             reader.onload = e => {
-                const wrapper = document.createElement('div');
+                const wrapper   = document.createElement('div');
                 wrapper.className = 'preview-item';
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.title = 'Click to view full image';
+                const img       = document.createElement('img');
+                img.src         = e.target.result;
+                img.title       = 'Click to view full image';
                 img.addEventListener('click', () => openFullImage(e.target.result));
                 const removeBtn = document.createElement('div');
                 removeBtn.className = 'preview-remove';
                 removeBtn.innerHTML = '&times;';
-                removeBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    removeImageAtIndex(index);
-                });
-                wrapper.appendChild(img);
-                wrapper.appendChild(removeBtn);
-                previewDiv.appendChild(wrapper);
+                removeBtn.addEventListener('click', ev => { ev.stopPropagation(); removeImageAtIndex(index); });
+                wrapper.appendChild(img); wrapper.appendChild(removeBtn); previewDiv.appendChild(wrapper);
             };
             reader.readAsDataURL(file);
         });
@@ -2170,113 +2210,87 @@ input[type="file"] {
     }
 
     function openFullImage(src) {
-        const modalBackdrop = document.createElement('div');
-        modalBackdrop.style.position = 'fixed';
-        modalBackdrop.style.inset = '0';
-        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
-        modalBackdrop.style.display = 'flex';
-        modalBackdrop.style.alignItems = 'center';
-        modalBackdrop.style.justifyContent = 'center';
-        modalBackdrop.style.zIndex = '8000';
-        const fullImg = document.createElement('img');
-        fullImg.src = src;
-        fullImg.style.maxWidth = '90%';
-        fullImg.style.maxHeight = '90%';
-        fullImg.style.borderRadius = '12px';
-        modalBackdrop.appendChild(fullImg);
-        document.body.appendChild(modalBackdrop);
-        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
+        const bd = document.createElement('div');
+        Object.assign(bd.style, { position:'fixed', inset:'0', background:'rgba(0,0,0,0.6)',
+            display:'flex', alignItems:'center', justifyContent:'center', zIndex:'8000' });
+        const img = document.createElement('img');
+        Object.assign(img.style, { maxWidth:'90%', maxHeight:'90%', borderRadius:'12px' });
+        img.src = src;
+        bd.appendChild(img); document.body.appendChild(bd);
+        bd.addEventListener('click', () => bd.remove());
     }
 
-    function isMobile() {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
+    function isMobile() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
     if (cameraBtn && isMobile() && cameraInput) {
-        cameraBtn.addEventListener('click', () => {
-            if(!cameraBtn.disabled) cameraInput.click();
-        });
+        cameraBtn.addEventListener('click', () => { if (!cameraBtn.disabled) cameraInput.click(); });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', () => {
         if (evidenceInput && evidenceInput.files.length > 0) {
             selectedFiles = Array.from(evidenceInput.files);
             renderImagePreview();
         }
     });
 
-    // Contact number logic: auto-format and validate
+    // ── Contact number auto-format ──────────────────────────────────────
     const phoneInput = document.getElementById('contact_number');
-    const form = document.getElementById('maintenanceRequestForm');
-    const submitBtn = document.getElementById('submit-btn');
-    let realSubmit = false;
-
     if (phoneInput) {
-        phoneInput.addEventListener('input', (e) => {
-            const input = e.target;
+        phoneInput.addEventListener('input', e => {
+            const input     = e.target;
             const cursorPos = input.selectionStart;
-            let digits = input.value.replace(/\D/g, '').slice(0, 11);
-            let formatted = '';
-            if (digits.length <= 4) {
-                formatted = digits;
-            } else if (digits.length <= 7) {
-                formatted = digits.slice(0, 4) + '-' + digits.slice(4);
-            } else {
-                formatted = digits.slice(0, 4) + '-' + digits.slice(4, 7) + '-' + digits.slice(7);
-            }
-            const digitsBeforeCursor = input.value
-                .slice(0, cursorPos)
-                .replace(/\D/g, '')
-                .length;
+            let digits      = input.value.replace(/\D/g, '').slice(0, 11);
+            let formatted   = digits.length <= 4 ? digits
+                            : digits.length <= 7 ? digits.slice(0,4)+'-'+digits.slice(4)
+                            : digits.slice(0,4)+'-'+digits.slice(4,7)+'-'+digits.slice(7);
+            const digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g,'').length;
             input.value = formatted;
             let newCursor = 0, digitCount = 0;
             for (let i = 0; i < formatted.length; i++) {
                 if (/\d/.test(formatted[i])) digitCount++;
-                if (digitCount === digitsBeforeCursor) {
-                    newCursor = i + 1;
-                    break;
-                }
+                if (digitCount === digitsBeforeCursor) { newCursor = i + 1; break; }
             }
             input.setSelectionRange(newCursor, newCursor);
         });
     }
-    if (form && phoneInput) {
+
+    // ── SINGLE form submit listener — validations in priority order ──────
+    const form      = document.getElementById('maintenanceRequestForm');
+    const submitBtn = document.getElementById('submit-btn');
+    let realSubmit  = false;
+
+    if (form) {
         form.addEventListener('submit', e => {
             if (realSubmit) return;
             e.preventDefault();
-            const val = phoneInput.value.replace(/\D/g,'');
-            if (!/^09\d{9}$/.test(val)) {
-                showJsNotification('error', getTranslation('alert_contact_invalid'));
-                phoneInput.focus();
+
+            // VALIDATION 1: Consent (MUST be first)
+            const consentCheckbox = document.getElementById('consent_agree');
+            if (!consentCheckbox || !consentCheckbox.checked) {
+                showJsNotification('warning', getTranslation('alert_consent_required'));
                 return false;
             }
+
+            // VALIDATION 2: At least one image required
+            if (!selectedFiles || selectedFiles.length === 0) {
+                showJsNotification('error', getTranslation('alert_image_required'));
+                document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+
+            // VALIDATION 3: Phone number format
+            const val = phoneInput ? phoneInput.value.replace(/\D/g,'') : '';
+            if (!/^09\d{9}$/.test(val)) {
+                showJsNotification('error', getTranslation('alert_contact_invalid'));
+                if (phoneInput) phoneInput.focus();
+                return false;
+            }
+
+            // All client validations passed — show confirmation modal
             showSubmitModal();
         });
     }
 
-    // ── Overlay helpers ─────────────────────────────────────────────────────────
-    function showOverlay(msg) {
-        const overlay = document.getElementById('loadingOverlay');
-        const text    = document.getElementById('loadingText');
-        if (text)    text.textContent = msg || 'Processing…';
-        if (overlay) {
-            overlay.style.display = 'flex';
-            requestAnimationFrame(() => overlay.classList.add('show'));
-        }
-    }
-
-    function updateOverlayText(msg) {
-        const text = document.getElementById('loadingText');
-        if (text) text.textContent = msg;
-    }
-
-    function hideOverlay() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (!overlay) return;
-        overlay.classList.remove('show');
-        setTimeout(() => { overlay.style.display = 'none'; }, 300);
-    }
-
-    // ── Submit confirmation modal ────────────────────────────────────────────────
+    // ── Submit confirmation modal ───────────────────────────────────────
     function showSubmitModal() {
         const backdrop = document.getElementById('submitAlertBackdrop');
         if (!backdrop) return;
@@ -2285,54 +2299,31 @@ input[type="file"] {
         if (confirmBtn) confirmBtn.focus();
 
         confirmBtn.onclick = async function () {
-            // Close confirmation modal
             backdrop.classList.remove('active');
+            showOverlay('Submitting your request');
 
-            // Show CIMM loading overlay immediately
-            showOverlay('Preparing submission…');
-
-            // ── Phase 1: TF.js AI analysis ────────────────────────────────────────
             let aiResult = null;
             if (typeof InfraAI !== 'undefined' && selectedFiles.length > 0) {
-                updateOverlayText('Initialising AI engine…');
                 try {
-                    const declaredType = (
+                    const declaredType =
                         document.getElementById('infrastructureOther')?.value.trim() ||
-                        document.getElementById('infrastructureSelect')?.value         ||
-                        'Other'
-                    );
-                    aiResult = await InfraAI.analyzeImages(
-                        selectedFiles,
-                        declaredType,
-                        (msg) => updateOverlayText(msg)   // live progress text in overlay
-                    );
-                } catch (e) {
-                    console.warn('[InfraAI] Analysis failed (non-fatal):', e);
+                        document.getElementById('infrastructureSelect')?.value || 'Other';
+                    aiResult = await InfraAI.analyzeImages(selectedFiles, declaredType, () => {});
+                } catch (err) {
+                    console.warn('[InfraAI] Analysis failed (non-fatal):', err);
                 }
             }
 
-            // ── Phase 2: Persist AI result & submit form ──────────────────────────
-            updateOverlayText('Submitting your request…');
+            if (aiResult) sessionStorage.setItem('pendingAiResult', JSON.stringify(aiResult));
 
-            if (aiResult) {
-                sessionStorage.setItem('pendingAiResult', JSON.stringify(aiResult));
-            }
-
-            // Clear drafts so form resets cleanly after redirect
             localStorage.clear();
 
-            // Un-gate the real form submit
-            realSubmit = true;
-
-            // Normalise phone number for PHP validation
             if (phoneInput) {
-                const val = phoneInput.value.replace(/\D/g, '');
-                if (val.length === 11) {
-                    phoneInput.value = val.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
-                }
+                const v = phoneInput.value.replace(/\D/g, '');
+                if (v.length === 11) phoneInput.value = v.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
             }
 
-            // Submit — overlay remains visible until PHP redirect clears the page
+            realSubmit = true;
             form.submit();
         };
     }
@@ -2340,21 +2331,18 @@ input[type="file"] {
     function closeSubmitModal() {
         const backdrop = document.getElementById('submitAlertBackdrop');
         if (backdrop) backdrop.classList.remove('active');
-        // Make sure overlay is also hidden if user cancels mid-analysis
         hideOverlay();
     }
-    // ===== DRAFT SAVE =====
+
+    // ── Draft save / restore ────────────────────────────────────────────
     if (form) {
-        const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
+        const inputs = form.querySelectorAll('input:not([type=file]):not([type=checkbox]), textarea, select');
         inputs.forEach(input => {
             const saved = localStorage.getItem(input.name);
-            if (saved !== null) {
-                input.value = saved;
-            }
+            if (saved !== null) input.value = saved;
             input.addEventListener('input', () => {
                 if (input.name === 'infrastructure_other' && input.value.trim() === '') {
-                    localStorage.removeItem('infrastructure_other');
-                    return;
+                    localStorage.removeItem('infrastructure_other'); return;
                 }
                 localStorage.setItem(input.name, input.value);
             });
@@ -3788,218 +3776,6 @@ input[type="file"] {
         syncMapLayerToggleButton();
     });
     </script>
-
-    <script>
-    // ===== JS notification helper for errors (contact #, images, etc) =====
-    function showJsNotification(type, message) {
-        const notif = document.createElement('div');
-        notif.className = 'notif-popup notif-' + type;
-        const icon = (type === 'success') ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
-        notif.innerHTML = `<span class='notif-icon'>${icon}</span>
-            <span class='notif-message'>${message}</span>
-            <button class='notif-close'>&times;</button>`;
-        document.body.appendChild(notif);
-        notif.querySelector('.notif-close').addEventListener('click', () => {
-            notif.style.opacity = '0';
-            setTimeout(()=> notif.remove(), 400);
-        });
-        setTimeout(() => {
-            notif.style.opacity = '0';
-            setTimeout(()=> notif.remove(), 400);
-        }, 2200);
-    }
-
-    // IMAGE preview/file state – unchanged from original
-    const evidenceInput = document.getElementById('evidence');
-    const cameraInput = document.getElementById('evidence-camera');
-    const previewDiv = document.getElementById('image-preview');
-    const cameraBtn = document.getElementById('cameraBtn');
-    const MAX_FILES = 4;
-    let selectedFiles = [];
-
-    function updateUploadButton() {
-        const currentCount = selectedFiles.length;
-        if (currentCount >= MAX_FILES) {
-            evidenceInput.style.pointerEvents = 'none';
-            evidenceInput.style.opacity = '0.5';
-            if (cameraBtn) {
-                cameraBtn.disabled = true;
-                cameraBtn.style.opacity = '0.5';
-            }
-        } else {
-            evidenceInput.style.pointerEvents = 'auto';
-            evidenceInput.style.opacity = '1';
-            if (cameraBtn) {
-                cameraBtn.disabled = false;
-                cameraBtn.style.opacity = '1';
-            }
-        }
-    }
-
-    function mergeAndPreviewFiles(e) {
-        let incoming = Array.from(e.target.files || []);
-        if (e.target === cameraInput) cameraInput.value = '';
-        selectedFiles = selectedFiles.concat(incoming);
-        const seen = new Set();
-        selectedFiles = selectedFiles.filter(f => {
-            const key = f.name + f.size + f.lastModified;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-        if (selectedFiles.length > MAX_FILES) {
-            showJsNotification('error', `Maximum of ${MAX_FILES} images allowed.`);
-            selectedFiles.length = MAX_FILES;
-        }
-        syncInputWithState();
-    }
-
-    function removeImageAtIndex(index) {
-        selectedFiles.splice(index, 1);
-        syncInputWithState();
-    }
-
-    function syncInputWithState() {
-        const dt = new DataTransfer();
-        selectedFiles.forEach(f => dt.items.add(f));
-        evidenceInput.files = dt.files;
-        renderImagePreview();
-    }
-
-    if (evidenceInput) { evidenceInput.addEventListener('change', mergeAndPreviewFiles); }
-    if (cameraInput)  { cameraInput.addEventListener('change', mergeAndPreviewFiles); }
-
-    function renderImagePreview() {
-        previewDiv.innerHTML = '';
-        const files = selectedFiles;
-        Array.from(files).forEach((file, index) => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'preview-item';
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.title = 'Click to view full image';
-                img.addEventListener('click', () => openFullImage(e.target.result));
-                const removeBtn = document.createElement('div');
-                removeBtn.className = 'preview-remove';
-                removeBtn.innerHTML = '&times;';
-                removeBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    removeImageAtIndex(index);
-                });
-                wrapper.appendChild(img);
-                wrapper.appendChild(removeBtn);
-                previewDiv.appendChild(wrapper);
-            };
-            reader.readAsDataURL(file);
-        });
-        updateUploadButton();
-    }
-
-    function openFullImage(src) {
-        const modalBackdrop = document.createElement('div');
-        modalBackdrop.style.position = 'fixed';
-        modalBackdrop.style.inset = '0';
-        modalBackdrop.style.background = 'rgba(0,0,0,0.6)';
-        modalBackdrop.style.display = 'flex';
-        modalBackdrop.style.alignItems = 'center';
-        modalBackdrop.style.justifyContent = 'center';
-        modalBackdrop.style.zIndex = '8000';
-        const fullImg = document.createElement('img');
-        fullImg.src = src;
-        fullImg.style.maxWidth = '90%';
-        fullImg.style.maxHeight = '90%';
-        fullImg.style.borderRadius = '12px';
-        modalBackdrop.appendChild(fullImg);
-        document.body.appendChild(modalBackdrop);
-        modalBackdrop.addEventListener('click', () => modalBackdrop.remove());
-    }
-
-    function isMobile() {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
-    if (cameraBtn && isMobile() && cameraInput) {
-        cameraBtn.addEventListener('click', () => {
-            if(!cameraBtn.disabled) cameraInput.click();
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        if (evidenceInput && evidenceInput.files.length > 0) {
-            selectedFiles = Array.from(evidenceInput.files);
-            renderImagePreview();
-        }
-    });
-
-    // Contact number logic: auto-format and validate
-    const phoneInput = document.getElementById('contact_number');
-    const form = document.getElementById('maintenanceRequestForm');
-    const submitBtn = document.getElementById('submit-btn');
-    let realSubmit = false;
-
-    if (phoneInput) {
-        phoneInput.addEventListener('input', (e) => {
-            const input = e.target;
-            const cursorPos = input.selectionStart;
-            let digits = input.value.replace(/\D/g, '').slice(0, 11);
-            let formatted = '';
-            if (digits.length <= 4) {
-                formatted = digits;
-            } else if (digits.length <= 7) {
-                formatted = digits.slice(0, 4) + '-' + digits.slice(4);
-            } else {
-                formatted = digits.slice(0, 4) + '-' + digits.slice(4, 7) + '-' + digits.slice(7);
-            }
-            const digitsBeforeCursor = input.value
-                .slice(0, cursorPos)
-                .replace(/\D/g, '')
-                .length;
-            input.value = formatted;
-            let newCursor = 0, digitCount = 0;
-            for (let i = 0; i < formatted.length; i++) {
-                if (/\d/.test(formatted[i])) digitCount++;
-                if (digitCount === digitsBeforeCursor) {
-                    newCursor = i + 1;
-                    break;
-                }
-            }
-            input.setSelectionRange(newCursor, newCursor);
-        });
-    }
-    if (form && phoneInput) {
-        form.addEventListener('submit', e => {
-            if (realSubmit) return;
-            e.preventDefault();
-            const val = phoneInput.value.replace(/\D/g,'');
-            if (!/^09\d{9}$/.test(val)) {
-                showJsNotification('error', 'Contact number must be 11 digits and start with 09.');
-                phoneInput.focus();
-                return false;
-            }
-            showSubmitModal();
-        });
-    }
-    // ===== DRAFT SAVE =====
-    if (form) {
-        const inputs = form.querySelectorAll('input:not([type=file]), textarea, select');
-        inputs.forEach(input => {
-            const saved = localStorage.getItem(input.name);
-            if (saved !== null) {
-                input.value = saved;
-            }
-            input.addEventListener('input', () => {
-                if (input.name === 'infrastructure_other' && input.value.trim() === '') {
-                    localStorage.removeItem('infrastructure_other');
-                    return;
-                }
-                localStorage.setItem(input.name, input.value);
-            });
-        });
-    }
-    </script>
-
 
     <!-- Auto-clear form after successful submission & notification -->
     <script>
