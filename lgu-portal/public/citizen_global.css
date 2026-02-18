@@ -44,8 +44,10 @@
             background: var(--nav-bg);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            border-bottom: 2px solid var(--border-color);
-            box-shadow: 0 4px 25px var(--shadow-color);
+            /* Light mode: blue-accent bottom border + blue-tinted shadow */
+            border-bottom: 2px solid rgba(43, 108, 176, 0.30);
+            box-shadow: 0 2px 12px rgba(43, 108, 176, 0.12),
+                        0 4px 25px rgba(43, 108, 176, 0.08);
             position: fixed;
             top: 0;
             left: 0;
@@ -53,7 +55,13 @@
             transition: all 0.3s ease;
             gap: 0;
             flex-wrap: nowrap;
-            overflow: visible; /* FIXED: Allow buttons to transform without clipping */
+            overflow: visible;
+        }
+
+        /* Dark mode nav — restore neutral shadow */
+        [data-theme="dark"] .nav {
+            border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5);
         }
                 
         .site-logo {
@@ -94,7 +102,7 @@
             flex-wrap: nowrap;
             flex-shrink: 1;
             min-width: 0;
-            overflow: visible; /* FIXED: Allow children to overflow */
+            overflow: visible;
         }
         
         .nav-links {
@@ -133,7 +141,7 @@
             gap: clamp(6px, 0.9vw, 10px);
             flex-wrap: nowrap;
             flex-shrink: 0;
-            overflow: visible; /* FIXED: Allow buttons to transform without clipping */
+            overflow: visible;
         }
 
         .desktop-clock {
@@ -372,7 +380,7 @@
             justify-content: center;
             gap: 4px;
             padding: 0 10px;
-            min-width: 60px; /* Changed from fixed width to accommodate text */
+            min-width: 60px;
             height: 38px;
             border: 1.5px solid rgba(55, 98, 200, 0.35);
             border-radius: 10px;
@@ -477,9 +485,9 @@
             justify-content: center;
             gap: 7px;
             padding-bottom: 5px;
-            width: 100%; /* Changed from calc(100% - 50px) */
-            margin-left: auto; /* Changed from 25px */
-            margin-right: auto; /* Changed from 25px */
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
             box-sizing: border-box;
             margin-bottom: 20px;
             color: var(--text-primary);
@@ -498,8 +506,8 @@
         .sidebar-divider.logo-divider {
             transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
             opacity: 1;
-            width: calc(100% - 30px); /* Changed from calc(100% - 50px) */
-            margin: 18px 15px 0 15px; /* Changed from 18px 25px 0 25px */
+            width: calc(100% - 30px);
+            margin: 18px 15px 0 15px;
             border-bottom: 2px solid rgba(0, 0, 0, 0.551);
         }
 
@@ -560,10 +568,15 @@
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border-top: 1px solid var(--border-color);
-            box-shadow: 0 -2px 12px var(--shadow-color);
+            border-top: 1.5px solid rgba(43, 108, 176, 0.30);
+            box-shadow: 0 -2px 12px rgba(43, 108, 176, 0.10);
             margin-top: 0;
             flex-shrink: 0;
+        }
+
+        [data-theme="dark"] .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.40);
         }
 
         .footer-content {
@@ -662,9 +675,14 @@
                 background: var(--nav-bg);
                 backdrop-filter: blur(8px);
                 z-index: 5000;
-                box-shadow: 0 4px 18px var(--shadow-color);
-                border-bottom: 1px solid var(--border-color);
+                box-shadow: 0 2px 12px rgba(43, 108, 176, 0.12), 0 4px 18px rgba(43, 108, 176, 0.08);
+                border-bottom: 1.5px solid rgba(43, 108, 176, 0.30);
                 padding: 0 14px;
+            }
+
+            [data-theme="dark"] .mobile-top-nav {
+                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             }
 
             .mobile-toggle {
@@ -699,9 +717,9 @@
             }
 
             .cta-button {
-                font-size: 15px; /* Slightly smaller on mobile */
+                font-size: 15px;
                 padding: 14px 28px;
-                white-space: normal; /* Allow wrapping on very small screens */
+                white-space: normal;
                 text-align: center;
                 line-height: 1.3;
             }

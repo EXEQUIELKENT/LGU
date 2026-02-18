@@ -80,6 +80,10 @@ if ($maintenance_result) {
             flex-direction: column;
             transition: background 0.3s ease;
         }
+
+        /* ============================================================
+           CSS VARIABLES — Light mode (default)
+           ============================================================ */
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: rgba(255, 255, 255, 0.95);
@@ -93,8 +97,18 @@ if ($maintenance_result) {
             --accent-primary: #2b6cb0;
             --accent-secondary: #3762c8;
             --accent-light: #e6f0ff;
+
+            /* Light-mode card styling — blue-accent borders + blue-tinted shadows */
+            --card-border: 1.5px solid rgba(43, 108, 176, 0.22);
+            --card-shadow: 0 4px 6px -1px rgba(43, 108, 176, 0.10),
+                           0 12px 28px -4px rgba(43, 108, 176, 0.18);
+            --card-shadow-hover: 0 8px 12px -2px rgba(43, 108, 176, 0.15),
+                                 0 20px 40px -6px rgba(43, 108, 176, 0.26);
         }
 
+        /* ============================================================
+           CSS VARIABLES — Dark mode overrides
+           ============================================================ */
         [data-theme="dark"] {
             --bg-primary: #1a1a1a;
             --bg-secondary: rgba(26, 26, 26, 0.95);
@@ -108,8 +122,16 @@ if ($maintenance_result) {
             --accent-primary: #4a8fd8;
             --accent-secondary: #5a9fe8;
             --accent-light: #1e3a5f;
+
+            /* Dark-mode card styling — neutral, no blue tint */
+            --card-border: 1px solid rgba(255, 255, 255, 0.08);
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+            --card-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.60);
         }
-        /* HERO SECTION */
+
+        /* ============================================================
+           HERO SECTION
+           ============================================================ */
         .hero-section {
             padding: 100px 20px 80px;
             text-align: center;
@@ -159,7 +181,7 @@ if ($maintenance_result) {
             transition: all 0.3s ease;
             cursor: pointer;
             border: none;
-            white-space: nowrap; /* Prevent text wrapping */
+            white-space: nowrap;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -194,12 +216,16 @@ if ($maintenance_result) {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* STATISTICS SECTION */
+        /* ============================================================
+           STATISTICS SECTION
+           ============================================================ */
         .stats-section {
             padding: 60px 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
+
+
 
         .stats-grid {
             display: grid;
@@ -213,8 +239,8 @@ if ($maintenance_result) {
             backdrop-filter: blur(10px);
             padding: 40px 30px;
             border-radius: 20px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             text-align: center;
             transition: all 0.3s ease;
             cursor: pointer;
@@ -222,7 +248,7 @@ if ($maintenance_result) {
 
         .stat-card:hover {
             transform: translateY(-8px);
-            box-shadow: 0 15px 40px var(--shadow-color);
+            box-shadow: var(--card-shadow-hover);
         }
 
         .stat-icon { font-size: 48px; margin-bottom: 20px; }
@@ -242,12 +268,16 @@ if ($maintenance_result) {
             letter-spacing: 1px;
         }
 
-        /* TRUST INDICATORS */
+        /* ============================================================
+           TRUST INDICATORS
+           ============================================================ */
         .trust-section {
             padding: 40px 20px;
             max-width: 1200px;
             margin: 0 auto;
         }
+
+
 
         .trust-grid {
             display: grid;
@@ -261,8 +291,8 @@ if ($maintenance_result) {
             padding: 30px 20px;
             background: var(--card-bg);
             border-radius: 16px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 8px 24px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
             position: relative;
@@ -318,7 +348,7 @@ if ($maintenance_result) {
 
         .trust-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 12px 32px var(--shadow-color);
+            box-shadow: var(--card-shadow-hover);
         }
 
         .trust-item:hover::after {
@@ -341,13 +371,17 @@ if ($maintenance_result) {
             line-height: 1.5;
         }
 
-        /* FEATURES SECTION */
+        /* ============================================================
+           FEATURES SECTION
+           ============================================================ */
         .features-section {
             padding: 80px 20px;
             background: var(--bg-secondary);
             backdrop-filter: blur(10px);
             margin: 0 20px;
             border-radius: 30px;
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
         }
 
         .section-title {
@@ -380,8 +414,8 @@ if ($maintenance_result) {
             background: var(--card-bg);
             padding: 40px 30px;
             border-radius: 20px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -403,7 +437,7 @@ if ($maintenance_result) {
 
         .feature-card:hover {
             transform: translateY(-8px);
-            box-shadow: 0 15px 40px var(--shadow-color);
+            box-shadow: var(--card-shadow-hover);
         }
 
         .feature-icon { font-size: 48px; margin-bottom: 20px; }
@@ -434,20 +468,24 @@ if ($maintenance_result) {
 
         .feature-link:hover { gap: 12px; }
 
-        /* HOW IT WORKS SECTION */
+        /* ============================================================
+           HOW IT WORKS SECTION
+           ============================================================ */
         .how-it-works-section {
             padding: 80px 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
+
+
         .section-header-card {
             background: var(--card-bg);
             backdrop-filter: blur(10px);
             padding: 40px 30px;
             border-radius: 20px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             margin-bottom: 40px;
             text-align: center;
         }
@@ -468,15 +506,15 @@ if ($maintenance_result) {
             padding: 30px 25px;
             background: var(--card-bg);
             border-radius: 16px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 8px 24px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
 
         .step-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 12px 32px var(--shadow-color);
+            box-shadow: var(--card-shadow-hover);
         }
 
         .step-number {
@@ -507,13 +545,17 @@ if ($maintenance_result) {
             line-height: 1.6;
         }
 
-        /* ABOUT SECTION */
+        /* ============================================================
+           ABOUT SECTION
+           ============================================================ */
         .about-section {
             padding: 80px 20px;
             background: var(--bg-secondary);
             backdrop-filter: blur(10px);
             margin: 0 20px;
             border-radius: 30px;
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
         }
 
         .about-container { max-width: 1400px; margin: 0 auto; }
@@ -552,7 +594,8 @@ if ($maintenance_result) {
             position: relative;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 20px 60px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
         }
 
         .about-image-wrapper img {
@@ -605,6 +648,7 @@ if ($maintenance_result) {
             padding: 15px;
             background: var(--accent-light);
             border-radius: 12px;
+            border: var(--card-border);
             transition: all 0.3s ease;
         }
 
@@ -628,8 +672,8 @@ if ($maintenance_result) {
             background: var(--card-bg);
             border-radius: 20px;
             padding: 50px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
             margin-top: 60px;
         }
 
@@ -668,19 +712,23 @@ if ($maintenance_result) {
             line-height: 1.6;
         }
 
-        /* RECENT ACTIVITY SECTION */
+        /* ============================================================
+           RECENT ACTIVITY SECTION
+           ============================================================ */
         .activity-section {
             padding: 80px 20px;
             max-width: 1400px;
             margin: 0 auto;
         }
 
+
+
         .activity-card {
             background: var(--card-bg);
             border-radius: 20px;
             padding: 40px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border: var(--card-border);
+            box-shadow: var(--card-shadow);
         }
 
         .activity-card .section-title { text-align: center; margin-bottom: 15px; }
@@ -718,6 +766,9 @@ if ($maintenance_result) {
         .status-progress { background: #cce5ff; color: #004085; }
         .status-completed { background: #d4edda; color: #155724; }
 
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 1024px) {
             .about-content { grid-template-columns: 1fr; }
             .footer-content { grid-template-columns: 1fr 1fr; }
@@ -743,9 +794,9 @@ if ($maintenance_result) {
 
         @media (max-width: 768px) {
             .cta-button {
-                font-size: 15px; /* Slightly smaller on mobile */
+                font-size: 15px;
                 padding: 14px 28px;
-                white-space: normal; /* Allow wrapping on very small screens */
+                white-space: normal;
                 text-align: center;
                 line-height: 1.3;
             }
@@ -766,8 +817,9 @@ if ($maintenance_result) {
             .stats-grid { grid-template-columns: 1fr; }
             .features-grid { grid-template-columns: 1fr; }
             .steps-container { grid-template-columns: 1fr; }
-
             .trust-grid { grid-template-columns: 1fr; }
+
+            .features-section, .about-section { margin: 0 10px; border-radius: 20px; }
 
             .trust-item::after {
                 top: 100%;
@@ -803,15 +855,12 @@ if ($maintenance_result) {
                 90% { opacity: 1; }
                 50% { top: calc(100% + 15px); opacity: 1; }
             }
-
-            .features-section, .about-section { margin: 0 10px; border-radius: 20px; }
         }
     </style>
 <?php include 'citizen_rendering.php'; ?>
 </head>
 <body>
 
-<!-- Globe SVG snippet reused inline -->
 <!-- DESKTOP NAVIGATION -->
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
@@ -935,7 +984,7 @@ if ($maintenance_result) {
                 <div class="stat-number"><?= $pending_count ?></div>
                 <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
             </div>
-        </div>
+        </div><!-- end stats-grid -->
     </section>
 
     <!-- TRUST INDICATORS -->
@@ -961,7 +1010,7 @@ if ($maintenance_result) {
                 <div class="trust-title" data-i18n="trust_excellence_title">Service Excellence</div>
                 <div class="trust-desc" data-i18n="trust_excellence_desc">Committed to quality, transparency, and public service.</div>
             </div>
-        </div>
+        </div><!-- end trust-grid -->
     </section>
 
     <!-- HOW IT WORKS SECTION -->
@@ -991,7 +1040,7 @@ if ($maintenance_result) {
                     <p class="step-description" data-i18n="step4_desc">Maintenance work is completed, documented, and marked as completed, ensuring transparency and accountability.</p>
                 </div>
             </div>
-        </div>
+        </div><!-- end section-header-card -->
     </section>
 
     <!-- FEATURES SECTION -->
@@ -1068,7 +1117,7 @@ if ($maintenance_result) {
             <?php else: ?>
                 <p style="text-align:center;color:var(--text-secondary);padding:40px;" data-i18n="activity_empty">No recent maintenance activities to display.</p>
             <?php endif; ?>
-        </div>
+        </div><!-- end activity-card -->
     </section>
 
     <!-- ABOUT SECTION -->
