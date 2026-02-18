@@ -2329,6 +2329,7 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 @media (min-width: 769px) and (max-width: 1200px) {
+
 /* Card padding reduction */
 .card {
     padding: 20px 16px !important;
@@ -2339,13 +2340,16 @@ body.sidebar-collapsed .desktop-clock {
     gap: 5px !important;
 }
 
-/* Calendar day cells - constrain so they don't overflow */
+/* Calendar day cells:
+   CRITICAL: Do NOT use overflow:hidden here — it clips the dropdown.
+   Instead, we constrain content via the inner wrapper below. */
 .calendar-day {
     min-height: 80px !important;
     padding: 6px 4px !important;
     font-size: 12px !important;
     border-radius: 8px !important;
-    overflow: hidden !important;       /* KEY: clip content inside cell */
+    overflow: visible !important;   /* MUST be visible for dropdown to escape */
+    position: relative !important;  /* dropdown positions relative to this */
     word-break: break-word !important;
 }
 
@@ -2355,8 +2359,14 @@ body.sidebar-collapsed .desktop-clock {
     font-weight: 600;
 }
 
-/* Task buttons inside calendar cells - CRITICAL FIX */
-.calendar-day .task-btn {
+/* Day tasks wrapper — clip the task buttons here, not on the cell */
+.calendar-day .day-tasks {
+    width: 100% !important;
+    overflow: hidden !important;    /* clips task btn text overflow */
+}
+
+/* Task buttons inside calendar cells */
+.calendar-day .day-tasks .task-btn {
     font-size: 9px !important;
     padding: 3px 4px !important;
     border-radius: 5px !important;
@@ -2368,12 +2378,6 @@ body.sidebar-collapsed .desktop-clock {
     display: block !important;
     box-sizing: border-box !important;
     margin: 1px 0 !important;
-}
-
-/* Day tasks wrapper */
-.calendar-day .day-tasks {
-    width: 100% !important;
-    overflow: hidden !important;
 }
 
 /* More tasks wrap (arrow + counter) */
@@ -2391,6 +2395,33 @@ body.sidebar-collapsed .desktop-clock {
 .task-counter {
     font-size: 10px !important;
     padding: 1px 4px !important;
+}
+
+/* Dropdown — floats OUTSIDE the cell, needs high z-index */
+.task-dropdown {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    width: 180px !important;        /* fixed width, wider than cell */
+    z-index: 9999 !important;       /* above everything */
+    background: #fff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+    padding: 6px !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+}
+
+.task-dropdown .task-btn {
+    white-space: normal !important;
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+    width: 100% !important;
+    display: block !important;
+    margin: 3px 0 !important;
+    text-align: left !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
 }
 
 /* Holiday/event badges in cells */
@@ -2425,19 +2456,6 @@ body.sidebar-collapsed .desktop-clock {
     margin-bottom: 10px !important;
 }
 
-/* Task dropdown (overflow panel) */
-.task-dropdown {
-    width: 130% !important;     /* slightly wider than cell */
-    left: -15% !important;
-    z-index: 200 !important;
-}
-
-.task-dropdown .task-btn {
-    white-space: normal !important;    /* allow wrap inside dropdown */
-    font-size: 11px !important;
-    padding: 6px 8px !important;
-}
-
 /* Calendar details card */
 .calendar-details-card {
     padding: 10px 12px 32px !important;
@@ -2453,12 +2471,10 @@ body.sidebar-collapsed .desktop-clock {
     padding: 8px 14px !important;
 }
 
-/* Search input in list view */
 #scheduleSearch {
     font-size: 0.9rem !important;
 }
 
-/* Schedule items in list view */
 .schedule-item {
     padding: 12px 0 !important;
     font-size: 13px !important;
@@ -2472,34 +2488,35 @@ body.sidebar-collapsed .desktop-clock {
 
 /* -------------------------------------------------------
 769px – 1000px  (narrowest non-mobile range)
-Sidebar (250px) takes the most relative space here.
 ------------------------------------------------------- */
 @media (min-width: 769px) and (max-width: 1000px) {
-
 
 .card {
     padding: 14px 10px !important;
 }
 
-/* Even tighter grid gap */
 .calendar-grid {
     gap: 3px !important;
 }
 
-/* Cells shorter and more compact */
 .calendar-day {
     min-height: 70px !important;
     padding: 4px 3px !important;
     font-size: 11px !important;
-    overflow: hidden !important;
+    overflow: visible !important;   /* still must be visible for dropdown */
+    position: relative !important;
 }
 
 .calendar-day > div:first-child {
     font-size: 11px !important;
 }
 
-/* Task buttons even smaller */
-.calendar-day .task-btn {
+.calendar-day .day-tasks {
+    width: 100% !important;
+    overflow: hidden !important;
+}
+
+.calendar-day .day-tasks .task-btn {
     font-size: 8px !important;
     padding: 2px 3px !important;
     border-radius: 4px !important;
@@ -2524,17 +2541,14 @@ Sidebar (250px) takes the most relative space here.
     padding: 1px 3px !important;
 }
 
-/* Weekday labels */
 .calendar-weekdays div {
     font-size: 10px !important;
     padding: 3px 0 !important;
-    /* Abbreviate to 3 chars at this size */
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
 
-/* Holiday badges - minimal */
 .holiday-badge,
 .event-badge {
     font-size: 7px !important;
@@ -2544,26 +2558,40 @@ Sidebar (250px) takes the most relative space here.
     display: block !important;
 }
 
-/* Hide long holiday title text at this size - too cramped */
+/* Hide long holiday titles - too cramped */
 .holiday-event-title,
 .event-title {
     display: none !important;
 }
 
-/* Task dropdown - wider to be readable */
+/* Dropdown at this size — position to the right if near left edge,
+   otherwise standard below */
 .task-dropdown {
-    width: 160% !important;
-    left: -30% !important;
-    z-index: 200 !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    width: 170px !important;
+    z-index: 9999 !important;
+    background: #fff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+    padding: 6px !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
 }
 
 .task-dropdown .task-btn {
     font-size: 11px !important;
     padding: 5px 7px !important;
     white-space: normal !important;
+    width: 100% !important;
+    display: block !important;
+    margin: 3px 0 !important;
+    text-align: left !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
 }
 
-/* Schedule list items */
 .schedule-item {
     padding: 10px 0 !important;
     font-size: 12px !important;
@@ -2577,6 +2605,13 @@ Sidebar (250px) takes the most relative space here.
 #scheduleSearch {
     font-size: 0.85rem !important;
 }
+}
+
+/* Dark mode dropdown support */
+[data-theme="dark"] .task-dropdown {
+background: #1e1e1e !important;
+border: 1px solid rgba(255,255,255,0.1) !important;
+box-shadow: 0 8px 20px rgba(0,0,0,0.4) !important;
 }
 
 @media (max-width: 768px) {
