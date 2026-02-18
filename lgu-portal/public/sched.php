@@ -2334,7 +2334,7 @@ body.sidebar-collapsed .desktop-clock {
     padding: 20px 16px !important;
 }
 
-/* Calendar grid - tighter gap */
+/* Calendar grid - tighter gap */s
 .calendar-grid {
     gap: 5px !important;
 }
@@ -2345,9 +2345,9 @@ body.sidebar-collapsed .desktop-clock {
     padding: 6px 4px !important;
     font-size: 12px !important;
     border-radius: 8px !important;
-    overflow: hidden !important;       /* KEY: clip content inside cell */
+    overflow: hidden !important;
     word-break: break-word !important;
-    position: relative; /* Needed for dropdown absolute positioning */
+    position: relative !important; /* Needed for dropdown absolute positioning */
 }
 
 /* Day number */
@@ -2356,7 +2356,7 @@ body.sidebar-collapsed .desktop-clock {
     font-weight: 600;
 }
 
-/* Task buttons inside calendar cells - CRITICAL FIX */
+/* Task buttons inside calendar cells */
 .calendar-day .task-btn {
     font-size: 9px !important;
     padding: 3px 4px !important;
@@ -2427,19 +2427,26 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 /* Task dropdown (overflow panel) */
-/* Fix: Always force dropdown to appear OVERFLOWING the cell, not clipped */
+/* Place dropdown just below the clicked date cell (reference: desktop/mobile behavior) */
+.calendar-day {
+    position: relative !important;
+}
 .task-dropdown {
-    width: 130% !important;     /* slightly wider than cell */
-    left: -15% !important;
-    z-index: 9999 !important;   /* Force above other elements */
-    position: fixed !important; /* Instead of absolute, prevent parent clipping */
-    top: auto !important;       /* You may need JS for pixel-perfect position */
-    /* Optionally add a box-shadow to make dropdown more visible */
+    width: 130% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 9999 !important;
+    position: absolute !important; /* Attach to .calendar-day */
+    top: 100% !important; /* Directly below the cell */
+    margin-top: 4px !important; /* Small gap below date cell */
     box-shadow: 0 8px 24px rgba(0,0,0,0.24);
+    /* Prevent dropdown from being clipped */
+    background: #fff;
 }
 
+/* Make task dropdown wrap its content nicely */
 .task-dropdown .task-btn {
-    white-space: normal !important;    /* allow wrap inside dropdown */
+    white-space: normal !important;
     font-size: 11px !important;
     padding: 6px 8px !important;
 }
@@ -2482,7 +2489,6 @@ Sidebar (250px) takes the most relative space here.
 ------------------------------------------------------- */
 @media (min-width: 769px) and (max-width: 1000px) {
 
-
 .card {
     padding: 14px 10px !important;
 }
@@ -2498,7 +2504,7 @@ Sidebar (250px) takes the most relative space here.
     padding: 4px 3px !important;
     font-size: 11px !important;
     overflow: hidden !important;
-    position: relative; /* Needed for dropdown absolute positioning if ever fallback */
+    position: relative !important; /* For dropdown positioning */
 }
 
 .calendar-day > div:first-child {
@@ -2535,7 +2541,6 @@ Sidebar (250px) takes the most relative space here.
 .calendar-weekdays div {
     font-size: 10px !important;
     padding: 3px 0 !important;
-    /* Abbreviate to 3 chars at this size */
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -2557,15 +2562,20 @@ Sidebar (250px) takes the most relative space here.
     display: none !important;
 }
 
-/* Task dropdown - wider to be readable */
-/* Fix: Always force dropdown to appear OVERFLOWING the cell, not clipped */
+/* Task dropdown - always directly below the date cell */
+.calendar-day {
+    position: relative !important;
+}
 .task-dropdown {
     width: 160% !important;
-    left: -30% !important;
-    z-index: 9999 !important;   /* Force above other elements */
-    position: fixed !important; /* Instead of absolute, prevent parent clipping */
-    top: auto !important;       /* You may need JS for pixel-perfect position */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 9999 !important;
+    position: absolute !important; /* Attach to the cell */
+    top: 100% !important;
+    margin-top: 4px !important;
     box-shadow: 0 8px 24px rgba(0,0,0,0.24);
+    background: #fff;
 }
 
 .task-dropdown .task-btn {
