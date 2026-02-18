@@ -2347,6 +2347,7 @@ body.sidebar-collapsed .desktop-clock {
     border-radius: 8px !important;
     overflow: hidden !important;       /* KEY: clip content inside cell */
     word-break: break-word !important;
+    position: relative; /* Needed for dropdown absolute positioning */
 }
 
 /* Day number */
@@ -2426,15 +2427,15 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 /* Task dropdown (overflow panel) */
+/* Fix: Always force dropdown to appear OVERFLOWING the cell, not clipped */
 .task-dropdown {
-    position: absolute !important;
-    top: 100% !important;      /* below the cell */
-    left: 0 !important;
-    width: 220px !important;   /* fixed width */
-    max-width: 90vw !important;
-    z-index: 9999 !important;
-
-    overflow: visible !important; 
+    width: 130% !important;     /* slightly wider than cell */
+    left: -15% !important;
+    z-index: 9999 !important;   /* Force above other elements */
+    position: fixed !important; /* Instead of absolute, prevent parent clipping */
+    top: auto !important;       /* You may need JS for pixel-perfect position */
+    /* Optionally add a box-shadow to make dropdown more visible */
+    box-shadow: 0 8px 24px rgba(0,0,0,0.24);
 }
 
 .task-dropdown .task-btn {
@@ -2497,6 +2498,7 @@ Sidebar (250px) takes the most relative space here.
     padding: 4px 3px !important;
     font-size: 11px !important;
     overflow: hidden !important;
+    position: relative; /* Needed for dropdown absolute positioning if ever fallback */
 }
 
 .calendar-day > div:first-child {
@@ -2556,10 +2558,14 @@ Sidebar (250px) takes the most relative space here.
 }
 
 /* Task dropdown - wider to be readable */
+/* Fix: Always force dropdown to appear OVERFLOWING the cell, not clipped */
 .task-dropdown {
     width: 160% !important;
     left: -30% !important;
-    z-index: 200 !important;
+    z-index: 9999 !important;   /* Force above other elements */
+    position: fixed !important; /* Instead of absolute, prevent parent clipping */
+    top: auto !important;       /* You may need JS for pixel-perfect position */
+    box-shadow: 0 8px 24px rgba(0,0,0,0.24);
 }
 
 .task-dropdown .task-btn {
