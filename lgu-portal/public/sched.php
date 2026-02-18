@@ -2345,7 +2345,7 @@ body.sidebar-collapsed .desktop-clock {
     padding: 6px 4px !important;
     font-size: 12px !important;
     border-radius: 8px !important;
-    overflow: hidden !important;       /* KEY: clip content inside cell */
+    overflow: visible !important;       /* KEY: clip content inside cell */
     word-break: break-word !important;
 }
 
