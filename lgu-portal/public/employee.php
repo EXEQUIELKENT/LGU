@@ -940,9 +940,9 @@ body::before {
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     padding: 0;
     z-index: 1000;
+    overflow: hidden; /* ← KEY: sidebar never overflows */
     transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .sidebar-nav.collapsed {
@@ -983,11 +983,12 @@ body::before {
 .sidebar-top {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    min-height: 0;
-    height: 100%;
+    flex: 1 1 0;       /* ← takes all remaining space */
+    min-height: 0;     /* ← CRITICAL: allows shrinking, fixes the overflow */
+    /* REMOVED: height: 100% ← this was the culprit */
     padding: 20px 0;
     overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
 }
 .sidebar-logo-spacer {
@@ -1147,6 +1148,7 @@ body::before {
     align-items: center;
     padding: 20px 0;
     border-top: 1px solid rgba(255,255,255,0.2);
+    flex-shrink: 0;    /* ← CRITICAL: never pushed off screen */
     transition: all 0.3s ease;
 }
 .sidebar-nav .user-welcome,
