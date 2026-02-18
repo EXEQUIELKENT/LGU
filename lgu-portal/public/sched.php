@@ -2329,22 +2329,6 @@ body.sidebar-collapsed .desktop-clock {
 }
 
 @media (min-width: 769px) and (max-width: 1200px) {
-
-/* Main content margins tighten */
-.main-content {
-    margin-left: calc(var(--sidebar-expanded) + 10px) !important;
-    margin-right: 10px !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    padding-top: 70px !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-}
-
-.main-content.expanded {
-    margin-left: calc(var(--sidebar-collapsed) + 10px) !important;
-}
-
 /* Card padding reduction */
 .card {
     padding: 20px 16px !important;
@@ -2492,16 +2476,6 @@ Sidebar (250px) takes the most relative space here.
 ------------------------------------------------------- */
 @media (min-width: 769px) and (max-width: 1000px) {
 
-.main-content {
-    margin-left: calc(var(--sidebar-expanded) + 6px) !important;
-    margin-right: 6px !important;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-}
-
-.main-content.expanded {
-    margin-left: calc(var(--sidebar-collapsed) + 6px) !important;
-}
 
 .card {
     padding: 14px 10px !important;
