@@ -15,7 +15,6 @@ if (sidebarCollapsed) {
     mainContent.classList.add('expanded');
     document.body.classList.add('sidebar-collapsed');
 }
-document.documentElement.classList.remove('sidebar-pre-collapsed');
 
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {

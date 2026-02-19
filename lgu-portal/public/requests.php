@@ -150,18 +150,6 @@ function format_datetime_ampm($datetime) {
    Custom SCROLLBAR STYLE
    (synced with employee.php)
 ========================== */
-html.sidebar-pre-collapsed .sidebar-nav {
-    width: var(--sidebar-collapsed) !important;
-    transition: none !important;
-}
-html.sidebar-pre-collapsed .main-content {
-    margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
-    transition: none !important;
-}
-html.sidebar-pre-collapsed .desktop-top-nav {
-    left: var(--sidebar-collapsed) !important;
-    transition: none !important;
-}
 body, .main-content, .sidebar-top, .notif-dropdown-body {
     scrollbar-width: thin;
     scrollbar-color: #9cafde rgba(0,0,0,0.07);
@@ -2586,15 +2574,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     }
 })();
 </script>
-<script>
-(function() {
-    try {
-        if (localStorage.getItem('sidebarCollapsed') === 'true' && window.innerWidth > 900) {
-            document.documentElement.classList.add('sidebar-pre-collapsed');
-        }
-    } catch(e) {}
-})();
-</script>
 </head>
 <body>
 
@@ -2883,6 +2862,8 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
+<?php include 'admin_scripts.php'; ?>
+
 <!-- ========================================
      MODALS SECTION
      ======================================== -->
@@ -2973,9 +2954,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         </div>
     </div>
 </div>
-
-
-<?php include 'admin_scripts.php'; ?>
 
 <script>
 
