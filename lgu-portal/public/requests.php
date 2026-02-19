@@ -2582,35 +2582,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 })();
 </script>
 </head>
-<script>
-// ===== FIX: Reset scroll position when switching from mobile to desktop =====
-(function() {
-    let lastMobileViewState = window.innerWidth <= 768;
-    
-    window.addEventListener('resize', function() {
-        const isNowMobile = window.innerWidth <= 768;
-        
-        // Switching from mobile to desktop
-        if (lastMobileViewState && !isNowMobile) {
-            // Reset body scroll to top
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-            
-            // Force layout recalculation
-            document.body.style.overflow = 'hidden';
-            void document.body.offsetHeight; // Trigger reflow
-            
-            // Small delay to ensure proper reset
-            setTimeout(() => {
-                document.body.style.overflow = '';
-            }, 10);
-        }
-        
-        lastMobileViewState = isNowMobile;
-    });
-})();
-</script>
+
 <body>
 
 <!-- DESKTOP TOP NAV -->
