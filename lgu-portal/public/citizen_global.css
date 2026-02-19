@@ -45,9 +45,8 @@
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             /* Light mode: blue-accent bottom border + blue-tinted shadow */
-            border-bottom: 2px solid rgba(43, 108, 176, 0.30);
-            box-shadow: 0 2px 12px rgba(43, 108, 176, 0.12),
-                        0 4px 25px rgba(43, 108, 176, 0.08);
+            border-bottom: 2px solid rgb(47, 99, 156);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
             position: fixed;
             top: 0;
             left: 0;
@@ -568,8 +567,8 @@
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border-top: 1.5px solid rgba(43, 108, 176, 0.30);
-            box-shadow: 0 -2px 12px rgba(43, 108, 176, 0.10);
+            border-bottom: 2px solid rgb(47, 99, 156);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
             margin-top: 0;
             flex-shrink: 0;
         }

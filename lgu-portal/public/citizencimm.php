@@ -99,11 +99,9 @@ if ($maintenance_result) {
             --accent-light: #e6f0ff;
 
             /* Light-mode card styling — blue-accent borders + blue-tinted shadows */
-            --card-border: 1.5px solid rgba(43, 108, 176, 0.22);
-            --card-shadow: 0 4px 6px -1px rgba(43, 108, 176, 0.10),
-                           0 12px 28px -4px rgba(43, 108, 176, 0.18);
-            --card-shadow-hover: 0 8px 12px -2px rgba(43, 108, 176, 0.15),
-                                 0 20px 40px -6px rgba(43, 108, 176, 0.26);
+            --card-border: 1.5px solid rgb(47, 99, 156);
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+            --card-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.60);
         }
 
         /* ============================================================
@@ -224,8 +222,6 @@ if ($maintenance_result) {
             max-width: 1400px;
             margin: 0 auto;
         }
-
-
 
         .stats-grid {
             display: grid;

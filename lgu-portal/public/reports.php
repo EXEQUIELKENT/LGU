@@ -852,7 +852,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 </div>
         <?php   }
             } else { ?>
-            <div class="report-card no-mobile">No reports found</div>
+            <div class="report-card no-mobile" style="background: var(--bg-secondary); color: var(--text-primary); border-radius: 16px; box-shadow: 0 6px 18px var(--shadow-color); padding: 16px 18px; text-align: center;">
+                No reports found
+            </div>
         <?php } ?>
         </div>
         <!-- END MOBILE REPORT CARDS -->
