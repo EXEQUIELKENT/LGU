@@ -2574,43 +2574,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     }
 })();
 </script>
-<script>
-(function() {
-    if (localStorage.getItem('sidebarCollapsed') === 'true') {
-        document.documentElement.classList.add('sidebar-pre-collapsed');
-    }
-})();
-</script>
 </head>
-<script>
-// ===== FIX: Reset scroll position when switching from mobile to desktop =====
-(function() {
-    let lastMobileViewState = window.innerWidth <= 768;
-    
-    window.addEventListener('resize', function() {
-        const isNowMobile = window.innerWidth <= 768;
-        
-        // Switching from mobile to desktop
-        if (lastMobileViewState && !isNowMobile) {
-            // Reset body scroll to top
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-            
-            // Force layout recalculation
-            document.body.style.overflow = 'hidden';
-            void document.body.offsetHeight; // Trigger reflow
-            
-            // Small delay to ensure proper reset
-            setTimeout(() => {
-                document.body.style.overflow = '';
-            }, 10);
-        }
-        
-        lastMobileViewState = isNowMobile;
-    });
-})();
-</script>
 <body>
 
 <!-- DESKTOP TOP NAV -->
@@ -2989,39 +2953,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-
 <?php include 'admin_scripts.php'; ?>
-
-<script>
-
-// ============================
-//  INACTIVITY TIMER
-// ============================
-let inactivityTime = 20 * 60 * 1000;
-let inactivityTimer;
-
-function resetInactivityTimer() {
-    clearTimeout(inactivityTimer);
-    inactivityTimer = setTimeout(() => {
-        window.location.href = 'logout.php';
-    }, inactivityTime);
-}
-
-['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
-    document.addEventListener(event, resetInactivityTimer, true);
-});
-
-resetInactivityTimer();
-
-// ============================
-//  PAGE SHOW EVENT (PREVENT BFCACHE)
-// ============================
-window.addEventListener("pageshow", function (event) {
-    if (event.persisted) {
-        window.location.reload();
-    }
-});
-</script>
 
 <script>
 // ============================
@@ -3296,9 +3228,7 @@ function handleSwipeGesture() {
         nextImage();
     }
 }
-</script>
 
-<script>
 // ============================
 //  REQUEST DETAIL MODAL FUNCTIONALITY
 // ============================
@@ -3444,9 +3374,6 @@ document.getElementById('validateConfirmBtn').addEventListener('click', () => {
     // Show success message (you can replace this with your notification system)
     alert('Request validated successfully!');
 });
-</script>
-
-<script>
 // ============================
 //  SEARCH FUNCTIONALITY
 // ============================
