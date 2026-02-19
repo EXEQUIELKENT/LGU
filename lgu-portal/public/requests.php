@@ -2552,37 +2552,58 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 // Pass user role and validation permission to JavaScript
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 
-// --- ✅ BULLETPROOF THEME APPLICATION - PREVENTS RESET ---
 (function() {
     try {
-        // Read theme with extra validation
         let savedTheme = localStorage.getItem('theme');
         
-        // Validate the theme value
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light'; // Default to light if corrupted
+            savedTheme = 'light';
         }
         
-        // Apply theme immediately
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         } else {
             document.documentElement.removeAttribute('data-theme');
         }
         
-        // ✅ CRITICAL FIX: Re-save to localStorage to ensure it persists
-        // This prevents any race conditions from clearing it
         localStorage.setItem('theme', savedTheme);
         
     } catch (e) {
         console.error('Theme initialization error:', e);
-        // If localStorage fails, default to light mode
         document.documentElement.removeAttribute('data-theme');
     }
 })();
 </script>
 </head>
-
+<script>
+// ===== FIX: Reset scroll position when switching from mobile to desktop =====
+(function() {
+    let lastMobileViewState = window.innerWidth <= 768;
+    
+    window.addEventListener('resize', function() {
+        const isNowMobile = window.innerWidth <= 768;
+        
+        // Switching from mobile to desktop
+        if (lastMobileViewState && !isNowMobile) {
+            // Reset body scroll to top
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            
+            // Force layout recalculation
+            document.body.style.overflow = 'hidden';
+            void document.body.offsetHeight; // Trigger reflow
+            
+            // Small delay to ensure proper reset
+            setTimeout(() => {
+                document.body.style.overflow = '';
+            }, 10);
+        }
+        
+        lastMobileViewState = isNowMobile;
+    });
+})();
+</script>
 <body>
 
 <!-- DESKTOP TOP NAV -->
