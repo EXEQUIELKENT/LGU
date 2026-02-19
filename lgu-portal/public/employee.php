@@ -1392,6 +1392,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     }   
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1771,8 +1772,7 @@ let resizeTimeout;
 window.addEventListener('resize', function() {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(function() {
-        // Get all Chart instances and update them
-        Chart.instances.forEach(function(chart) {
+        Object.values(Chart.instances).forEach(function(chart) {
             chart.resize();
         });
     }, 250);
