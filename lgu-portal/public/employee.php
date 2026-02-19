@@ -2420,7 +2420,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     } catch (e) {
         console.error('Theme initialization error:', e);
         document.documentElement.removeAttribute('data-theme');
-    }
+    }   
 })();
 </script>
 </head>

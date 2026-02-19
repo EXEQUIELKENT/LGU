@@ -2574,6 +2574,13 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     }
 })();
 </script>
+<script>
+(function() {
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        document.documentElement.classList.add('sidebar-pre-collapsed');
+    }
+})();
+</script>
 </head>
 <script>
 // ===== FIX: Reset scroll position when switching from mobile to desktop =====
