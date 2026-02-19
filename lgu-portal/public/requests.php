@@ -2993,10 +2993,8 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
      JAVASCRIPT SECTION
      ======================================== -->
 
-<script>
-// ============================
-//  SIDEBAR FUNCTIONALITY
-// ============================
+     <script>
+// Sidebar & Navigation Scripts
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const mainContent = document.querySelector('.main-content');
@@ -3025,19 +3023,20 @@ window.addEventListener('resize', () => {
     lastMobileState = isNowMobile;
 });
 
-sidebarToggle.addEventListener('click', () => { 
-    sidebar.classList.toggle('collapsed');
-    const isCollapsed = sidebar.classList.contains('collapsed');
+sidebarToggle.addEventListener('click', () => {
+    const isCollapsed = sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('expanded', isCollapsed);
     document.body.classList.toggle('sidebar-collapsed', isCollapsed);
     localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+    sidebar.style.overflowX = "hidden";
+
     if (!isCollapsed) {
         sidebarNavTooltip.classList.remove('active');
         sidebarNavTooltip.style.display = 'none';
     }
 });
 
-// Sidebar tooltips
 const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 let tooltipActiveLink = null;
 let tooltipHideTimeout = null;
@@ -3195,13 +3194,70 @@ sidebarNavTooltip.addEventListener('mouseenter', function() {
     }
 });
 
-// Mobile toggle
+document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
+    link.addEventListener('keydown', function(e) {
+        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            this.focus();
+        }
+    });
+});
+
+logoutBtn.addEventListener('keydown', function(e) {
+    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        this.focus();
+    }
+});
+
+sidebarToggle.addEventListener('click', () => {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+
+logoutBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.add("active");
+    hideNavTooltipImmediate();
+});
+
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'logout.php';
+});
+
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
+    }
+});
+
 const mobileToggle = document.getElementById('mobileToggle');
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
         sidebar.classList.toggle('mobile-active');
     });
 }
+
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
 </script>
 <script>
 // ============================
