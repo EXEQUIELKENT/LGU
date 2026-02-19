@@ -3413,6 +3413,273 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     <input type="date" id="overlayDatePicker">
 </div>
 
+<script>
+// Sidebar & Navigation Scripts
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebar = document.getElementById('sidebarNav');
+const mainContent = document.querySelector('.main-content');
+const sidebarNav = document.getElementById('sidebarNav');
+
+function isMobileView() {
+    return window.innerWidth <= 900;
+}
+
+const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+if (sidebarCollapsed) {
+    sidebar.classList.add('collapsed');
+    mainContent.classList.add('expanded');
+    document.body.classList.add('sidebar-collapsed');
+}
+
+let lastMobileState = isMobileView();
+window.addEventListener('resize', () => {
+    const isNowMobile = isMobileView();
+    if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('expanded');
+        document.body.classList.remove('sidebar-collapsed');
+        localStorage.setItem('sidebarCollapsed', 'false');
+    }
+    lastMobileState = isNowMobile;
+});
+
+sidebarToggle.addEventListener('click', () => {
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded', isCollapsed);
+    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+    sidebar.style.overflowX = "hidden";
+
+    if (!isCollapsed) {
+        sidebarNavTooltip.classList.remove('active');
+        sidebarNavTooltip.style.display = 'none';
+    }
+});
+
+const sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
+let tooltipActiveLink = null;
+let tooltipHideTimeout = null;
+
+document.querySelectorAll('.sidebar-nav .nav-link').forEach(function(link) {
+    link.addEventListener('mouseenter', navTooltipHandler);
+    link.addEventListener('focus', navTooltipHandler);
+    link.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    link.addEventListener('blur', hideNavTooltip);
+});
+
+const profileIconBtn = document.getElementById('profileIconBtn');
+if (profileIconBtn) {
+    profileIconBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = 'profile.php';
+    });
+    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+    profileIconBtn.addEventListener('focus', navTooltipHandler);
+    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+    profileIconBtn.addEventListener('blur', hideNavTooltip);
+}
+
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('mouseenter', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('focus', function(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltipImmediate();
+        return;
+    }
+    showLogoutTooltip(e);
+});
+logoutBtn.addEventListener('mouseleave', function(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    sidebarNavTooltip.classList.remove('active');
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+logoutBtn.addEventListener('blur', hideNavTooltip);
+
+function showLogoutTooltip(e) {
+    const tooltipText = logoutBtn.getAttribute('data-tooltip') || "Log out";
+    tooltipActiveLink = logoutBtn;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.add('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = logoutBtn.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+
+function hideNavTooltipImmediate() {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+
+function hideNavTooltip() {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    setTimeout(function() {
+        sidebarNavTooltip.style.display = 'none';
+        tooltipActiveLink = null;
+    }, 150);
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+
+function navTooltipHandler(e) {
+    if (!sidebar.classList.contains('collapsed')) {
+        hideNavTooltip();
+        return;
+    }
+    let tooltipText = this.getAttribute('data-tooltip');
+    if (!tooltipText && this.id === "profileIconBtn") tooltipText = "Profile";
+    if (!tooltipText) return;
+    tooltipActiveLink = this;
+    sidebarNavTooltip.textContent = tooltipText;
+    sidebarNavTooltip.classList.remove('logout-pop');
+    sidebarNavTooltip.style.display = 'block';
+    const rect = this.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const x = sidebarRect.right + 5;
+    const y = rect.top + rect.height / 2 + window.scrollY;
+    sidebarNavTooltip.style.left = (x + 10) + 'px';
+    sidebarNavTooltip.style.top = y + 'px';
+
+    setTimeout(function(){
+        sidebarNavTooltip.classList.add('active');
+    }, 5);
+
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+}
+
+function navLinkMouseLeaveHandler(e) {
+    if (
+        e.relatedTarget === sidebarNavTooltip ||
+        (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget))
+    ) {
+        return;
+    }
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60);
+}
+
+sidebarNavTooltip.addEventListener('mouseleave', function() {
+    tooltipHideTimeout = setTimeout(() => {
+        hideNavTooltip();
+        tooltipActiveLink = null;
+    }, 60);
+});
+
+sidebarNavTooltip.addEventListener('mouseenter', function() {
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+
+document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
+    link.addEventListener('keydown', function(e) {
+        if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+            e.preventDefault();
+            this.focus();
+        }
+    });
+});
+
+logoutBtn.addEventListener('keydown', function(e) {
+    if (sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        this.focus();
+    }
+});
+
+sidebarToggle.addEventListener('click', () => {
+    sidebarNavTooltip.classList.remove('active', 'logout-pop');
+    sidebarNavTooltip.style.display = 'none';
+    tooltipActiveLink = null;
+    if (tooltipHideTimeout) {
+        clearTimeout(tooltipHideTimeout);
+        tooltipHideTimeout = null;
+    }
+});
+
+const logoutAlertBackdrop = document.getElementById('logoutAlertBackdrop');
+const logoutCancelBtn = document.getElementById('logoutCancelBtn');
+const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+
+logoutBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.add("active");
+    hideNavTooltipImmediate();
+});
+
+logoutCancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    logoutAlertBackdrop.classList.remove("active");
+});
+
+logoutConfirmBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'logout.php';
+});
+
+logoutAlertBackdrop.addEventListener('mousedown', (e) => {
+    if (e.target === logoutAlertBackdrop) {
+        logoutAlertBackdrop.classList.remove("active");
+    }
+});
+
+const mobileToggle = document.getElementById('mobileToggle');
+if (mobileToggle) {
+    mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-active');
+    });
+}
+
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+</script>
+
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
 window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
@@ -3420,7 +3687,6 @@ window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE |
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Helper for query selector with error
     function getSafeElem(id) {
         const el = document.getElementById(id);
         if (!el) {
@@ -3429,8 +3695,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return el;
     }
 
-    // Grab all required elements safely (with null fallback)
-    const sidebarToggle = getSafeElem('sidebarToggle');
     const sidebar = getSafeElem('sidebarNav');
     const mainContent = document.querySelector('.main-content');
     const sidebarNav = getSafeElem('sidebarNav');
@@ -3466,60 +3730,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileScheduleSearch = getSafeElem('mobileScheduleSearch');
     const prevMonthBtn = getSafeElem('prevMonth');
     const nextMonthBtn = getSafeElem('nextMonth');
-
-    // Date Picker (Native input only, no overlay)
     const pickerDate = getSafeElem('pickerDate');
 
-    // Defensive fallback (should never be needed with PATCH above)
     if (typeof window.scheduleData === "undefined") window.scheduleData = [];
 
-    // --- MOBILE VIEW DETECTOR (Canonical, one function only) ---
     function isMobileView() {
         return window.innerWidth <= 768;
     }
 
-    // --- Sidebar collapse state logic (synced with desktop nav) ---
-    if (sidebar && mainContent) {
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('expanded');
-            document.body.classList.add('sidebar-collapsed');
-            // Remove preload state (IMPORTANT: handoff after classes applied)
-            document.documentElement.classList.remove('sidebar-preload-collapsed');
-        }
-        let lastMobileState = isMobileView();
-        window.addEventListener('resize', () => {
-            const isNowMobile = isMobileView();
-            if (isNowMobile && !lastMobileState && sidebar.classList.contains('collapsed')) {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('expanded');
-                document.body.classList.remove('sidebar-collapsed');
-                localStorage.setItem('sidebarCollapsed', 'false');
-            }
-            lastMobileState = isNowMobile;
-        });
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                mainContent.classList.toggle('expanded', isCollapsed);
-                document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-                localStorage.setItem('sidebarCollapsed', isCollapsed);
-                if (sidebarNavTooltip) {
-                    sidebarNavTooltip.classList.remove('active');
-                    sidebarNavTooltip.style.display = 'none';
-                }
-                // Remove preload class (if still present) after any sidebarToggle
-                document.documentElement.classList.remove('sidebar-preload-collapsed');
-            });
-        }
-    }
-
-    // --- Sidebar tooltips and nav (unchanged) ---
-    // ... [snipped for brevity; unchanged from original selection] ...
+    // --- Sidebar tooltips and nav ---
     let tooltipActiveLink = null;
     let tooltipHideTimeout = null;
+
     function hideNavTooltipImmediate() {
         if (!sidebarNavTooltip) return;
         sidebarNavTooltip.classList.remove('active', 'logout-pop');
@@ -3623,7 +3845,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     if (profileIconBtn) {
-        // Add click handler to navigate to profile page
         profileIconBtn.addEventListener('click', function(e) {
             e.preventDefault();
             window.location.href = 'profile.php';
@@ -3650,7 +3871,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         logoutBtn.addEventListener('mouseleave', function(e) {
             if (
-                sidebarNavTooltip && 
+                sidebarNavTooltip &&
                 (e.relatedTarget === sidebarNavTooltip ||
                 (sidebarNavTooltip.contains && sidebarNavTooltip.contains(e.relatedTarget)))
             ) { return; }
@@ -3675,19 +3896,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hideNavTooltipImmediate();
         });
     }
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', () => {
-            if (sidebarNavTooltip) {
-                sidebarNavTooltip.classList.remove('active', 'logout-pop');
-                sidebarNavTooltip.style.display = 'none';
-            }
-            tooltipActiveLink = null;
-            if (tooltipHideTimeout) {
-                clearTimeout(tooltipHideTimeout);
-                tooltipHideTimeout = null;
-            }
-        });
-    }
+
     document.querySelectorAll('.nav-link, #profileIconBtn').forEach(function(link) {
         link.addEventListener('keydown', function(e) {
             if (sidebar && sidebar.classList.contains('collapsed') && (e.key === " " || e.key === "Enter")) {
@@ -3719,7 +3928,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enforce calendar/form reload on bfcache
     window.addEventListener("pageshow", function (event) {
         if (event.persisted) {
             window.location.reload();
@@ -3728,13 +3936,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // === Calendar & Schedule Logic ===
 
-    // Defensive: ensure calendar elements exist
     if (!calendarGrid || !calendarDetails || !monthLabel || !calendarView || !scheduleView) return;
 
     let currentDate = new Date();
     let showingCalendar = true;
 
-    // --- Helper: status mapping
     function getStatusKey(statusLabel) {
         const s = (statusLabel || '').toLowerCase();
         if (!s) return 'upcoming';
@@ -3751,7 +3957,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- Modal Logic ---
     if (taskModal && modalBody && modalClose && taskChooserModal && taskChooserBody) {
         modalClose.onclick = ()=>taskModal.classList.add('hidden');
         window.onclick = (e)=>{
@@ -3769,12 +3974,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const priority   = t.priority      || 'Low';
             const statusLbl  = t.status_label  || 'Planned';
             const team       = t.assigned_team || 'General Maintenance Team';
-
             const statusKey  = getStatusKey(statusLbl);
             if (statusKey) {
                 div.classList.add('status-' + statusKey + '-color');
             }
-
             div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
                            <strong>Location:</strong> ${t.location}<br>
                            <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
@@ -3809,7 +4012,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (taskChooserModal) taskChooserModal.classList.add('hidden');
     };
 
-    // --- Calendar render & dropdown logic ---
     let openDropdown = null;
     let openDropdownDay = null;
     function closeDropdown(){
@@ -3826,16 +4028,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         closeDropdown();
-
         const dropdown = document.createElement('div');
         dropdown.className = 'task-dropdown';
         dropdown.setAttribute('role','menu');
-
-        // FIX 2: Stop dropdown auto-closing by stopping propagation
-        dropdown.addEventListener('click', ev => {
-            ev.stopPropagation();
-        });
-
+        dropdown.addEventListener('click', ev => { ev.stopPropagation(); });
         events.slice(1).forEach((e, i) => {
             const btn = document.createElement('button');
             btn.className = 'task-btn';
@@ -3859,13 +4055,8 @@ document.addEventListener('DOMContentLoaded', function() {
         openDropdownDay = dayDiv;
         if (arrowBtn) arrowBtn.classList.add('open');
     }
-    // Clicking anywhere closes dropdown (still ok with new fix)
-    document.addEventListener('click', () => {
-        closeDropdown();
-    });
-    // ===== HOLIDAYS & EVENTS DATA (UPDATED FOR 2026 ACCURACY) =====
+    document.addEventListener('click', () => { closeDropdown(); });
 
-    // Fixed holidays (same date every year)
     const FIXED_HOLIDAYS = {
         '01-01': { name: 'New Year\'s Day', type: 'holiday' },
         '02-14': { name: 'Valentine\'s Day', type: 'event' },
@@ -3876,9 +4067,9 @@ document.addEventListener('DOMContentLoaded', function() {
         '06-12': { name: 'Independence Day', type: 'holiday' },
         '07-04': { name: 'Philippines-American Friendship Day', type: 'event' },
         '08-21': { name: 'Ninoy Aquino Day', type: 'holiday' },
-        '08-31': { name: 'National Heroes Day', type: 'holiday' }, // Last Monday of August
+        '08-31': { name: 'National Heroes Day', type: 'holiday' },
         '11-01': { name: 'All Saints\' Day', type: 'holiday' },
-        '11-02': { name: 'All Souls\' Day', type: 'event' }, // Not official holiday but widely observed
+        '11-02': { name: 'All Souls\' Day', type: 'event' },
         '11-30': { name: 'Bonifacio Day', type: 'holiday' },
         '12-08': { name: 'Feast of the Immaculate Conception', type: 'holiday' },
         '12-24': { name: 'Christmas Eve', type: 'event' },
@@ -3887,25 +4078,20 @@ document.addEventListener('DOMContentLoaded', function() {
         '12-31': { name: 'New Year\'s Eve', type: 'event' }
     };
 
-    // Movable holidays for 2026 (these change every year)
     const MOVABLE_HOLIDAYS_2026 = {
-        '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Horse
+        '02-17': { name: 'Chinese New Year', type: 'holiday' },
         '04-02': { name: 'Maundy Thursday', type: 'holiday' },
         '04-03': { name: 'Good Friday', type: 'holiday' },
         '04-04': { name: 'Black Saturday', type: 'holiday' },
-        // Eid al-Fitr (approximate - usually announced by NCMF)
         '03-31': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
     };
 
-    // Function to get all holidays for current year
     function getHolidaysForYear(year) {
         if (year === 2026) {
-            // Merge fixed and movable holidays for 2026
             return { ...FIXED_HOLIDAYS, ...MOVABLE_HOLIDAYS_2026 };
         } else if (year === 2025) {
-            // 2025 movable holidays
             const movable2025 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Snake
+                '02-17': { name: 'Chinese New Year', type: 'holiday' },
                 '04-17': { name: 'Maundy Thursday', type: 'holiday' },
                 '04-18': { name: 'Good Friday', type: 'holiday' },
                 '04-19': { name: 'Black Saturday', type: 'holiday' },
@@ -3913,9 +4099,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             return { ...FIXED_HOLIDAYS, ...movable2025 };
         } else if (year === 2027) {
-            // 2027 movable holidays (planning ahead)
             const movable2027 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Goat
+                '02-17': { name: 'Chinese New Year', type: 'holiday' },
                 '03-25': { name: 'Maundy Thursday', type: 'holiday' },
                 '03-26': { name: 'Good Friday', type: 'holiday' },
                 '03-27': { name: 'Black Saturday', type: 'holiday' },
@@ -3923,9 +4108,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             return { ...FIXED_HOLIDAYS, ...movable2027 };
         } else if (year === 2024) {
-            // 2024 movable holidays (for reference)
             const movable2024 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' }, // Year of the Dragon
+                '02-17': { name: 'Chinese New Year', type: 'holiday' },
                 '03-28': { name: 'Maundy Thursday', type: 'holiday' },
                 '03-29': { name: 'Good Friday', type: 'holiday' },
                 '03-30': { name: 'Black Saturday', type: 'holiday' },
@@ -3933,55 +4117,39 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             return { ...FIXED_HOLIDAYS, ...movable2024 };
         }
-    
-        // Default: return only fixed holidays for other years
         return FIXED_HOLIDAYS;
     }
 
-    // Helper function to get National Heroes Day (last Monday of August)
     function getNationalHeroesDay(year) {
-        const lastDayOfAugust = new Date(year, 8, 0); // Month 8 = September, day 0 = last day of August
+        const lastDayOfAugust = new Date(year, 8, 0);
         const dayOfWeek = lastDayOfAugust.getDay();
-        
-        // Calculate how many days to subtract to get last Monday
         let daysToSubtract = (dayOfWeek === 0) ? 6 : (dayOfWeek - 1);
         const lastMonday = new Date(year, 7, lastDayOfAugust.getDate() - daysToSubtract);
-        
         const month = String(lastMonday.getMonth() + 1).padStart(2, '0');
         const day = String(lastMonday.getDate()).padStart(2, '0');
-        
         return `${month}-${day}`;
     }
 
-    // Updated helper function to get holiday/event for a date
     function getHolidayOrEvent(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const key = `${month}-${day}`;
-        
-        // Get holidays for the current year
         const holidays = getHolidaysForYear(year);
-        
-        // Check for National Heroes Day (dynamic calculation)
         const heroesDay = getNationalHeroesDay(year);
         if (key === heroesDay) {
             return { name: 'National Heroes Day', type: 'holiday' };
         }
-        
         return holidays[key] || null;
     }
 
-    // Helper function to check if date is weekend
     function isWeekend(date) {
         const dayOfWeek = date.getDay();
-        return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+        return dayOfWeek === 0 || dayOfWeek === 6;
     }
 
-    // Helper function to get mobile-friendly initial
     function getEventInitial(name, type) {
         if (type === 'holiday') {
-            // Special cases for better mobile display
             if (name.includes('Christmas')) return 'XMS';
             if (name.includes('New Year\'s Day')) return 'NY';
             if (name.includes('Chinese New Year')) return 'CNY';
@@ -3998,17 +4166,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (name.includes('Eid')) return 'EID';
             if (name.includes('All Saints')) return 'AS';
             if (name.includes('Immaculate')) return 'IC';
-            
-            // Default: first letters
             return name.split(' ').map(w => w[0]).join('').substring(0, 3);
         }
-        
-        // For events
         if (name.includes('Valentine')) return '❤️';
         if (name.includes('Women')) return '♀';
         if (name.includes('Christmas Eve')) return 'CE';
         if (name.includes('New Year\'s Eve')) return 'NYE';
-        
         return name.substring(0, 3).toUpperCase();
     }
 
@@ -4026,19 +4189,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const firstDay=new Date(year, month,1).getDay();
         const daysInMonth=new Date(year,month+1,0).getDate();
-        
-        // Empty cells for alignment
+
         for(let i=0;i<firstDay;i++) {
             const emptyDiv = document.createElement('div');
             emptyDiv.className = "calendar-day";
             calendarGrid.appendChild(emptyDiv);
         }
-        
-        // Render each day
+
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const currentDayDate = new Date(year, month, d);
-            
+
             const events = Array.isArray(window.scheduleData) && window.scheduleData.length
                 ? window.scheduleData.filter(e => e.schedule_date === dateStr)
                 : [];
@@ -4047,12 +4208,10 @@ document.addEventListener('DOMContentLoaded', function() {
             dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
             dayDiv.setAttribute('data-date', dateStr);
 
-            // ===== NEW: Check for weekend =====
             if (isWeekend(currentDayDate)) {
                 dayDiv.classList.add('weekend');
             }
 
-            // ===== NEW: Check for holiday/event =====
             const holidayEvent = getHolidayOrEvent(currentDayDate);
             if (holidayEvent) {
                 if (holidayEvent.type === 'holiday') {
@@ -4062,36 +4221,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // Day number
             const dayNumDiv = document.createElement('div');
             dayNumDiv.textContent = d;
             dayDiv.appendChild(dayNumDiv);
 
-            // ===== NEW: Add holiday/event badge and title =====
             if (holidayEvent) {
                 const isMobile = isMobileView();
-                
-                // Badge
                 const badge = document.createElement('div');
                 badge.className = holidayEvent.type === 'holiday' ? 'holiday-badge' : 'event-badge';
-                badge.textContent = isMobile 
+                badge.textContent = isMobile
                     ? getEventInitial(holidayEvent.name, holidayEvent.type)
                     : (holidayEvent.type === 'holiday' ? 'HOLIDAY' : 'EVENT');
                 dayDiv.appendChild(badge);
-                
-                // Title (desktop only for space)
                 if (!isMobile) {
                     const title = document.createElement('div');
                     title.className = holidayEvent.type === 'holiday' ? 'holiday-event-title' : 'event-title';
-                    title.textContent = holidayEvent.name.length > 18 
-                        ? holidayEvent.name.substring(0, 18) + '...' 
+                    title.textContent = holidayEvent.name.length > 18
+                        ? holidayEvent.name.substring(0, 18) + '...'
                         : holidayEvent.name;
-                    title.title = holidayEvent.name; // Full name on hover
+                    title.title = holidayEvent.name;
                     dayDiv.appendChild(title);
                 }
             }
 
-            // Show maintenance tasks if present
             if (events.length) {
                 const tasksDiv = document.createElement('div');
                 tasksDiv.className = 'day-tasks';
@@ -4111,7 +4263,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     tasksDiv.appendChild(btn);
                 } else if (events.length > 1) {
                     const first = events[0];
-
                     const firstBtn = document.createElement('button');
                     firstBtn.className = 'task-btn';
                     firstBtn.textContent = isMobileView() ? '1' : first.task;
@@ -4126,7 +4277,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const moreWrap = document.createElement('div');
                     moreWrap.className = 'more-tasks-wrap';
-
                     const arrowBtn = document.createElement('button');
                     arrowBtn.className = 'more-tasks-btn';
                     arrowBtn.innerHTML = '▾';
@@ -4134,7 +4284,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         ev.stopPropagation();
                         toggleTaskDropdown(dayDiv, events, arrowBtn);
                     };
-
                     if (isMobileView()) {
                         moreWrap.appendChild(arrowBtn);
                     } else {
@@ -4144,28 +4293,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         counter.textContent = `+${events.length - 1}`;
                         moreWrap.appendChild(counter);
                     }
-
                     tasksDiv.appendChild(moreWrap);
                 }
                 dayDiv.appendChild(tasksDiv);
             }
 
-            // Click handler for day details
             dayDiv.addEventListener('click', function() {
                 let detailsHtml = `<strong>${dateStr}</strong><br>`;
-                
-                // ===== NEW: Show holiday/event info =====
                 if (holidayEvent) {
                     const typeLabel = holidayEvent.type === 'holiday' ? '🎉 Holiday' : '📅 Event';
                     detailsHtml += `<div style="color: ${holidayEvent.type === 'holiday' ? '#d32f2f' : '#1565c0'}; font-weight: 600; margin: 8px 0;">${typeLabel}: ${holidayEvent.name}</div>`;
                 }
-                
-                // ===== NEW: Show weekend indicator =====
                 if (isWeekend(currentDayDate)) {
                     detailsHtml += `<div style="color: #ff5722; font-size: 12px; margin: 4px 0;">Weekend</div>`;
                 }
-                
-                // Show maintenance tasks
                 if (events.length) {
                     detailsHtml += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);"><strong>Maintenance Tasks:</strong></div>`;
                     detailsHtml += events.map(e =>
@@ -4174,7 +4315,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (!holidayEvent) {
                     detailsHtml += 'No scheduled maintenance.';
                 }
-                
                 calendarDetails.innerHTML = detailsHtml;
             });
 
@@ -4182,24 +4322,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Optional: Auto-hide scroll indicator when not scrollable
     function updateCalendarDetailsScrollHint() {
-    const details = document.getElementById('calendarDetails');
-    const indicator = document.querySelector('.scroll-indicator');
-    if (!details || !indicator) return;
-
-    // Only show indicator when content is actually scrollable
-    if (details.scrollHeight > details.clientHeight) {
-        indicator.style.display = 'block';
-        indicator.style.opacity = '0.9';
-    } else {
-        // Keep indicator visible but dimmed when content is not scrollable
-        indicator.style.display = 'block';
-        indicator.style.opacity = '0.3';
+        const details = document.getElementById('calendarDetails');
+        const indicator = document.querySelector('.scroll-indicator');
+        if (!details || !indicator) return;
+        if (details.scrollHeight > details.clientHeight) {
+            indicator.style.display = 'block';
+            indicator.style.opacity = '0.9';
+        } else {
+            indicator.style.display = 'block';
+            indicator.style.opacity = '0.3';
+        }
     }
-}
 
-    // Make sure to call renderCalendar on load and when month/view changes
     if (typeof prevMonthBtn !== "undefined" && prevMonthBtn && nextMonthBtn) {
         prevMonthBtn.onclick = ()=>{
             currentDate.setMonth(currentDate.getMonth()-1);
@@ -4210,7 +4345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderCalendar();
         };
     }
-    // Patch renderCalendar to auto-update scroll indicator
+
     const originalRenderCalendar = renderCalendar;
     renderCalendar = function () {
         originalRenderCalendar();
@@ -4220,7 +4355,6 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
     applyStatusClassesToList();
 
-    // --- Schedule search (desktop) ---
     if (scheduleSearch && scheduleListHolder) {
         scheduleSearch.addEventListener('input', function() {
             const searchVal = this.value.trim().toLowerCase();
@@ -4253,16 +4387,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             if (noResultMsg) {
-                if (shownCount === 0) {
-                    noResultMsg.style.display = '';
-                } else {
-                    noResultMsg.style.display = 'none';
-                }
+                noResultMsg.style.display = shownCount === 0 ? '' : 'none';
             }
         });
     }
 
-    // --- Show calendar view/list view logic ---
     function showCalendarView() {
         if (!calendarView || !scheduleView) return;
         calendarView.classList.remove('hidden');
@@ -4282,7 +4411,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toCalendarBtn) toCalendarBtn.onclick = showCalendarView;
     if (toListBtn) toListBtn.onclick = showListView;
 
-    // -- Mobile controls
     function updateMobileControls() {
         if (!mobileListControls || !mobileCalendarControls) return;
         if (!isMobileView()) {
@@ -4301,12 +4429,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mobileCalendarControls.style.display = "none";
         }
     }
-    function syncMobileControls() {
-        if (!isMobileView()) return;
-        updateMobileControls();
-    }
 
-    // Responsive calendar re-render
     let lastMobileState = isMobileView();
     window.addEventListener('resize', () => {
         updateMobileControls();
@@ -4319,7 +4442,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // MOBILE BUTTONS
     if (mobileToCalendarBtn) mobileToCalendarBtn.onclick = showCalendarView;
     if (mobileToListBtn) mobileToListBtn.onclick = showListView;
     if (mobilePrevMonth) mobilePrevMonth.onclick = () => {
@@ -4333,7 +4455,6 @@ document.addEventListener('DOMContentLoaded', function() {
         updateMobileControls();
     };
 
-    // Mobile search sync
     if (mobileScheduleSearch && scheduleSearch) {
         mobileScheduleSearch.addEventListener('input', e => {
             scheduleSearch.value = e.target.value;
@@ -4341,10 +4462,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // INITIAL state
     updateMobileControls();
 
-    // Weekday label helper (exported globally for resize use below)
     window.updateWeekdayLabels = function updateWeekdayLabels() {
         const desktopDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         const shortDays = ['S','M','T','W','T','F','S'];
@@ -4360,32 +4479,20 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', updateWeekdayLabels);
     window.addEventListener('resize', updateWeekdayLabels);
 
-    // =====================
-    // Custom Floating Date Picker Overlay - PATCHED PER PROMPT
-    // =====================    
     const overlayPicker = document.getElementById('customDatePickerOverlay');
     const overlayInput  = document.getElementById('overlayDatePicker');
-    // Retain reference for legacy picker (should not be shown)
-    // const pickerDate = getSafeElem('pickerDate');
 
     function openDatePicker(event) {
         if (!overlayPicker || !overlayInput) return;
-
-        // Sync with current calendar date
         const y = currentDate.getFullYear();
         const m = String(currentDate.getMonth() + 1).padStart(2, '0');
         const d = String(currentDate.getDate()).padStart(2, '0');
         overlayInput.value = `${y}-${m}-${d}`;
-
-        // Position overlay below clicked label with mobile-aware logic
         const rect = event.target.getBoundingClientRect();
         let top = rect.bottom + window.scrollY + 4;
         let left = rect.left + window.scrollX;
-
-        // MOBILE: fixed positioning below mobileMonthLabel, not floating/awkward (and prevent offscreen right)
         const overlayWidth = overlayPicker.offsetWidth || 180;
         if (window.innerWidth <= 768) {
-            // position: fixed, so we use rect relative to viewport (no scrollY)
             top = rect.bottom + 4;
             left = rect.left;
             if (left + overlayWidth > window.innerWidth - 8) {
@@ -4396,58 +4503,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             overlayPicker.style.position = 'fixed';
         } else {
-            // desktop: classic absolute + scroll
             if (left + overlayWidth > window.innerWidth - 8) {
                 left = window.innerWidth - overlayWidth - 8;
             }
             overlayPicker.style.position = 'absolute';
         }
-
         overlayPicker.style.top = top + "px";
         overlayPicker.style.left = left + "px";
         overlayPicker.style.display = "block";
-
         overlayInput.focus();
-        // Highlight all for immediate typing UX
         if (overlayInput.setSelectionRange) {
             overlayInput.setSelectionRange(0, overlayInput.value.length);
         }
     }
 
-    // Close overlay if clicked outside
     document.addEventListener('click', function(e) {
         if (!overlayPicker.contains(e.target) && e.target !== monthLabel && e.target !== mobileMonthLabel) {
             overlayPicker.style.display = 'none';
         }
     });
 
-    // Prevent click bubbling (so picker stays open if clicking on overlay)
     if (overlayPicker) {
         overlayPicker.addEventListener('click', function(e) { e.stopPropagation(); });
     }
 
-    // Restrict typing in the year part to 4 digits only
     if (overlayInput) {
-        // Prevent typing more than 4 numbers in the year part
         overlayInput.addEventListener('beforeinput', function(e) {
-            // Only for direct text input (not deletes, not navigation)
             if (
                 e.inputType.startsWith('insert') &&
                 typeof e.data === 'string' &&
                 e.data.match(/[0-9]/)
             ) {
-                // Get the value as it will be after addition
                 let inputValue = overlayInput.value;
                 const selectionStart = overlayInput.selectionStart;
                 const selectionEnd = overlayInput.selectionEnd;
-                // Simulate insertion
                 inputValue = inputValue.slice(0, selectionStart) + e.data + inputValue.slice(selectionEnd);
-
-                // Only validate if insertion is in the year part
-                // year: index 0-3
                 if (selectionStart <= 4) {
                     const yearPart = inputValue.slice(0, 4);
-                    // Count only digit characters in year part
                     const yearDigits = (yearPart.match(/\d/g) || []).join('');
                     if (yearDigits.length > 4) {
                         e.preventDefault();
@@ -4457,20 +4549,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Handle typing/date preview as user types (day → month → year typing flow)
         overlayInput.addEventListener('input', function(e) {
             const val = overlayInput.value;
             if (!val) return;
-            // Enforce year part to have a maximum of 4 digits
             let [y, m, d] = val.split('-');
             if (y && y.length > 4) {
                 y = y.slice(0, 4);
-                // Set the trimmed value (without triggering another input)
                 const newVal = [y,m,d].filter(Boolean).join('-');
                 overlayInput.value = newVal;
             }
-
-            // Only proceed if valid parts
             const parts = overlayInput.value.split('-').map(Number);
             if (parts.length === 3) {
                 const [yy, mm, dd] = parts;
@@ -4480,19 +4567,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        // Apply date only when Enter (or Escape to cancel)
+
         overlayInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const val = overlayInput.value;
                 if (val) {
                     let [y, m, d] = val.split('-');
-                    // Don't allow more than 4 digits in year
-                    if (y && y.length > 4) {
-                        y = y.slice(0, 4);
-                    }
+                    if (y && y.length > 4) { y = y.slice(0, 4); }
                     currentDate = new Date(Number(y), Number(m) - 1, Number(d));
                     renderCalendar();
-
                     const tasks = window.scheduleData.filter(
                         t => t.schedule_date === `${y}-${m}-${d}`
                     );
@@ -4506,7 +4589,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Wire labels to open our overlay picker
     if (monthLabel) {
         monthLabel.title = "Click to jump date";
         monthLabel.style.cursor = "pointer";
@@ -4519,95 +4601,67 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }); // --- END DOMContentLoaded ---
 
-// --- Profile Picture safety ---
 function handleProfilePicture() {
     const img = document.getElementById('profileImg');
     const fallback = document.getElementById('profileFallbackIcon');
     if (!img) return;
-    
-    // Set initial state
     const checkImage = () => {
         if (!img.src || img.src.endsWith('profile.png') || img.src.includes('profile.png')) {
             img.style.display = 'none';
-            if (fallback) {
-                fallback.style.display = 'flex';
-            }
+            if (fallback) fallback.style.display = 'flex';
         } else {
-            // Check if image actually loads
             const testImg = new Image();
             testImg.onload = () => {
                 img.style.display = 'block';
-                if (fallback) {
-                    fallback.style.display = 'none';
-                }
+                if (fallback) fallback.style.display = 'none';
             };
             testImg.onerror = () => {
                 img.style.display = 'none';
-                if (fallback) {
-                    fallback.style.display = 'flex';
-                }
+                if (fallback) fallback.style.display = 'flex';
             };
             testImg.src = img.src;
         }
     };
-    
-    // Handle image load/error events
     img.onerror = () => {
         img.style.display = 'none';
-        if (fallback) {
-            fallback.style.display = 'flex';
-        }
+        if (fallback) fallback.style.display = 'flex';
     };
-    
     img.onload = () => {
-        // Only show image if it's not the default profile.png
         if (img.src && !img.src.endsWith('profile.png') && !img.src.includes('profile.png')) {
             img.style.display = 'block';
-            if (fallback) {
-                fallback.style.display = 'none';
-            }
+            if (fallback) fallback.style.display = 'none';
         } else {
             img.style.display = 'none';
-            if (fallback) {
-                fallback.style.display = 'flex';
-            }
+            if (fallback) fallback.style.display = 'flex';
         }
     };
-    
-    // Initial check
     checkImage();
 }
 
 document.addEventListener('DOMContentLoaded', handleProfilePicture);
-// Also run after a short delay to ensure image src is set
 setTimeout(handleProfilePicture, 100);
 </script>
 
 <script>
-let inactivityTime = 20 * 60 * 1000; // 20 minutes
+let inactivityTime = 20 * 60 * 1000;
 let inactivityTimer;
 
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-        // Silent logout (no notification)
         window.location.href = 'logout.php';
     }, inactivityTime);
 }
 
-// Events that count as activity
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
 
-// Start timer on load
 resetInactivityTimer();
 </script>
 
 <script>
-// ===== MODERN SERVER-SYNCED CLOCK WITH FLIP ANIMATION, AUTO-TZ, TOOLTIP =====
-
-const RESYNC_MINUTES = 5; // Server time will be re-synced every X minutes
+const RESYNC_MINUTES = 5;
 let currentServerTime = SERVER_TIME;
 let clockInterval = null;
 let lastSecond = null;
@@ -4626,27 +4680,22 @@ function renderClock(now) {
         month: 'long',
         day: 'numeric'
     });
-
     const timeStr = now.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         second: '2-digit',
         hour12: true
     });
-
     const t = timeStr.match(/^(\d+):(\d+):(\d+)\s?(AM|PM)$/i);
     let h = t ? t[1] : "--";
     let m = t ? t[2] : "--";
     let s = t ? t[3] : "--";
     let ampm = t ? t[4] : "";
-
     const desktopClock = document.getElementById('desktopClock');
     const mobileClock = document.getElementById('mobileClock');
-
     function flipSpan(str) {
         return str.split('').map(chr => `<span>${chr}</span>`).join('');
     }
-
     if (desktopClock) {
         desktopClock.innerHTML = `
             <span class="date-part">${datePart}</span>
@@ -4657,7 +4706,6 @@ function renderClock(now) {
             <span class="clock-timezone">${getTimezoneLabel()}</span>
         `;
     }
-
     if (mobileClock) {
         mobileClock.textContent = `${h}:${m}:${s} ${ampm}`;
     }
@@ -4666,7 +4714,6 @@ function renderClock(now) {
 function tick() {
     const now = new Date(currentServerTime);
     const sec = now.getSeconds();
-
     if (sec !== lastSecond) {
         document.querySelectorAll('.time-part').forEach(el => {
             el.classList.add('flip');
@@ -4674,7 +4721,6 @@ function tick() {
         });
         lastSecond = sec;
     }
-
     renderClock(now);
     currentServerTime += 1000;
 }
@@ -4695,17 +4741,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 setInterval(() => {
-    fetch(location.href, { method: 'HEAD' })
-        .then(() => {
-            currentServerTime = SERVER_TIME;
-        });
+    fetch(location.href, { method: 'HEAD' }).then(() => {
+        currentServerTime = SERVER_TIME;
+    });
 }, RESYNC_MINUTES * 60 * 1000);
 
 startClock();
 </script>
 
 <script>
-// ===== DARK MODE TOGGLE (BULLETPROOF VERSION) =====
 (function() {
     const darkModeBtn = document.getElementById('darkModeBtn');
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
@@ -4716,31 +4760,23 @@ startClock();
     const mobileDarkIcon = mobileDarkModeBtn?.querySelector('.dark-icon');
     const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
-
-    // ✅ CRITICAL: Store theme in a backup location too
     const THEME_KEY = 'theme';
     const THEME_BACKUP_KEY = 'theme_backup';
 
     function updateTheme(isDark, animate = false) {
         try {
             const themeValue = isDark ? 'dark' : 'light';
-            
             if (isDark) {
                 html.setAttribute('data-theme', 'dark');
             } else {
                 html.removeAttribute('data-theme');
             }
-            
-            // ✅ Save to both primary and backup locations
             localStorage.setItem(THEME_KEY, themeValue);
             localStorage.setItem(THEME_BACKUP_KEY, themeValue);
-            
-            // Update icons
             if (darkIcon) darkIcon.style.display = isDark ? 'none' : 'inline';
             if (lightIcon) lightIcon.style.display = isDark ? 'inline' : 'none';
             if (mobileDarkIcon) mobileDarkIcon.style.display = isDark ? 'none' : 'inline';
             if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
-            
             if (animate) {
                 if (darkModeBtn) darkModeBtn.classList.add('active');
                 if (mobileDarkModeBtn) mobileDarkModeBtn.classList.add('active');
@@ -4754,20 +4790,14 @@ startClock();
         }
     }
 
-    // ✅ Load saved theme with backup fallback
     try {
         let savedTheme = localStorage.getItem(THEME_KEY);
-        
-        // If primary is missing or corrupted, try backup
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = localStorage.getItem(THEME_BACKUP_KEY);
         }
-        
-        // Final fallback
         if (savedTheme !== 'dark' && savedTheme !== 'light') {
             savedTheme = 'light';
         }
-        
         updateTheme(savedTheme === 'dark', false);
     } catch (e) {
         console.error('Theme load error:', e);
@@ -4782,8 +4812,6 @@ startClock();
     if (darkModeBtn) darkModeBtn.addEventListener('click', toggleTheme);
     if (mobileDarkModeBtn) mobileDarkModeBtn.addEventListener('click', toggleTheme);
 
-    // ✅ CRITICAL: Protect localStorage from being cleared on navigation
-    // Listen for beforeunload and ensure theme is saved
     window.addEventListener('beforeunload', function() {
         try {
             const currentTheme = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -4795,7 +4823,6 @@ startClock();
     });
 })();
 
-// ===== NOTIFICATION SYSTEM (FIXED) =====
 (function() {
     const notifBtn = document.getElementById('notifBtn');
     const mobileNotifBtn = document.getElementById('mobileNotifBtn');
@@ -4808,11 +4835,8 @@ startClock();
 
     let notifications = [];
     let unreadCount = 0;
-    
-    // ✅ Use a separate localStorage key for notifications to avoid conflicts
     const NOTIF_SEEN_KEY = 'notif_seen_ids';
     let seenNotifIds = new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]'));
-    
     let isFirstLoad = true;
 
     function updateBadge(count) {
@@ -4827,7 +4851,6 @@ startClock();
                 notifBadge.classList.remove('show');
             }
         }
-
         if (mobileNotifBadge) {
             if (count > 0) {
                 mobileNotifBadge.textContent = count > 99 ? '99+' : count;
@@ -4839,7 +4862,6 @@ startClock();
                 mobileNotifBtn?.classList.remove('has-notif');
             }
         }
-
         if (notifBtn) {
             if (count > 0) notifBtn.classList.add('has-notif');
             else notifBtn.classList.remove('has-notif');
@@ -4851,14 +4873,12 @@ startClock();
             notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
             return;
         }
-
         const groups = {};
         notifications.forEach(n => {
             const type = n.request_type || 'Other';
             if (!groups[type]) groups[type] = [];
             groups[type].push(n);
         });
-
         notifBody.innerHTML = Object.keys(groups).map(type => `
             <div class="notif-group">
                 <div class="notif-group-title">${type}</div>
@@ -4874,7 +4894,6 @@ startClock();
                 `).join('')}
             </div>
         `).join('');
-
         notifBody.querySelectorAll('.notif-item').forEach(item => {
             item.addEventListener('click', () => {
                 const id = item.dataset.id;
@@ -4891,12 +4910,8 @@ startClock();
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
-            if (!notifAudioCtx) {
-                notifAudioCtx = new AudioCtx();
-            }
-            if (notifAudioCtx.state === 'suspended') {
-                notifAudioCtx.resume();
-            }
+            if (!notifAudioCtx) notifAudioCtx = new AudioCtx();
+            if (notifAudioCtx.state === 'suspended') notifAudioCtx.resume();
             notifAudioReady = true;
         } catch (e) { notifAudioReady = false; }
     }
@@ -4908,13 +4923,11 @@ startClock();
 
     function playNotifSound() {
         if (!notifAudioReady) return;
-        
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
             if (!notifAudioCtx) notifAudioCtx = new AudioCtx();
             if (notifAudioCtx.state === 'suspended') return;
-
             const o = notifAudioCtx.createOscillator();
             const g = notifAudioCtx.createGain();
             o.type = "triangle";
@@ -4931,25 +4944,19 @@ startClock();
             const res = await fetch('api/notifications.php');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
-
             notifications = data.notifications || [];
             unreadCount = notifications.filter(n => !n.read).length;
-
             if (!isFirstLoad) {
                 const newUnread = notifications.filter(n => !n.read && !seenNotifIds.has(n.id));
                 if (newUnread.length > 0) {
                     playNotifSound();
                     newUnread.forEach(n => seenNotifIds.add(n.id));
-                    // ✅ Use separate key to avoid conflicts
                     localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
                 }
             }
-
             notifications.forEach(n => seenNotifIds.add(n.id));
             localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
-
             isFirstLoad = false;
-
             updateBadge(unreadCount);
             updateNotificationUI();
         } catch (err) {
@@ -4991,7 +4998,6 @@ startClock();
 
     setTimeout(() => {
         fetchNotifications();
-        
         setInterval(() => {
             if (!document.hidden) fetchNotifications();
         }, 3000);
