@@ -872,7 +872,6 @@ if ($result && $result->num_rows > 0) {
         font-size: 9px;
     }
 }
-
 /* Calendar day with holiday/event - enhanced visibility */
 .calendar-day.has-holiday {
     border: 2px solid #ff5722;
@@ -1281,145 +1280,162 @@ if ($result && $result->num_rows > 0) {
 }
 
 @media (min-width: 769px) and (max-width: 1200px) {
-/* Card padding reduction */
-.card {
-    padding: 20px 16px !important;
-}
+    /* Card padding reduction */
+    .card {
+        padding: 20px 16px !important;
+    }
 
-/* Calendar grid - tighter gap */
-.calendar-grid {
-    gap: 5px !important;
-}
+    /* Calendar grid - tighter gap */
+    .calendar-grid {
+        gap: 5px !important;
+    }
 
-/* Calendar day cells - constrain so they don't overflow */
-.calendar-day {
-    min-height: 80px !important;
-    padding: 6px 4px !important;
-    font-size: 12px !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;       /* KEY: clip content inside cell */
-    word-break: break-word !important;
-}
+    .calendar-day {
+        min-height: 80px !important;
+        padding: 6px 4px !important;
+        font-size: 12px !important;
+        border-radius: 8px !important;
+        overflow: visible !important;      /* dropdown can escape */
+        min-width: 0 !important;           /* prevent grid column blowout */
+        word-break: break-word !important;
+    }
 
-/* Day number */
-.calendar-day > div:first-child {
-    font-size: 12px !important;
-    font-weight: 600;
-}
+    .calendar-day .day-tasks {
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;       /* clips task button text only */
+    }
 
-/* Task buttons inside calendar cells - CRITICAL FIX */
-.calendar-day .task-btn {
-    font-size: 9px !important;
-    padding: 3px 4px !important;
-    border-radius: 5px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    display: block !important;
-    box-sizing: border-box !important;
-    margin: 1px 0 !important;
-}
+    .calendar-grid {
+        gap: 5px !important;
+        min-width: 0 !important;          /* add this line */
+        width: 100% !important;           /* add this line */
+    }
 
-/* Day tasks wrapper */
-.calendar-day .day-tasks {
-    width: 100% !important;
-    overflow: hidden !important;
-}
+    /* Task buttons inside calendar cells - CRITICAL FIX */
+    .calendar-day .task-btn {
+        font-size: 9px !important;
+        padding: 3px 4px !important;
+        border-radius: 5px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        display: block !important;
+        box-sizing: border-box !important;
+        margin: 1px 0 !important;
+    }
 
-/* More tasks wrap (arrow + counter) */
-.more-tasks-wrap {
-    gap: 3px !important;
-    margin-top: 2px !important;
-}
+    /* Day tasks wrapper */
+    .calendar-day .day-tasks {
+        width: 100% !important;
+        overflow: hidden !important;
+    }
 
-.more-tasks-btn {
-    font-size: 11px !important;
-    width: 16px !important;
-    height: 16px !important;
-}
+    /* More tasks wrap (arrow + counter) */
+    .more-tasks-wrap {
+        gap: 3px !important;
+        margin-top: 2px !important;
+    }
 
-.task-counter {
-    font-size: 10px !important;
-    padding: 1px 4px !important;
-}
+    .more-tasks-btn {
+        font-size: 11px !important;
+        width: 16px !important;
+        height: 16px !important;
+    }
 
-/* Holiday/event badges in cells */
-.holiday-badge,
-.event-badge {
-    font-size: 8px !important;
-    padding: 1px 4px !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    display: block !important;
-}
+    .task-counter {
+        font-size: 10px !important;
+        padding: 1px 4px !important;
+    }
 
-.holiday-event-title,
-.event-title {
-    font-size: 9px !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
+    /* Holiday/event badges in cells */
+    .holiday-badge,
+    .event-badge {
+        font-size: 8px !important;
+        padding: 1px 4px !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        display: block !important;
+    }
 
-/* Weekday label row */
-.calendar-weekdays div {
-    font-size: 11px !important;
-    padding: 4px 0 !important;
-}
+    .holiday-event-title,
+    .event-title {
+        font-size: 9px !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
 
-/* Calendar header */
-.calendar-header {
-    margin-bottom: 10px !important;
-}
+    /* Weekday label row */
+    .calendar-weekdays div {
+        font-size: 11px !important;
+        padding: 4px 0 !important;
+    }
 
-/* Task dropdown (overflow panel) */
-.task-dropdown {
-    position: fixed !important;
-    width: 220px !important;
-    z-index: 9999 !important;
-}
+    /* Calendar header */
+    .calendar-header {
+        margin-bottom: 10px !important;
+    }
 
-.task-dropdown .task-btn {
-    white-space: normal !important;    /* allow wrap inside dropdown */
-    font-size: 11px !important;
-    padding: 6px 8px !important;
-}
+    .task-dropdown {
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        width: 103% !important;            /* wider than the cell */
+        z-index: 9999 !important;
+    }
 
-/* Calendar details card */
-.calendar-details-card {
-    padding: 10px 12px 32px !important;
-}
+    .task-dropdown .task-btn {
+        font-size: 9px !important;
+        padding: 4px 6px !important;
+        margin-bottom: 4px !important;     /* space between tasks */
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        display: block !important;
+        box-sizing: border-box !important;
+    }
 
-.calendar-details {
-    font-size: 13px !important;
-}
+    .task-dropdown .task-btn:last-child {
+        margin-bottom: 0 !important;       /* no extra space after last item */
+    }
 
-/* Schedule list view */
-.schedule-btn {
-    width: auto !important;
-    padding: 8px 14px !important;
-}
+    /* Calendar details card */
+    .calendar-details-card {
+        padding: 10px 12px 32px !important;
+    }
 
-/* Search input in list view */
-#scheduleSearch {
-    font-size: 0.9rem !important;
-}
+    .calendar-details {
+        font-size: 13px !important;
+    }
 
-/* Schedule items in list view */
-.schedule-item {
-    padding: 12px 0 !important;
-    font-size: 13px !important;
-}
+    /* Schedule list view */
+    .schedule-btn {
+        width: auto !important;
+        padding: 8px 14px !important;
+    }
 
-.badge {
-    font-size: 10px !important;
-    padding: 2px 6px !important;
-}
+    /* Search input in list view */
+    #scheduleSearch {
+        font-size: 0.9rem !important;
+    }
+
+    /* Schedule items in list view */
+    .schedule-item {
+        padding: 12px 0 !important;
+        font-size: 13px !important;
+    }
+
+    .badge {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
 }
 
 /* -------------------------------------------------------
@@ -1429,108 +1445,129 @@ Sidebar (250px) takes the most relative space here.
 @media (min-width: 769px) and (max-width: 1000px) {
 
 
-.card {
-    padding: 14px 10px !important;
-}
+    .card {
+        padding: 14px 10px !important;
+    }
 
-/* Even tighter grid gap */
-.calendar-grid {
-    gap: 3px !important;
-}
+    /* Even tighter grid gap */
+    .calendar-grid {
+        gap: 3px !important;
+    }
 
-/* Cells shorter and more compact */
-.calendar-day {
-    min-height: 70px !important;
-    padding: 4px 3px !important;
-    font-size: 11px !important;
-    overflow: hidden !important;
-}
+    .calendar-day {
+        min-height: 70px !important;
+        padding: 4px 3px !important;
+        font-size: 11px !important;
+        overflow: visible !important;      /* dropdown can escape */
+        min-width: 0 !important;           /* prevent grid column blowout */
+    }
+    .calendar-day .day-tasks {
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;       /* clips task button text only */
+    }
 
-.calendar-day > div:first-child {
-    font-size: 11px !important;
-}
+    .calendar-day > div:first-child {
+        font-size: 11px !important;
+    }
 
-/* Task buttons even smaller */
-.calendar-day .task-btn {
-    font-size: 8px !important;
-    padding: 2px 3px !important;
-    border-radius: 4px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-    margin: 1px 0 !important;
-}
+    .calendar-grid {
+        gap: 5px !important;
+        min-width: 0 !important;          /* add this line */
+        width: 100% !important;           /* add this line */
+    }
 
-.more-tasks-btn {
-    font-size: 10px !important;
-    width: 14px !important;
-    height: 14px !important;
-}
+    /* Task buttons even smaller */
+    .calendar-day .task-btn {
+        font-size: 8px !important;
+        padding: 2px 3px !important;
+        border-radius: 4px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        margin: 1px 0 !important;
+    }
 
-.task-counter {
-    font-size: 9px !important;
-    padding: 1px 3px !important;
-}
+    .more-tasks-btn {
+        font-size: 10px !important;
+        width: 14px !important;
+        height: 14px !important;
+    }
 
-/* Weekday labels */
-.calendar-weekdays div {
-    font-size: 10px !important;
-    padding: 3px 0 !important;
-    /* Abbreviate to 3 chars at this size */
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
+    .task-counter {
+        font-size: 9px !important;
+        padding: 1px 3px !important;
+    }
 
-/* Holiday badges - minimal */
-.holiday-badge,
-.event-badge {
-    font-size: 7px !important;
-    padding: 1px 3px !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-    display: block !important;
-}
+    /* Weekday labels */
+    .calendar-weekdays div {
+        font-size: 10px !important;
+        padding: 3px 0 !important;
+        /* Abbreviate to 3 chars at this size */
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
 
-/* Hide long holiday title text at this size - too cramped */
-.holiday-event-title,
-.event-title {
-    display: none !important;
-}
+    /* Holiday badges - minimal */
+    .holiday-badge,
+    .event-badge {
+        font-size: 7px !important;
+        padding: 1px 3px !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        display: block !important;
+    }
 
-/* Task dropdown - wider to be readable */
-.task-dropdown {
-    width: 160% !important;
-    left: -30% !important;
-    z-index: 200 !important;
-}
+    /* Hide long holiday title text at this size - too cramped */
+    .holiday-event-title,
+    .event-title {
+        display: none !important;
+    }
 
-.task-dropdown .task-btn {
-    font-size: 11px !important;
-    padding: 5px 7px !important;
-    white-space: normal !important;
-}
+    .task-dropdown {
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        width: 103% !important;            /* a bit wider at narrower range */
+        z-index: 9999 !important;
+    }
 
-/* Schedule list items */
-.schedule-item {
-    padding: 10px 0 !important;
-    font-size: 12px !important;
-}
+    .task-dropdown .task-btn {
+        font-size: 8px !important;
+        padding: 4px 5px !important;
+        margin-bottom: 4px !important;     /* space between tasks */
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        display: block !important;
+        box-sizing: border-box !important;
+    }
 
-.badge {
-    font-size: 9px !important;
-    padding: 2px 5px !important;
-}
+    .task-dropdown .task-btn:last-child {
+        margin-bottom: 0 !important;
+    }
 
-#scheduleSearch {
-    font-size: 0.85rem !important;
-}
-}
+    /* Schedule list items */
+    .schedule-item {
+        padding: 10px 0 !important;
+        font-size: 12px !important;
+    }
 
+    .badge {
+        font-size: 9px !important;
+        padding: 2px 5px !important;
+    }
+
+    #scheduleSearch {
+        font-size: 0.85rem !important;
+    }
+}
 @media (max-width: 768px) {
     .desktop-top-nav {
         display: none;
