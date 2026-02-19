@@ -4,6 +4,30 @@
 /* =======================
    Custom SCROLLBAR STYLE
 ========================== */
+body {
+    height: 100vh;
+    background: url("cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
+    transition: background 0.3s ease;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+[data-theme="dark"] body::before {
+    background: rgba(0,0,0,0.6);
+}
 body, .main-content, .sidebar-top, .notif-dropdown-body {
     scrollbar-width: thin;
     scrollbar-color: #9cafde rgba(0,0,0,0.07);
