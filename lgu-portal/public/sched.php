@@ -1988,14 +1988,15 @@ Sidebar (250px) takes the most relative space here.
     /* 1️ MAIN CONTENT SCROLLS (allow full height and scroll) */
     .main-content,
     .main-content.expanded {
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto;           /* allow scrolling */
-        padding: 20px;
-        margin: 0px;
-        margin-top: 65px !important;
+        height: auto !important;
+        min-height: calc(100vh - 64px) !important;
+        overflow-y: auto !important;             /* ← was visible, now scrollable */
+        padding: 20px !important;
+        padding-top: 80px !important;            /* ← clears the 64px fixed nav */
+        margin: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;            /* Firefox: hide scrollbar but keep scroll */
     }
 
     /* Hide main-content vertical (right) scrollbar but retain scrollability */
@@ -2877,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (name.includes('Christmas')) return 'XMS';
             if (name.includes('New Year\'s Day')) return 'NY';
             if (name.includes('Chinese New Year')) return 'CNY';
-            if (name.includes('EDSA')) return 'EDSA';
+            if (name.includes('EDSA')) return 'EDS';
             if (name.includes('Independence')) return 'IND';
             if (name.includes('Heroes')) return 'HRO';
             if (name.includes('Rizal')) return 'RZL';
@@ -3326,4 +3327,30 @@ document.addEventListener('DOMContentLoaded', function() {
 }); // --- END DOMContentLoaded ---
 </script>
 </body>
+
+<script>
+// Mobile sidebar fix
+document.addEventListener('DOMContentLoaded', function() {
+    var mobileToggle = document.getElementById('mobileToggle');
+    var sidebarNav   = document.getElementById('sidebarNav');
+    if (mobileToggle && sidebarNav) {
+        mobileToggle.onclick = function() {
+            sidebarNav.classList.toggle('mobile-active');
+        };
+    }
+    // Close sidebar when clicking outside
+    document.addEventListener('click', function(e) {
+        if (
+            sidebarNav &&
+            sidebarNav.classList.contains('mobile-active') &&
+            !sidebarNav.contains(e.target) &&
+            e.target !== mobileToggle &&
+            !mobileToggle.contains(e.target)
+        ) {
+            sidebarNav.classList.remove('mobile-active');
+        }
+    });
+});
+</script>
+
 </html>

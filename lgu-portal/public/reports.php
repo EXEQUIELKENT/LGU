@@ -387,8 +387,8 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
 }
 
 @media (max-width: 768px) {
-    body {
-    overflow: auto;
+    .desktop-top-nav {
+        display: none;
     }
     .mobile-top-nav {
         display: flex;
@@ -405,7 +405,8 @@ tbody tr:hover{background:rgba(55,98,200,.08)}
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);

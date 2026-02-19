@@ -1307,14 +1307,15 @@ tbody tr:hover {
        =============================== */
 
     /* 1️⃣ MAIN CONTENT - no scroll, let body handle it */
+    /* REPLACE with: */
     .main-content,
     .main-content.expanded {
         height: auto !important;
         min-height: calc(100vh - 64px) !important;
-        overflow-y: visible !important;
+        overflow-y: auto !important;             /* ← was visible, now scrollable */
         padding: 20px !important;
+        padding-top: 80px !important;            /* ← clears the 64px fixed nav */
         margin: 0 !important;
-        margin-top: 43px !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
         -webkit-overflow-scrolling: touch;
@@ -2408,4 +2409,30 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 </body>
+
+<script>
+// Mobile sidebar fix
+document.addEventListener('DOMContentLoaded', function() {
+    var mobileToggle = document.getElementById('mobileToggle');
+    var sidebarNav   = document.getElementById('sidebarNav');
+    if (mobileToggle && sidebarNav) {
+        mobileToggle.onclick = function() {
+            sidebarNav.classList.toggle('mobile-active');
+        };
+    }
+    // Close sidebar when clicking outside
+    document.addEventListener('click', function(e) {
+        if (
+            sidebarNav &&
+            sidebarNav.classList.contains('mobile-active') &&
+            !sidebarNav.contains(e.target) &&
+            e.target !== mobileToggle &&
+            !mobileToggle.contains(e.target)
+        ) {
+            sidebarNav.classList.remove('mobile-active');
+        }
+    });
+});
+</script>
+
 </html>
