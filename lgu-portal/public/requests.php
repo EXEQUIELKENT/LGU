@@ -150,6 +150,18 @@ function format_datetime_ampm($datetime) {
    Custom SCROLLBAR STYLE
    (synced with employee.php)
 ========================== */
+html.sidebar-pre-collapsed .sidebar-nav {
+    width: var(--sidebar-collapsed) !important;
+    transition: none !important;
+}
+html.sidebar-pre-collapsed .main-content {
+    margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
+    transition: none !important;
+}
+html.sidebar-pre-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed) !important;
+    transition: none !important;
+}
 body, .main-content, .sidebar-top, .notif-dropdown-body {
     scrollbar-width: thin;
     scrollbar-color: #9cafde rgba(0,0,0,0.07);
@@ -2574,6 +2586,15 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     }
 })();
 </script>
+<script>
+(function() {
+    try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true' && window.innerWidth > 900) {
+            document.documentElement.classList.add('sidebar-pre-collapsed');
+        }
+    } catch(e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -2953,7 +2974,39 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
+
 <?php include 'admin_scripts.php'; ?>
+
+<script>
+
+// ============================
+//  INACTIVITY TIMER
+// ============================
+let inactivityTime = 20 * 60 * 1000;
+let inactivityTimer;
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        window.location.href = 'logout.php';
+    }, inactivityTime);
+}
+
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+    document.addEventListener(event, resetInactivityTimer, true);
+});
+
+resetInactivityTimer();
+
+// ============================
+//  PAGE SHOW EVENT (PREVENT BFCACHE)
+// ============================
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+</script>
 
 <script>
 // ============================
