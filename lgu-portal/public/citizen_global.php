@@ -35,14 +35,12 @@
         ripple.addEventListener('animationend', () => ripple.remove());
     }
 
-    /* --- Show toast badge with proper flag emoji rendering --- */
+    /* --- Show toast badge --- */
     function showBadge(lang) {
         if (lang === 'tl') {
-            // Use individual regional indicator symbols for better cross-platform support
             badgeFlag.innerHTML = '&#x1F1F5;&#x1F1ED;'; // 🇵🇭
             badgeText.textContent = 'Isinalin sa Filipino';
         } else {
-            // Use individual regional indicator symbols for better cross-platform support
             badgeFlag.innerHTML = '&#x1F1FA;&#x1F1F8;'; // 🇺🇸
             badgeText.textContent = 'Switched to English';
         }
@@ -51,13 +49,24 @@
         badgeTimer = setTimeout(() => langBadge.classList.remove('show'), 2500);
     }
 
+    /* ─────────────────────────────────────────────────────────────
+       syncGlobal — FIX #1
+       Every time this engine loads or receives translation data,
+       write it to window.__preloadedTranslations so the chatbot
+       widget's t() function can read it. Previously this was never
+       done for data loaded via fetch(), causing the chatbot to
+       always see null and stay in English after a language switch.
+    ───────────────────────────────────────────────────────────── */
+    function syncGlobal(data) {
+        window.__preloadedTranslations = data;
+    }
+
     /* --- Apply translations to DOM --- */
     function applyTranslations(lang) {
         console.log('[i18n] Applying translations for:', lang);
         
         if (!translations) {
             console.error('[i18n] Translations object is null/undefined!');
-            // Try to get from preloaded
             if (window.__preloadedTranslations) {
                 translations = window.__preloadedTranslations;
                 console.log('[i18n] Recovered translations from window.__preloadedTranslations');
@@ -65,6 +74,9 @@
                 return;
             }
         }
+
+        /* FIX #1 (continued): keep global in sync whenever we apply */
+        syncGlobal(translations);
 
         if (typeof updateMapLayerToggleText === 'function') {
             updateMapLayerToggleText();
@@ -89,7 +101,7 @@
             }
         });
 
-        // data-i18n-html → innerHTML (CRITICAL FOR SECTION BOXES)
+        // data-i18n-html → innerHTML
         const dataI18nHtmlElements = document.querySelectorAll('[data-i18n-html]');
         console.log('[i18n] Processing', dataI18nHtmlElements.length, '[data-i18n-html] elements');
         dataI18nHtmlElements.forEach(el => {
@@ -100,7 +112,7 @@
             }
         });
 
-        // data-i18n-placeholder → placeholder attribute
+        // data-i18n-placeholder → placeholder
         const dataI18nPlaceholderElements = document.querySelectorAll('[data-i18n-placeholder]');
         console.log('[i18n] Processing', dataI18nPlaceholderElements.length, '[data-i18n-placeholder] elements');
         dataI18nPlaceholderElements.forEach(el => {
@@ -135,12 +147,22 @@
             btn.title = t['translate_btn_title'] || '';
         });
 
-        // html lang attribute
         document.documentElement.lang = lang === 'tl' ? 'tl' : 'en';
 
         console.log('[i18n] ✅ Total elements translated:', count);
 
-        // Notify chatbot widget
+        /* ─────────────────────────────────────────────────────────
+           FIX #2 — notify the chatbot widget
+           Previously only window.__chatbotRefreshLang() was called,
+           but the chatbot's t() reads window.__preloadedTranslations
+           which was null (see FIX #1). Now that syncGlobal() is
+           called above, t() will find the data. We also dispatch
+           the 'i18nReady' event that the chatbot's event listener
+           is waiting for, so it works even if __chatbotRefreshLang
+           is called before the chatbot script has loaded.
+        ───────────────────────────────────────────────────────── */
+        document.dispatchEvent(new CustomEvent('i18nReady', { detail: { lang: lang } }));
+
         if (typeof window.__chatbotRefreshLang === 'function') {
             window.__chatbotRefreshLang();
         }
@@ -150,16 +172,10 @@
     function toggleLanguage(e) {
         const btn = e.currentTarget;
 
-        // Ripple
         createRipple(btn, e);
 
-        // Spin animation
         btn.classList.add('translating');
         setTimeout(() => btn.classList.remove('translating'), 650);
-
-        // REMOVED: Content fade swap animation that was causing backdrop filter issues
-        // document.body.classList.add('translating-page');
-        // setTimeout(() => document.body.classList.remove('translating-page'), 360);
 
         const newLang = currentLang === 'en' ? 'tl' : 'en';
 
@@ -180,12 +196,16 @@
                 })
                 .then(data => {
                     translations = data;
+                    /* FIX #1: write to global so chatbot t() can read it */
+                    syncGlobal(data);
                     afterLoad();
                 })
                 .catch(err => {
                     console.error('[i18n]', err);
                 });
         } else {
+            /* translations already loaded — still make sure global is in sync */
+            syncGlobal(translations);
             afterLoad();
         }
     }
@@ -196,7 +216,6 @@
         console.log('[i18n] currentLang:', currentLang);
         console.log('[i18n] translations exist:', !!translations);
         
-        // Ensure translations are loaded
         if (!translations && window.__preloadedTranslations) {
             translations = window.__preloadedTranslations;
             console.log('[i18n] Loaded translations from window.__preloadedTranslations');
@@ -208,38 +227,36 @@
                 .then(r => r.json())
                 .then(data => {
                     translations = data;
+                    /* FIX #1: write to global so chatbot t() can read it */
+                    syncGlobal(data);
                     applyTranslations('tl');
-                    // Make page visible after translations are applied
                     document.documentElement.style.visibility = 'visible';
                 })
                 .catch((err) => {
                     console.error('[i18n] Failed to fetch translations:', err);
-                    // Make page visible even if translations fail
                     document.documentElement.style.visibility = 'visible';
                 });
         } else if (translations && currentLang === 'tl') {
-            // Wait a bit to ensure DOM is fully ready
-            console.log('[i18n] Translations exist, applying Filipino after delay...');
+            console.log('[i18n] Translations exist, applying Filipino...');
+            /* FIX #1: ensure global is synced before applyTranslations fires */
+            syncGlobal(translations);
             setTimeout(() => {
                 applyTranslations('tl');
-                // Make page visible after translations are applied
                 document.documentElement.style.visibility = 'visible';
             }, 200);
         } else {
-            // English mode - set initial label and make visible immediately
+            // English mode
             if (mobileLangLabel) mobileLangLabel.textContent = 'E';
             document.documentElement.style.visibility = 'visible';
             console.log('[i18n] English mode - no translation needed');
         }
         
-        // Wire up buttons
         if (translateBtn) translateBtn.addEventListener('click', toggleLanguage);
         if (mobileTranslateBtn) mobileTranslateBtn.addEventListener('click', toggleLanguage);
         
         console.log('[i18n] init() completed');
     }
 
-    // Make sure this runs AFTER DOMContentLoaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -275,7 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', () => sidebar.classList.remove('mobile-active'));
     });
 
-    // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             e.preventDefault();
@@ -293,7 +309,6 @@ let currentServerTime = SERVER_TIME;
 let clockInterval     = null;
 let lastSecond        = null;
 
-// Tagalog day and month names
 const TL_DAYS   = ['Linggo','Lunes','Martes','Miyerkules','Huwebes','Biyernes','Sabado'];
 const TL_MONTHS = ['Enero','Pebrero','Marso','Abril','Mayo','Hunyo','Hulyo','Agosto','Setyembre','Oktubre','Nobyembre','Disyembre'];
 
@@ -421,7 +436,6 @@ startClock();
 <script>
 // Clean URL after secret key authentication to prevent sharing
 if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
-    // Remove the parameter from URL without reloading
     const cleanUrl = window.location.pathname;
     window.history.replaceState({}, document.title, cleanUrl);
 }
@@ -429,7 +443,6 @@ if (window.location.search.includes('staff=infrastructure_staff_2026_qr8p')) {
 
 <?php if (isset($GLOBALS['clean_url_needed']) && $GLOBALS['clean_url_needed']): ?>
     <script>
-    // Clean URL after secret key authentication
     if (window.location.search.includes('staff=<?= SECRET_ACCESS_KEY ?>')) {
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 17, 2026 at 04:59 PM
+-- Generation Time: Feb 20, 2026 at 09:59 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -58,7 +58,7 @@ CREATE TABLE `employees` (
 --
 
 INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`, `email`, `role`, `password`, `is_first_login`, `email_verified`, `verification_token`, `verification_token_expires`, `last_otp_verified_at`, `session_token`, `last_login`, `otp_resend_count`, `otp_last_sent`, `last_profile_update`, `reset_token`, `reset_token_expires`, `account_locked`, `failed_login_attempts`, `unlock_token`, `unlock_token_expires`) VALUES
-(1, 'Kents', 'Bartolome', 'uploads/profile/profile_1_1769940651.jpeg', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$SWqpSqIHVrgmoa/TLlfGae9y/ftzABYfan.YVOv5Pv0dz/o836znW', 0, 1, NULL, NULL, '2026-02-02 01:41:21', NULL, NULL, 0, NULL, '2026-02-02 08:41:28', NULL, NULL, 0, 0, NULL, NULL),
+(1, 'Kents', 'Bartolome', 'uploads/profile/profile_1_1769940651.jpeg', 'bartolomeexequielkent@gmail.com', 'Manager', '$2y$10$bSY2cv.EQHReBDrnc7iMZuLLl5fRKe4B0VjpdPaBV170u0zWr3wva', 0, 1, NULL, NULL, '2026-02-02 01:41:21', NULL, NULL, 0, NULL, '2026-02-02 08:41:28', NULL, NULL, 0, 0, NULL, NULL),
 (2, 'Warvie', 'Villa', NULL, 'villawarvie@gmail.com', 'Manager', '$2y$10$qzomsugzAuK1Mee9rEnHceYEo8T6DAAObMVtuc7zAdK2POw/INXou', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (3, 'Jhoven', 'Las-ay', NULL, 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, '2026-02-03 09:32:17', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (5, 'Steven', 'Valera', NULL, 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
@@ -117,7 +117,24 @@ INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VA
 (88, 96, 'uploads/evidence/evidence_96_69948d0bba802.jpg', '2026-02-17 15:45:15'),
 (89, 97, 'uploads/evidence/evidence_97_69948d4b7d9b3.jpg', '2026-02-17 15:46:19'),
 (90, 98, 'uploads/evidence/evidence_98_69948fcb84bc8.jpg', '2026-02-17 15:56:59'),
-(91, 99, 'uploads/evidence/evidence_99_69949030c569b.jpg', '2026-02-17 15:58:40');
+(91, 99, 'uploads/evidence/evidence_99_69949030c569b.jpg', '2026-02-17 15:58:40'),
+(92, 100, 'uploads/evidence/evidence_100_699492a608238.jpg', '2026-02-17 16:09:10'),
+(93, 101, 'uploads/evidence/evidence_101_699492de5fac3.jpg', '2026-02-17 16:10:06'),
+(94, 102, 'uploads/evidence/evidence_102_6995164852276.jpg', '2026-02-18 01:30:48'),
+(95, 103, 'uploads/evidence/evidence_103_699516996cc76.jpg', '2026-02-18 01:32:09'),
+(96, 104, 'uploads/evidence/evidence_104_699516efa3b0d.jpg', '2026-02-18 01:33:35'),
+(97, 105, 'uploads/evidence/evidence_105_699517b5d6c29.webp', '2026-02-18 01:36:53'),
+(98, 106, 'uploads/evidence/evidence_106_69951843e52e3.webp', '2026-02-18 01:39:15'),
+(99, 107, 'uploads/evidence/evidence_107_699518ce65cb8.jpg', '2026-02-18 01:41:34'),
+(100, 107, 'uploads/evidence/evidence_107_699518ce66e8d.jpg', '2026-02-18 01:41:34'),
+(101, 107, 'uploads/evidence/evidence_107_699518ce67c4a.webp', '2026-02-18 01:41:34'),
+(102, 107, 'uploads/evidence/evidence_107_699518ce686fa.webp', '2026-02-18 01:41:34'),
+(103, 108, 'uploads/evidence/evidence_108_69951997027a5.jpg', '2026-02-18 01:44:55'),
+(104, 108, 'uploads/evidence/evidence_108_6995199703706.jpg', '2026-02-18 01:44:55'),
+(105, 108, 'uploads/evidence/evidence_108_69951997047d7.webp', '2026-02-18 01:44:55'),
+(106, 108, 'uploads/evidence/evidence_108_69951997056fc.webp', '2026-02-18 01:44:55'),
+(107, 109, 'uploads/evidence/evidence_109_699519cbed5ca.webp', '2026-02-18 01:45:47'),
+(108, 110, 'uploads/evidence/evidence_110_69981f848bd72.webp', '2026-02-20 08:47:00');
 
 -- --------------------------------------------------------
 
@@ -251,7 +268,16 @@ INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_ad
 (107, 'jhovenjadelas@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-02-03 16:30:32'),
 (108, 'villawarv@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 0, 0, '2026-02-03 16:30:51'),
 (109, 'jhovenjadelas@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-02-03 16:32:17'),
-(110, 'villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-02-03 16:33:18');
+(110, 'villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0', 1, 0, '2026-02-03 16:33:18'),
+(111, 'bartolomeexequielkent@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-18 09:52:17'),
+(112, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-18 09:53:40'),
+(113, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-18 19:14:48'),
+(114, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-19 08:27:46'),
+(115, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-19 08:49:33'),
+(116, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-19 09:58:27'),
+(117, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-19 13:04:20'),
+(118, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-19 13:57:26'),
+(119, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-20 09:05:49');
 
 -- --------------------------------------------------------
 
@@ -553,7 +579,95 @@ INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`,
 (350, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
 (351, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
 (352, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
-(353, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40');
+(353, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=99', 'Roads', 0, '2026-02-17 15:58:40'),
+(354, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(355, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(356, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(357, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(358, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(359, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(360, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(361, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=100', 'Roads', 0, '2026-02-17 16:09:10'),
+(362, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(363, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(364, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(365, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(366, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(367, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(368, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(369, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=101', 'Roads', 0, '2026-02-17 16:10:06'),
+(370, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(371, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(372, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(373, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(374, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(375, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(376, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(377, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=102', 'Roads', 0, '2026-02-18 01:30:48'),
+(378, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(379, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(380, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(381, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(382, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(383, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(384, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(385, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=103', 'Roads', 0, '2026-02-18 01:32:09'),
+(386, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(387, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(388, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(389, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(390, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(391, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(392, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(393, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=104', 'Street Lights', 0, '2026-02-18 01:33:35'),
+(394, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(395, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(396, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(397, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(398, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(399, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(400, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(401, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=105', 'Street Lights', 0, '2026-02-18 01:36:53'),
+(402, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(403, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(404, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(405, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(406, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(407, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(408, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(409, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=106', 'Street Lights', 0, '2026-02-18 01:39:15'),
+(410, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(411, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(412, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(413, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(414, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(415, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(416, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(417, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=107', 'Water Supply', 0, '2026-02-18 01:41:34'),
+(418, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(419, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(420, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(421, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(422, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(423, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(424, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(425, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=108', 'Drainage', 0, '2026-02-18 01:44:55'),
+(426, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(427, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(428, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(429, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(430, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(431, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(432, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(433, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=109', 'Street Lights', 0, '2026-02-18 01:45:47'),
+(434, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(435, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(436, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(437, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(438, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(439, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(440, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(441, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00');
 
 -- --------------------------------------------------------
 
@@ -678,7 +792,18 @@ INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contac
 (96, 'Roads', 'Mangga, Quezon City', 'kkk', '09212212212', 'Kent', 'Pending', '2026-02-17 15:45:15'),
 (97, 'Roads', 'Unang Sigaw, Quezon City', '1221', '09212121221', 'Kent', 'Pending', '2026-02-17 15:46:19'),
 (98, 'Roads', 'Duyan-Duyan, Quezon City', '1212', '09121212212', 'Kent', 'Pending', '2026-02-17 15:56:59'),
-(99, 'Roads', 'Bayanihan, Quezon City', 'Roads', '09212121221', 'Kent', 'Pending', '2026-02-17 15:58:40');
+(99, 'Roads', 'Bayanihan, Quezon City', 'Roads', '09212121221', 'Kent', 'Pending', '2026-02-17 15:58:40'),
+(100, 'Roads', 'Pasong Tamo, Quezon City', 'There is a crack', '09212342422', 'Kent', 'Pending', '2026-02-17 16:09:10'),
+(101, 'Roads', 'Duyan-Duyan, Quezon City', 'A problem', '09121233212', 'Kent', 'Pending', '2026-02-17 16:10:06'),
+(102, 'Roads', 'Pag-ibig sa Nayon, Quezon City', 'Crack Roads', '09912122112', 'Kent', 'Pending', '2026-02-18 01:30:48'),
+(103, 'Roads', 'Bahay Toro, Quezon City', 'Yes', '09212211212', 'Kent', 'Pending', '2026-02-18 01:32:09'),
+(104, 'Street Lights', 'Novaliches Proper, Quezon City', 'yeah', '09544477777', 'kent', 'Pending', '2026-02-18 01:33:35'),
+(105, 'Street Lights', 'Culiat, Quezon City', '1221', '09212121212', 'Kent', 'Pending', '2026-02-18 01:36:53'),
+(106, 'Street Lights', 'Santo Domingo (Matalahib), Quezon City', 'ako nalang kase', '09554545454', 'ss', 'Pending', '2026-02-18 01:39:15'),
+(107, 'Water Supply', 'Santo Domingo (Matalahib), Quezon City', 'testing', '09516646485', 'jhoven', 'Pending', '2026-02-18 01:41:34'),
+(108, 'Drainage', 'Novaliches Proper, Quezon City', 'test', '09518484844', 'jhoven', 'Pending', '2026-02-18 01:44:55'),
+(109, 'Street Lights', 'Duyan-Duyan, Quezon City', 'asd', '09545454454', 'jhoven', 'Pending', '2026-02-18 01:45:47'),
+(110, 'Street Lights', 'Santo Domingo (Matalahib), Quezon City', 'ww', '09090909090', 'Kent', 'Pending', '2026-02-20 08:47:00');
 
 -- --------------------------------------------------------
 
@@ -727,7 +852,18 @@ INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastruc
 (10, 96, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Significant crack/fracture density. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\",\"burn_marks_detected\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:45:15', '2026-02-17 15:45:15'),
 (11, 97, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Significant crack/fracture density. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:46:19', '2026-02-17 15:46:19'),
 (12, 98, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"non_infrastructure_images\",\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '2026-02-17 15:56:59', '2026-02-17 15:56:59'),
-(13, 99, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\",\"burn_marks_detected\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:58:40', '2026-02-17 15:58:40');
+(13, 99, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\",\"non_infrastructure_images\",\"burn_marks_detected\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 15:58:40', '2026-02-17 15:58:40'),
+(14, 100, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '2026-02-17 16:09:10', '2026-02-17 16:09:10'),
+(15, 101, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-17 16:10:06', '2026-02-17 16:10:06'),
+(16, 102, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '2026-02-18 01:30:48', '2026-02-18 01:30:48'),
+(17, 103, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '2026-02-18 01:32:09', '2026-02-18 01:32:09'),
+(18, 104, '', 'Roads', 0, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '2026-02-18 01:33:35', '2026-02-18 01:33:35'),
+(19, 105, '', 'Street Lights', 1, 0.289, 1, 0.239, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.189, '[\"immediate_action_required\",\"road_structural_damage\"]', 'swab, swob, mop (17%); missile (15%); pole (8%); stretcher (5%); projectile, missile (5%); hammer (2%)', 'Major', 1, 1, 'completed', '2026-02-18 01:36:54', '2026-02-18 01:36:54'),
+(20, 106, '', 'Roads', 0, 1.000, 1, 1.000, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 1.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (91%); street sign (3%); school bus (1%); streetcar, tram, tramcar, trolley, trolley car (0%); motor scooter, scooter (0%); honeycomb (0%)', 'Major', 1, 1, 'completed', '2026-02-18 01:39:16', '2026-02-18 01:39:16'),
+(21, 107, '', 'Roads', 0, 0.369, 1, 0.319, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 4 images. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.269, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (91%); wing (37%); lakeside, lakeshore (18%); swab, swob, mop (17%); missile (15%); alp (12%)', 'Major', 1, 4, 'completed', '2026-02-18 01:41:34', '2026-02-18 01:41:34'),
+(22, 108, '', 'Roads', 0, 0.369, 1, 0.319, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 4 images. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.269, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (91%); wing (37%); lakeside, lakeshore (18%); swab, swob, mop (17%); missile (15%); alp (12%)', 'Major', 1, 4, 'completed', '2026-02-18 01:44:55', '2026-02-18 01:44:55'),
+(23, 109, '', 'Street Lights', 1, 0.289, 1, 0.239, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.189, '[\"immediate_action_required\",\"road_structural_damage\"]', 'swab, swob, mop (17%); missile (15%); pole (8%); stretcher (5%); projectile, missile (5%); hammer (2%)', 'Major', 1, 1, 'completed', '2026-02-18 01:45:48', '2026-02-18 01:45:48'),
+(24, 110, '', 'Street Lights', 1, 0.289, 1, 0.239, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.189, '[\"immediate_action_required\",\"road_structural_damage\"]', 'swab, swob, mop (17%); missile (15%); pole (8%); stretcher (5%); projectile, missile (5%); hammer (2%)', 'Major', 1, 1, 'completed', '2026-02-20 08:47:00', '2026-02-20 08:47:00');
 
 -- --------------------------------------------------------
 
@@ -853,13 +989,13 @@ ALTER TABLE `employees`
 -- AUTO_INCREMENT for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -877,7 +1013,7 @@ ALTER TABLE `materials_equipment_costs`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=354;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=442;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
@@ -901,13 +1037,13 @@ ALTER TABLE `reports`
 -- AUTO_INCREMENT for table `requests`
 --
 ALTER TABLE `requests`
-  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
 
 --
 -- AUTO_INCREMENT for table `request_ai_analysis`
 --
 ALTER TABLE `request_ai_analysis`
-  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
