@@ -63,6 +63,7 @@ if ($maintenance_result) {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Citizen Reports - LGU Portal</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
@@ -808,12 +809,12 @@ if ($maintenance_result) {
             
             <ul class="nav-list">
                 <?php if ($show_login): ?>
-                <li><a href="login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
                 <?php endif; ?>
-                <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-                <li><a href="#"class="nav-link active"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-                <li><a href="citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-                <li><a href="about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+                <li><a href="citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+                <li><a href="#"class="nav-link active"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+                <li><a href="about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
             </ul>
         </div>
     </div>
@@ -867,7 +868,7 @@ if ($maintenance_result) {
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">📍</div>
+        <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
         <div>
             <h3 data-i18n="reports_stat_pending">Pending</h3>
             <div class="number"><?= $pending_count ?></div>
@@ -1133,9 +1134,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3>InfraGovServices</h3>
             <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
-                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
-                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         

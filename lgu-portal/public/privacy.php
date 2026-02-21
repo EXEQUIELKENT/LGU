@@ -23,6 +23,8 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Privacy Policy - InfraGovServices | LGU Portal</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 
     <script>
     (function() {
@@ -395,12 +397,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -449,7 +451,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📋</span> <span data-i18n="privacy_collection_title">Data Collection and Processing</span></h2>
+            <h2><span class="icon"><i class="fas fa-clipboard-list"></i></span> <span data-i18n="privacy_collection_title">Data Collection and Processing</span></h2>
             <p data-i18n="privacy_collection_desc">
                 In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), its Implementing Rules and Regulations,
                 and relevant issuances of the National Privacy Commission (NPC), the System Development for Enhanced Public Works
@@ -459,7 +461,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">⚖️</span> <span data-i18n="privacy_lawful_title">Lawful Processing Principles</span></h2>
+            <h2><span class="icon"><i class="fas fa-gavel"></i></span> <span data-i18n="privacy_lawful_title">Lawful Processing Principles</span></h2>
             <p data-i18n="privacy_lawful_desc">
                 All personal data shall be processed fairly, lawfully, and transparently, and shall be collected only for legitimate
                 and declared purposes directly related to system operations, coordination, analysis, and academic evaluation.
@@ -467,7 +469,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔍</span> <span data-i18n="privacy_types_title">Types of Information Collected</span></h2>
+            <h2><span class="icon"><i class="fas fa-search"></i></span> <span data-i18n="privacy_types_title">Types of Information Collected</span></h2>
             <p data-i18n="privacy_types_intro">The System may collect personal and non-personal information including:</p>
             <ul class="purpose-list">
                 <li data-i18n="privacy_types_item1">Names or user identifiers</li>
@@ -479,7 +481,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔐</span> <span data-i18n="privacy_security_title">Data Security and Protection</span></h2>
+            <h2><span class="icon"><i class="fas fa-lock"></i></span> <span data-i18n="privacy_security_title">Data Security and Protection</span></h2>
             <p data-i18n="privacy_security_desc">
                 We implement appropriate technical and organizational measures to ensure the security of your personal data
                 against unauthorized access, alteration, disclosure, or destruction. All data is encrypted during transmission
@@ -488,7 +490,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">👤</span> <span data-i18n="privacy_rights_title">Your Rights as a Data Subject</span></h2>
+            <h2><span class="icon"><i class="fas fa-user"></i></span> <span data-i18n="privacy_rights_title">Your Rights as a Data Subject</span></h2>
             <p data-i18n="privacy_rights_intro">Under the Data Privacy Act of 2012, you have the right to:</p>
             <ul class="purpose-list">
                 <li data-i18n="privacy_rights_item1">Be informed about the collection and processing of your personal data</li>
@@ -500,7 +502,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🤝</span> <span data-i18n="privacy_consent_title">User Consent and Agreement</span></h2>
+            <h2><span class="icon"><i class="fas fa-handshake"></i></span> <span data-i18n="privacy_consent_title">User Consent and Agreement</span></h2>
             <p data-i18n="privacy_consent_p1">By using this System, I confirm that I have read and understood the Terms of Use and Privacy Policy of the
                 AI-Assisted Public Works Coordination and Infrastructure Management System.</p>
             <p data-i18n="privacy_consent_p2">I voluntarily consent to:</p>
@@ -512,7 +514,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📞</span> <span data-i18n="privacy_contact_title">Contact Information</span></h2>
+            <h2><span class="icon"><i class="fas fa-envelope"></i></span> <span data-i18n="privacy_contact_title">Contact Information</span></h2>
             <p data-i18n="privacy_contact_intro">
                 For questions or concerns regarding this Privacy Policy or the handling of your personal data, please contact our
                 Data Protection Officer at:
@@ -524,7 +526,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📅</span> <span data-i18n="privacy_updates_title">Policy Updates</span></h2>
+            <h2><span class="icon"><i class="fas fa-calendar-alt"></i></span> <span data-i18n="privacy_updates_title">Policy Updates</span></h2>
             <p data-i18n="privacy_updates_p1">
                 This Privacy Policy may be updated periodically to ensure continued compliance with applicable laws, regulations,
                 and institutional requirements. Continued use of the System signifies acceptance of any revisions to this Policy.
@@ -548,15 +550,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
-                    <span>📧</span>
+                    <i class="fas fa-envelope"></i>
                     <span>contact@infragovservices.com</span>
                 </div>
                 <div class="contact-item">
-                    <span>📞</span>
+                    <i class="fas fa-phone"></i>
                     <span>(02) 8988-4242</span>
                 </div>
                 <div class="contact-item">
-                    <span>📍</span>
+                    <i class="fas fa-map-marker-alt"></i>
                     <span>Quezon City Hall, Quezon City</span>
                 </div>
             </div>

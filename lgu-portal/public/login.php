@@ -126,7 +126,7 @@ function showNotification() {
     if (!empty($_SESSION['notification'])) {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
-        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        $icon = ($type === 'success') ? '<i class="fas fa-check-circle"></i>' : (($type === 'error') ? '<i class="fas fa-times-circle"></i>' : (($type === 'warning') ? '<i class="fas fa-exclamation-triangle"></i>' : '<i class="fas fa-info-circle"></i>'));
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -297,7 +297,7 @@ function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
         $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
             <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1);border-top:4px solid #dc2626">
                 <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px;text-align:center;">LGU Portal</h1>
-                <h2 style="color:#dc2626;margin:0 0 30px 0;font-size:18px;font-weight:600;text-align:center;">🔒 Account Locked - Security Alert</h2>
+                <h2 style="color:#dc2626;margin:0 0 30px 0;font-size:18px;font-weight:600;text-align:center;"><i class="fas fa-lock"></i> Account Locked - Security Alert</h2>
                 <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0;text-align:center;">
                     Hello <strong style="color:#174c86">' . htmlspecialchars($firstName) . '</strong>,
                 </p>
@@ -1089,7 +1089,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
-<link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
 <script>
@@ -2640,9 +2641,9 @@ body:has(#resetPasswordModal) {
                 <span class="lang-label" id="langLabel">EN</span>
             </button>
 
-            <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
-                <span class="dark-icon">🌙</span>
-                <span class="light-icon" style="display:none;">☀️</span>
+            <button class="nav-btn dark-mode-btn dark-toggle" id="darkModeBtn" title="Toggle Dark Mode">
+                    <span class="dark-icon">🌙</span>
+                    <span class="light-icon" style="display: none;">☀️</span>
             </button>
         </div>
     </div>
@@ -2657,11 +2658,11 @@ body:has(#resetPasswordModal) {
         </a>
         
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="#" class="nav-link active"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -2855,7 +2856,7 @@ body:has(#resetPasswordModal) {
                 <div class="input-box">
                     <label>Email Address</label>
                     <input type="email" name="email" id="loginEmail" placeholder="yourname@gmail.com" required>
-                    <span class="icon">📧</span>
+                    <span class="icon"><i class="fas fa-envelope"></i></span>
                 </div>
                 <div class="input-box" style="position: relative;">
                     <label>Password</label>
@@ -2873,7 +2874,8 @@ body:has(#resetPasswordModal) {
                                 color: #888;"
                             tabindex="-1"
                             aria-label="Show password">
-                        <span id="togglePwdIcon" aria-hidden="true">👁️</span>
+                        <span id="togglePwdIcon" aria-hidden="true"><i class="fas fa-eye"></i></span>
+                        <span id="togglePwdIconHidden" aria-hidden="true" style="display:none;"><i class="fas fa-eye-slash"></i></span>
                     </button>
                 </div>
                 <!-- 🔥 CHANGE #3: Forgot Password link moved to where Remember Me was -->
@@ -2892,20 +2894,24 @@ body:has(#resetPasswordModal) {
                 const pwdInput = document.getElementById('passwordInput');
                 const toggleBtn = document.getElementById('togglePassword');
                 const toggleIcon = document.getElementById('togglePwdIcon');
-                const iconShow = '👁️';
-                const iconHide = '🛡️';
+                const toggleIconHidden = document.getElementById('togglePwdIconHidden');
+                const iconShow = '<i class="fas fa-eye"></i>';
+                const iconHide = '<i class="fas fa-eye-slash"></i>';
                 toggleBtn.addEventListener('click', function() {
                     if (pwdInput.type === 'password') {
                         pwdInput.type = 'text';
-                        toggleIcon.textContent = iconHide;
+                        toggleIcon.style.display = 'none';
+                        toggleIconHidden.style.display = 'inline';
                         toggleBtn.setAttribute('aria-label', 'Hide password');
                     } else {
                         pwdInput.type = 'password';
-                        toggleIcon.textContent = iconShow;
+                        toggleIcon.style.display = 'inline';
+                        toggleIconHidden.style.display = 'none';
                         toggleBtn.setAttribute('aria-label', 'Show password');
                     }
                 });
-                toggleIcon.textContent = iconShow;
+                toggleIcon.style.display = 'inline';
+                toggleIconHidden.style.display = 'none';
 
                 <?php if($disableLogin): ?>
                 let lockoutSeconds = <?php echo isset($remain) ? (int)$remain : 600; ?>;
@@ -2937,7 +2943,7 @@ body:has(#resetPasswordModal) {
 <div id="forgotPasswordModal">
     <div class="modal-content">
         <div class="modal-header">
-            <div class="modal-icon">🔑</div>
+            <div class="modal-icon"><i class="fas fa-key"></i></div>
             <h2 class="modal-title">Forgot Password?</h2>
             <p class="modal-subtitle">Enter your email address and we'll send you a password reset link</p>
         </div>
@@ -3527,15 +3533,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
-                    <span>📧</span>
+                    <span><i class="fas fa-envelope"></i></span>
                     <span>contact@infragovservices.com</span>
                 </div>
                 <div class="contact-item">
-                    <span>📞</span>
+                    <span><i class="fas fa-phone"></i></span>
                     <span>(02) 8988-4242</span>
                 </div>
                 <div class="contact-item">
-                    <span>📍</span>
+                    <span><i class="fas fa-map-marker-alt"></i></span>
                     <span>Quezon City Hall, Quezon City</span>
                 </div>
             </div>

@@ -23,6 +23,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>About - InfraGovServices | LGU Portal</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <script>
     (function() {
@@ -397,12 +398,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link active"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -452,7 +453,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🌐</span> <span data-i18n="about_purpose_title">Our Purpose</span></h2>
+            <h2><span class="icon"><i class="fas fa-globe"></i></span> <span data-i18n="about_purpose_title">Our Purpose</span></h2>
             <p data-i18n="about_purpose_intro">CIMMS was created to:</p>
             <ul class="purpose-list">
                 <li data-i18n="about_purpose_item1">Improve the efficiency of public infrastructure maintenance</li>
@@ -463,7 +464,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🛠</span> <span data-i18n="about_offers_title">What CIMMS Offers</span></h2>
+            <h2><span class="icon"><i class="fas fa-tools"></i></span> <span data-i18n="about_offers_title">What CIMMS Offers</span></h2>
             <p data-i18n-html="about_offers_feature1"><b>Easy Issue Reporting</b> – Citizens can submit maintenance requests online with descriptions and photo evidence.</p>
             <p data-i18n-html="about_offers_feature2"><b>Real-Time Tracking</b> – Monitor the status of submitted requests anytime.</p>
             <p data-i18n-html="about_offers_feature3"><b>Faster Coordination</b> – Direct communication between LGU engineers, public works teams, and administrators.</p>
@@ -472,7 +473,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🤝</span> <span data-i18n="about_citizens_title">For Quezon City Citizens</span></h2>
+            <h2><span class="icon"><i class="fas fa-handshake"></i></span> <span data-i18n="about_citizens_title">For Quezon City Citizens</span></h2>
             <p data-i18n-html="about_citizens_desc">
                 This platform is designed exclusively for <b>Quezon City residents</b>, ensuring that infrastructure concerns within the city 
                 are addressed efficiently and responsibly. CIMMS strengthens public participation and supports a smarter, safer, and more 
@@ -481,7 +482,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🎯</span> <span data-i18n="about_vision_title">Our Vision</span></h2>
+            <h2><span class="icon"><i class="fas fa-bullseye"></i></span> <span data-i18n="about_vision_title">Our Vision</span></h2>
             <p data-i18n="about_vision_desc">
                 To become a trusted digital platform that enhances community engagement and delivers efficient, transparent, and responsive 
                 infrastructure services for all Quezon City citizens.
@@ -489,7 +490,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🚀</span> <span data-i18n="about_mission_title">Our Mission</span></h2>
+            <h2><span class="icon"><i class="fas fa-rocket"></i></span> <span data-i18n="about_mission_title">Our Mission</span></h2>
             <p data-i18n="about_mission_desc">
                 To provide an innovative and reliable system that streamlines infrastructure maintenance operations, strengthens public 
                 accountability, and improves the overall quality of urban services in Quezon City.
@@ -497,16 +498,16 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">💙</span> <span data-i18n="about_values_title">Our Core Values</span></h2>
+            <h2><span class="icon"><i class="fas fa-heart"></i></span> <span data-i18n="about_values_title">Our Core Values</span></h2>
             <p data-i18n-html="about_values_intro"><b>Committed to building a safer, more sustainable Quezon City for every resident.</b></p>
 
-            <p data-i18n-html="about_values_efficiency"><b>🎯 Efficiency</b> – We work smart and fast to ensure quick action and better service delivery.</p>
+            <p data-i18n-html="about_values_efficiency"><b><i class="fas fa-bullseye"></i> Efficiency</b> – We work smart and fast to ensure quick action and better service delivery.</p>
 
-            <p data-i18n-html="about_values_transparency"><b>🌟 Transparency</b> – We keep everything clear, open, and trackable from report to resolution.</p>
+            <p data-i18n-html="about_values_transparency"><b><i class="fas fa-star"></i> Transparency</b> – We keep everything clear, open, and trackable from report to resolution.</p>
 
-            <p data-i18n-html="about_values_community"><b>🤝 Community First</b> – We listen, care, and prioritize the needs of Quezon City citizens.</p>
+            <p data-i18n-html="about_values_community"><b><i class="fas fa-handshake"></i> Community First</b> – We listen, care, and prioritize the needs of Quezon City citizens.</p>
 
-            <p data-i18n-html="about_values_security"><b>🔒 Security</b> – We protect your personal data and ensure safe, reliable system access.</p>
+            <p data-i18n-html="about_values_security"><b><i class="fas fa-lock"></i> Security</b> – We protect your personal data and ensure safe, reliable system access.</p>
         </div>
 
         <div class="btn-wrap">
@@ -519,19 +520,19 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 <footer class="footer">
     <div class="footer-content">
         <div class="footer-about">
-            <h3 data-i18n="site_title">InfraGovServices</h3>
-            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <h3>InfraGovServices</h3>
+            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
-                    <span>📧</span>
+                    <span><i class="fas fa-envelope"></i></span>
                     <span>contact@infragovservices.com</span>
                 </div>
                 <div class="contact-item">
-                    <span>📞</span>
+                    <span><i class="fas fa-phone"></i></span>
                     <span>(02) 8988-4242</span>
                 </div>
                 <div class="contact-item">
-                    <span>📍</span>
+                    <span><i class="fas fa-map-marker-alt"></i></span>
                     <span>Quezon City Hall, Quezon City</span>
                 </div>
             </div>
