@@ -132,6 +132,7 @@ $result = $conn->query($sql);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Maintenance Reports</title>
 <style>
 :root {
@@ -751,16 +752,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <!-- Navigation -->
         <ul class="nav-list">
             <li>
-                <a href="employee.php" class="nav-link" data-tooltip="Dashboard"><span>📊</span><span>Dashboard</span></a>
+                <a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a>
             </li>
             <li>
-                <a href="requests.php" class="nav-link" data-tooltip="Requests"><span>📋</span><span>Requests</span></a>
+                <a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a>
             </li>
             <li>
-                <a href="#" class="nav-link active" data-tooltip="Reports"><span>📄</span><span>Reports</span></a>
+                <a href="#" class="nav-link active" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a>
             </li>
             <li>
-                <a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><span>📅</span><span>Maintenance Schedule</span></a>
+                <a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a>
             </li>
         </ul>
         <div style="flex-grow:1;"></div>

@@ -61,6 +61,7 @@ if ($maintenance_result) {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>InfraGovServices - Community Infrastructure Maintenance</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
@@ -910,12 +911,12 @@ if ($maintenance_result) {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="#" class="nav-link active"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="#" class="nav-link active"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -976,7 +977,7 @@ if ($maintenance_result) {
                 <div class="stat-label" data-i18n="stat_ongoing">Ongoing Repairs</div>
             </div>
             <div class="stat-card animate-on-scroll delay-3">
-                <div class="stat-icon">📍</div>
+                <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
                 <div class="stat-number"><?= $pending_count ?></div>
                 <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
             </div>
@@ -1046,7 +1047,7 @@ if ($maintenance_result) {
         
         <div class="features-grid">
             <div class="feature-card animate-on-scroll delay-1">
-                <div class="feature-icon">📋</div>
+                <div class="feature-icon"><i class="fas fa-clipboard-list"></i></div>
                 <h3 class="feature-title" data-i18n="feat1_title">Submit Requests</h3>
                 <p class="feature-description" data-i18n="feat1_desc">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
@@ -1150,7 +1151,7 @@ if ($maintenance_result) {
                             </div>
                         </div>
                         <div class="highlight-item">
-                            <div class="highlight-icon">📍</div>
+                            <div class="highlight-icon"><i class="fas fa-map-marker-alt"></i></div>
                             <div class="highlight-text">
                                 <strong data-i18n="highlight2_title">GPS Tracking</strong>
                                 <span data-i18n="highlight2_desc">Precise location mapping for faster response</span>
@@ -1188,9 +1189,9 @@ if ($maintenance_result) {
             <h3>InfraGovServices</h3>
             <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
-                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
-                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         

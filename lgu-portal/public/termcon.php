@@ -23,6 +23,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Terms and Conditions - InfraGovServices | LGU Portal</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <script>
     (function() {
@@ -396,12 +397,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="<?= $BASE_URL ?>login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -453,7 +454,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🗂️</span> <span data-i18n="terms_collection_title">Information Collection</span></h2>
+            <h2><span class="icon"><i class="fas fa-folder-open"></i></span> <span data-i18n="terms_collection_title">Information Collection</span></h2>
             <p data-i18n="terms_collection_intro">
                 The System may collect personal and non-personal information including:
             </p>
@@ -467,7 +468,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🎯</span> <span data-i18n="terms_purpose_title">Purpose of Data Collection</span></h2>
+            <h2><span class="icon"><i class="fas fa-bullseye"></i></span> <span data-i18n="terms_purpose_title">Purpose of Data Collection</span></h2>
             <p data-i18n="terms_purpose_intro">These data are collected solely to support:</p>
             <ul class="purpose-list">
                 <li data-i18n="terms_purpose_item1">System authentication and access control</li>
@@ -482,7 +483,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔒</span> <span data-i18n="terms_processing_title">Data Processing and Storage</span></h2>
+            <h2><span class="icon"><i class="fas fa-lock"></i></span> <span data-i18n="terms_processing_title">Data Processing and Storage</span></h2>
             <p data-i18n="terms_processing_intro">All personal data collected shall be:</p>
             <ul class="purpose-list">
                 <li data-i18n="terms_processing_item1">Processed only for specific and legitimate purposes</li>
@@ -493,7 +494,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🚫</span> <span data-i18n="terms_sharing_title">Data Sharing and Disclosure</span></h2>
+            <h2><span class="icon"><i class="fas fa-ban"></i></span> <span data-i18n="terms_sharing_title">Data Sharing and Disclosure</span></h2>
             <p data-i18n="terms_sharing_intro">
                 Personal data shall not be disclosed or shared with third parties without the data subject's consent, except when:
             </p>
@@ -505,7 +506,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">⚖️</span> <span data-i18n="terms_rights_title">Data Subject Rights</span></h2>
+            <h2><span class="icon"><i class="fas fa-balance-scale"></i></span> <span data-i18n="terms_rights_title">Data Subject Right</span></h2>
             <p data-i18n="terms_rights_intro">In accordance with RA 10173, data subjects are entitled to the following rights:</p>
             <ul class="purpose-list">
                 <li><strong data-i18n="terms_rights_informed_title">Right to be Informed</strong> - <span data-i18n="terms_rights_informed_desc">Be notified about data collection and processing</span></li>
@@ -517,7 +518,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">🔐</span> <span data-i18n="terms_ai_title">AI-Assisted Decision Support</span></h2>
+            <h2><span class="icon"><i class="fas fa-robot"></i></span> <span data-i18n="terms_ai_title">AI-Assisted Decision Support</span></h2>
             <p data-i18n="terms_ai_intro">
                 The system utilizes AI-assisted decision support technologies to enhance infrastructure coordination and planning.
                 Users acknowledge and understand that:
@@ -531,7 +532,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">📞</span> <span data-i18n="terms_contact_title">Contact and Data Privacy Concerns</span></h2>
+            <h2><span class="icon"><i class="fas fa-envelope"></i></span> <span data-i18n="terms_contact_title">Contact and Data Privacy Concerns</span></h2>
             <p data-i18n="terms_contact_intro">
                 Requests related to data privacy concerns, data subject rights, or questions about these Terms and Conditions
                 may be directed to:
@@ -549,7 +550,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         </div>
 
         <div class="section-box">
-            <h2><span class="icon">✅</span> <span data-i18n="terms_acceptance_title">Acceptance of Terms</span></h2>
+            <h2><span class="icon"><i class="fas fa-check"></i></span> <span data-i18n="terms_acceptance_title">Acceptance of Terms</span></h2>
             <p data-i18n="terms_acceptance_p1">
                 By accessing and using this system, you acknowledge that you have read, understood, and agree to be bound by these
                 Terms and Conditions and the Privacy Policy. Continued use of the system constitutes acceptance of any updates
@@ -574,15 +575,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
                 <div class="contact-item">
-                    <span>📧</span>
+                    <i class="fas fa-envelope"></i>
                     <span>contact@infragovservices.com</span>
                 </div>
                 <div class="contact-item">
-                    <span>📞</span>
+                    <i class="fas fa-phone"></i>
                     <span>(02) 8988-4242</span>
                 </div>
                 <div class="contact-item">
-                    <span>📍</span>
+                    <i class="fas fa-map-marker-alt"></i>
                     <span>Quezon City Hall, Quezon City</span>
                 </div>
             </div>

@@ -308,7 +308,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
     <title>Submit Maintenance Request - InfraGovServices</title>
-    <link rel="stylesheet" href="citizen_global.css">  <!-- ADD THIS -->
+    <link rel="stylesheet" href="citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">  <!-- ADD THIS -->
         <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
     (function() {
@@ -3809,15 +3810,24 @@ input[type="file"] {
     </script>
 
 <!-- FOOTER -->
-<footer class="footer" style="margin-top:50px;">
+<footer class="footer">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item"><span>📧</span><span>contact@infragovservices.com</span></div>
-                <div class="contact-item"><span>📞</span><span>(02) 8988-4242</span></div>
-                <div class="contact-item"><span>📍</span><span>Quezon City Hall, Quezon City</span></div>
+                <div class="contact-item">
+                    <span><i class="fas fa-envelope"></i></span>
+                    <span>contact@infragovservices.com</span>
+                </div>
+                <div class="contact-item">
+                    <span><i class="fas fa-phone"></i></span>
+                    <span>(02) 8988-4242</span>
+                </div>
+                <div class="contact-item">
+                    <span><i class="fas fa-map-marker-alt"></i></span>
+                    <span>Quezon City Hall, Quezon City</span>
+                </div>
             </div>
         </div>
         
