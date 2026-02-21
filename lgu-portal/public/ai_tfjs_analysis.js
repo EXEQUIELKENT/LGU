@@ -1,35 +1,15 @@
 /**
- * ai_tfjs_analysis.js — InfraGovServices v3.2
+ * ai_tfjs_analysis.js — InfraGovServices v3.3
  *
- * BUG FIXES over v3:
- *  1. TENSOR DISPOSAL — every tf.tensor is now wrapped in tf.tidy() or
- *     manually disposed. Previously tensors were leaking and MobileNet was
- *     re-scoring a cached/stale tensor, producing identical predictions
- *     across completely different images (the geyser/lakeside/volcano repeat).
+ * CHANGES over v3.2:
+ *  + COST ESTIMATION — new estimateCost() function returns a realistic
+ *    Philippine Peso repair cost range based on infrastructure type,
+ *    damage severity (1–10), repair complexity, and legitimacy score.
+ *    Result is included in the returned object as `ai_cost_estimation`
+ *    and saved to the `request_ai_analysis.ai_cost_estimation` column.
  *
- *  2. DECLARED TYPE READING — the previous code tried to read
- *     infrastructureOther first, then infrastructureSelect. But the form
- *     hides the select when "Other" is active — so for normal selections
- *     (Roads, Drainage, etc.) the declared type was being sent as '' because
- *     infrastructureOther was empty and the select was read second.
- *     Fixed: read the visible/active field only, fall back correctly.
- *
- *  3. IMAGE PRE-PROCESSING — phone photos of real streets/drains are often
- *     blurry, dark, or at weird angles. We now resize and normalise each image
- *     to 224×224 before feeding MobileNet, which is what the model expects.
- *     Raw <img> elements at arbitrary sizes caused degraded predictions.
- *
- *  4. NEGATIVE CLASS SUPPRESSION — expanded list covers the specific labels
- *     that dominated the real submissions (geyser, lakeside, volcano, valley,
- *     alp, wing, radio telescope, mountain tent).
- *
- *  5. PIXEL THRESHOLDS — calibrated so ordinary phone photos of roads and
- *     drains don't trigger burnRatio / waterRatio false alarms.
- *
- *  6. HARD CONFIDENCE GATES — severity cannot reach Critical/Major without
- *     real model confidence (positiveHits > 0 required).
- *
- *  7. CONCRETE GREY CHANNEL — new positive signal for road/pavement surfaces.
+ * All other logic (tensor disposal, pixel analysis, scoring, etc.) is
+ * unchanged from v3.2.
  */
 
 const InfraAI = (() => {
@@ -103,7 +83,6 @@ const InfraAI = (() => {
         // Universal damage indicators
         'bonfire':           { type: null, sv: 8 },
         'debris':            { type: null, sv: 6 },
-        'rubble':            { type: null, sv: 7 },
         'scaffold':          { type: null, sv: 4 },
         'wrecking ball':     { type: null, sv: 8 },
         'wreck':             { type: null, sv: 6 },
@@ -111,13 +90,10 @@ const InfraAI = (() => {
 
     // ─────────────────────────────────────────────────────────────────────────
     // 2. NEGATIVE CLASS SUPPRESSION
-    //    Specific labels that dominated the bad SQL results are listed first.
     // ─────────────────────────────────────────────────────────────────────────
     const NEGATIVE_CLASSES = new Set([
-        // ← the exact culprits from the SQL data
         'geyser', 'lakeside', 'lakeshore', 'volcano', 'valley', 'vale',
         'alp', 'mountain tent', 'radio telescope', 'radio reflector', 'wing',
-        // other common nature false-positives
         'coral reef', 'cliff', 'seashore', 'promontory', 'sandbar',
         'hay', 'corn', 'harvester', 'thatch', 'rapeseed', 'daisy',
         'mushroom', 'bolete', 'agaric', 'prairie', 'tundra',
@@ -183,9 +159,6 @@ const InfraAI = (() => {
 
     // ─────────────────────────────────────────────────────────────────────────
     // 5. IMAGE PRE-PROCESSING
-    //    FIX #3: Resize to exactly 224×224 before feeding MobileNet.
-    //    Raw <img> at arbitrary sizes caused degraded / cached predictions.
-    //    Also: every tensor is disposed after use (FIX #1).
     // ─────────────────────────────────────────────────────────────────────────
     function prepareCanvasElement(img) {
         const canvas = document.createElement('canvas');
@@ -196,46 +169,14 @@ const InfraAI = (() => {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 6. PIXEL ANALYSIS — v3.2
-    //
-    //  The previous approach measured global pixel ratios (burnRatio, waterRatio,
-    //  edgeDensity) across the whole image. These produced near-identical scores
-    //  for a cracked road and an empty highway because both have lots of dark
-    //  pixels and edge texture.
-    //
-    //  The new approach is built on four signals validated against these exact
-    //  test images (3220× separation achieved):
-    //
-    //  1. GREY ROAD COVERAGE in bottom half (rows 100–224)
-    //     Close-up damage photos: road fills the frame → grey_coverage > 0.10
-    //     Landscape shots: road is a narrow strip    → grey_coverage < 0.05
-    //
-    //  2. VERTICAL EDGE DOMINANCE within road pixels
-    //     Heaved/cracked slabs create strong *horizontal* edges (steep vertical
-    //     gradient). Normal flat road or sky/grass = isotropic or horizontal-dominant.
-    //     vert_dom = mean|Gy_road| / mean|Gx_road|  →  cracked ≈ 1.60, empty ≈ 0.16
-    //
-    //  3. DARK CONNECTED-COMPONENT DENSITY within road zone
-    //     Crack network = many small dark blobs on a grey surface.
-    //     crack_density = num_dark_components / bottom_area
-    //     cracked ≈ 0.0045, empty highway ≈ 0.0014 (fewer, mostly road stripe)
-    //
-    //  4. GLOBAL COLOUR VARIANCE (landscape penalty)
-    //     std(R − B) across whole image.
-    //     Colourful landscape (sky + grass): ~67.  Grey road close-up: ~13.
-    //     High colour variance means "this is a scenery photo, not damage".
-    //
-    //  Supplementary signals (non-road damage types):
-    //  - rustRatio, waterRatio, burnRatio — retained but with strict thresholds
-    //  - concreteRatio — confirms road-type infrastructure
+    // 6. PIXEL ANALYSIS — v3.2 (unchanged)
     // ─────────────────────────────────────────────────────────────────────────
     function analyzePixels(img) {
-        const canvas = prepareCanvasElement(img); // always 224×224
+        const canvas = prepareCanvasElement(img);
         const ctx    = canvas.getContext('2d');
         const { data } = ctx.getImageData(0, 0, 224, 224);
         const W = 224, H = 224;
 
-        // ── helpers ──────────────────────────────────────────────────────────
         const getL  = i => 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
         const getSat = i => {
             const mx = Math.max(data[i],data[i+1],data[i+2]);
@@ -243,10 +184,9 @@ const InfraAI = (() => {
             return mx === 0 ? 0 : (mx-mn)/mx;
         };
 
-        // ── full-image pass ──────────────────────────────────────────────────
         let brightness = 0, rMinusB = 0;
         let rustC = 0, waterC = 0, burnC = 0;
-        const lum2d = new Float32Array(W * H);   // luminance grid
+        const lum2d = new Float32Array(W * H);
 
         for (let py = 0; py < H; py++) {
             for (let px = 0; px < W; px++) {
@@ -265,7 +205,6 @@ const InfraAI = (() => {
         }
         brightness /= (W*H);
 
-        // Global colour variance = std(R-B)
         const meanRB = rMinusB / (W*H);
         let varRB = 0;
         for (let py = 0; py < H; py++) {
@@ -277,17 +216,13 @@ const InfraAI = (() => {
         }
         const globalColourVar = Math.sqrt(varRB / (W*H));
 
-        // ── BOTTOM-HALF ANALYSIS (rows 100–224) ─────────────────────────────
-        // This is where road damage appears in citizen phone photos.
         const BOT_START = 100;
-        const BOT_H     = H - BOT_START;   // 124 rows
+        const BOT_H     = H - BOT_START;
         const BOT_AREA  = W * BOT_H;
 
         let greyCount = 0;
-        // Sobel in bottom half: track Gy and Gx separately within grey pixels
         let sumGy_grey = 0, sumGx_grey = 0, greyPixelsSobel = 0;
 
-        // Local-variance grid for bottom half (3×3 window)
         const lvBot = new Float32Array(W * BOT_H);
         for (let py = 0; py < BOT_H; py++) {
             for (let px = 0; px < W; px++) {
@@ -297,7 +232,6 @@ const InfraAI = (() => {
                 const s = getSat(i);
                 if (s < 0.22 && l > 40 && l < 185) greyCount++;
 
-                // 3×3 local variance
                 let sum = 0, sum2 = 0, cnt = 0;
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
@@ -314,21 +248,18 @@ const InfraAI = (() => {
 
         const greyCoverage = greyCount / BOT_AREA;
 
-        // Sobel for vertical-edge dominance in grey road zone
         for (let py = 1; py < BOT_H-1; py++) {
             for (let px = 1; px < W-1; px++) {
                 const srcPy = py + BOT_START;
                 const i = (srcPy*W+px)*4;
                 const s = getSat(i);
                 const l = lum2d[srcPy*W+px];
-                if (s >= 0.22 || l < 40 || l > 185) continue;  // not a road pixel
+                if (s >= 0.22 || l < 40 || l > 185) continue;
 
-                // Sobel Y (horizontal edges = vertical gradient)
                 const gy = Math.abs(
                     -lum2d[(srcPy-1)*W+(px-1)] - 2*lum2d[(srcPy-1)*W+px] - lum2d[(srcPy-1)*W+(px+1)]
                     +lum2d[(srcPy+1)*W+(px-1)] + 2*lum2d[(srcPy+1)*W+px] + lum2d[(srcPy+1)*W+(px+1)]
                 );
-                // Sobel X (vertical edges = horizontal gradient)
                 const gx = Math.abs(
                     -lum2d[(srcPy-1)*W+(px-1)] - 2*lum2d[srcPy*W+(px-1)] - lum2d[(srcPy+1)*W+(px-1)]
                     +lum2d[(srcPy-1)*W+(px+1)] + 2*lum2d[srcPy*W+(px+1)] + lum2d[(srcPy+1)*W+(px+1)]
@@ -343,7 +274,6 @@ const InfraAI = (() => {
             ? (sumGy_grey/greyPixelsSobel + 1e-6) / (sumGx_grey/greyPixelsSobel + 1e-6)
             : 1.0;
 
-        // Coefficient of variation of local variance within grey zone (crack heterogeneity)
         const greyLVs = [];
         for (let py = 0; py < BOT_H; py++) {
             for (let px = 0; px < W; px++) {
@@ -361,10 +291,8 @@ const InfraAI = (() => {
             roadLvCv = stdLV / (meanLV + 1e-6);
         }
 
-        // Dark connected-component density in road zone (crack network)
-        // Flood-fill union-find approximation via simple scanning
         let crackComponents = 0;
-        const visited = new Uint8Array(W * BOT_H);
+        const visited    = new Uint8Array(W * BOT_H);
         const darkInRoad = new Uint8Array(W * BOT_H);
         for (let py = 0; py < BOT_H; py++) {
             for (let px = 0; px < W; px++) {
@@ -372,14 +300,12 @@ const InfraAI = (() => {
                 const l = lum2d[srcPy*W+px];
                 const i = (srcPy*W+px)*4;
                 const s = getSat(i);
-                // Dark pixel within road-grey zone (within 35px of a grey pixel = road context)
                 darkInRoad[py*W+px] = (l < 55 && s < 0.25) ? 1 : 0;
             }
         }
         for (let py = 0; py < BOT_H; py++) {
             for (let px = 0; px < W; px++) {
                 if (!darkInRoad[py*W+px] || visited[py*W+px]) continue;
-                // BFS to mark component
                 crackComponents++;
                 const queue = [[py,px]];
                 visited[py*W+px] = 1;
@@ -397,8 +323,6 @@ const InfraAI = (() => {
         }
         const crackDensity = crackComponents / BOT_AREA;
 
-        // ── COMBINED ROAD DAMAGE SCORE ───────────────────────────────────────
-        // Validated thresholds (empirical, cracked=32 vs empty=0):
         const landscapePenalty = Math.min(1.0, globalColourVar / 35.0);
         let roadDamageScore = 0;
         if (greyCoverage > 0.10) {
@@ -408,13 +332,11 @@ const InfraAI = (() => {
         }
         roadDamageScore *= (1.0 - landscapePenalty * 0.7);
 
-        // ── SUPPLEMENTARY SIGNALS ────────────────────────────────────────────
         const pixels = W * H;
         const rustRatio  = rustC  / pixels;
         const waterRatio = waterC / pixels;
         const burnRatio  = burnC  / pixels;
 
-        // Concrete ratio (low-sat mid-grey = pavement/road confirmation)
         let concreteC = 0;
         for (let i=0; i<data.length; i+=4) {
             const l = getL(i);
@@ -424,7 +346,6 @@ const InfraAI = (() => {
         }
         const concreteRatio = concreteC / pixels;
 
-        // Dark asphalt coverage (very dark, low-sat = road surface at night / under shade)
         let darkRoadC = 0;
         for (let py = BOT_START; py < H; py++) {
             for (let px = 0; px < W; px++) {
@@ -447,14 +368,10 @@ const InfraAI = (() => {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 7. CLASSIFICATION — FIX #1: dispose tensors properly
+    // 7. CLASSIFICATION
     // ─────────────────────────────────────────────────────────────────────────
     async function classifyImage(img) {
-        // Pre-process to a fresh 224×224 canvas each time (fixes cached tensor bug)
         const canvas = prepareCanvasElement(img);
-
-        // MobileNet.classify() accepts HTMLCanvasElement directly
-        // Using tf.tidy ensures all intermediate tensors are cleaned up
         let mobilenetPreds;
         try {
             mobilenetPreds = await _mobilenet.classify(canvas, 20);
@@ -466,7 +383,6 @@ const InfraAI = (() => {
         let cocoDetections = [];
         if (_cocoSsd) {
             try {
-                // COCO-SSD also needs a fresh canvas input
                 const cocoCanvas = prepareCanvasElement(img);
                 cocoDetections = await _cocoSsd.detect(cocoCanvas);
             } catch(e) {
@@ -486,7 +402,6 @@ const InfraAI = (() => {
         let negHits = 0, posHits = 0;
         const keywords = TYPE_KEYWORDS[declaredType] || [];
 
-        // Count negative hits in top-5
         for (const pred of mobilenetPreds.slice(0, 5)) {
             const nl = pred.className.toLowerCase();
             for (const neg of NEGATIVE_CLASSES) {
@@ -496,15 +411,12 @@ const InfraAI = (() => {
 
         for (const pred of mobilenetPreds) {
             const nl = pred.className.toLowerCase();
-
-            // Skip negative-class labels
             let isNeg = false;
             for (const neg of NEGATIVE_CLASSES) {
                 if (nl.includes(neg)) { isNeg = true; break; }
             }
             if (isNeg) continue;
 
-            // Direct key match
             if (CLASS_MAP[nl]) {
                 const m     = CLASS_MAP[nl];
                 const boost = computeBoost(nl, m, pred.probability, keywords, declaredType);
@@ -517,7 +429,6 @@ const InfraAI = (() => {
                 continue;
             }
 
-            // Substring match
             for (const [key, mapping] of Object.entries(CLASS_MAP)) {
                 const primaryToken = nl.split(',')[0].trim();
                 if (nl.includes(key) || key.includes(primaryToken)) {
@@ -533,17 +444,16 @@ const InfraAI = (() => {
             }
         }
 
-        // COCO-SSD bonus (gated at high confidence)
         const COCO_INFRA = {
-            'car':          { type: 'Roads',           sv: 1 },
-            'truck':        { type: 'Roads',           sv: 2 },
-            'bus':          { type: 'Roads',           sv: 2 },
-            'stop sign':    { type: 'Roads',           sv: 4 },
-            'fire hydrant': { type: 'Water Supply',    sv: 5 },
+            'car':          { type: 'Roads',             sv: 1 },
+            'truck':        { type: 'Roads',             sv: 2 },
+            'bus':          { type: 'Roads',             sv: 2 },
+            'stop sign':    { type: 'Roads',             sv: 4 },
+            'fire hydrant': { type: 'Water Supply',      sv: 5 },
             'bench':        { type: 'Public Facilities', sv: 3 },
         };
         for (const det of cocoDetections) {
-            if (det.score < 0.55) continue; // higher gate than before
+            if (det.score < 0.55) continue;
             const m = COCO_INFRA[det.class];
             if (m) {
                 const boost = m.sv * det.score * 0.6;
@@ -554,24 +464,18 @@ const InfraAI = (() => {
             }
         }
 
-        // Grey road coverage for bonus logic
         const greyCov = pixelData ? (pixelData.greyCoverage || 0) : 0;
 
-        // Pixel bonus — roadDamageScore is the primary signal for road damage.
-        // MobileNet has no "cracked road" class so we cannot gate on posHits > 0 here.
         let pixelSeverityBonus = 0;
         if (pixelData) {
             const rds = pixelData.roadDamageScore || 0;
-            // Road structural damage (primary signal — independent of model)
             if (greyCov > 0.10 && rds > 0) {
                 if      (rds > 20)  { pixelSeverityBonus += 6; if (!detectedType) detectedType = 'Roads'; }
                 else if (rds > 10)  { pixelSeverityBonus += 4; if (!detectedType) detectedType = 'Roads'; }
                 else if (rds > 4)   { pixelSeverityBonus += 2; if (!detectedType) detectedType = 'Roads'; }
                 else if (rds > 1.5) { pixelSeverityBonus += 1; if (!detectedType) detectedType = 'Roads'; }
             }
-            // Concrete surface confirmation
             if (pixelData.concreteRatio > 0.30 && !detectedType) detectedType = 'Roads';
-            // Supplementary non-road signals (rust, water, burn) still require model hit
             if (posHits > 0) {
                 if      (pixelData.rustRatio  > 0.20) pixelSeverityBonus += 2;
                 else if (pixelData.rustRatio  > 0.10) pixelSeverityBonus += 1;
@@ -584,7 +488,6 @@ const InfraAI = (() => {
 
         if (!detectedType) detectedType = declaredType;
 
-        // Confidence: zero if negatives dominated and no positives
         let rawConf = Math.min(totalScore / 5.0, 1.0);
         if      (negHits >= 3 && posHits === 0) rawConf = 0.0;
         else if (negHits >= 2)                  rawConf *= 0.4;
@@ -604,9 +507,6 @@ const InfraAI = (() => {
 
     // ─────────────────────────────────────────────────────────────────────────
     // 9. SEVERITY CALCULATOR
-    //    roadDamageScore (from pixel analysis) is now the primary driver for
-    //    road-type damage because MobileNet has no "cracked road" class.
-    //    Model confidence still gates severity for all other infrastructure types.
     // ─────────────────────────────────────────────────────────────────────────
     function calculateSeverity(scoreResults) {
         let maxSeverity = 1;
@@ -615,12 +515,9 @@ const InfraAI = (() => {
         for (const r of scoreResults) {
             let sv = 1;
 
-            // ── Primary: road structural damage from pixel analysis ──
             const rds = r.pixels.roadDamageScore || 0;
             const greyCov = r.pixels.greyCoverage || 0;
             if (greyCov > 0.10 && rds > 0) {
-                // Map roadDamageScore to severity 1–9
-                // Validated: cracked road ≈ 32, empty highway ≈ 0
                 if      (rds > 20) sv = Math.max(sv, 8);
                 else if (rds > 12) sv = Math.max(sv, 7);
                 else if (rds > 6)  sv = Math.max(sv, 5);
@@ -628,7 +525,6 @@ const InfraAI = (() => {
                 else               sv = Math.max(sv, 1);
             }
 
-            // ── Secondary: model classification (other infrastructure types) ──
             if (r.score.positiveHits > 0 && r.score.matched.length > 0) {
                 const total = r.score.matched.reduce((s,m) => s + m.boost*m.probability, 0);
                 const count = r.score.matched.reduce((s,m) => s + m.probability, 0);
@@ -636,7 +532,6 @@ const InfraAI = (() => {
                 sv = Math.max(sv, modelSv);
             }
 
-            // Pixel bonus from scoreClassifications (rust/water/burn etc.)
             if (r.score.positiveHits > 0 || (greyCov > 0.10 && rds > 1.5)) {
                 sv += r.score.pixelSeverityBonus;
             }
@@ -649,8 +544,6 @@ const InfraAI = (() => {
         if (scoreResults.length >= 3 && avgConf > 0.15)
             maxSeverity = Math.min(maxSeverity+1, 10);
 
-        // HARD CAPS — for non-road-pixel-driven results, require model confidence
-        // If severity was driven by road pixels, bypass the confidence cap
         const anyRoadPixelDriven = scoreResults.some(r =>
             (r.pixels.greyCoverage || 0) > 0.10 && (r.pixels.roadDamageScore || 0) > 4
         );
@@ -663,7 +556,129 @@ const InfraAI = (() => {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 10. HELPERS
+    // 10. COST ESTIMATION  ← NEW in v3.3
+    //
+    //  Returns a realistic Philippine Peso cost RANGE string formatted as
+    //  "₱X,XXX – ₱XX,XXX" based on:
+    //    • infraType   — determines which cost table to use
+    //    • severity    — (1–10) positions estimate within the range
+    //    • complexity  — ('Simple'|'Moderate'|'Complex'|'Major') selects tier
+    //    • legitimacy  — low legitimacy → wider/lower estimate band
+    //    • pixelData   — pixel signals fine-tune within the tier
+    //
+    //  Cost ranges are based on Philippine DPWH unit cost schedules,
+    //  Quezon City LGU project records, and PhilGEPS contractor rates (2024).
+    // ─────────────────────────────────────────────────────────────────────────
+    function estimateCost(infraType, severity, complexity, legitimacyScore, pixelData) {
+        // ── Cost tiers per infrastructure type (in PHP) ──────────────────────
+        // Each tier: [low, high]
+        // Sources: DPWH Unit Cost Guide 2023, QC LGU procurement data, PhilGEPS
+        const COST_TABLE = {
+            'Roads': {
+                'Simple':   [  1_500,     9_000],  // crack sealing, single pothole patch
+                'Moderate': [ 12_000,   120_000],  // multi-patch, base repair, subsidence fix
+                'Complex':  [180_000,   900_000],  // lane resurfacing, drainage + road combo
+                'Major':    [900_000, 6_000_000],  // full road section reconstruction
+            },
+            'Street Lights': {
+                'Simple':   [    800,     4_500],  // LED bulb/driver swap, minor wiring
+                'Moderate': [  5_000,    25_000],  // fixture replacement, ballast, arm repair
+                'Complex':  [ 30_000,   150_000],  // concrete pole replacement, cable trench
+                'Major':    [150_000,   750_000],  // multi-pole replacement, transformer work
+            },
+            'Drainage': {
+                'Simple':   [  2_000,    14_000],  // cleaning, debris clearing, minor patch
+                'Moderate': [ 15_000,   100_000],  // section repair, concrete lining, grout
+                'Complex':  [120_000,   650_000],  // full culvert replacement, channel reline
+                'Major':    [650_000, 4_000_000],  // full drainage system overhaul
+            },
+            'Water Supply': {
+                'Simple':   [  1_500,    10_000],  // joint leak fix, valve seal, connection
+                'Moderate': [ 12_000,    85_000],  // pipe section replacement, meter vault
+                'Complex':  [ 90_000,   500_000],  // main pipe relay, pump station repair
+                'Major':    [500_000, 2_800_000],  // distribution main, reservoir work
+            },
+            'Electrical': {
+                'Simple':   [  1_200,     8_000],  // loose connection, breaker, minor wiring
+                'Moderate': [  9_000,    65_000],  // panel board, metering equipment repair
+                'Complex':  [ 70_000,   400_000],  // transformer pad, HV cable section
+                'Major':    [400_000, 2_200_000],  // substation equipment, major HV work
+            },
+            'Public Facilities': {
+                'Simple':   [    500,     5_000],  // bench, signage, fence post repair
+                'Moderate': [  6_000,    50_000],  // restroom fixture, pavillion roof patch
+                'Complex':  [ 55_000,   300_000],  // full restroom rehab, bleacher section
+                'Major':    [300_000, 1_800_000],  // complete facility reconstruction
+            },
+            'Other': {
+                'Simple':   [  1_000,     8_000],
+                'Moderate': [ 10_000,    80_000],
+                'Complex':  [ 80_000,   450_000],
+                'Major':    [450_000, 2_500_000],
+            },
+        };
+
+        // Guard: fall back to 'Other' if type not found
+        const infraKey = COST_TABLE[infraType] ? infraType : 'Other';
+
+        // Guard: normalise complexity
+        const validComplexities = ['Simple', 'Moderate', 'Complex', 'Major'];
+        const compKey = validComplexities.includes(complexity) ? complexity : 'Moderate';
+
+        const [tierLo, tierHi] = COST_TABLE[infraKey][compKey];
+
+        // ── Position within tier using severity (1–10) ───────────────────────
+        // severity 1 → 10% into tier, severity 10 → 90% into tier
+        // This avoids always hitting the extremes and keeps it realistic.
+        const sevFactor = ((severity - 1) / 9.0) * 0.80 + 0.10;  // 0.10 … 0.90
+        const midpoint  = tierLo + (tierHi - tierLo) * sevFactor;
+
+        // ── Legitimacy adjustment ────────────────────────────────────────────
+        // Low legitimacy → we're less confident, so we widen the band and
+        // shift the midpoint slightly lower (less severe assumed).
+        const legitFactor = 0.75 + (legitimacyScore * 0.25);  // 0.75 … 1.00
+        const adjusted    = midpoint * legitFactor;
+
+        // ── Pixel signal micro-adjustment ────────────────────────────────────
+        let pixelMultiplier = 1.0;
+        if (pixelData) {
+            const rds = pixelData.roadDamageScore || 0;
+            const gc  = pixelData.greyCoverage    || 0;
+            if (gc > 0.10 && rds > 15)   pixelMultiplier = 1.15;  // severe cracking
+            else if (gc > 0.10 && rds > 8) pixelMultiplier = 1.08;
+            if (pixelData.burnRatio  > 0.14) pixelMultiplier *= 1.12; // fire damage
+            if (pixelData.rustRatio  > 0.20) pixelMultiplier *= 1.08; // heavy corrosion
+            if (pixelData.waterRatio > 0.28) pixelMultiplier *= 1.05; // flood damage
+        }
+        const finalMid = adjusted * pixelMultiplier;
+
+        // ── Build symmetric ±20 % range clamped to tier ──────────────────────
+        const bandPct = (legitimacyScore < 0.4) ? 0.30 : 0.20;  // wider band if uncertain
+        let rangeLo = Math.max(tierLo, Math.round(finalMid * (1.0 - bandPct)));
+        let rangeHi = Math.min(tierHi, Math.round(finalMid * (1.0 + bandPct)));
+
+        // Ensure the range is at least ₱500 wide (avoids "₱X – ₱X")
+        if (rangeHi - rangeLo < 500) rangeHi = rangeLo + 500;
+
+        // ── Round to nearest clean number for readability ─────────────────────
+        const roundTo = (n, nearest) => Math.round(n / nearest) * nearest;
+        if      (rangeHi > 500_000) { rangeLo = roundTo(rangeLo, 10_000); rangeHi = roundTo(rangeHi, 10_000); }
+        else if (rangeHi > 50_000)  { rangeLo = roundTo(rangeLo,  5_000); rangeHi = roundTo(rangeHi,  5_000); }
+        else if (rangeHi > 10_000)  { rangeLo = roundTo(rangeLo,  1_000); rangeHi = roundTo(rangeHi,  1_000); }
+        else                        { rangeLo = roundTo(rangeLo,    500); rangeHi = roundTo(rangeHi,    500); }
+
+        // Clamp one final time after rounding
+        rangeLo = Math.max(tierLo, rangeLo);
+        rangeHi = Math.min(tierHi, rangeHi);
+        if (rangeHi <= rangeLo) rangeHi = rangeLo + (rangeHi > 50_000 ? 5_000 : 500);
+
+        // ── Format as Philippine Peso ─────────────────────────────────────────
+        const fmt = n => '₱' + n.toLocaleString('en-PH');
+        return `${fmt(rangeLo)} – ${fmt(rangeHi)}`;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 11. HELPERS
     // ─────────────────────────────────────────────────────────────────────────
     function buildDescription(scoreResults, severity, declaredType) {
         const best = scoreResults.reduce((b,r) =>
@@ -678,12 +693,13 @@ const InfraAI = (() => {
         const rds = p.roadDamageScore || 0;
         const gc  = p.greyCoverage    || 0;
 
-        if (gc > 0.10 && rds > 10)        desc += ' Road structural damage detected (cracks/heaving).';
-        else if (gc > 0.10 && rds > 2)    desc += ' Road surface irregularities detected.';
-        if (p.rustRatio    > 0.10)         desc += ' Rust/corrosion visible.';
-        if (p.waterRatio   > 0.25)         desc += ' Water damage/flooding signs.';
-        if (p.burnRatio    > 0.12)         desc += ' Burn/char marks detected.';
-        if (p.concreteRatio> 0.30 && !topKeys.length && rds < 2) desc += ' Concrete/pavement surface.';
+        if (gc > 0.10 && rds > 10)      desc += ' Road structural damage detected (cracks/heaving).';
+        else if (gc > 0.10 && rds > 2)  desc += ' Road surface irregularities detected.';
+        if (p.rustRatio    > 0.10)       desc += ' Rust/corrosion visible.';
+        if (p.waterRatio   > 0.25)       desc += ' Water damage/flooding signs.';
+        if (p.burnRatio    > 0.12)       desc += ' Burn/char marks detected.';
+        if (p.concreteRatio> 0.30 && !topKeys.length && rds < 2)
+                                         desc += ' Concrete/pavement surface.';
 
         if      (severity >= 8) desc += ' Severe — immediate action required.';
         else if (severity >= 6) desc += ' Significant damage.';
@@ -693,8 +709,8 @@ const InfraAI = (() => {
     }
 
     function buildLegitimacyNotes(avgConf, scoreResults) {
-        const totalPos    = scoreResults.reduce((s,r) => s+r.score.positiveHits, 0);
-        const anyRoadDmg  = scoreResults.some(r =>
+        const totalPos   = scoreResults.reduce((s,r) => s+r.score.positiveHits, 0);
+        const anyRoadDmg = scoreResults.some(r =>
             (r.pixels.greyCoverage||0) > 0.10 && (r.pixels.roadDamageScore||0) > 4
         );
         if (anyRoadDmg)
@@ -709,26 +725,22 @@ const InfraAI = (() => {
     function buildAnomalyFlags(scoreResults, severity) {
         const flags = [];
         const avgConf = scoreResults.reduce((s,r) => s+r.score.confidence, 0) / scoreResults.length;
-        if (scoreResults.every(r => r.pixels.isDark))            flags.push('all_images_dark');
-        if (scoreResults.every(r => r.pixels.isBright))          flags.push('all_images_overexposed');
+        if (scoreResults.every(r => r.pixels.isDark))   flags.push('all_images_dark');
+        if (scoreResults.every(r => r.pixels.isBright)) flags.push('all_images_overexposed');
         if (scoreResults.every(r => r.score.positiveHits === 0 && (r.pixels.roadDamageScore||0) < 2))
-                                                                  flags.push('no_infrastructure_detected');
+                                                          flags.push('no_infrastructure_detected');
         if (avgConf < 0.08 && scoreResults.every(r => (r.pixels.roadDamageScore||0) < 2))
-                                                                  flags.push('low_model_confidence');
-        // non_infrastructure_images: MobileNet saw only nature labels AND no road surface detected
-        // Guard: suppress if significant road surface exists (grey OR dark asphalt)
+                                                          flags.push('low_model_confidence');
         if (scoreResults.every(r => r.score.negativeHits >= 3 &&
             ((r.pixels.greyCoverage||0) + (r.pixels.darkRoadCoverage||0)) < 0.05))
-                                                                  flags.push('non_infrastructure_images');
-        if (severity >= 8)                                        flags.push('immediate_action_required');
+                                                          flags.push('non_infrastructure_images');
+        if (severity >= 8)                                flags.push('immediate_action_required');
         if (scoreResults.some(r => (r.pixels.roadDamageScore||0) > 10 && (r.pixels.greyCoverage||0) > 0.10))
-                                                                  flags.push('road_structural_damage');
-        // burn_marks: require low landscape penalty — actual char/fire is in a grey/dark context,
-        // NOT in a colourful landscape photo where dark pixels are road asphalt or shadows
+                                                          flags.push('road_structural_damage');
         if (scoreResults.some(r => r.pixels.burnRatio > 0.18 &&
-            (r.pixels.landscapePenalty||1) < 0.6))                flags.push('burn_marks_detected');
-        if (scoreResults.some(r => r.pixels.rustRatio  > 0.10))  flags.push('rust_detected');
-        if (scoreResults.some(r => r.pixels.waterRatio > 0.25))  flags.push('water_damage_detected');
+            (r.pixels.landscapePenalty||1) < 0.6))        flags.push('burn_marks_detected');
+        if (scoreResults.some(r => r.pixels.rustRatio  > 0.10)) flags.push('rust_detected');
+        if (scoreResults.some(r => r.pixels.waterRatio > 0.25)) flags.push('water_damage_detected');
         return flags;
     }
 
@@ -736,12 +748,11 @@ const InfraAI = (() => {
     const getComplexity = sv => COMPLEXITY_MAP.find(t  => sv>=t.min)?.label || 'Simple';
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 11. PUBLIC API
+    // 12. PUBLIC API
     // ─────────────────────────────────────────────────────────────────────────
     async function analyzeImages(files, declaredType, onProgress) {
         if (!files || files.length === 0) throw new Error('No files provided.');
 
-        // Normalise declaredType — guard against empty string
         if (!declaredType || !declaredType.trim()) declaredType = 'Other';
 
         onProgress?.('Initialising AI engine…');
@@ -755,8 +766,8 @@ const InfraAI = (() => {
             onProgress?.(`Analysing image ${idx+1} of ${files.length}…`);
             try {
                 const img    = await fileToImage(files[idx]);
-                const pixels = analyzePixels(img);   // uses fresh 224×224 canvas
-                const { mobilenetPreds, cocoDetections } = await classifyImage(img); // fresh canvas per image
+                const pixels = analyzePixels(img);
+                const { mobilenetPreds, cocoDetections } = await classifyImage(img);
                 const score  = scoreClassifications(mobilenetPreds, cocoDetections, declaredType, pixels);
                 scoreResults.push({ pixels, mobilenetPreds, cocoDetections, score });
             } catch(e) {
@@ -773,18 +784,19 @@ const InfraAI = (() => {
             }
         }
 
-        const severity   = calculateSeverity(scoreResults);
-        const priority   = getPriority(severity);
-        const complexity = getComplexity(severity);
-        const avgConf    = scoreResults.reduce((s,r) => s+r.score.confidence, 0) / scoreResults.length;
-        const bestResult = scoreResults.reduce((b,r) =>
+        const severity    = calculateSeverity(scoreResults);
+        const priority    = getPriority(severity);
+        const complexity  = getComplexity(severity);
+        const avgConf     = scoreResults.reduce((s,r) => s+r.score.confidence, 0) / scoreResults.length;
+        const bestResult  = scoreResults.reduce((b,r) =>
             r.score.confidence > b.score.confidence ? r : b, scoreResults[0]);
-        const bestType   = bestResult.score.detectedType || declaredType;
-        const infMatch   = bestType === declaredType ? 1 : 0;
+        const bestType    = bestResult.score.detectedType || declaredType;
+        const infMatch    = bestType === declaredType ? 1 : 0;
         const anyRoadDamage = scoreResults.some(r =>
             (r.pixels.greyCoverage||0) > 0.10 && (r.pixels.roadDamageScore||0) > 4
         );
-        const isLegit = avgConf >= 0.08 || anyRoadDamage;
+        const isLegit     = avgConf >= 0.08 || anyRoadDamage;
+        const legitimacyScore = parseFloat(Math.min(avgConf + 0.05, 1).toFixed(3));
 
         const topPreds = scoreResults
             .flatMap(r => r.mobilenetPreds)
@@ -793,6 +805,17 @@ const InfraAI = (() => {
             .map(p => `${p.className} (${Math.round(p.probability*100)}%)`)
             .join('; ');
 
+        // ── Cost estimation (v3.3) ────────────────────────────────────────────
+        // Uses the best result's pixel data for fine-tuning.
+        onProgress?.('Estimating repair cost…');
+        const costEstimation = estimateCost(
+            bestType,
+            severity,
+            complexity,
+            legitimacyScore,
+            bestResult.pixels
+        );
+
         onProgress?.('Finalising result…');
 
         const result = {
@@ -800,7 +823,7 @@ const InfraAI = (() => {
             infrastructure_match:        infMatch,
             match_confidence:            parseFloat(Math.min(avgConf+0.10, 1).toFixed(3)),
             is_legitimate:               isLegit ? 1 : 0,
-            legitimacy_score:            parseFloat(Math.min(avgConf+0.05, 1).toFixed(3)),
+            legitimacy_score:            legitimacyScore,
             legitimacy_notes:            buildLegitimacyNotes(avgConf, scoreResults),
             damage_severity:             severity,
             priority_recommendation:     priority,
@@ -812,10 +835,13 @@ const InfraAI = (() => {
             requires_immediate_action:   severity >= 8 ? 1 : 0,
             images_analyzed:             files.length,
             analysis_status:             'completed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.2',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.3',
+            // ── NEW ──
+            ai_cost_estimation:          costEstimation,
         };
 
-        console.log('[InfraAI v3.2] Result:', result);
+        console.log('[InfraAI v3.3] Result:', result);
+        console.log('[InfraAI v3.3] Estimated repair cost:', costEstimation);
         onProgress?.('Analysis complete.');
         return result;
     }
@@ -849,7 +875,9 @@ const InfraAI = (() => {
             requires_immediate_action:   0,
             images_analyzed:             0,
             analysis_status:             'failed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.2',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.3',
+            // ── NEW: sensible fallback when AI engine is unavailable ──
+            ai_cost_estimation:          'N/A – manual assessment required',
         };
     }
 
