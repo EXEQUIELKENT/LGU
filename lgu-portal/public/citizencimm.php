@@ -977,7 +977,7 @@ if ($maintenance_result) {
                 <div class="stat-label" data-i18n="stat_ongoing">Ongoing Repairs</div>
             </div>
             <div class="stat-card animate-on-scroll delay-3">
-                <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+                <div class="stat-icon">📍</div>
                 <div class="stat-number"><?= $pending_count ?></div>
                 <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
             </div>
@@ -1047,7 +1047,7 @@ if ($maintenance_result) {
         
         <div class="features-grid">
             <div class="feature-card animate-on-scroll delay-1">
-                <div class="feature-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="feature-icon">📋</div>
                 <h3 class="feature-title" data-i18n="feat1_title">Submit Requests</h3>
                 <p class="feature-description" data-i18n="feat1_desc">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
@@ -1151,7 +1151,7 @@ if ($maintenance_result) {
                             </div>
                         </div>
                         <div class="highlight-item">
-                            <div class="highlight-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="highlight-icon">📍</div>
                             <div class="highlight-text">
                                 <strong data-i18n="highlight2_title">GPS Tracking</strong>
                                 <span data-i18n="highlight2_desc">Precise location mapping for faster response</span>
