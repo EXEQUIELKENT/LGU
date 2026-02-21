@@ -1786,6 +1786,61 @@ if (window.innerWidth <= 768) {
         duration: 200
     };
 }
+
+// ===== AUTOMATIC THEME CHANGE DETECTION =====
+function updateChartColors() {
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+    const secondaryColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+    const cardBg = getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim();
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+    
+    // Update all chart instances
+    Object.values(Chart.instances).forEach(function(chart) {
+        // Update legend colors
+        if (chart.options.plugins.legend) {
+            chart.options.plugins.legend.labels.color = textColor;
+        }
+        
+        // Update tooltip colors
+        if (chart.options.plugins.tooltip) {
+            chart.options.plugins.tooltip.backgroundColor = cardBg;
+            chart.options.plugins.tooltip.titleColor = textColor;
+            chart.options.plugins.tooltip.bodyColor = textColor;
+            chart.options.plugins.tooltip.borderColor = borderColor;
+        }
+        
+        // Update axis colors for line charts
+        if (chart.options.scales) {
+            if (chart.options.scales.y) {
+                chart.options.scales.y.ticks.color = secondaryColor;
+                chart.options.scales.y.grid.color = borderColor;
+            }
+            if (chart.options.scales.x) {
+                chart.options.scales.x.ticks.color = secondaryColor;
+            }
+        }
+        
+        chart.update('none'); // Update without animation
+    });
+}
+
+// Listen for theme changes
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+            updateChartColors();
+        }
+    });
+});
+
+observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+});
+
+// Initial color update
+updateChartColors();
+
 // ===== REQUEST TRENDS CHART =====
 const trendsCtx = document.getElementById('trendsChart');
 if (trendsCtx) {
@@ -1796,13 +1851,12 @@ if (trendsCtx) {
             datasets: [{
                 label: 'Total Requests',
                 data: monthlyTrendsData,
-                borderColor: '#3762c8',
-                backgroundColor: 'rgba(55, 98, 200, 0.1)',
-                borderWidth: 3,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--metric-blue').trim() || '#3762c8',
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--metric-blue-light').trim() || 'rgba(55, 98, 200, 0.1)',
+                pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--metric-blue').trim() || '#3762c8',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 5,
-                pointBackgroundColor: '#3762c8',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointHoverRadius: 7
@@ -1821,10 +1875,12 @@ if (trendsCtx) {
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
                     padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
                     cornerRadius: 8
                 }
             },
@@ -1837,7 +1893,7 @@ if (trendsCtx) {
                         stepSize: 1
                     },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || 'rgba(0, 0, 0, 0.05)'
                     }
                 },
                 x: {
@@ -1864,9 +1920,9 @@ if (statusCtx) {
             datasets: [{
                 data: statusData,
                 backgroundColor: [
-                    '#ff9800',  // Pending - Orange
-                    '#4caf50',  // Approved - Green
-                    '#f44336'   // Rejected - Red
+                    getComputedStyle(document.documentElement).getPropertyValue('--metric-orange').trim() || '#ff9800',  // Pending - Orange
+                    getComputedStyle(document.documentElement).getPropertyValue('--metric-green').trim() || '#4caf50',  // Approved - Green
+                    getComputedStyle(document.documentElement).getPropertyValue('--metric-red').trim() || '#f44336'   // Rejected - Red
                 ],
                 borderWidth: 3,
                 borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
@@ -1889,10 +1945,12 @@ if (statusCtx) {
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
                     padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
                     cornerRadius: 8,
                     callbacks: {
                         label: function(context) {

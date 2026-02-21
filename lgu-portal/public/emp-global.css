@@ -2,6 +2,31 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
 /* =======================
+   CSS VARIABLES FOR THEME SUPPORT
+========================== */
+:root {
+    --text-muted: #555;
+    --card-border: rgba(0,0,0,0.12);
+    --bg-secondary: #f9f9f9;
+    --text-primary: #333;
+    --text-secondary: #666;
+    --bg-tertiary: #f2f2f2;
+    --border-color: #ddd;
+    --shadow-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] {
+    --text-muted: #b5b5b5;
+    --card-border: rgba(255,255,255,0.12);
+    --bg-secondary: #2f2f2f;
+    --text-primary: #fff;
+    --text-secondary: #ccc;
+    --bg-tertiary: #333;
+    --border-color: #555;
+    --shadow-color: rgba(255,255,255,0.1);
+}
+
+/* =======================
    Custom SCROLLBAR STYLE
 ========================== */
 body {
@@ -1075,4 +1100,54 @@ body::before {
     .desktop-cimm-label {
         font-size: 13px;
     }
+}
+
+/* =======================
+   VISIBILITY FIXES FOR DARK/LIGHT MODE
+========================== */
+
+/* Fix Metric Number + Text Visibility */
+.metric-value,
+.metric-title,
+.metric-trend span {
+    color: var(--text-primary) !important;
+}
+
+.metric-title {
+    opacity: 0.85;
+}
+
+.metric-trend {
+    color: var(--text-secondary) !important;
+}
+
+/* Fix Cards & Background Contrast */
+.metric-card,
+.chart-card,
+.dashboard-card {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--card-border) !important;
+}
+
+/* Fix Activity & Schedule Text Contrast */
+.activity-title,
+.schedule-task,
+.facility-name,
+.chart-title {
+    color: var(--text-primary) !important;
+}
+
+.activity-description,
+.schedule-location,
+.chart-subtitle,
+.schedule-date {
+    color: var(--text-muted) !important;
+}
+
+/* Fix Numbers & Percentages (IMPORTANT) */
+.facility-count,
+.metric-value,
+.schedule-badge,
+.metric-trend span {
+    color: var(--text-primary) !important;
 }
