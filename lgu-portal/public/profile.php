@@ -675,6 +675,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     cursor: pointer;
     font-size: 18px;
     padding: 4px;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: var(--text-primary);
+}
+
+.password-toggle i {
+    color: inherit;
 }
 
 .input-box {
@@ -1533,7 +1543,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <label for="current_password">Current Password</label>
                     <div class="input-box" style="margin-bottom: 25px;">
                         <input type="password" name="current_password" id="current_password" placeholder="Enter current password" autocomplete="current-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
-                        <button type="button" class="password-toggle" id="toggleCurrentPassword" aria-label="Show password">👁️</button>
+                        <button type="button" class="password-toggle" id="toggleCurrentPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
 
@@ -1541,7 +1551,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <label for="new_password">New Password</label>
                     <div class="input-box">
                         <input type="password" name="new_password" id="new_password" placeholder="Enter new password" autocomplete="new-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
-                        <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">👁️</button>
+                        <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
                     <!-- Password strength meter -->
                     <div class="password-strength">
@@ -1581,8 +1591,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="form-group">
                     <label for="confirm_password">Confirm New Password</label>
                     <div class="input-box">
-                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
-                        <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">👁️</button>
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password">
+                        <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
                 </div>
             </div>
@@ -1606,17 +1616,17 @@ const currentPasswordInput = document.getElementById('current_password');
 const newPasswordInput = document.getElementById('new_password');
 const confirmPasswordInput = document.getElementById('confirm_password');
 
-const iconShow = '👁️';
-const iconHide = '🛡️';
+const iconShow = '<i class="fas fa-eye"></i>';
+const iconHide = '<i class="fas fa-eye-slash"></i>';
 
 if (toggleCurrentPassword && currentPasswordInput) {
     toggleCurrentPassword.addEventListener('click', function () {
         if (currentPasswordInput.type === 'password') {
             currentPasswordInput.type = 'text';
-            toggleCurrentPassword.textContent = iconHide;
+            toggleCurrentPassword.innerHTML = iconHide;
         } else {
             currentPasswordInput.type = 'password';
-            toggleCurrentPassword.textContent = iconShow;
+            toggleCurrentPassword.innerHTML = iconShow;
         }
     });
 }
@@ -1624,10 +1634,10 @@ if (toggleNewPassword && newPasswordInput) {
     toggleNewPassword.addEventListener('click', function () {
         if (newPasswordInput.type === 'password') {
             newPasswordInput.type = 'text';
-            toggleNewPassword.textContent = iconHide;
+            toggleNewPassword.innerHTML = iconHide;
         } else {
             newPasswordInput.type = 'password';
-            toggleNewPassword.textContent = iconShow;
+            toggleNewPassword.innerHTML = iconShow;
         }
     });
 }
@@ -1635,10 +1645,10 @@ if (toggleConfirmPassword && confirmPasswordInput) {
     toggleConfirmPassword.addEventListener('click', function () {
         if (confirmPasswordInput.type === 'password') {
             confirmPasswordInput.type = 'text';
-            toggleConfirmPassword.textContent = iconHide;
+            toggleConfirmPassword.innerHTML = iconHide;
         } else {
             confirmPasswordInput.type = 'password';
-            toggleConfirmPassword.textContent = iconShow;
+            toggleConfirmPassword.innerHTML = iconShow;
         }
     });
 }
