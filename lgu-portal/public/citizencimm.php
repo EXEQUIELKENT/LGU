@@ -977,7 +977,7 @@ if ($maintenance_result) {
                 <div class="stat-label" data-i18n="stat_ongoing">Ongoing Repairs</div>
             </div>
             <div class="stat-card animate-on-scroll delay-3">
-                <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+                <div class="stat-icon">📍</div>
                 <div class="stat-number"><?= $pending_count ?></div>
                 <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
             </div>

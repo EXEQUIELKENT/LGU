@@ -126,7 +126,7 @@ function showNotification() {
     if (!empty($_SESSION['notification'])) {
         $type = $_SESSION['notification']['type'];
         $message = htmlspecialchars($_SESSION['notification']['message']);
-        $icon = ($type === 'success') ? '<i class="fas fa-check-circle"></i>' : (($type === 'error') ? '<i class="fas fa-times-circle"></i>' : (($type === 'warning') ? '<i class="fas fa-exclamation-triangle"></i>' : '<i class="fas fa-info-circle"></i>'));
+        $icon = ($type === 'success') ? '✔️' : (($type === 'error') ? '❌' : (($type === 'warning') ? '⚠️' : 'ℹ️'));
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
                 <span class='notif-message'>{$message}</span>
@@ -2943,7 +2943,7 @@ body:has(#resetPasswordModal) {
 <div id="forgotPasswordModal">
     <div class="modal-content">
         <div class="modal-header">
-            <div class="modal-icon"><i class="fas fa-key"></i></div>
+            <div class="modal-icon">🔑</div>
             <h2 class="modal-title">Forgot Password?</h2>
             <p class="modal-subtitle">Enter your email address and we'll send you a password reset link</p>
         </div>
@@ -2977,7 +2977,7 @@ body:has(#resetPasswordModal) {
                         <label for="reset_new_password">New Password</label>
                         <input type="password" name="reset_new_password" id="reset_new_password" placeholder="Enter new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleResetNewPassword" aria-label="Show password">
-                            <span id="toggleResetNewPasswordIcon">👁️</span>
+                            <span id="toggleResetNewPasswordIcon"><i class="fas fa-eye"></i></span>
                         </button>
                         <div class="password-strength">
                             <div class="strength-bar">
@@ -3010,7 +3010,7 @@ body:has(#resetPasswordModal) {
                         <label for="reset_confirm_password">Confirm Password</label>
                         <input type="password" name="reset_confirm_password" id="reset_confirm_password" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleResetConfirmPassword" aria-label="Show password">
-                            <span id="toggleResetConfirmPasswordIcon">👁️</span>
+                            <span id="toggleResetConfirmPasswordIcon"><i class="fas fa-eye"></i></span>
                         </button>
                     </div>
                 </div>
@@ -3052,8 +3052,8 @@ body:has(#resetPasswordModal) {
     const reqSymbol = document.getElementById('reset-req-symbol');
     const reqUnique = document.getElementById('reset-req-unique');
     
-    const iconShow = '👁️';
-    const iconHide = '🛡️';
+    const iconShow = '<i class="fas fa-eye"></i>';
+    const iconHide = '<i class="fas fa-eye-slash"></i>';
     
     // Toggle password visibility for new password
     if (toggleResetNewPassword) {
@@ -3295,7 +3295,7 @@ body:has(#resetPasswordModal) {
                         <label for="new_password">New Password</label>
                         <input type="password" name="new_password" id="new_password" placeholder="Enter new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password">
-                            <span id="toggleNewPasswordIcon">👁️</span>
+                            <span id="toggleNewPasswordIcon"><i class="fas fa-eye"></i></span>
                         </button>
                         <div class="password-strength">
                             <div class="strength-bar">
@@ -3328,7 +3328,7 @@ body:has(#resetPasswordModal) {
                         <label for="confirm_password">Confirm Password</label>
                         <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" required minlength="8" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password">
-                            <span id="toggleConfirmPasswordIcon">👁️</span>
+                            <span id="toggleConfirmPasswordIcon"><i class="fas fa-eye"></i></span>
                         </button>
                     </div>
                 </div>
@@ -3348,8 +3348,8 @@ body:has(#resetPasswordModal) {
         const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
         const changePasswordBtn = document.getElementById('changePasswordBtn');
         const changePasswordForm = document.getElementById('changePasswordForm');
-        const iconShow = '👁️';
-        const iconHide = '🛡️';
+        const iconShow = '<i class="fas fa-eye"></i>';
+        const iconHide = '<i class="fas fa-eye-slash"></i>';
         toggleNewPassword.addEventListener('click', function() {
             if (newPasswordInput.type === 'password') {
                 newPasswordInput.type = 'text';

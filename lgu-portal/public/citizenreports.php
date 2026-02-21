@@ -868,7 +868,7 @@ if ($maintenance_result) {
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-icon">📍</div>
         <div>
             <h3 data-i18n="reports_stat_pending">Pending</h3>
             <div class="number"><?= $pending_count ?></div>
