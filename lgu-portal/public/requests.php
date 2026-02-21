@@ -1784,8 +1784,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
-
 <!-- ========================================
      MODALS SECTION
      ======================================== -->
@@ -1876,6 +1874,8 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         </div>
     </div>
 </div>
+
+<?php include 'admin_scripts.php'; ?>
 
 <script>
 
