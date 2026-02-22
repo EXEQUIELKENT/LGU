@@ -767,7 +767,7 @@
         STORAGE_STATE_KEY:     'chatbot_state',
         MAX_MESSAGES:          50,
         AUTO_HIDE_SUGGESTIONS: 6000,
-        ENDPOINT:              'chatbot.php'
+        ENDPOINT: (window.CHATBOT_ENDPOINT || 'chatbot.php')
     };
 
     /* ── i18n ────────────────────────────────────────────── */

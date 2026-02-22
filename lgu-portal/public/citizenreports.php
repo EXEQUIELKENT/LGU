@@ -1198,6 +1198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
 </footer>
 <?php include 'citizen_global.php'; ?>
+<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>

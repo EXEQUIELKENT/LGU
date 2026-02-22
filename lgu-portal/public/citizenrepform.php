@@ -3921,6 +3921,7 @@ input[type="file"] {
     })();
     </script>
 
+<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>

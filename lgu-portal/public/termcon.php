@@ -648,6 +648,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 </footer>
 
 <?php include 'citizen_global.php'; ?>
+<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>
