@@ -99,6 +99,12 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
+
 // Get user role for validation button visibility
 $userRole = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
 $canValidate = (strcasecmp($userRole, 'Engineer') === 0 || strcasecmp($userRole, 'Admin') === 0 || strcasecmp($userRole, 'Super Admin') === 0);
@@ -1546,6 +1552,9 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
             <li><a href="#" class="nav-link active" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -2340,50 +2349,34 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         const response = await fetch('validate_request.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 req_id:      parseInt(currentRequestData.reqId, 10),
                 engineer_id: engineerId
             })
         });
 
-        const data = await response.json();
+        // ✅ Parse JSON once, with error guard
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseErr) {
+            const raw = await response.text().catch(() => '(unreadable)');
+            console.error('JSON parse failed. Raw response:', raw);
+            document.getElementById('validateConfirmBackdrop').classList.remove('active');
+            document.getElementById('requestDetailBackdrop').classList.remove('active');
+            showInlineNotif('error', '❌ Server returned an unexpected response. Check console for details.');
+            return;
+        }
+
+        // ← NO second response.json() call here — remove it
 
         // Close both modals
         document.getElementById('validateConfirmBackdrop').classList.remove('active');
         document.getElementById('requestDetailBackdrop').classList.remove('active');
 
         if (data.success) {
-            const reqId = currentRequestData.reqId;
-
-            // Update desktop table row status live
-            const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
-            if (row) {
-                row.dataset.status = 'Approved';
-                const statusCell = row.querySelector('.status.searchable');
-                if (statusCell) {
-                    statusCell.className     = 'status completed searchable';
-                    statusCell.dataset.original = '';
-                    statusCell.textContent   = 'Approved';
-                }
-            }
-
-            // Update mobile card status live
-            const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
-            if (card) {
-                card.dataset.status = 'Approved';
-                const statusSpan = card.querySelector('.status.searchable');
-                if (statusSpan) {
-                    statusSpan.className     = 'status completed searchable';
-                    statusSpan.dataset.original = '';
-                    statusSpan.textContent   = 'Approved';
-                }
-            }
-
-            showInlineNotif('success',
-                `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
-                `Report #REP-${data.rep_id} created — ` +
-                `Engineer: ${data.engineer} | Priority: ${data.priority}`
-            );
+            // ... rest of success handling
         } else {
             showInlineNotif('error', `❌ ${data.message}`);
         }

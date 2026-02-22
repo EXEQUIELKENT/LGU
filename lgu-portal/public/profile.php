@@ -162,6 +162,12 @@ function getDisplayName() {
     }
 }
 $displayName = getDisplayName();
+
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
 $profilePictureSrc = getProfilePicture($employeeId, $conn);
 $isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';
 
@@ -1391,6 +1397,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
+            <?php endif; ?>
             <!-- Remove profile link ONLY on profile page -->
             <?php if (!$isProfilePage): ?>
             <li>

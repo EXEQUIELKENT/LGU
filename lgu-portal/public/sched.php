@@ -98,6 +98,12 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
+
 // Fetch schedules from database
 $schedules = [];
 $sql = "SELECT * FROM maintenance_schedule ORDER BY starting_date ASC";
@@ -2103,6 +2109,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
             <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>

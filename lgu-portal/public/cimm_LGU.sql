@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 21, 2026 at 08:35 AM
+-- Generation Time: Feb 22, 2026 at 03:49 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -65,7 +65,8 @@ INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`
 (8, 'Steph', 'Sagun', NULL, 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$qIBFP60SxkAy0bclUHboieg7OM285p1AppOHiOTIEPLZ1UlLJrgd2', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (11, 'Mary Carl', 'Dagondong', NULL, 'marycarldagondong28@gmail.com', 'Manager', '$2y$10$z8vP5dZk5Yqk4fY3J9vKTOwYzFQFZK2Yp4mR2Y3sY4J6P2d9r1mFi', 1, 0, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (13, 'Exequiel', 'Bartolome', NULL, 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-02-02 01:42:22', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
-(14, 'Warv', 'Villa', NULL, 'villawarv@gmail.com', 'Super Admin', '$2y$10$5VxEbVQGo6bZLhJ4TGSKVutVoH6/uzXnEm.FmlKovuZHQVbdUbUhS', 0, 1, NULL, NULL, '2026-02-03 09:33:18', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
+(14, 'Warv', 'Villa', NULL, 'villawarv@gmail.com', 'Super Admin', '$2y$10$5VxEbVQGo6bZLhJ4TGSKVutVoH6/uzXnEm.FmlKovuZHQVbdUbUhS', 0, 1, NULL, NULL, '2026-02-03 09:33:18', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
+(15, 'Exequiel', 'Bartolome', NULL, 'bartolomeexequielkent2003@gmail.com', 'Super Admin', '$2y$10$NnT5QBl0A66tRTJoYAgvc.NggVXq6jyym0g.WOUKkY4ddT4Zhl76S', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -134,7 +135,10 @@ INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VA
 (105, 108, 'uploads/evidence/evidence_108_69951997047d7.webp', '2026-02-18 01:44:55'),
 (106, 108, 'uploads/evidence/evidence_108_69951997056fc.webp', '2026-02-18 01:44:55'),
 (107, 109, 'uploads/evidence/evidence_109_699519cbed5ca.webp', '2026-02-18 01:45:47'),
-(108, 110, 'uploads/evidence/evidence_110_69981f848bd72.webp', '2026-02-20 08:47:00');
+(108, 110, 'uploads/evidence/evidence_110_69981f848bd72.webp', '2026-02-20 08:47:00'),
+(109, 111, 'uploads/evidence/evidence_111_6999b4ff2d76d.jpg', '2026-02-21 13:37:03'),
+(110, 112, 'uploads/evidence/evidence_112_6999b54ca3b3e.jpg', '2026-02-21 13:38:20'),
+(111, 113, 'uploads/evidence/evidence_113_6999b5850e1b1.webp', '2026-02-21 13:39:17');
 
 -- --------------------------------------------------------
 
@@ -280,7 +284,19 @@ INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_ad
 (119, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-20 09:05:49'),
 (120, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 14:09:33'),
 (121, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 14:22:36'),
-(122, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 14:37:33');
+(122, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 14:37:33'),
+(123, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-21 21:43:04'),
+(124, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 22:00:48'),
+(125, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-21 22:01:17'),
+(126, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 17:34:26'),
+(127, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 17:35:08'),
+(128, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 21:02:24'),
+(129, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 21:08:34'),
+(130, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 21:43:39'),
+(131, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 21:44:46'),
+(132, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 22:01:57'),
+(133, 'bartolomstolome@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 22:36:37'),
+(134, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-22 22:37:07');
 
 -- --------------------------------------------------------
 
@@ -670,7 +686,32 @@ INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`,
 (438, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
 (439, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
 (440, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
-(441, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00');
+(441, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=110', 'Street Lights', 0, '2026-02-20 08:47:00'),
+(442, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(443, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(444, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(445, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(446, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(447, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(448, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(449, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=111', 'Roads', 0, '2026-02-21 13:37:03'),
+(450, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(451, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(452, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(453, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(454, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(455, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(456, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20'),
+(457, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=112', 'Roads', 0, '2026-02-21 13:38:20');
+INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`, `request_type`, `is_read`, `created_at`) VALUES
+(458, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(459, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(460, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(461, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(462, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(463, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(464, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17'),
+(465, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=113', 'Street Lights', 0, '2026-02-21 13:39:17');
 
 -- --------------------------------------------------------
 
@@ -741,6 +782,14 @@ CREATE TABLE `reports` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `reports`
+--
+
+INSERT INTO `reports` (`rep_id`, `res_id`, `starting_date`, `estimated_end_date`, `engineer_id`, `report_by`, `priority_lvl`, `budget`, `created_at`) VALUES
+(1, 1, '2026-02-21', '2026-03-23', 13, 13, 'Critical', 450000.00, '2026-02-21 14:06:04'),
+(2, 2, '2026-02-22', '2026-03-24', 13, 15, 'Low', 1500.00, '2026-02-22 14:23:49');
+
 -- --------------------------------------------------------
 
 --
@@ -806,7 +855,10 @@ INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contac
 (107, 'Water Supply', 'Santo Domingo (Matalahib), Quezon City', 'testing', '09516646485', 'jhoven', 'Pending', '2026-02-18 01:41:34'),
 (108, 'Drainage', 'Novaliches Proper, Quezon City', 'test', '09518484844', 'jhoven', 'Pending', '2026-02-18 01:44:55'),
 (109, 'Street Lights', 'Duyan-Duyan, Quezon City', 'asd', '09545454454', 'jhoven', 'Pending', '2026-02-18 01:45:47'),
-(110, 'Street Lights', 'Santo Domingo (Matalahib), Quezon City', 'ww', '09090909090', 'Kent', 'Pending', '2026-02-20 08:47:00');
+(110, 'Street Lights', 'Santo Domingo (Matalahib), Quezon City', 'ww', '09090909090', 'Kent', 'Pending', '2026-02-20 08:47:00'),
+(111, 'Roads', 'Pag-ibig sa Nayon, Quezon City', '21', '09212122212', 'Kent', 'Pending', '2026-02-21 13:37:03'),
+(112, 'Roads', 'Talampas, Quezon City', '1212', '09221221212', 'Kent', 'Approved', '2026-02-21 13:38:20'),
+(113, 'Street Lights', 'Unang Sigaw, Quezon City', '12', '09212212122', 'Kent', 'Approved', '2026-02-21 13:39:17');
 
 -- --------------------------------------------------------
 
@@ -834,9 +886,19 @@ CREATE TABLE `request_ai_analysis` (
   `requires_immediate_action` tinyint(1) DEFAULT 0,
   `images_analyzed` tinyint(2) DEFAULT 0,
   `analysis_status` enum('pending','completed','failed') DEFAULT 'pending',
+  `ai_cost_estimation` varchar(100) DEFAULT NULL COMMENT 'AI-estimated repair cost range in Philippine Pesos (e.g. ₱5,000 – ₱25,000)',
   `analyzed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `request_ai_analysis`
+--
+
+INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastructure`, `detected_infrastructure`, `infrastructure_match`, `match_confidence`, `is_legitimate`, `legitimacy_score`, `legitimacy_notes`, `damage_severity`, `priority_recommendation`, `damage_description`, `confidence_score`, `anomaly_flags`, `combined_assessment`, `estimated_repair_complexity`, `requires_immediate_action`, `images_analyzed`, `analysis_status`, `ai_cost_estimation`, `analyzed_at`, `created_at`) VALUES
+(25, 111, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'lakeside, lakeshore (18%); geyser (8%); volcano (5%); valley, vale (3%); water ouzel, dipper (2%); sandbar, sand bar (2%)', 'Major', 1, 1, 'completed', '₱3,370,000 – ₱6,000,000', '2026-02-21 13:37:03', '2026-02-21 13:37:03'),
+(26, 112, '', 'Roads', 1, 0.100, 0, 0.050, 'No infrastructure indicators detected. Image may be unrelated. Manual review required.', 1, 'Low', 'Roads issue across 1 image. Burn/char marks detected. Minor or unclear damage.', 0.000, '[\"no_infrastructure_detected\",\"low_model_confidence\"]', 'wing (37%); alp (12%); volcano (8%); valley, vale (5%); lakeside, lakeshore (3%); mountain tent (3%)', 'Simple', 0, 1, 'completed', '₱1,500 – ₱2,500', '2026-02-21 13:38:20', '2026-02-21 13:38:20'),
+(27, 113, '', 'Street Lights', 1, 0.289, 1, 0.239, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.189, '[\"immediate_action_required\",\"road_structural_damage\"]', 'swab, swob, mop (17%); missile (15%); pole (8%); stretcher (5%); projectile, missile (5%); hammer (2%)', 'Major', 1, 1, 'completed', '₱450,000 – ₱750,000', '2026-02-21 13:39:17', '2026-02-21 13:39:17');
 
 -- --------------------------------------------------------
 
@@ -852,6 +914,14 @@ CREATE TABLE `request_resolutions` (
   `resolved_by` int(10) UNSIGNED NOT NULL,
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `request_resolutions`
+--
+
+INSERT INTO `request_resolutions` (`res_id`, `req_id`, `status`, `res_note`, `resolved_by`, `resolved_at`) VALUES
+(1, 113, 'Approved', 'Validated and approved.', 13, '2026-02-21 14:06:04'),
+(2, 112, 'Approved', 'Validated and approved.', 15, '2026-02-22 14:23:49');
 
 --
 -- Indexes for dumped tables
@@ -956,19 +1026,19 @@ ALTER TABLE `request_resolutions`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
-  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
 
 --
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=123;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=135;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -986,13 +1056,13 @@ ALTER TABLE `materials_equipment_costs`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=442;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=466;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
-  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `repair_archive`
@@ -1004,25 +1074,25 @@ ALTER TABLE `repair_archive`
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `requests`
 --
 ALTER TABLE `requests`
-  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
+  MODIFY `req_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 --
 -- AUTO_INCREMENT for table `request_ai_analysis`
 --
 ALTER TABLE `request_ai_analysis`
-  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
 --
 ALTER TABLE `request_resolutions`
-  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- Constraints for dumped tables
