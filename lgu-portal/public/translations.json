@@ -292,15 +292,23 @@
 
     "chatbot_toggle_title": "Chat with us",
     "chatbot_header_title": "InfraGov Assistant",
+    "chatbot_status_online": "Online · Ready to help",
     "chatbot_clear_title": "Clear conversation",
     "chatbot_close_title": "Close chat",
-    "chatbot_typing_label": "Typing",
-    "chatbot_input_placeholder": "Type your message...",
+    "chatbot_typing_label": "Typing…",
+    "chatbot_input_placeholder": "Type your message…",
     "chatbot_send_title": "Send message",
     "chatbot_modal_title": "Clear Conversation?",
     "chatbot_modal_desc": "This will delete all conversation history. This action cannot be undone.",
     "chatbot_modal_cancel": "Cancel",
     "chatbot_modal_confirm": "Clear All",
+    "chatbot_analyzing_image": "Analyzing your screenshot…",
+    "chatbot_img_btn_title": "Attach screenshots (up to 5)",
+    "chatbot_mic_btn_title": "Click to speak · Click again to stop",
+    "chatbot_mic_listening": "Listening… click mic again to stop",
+    "chatbot_mic_no_support": "Voice input is not supported in your browser.",
+    "chatbot_mic_error": "Could not hear you. Please try again.",
+    "chatbot_img_error": "Could not read the image. Please try a different file.",
 
     "chatbot_welcome": "Hello! 👋 I'm your InfraGovServices assistant. I can help you with:\n• Reporting infrastructure issues\n• Understanding the system features\n• Tracking your requests\n• Privacy Policy & Terms questions\n• Switching language (EN/FIL)\n• Navigation help\n\nHow can I assist you today?",
     "chatbot_error_generic": "Sorry, I encountered an error. Please try again.",
@@ -308,25 +316,18 @@
 
     "chip_how_report": "How to report?",
     "chip_how_report_msg": "How do I report an infrastructure issue?",
-
     "chip_upload": "Upload photos",
     "chip_upload_msg": "How do I upload photo evidence?",
-
     "chip_track": "Track my request",
     "chip_track_msg": "How can I track the status of my request?",
-
     "chip_contact": "Contact support",
     "chip_contact_msg": "How do I contact support?",
-
     "chip_privacy": "Privacy Policy",
     "chip_privacy_msg": "Tell me about the Privacy Policy.",
-
     "chip_terms": "Terms & Conditions",
     "chip_terms_msg": "What are the Terms and Conditions?",
-
     "chip_language": "Switch language",
     "chip_language_msg": "How do I switch the language?",
-
     "chip_report_types": "What can I report?",
     "chip_report_types_msg": "What types of infrastructure issues can I report?"
   },
@@ -624,15 +625,23 @@
 
     "chatbot_toggle_title": "Makipag-usap sa amin",
     "chatbot_header_title": "InfraGov Katulong",
+    "chatbot_status_online": "Online · Handa na tumulong",
     "chatbot_clear_title": "Burahin ang pag-uusap",
     "chatbot_close_title": "Isara ang chat",
-    "chatbot_typing_label": "Nagta-type",
-    "chatbot_input_placeholder": "I-type ang iyong mensahe...",
+    "chatbot_typing_label": "Nagta-type…",
+    "chatbot_input_placeholder": "I-type ang iyong mensahe…",
     "chatbot_send_title": "Ipadala ang mensahe",
     "chatbot_modal_title": "Burahin ang Pag-uusap?",
     "chatbot_modal_desc": "Mabubura nito ang lahat ng kasaysayan ng pag-uusap. Hindi na maaaring i-undo ang aksyong ito.",
     "chatbot_modal_cancel": "Kanselahin",
     "chatbot_modal_confirm": "Burahin",
+    "chatbot_analyzing_image": "Sinusuri ang iyong screenshot…",
+    "chatbot_img_btn_title": "Mag-attach ng mga screenshot (hanggang 5)",
+    "chatbot_mic_btn_title": "I-click para magsalita · I-click muli para huminto",
+    "chatbot_mic_listening": "Nakikinig… i-click muli ang mic para huminto",
+    "chatbot_mic_no_support": "Hindi sinusuportahan ng browser ang voice input.",
+    "chatbot_mic_error": "Hindi narinig. Pakisubukang muli.",
+    "chatbot_img_error": "Hindi mabasa ang larawan. Pakisubukan ang ibang file.",
 
     "chatbot_welcome": "Kumusta! 👋 Ako ang iyong InfraGovServices assistant. Maaari kitang tulungan sa:\n• Pag-uulat ng mga isyu sa imprastraktura\n• Pag-unawa sa mga tampok ng sistema\n• Pagsubaybay sa iyong mga kahilingan\n• Mga tanong sa Privacy Policy at Mga Tuntunin\n• Pagpapalit ng wika (EN/FIL)\n• Tulong sa nabigasyon\n\nPaano kita matutulungan ngayon?",
     "chatbot_error_generic": "Paumanhin, nagkaroon ng error. Pakisubukang muli.",
@@ -640,25 +649,18 @@
 
     "chip_how_report": "Paano mag-ulat?",
     "chip_how_report_msg": "Paano ako mag-uulat ng isyu sa imprastraktura?",
-
     "chip_upload": "Mag-upload ng larawan",
     "chip_upload_msg": "Paano ako mag-a-upload ng ebidensya ng larawan?",
-
     "chip_track": "Subaybayan ang kahilingan",
     "chip_track_msg": "Paano ko masisigurado ang katayuan ng aking kahilingan?",
-
     "chip_contact": "Makipag-ugnayan sa suporta",
     "chip_contact_msg": "Paano ako makikipag-ugnayan sa suporta?",
-
     "chip_privacy": "Patakaran sa Privacy",
     "chip_privacy_msg": "Sabihin sa akin ang tungkol sa Patakaran sa Privacy.",
-
     "chip_terms": "Mga Tuntunin at Kondisyon",
     "chip_terms_msg": "Ano ang Mga Tuntunin at Kondisyon?",
-
     "chip_language": "Magpalit ng wika",
     "chip_language_msg": "Paano ako magpapalit ng wika?",
-
     "chip_report_types": "Ano ang pwede kong iulat?",
     "chip_report_types_msg": "Anong mga uri ng isyu sa imprastraktura ang maaari kong iulat?"
   }

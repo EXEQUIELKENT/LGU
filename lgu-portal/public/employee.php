@@ -110,6 +110,11 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
 // ===== DASHBOARD METRICS =====
 
 // Total Requests
@@ -919,6 +924,158 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     font-size: 14px;
 }
 
+/* ── Report Generation Section ──────────────────────────── */
+.report-gen-section {
+    margin-top: 28px;
+    border-top: 2px dashed var(--border-color);
+    padding-top: 24px;
+}
+.report-gen-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.report-gen-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.report-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+.report-type-btn {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all .25s ease;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.report-type-btn:hover {
+    border-color: #3762c8;
+    box-shadow: 0 6px 20px rgba(55,98,200,.15);
+    transform: translateY(-3px);
+}
+.report-type-btn .rpt-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: rgba(55,98,200,.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    transition: transform .25s ease;
+}
+.report-type-btn:hover .rpt-icon { transform: scale(1.12) rotate(4deg); }
+.report-type-btn .rpt-title {
+    font-size: 14px; font-weight: 600;
+}
+.report-type-btn .rpt-desc {
+    font-size: 11px; color: var(--text-secondary);
+}
+
+/* ── Report Modal ───────────────────────────────────────── */
+#reportModalBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none; align-items: center; justify-content: center;
+    z-index: 8500;
+    backdrop-filter: blur(4px);
+}
+#reportModalBackdrop.active { display: flex; }
+.report-modal {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    box-shadow: 0 12px 50px var(--shadow-color);
+    width: 92%;
+    max-width: 480px;
+    animation: modalSlideIn .3s ease;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+.report-modal-header {
+    padding: 22px 26px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.report-modal-header h3 { font-size: 18px; font-weight: 700; color: #fff; }
+.report-modal-close {
+    background: rgba(255,255,255,.2); border: none;
+    color: #fff; font-size: 22px; width: 34px; height: 34px;
+    border-radius: 8px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.report-modal-close:hover { background: rgba(255,255,255,.35); }
+.report-modal-body { padding: 26px; }
+.form-group { margin-bottom: 18px; }
+.form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 7px;
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.form-group select,
+.form-group input[type="date"] {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px; font-size: 14px;
+    background: var(--bg-secondary); color: var(--text-primary);
+    outline: none; transition: border .2s;
+    font-family: inherit;
+}
+.form-group select:focus,
+.form-group input[type="date"]:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.12);
+}
+.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.format-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.fmt-btn {
+    padding: 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px; background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s; text-align: center;
+}
+.fmt-btn.active {
+    border-color: #3762c8; background: rgba(55,98,200,.1); color: #3762c8;
+}
+.btn-generate {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all .25s; margin-top: 6px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(55,98,200,.35); }
+.btn-generate:active { transform: translateY(0); }
+.btn-generate:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.report-info-text {
+    font-size: 11px; color: var(--text-secondary);
+    text-align: center; margin-top: 10px;
+}
+
 /* ===========================
    WELCOME ANIMATION STYLES
 =========================== */
@@ -1366,6 +1523,10 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     .facility-count {
         font-size: 13px;
     }
+    .report-type-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .report-type-btn { padding: 14px 10px; }
+    .report-type-btn .rpt-icon { width: 42px; height: 42px; font-size: 22px; }
+    .date-row { grid-template-columns: 1fr; gap: 12px; }
 }
 </style>
 <script>
@@ -1737,6 +1898,41 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- ============================================================
+                 EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+                 3. HTML — Add INSIDE .dashboard-card, AFTER the closing </div> of 
+                 the .charts-grid / Recent Activity chart-card, just BEFORE 
+                 the final closing </div> of .dashboard-card.
+                 ============================================================ -->
+
+            <?php if ($isAdmin): ?>
+            <!-- ADMIN: Report Generation Section -->
+            <div class="report-gen-section">
+                <div class="report-gen-header">
+                    <h3>📊 Report Generation</h3>
+                    <span class="admin-badge">Admin Only</span>
+                </div>
+                <div class="report-type-grid">
+                    <button class="report-type-btn" onclick="openReportModal('requests')">
+                        <div class="rpt-icon">📋</div>
+                        <div class="rpt-title">Requests Report</div>
+                        <div class="rpt-desc">All infrastructure repair requests by date range</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('schedules')">
+                        <div class="rpt-icon">📅</div>
+                        <div class="rpt-title">Schedules Report</div>
+                        <div class="rpt-desc">Maintenance schedule data by date range</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('summary')">
+                        <div class="rpt-icon">📈</div>
+                        <div class="rpt-title">Executive Summary</div>
+                        <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
     </div>
 </div>
@@ -1967,6 +2163,146 @@ if (statusCtx) {
     });
 }
 </script>
+
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     4. HTML MODAL — Add just BEFORE the closing </body> tag.
+     ============================================================ -->
+<?php if ($isAdmin): ?>
+<!-- REPORT GENERATION MODAL -->
+<div id="reportModalBackdrop">
+    <div class="report-modal">
+        <div class="report-modal-header">
+            <h3 id="reportModalTitle">Generate Report</h3>
+            <button class="report-modal-close" id="reportModalClose">&times;</button>
+        </div>
+        <div class="report-modal-body">
+            <!-- Date Range -->
+            <div class="form-group">
+                <label>Date Range</label>
+                <div class="date-row">
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
+                        <input type="date" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
+                    </div>
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
+                        <input type="date" id="rptDateTo" value="<?= date('Y-m-d') ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Format -->
+            <div class="form-group">
+                <label>Export Format</label>
+                <div class="format-toggle">
+                    <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
+                        📊 Excel (.xlsx)
+                    </button>
+                    <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
+                        📄 PDF (Print)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <button class="btn-generate" id="btnGenerate" onclick="submitReport()">
+                <span id="btnGenerateText">⬇️ Generate Report</span>
+            </button>
+            <p class="report-info-text">
+                Excel downloads immediately. PDF opens in a new tab — use browser's Print → Save as PDF.
+            </p>
+
+            <!-- Hidden form for POST submission -->
+            <form id="reportForm" action="generate_report.php" method="POST" target="_blank" style="display:none">
+                <input type="hidden" name="report_type" id="rptTypeInput">
+                <input type="hidden" name="format"      id="rptFormatInput">
+                <input type="hidden" name="date_from"   id="rptFromInput">
+                <input type="hidden" name="date_to"     id="rptToInput">
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     5. JAVASCRIPT — Add AFTER the existing </script> blocks,
+     before closing </body>
+     ============================================================ -->
+<?php if ($isAdmin): ?>
+<script>
+// ── Report Generation ────────────────────────────────────────────
+let _rptType   = 'requests';
+let _rptFormat = 'excel';
+
+function openReportModal(type) {
+    _rptType = type;
+    const titles = {
+        requests:  '📋 Requests Report',
+        schedules: '📅 Schedules Report',
+        summary:   '📈 Executive Summary',
+    };
+    document.getElementById('reportModalTitle').textContent = titles[type] || 'Generate Report';
+    document.getElementById('reportModalBackdrop').classList.add('active');
+}
+
+function closeReportModal() {
+    document.getElementById('reportModalBackdrop').classList.remove('active');
+    // Reset button state
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = false;
+    document.getElementById('btnGenerateText').textContent = '⬇️ Generate Report';
+}
+
+function selectFormat(fmt) {
+    _rptFormat = fmt;
+    document.getElementById('fmtExcel').classList.toggle('active', fmt === 'excel');
+    document.getElementById('fmtPdf').classList.toggle('active',   fmt === 'pdf');
+}
+
+function submitReport() {
+    const from = document.getElementById('rptDateFrom').value;
+    const to   = document.getElementById('rptDateTo').value;
+    if (!from || !to) { alert('Please select both a start and end date.'); return; }
+    if (from > to)    { alert('Start date must be before or equal to end date.'); return; }
+
+    document.getElementById('rptTypeInput').value   = _rptType;
+    document.getElementById('rptFormatInput').value = _rptFormat;
+    document.getElementById('rptFromInput').value   = from;
+    document.getElementById('rptToInput').value     = to;
+
+    const btn = document.getElementById('btnGenerate');
+    const txt = document.getElementById('btnGenerateText');
+
+    if (_rptFormat === 'excel') {
+        // Excel — submit form (triggers download), then re-enable button after delay
+        btn.disabled = true;
+        txt.textContent = '⏳ Generating…';
+        document.getElementById('reportForm').submit();
+        setTimeout(() => {
+            btn.disabled = false;
+            txt.textContent = '⬇️ Generate Report';
+        }, 4000);
+    } else {
+        // PDF — opens in new tab, no loading state needed
+        document.getElementById('reportForm').target = '_blank';
+        document.getElementById('reportForm').submit();
+    }
+}
+
+// Close modal handlers
+document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
+document.getElementById('reportModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeReportModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('reportModalBackdrop').classList.contains('active')) {
+        closeReportModal();
+    }
+});
+</script>
+<?php endif; ?>
 
 </body>
 </html>

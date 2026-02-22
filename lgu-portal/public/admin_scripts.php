@@ -666,6 +666,16 @@ startClock();
                 const newUnread = notifications.filter(n => !n.read && !seenNotifIds.has(n.id));
                 if (newUnread.length > 0) {
                     playNotifSound();
+
+                    // Ring animation — only fires for genuinely new notifications after page load
+                    [notifBtn, mobileNotifBtn].forEach(btn => {
+                        if (!btn) return;
+                        btn.classList.remove('ringing'); // reset if already mid-animation
+                        void btn.offsetWidth;           // force reflow so removing+re-adding works
+                        btn.classList.add('ringing');
+                        btn.addEventListener('animationend', () => btn.classList.remove('ringing'), { once: true });
+                    });
+
                     newUnread.forEach(n => seenNotifIds.add(n.id));
                     // ✅ Use separate key to avoid conflicts
                     localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));

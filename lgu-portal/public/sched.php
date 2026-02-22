@@ -1584,12 +1584,14 @@ Sidebar (250px) takes the most relative space here.
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);
         transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
     .mobile-toggle {
         position: absolute;
         left: 14px;
@@ -1602,10 +1604,20 @@ Sidebar (250px) takes the most relative space here.
         font-size: 20px;
         cursor: pointer;
     }
+    /* Mobile CIMM Label */
+    .mobile-cimm-label {
+        position: absolute;
+        left: 70px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #3762c8;
+        letter-spacing: 0.05em;
+    }
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
     }
+
     .mobile-clock {
         position: absolute;
         right: 56px;
@@ -1615,6 +1627,7 @@ Sidebar (250px) takes the most relative space here.
         white-space: nowrap;
         transition: color 0.3s ease;
     }
+
     .mobile-notif-btn {
         position: absolute;
         right: 12px;
@@ -1625,7 +1638,6 @@ Sidebar (250px) takes the most relative space here.
         z-index: 1;
     }
 
-    /* === MOBILE SIDEBAR DARK MODE POSITION === */
     .mobile-dark-mode-btn {
         display: flex;
         position: absolute;
@@ -1639,7 +1651,6 @@ Sidebar (250px) takes the most relative space here.
         justify-content: center;
     }
 
-    /* Align profile properly */
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
@@ -1649,16 +1660,14 @@ Sidebar (250px) takes the most relative space here.
     }
 
     .sidebar-top {
-        position: relative; /* anchor for absolute children */
+        position: relative;
     }
 
-    /* Center logo between profile & dark mode */
     .site-logo {
         margin-top: 60px;
         text-align: center;
     }
 
-    /* Show sidebar, sidebar nav rules */
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
@@ -1668,51 +1677,65 @@ Sidebar (250px) takes the most relative space here.
         border-radius: 18px;
         transition: left 0.35s ease;
         z-index: 4000;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     }
 
     .sidebar-nav.mobile-active {
         left: 12px;
     }
 
-    /* Disable desktop collapse behavior */
     .sidebar-nav.collapsed {
         width: calc(100% - 24px);
     }
-    
-    /* Show mobile dark mode button only in mobile view */
-    @media (max-width: 768px) {
-        .mobile-dark-mode-btn {
-            display: flex;
-        }
-    }
-    
-    /* Hide dark mode button in desktop sidebar */
-    @media (min-width: 769px) {
-        .mobile-dark-mode-btn {
-            display: none !important;
-        }
+
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0px;
     }
 
-    /* Show mobile top nav in mobile */
-    .mobile-top-nav {
-        display: flex;
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
     }
 
-    /* MOBILE CONTROLS (INSIDE CARD) */
-    .mobile-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;        /* allow wrapping on tiny screens */
-        gap: 6px;               /* smaller gap for tight screens */
-        margin: 0 4px 12px 4px;
-        padding: 10px 12px;
-        background: rgba(255,255,255,0.92);
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    .sidebar-top {
+        padding-top: 30px;
     }
 
+    .sidebar-profile-btn {
+        position: relative;
+        margin: 10px 0 0 15px;
+    }
+
+    .site-logo {
+        margin: 10px auto 20px auto;
+    }
+
+    .nav-list {
+        padding: 0 20px;
+    }
+
+    .sidebar-divider,
+    .sidebar-toggle,
+    .sidebar-toggle-divider {
+        display: none !important;
+    }
+
+    .user-info {
+        padding-bottom: 20px;
+    }
+
+    .sidebar-toggle {
+        display: none;
+    }
     /* LIST VIEW CONTROLS */
     #mobileListControls input {
         flex: 1 1 auto;                           /* grow and shrink */
@@ -1801,112 +1824,6 @@ Sidebar (250px) takes the most relative space here.
     #scheduleView > div:first-child,
     .calendar-header {
         display: none !important;
-    }
-
-    /* Hide desktop sidebar initially */
-    .sidebar-nav {
-        left: -110%;
-        width: calc(100% - 24px);
-        height: calc(100% - 24px);
-        top: 12px;
-        bottom: 12px;
-        border-radius: 18px;
-        transition: left 0.35s ease;
-        z-index: 4000;
-    }
-
-    /* Show sidebar when active */
-    .sidebar-nav.mobile-active {
-        left: 12px;
-    }
-
-    /* Disable desktop collapse behavior */
-    .sidebar-nav.collapsed {
-        width: calc(100% - 24px);
-    }
-
-    /* Main content always full width */
-    .main-content,
-    .main-content.expanded {
-        margin-left: 0 !important;
-        padding-top: 90px;
-    }
-
-    /* MOBILE TOP NAV */
-    .mobile-top-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 64px;
-        background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
-        align-items: center;
-        justify-content: center;
-        z-index: 5000;
-        box-shadow: 0 4px 18px var(--shadow-color);
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-    }
-    /* Mobile CIMM Label */
-    .mobile-cimm-label {
-        position: absolute;
-        left: 70px;
-        font-size: 16px;
-        font-weight: 600;
-        color: #3762c8;
-        letter-spacing: 0.05em;
-    }
-    .mobile-top-nav img {
-        height: 42px;
-        object-fit: contain;
-    }
-
-    .mobile-toggle {
-        position: absolute;
-        left: 16px;
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        width: 38px;
-        height: 38px;
-        font-size: 20px;
-        cursor: pointer;
-    }
-
-    /* Sidebar internal layout for mobile */
-    .sidebar-top {
-        padding-top: 30px;
-    }
-
-    .sidebar-profile-btn {
-        position: relative;
-        margin: 10px 0 0 15px;
-    }
-
-    .site-logo {
-        margin: 10px auto 20px auto;
-    }
-
-    .nav-list {
-        padding: 0 20px;
-    }
-
-    .sidebar-divider,
-    .sidebar-toggle,
-    .sidebar-toggle-divider {
-        display: none !important;
-    }
-
-    /* Logout stays bottom */
-    .user-info {
-        padding-bottom: 20px;
-    }
-
-    /* Hide desktop toggle */
-    .sidebar-toggle {
-        display: none;
     }
 
     /* ---------- CALENDAR VIEW ---------- */
