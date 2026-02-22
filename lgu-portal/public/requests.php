@@ -2376,8 +2376,38 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         document.getElementById('requestDetailBackdrop').classList.remove('active');
 
         if (data.success) {
-            // ... rest of success handling
-        } else {
+        const reqId = currentRequestData.reqId;
+
+        // Update desktop table row status live
+        const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
+        if (row) {
+            row.dataset.status = 'Approved';
+            const statusCell = row.querySelector('.status.searchable');
+            if (statusCell) {
+                statusCell.className        = 'status completed searchable';
+                statusCell.dataset.original = '';
+                statusCell.textContent      = 'Approved';
+            }
+        }
+
+        // Update mobile card status live
+        const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
+        if (card) {
+            card.dataset.status = 'Approved';
+            const statusSpan = card.querySelector('.status.searchable');
+            if (statusSpan) {
+                statusSpan.className        = 'status completed searchable';
+                statusSpan.dataset.original = '';
+                statusSpan.textContent      = 'Approved';
+            }
+        }
+
+        showInlineNotif('success',
+            `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
+            `Report #REP-${data.rep_id} created — ` +
+            `Engineer: ${data.engineer} | Priority: ${data.priority}`
+        );
+    } else {
             showInlineNotif('error', `❌ ${data.message}`);
         }
 
