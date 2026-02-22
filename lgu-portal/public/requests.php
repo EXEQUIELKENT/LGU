@@ -1108,14 +1108,6 @@ tbody tr:hover {
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-    /* Enable body scrolling in mobile */
-    body {
-        overflow-y: auto !important;
-        height: auto !important;
-        min-height: 100vh !important;
-    }
-
-    /* ===== MOBILE TOP NAV LAYOUT FIX ===== */
     .desktop-top-nav {
         display: none;
     }
@@ -1130,12 +1122,14 @@ tbody tr:hover {
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);
         transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
     .mobile-toggle {
         position: absolute;
         left: 14px;
@@ -1161,6 +1155,7 @@ tbody tr:hover {
         height: 42px;
         object-fit: contain;
     }
+
     .mobile-clock {
         position: absolute;
         right: 56px;
@@ -1170,6 +1165,7 @@ tbody tr:hover {
         white-space: nowrap;
         transition: color 0.3s ease;
     }
+
     .mobile-notif-btn {
         position: absolute;
         right: 12px;
@@ -1180,7 +1176,6 @@ tbody tr:hover {
         z-index: 1;
     }
 
-    /* === MOBILE SIDEBAR DARK MODE POSITION === */
     .mobile-dark-mode-btn {
         display: flex;
         position: absolute;
@@ -1194,7 +1189,6 @@ tbody tr:hover {
         justify-content: center;
     }
 
-    /* Align profile properly */
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
@@ -1207,13 +1201,11 @@ tbody tr:hover {
         position: relative;
     }
 
-    /* Center logo between profile & dark mode */
     .site-logo {
         margin-top: 60px;
         text-align: center;
     }
 
-    /* Show sidebar, sidebar nav rules */
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
@@ -1223,53 +1215,35 @@ tbody tr:hover {
         border-radius: 18px;
         transition: left 0.35s ease;
         z-index: 4000;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     }
 
     .sidebar-nav.mobile-active {
         left: 12px;
     }
 
-    /* Disable desktop collapse behavior */
     .sidebar-nav.collapsed {
         width: calc(100% - 24px);
     }
 
-    /* MOBILE TOP NAV */
-    .mobile-top-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 64px;
-        background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
-        align-items: center;
-        justify-content: center;
-        z-index: 5000;
-        box-shadow: 0 4px 18px var(--shadow-color);
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0px;
     }
 
-    .mobile-top-nav img {
-        height: 42px;
-        object-fit: contain;
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
     }
 
-    .mobile-toggle {
-        position: absolute;
-        left: 16px;
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        width: 38px;
-        height: 38px;
-        font-size: 20px;
-        cursor: pointer;
-    }
-
-    /* Sidebar internal layout for mobile */
     .sidebar-top {
         padding-top: 30px;
     }
@@ -1293,12 +1267,10 @@ tbody tr:hover {
         display: none !important;
     }
 
-    /* Logout stays bottom */
     .user-info {
         padding-bottom: 20px;
     }
 
-    /* Hide desktop toggle */
     .sidebar-toggle {
         display: none;
     }
@@ -1863,17 +1835,36 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 <!-- VALIDATION CONFIRMATION MODAL -->
 <div id="validateConfirmBackdrop" class="modal-backdrop">
     <div id="validateConfirmModal" class="alert-modal">
-        <div class="icon-wrap success-icon">
-            <span class="icon">✓</span>
-        </div>
-        <div class="alert-title">Validate this request?</div>
-        <div class="alert-desc">Are you sure you want to mark this request as validated? This action will update the request status.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="validateCancelBtn">Cancel</button>
-            <button class="alert-btn confirm" id="validateConfirmBtn">Confirm</button>
-        </div>
-    </div>
-</div>
+       <div class="icon-wrap success-icon">
+           <span class="icon">✓</span>
+       </div>
+       <div class="alert-title">Validate this request?</div>
+       <div class="alert-desc">Select the engineer to assign, then confirm validation.</div>
+
+       <!-- Engineer dropdown -->
+       <div style="width:100%;margin-bottom:14px;text-align:left;">
+           <label for="engineerSelect"
+               style="display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">
+               Assign Engineer <span style="color:#e53935;">*</span>
+           </label>
+           <select id="engineerSelect"
+               style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border-color);
+                      font-size:14px;background:var(--bg-primary);color:var(--text-primary);outline:none;
+                      transition:border .2s;">
+               <option value="">— Loading engineers… —</option>
+           </select>
+           <div id="engineerSelectError"
+               style="color:#e53935;font-size:12px;margin-top:4px;display:none;">
+               Please select an engineer.
+           </div>
+       </div>
+
+       <div class="alert-btns">
+           <button class="alert-btn cancel" id="validateCancelBtn">Cancel</button>
+           <button class="alert-btn confirm" id="validateConfirmBtn">Confirm</button>
+       </div>
+    </div><!-- /alert-modal -->
+</div><!-- /validateConfirmBackdrop -->
 
 <?php include 'admin_scripts.php'; ?>
 
@@ -2286,7 +2277,30 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', (e) =
 //  VALIDATION MODAL FUNCTIONALITY
 // ============================
 
-document.getElementById('validateBtn').addEventListener('click', () => {
+document.getElementById('validateBtn').addEventListener('click', async () => {
+    const select = document.getElementById('engineerSelect');
+    select.innerHTML = '<option value="">— Loading… —</option>';
+    document.getElementById('engineerSelectError').style.display = 'none';
+
+    try {
+        const res  = await fetch('get_engineers.php');
+        const data = await res.json();
+
+        if (data.success && data.engineers.length > 0) {
+            select.innerHTML = '<option value="">— Select Engineer —</option>';
+            data.engineers.forEach(eng => {
+                const opt = document.createElement('option');
+                opt.value       = eng.id;
+                opt.textContent = eng.name;
+                select.appendChild(opt);
+            });
+        } else {
+            select.innerHTML = '<option value="">No engineers available</option>';
+        }
+    } catch (e) {
+        select.innerHTML = '<option value="">Error loading engineers</option>';
+    }
+
     // Show confirmation modal
     document.getElementById('validateConfirmBackdrop').classList.add('active');
 });
@@ -2301,32 +2315,111 @@ document.getElementById('validateConfirmBackdrop').addEventListener('click', (e)
     }
 });
 
-document.getElementById('validateConfirmBtn').addEventListener('click', () => {
-    // TODO: Add your validation logic here
-    // For now, just close modals
-    console.log('Validating request:', currentRequestData);
-    
-    // You can add AJAX call here to update the database
-    // Example:
-    // fetch('api/validate_request.php', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ req_id: currentRequestData.reqId })
-    // }).then(response => response.json())
-    //   .then(data => {
-    //       if (data.success) {
-    //           // Show success notification
-    //           // Reload page or update UI
-    //       }
-    //   });
+document.getElementById('validateConfirmBtn').addEventListener('click', async () => {
+    if (!currentRequestData) return;
 
-    // Close both modals
-    document.getElementById('validateConfirmBackdrop').classList.remove('active');
-    document.getElementById('requestDetailBackdrop').classList.remove('active');
-    
-    // Show success message (you can replace this with your notification system)
-    alert('Request validated successfully!');
+    const select      = document.getElementById('engineerSelect');
+    const engineerId  = parseInt(select.value, 10);
+    const errorDiv    = document.getElementById('engineerSelectError');
+
+    // Validate selection
+    if (!engineerId) {
+        errorDiv.style.display = 'block';
+        return;
+    }
+    errorDiv.style.display = 'none';
+
+    const confirmBtn = document.getElementById('validateConfirmBtn');
+    const cancelBtn  = document.getElementById('validateCancelBtn');
+
+    confirmBtn.disabled    = true;
+    confirmBtn.textContent = 'Processing…';
+    cancelBtn.disabled     = true;
+
+    try {
+        const response = await fetch('validate_request.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                req_id:      parseInt(currentRequestData.reqId, 10),
+                engineer_id: engineerId
+            })
+        });
+
+        const data = await response.json();
+
+        // Close both modals
+        document.getElementById('validateConfirmBackdrop').classList.remove('active');
+        document.getElementById('requestDetailBackdrop').classList.remove('active');
+
+        if (data.success) {
+            const reqId = currentRequestData.reqId;
+
+            // Update desktop table row status live
+            const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
+            if (row) {
+                row.dataset.status = 'Approved';
+                const statusCell = row.querySelector('.status.searchable');
+                if (statusCell) {
+                    statusCell.className     = 'status completed searchable';
+                    statusCell.dataset.original = '';
+                    statusCell.textContent   = 'Approved';
+                }
+            }
+
+            // Update mobile card status live
+            const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
+            if (card) {
+                card.dataset.status = 'Approved';
+                const statusSpan = card.querySelector('.status.searchable');
+                if (statusSpan) {
+                    statusSpan.className     = 'status completed searchable';
+                    statusSpan.dataset.original = '';
+                    statusSpan.textContent   = 'Approved';
+                }
+            }
+
+            showInlineNotif('success',
+                `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
+                `Report #REP-${data.rep_id} created — ` +
+                `Engineer: ${data.engineer} | Priority: ${data.priority}`
+            );
+        } else {
+            showInlineNotif('error', `❌ ${data.message}`);
+        }
+
+    } catch (err) {
+        console.error('Validation error:', err);
+        document.getElementById('validateConfirmBackdrop').classList.remove('active');
+        showInlineNotif('error', '❌ Network error. Please try again.');
+    } finally {
+        confirmBtn.disabled    = false;
+        confirmBtn.textContent = 'Confirm';
+        cancelBtn.disabled     = false;
+    }
 });
+
+/**
+ * showInlineNotif — matches the PHP notif-popup CSS already in requests.php
+ */
+function showInlineNotif(type, message) {
+    const existing = document.getElementById('notifPopup');
+    if (existing) existing.remove();
+
+    const div = document.createElement('div');
+    div.id        = 'notifPopup';
+    div.className = `notif-popup notif-${type}`;
+    div.innerHTML = `
+        <span class="notif-message">${message}</span>
+        <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    document.body.appendChild(div);
+
+    setTimeout(() => {
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 400);
+    }, 5000);
+}
 // ============================
 //  SEARCH FUNCTIONALITY
 // ============================
@@ -2410,30 +2503,4 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 </body>
-
-<script>
-// Mobile sidebar fix
-document.addEventListener('DOMContentLoaded', function() {
-    var mobileToggle = document.getElementById('mobileToggle');
-    var sidebarNav   = document.getElementById('sidebarNav');
-    if (mobileToggle && sidebarNav) {
-        mobileToggle.onclick = function() {
-            sidebarNav.classList.toggle('mobile-active');
-        };
-    }
-    // Close sidebar when clicking outside
-    document.addEventListener('click', function(e) {
-        if (
-            sidebarNav &&
-            sidebarNav.classList.contains('mobile-active') &&
-            !sidebarNav.contains(e.target) &&
-            e.target !== mobileToggle &&
-            !mobileToggle.contains(e.target)
-        ) {
-            sidebarNav.classList.remove('mobile-active');
-        }
-    });
-});
-</script>
-
 </html>
