@@ -2851,7 +2851,7 @@ body:has(#resetPasswordModal) {
                 }
             }
             ?>
-            <p class="subtitle">Secure access to community maintenance services.</p>
+            
             <form method="post" action="" id="mainLoginForm">
                 <div class="input-box">
                     <label>Email Address</label>
