@@ -1843,12 +1843,12 @@ input[type="file"] {
             
             <ul class="nav-list">
                 <?php if ($show_login): ?>
-                <li><a href="login.php" class="nav-link"><span>🔐</span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="login.php" class="nav-link"><span><i class="fas fa-lock"></i></span><span data-i18n="nav_login">Log in</span></a></li>
                 <?php endif; ?>
-                <li><a href="citizencimm.php" class="nav-link"><span>🏠</span><span data-i18n="nav_home">Home</span></a></li>
-                <li><a href="citizenreports.php" class="nav-link"><span>📄</span><span data-i18n="nav_reports">Reports</span></a></li>
-                <li><a href="#" class="nav-link active"><span>📋</span><span data-i18n="nav_requests">Requests</span></a></li>
-                <li><a href="about.php" class="nav-link"><span>ℹ️</span><span data-i18n="nav_about">About</span></a></li>
+                <li><a href="citizencimm.php" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
+                <li><a href="citizenreports.php" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="#" class="nav-link active"><span><i class="fas fa-clipboard-list"></i></span><span data-i18n="nav_requests">Requests</span></a></li>
+                <li><a href="about.php" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
             </ul>
         </div>
     </div>
