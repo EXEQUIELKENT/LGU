@@ -721,7 +721,7 @@ if (isset($_POST['otp_submit'])) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('error', 'OTP expired or not generated. Please log in again.');
         unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
-    } elseif ($current_time - $_SESSION['otp_time'] > 300) {
+    } elseif ($current_time - $_SESSION['otp_time'] > 60) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('warning', 'OTP expired. Please log in again.');
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
@@ -2707,7 +2707,7 @@ body:has(#resetPasswordModal) {
             if (isset($_SESSION['otp_time'])) {
                 $now = time();
                 $elapsed = $now - $_SESSION['otp_time'];
-                $remaining_seconds = max(0, 300 - $elapsed);
+                $remaining_seconds = max(0, 60 - $elapsed);
                 if ($remaining_seconds <= 0) $expired = true;
             }
             $attempts_left = 3 - ($_SESSION['otp_attempts'] ?? 0);
