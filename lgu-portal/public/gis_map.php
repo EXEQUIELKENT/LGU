@@ -78,7 +78,7 @@ $displayName = getDisplayName();
 // ── Fetch all requests with evidence ──────────────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 4096");
 
-$requestsQuery = "
+    $requestsQuery = "
     SELECT
         r.req_id,
         r.infrastructure,
@@ -88,6 +88,7 @@ $requestsQuery = "
         r.created_at,
         r.name        AS requester_name,
         r.contact_number,
+        r.coordinates,
         GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
     FROM requests r
     LEFT JOIN evidence_images e ON e.req_id = r.req_id
@@ -1021,46 +1022,38 @@ async function geocodeAddress(address) {
 }
 
 // Process geocoding — parallel with staggered start to respect Nominatim
-async function geocodeAll() {
-    const progress = document.getElementById('geocodeProgressBar');
-    const progText = document.getElementById('geocodeProgressText');
-
-    // Deduplicate by location string
-    const uniqueLocations = [...new Set(ALL_REQUESTS.map(r => r.location).filter(Boolean))];
-    let done = 0;
-
-    // Fire all requests in parallel with 350ms stagger between starts
-    const promises = uniqueLocations.map((loc, i) =>
-        new Promise(resolve => setTimeout(async () => {
-            await geocodeAddress(loc);
-            done++;
-            const pct = Math.round((done / uniqueLocations.length) * 100);
-            if (progress) progress.style.width = pct + '%';
-            if (progText)  progText.textContent = `Geocoding ${done} / ${uniqueLocations.length}…`;
-            resolve();
-        }, i * 350))
-    );
-
-    await Promise.all(promises);
-
-    // Now place all markers
-    placeAllMarkers();
-
-    // Hide loading overlay
-    const overlay = document.getElementById('mapLoadingOverlay');
-    if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }
-}
-
-// ─── Place markers on the map ─────────────────────────────────────────────────
+// ─── Place markers ────────────────────────────────────────────────────────────
+// Supports both stored coordinates AND geocoded fallback for legacy requests.
 function placeAllMarkers() {
     ALL_REQUESTS.forEach(req => {
-        const address = req.location || '';
-        const cached  = geocodeCache[address];
-        if (!cached) return;
+        let latlng = null;
 
-        const latlng = L.latLng(cached.lat, cached.lng);
+        // ① Use stored coordinates (exact pin from citizen form)
+        if (req.coordinates) {
+            const parts = req.coordinates.split(',');
+            if (parts.length === 2) {
+                const lat = parseFloat(parts[0]);
+                const lng = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    latlng = L.latLng(lat, lng);
+                }
+            }
+        }
+
+        // ② Fall back to Nominatim geocode cache (legacy requests)
+        if (!latlng) {
+            const cached = geocodeCache[req.location];
+            if (cached) {
+                latlng = L.latLng(cached.lat, cached.lng);
+            } else {
+                return; // Not yet geocoded — skip; placeAllMarkers() called again after geocode
+            }
+        }
+
+        // Skip if marker already placed
+        if (markersMap[req.req_id]) return;
+
         const icon   = makeIcon(req);
-
         const marker = L.marker(latlng, { icon, riseOnHover: true })
             .bindPopup(makePopupHtml(req), { maxWidth: 280, autoPan: false, closeButton: false })
             .on('mouseover', function() { this.openPopup(); })
@@ -1068,17 +1061,59 @@ function placeAllMarkers() {
             .on('click',     function() { this.closePopup(); openDetailModal(req.req_id); });
 
         marker.addTo(map);
-
-        markersMap[req.req_id] = {
-            marker,
-            status: (req.approval_status || 'unknown'),
-        };
+        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown' };
     });
 
-    // Zoom to fit all markers if any exist
+    // Fit map to all placed markers
     const latlngs = Object.values(markersMap).map(m => m.marker.getLatLng());
     if (latlngs.length > 0) {
-        map.fitBounds(L.latLngBounds(latlngs).pad(.15), { maxZoom: 16 });
+        map.fitBounds(L.latLngBounds(latlngs).pad(0.15), { maxZoom: 16 });
+    }
+}
+
+// ─── Main initializer — instant pins + optional legacy geocode ────────────────
+async function initializeAndGeocode() {
+    const overlay  = document.getElementById('mapLoadingOverlay');
+    const progress = document.getElementById('geocodeProgressBar');
+    const progText = document.getElementById('geocodeProgressText');
+
+    // Split requests into those with stored coords vs those that need geocoding
+    const withCoords  = ALL_REQUESTS.filter(r => r.coordinates);
+    const needGeocode = ALL_REQUESTS.filter(r => !r.coordinates);
+
+    if (progText) progText.textContent = `Placing ${withCoords.length} pinned location(s)…`;
+
+    // Place pinned markers immediately
+    placeAllMarkers();
+
+    // Geocode legacy requests (those without stored coordinates)
+    if (needGeocode.length > 0) {
+        const uniqueLocations = [...new Set(needGeocode.map(r => r.location).filter(Boolean))];
+        let done = 0;
+
+        if (progText) progText.textContent = `Geocoding ${uniqueLocations.length} legacy address(es)…`;
+
+        const promises = uniqueLocations.map((loc, i) =>
+            new Promise(resolve => setTimeout(async () => {
+                await geocodeAddress(loc);
+                done++;
+                const pct = Math.round((done / uniqueLocations.length) * 100);
+                if (progress) progress.style.width = pct + '%';
+                if (progText)  progText.textContent = `Geocoding ${done} / ${uniqueLocations.length}…`;
+                resolve();
+            }, i * 350))
+        );
+
+        await Promise.all(promises);
+
+        // Place any remaining markers that were just geocoded
+        placeAllMarkers();
+    }
+
+    // Hide loading overlay
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 400);
     }
 }
 
@@ -1354,7 +1389,7 @@ function initMap() {
         return;
     }
 
-    geocodeAll();
+    initializeAndGeocode();
 }
 
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });

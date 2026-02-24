@@ -72,6 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+
+    $coord_lat = isset($_POST['coord_lat']) ? trim($_POST['coord_lat']) : '';
+    $coord_lng = isset($_POST['coord_lng']) ? trim($_POST['coord_lng']) : '';
+    $coordinates = ($coord_lat !== '' && $coord_lng !== '') ? $coord_lat . ',' . $coord_lng : null;
     
     // NEW: Get consent agreement checkbox value
     $consent_agree = isset($_POST['consent_agree']) ? $_POST['consent_agree'] : '';
@@ -127,10 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // STEP 4: INSERT REQUEST INTO DATABASE
             // ========================================
             $stmt = $conn->prepare(
-                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, created_at)
-                 VALUES (?, ?, ?, ?, ?, 'Pending', NOW())"
+                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, created_at)
+                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, NOW())"
             );
-            $stmt->bind_param("sssss", $infrastructure, $location, $issue, $pure_number, $name);
+            $stmt->bind_param("ssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates);
 
             if ($stmt->execute()) {
                 $request_id = $conn->insert_id;
@@ -1960,7 +1964,8 @@ input[type="file"] {
                         </label>
                     </div>
                 </div>
-                
+                <input type="hidden" id="coord_lat" name="coord_lat">
+<input type="hidden" id="coord_lng" name="coord_lng">
                 <div class="btn-container">
                     <button type="submit" class="btn-primary" id="submit-btn" data-i18n="form_submit_button">Submit Request</button>
                 </div>
@@ -3748,14 +3753,22 @@ input[type="file"] {
 
     function saveLocation() {
         let finalValue = manualAddressInput.value.trim();
-        
         if (!finalValue) {
             showJsNotification('warning', 'Please select or enter a location.');
             return;
         }
-        
         locationInput.value = finalValue;
         localStorage.setItem('location', finalValue);
+
+        // ── Capture pin coordinates ──────────────────────────────
+        if (selectedLatLng) {
+            const lat = typeof selectedLatLng.lat === 'function' ? selectedLatLng.lat() : selectedLatLng.lat;
+            const lng = typeof selectedLatLng.lng === 'function' ? selectedLatLng.lng() : selectedLatLng.lng;
+            document.getElementById('coord_lat').value = lat;
+            document.getElementById('coord_lng').value = lng;
+            localStorage.setItem('coord_lat', lat);
+            localStorage.setItem('coord_lng', lng);
+        }
         closeMapModal();
     }
 
@@ -3775,6 +3788,16 @@ input[type="file"] {
         
         // Initialize map layer toggle button text on page load
         syncMapLayerToggleButton();
+
+        // ── Restore saved pin coordinates from draft ─────────────
+        const savedLat = localStorage.getItem('coord_lat');
+        const savedLng = localStorage.getItem('coord_lng');
+        if (savedLat && savedLng) {
+            const latEl = document.getElementById('coord_lat');
+            const lngEl = document.getElementById('coord_lng');
+            if (latEl) latEl.value = savedLat;
+            if (lngEl) lngEl.value = savedLng;
+        }
     });
     </script>
 
@@ -3805,6 +3828,11 @@ input[type="file"] {
         var barangaySelect = document.getElementById('barangaySelect');
         if (barangaySelect) barangaySelect.value = '';
         localStorage.clear();
+
+        var coordLat = document.getElementById('coord_lat');
+        var coordLng = document.getElementById('coord_lng');
+        if (coordLat) coordLat.value = '';
+        if (coordLng) coordLng.value = '';
     });
     <?php endif; ?>
     </script>

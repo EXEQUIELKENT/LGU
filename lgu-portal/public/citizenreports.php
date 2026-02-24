@@ -146,7 +146,6 @@ if ($maintenance_result) {
             display: block;
         }
 
-        /* Hide .show-on-mobile when in desktop view (i.e., min-width > 768px) */
         @media (min-width: 769px) {
             .show-on-mobile {
                 display: none !important;
@@ -158,6 +157,7 @@ if ($maintenance_result) {
             margin: auto;
             padding: 0 40px;
         }
+
         /* STAT CARDS */
         .stats-grid {
             display: grid;
@@ -212,7 +212,7 @@ if ($maintenance_result) {
             color: var(--text-primary);
         }
 
-        /* RECENT ACTIVITY TABLE & MOBILE CARDS */
+        /* CONTENT CARD */
         .content-card {
             background: var(--content-card-bg);
             border-radius: 18px;
@@ -221,7 +221,7 @@ if ($maintenance_result) {
             box-shadow: 0 10px 30px var(--shadow-color);
             transition: all .25s ease;
             border: 1px solid var(--border-color);
-        }       
+        }
         .card-header {
             display: flex;
             justify-content: space-between;
@@ -229,7 +229,6 @@ if ($maintenance_result) {
             text-align: center;
             margin-bottom: 20px;
         }
-        /* Center card-header h2 */
         .card-header h2 {
             margin: 0 auto;
             text-align: center;
@@ -237,7 +236,6 @@ if ($maintenance_result) {
             font-size: 30px;
             color: var(--text-primary);
         }
-        /* Make card-header h2 larger on mobile view for .show-on-mobile */
         @media (max-width: 768px) {
             .show-on-mobile.card-header h2 {
                 font-size: 30px !important;
@@ -252,50 +250,54 @@ if ($maintenance_result) {
             }
         }
 
-        /* TABLE POLISH - IMPROVED TABLE CONTAINER */
+        /* =============================================
+           TABLE — FIXED LAYOUT + OVERFLOW CONTAINMENT
+        =============================================== */
         .table-wrapper {
             border-radius: 16px;
             background: var(--card-bg);
             box-shadow: inset 0 0 0 1px var(--border-color);
             transition: background 0.3s ease;
-            overflow-x: visible;
-        }
-
-        @media (max-width: 1150px) {
-            .table-wrapper {
-                overflow-x: auto;
-            }
-            table {
-                min-width: 900px;
-            }
+            /* Allow horizontal scroll only when truly needed */
+            overflow-x: auto;
+            width: 100%;
         }
 
         table {
+            /* Fixed layout: respects explicit widths, clips overflow */
+            table-layout: fixed;
             width: 100%;
-            max-width: 100%;
             border-collapse: separate;
             border-spacing: 0;
+            /* Minimum width before horizontal scroll kicks in */
+            min-width: 700px;
         }
 
-        /* MODERN TABLE HEADER - UPGRADE + STICKY */
+        /* Column width distribution */
+        col.col-id       { width: 90px;  }
+        col.col-date     { width: 110px; }
+        col.col-type     { width: 22%;   }   /* flexible, clips overflow */
+        col.col-location { width: 30%;   }   /* flexible, clips overflow */
+        col.col-budget   { width: 110px; }
+        col.col-status   { width: 120px; }
+        col.col-action   { width: 80px;  }
+
+        /* MODERN TABLE HEADER */
         thead th {
             position: sticky;
             top: 0;
-            background: linear-gradient(
-                to bottom,
-                #fdfdfd,
-                #f2f4f8
-            );
+            background: linear-gradient(to bottom, #fdfdfd, #f2f4f8);
             z-index: 2;
-            padding: 16px 18px;
+            padding: 16px 14px;
             border-bottom: 1px solid #e3e6ee;
             color: #555;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
             text-align: center;
             white-space: nowrap;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            overflow: hidden;
         }
 
         [data-theme="dark"] thead th {
@@ -308,22 +310,17 @@ if ($maintenance_result) {
             border-bottom-color: var(--border-color);
         }
 
-        th:nth-child(1) { width: 100px; }
-        th:nth-child(2) { width: 130px; }
-        th:nth-child(3) { width: auto; min-width: 140px; }
-        th:nth-child(4) { width: auto; min-width: 150px; }
-        th:nth-child(5) { width: 120px; }
-        th:nth-child(6) { width: 110px; }
-        th:nth-child(7) { width: 100px; }
-
-        /* TABLE ZEBRA + HOVER LIFT */
+        /* TABLE CELLS — allow wrapping by default */
         td {
-            padding: 16px 18px;
+            padding: 14px 14px;
             border-bottom: 1px solid #eef0f5;
-            font-size: 15px;
+            font-size: 14px;
             color: #374151;
             text-align: center;
-            white-space: nowrap;
+            /* Allow natural wrapping — no global nowrap */
+            white-space: normal;
+            word-break: break-word;
+            vertical-align: middle;
         }
 
         [data-theme="dark"] td {
@@ -331,16 +328,47 @@ if ($maintenance_result) {
             color: var(--text-secondary);
         }
 
-        td:nth-child(1) {
-            text-align: center;
-        }
-        td:nth-child(3),
-        td:nth-child(4) {
-            text-align: left;
+        /* Columns that should NOT wrap (short fixed values) */
+        td:nth-child(1),   /* Sched # */
+        td:nth-child(2),   /* Date    */
+        td:nth-child(5),   /* Budget  */
+        td:nth-child(6),   /* Status  */
+        td:nth-child(7)    /* Action  */
+        {
+            white-space: nowrap;
         }
 
+        /* Task & Location: truncate with ellipsis on single line */
+        td:nth-child(3),   /* Type/Task */
+        td:nth-child(4)    /* Location  */
+        {
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 0; /* triggers ellipsis in table-layout:fixed */
+        }
+
+        /* Show full text on hover via title attribute (tooltip) */
+        td:nth-child(3):hover,
+        td:nth-child(4):hover {
+            overflow: visible;
+            white-space: normal;
+            word-break: break-word;
+            /* Slight highlight to indicate expanded */
+            background: #f0f5ff;
+            position: relative;
+            z-index: 1;
+        }
+
+        [data-theme="dark"] td:nth-child(3):hover,
+        [data-theme="dark"] td:nth-child(4):hover {
+            background: rgba(55, 98, 200, 0.15);
+        }
+
+        /* TABLE ZEBRA + HOVER */
         tbody tr {
-            transition: background .2s ease, transform .15s ease;
+            transition: background .2s ease;
         }
         tbody tr:nth-child(even) {
             background: #fafbff;
@@ -355,54 +383,77 @@ if ($maintenance_result) {
             background: rgba(55, 98, 200, 0.1);
         }
 
-        /* VIEW BUTTON UPGRADE */
+        /* VIEW BUTTON */
         td a.link {
-            padding: 7px 18px;
-            font-size: 14px;
+            padding: 6px 16px;
+            font-size: 13px;
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: #fff;
             border-radius: 999px;
             text-decoration: none;
             font-weight: 600;
             box-shadow: 0 4px 10px rgba(59,130,246,.35);
-            transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+            transition: transform .15s ease, box-shadow .15s ease;
             display: inline-block;
+            white-space: nowrap;
         }
         td a.link:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(59,130,246,.45);
         }
 
-        /* STATUS PILL - UPGRADED STYLE */
+        /* STATUS PILL */
         .status-pill {
-            padding: 6px 14px;
+            padding: 5px 12px;
             border-radius: 999px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 95px;
+            white-space: nowrap;
         }
         .status-pill::before {
             content: "●";
-            font-size: 10px;
-            margin-right: 6px;
+            font-size: 9px;
+            margin-right: 5px;
         }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-fixed { background: #d4edda; color: #155724; }
+        .status-pending  { background: #fff3cd; color: #856404; }
+        .status-fixed    { background: #d4edda; color: #155724; }
         .status-progress { background: #cce5ff; color: #004085; }
-        .status-delayed { background: #f8d7da; color: #721c24; }
+        .status-delayed  { background: #f8d7da; color: #721c24; }
 
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 13px;
+        /* TABLE SEARCH BAR */
+        .table-search-wrapper {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 18px;
         }
-        /* Mobile maintenance list (hidden by default, replaces table on mobile) */
+        #requestSearch {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid #d2d6db;
+            font-size: 15px;
+            outline: none;
+            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        [data-theme="dark"] #requestSearch {
+            border-color: var(--border-color);
+        }
+        #requestSearch:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+        }
+
+        /* MOBILE MAINTENANCE LIST */
         .mobile-maintenance-list {
             display: none;
         }
-        /* --- Begin drop-in mobile card layout --- */
+
         .report-card {
             width: 100%;
             font-size: 14px;
@@ -414,14 +465,14 @@ if ($maintenance_result) {
             flex-direction: column;
             gap: 10px;
             transition: background 0.3s ease, box-shadow 0.3s ease;
+            box-sizing: border-box;
         }
-        /* Modified report-row for mobile stack label and value inline instead of left/right */
         .report-row {
             display: flex;
             flex-direction: row;
-            align-items: center;
+            align-items: flex-start;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.5;
             gap: 7px;
         }
         .report-row .label {
@@ -434,10 +485,11 @@ if ($maintenance_result) {
         .report-row .value {
             font-weight: 500;
             text-align: left;
-            max-width: 100%;
-            margin-left: 0;
             flex: 1 1 auto;
             color: var(--text-secondary);
+            /* Allow long text to wrap on mobile cards */
+            word-break: break-word;
+            white-space: normal;
         }
         .report-footer {
             display: flex;
@@ -457,74 +509,18 @@ if ($maintenance_result) {
             border: none;
             cursor: pointer;
         }
-        .evidence-btn:hover {
-            background: #2851b3;
-        }
-        /* --- End drop-in mobile card layout --- */
-        .maintenance-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 15px;
-            box-shadow: 0 6px 18px var(--shadow-color);
-            color: var(--text-primary);
-            transition: all .25s ease;
-        }
-        .maintenance-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px var(--shadow-color);
-        }
-        .maintenance-card .status-pill {
-            margin-top: 8px;
-        }
-        .card-action {
-            display: inline-block;
-            margin-top: 10px;
-            font-weight: 600;
-            color: #005bb3;
-            text-decoration: none;
-        }
+        .evidence-btn:hover { background: #2851b3; }
 
-        /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
-        .table-search-wrapper {
-            width: 100%;
-            max-width: 100%;
-            margin-bottom: 18px;
-        }
-        #requestSearch {
-            width: 100%;
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid #d2d6db;
-            font-size: 15px;
-            outline: none;
-            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
-            background: var(--card-bg);
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] #requestSearch {
-            border-color: var(--border-color);
-        }
-        
-        #requestSearch:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-        }
-        @media (max-width: 1024px) {    
-        .footer-content {
-            grid-template-columns: 1fr 1fr;
-        }
-}
-
-    /* ===== MOBILE BREAKPOINT (768px and below) ===== */
-    @media (max-width: 768px) {
-            /* HIDE DESKTOP NAVIGATION */
-            .nav {
-                display: none !important;
+        @media (max-width: 1024px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
             }
+        }
 
-            /* SHOW MOBILE TOP NAV */
+        /* ===== MOBILE BREAKPOINT ===== */
+        @media (max-width: 768px) {
+            .nav { display: none !important; }
+
             .mobile-top-nav {
                 display: flex !important;
                 position: fixed;
@@ -557,10 +553,7 @@ if ($maintenance_result) {
                 cursor: pointer;
                 transition: all 0.3s ease;
             }
-
-            .mobile-toggle:active {
-                transform: scale(0.95);
-            }
+            .mobile-toggle:active { transform: scale(0.95); }
 
             .mobile-top-nav img {
                 height: 42px;
@@ -585,9 +578,7 @@ if ($maintenance_result) {
                 z-index: 1;
             }
 
-            .dashboard-container { 
-                padding: 20px 13px 40px; 
-            }
+            .dashboard-container { padding: 20px 13px 40px; }
             .container { padding: 0 5px; }
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -598,22 +589,24 @@ if ($maintenance_result) {
                 font-size: 2rem;
                 font-weight: 600;
             }
+
+            /* Hide desktop table, show mobile cards */
             table { display: none !important; }
-            
             .mobile-maintenance-list {
                 display: flex;
                 flex-direction: column;
                 gap: 20px;
                 width: 100%;
-                padding: 8px 20px;
+                padding: 8px 10px;
+                box-sizing: border-box;
             }
 
-            /* === MOBILE SEARCH POSITIONING === */
             .table-search-wrapper {
                 order: 2;
                 margin-top: 10px;
                 margin-bottom: 18px;
                 padding: 0 10px;
+                box-sizing: border-box;
             }
             .mobile-maintenance-list .card-header {
                 display: flex;
@@ -621,88 +614,17 @@ if ($maintenance_result) {
                 align-items: center;
             }
 
-            /* Add inside the existing section */
-            .footer {
-                padding: 40px 20px 20px;
-            }
-
+            .footer { padding: 40px 20px 20px; }
             .footer-content {
                 grid-template-columns: 1fr;
                 gap: 30px;
                 margin-bottom: 30px;
             }
-
             .footer-bottom {
                 flex-direction: column;
                 gap: 20px;
                 padding-top: 20px;
                 margin-top: 20px;
-            }
-
-            /* === Maintenance card (same visual as request-card) === */
-            .report-card {
-                width: 100%;
-                background: var(--card-bg);
-                border-radius: 16px;
-                padding: 16px 18px;
-                box-shadow: 0 8px 20px var(--shadow-color);
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                font-size: 14px;
-            }
-
-            /* Row layout */
-            .report-row {
-                display: flex;
-                align-items: center;
-                gap: 7px;
-                line-height: 1.4;
-            }
-
-            /* Label & value formatting */
-            .report-row .label {
-                font-weight: 600;
-                opacity: 0.7;
-                flex-shrink: 0;
-            }
-
-            .report-row .value {
-                font-weight: 500;
-                flex: 1;
-                text-align: left;
-            }
-
-            /* Footer (status + action button) */
-            .report-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-top: 8px;
-            }
-
-            /* View button */
-            .evidence-btn {
-                text-align: center;
-                width: 90px;
-                padding: 8px 14px;
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 600;
-                background: #3762c8;
-                color: #fff;
-                border: none;
-                cursor: pointer;
-                transition: background .2s ease;
-            }
-
-            .evidence-btn:hover {
-                background: #2851b3;
-            }
-
-            /* Status pill spacing */
-            .report-footer .status-pill {
-                margin-right: 6px;
             }
 
             .content-card {
@@ -711,45 +633,24 @@ if ($maintenance_result) {
             }
         }
 
-        /* ===== SMALLER MOBILE (500px and below) ===== */
         @media (max-width: 500px) {
             .stat-card { padding: 20px 10px; }
             .stat-icon { font-size: 25px; padding: 8px; }
             .stat-card .number { font-size: 28px; }
             .card-header h2 { font-size: 1.0rem; }
             .report-card { padding: 12px; }
-            
-            #requestSearch {
-                font-size: 14px;
-                padding: 9px 14px;
-            }
+            #requestSearch { font-size: 14px; padding: 9px 14px; }
         }
 
-        /* ===== VERY SMALL MOBILE (360px and below) ===== */
         @media (max-width: 360px) {
-            .mobile-clock {
-                font-size: 12px;
-                right: 52px;
-            }
-
-            .report-card {
-                padding: 12px 3vw !important;
-            }
+            .mobile-clock { font-size: 12px; right: 52px; }
+            .report-card { padding: 12px 3vw !important; }
         }
 
-        /* ===== ENSURE DESKTOP NAV SHOWS ON LARGE SCREENS ===== */
         @media (min-width: 769px) {
-            .mobile-top-nav {
-                display: none !important;
-            }
-
-            .sidebar-nav {
-                display: none !important;
-            }
-
-            .nav {
-                display: flex !important;
-            }
+            .mobile-top-nav { display: none !important; }
+            .sidebar-nav { display: none !important; }
+            .nav { display: flex !important; }
         }
     </style>
     <?php include 'citizen_rendering.php'; ?>
@@ -779,7 +680,6 @@ if ($maintenance_result) {
             <div class="nav-actions">
                 <div class="desktop-clock" id="desktopClock"></div>
 
-                <!-- TRANSLATE BUTTON (desktop) -->
                 <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
                     <span class="globe-icon">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -823,7 +723,6 @@ if ($maintenance_result) {
     <div class="mobile-top-nav">
         <button class="mobile-toggle" id="mobileToggle">☰</button>
 
-        <!-- MOBILE TRANSLATE BUTTON -->
         <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
@@ -876,17 +775,16 @@ if ($maintenance_result) {
     </div>
 </div>
 
-<!-- Update the content card header -->
 <div class="content-card">
-    <!-- Desktop/tablet label -->
+    <!-- Mobile header -->
     <div class="card-header show-on-mobile">
         <h2 data-i18n="reports_page_title">Recent Maintenance Reports</h2>
     </div>
+    <!-- Desktop header -->
     <div class="card-header">
         <h2 class="hide-on-mobile" data-i18n="reports_page_title">Recent Maintenance Reports</h2>
     </div>
 
-    <!-- Update search input -->
     <div class="table-search-wrapper">
         <input
             id="requestSearch"
@@ -896,9 +794,19 @@ if ($maintenance_result) {
         >
     </div>
 
-    <!-- Update table headers -->
+    <!-- DESKTOP TABLE -->
     <div class="table-wrapper">
         <table>
+            <!-- colgroup drives the fixed-layout widths -->
+            <colgroup>
+                <col class="col-id">
+                <col class="col-date">
+                <col class="col-type">
+                <col class="col-location">
+                <col class="col-budget">
+                <col class="col-status">
+                <col class="col-action">
+            </colgroup>
             <thead>
                 <tr>
                     <th data-i18n="reports_table_sched">Sched #</th>
@@ -914,7 +822,6 @@ if ($maintenance_result) {
                 <?php 
                 if (count($maintenance_data) > 0) {
                     foreach ($maintenance_data as $item) {
-                        // Determine status pill class
                         $status_class = 'status-pending';
                         $status_key = 'reports_status_pending';
                         if ($item['status'] === 'Completed') {
@@ -927,14 +834,16 @@ if ($maintenance_result) {
                             $status_class = 'status-delayed';
                             $status_key = 'reports_status_delayed';
                         }
-                        // Format date
                         $date = date('M d, Y', strtotime($item['starting_date']));
+                        // title attributes allow full text on hover
+                        $task_escaped     = htmlspecialchars($item['task']);
+                        $location_escaped = htmlspecialchars($item['location']);
                 ?>
                 <tr>
                     <td>#SCH-<?php echo $item['sched_id']; ?></td>
                     <td><?php echo $date; ?></td>
-                    <td><?php echo htmlspecialchars($item['task']); ?></td>
-                    <td><?php echo htmlspecialchars($item['location']); ?></td>
+                    <td title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
+                    <td title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
                     <td>₱<?php echo number_format($item['budget'], 2); ?></td>
                     <td><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
                     <td><a href="#" class="link" data-i18n="reports_view_button">View</a></td>
@@ -956,11 +865,10 @@ if ($maintenance_result) {
         </table>
     </div>
 
-    <!-- Update mobile cards -->
+    <!-- MOBILE CARDS -->
     <div class="mobile-maintenance-list">
         <?php if (!empty($maintenance_data)): ?>
             <?php foreach ($maintenance_data as $item): 
-                // Status pill
                 $status_class = 'status-pending';
                 $status_key = 'reports_status_pending';
                 if ($item['status'] === 'Completed') {
@@ -979,39 +887,32 @@ if ($maintenance_result) {
                         <span class="label" data-i18n="reports_mobile_schedule_id">Schedule ID:</span>
                         <span class="value">#SCH-<?= $item['sched_id'] ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_category">Category:</span>
                         <span class="value"><?= htmlspecialchars($item['category']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_task">Task:</span>
                         <span class="value"><?= htmlspecialchars($item['task']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_location">Location:</span>
                         <span class="value"><?= htmlspecialchars($item['location']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_start_date">Start Date:</span>
                         <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_budget">Budget:</span>
                         <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_status">Status:</span>
                         <span class="status-pill <?= $status_class ?>" data-i18n="<?= $status_key ?>">
                             <?= htmlspecialchars($item['status']) ?>
                         </span>
                     </div>
-
                     <div class="report-footer">
                         <a href="#" class="evidence-btn" data-i18n="reports_view_button">View</a>
                     </div>
@@ -1020,7 +921,6 @@ if ($maintenance_result) {
         <?php else: ?>
             <div class="report-card" data-i18n="reports_no_data">No maintenance schedules available</div>
         <?php endif; ?>
-        <!-- MOBILE "NO MATCHING DATA" PLACEHOLDER -->
         <div id="noMobileResult" class="report-card" style="display:none; text-align:center; font-weight:600;" data-i18n="reports_no_match">
             No matching data
         </div>
@@ -1030,7 +930,7 @@ if ($maintenance_result) {
 </div>
 </div>
 
-<!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
+<!-- TABLE LIVE SEARCH (Desktop) -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("requestSearch");
@@ -1038,28 +938,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!table || !searchInput) return;
 
     const tbody = table.querySelector("tbody");
-    // Exclude no-result row from movable rows.
     const rows = Array.from(tbody.querySelectorAll("tr"))
         .filter(r => r.id !== "noRequestResult");
     const noResultRow = document.getElementById("noRequestResult");
 
     searchInput.addEventListener("input", () => {
         const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
 
-        // Reset: show all, restore original order
         if (query === "") {
-            rows.forEach(row => {
-                row.style.display = "";
-                tbody.appendChild(row);
-            });
+            rows.forEach(row => { row.style.display = ""; tbody.appendChild(row); });
             if (noResultRow) noResultRow.style.display = "none";
             return;
         }
 
-        // Search and mark matches
+        let matches = [];
         rows.forEach(row => {
-            // Only search visible text content (all columns)
             const rowText = row.innerText.toLowerCase();
             if (rowText.includes(query)) {
                 matches.push(row);
@@ -1069,16 +962,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Move all matching rows to the top (in entered order)
         matches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
-
-        // Show/hide "No matching data"
         if (noResultRow) noResultRow.style.display = matches.length === 0 ? "" : "none";
     });
 });
 </script>
 
-<!-- MOBILE CARD SEARCH + REORDER SCRIPT -->
+<!-- MOBILE CARD SEARCH -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("requestSearch");
@@ -1091,19 +981,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchInput.addEventListener("input", () => {
         const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
 
-        // Reset state
         if (query === "") {
-            cards.forEach(card => {
-                card.style.display = "";
-                mobileList.appendChild(card);
-            });
+            cards.forEach(card => { card.style.display = ""; mobileList.appendChild(card); });
             if (noMobileResult) noMobileResult.style.display = "none";
             return;
         }
 
-        // Search cards
+        let matches = [];
         cards.forEach(card => {
             const cardText = card.innerText.toLowerCase();
             if (cardText.includes(query)) {
@@ -1114,15 +999,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Move matching cards to top
-        matches.forEach(card => {
-            mobileList.insertBefore(card, mobileList.firstChild);
-        });
-
-        // Show / hide "No matching data"
-        if (noMobileResult) {
-            noMobileResult.style.display = matches.length === 0 ? "" : "none";
-        }
+        matches.forEach(card => mobileList.insertBefore(card, mobileList.firstChild));
+        if (noMobileResult) noMobileResult.style.display = matches.length === 0 ? "" : "none";
     });
 });
 </script>
