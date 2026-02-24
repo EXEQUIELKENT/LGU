@@ -1333,6 +1333,185 @@ input[type="file"] {
     touch-action: none;
 }
 
+/* ===== SEARCHABLE BARANGAY COMBOBOX ===== */
+.barangay-combobox {
+    position: relative;
+    width: 100%;
+}
+
+.combobox-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 42px;
+}
+
+.combobox-display:hover {
+    border-color: var(--input-focus-border);
+}
+
+.combobox-display.open {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+#comboboxLabel {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+    opacity: 0.85;
+}
+
+#comboboxLabel.selected {
+    opacity: 1;
+    font-weight: 500;
+}
+
+.combobox-arrow {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.combobox-display.open .combobox-arrow {
+    transform: rotate(180deg);
+}
+
+.combobox-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--modal-bg);
+    border: 1.5px solid var(--input-focus-border);
+    border-top: none;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 9999;
+    overflow: hidden;
+}
+
+#comboboxSearch {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+#comboboxSearch::placeholder {
+    color: var(--input-placeholder);
+    opacity: 0.7;
+}
+
+.combobox-list {
+    max-height: 200px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.combobox-list::-webkit-scrollbar {
+    width: 5px;
+}
+.combobox-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.combobox-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.combobox-option {
+    padding: 9px 14px;
+    font-size: 13.5px;
+    cursor: pointer;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.combobox-option:last-child {
+    border-bottom: none;
+}
+
+.combobox-option:hover,
+.combobox-option.highlighted {
+    background: rgba(43, 108, 176, 0.1);
+}
+
+.combobox-option.selected-option {
+    background: rgba(43, 108, 176, 0.15);
+    font-weight: 600;
+    color: var(--input-focus-border);
+}
+
+.combobox-option .opt-name {
+    flex: 1;
+}
+
+.combobox-option .opt-district {
+    font-size: 11px;
+    color: var(--input-placeholder);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.combobox-no-results {
+    padding: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--input-placeholder);
+}
+
+/* 1366×768 compact fix for combobox */
+@media (min-width: 769px) and (max-height: 800px) {
+    .combobox-list {
+        max-height: 150px;
+    }
+    .combobox-display {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 38px;
+    }
+    #comboboxSearch {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    .combobox-option {
+        padding: 7px 12px;
+        font-size: 13px;
+    }
+}
+
 /* Leaflet map container improvements for mobile */
 .leaflet-container {
     touch-action: pan-x pan-y pinch-zoom;
@@ -1774,6 +1953,78 @@ input[type="file"] {
         display: flex !important;
     }
 }
+
+/* ===== 1366×768 LAPTOP FIX ===== */
+@media (min-width: 769px) and (max-height: 800px) {
+    /* Compact map modal to fit shorter screens */
+    #mapModal {
+        max-height: 92vh;
+    }
+
+    #map {
+        min-height: 220px;
+        margin: 8px 10px;
+    }
+
+    .map-header {
+        padding: 10px 14px;
+    }
+
+    .map-header h3 {
+        font-size: 14px;
+    }
+
+    /* Shrink header buttons so they don't overlap title */
+    #gpsBtn {
+        left: 12px;
+        padding: 6px 9px;
+        font-size: 15px;
+        border-radius: 8px;
+    }
+
+    #labelToggleBtn {
+        left: 58px !important;
+        padding: 6px 9px;
+        font-size: 15px;
+        min-width: 36px;
+        border-radius: 8px;
+    }
+
+    #mapLayerToggle {
+        right: 12px;
+        padding: 6px 10px;
+        font-size: 11px;
+        border-radius: 6px;
+    }
+
+    #districtInfo {
+        padding: 4px 10px;
+        font-size: 11px;
+        margin: 4px 12px 0;
+    }
+
+    .map-address-input {
+        padding: 8px 12px;
+        gap: 6px;
+    }
+
+    #barangaySelect,
+    #barangaySearch,
+    .map-address-input input {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .map-actions {
+        padding: 8px 12px;
+        gap: 10px;
+    }
+
+    .map-actions button {
+        padding: 9px 18px;
+        font-size: 13px;
+    }
+}
 </style>
     <!-- Leaflet (FREE, NO API KEY) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -1986,10 +2237,22 @@ input[type="file"] {
             <div id="districtInfo"></div>
             
             <div class="map-address-input">
-                <select id="barangaySelect">
-                    <option value="" data-i18n="map_barangay_placeholder">Select Barangay (Quezon City)</option>
-                </select>
-                <input type="text" id="manualAddressInput" data-i18n-placeholder="map_address_placeholder" placeholder="Specific address (auto-detected)" readonly>
+                <!-- Hidden native select (still used internally for value tracking) -->
+                <select id="barangaySelect" style="display:none;"></select>
+
+                <!-- Custom searchable combobox -->
+                <div class="barangay-combobox" id="barangayCombobox">
+                    <div class="combobox-display" id="comboboxDisplay">
+                        <span id="comboboxLabel">Select Barangay (Quezon City)</span>
+                        <span class="combobox-arrow" id="comboboxArrow">▾</span>
+                    </div>
+                    <div class="combobox-dropdown" id="comboboxDropdown" style="display:none;">
+                        <input type="text" id="comboboxSearch" placeholder="🔍 Search barangay or district..." autocomplete="off">
+                        <div class="combobox-list" id="comboboxList"></div>
+                    </div>
+                </div>
+
+                <input type="text" id="manualAddressInput" data-i18n-placeholder="map_address_placeholder" placeholder="Type or auto-detect address">
             </div>
             
             <div id="map"></div>
@@ -3055,16 +3318,200 @@ input[type="file"] {
     // INITIALIZATION
     // ============================================
 
-    // Populate barangay dropdown
-    if (barangaySelect) {
-        QC_BARANGAYS_COMPREHENSIVE.forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = b.name;
-            opt.textContent = `${b.name} (${b.district})`;
-            barangaySelect.appendChild(opt);
+// ── Populate hidden native select (for internal value use) ──
+if (barangaySelect) {
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = 'Select Barangay (Quezon City)';
+    barangaySelect.appendChild(placeholderOpt);
+
+    QC_BARANGAYS_COMPREHENSIVE.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = `${b.name} (${b.district})`;
+        barangaySelect.appendChild(opt);
+    });
+}
+
+// ── Searchable Combobox Logic ──────────────────────────────────
+(function() {
+    const comboboxDisplay  = document.getElementById('comboboxDisplay');
+    const comboboxDropdown = document.getElementById('comboboxDropdown');
+    const comboboxSearch   = document.getElementById('comboboxSearch');
+    const comboboxList     = document.getElementById('comboboxList');
+    const comboboxLabel    = document.getElementById('comboboxLabel');
+    const nativeSelect     = document.getElementById('barangaySelect');
+
+    if (!comboboxDisplay || !comboboxDropdown || !comboboxSearch || !comboboxList) return;
+
+    let isOpen = false;
+    let selectedValue = '';
+    let highlightedIndex = -1;
+    let filteredData = [...QC_BARANGAYS_COMPREHENSIVE];
+
+    // ── Render list items ────────────────────────────────────────
+    function renderList(data) {
+        comboboxList.innerHTML = '';
+        highlightedIndex = -1;
+
+        if (data.length === 0) {
+            comboboxList.innerHTML = '<div class="combobox-no-results">No results found</div>';
+            return;
+        }
+
+        data.forEach((b, idx) => {
+            const item = document.createElement('div');
+            item.className = 'combobox-option' + (b.name === selectedValue ? ' selected-option' : '');
+            item.dataset.value = b.name;
+            item.dataset.index = idx;
+            item.innerHTML = `<span class="opt-name">${b.name}</span><span class="opt-district">${b.district}</span>`;
+
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Prevent blur before click
+                selectBarangay(b.name, b.district);
+            });
+
+            comboboxList.appendChild(item);
         });
     }
 
+    // ── Filter list by search query ──────────────────────────────
+    function filterList(query) {
+        const q = query.toLowerCase().trim();
+        filteredData = q
+            ? QC_BARANGAYS_COMPREHENSIVE.filter(b =>
+                b.name.toLowerCase().includes(q) ||
+                b.district.toLowerCase().includes(q)
+              )
+            : [...QC_BARANGAYS_COMPREHENSIVE];
+        renderList(filteredData);
+    }
+
+    // ── Open dropdown ────────────────────────────────────────────
+    function openDropdown() {
+        if (isOpen) return;
+        isOpen = true;
+        comboboxDisplay.classList.add('open');
+        comboboxDropdown.style.display = 'block';
+        comboboxSearch.value = '';
+        filterList('');
+
+        // Scroll selected into view
+        setTimeout(() => {
+            comboboxSearch.focus();
+            const selectedEl = comboboxList.querySelector('.selected-option');
+            if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
+        }, 50);
+    }
+
+    // ── Close dropdown ───────────────────────────────────────────
+    function closeDropdown() {
+        if (!isOpen) return;
+        isOpen = false;
+        comboboxDisplay.classList.remove('open');
+        comboboxDropdown.style.display = 'none';
+        comboboxSearch.value = '';
+        highlightedIndex = -1;
+    }
+
+    // ── Select a barangay ────────────────────────────────────────
+    function selectBarangay(name, district) {
+        selectedValue = name;
+        comboboxLabel.textContent = `${name} (${district})`;
+        comboboxLabel.classList.add('selected');
+        if (nativeSelect) {
+            nativeSelect.value = name;
+            nativeSelect.dispatchEvent(new Event('change'));
+        }
+        closeDropdown();
+    }
+
+    // ── Keyboard navigation ──────────────────────────────────────
+    comboboxSearch.addEventListener('keydown', (e) => {
+        const items = comboboxList.querySelectorAll('.combobox-option');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+            updateHighlight(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIndex = Math.max(highlightedIndex - 1, 0);
+            updateHighlight(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && items[highlightedIndex]) {
+                const val = items[highlightedIndex].dataset.value;
+                const b = QC_BARANGAYS_COMPREHENSIVE.find(x => x.name === val);
+                if (b) selectBarangay(b.name, b.district);
+            } else if (filteredData.length === 1) {
+                selectBarangay(filteredData[0].name, filteredData[0].district);
+            }
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+        }
+    });
+
+    function updateHighlight(items) {
+        items.forEach((el, i) => {
+            el.classList.toggle('highlighted', i === highlightedIndex);
+            if (i === highlightedIndex) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    // ── Toggle on display click ──────────────────────────────────
+    comboboxDisplay.addEventListener('click', () => {
+        isOpen ? closeDropdown() : openDropdown();
+    });
+
+    // ── Live search filtering ────────────────────────────────────
+    comboboxSearch.addEventListener('input', () => {
+        filterList(comboboxSearch.value);
+    });
+
+    // ── Close when clicking outside ──────────────────────────────
+    document.addEventListener('click', (e) => {
+        if (!document.getElementById('barangayCombobox')?.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+
+    // ── Sync when native select changes (e.g. from GPS / map click) ──
+    if (nativeSelect) {
+        nativeSelect.addEventListener('change', () => {
+            const val = nativeSelect.value;
+            if (!val) {
+                selectedValue = '';
+                comboboxLabel.textContent = 'Select Barangay (Quezon City)';
+                comboboxLabel.classList.remove('selected');
+                return;
+            }
+            const b = QC_BARANGAYS_COMPREHENSIVE.find(x => x.name === val);
+            if (b && b.name !== selectedValue) {
+                selectedValue = b.name;
+                comboboxLabel.textContent = `${b.name} (${b.district})`;
+                comboboxLabel.classList.add('selected');
+            }
+        });
+    }
+
+    // ── Reset combobox label when modal closes ───────────────────
+    const origClose = window.closeMapModal;
+    window.closeMapModal = function() {
+        closeDropdown();
+        if (origClose) origClose();
+    };
+
+    // ── Reset when modal opens ───────────────────────────────────
+    const origOpen = window.openMapModal;
+    window.openMapModal = function() {
+        selectedValue = '';
+        comboboxLabel.textContent = 'Select Barangay (Quezon City)';
+        comboboxLabel.classList.remove('selected');
+        if (origOpen) origOpen();
+    };
+})();
     // ============================================
     // EVENT HANDLERS
     // ============================================
