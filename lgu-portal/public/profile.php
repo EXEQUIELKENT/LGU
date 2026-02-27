@@ -1107,6 +1107,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     box-shadow: 0 4px 12px rgba(55, 98, 200, 0.4);
 }
 
+/* ── Input with icon (matching admin_create.php) ── */
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-with-icon .field-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 15px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: color 0.2s, opacity 0.2s;
+    z-index: 1;
+}
+.input-with-icon input {
+    padding-left: 42px !important;
+}
+.input-with-icon input:focus ~ .field-icon,
+.input-with-icon:focus-within .field-icon {
+    color: #3762c8;
+    opacity: 1;
+}
+[data-theme="dark"] .input-with-icon:focus-within .field-icon {
+    color: #5f8cff;
+}
+
 @media (max-width: 768px) {
     .cropper-container {
         width: 95vw;
@@ -1566,19 +1596,28 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <!-- First Name -->
             <div class="form-group">
                 <label for="first_name">First Name</label>
-                <input type="text" name="first_name" id="first_name" value="<?= htmlspecialchars($currentUser['first_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
+                <div class="input-with-icon">
+                    <i class="fas fa-id-card field-icon"></i>
+                    <input type="text" name="first_name" id="first_name" value="<?= htmlspecialchars($currentUser['first_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
+                </div>
             </div>
 
             <!-- Last Name -->
             <div class="form-group">
                 <label for="last_name">Last Name</label>
-                <input type="text" name="last_name" id="last_name" value="<?= htmlspecialchars($currentUser['last_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
+                <div class="input-with-icon">
+                    <i class="fas fa-id-card field-icon"></i>
+                    <input type="text" name="last_name" id="last_name" value="<?= htmlspecialchars($currentUser['last_name'] ?? '') ?>" required maxlength="50" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
+                </div>
             </div>
 
             <!-- Email (read-only) -->
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" name="email" id="email" value="<?= htmlspecialchars($currentUser['email'] ?? '') ?>" disabled style="background: var(--bg-tertiary); cursor: not-allowed;">
+                <div class="input-with-icon">
+                    <i class="fas fa-at field-icon"></i>
+                    <input type="email" name="email" id="email" value="<?= htmlspecialchars($currentUser['email'] ?? '') ?>" disabled style="background: var(--bg-tertiary); cursor: not-allowed;">
+                </div>
                 <small style="color: var(--text-secondary); font-size: 12px;">Email cannot be changed</small>
             </div>
 
@@ -1586,10 +1625,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
                 <h3 style="color: var(--text-primary); margin-bottom: 20px; font-size: 18px;">Change Password</h3>
                 <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">Leave blank if you don't want to change your password</p>
-
+                
                 <div class="form-group">
                     <label for="current_password">Current Password</label>
-                    <div class="input-box" style="margin-bottom: 25px;">
+                    <div class="input-box input-with-icon" style="margin-bottom: 25px;">
+                        <i class="fas fa-lock field-icon"></i>
                         <input type="password" name="current_password" id="current_password" placeholder="Enter current password" autocomplete="current-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
                         <button type="button" class="password-toggle" id="toggleCurrentPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
@@ -1597,7 +1637,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
                 <div class="form-group">
                     <label for="new_password">New Password</label>
-                    <div class="input-box">
+                    <div class="input-box input-with-icon">
+                        <i class="fas fa-key field-icon"></i>
                         <input type="password" name="new_password" id="new_password" placeholder="Enter new password" autocomplete="new-password" <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>>
                         <button type="button" class="password-toggle" id="toggleNewPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
@@ -1638,7 +1679,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
                 <div class="form-group">
                     <label for="confirm_password">Confirm New Password</label>
-                    <div class="input-box">
+                    <div class="input-box input-with-icon">
+                        <i class="fas fa-key field-icon"></i>
                         <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm new password" autocomplete="new-password">
                         <button type="button" class="password-toggle" id="toggleConfirmPassword" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>

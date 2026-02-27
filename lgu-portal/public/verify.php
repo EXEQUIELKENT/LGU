@@ -398,9 +398,6 @@ if ($token !== '') {
 <!-- ── Main ─────────────────────────────────────────────────────────────── -->
 <div class="verify-wrapper">
     <div class="verify-card">
-
-        <img src="<?= htmlspecialchars($OFFICIAL_LOGO) ?>" alt="LGU Logo" class="verify-logo">
-
         <?php if ($state === 'success'): ?>
 
             <div class="icon-ring success">✅</div>

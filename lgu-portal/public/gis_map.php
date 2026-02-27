@@ -172,10 +172,14 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 .gis-header-left h1 { font-size: 26px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
 .gis-header-left p  { font-size: 13px; color: var(--text-secondary); margin: 0; }
 .admin-badge-gis {
-    background: linear-gradient(135deg,#f59e0b,#d97706);
+    background: linear-gradient(135deg, #f59e0b, #d97706);
     color: #fff; font-size: 11px; font-weight: 700;
-    padding: 4px 12px; border-radius: 20px;
-    letter-spacing: .05em; text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
 }
 
 /* ── Stats row ─────────────────────────────────────────────────────────── */
@@ -621,17 +625,61 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 .gis-evidence-thumb:hover { transform: scale(1.06); box-shadow: 0 6px 16px rgba(55,98,200,.3); }
 
 /* ── Image lightbox ─────────────────────────────────────────────────────── */
-.gis-lightbox {
-    position: fixed; inset: 0; background: rgba(0,0,0,.85);
-    display: none; align-items: center; justify-content: center; z-index: 9000;
+/* ── Image gallery modal (ported from requests.php) ────────────────────── */
+.image-modal {
+    position: fixed; inset: 0;
+    display: none; z-index: 9000;
 }
-.gis-lightbox.active { display: flex; }
-.gis-lightbox img { max-width: 90vw; max-height: 85vh; border-radius: 12px; object-fit: contain; }
-.gis-lightbox-close {
-    position: fixed; top: 20px; right: 30px;
-    background: rgba(0,0,0,.7); color: #fff; border: none; font-size: 28px;
+.image-modal.active { display: flex; align-items: center; justify-content: center; }
+.image-modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.75);
+}
+.image-modal-content {
+    position: relative;
+    display: flex; justify-content: center; align-items: center;
+    max-height: 85vh; max-width: 90vw; margin: auto;
+}
+#imageModalImg {
+    width: auto; height: auto;
+    max-width: 100%; max-height: 80vh;
+    border-radius: 16px; object-fit: contain;
+    transition: transform 0.15s ease;
+    cursor: zoom-in;
+}
+#imageModalImg.zoomed { cursor: zoom-out; }
+.image-modal-close {
+    position: fixed; top: 20px; right: 35px;
+    background: rgba(0,0,0,0.75); color: #fff; border: none;
+    font-size: 26px; width: 42px; height: 42px; border-radius: 50%;
+    cursor: pointer; z-index: 9001;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+}
+.image-modal-close:hover { background: rgba(0,0,0,0.9); }
+.nav-arrow {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,0.6); color: #fff; border: none;
     width: 44px; height: 44px; border-radius: 50%;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 9001;
+    font-size: 22px; cursor: pointer; z-index: 9001;
+}
+.nav-arrow.left  { left: 30px; }
+.nav-arrow.right { right: 30px; }
+.nav-arrow:hover { background: rgba(0,0,0,0.85); }
+.nav-arrow.hidden { display: none; }
+.swipe-indicator {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.65); color: #fff;
+    padding: 6px 14px; font-size: 13px; border-radius: 20px;
+    font-weight: 500; pointer-events: none;
+    opacity: 0; transition: opacity 0.4s ease; z-index: 9002;
+}
+@media (max-width: 768px) {
+    .swipe-indicator.show { opacity: 1; }
+    .nav-arrow { display: none !important; }
+    .image-modal-content { max-width: 95vw; max-height: 70vh; }
+    #imageModalImg { max-height: 55vh; border-radius: 12px; }
+    .image-modal-close { top: 20px; right: 20px; width: 40px; height: 40px; font-size: 24px; }
 }
 
 /* ── Loading overlay ────────────────────────────────────────────────────── */
@@ -854,7 +902,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <h1>&#128506;&#65039; GIS Request Map</h1>
             <p>Live geographic overview of all infrastructure repair requests across Quezon City</p>
         </div>
-        <span class="admin-badge-gis">Admin Only</span>
+        <span class="admin-badge-gis"><i class="fas fa-shield-alt"></i> Admin Only</span>
     </div>
 
     <!-- Stats row -->
@@ -1001,6 +1049,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="gis-field-value" id="modalLocation"></div>
             </div>
             <div class="gis-field">
+                <div class="gis-field-label">&#127759; Coordinates</div>
+                <div class="gis-field-value" id="modalCoordinates"></div>
+            </div>
+            <div class="gis-field">
                 <div class="gis-field-label">&#128295; Issue / Damage</div>
                 <div class="gis-field-value" id="modalIssue"></div>
             </div>
@@ -1029,9 +1081,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 
 <!-- Image lightbox -->
-<div id="gisLightbox" class="gis-lightbox">
-    <button class="gis-lightbox-close" onclick="closeLightbox()">&#215;</button>
-    <img id="gisLightboxImg" src="" alt="Evidence">
+<div id="imageModal" class="image-modal">
+    <div class="image-modal-backdrop"></div>
+    <div class="image-modal-content">
+        <button class="image-modal-close" title="Close" aria-label="Close image">&#215;</button>
+        <button class="nav-arrow left hidden" type="button" title="Previous" onclick="prevImage()">&#10094;</button>
+        <img id="imageModalImg" src="" alt="Evidence Image">
+        <button class="nav-arrow right hidden" type="button" title="Next" onclick="nextImage()">&#10095;</button>
+        <div class="swipe-indicator" id="swipeIndicator">&#8644; Swipe left or right</div>
+    </div>
 </div>
 
 <?php include 'admin_scripts.php'; ?>
@@ -1151,11 +1209,14 @@ function makePopupHtml(req) {
         'public facilities':'Public Facilities','water supply':'Water Supply',
         'electrical':'Electrical','others':'Others'
     }[normalizeInfraType(req.infrastructure)] || req.infrastructure;
+    const coords = req.coordinates
+        ? `<br><span style="font-size:11px;color:#888;">&#127759; ${escHtml(req.coordinates)}</span>`
+        : '';
     return `<div class="gis-popup-inner">
         <strong style="color:${col};">#REQ-${String(req.req_id).padStart(3,'0')} &mdash; ${escHtml(normalLabel)}</strong>
         <span>&#128205; ${escHtml(req.location)}</span><br>
         <span>&#128295; ${escHtml((req.issue||'').slice(0,60))}${(req.issue||'').length>60?'&hellip;':''}</span>
-        <button class="gis-popup-btn" onclick="openDetailModal(${req.req_id})">View Full Details</button>
+        ${coords}
     </div>`;
 }
 
@@ -1366,6 +1427,7 @@ function openDetailModal(reqId) {
     pill.textContent = req.approval_status || 'Unknown';
     pill.className   = `gis-status-pill ${sc}`;
     document.getElementById('modalLocation').textContent  = req.location      || '\u2014';
+    document.getElementById('modalCoordinates').textContent = req.coordinates || '—';
     document.getElementById('modalIssue').textContent     = req.issue          || '\u2014';
     document.getElementById('modalDate').textContent      = formatDate(req.created_at);
     document.getElementById('modalRequester').textContent = req.requester_name || 'Anonymous';
@@ -1375,10 +1437,10 @@ function openDetailModal(reqId) {
     evidenceWrap.innerHTML = '';
     const imgs = req.images || [];
     if (imgs.length > 0) {
-        imgs.forEach(src => {
+        imgs.forEach((src, idx) => {
             const img = document.createElement('img');
             img.src = src; img.className = 'gis-evidence-thumb'; img.alt = 'Evidence';
-            img.addEventListener('click', () => openLightbox(src));
+            img.addEventListener('click', () => openGalleryModal(imgs, idx));
             evidenceWrap.appendChild(img);
         });
     } else {
@@ -1395,13 +1457,125 @@ document.getElementById('gisModalBackdrop').addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
 
 /* ─── Lightbox ───────────────────────────────────────────────────────────── */
-function openLightbox(src) {
-    document.getElementById('gisLightboxImg').src = src;
-    document.getElementById('gisLightbox').classList.add('active');
+/* ─── Image gallery modal (ported from requests.php) ───────────────────── */
+const imageModal        = document.getElementById('imageModal');
+const imageModalImg     = document.getElementById('imageModalImg');
+const imageModalClose   = document.querySelector('.image-modal-close');
+const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
+
+let galleryImages = [];
+let currentIndex  = 0;
+const BASE_ZOOM = 2, MAX_WHEEL_ZOOM = 5, WHEEL_ZOOM_SPEED = 0.002;
+let isZoomed = false, isDragging = false, isWheelZooming = false;
+let startX = 0, startY = 0, translateX = 0, translateY = 0, currentScale = 1;
+imageModalImg.draggable = false;
+imageModalImg.addEventListener('dragstart', e => e.preventDefault());
+
+function openGalleryModal(images, index) {
+    galleryImages = images; currentIndex = index;
+    imageModal.classList.add('active');
+    updateGalleryImage();
+    showSwipeIndicator();
 }
-function closeLightbox() { document.getElementById('gisLightbox').classList.remove('active'); }
-document.getElementById('gisLightbox').addEventListener('click', e => {
-    if (e.target === document.getElementById('gisLightbox')) closeLightbox();
+function closeGalleryModal() {
+    imageModal.classList.remove('active'); resetZoom();
+}
+imageModalClose.addEventListener('click', closeGalleryModal);
+imageModalBackdrop.addEventListener('click', closeGalleryModal);
+
+function updateGalleryImage() {
+    if (!galleryImages.length) return;
+    imageModalImg.src = galleryImages[currentIndex];
+    const isSingle = galleryImages.length <= 1;
+    document.querySelector('.nav-arrow.left').classList.toggle('hidden', isSingle);
+    document.querySelector('.nav-arrow.right').classList.toggle('hidden', isSingle);
+    resetZoom();
+}
+function nextImage() {
+    if (galleryImages.length <= 1) return;
+    currentIndex = (currentIndex + 1) % galleryImages.length;
+    updateGalleryImage();
+}
+function prevImage() {
+    if (galleryImages.length <= 1) return;
+    currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+    updateGalleryImage();
+}
+function showSwipeIndicator() {
+    const ind = document.getElementById('swipeIndicator');
+    if (!ind || window.innerWidth > 768) return;
+    ind.classList.add('show');
+    setTimeout(() => ind.classList.remove('show'), 2500);
+}
+function resetZoom() {
+    isZoomed = isDragging = isWheelZooming = false;
+    translateX = translateY = 0; currentScale = 1;
+    imageModalImg.classList.remove('zoomed');
+    imageModalImg.style.transform = 'scale(1)';
+    imageModalImg.style.cursor = 'zoom-in';
+    imageModalClose.style.display = 'flex';
+    imageModalClose.disabled = false;
+}
+// Desktop double-click zoom
+imageModalImg.addEventListener('dblclick', e => {
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top)  / rect.height;
+    if (!isZoomed) {
+        isZoomed = true; currentScale = BASE_ZOOM;
+        translateX = (0.5 - px) * rect.width  * (BASE_ZOOM - 1);
+        translateY = (0.5 - py) * rect.height * (BASE_ZOOM - 1);
+        imageModalImg.classList.add('zoomed');
+        imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+        imageModalImg.style.cursor = 'grab';
+        imageModalClose.style.display = 'none';
+        imageModalClose.disabled = true;
+    } else { resetZoom(); }
+});
+imageModalImg.addEventListener('mousedown', e => { if (!isZoomed || e.button !== 0) return; isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; imageModalImg.style.cursor = 'grabbing'; });
+window.addEventListener('mouseup', () => { if (!isZoomed) return; isDragging = false; imageModalImg.style.cursor = 'grab'; });
+window.addEventListener('mousemove', e => { if (!isZoomed || !isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`; });
+imageModalImg.addEventListener('wheel', e => {
+    if (!isZoomed) return; e.preventDefault(); isWheelZooming = true;
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top)  / rect.height;
+    const newScale = Math.min(Math.max(currentScale + (-e.deltaY * WHEEL_ZOOM_SPEED), BASE_ZOOM), MAX_WHEEL_ZOOM);
+    const sd = newScale / currentScale;
+    translateX = translateX * sd + (0.5 - px) * rect.width  * (sd - 1);
+    translateY = translateY * sd + (0.5 - py) * rect.height * (sd - 1);
+    currentScale = newScale;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+}, { passive: false });
+// Mobile pinch & swipe
+let initDist = null, touchStartX = 0, touchEndX = 0;
+imageModalImg.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) initDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+    else if (e.touches.length === 1) touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+imageModalImg.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && initDist) {
+        e.preventDefault();
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        currentScale = Math.min(Math.max(d / initDist, 0.5), 3);
+        imageModalImg.style.transform = `scale(${currentScale})`;
+    }
+});
+imageModalImg.addEventListener('touchend', e => {
+    if (currentScale < 1) currentScale = 1;
+    imageModalImg.style.transform = `scale(${currentScale})`;
+    initDist = null;
+    if (e.changedTouches.length === 1) {
+        touchEndX = e.changedTouches[0].screenX;
+        const dx = touchEndX - touchStartX;
+        if (Math.abs(dx) >= 50 && galleryImages.length > 1) { dx > 0 ? prevImage() : nextImage(); }
+    }
+}, { passive: true });
+document.addEventListener('keydown', e => {
+    if (!imageModal.classList.contains('active')) return;
+    if (e.key === 'ArrowLeft')  { prevImage(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { nextImage(); e.preventDefault(); }
+    if (e.key === 'Escape')     closeGalleryModal();
 });
 
 /* ─── Map init ───────────────────────────────────────────────────────────── */

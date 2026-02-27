@@ -215,9 +215,16 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 58px;
+        left: 25px;
+        width: 45px;
+        height: 47px;
+    }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; padding-top: 90px; height: auto; min-height: 100vh; overflow-y: auto; margin: 0; }
-    .card { margin-top: 76px; padding: 18px 14px; border-radius: 16px; gap: 12px; }
+    .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
     .page-title { font-size: 22px; }
     .table-wrapper { display: none !important; }
     .mobile-report-list { display: flex !important; flex-direction: column; gap: 14px; }

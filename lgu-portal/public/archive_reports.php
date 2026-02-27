@@ -4,6 +4,12 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
 $INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
 // If last activity is set and timeout exceeded (skipped on localhost)
@@ -17,6 +23,9 @@ if (
     header("Location: login.php");
     exit;
 }
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -194,8 +203,15 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 58px;
+        left: 25px;
+        width: 45px;
+        height: 47px;
+    }
     .main-content, .main-content.expanded { margin-left: 0 !important; padding-top: 90px; height: auto; min-height: 100vh; overflow-y: auto; margin: 0; }
-    .card { margin-top: 76px; padding: 18px 14px; border-radius: 16px; gap: 12px; }
+    .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
     .page-title { font-size: 22px; }
     .table-wrapper { display: none !important; }
     .mobile-report-list { display: flex !important; flex-direction: column; gap: 14px; }

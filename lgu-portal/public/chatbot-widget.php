@@ -425,6 +425,83 @@
 }
 .chatbot-toast.show { opacity:1; }
 
+@media (max-height: 800px) and (min-width: 769px) {
+
+/* Shrink the panel so it never clips under the navbar */
+.chatbot-container {
+    height: 500px;          /* was 590px */
+    bottom: 76px;           /* was 100px — keeps clear of toggle */
+}
+
+/* Drop the toggle button slightly so it doesn't crowd the panel */
+.chatbot-toggle {
+    bottom: 18px;           /* was 75px */
+}
+
+/* Slim the header */
+.chatbot-header {
+    height: 56px;           /* was 68px */
+    padding: 0 14px;
+}
+
+.chatbot-header-text h3  { font-size: 13px; }
+.chatbot-status          { font-size: 10px; }
+.chatbot-avatar          { width: 34px; height: 34px; font-size: 17px; }
+
+/* Tighten message bubbles */
+.chatbot-messages {
+    padding: 10px 12px 6px;
+    gap: 7px;
+}
+.chatbot-message {
+    padding: 8px 11px;
+    font-size: 12.5px;
+}
+.chatbot-message .message-time { font-size: 9.5px; margin-top: 3px; }
+
+/* Tighten suggestion chips row */
+.chatbot-suggestions {
+    padding: 5px 12px 7px;
+    gap: 5px;
+}
+.suggestion-chip {
+    padding: 4px 10px;
+    font-size: 11px;
+}
+
+/* Shrink image tray */
+.chatbot-image-tray {
+    max-height: 96px;
+    padding: 6px 10px 2px;
+}
+.tray-item             { width: 58px; height: 58px; }
+.tray-count-label      { font-size: 9.5px; }
+
+/* Tighten input row */
+.chatbot-input-wrapper {
+    padding: 8px 10px;
+    gap: 6px;
+}
+.chatbot-input {
+    padding: 8px 13px;
+    font-size: 12.5px;
+}
+.chatbot-icon-btn,
+.chatbot-send {
+    width: 36px;
+    height: 36px;
+}
+.chatbot-icon-btn svg,
+.chatbot-send svg      { width: 15px; height: 15px; }
+
+/* Typing / uploading indicators */
+.chatbot-typing,
+.chatbot-img-uploading {
+    padding: 8px 12px;
+    font-size: 12px;
+}
+}
+
 /* ────────────────────────────────────────────────────────
    RESPONSIVE
 ──────────────────────────────────────────────────────── */

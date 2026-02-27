@@ -954,13 +954,13 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
 }
 .admin-badge {
     background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 20px;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
 }
 .report-type-grid {
     display: grid;
@@ -1999,7 +1999,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div class="report-gen-section">
                 <div class="report-gen-header">
                     <h3>📊 Report Generation</h3>
-                    <span class="admin-badge">Admin Only</span>
+                    <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
                 </div>
                 <div class="report-type-grid">
                     <button class="report-type-btn" onclick="openReportModal('requests')">

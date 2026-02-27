@@ -1064,6 +1064,14 @@ if ($result && $result->num_rows > 0) {
     word-break: break-word;
 }
 
+.mobile-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
 /* -- Start: ListView Search Styles -- */
 #scheduleSearch {
     width: 100%;
@@ -1834,16 +1842,39 @@ Sidebar (250px) takes the most relative space here.
     .sidebar-toggle {
         display: none;
     }
-    /* LIST VIEW CONTROLS */
+    #mobileListControls {
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
     #mobileListControls input {
-        flex: 1 1 auto;                           /* grow and shrink */
-        min-width: 100px;                         /* prevent too small */
-        max-width: calc(100% - 50px);             /* slightly more room to reduce space */
-        padding: 8px 8px;                         /* less horizontal padding */
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 9px 10px;
         border-radius: 10px;
         border: 1px solid #b1b8d0;
         font-size: 0.9rem;
-        margin-right: 4px;                        /* reduce space between input and button */
+        background: var(--bg-tertiary, #f8faff);
+        color: var(--text-primary, #23285c);
+        outline: none;
+        box-sizing: border-box;
+        height: 40px;
+    }
+    #mobileToCalendarBtn {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        background: #3762c8;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
     }
     /* Mobile List → Calendar button matches calendar button style */
     #mobileListControls button.mobile-calendar-btn {
@@ -2314,6 +2345,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <button id="toCalendarBtn" class="calendar-btn" title="Calendar View">
                     📅
                 </button>
+            </div>
+            <!-- Legend shown in list view below search bar -->
+            <div class="calendar-legend" style="margin-top:0px; margin-bottom:14px;">
+                <span class="legend-item">
+                    <span class="legend-dot legend-upcoming"></span>Upcoming
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-ongoing"></span>In Progress
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-delayed"></span>Delayed
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-completed"></span>Completed
+                </span>
             </div>
             <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>

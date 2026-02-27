@@ -141,6 +141,9 @@ $sql = "SELECT
     r.issue,
     r.approval_status,
     r.created_at,
+    r.name,
+    r.contact_number,
+    r.coordinates,
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
 LEFT JOIN evidence_images e ON e.req_id = r.req_id
@@ -602,72 +605,81 @@ tbody tr:hover {
 }
 
 /* =========================
-   📋 REQUEST DETAIL MODAL
+   📋 REQUEST DETAIL MODAL — GIS Style
 ========================= */
-
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.52);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 8000;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
 }
+.modal-backdrop.active { display: flex; }
 
-.modal-backdrop.active {
-    display: flex;
-}
-
+/* ── Detail modal shell ─────────────────────────── */
 .detail-modal {
     background: var(--bg-primary);
     border-radius: 20px;
-    box-shadow: 0 10px 50px var(--shadow-color);
-    width: 90%;
-    max-width: 600px;
-    max-height: 85vh;
+    box-shadow: 0 12px 50px var(--shadow-color);
+    width: 92%;
+    max-width: 560px;
+    max-height: 88vh;
     display: flex;
     flex-direction: column;
-    animation: modalSlideIn 0.3s ease;
+    animation: gisDetailIn .3s cubic-bezier(.34,1.56,.64,1);
     border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+@keyframes gisDetailIn {
+    from { opacity: 0; transform: scale(.9) translateY(-20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-30px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+/* ── Coloured top band ──────────────────────────── */
+.detail-modal-band {
+    height: 8px;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    flex-shrink: 0;
 }
+.detail-modal-band.pending  { background: linear-gradient(90deg,#ff9800,#ffb74d); }
+.detail-modal-band.approved { background: linear-gradient(90deg,#4caf50,#81c784); }
+.detail-modal-band.rejected { background: linear-gradient(90deg,#f44336,#e57373); }
+.detail-modal-band.unknown  { background: linear-gradient(90deg,#9e9e9e,#bdbdbd); }
 
+/* ── Header row (ID + title + close) ────────────── */
 .detail-modal-header {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    padding: 24px 28px;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 18px 24px 14px;
+    gap: 12px;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-tertiary);
-    border-radius: 20px 20px 0 0;
+    flex-shrink: 0;
 }
-
-.detail-modal-header h3 {
-    font-size: 20px;
-    font-weight: 600;
+.detail-modal-req-id {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    margin-bottom: 3px;
+}
+.detail-modal-infra {
+    font-size: 19px;
+    font-weight: 700;
     color: var(--text-primary);
-    margin: 0 auto;
-    text-align: center;
-    flex: 1;
+    line-height: 1.2;
 }
-
 .detail-modal-close {
     background: none;
     border: none;
-    font-size: 28px;
+    font-size: 26px;
     color: var(--text-secondary);
     cursor: pointer;
     width: 36px;
@@ -676,130 +688,144 @@ tbody tr:hover {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: all .2s;
+    flex-shrink: 0;
+    margin-top: -2px;
 }
+.detail-modal-close:hover { background: rgba(55,98,200,.1); color: #3762c8; }
 
-.detail-modal-close:hover {
-    background: rgba(55, 98, 200, 0.1);
-    color: #3762c8;
-}
-
+/* ── Scrollable body ────────────────────────────── */
 .detail-modal-body {
-    padding: 24px 28px;
+    padding: 0 24px 18px;
     overflow-y: auto;
     flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,.07);
 }
+.detail-modal-body::-webkit-scrollbar { width: 5px; }
+.detail-modal-body::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
+.detail-modal-body::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
+[data-theme="dark"] .detail-modal-body { scrollbar-color: #5f8cff rgba(255,255,255,.1); }
+[data-theme="dark"] .detail-modal-body::-webkit-scrollbar-thumb { background: #5f8cff; }
 
-.detail-row {
-    margin-bottom: 18px;
-    display: flex;
-    flex-direction: column;
+/* ── Status pill ────────────────────────────────── */
+.detail-status-row { padding-top: 16px; margin-bottom: 14px; }
+.detail-status-pill {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
 }
+.detail-status-pill.pending  { background: rgba(255,152,0,.14); color: #e65100; }
+.detail-status-pill.approved { background: rgba(76,175,80,.14);  color: #1b5e20; }
+.detail-status-pill.rejected { background: rgba(244,67,54,.14);  color: #7f1d1d; }
+.detail-status-pill.unknown  { background: rgba(158,158,158,.14); color: #424242; }
+[data-theme="dark"] .detail-status-pill.pending  { color: #ffb74d; }
+[data-theme="dark"] .detail-status-pill.approved { color: #81c784; }
+[data-theme="dark"] .detail-status-pill.rejected { color: #e57373; }
+[data-theme="dark"] .detail-status-pill.unknown  { color: #bdbdbd; }
 
-.detail-row strong {
-    font-size: 14px;
-    font-weight: 600;
+/* ── Fields ─────────────────────────────────────── */
+.detail-field { margin-bottom: 14px; }
+.detail-field-label {
+    font-size: 11px;
+    font-weight: 700;
     color: #3762c8;
-    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 4px;
 }
-
-.detail-row span {
-    font-size: 15px;
+.detail-field-value {
+    font-size: 14px;
     color: var(--text-primary);
-    line-height: 1.5;
+    line-height: 1.55;
 }
+.detail-divider { height: 1px; background: var(--border-color); margin: 14px 0; }
+.detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 
-.evidence-row {
-    margin-top: 8px;
-}
-
-#detailStatus {
-    display: inline-block;        /* prevents full width stretch */
-    width: auto;                  /* ensures it only fits content */
-    max-width: fit-content;
-}
-
-#detailStatus.status {
-    color: inherit !important;
-}
-
-/* Ensure status colors are preserved in detail modal */
-#detailStatus.pending {
-    color: #6b5500 !important;
-}
-
-#detailStatus.completed {
-    color: #1b5e20 !important;
-}
-
-#detailStatus.rejected {
-    color: #7f1d1d !important;
-}
-
-#detailEvidenceContainer {
+/* ── Evidence strip ─────────────────────────────── */
+.detail-evidence-strip {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
     margin-top: 8px;
 }
-
-.detail-evidence-thumb-wrapper {
-    position: relative;
-    width: 90px;
-    height: 90px;
-    flex-shrink: 0;
-}
-
 .detail-evidence-thumb {
-    width: 100%;
-    height: 100%;
+    width: 82px;
+    height: 82px;
+    border-radius: 11px;
     object-fit: cover;
-    border-radius: 12px;
-    cursor: pointer;
-    background: #eee;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
     border: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+    background: rgba(0,0,0,.06);
 }
-
 .detail-evidence-thumb:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(55, 98, 200, 0.3);
+    transform: scale(1.07);
+    box-shadow: 0 6px 18px rgba(55,98,200,.3);
 }
 
+/* ── Footer ─────────────────────────────────────── */
 .detail-modal-footer {
-    padding: 20px 28px;
+    padding: 16px 24px;
     border-top: 1px solid var(--border-color);
     background: var(--bg-tertiary);
     border-radius: 0 0 20px 20px;
-    display: none; /* Hidden by default, shown via JS if user can validate */
+    display: none;
 }
-
+.detail-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.detail-footer-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: .8;
+}
 .btn-validate {
-    background: #47b066;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #47b066, #34a058);
     color: #fff;
     border: none;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
+    padding: 11px 26px;
+    border-radius: 11px;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
-    width: 55%;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(71, 176, 102, 0.3);
-    display: block;
-    margin: 0 auto;
+    transition: all .25s ease;
+    box-shadow: 0 4px 14px rgba(52,160,88,.35);
+    letter-spacing: .02em;
+    flex-shrink: 0;
 }
-
-
 .btn-validate:hover {
-    background: #3a9654;
+    background: linear-gradient(135deg, #3a9654, #2d8c4a);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(71, 176, 102, 0.4);
+    box-shadow: 0 7px 20px rgba(52,160,88,.45);
 }
+.btn-validate:active { transform: translateY(0); }
+.btn-validate i { font-size: 15px; }
 
-.btn-validate:active {
-    transform: translateY(0);
+/* ── Mobile ─────────────────────────────────────── */
+@media (max-width: 600px) {
+    .detail-modal { width: 95%; max-height: 90vh; }
+    .detail-modal-header, .detail-modal-body { padding-left: 18px; padding-right: 18px; }
+    .detail-modal-footer { padding: 14px 18px; }
+    .detail-grid-2 { grid-template-columns: 1fr; gap: 10px; }
+    .detail-evidence-thumb { width: 68px; height: 68px; }
+    .btn-validate { width: 100%; justify-content: center; }
+    .detail-footer-inner { flex-direction: column; align-items: stretch; }
+    .detail-footer-hint { justify-content: center; }
 }
 
 /* =========================
@@ -1669,7 +1695,10 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
                     data-issue="<?= htmlspecialchars($row['issue']) ?>"
                     data-date="<?= format_datetime_ampm($row['created_at']) ?>"
                     data-status="<?= htmlspecialchars($row['approval_status']) ?>"
-                    data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'>
+                    data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
+                    data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
+                    data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
+                    data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>">
                     <td class="searchable">
                         #REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?>
                     </td>
@@ -1743,14 +1772,17 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
                     $images = array_values($images);
                 }
         ?>
-                <div class="request-card"
-                    data-req-id="<?= $row['req_id'] ?>"
-                    data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
-                    data-location="<?= htmlspecialchars($row['location']) ?>"
-                    data-issue="<?= htmlspecialchars($row['issue']) ?>"
-                    data-date="<?= format_datetime_ampm($row['created_at']) ?>"
-                    data-status="<?= htmlspecialchars($row['approval_status']) ?>"
-                    data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'>
+        <div class="request-card"
+            data-req-id="<?= $row['req_id'] ?>"
+            data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
+            data-location="<?= htmlspecialchars($row['location']) ?>"
+            data-issue="<?= htmlspecialchars($row['issue']) ?>"
+            data-date="<?= format_datetime_ampm($row['created_at']) ?>"
+            data-status="<?= htmlspecialchars($row['approval_status']) ?>"
+            data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
+            data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
+            data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
+            data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>">
                     <div>
                         <strong>Request ID:</strong>
                         <span class="searchable">#REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?></span>
@@ -1847,46 +1879,82 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<!-- REQUEST DETAIL MODAL -->
+<!-- REQUEST DETAIL MODAL — GIS Style -->
 <div id="requestDetailBackdrop" class="modal-backdrop">
     <div id="requestDetailModal" class="detail-modal">
+
+        <!-- Coloured top band -->
+        <div class="detail-modal-band" id="detailModalBand"></div>
+
+        <!-- Header: req ID + infrastructure + close -->
         <div class="detail-modal-header">
-            <h3 id="detailModalTitle">Request Details</h3>
-            <button class="detail-modal-close" id="detailModalClose">&times;</button>
+            <div class="detail-modal-header-left">
+                <div class="detail-modal-req-id" id="detailReqId"></div>
+                <div class="detail-modal-infra"  id="detailInfra"></div>
+            </div>
+            <button class="detail-modal-close" id="detailModalClose">&#215;</button>
         </div>
+
+        <!-- Scrollable body -->
         <div class="detail-modal-body">
-            <div class="detail-row">
-                <strong>Request ID:</strong>
-                <span id="detailReqId"></span>
+
+            <!-- Status pill -->
+            <div class="detail-status-row">
+                <span class="detail-status-pill" id="detailStatus"></span>
             </div>
-            <div class="detail-row">
-                <strong>Infrastructure:</strong>
-                <span id="detailInfra"></span>
+
+            <div class="detail-field">
+                <div class="detail-field-label">&#128205; Location</div>
+                <div class="detail-field-value" id="detailLocation"></div>
             </div>
-            <div class="detail-row">
-                <strong>Location:</strong>
-                <span id="detailLocation"></span>
+            <div class="detail-field">
+                <div class="detail-field-label">&#127759; Coordinates</div>
+                <div class="detail-field-value" id="detailCoordinates"></div>
             </div>
-            <div class="detail-row">
-                <strong>Issue:</strong>
-                <span id="detailIssue"></span>
+            <div class="detail-field">
+                <div class="detail-field-label">&#128295; Issue / Damage</div>
+                <div class="detail-field-value" id="detailIssue"></div>
             </div>
-            <div class="detail-row">
-                <strong>Date Submitted:</strong>
-                <span id="detailDate"></span>
+
+            <div class="detail-divider"></div>
+
+            <div class="detail-grid-2">
+                <div class="detail-field">
+                    <div class="detail-field-label">&#128197; Date Submitted</div>
+                    <div class="detail-field-value" id="detailDate"></div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-field-label">&#128100; Requester</div>
+                    <div class="detail-field-value" id="detailRequester"></div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-field-label">&#128222; Contact</div>
+                    <div class="detail-field-value" id="detailContact"></div>
+                </div>
             </div>
-            <div class="detail-row">
-                <strong>Status:</strong>
-                <span id="detailStatus"></span>
+
+            <div class="detail-divider"></div>
+
+            <div class="detail-field">
+                <div class="detail-field-label">&#128444;&#65039; Evidence Images</div>
+                <div class="detail-evidence-strip" id="detailEvidenceContainer"></div>
             </div>
-            <div class="detail-row evidence-row">
-                <strong>Evidence:</strong>
-                <div id="detailEvidenceContainer"></div>
-            </div>
-        </div>
+
+        </div><!-- /.detail-modal-body -->
+
+        <!-- Validate footer -->
         <div class="detail-modal-footer" id="detailModalFooter">
-            <button class="btn-validate" id="validateBtn">Validate Request</button>
+            <div class="detail-footer-inner">
+                <span class="detail-footer-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Assign an engineer and confirm to approve
+                </span>
+                <button class="btn-validate" id="validateBtn">
+                    <i class="fas fa-check-circle"></i> Validate Request
+                </button>
+            </div>
         </div>
+
     </div>
 </div>
 
@@ -2201,103 +2269,92 @@ function handleSwipeGesture() {
 }
 
 // ============================
-//  REQUEST DETAIL MODAL FUNCTIONALITY
+//  REQUEST DETAIL MODAL — GIS Style
 // ============================
 
 let currentRequestData = null;
 
+function detailStatusClass(status) {
+    if (!status) return 'unknown';
+    const s = status.toLowerCase();
+    if (s === 'pending')  return 'pending';
+    if (s === 'approved') return 'approved';
+    if (s === 'rejected') return 'rejected';
+    return 'unknown';
+}
+
+const STATUS_ICON = { pending:'⏳', approved:'✅', rejected:'❌', unknown:'❔' };
+
 function openRequestDetail(button) {
-    // Get the parent row or card
     const row = button.closest('tr.request-row') || button.closest('.request-card');
     if (!row) return;
 
-    // Extract data from attributes
-    const reqId = row.dataset.reqId;
+    const reqId          = row.dataset.reqId;
     const infrastructure = row.dataset.infrastructure;
-    const location = row.dataset.location;
-    const issue = row.dataset.issue;
-    const date = row.dataset.date;
-    const status = row.dataset.status;
-    const evidenceStr = row.dataset.evidence;
-    
-    let evidence = [];
-    try {
-        evidence = JSON.parse(evidenceStr);
-    } catch (e) {
-        evidence = [];
-    }
+    const location       = row.dataset.location;
+    const issue          = row.dataset.issue;
+    const date           = row.dataset.date;
+    const status         = row.dataset.status;
+    const requester      = row.dataset.requester || '—';
+    const contact        = row.dataset.contact   || '—';
+    let   evidence       = [];
+    try { evidence = JSON.parse(row.dataset.evidence); } catch(e) {}
 
-    // Store current request data
-    currentRequestData = {
-        reqId: reqId,
-        infrastructure: infrastructure,
-        location: location,
-        issue: issue,
-        date: date,
-        status: status,
-        evidence: evidence
-    };
+    currentRequestData = { reqId, infrastructure, location, issue, date, status, evidence };
 
-    // Populate modal
-    document.getElementById('detailReqId').textContent = '#REQ-' + String(reqId).padStart(3, '0');
-    document.getElementById('detailInfra').textContent = infrastructure;
-    document.getElementById('detailLocation').textContent = location;
-    document.getElementById('detailIssue').textContent = issue;
-    document.getElementById('detailDate').textContent = date;
-    
-    // Status with color
-    const statusSpan = document.getElementById('detailStatus');
-    statusSpan.textContent = status;
-    statusSpan.className = 'status';
-    
-    const statusClass = status === 'Pending' ? 'pending' : 
-                       status === 'Approved' ? 'completed' : 
-                       status === 'Rejected' ? 'rejected' : 'pending';
-    statusSpan.classList.add(statusClass);
+    const sc = detailStatusClass(status);
 
-    // Evidence images
-    const evidenceContainer = document.getElementById('detailEvidenceContainer');
-    evidenceContainer.innerHTML = '';
-    
+    // Colour band
+    document.getElementById('detailModalBand').className = `detail-modal-band ${sc}`;
+
+    // Header
+    document.getElementById('detailReqId').textContent  = `#REQ-${String(reqId).padStart(3,'0')}`;
+    document.getElementById('detailInfra').textContent  = infrastructure;
+
+    // Status pill
+    const pill = document.getElementById('detailStatus');
+    pill.textContent = `${STATUS_ICON[sc] || ''} ${status || 'Unknown'}`;
+    pill.className   = `detail-status-pill ${sc}`;
+
+    // Body fields
+    document.getElementById('detailLocation').textContent  = location      || '—';
+    const coords = row.dataset.coordinates || '';
+    document.getElementById('detailCoordinates').textContent = row.dataset.coordinates || '—';
+    document.getElementById('detailIssue').textContent     = issue         || '—';
+    document.getElementById('detailDate').textContent      = date          || '—';
+    document.getElementById('detailRequester').textContent = requester;
+    document.getElementById('detailContact').textContent   = contact;
+
+    // Evidence strip
+    const strip = document.getElementById('detailEvidenceContainer');
+    strip.innerHTML = '';
     if (evidence && evidence.length > 0) {
-        evidence.forEach((imgPath, index) => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'detail-evidence-thumb-wrapper';
-            
+        evidence.forEach((src, idx) => {
             const img = document.createElement('img');
-            img.src = imgPath;
+            img.src       = src;
             img.className = 'detail-evidence-thumb';
-            img.alt = 'Evidence ' + (index + 1);
-            img.onclick = () => openGalleryModal(evidence, index, reqId);
-            
-            wrapper.appendChild(img);
-            evidenceContainer.appendChild(wrapper);
+            img.alt       = `Evidence ${idx + 1}`;
+            img.onclick   = () => openGalleryModal(evidence, idx, reqId);
+            strip.appendChild(img);
         });
     } else {
-        evidenceContainer.innerHTML = '<span style="color: var(--text-secondary);">No evidence available</span>';
+        strip.innerHTML = '<span style="font-size:13px;color:var(--text-secondary);">No evidence images</span>';
     }
 
-    // Show/hide validate button based on user role
-    const footer = document.getElementById('detailModalFooter');
-    if (USER_CAN_VALIDATE) {
-        footer.style.display = 'block';
-    } else {
-        footer.style.display = 'none';
-    }
+    // Footer
+    document.getElementById('detailModalFooter').style.display =
+        USER_CAN_VALIDATE ? 'block' : 'none';
 
-    // Show modal
     document.getElementById('requestDetailBackdrop').classList.add('active');
 }
 
-// Close detail modal
+// Close listeners
 document.getElementById('detailModalClose').addEventListener('click', () => {
     document.getElementById('requestDetailBackdrop').classList.remove('active');
 });
-
-document.getElementById('requestDetailBackdrop').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('requestDetailBackdrop')) {
+document.getElementById('requestDetailBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('requestDetailBackdrop'))
         document.getElementById('requestDetailBackdrop').classList.remove('active');
-    }
 });
 
 // ============================

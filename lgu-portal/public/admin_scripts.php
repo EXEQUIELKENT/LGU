@@ -77,8 +77,10 @@ document.querySelectorAll('.nav-dropdown-toggle').forEach(function(toggle) {
 });
 
 // Close dropdown when clicking outside the sidebar
+// (exclude mobileToggle — it opens the sidebar and should preserve open dropdowns)
 document.addEventListener('click', function(e) {
-    if (!sidebar.contains(e.target)) {
+    const mobileToggleBtn = document.getElementById('mobileToggle');
+    if (!sidebar.contains(e.target) && !(mobileToggleBtn && mobileToggleBtn.contains(e.target))) {
         document.querySelectorAll('.nav-dropdown-item.open').forEach(function(item) {
             item.classList.remove('open');
         });
