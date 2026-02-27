@@ -8,14 +8,27 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-$INACTIVITY_LIMIT = 2 * 60;
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
+$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
     exit;
 }
+
+// Update last activity time
 $_SESSION['last_activity'] = time();
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -307,31 +320,82 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 
                                 $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
                                 <body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
-                                    <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
-                                        <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px;text-align:center;">LGU Portal</h1>
-                                        <h2 style="color:#4e627f;margin:0 0 30px 0;font-size:18px;font-weight:400;text-align:center;">Email Verification Required</h2>
-                                        <div style="color:#666;font-size:15px;line-height:1.6;margin:20px 0;text-align:center;">
-                                            Hello <strong>' . htmlspecialchars($firstName) . '</strong>,<br><br>
-                                            An administrator has created an account for you on the LGU Portal. Please click the button below to verify your email address and activate your account.
+                                    <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:14px;padding:44px 36px;box-shadow:0 4px 20px rgba(0,0,0,0.1)">
+                                
+                                        <!-- Header -->
+                                        <h1 style="color:#27417b;margin:0 0 6px 0;font-size:30px;text-align:center;">LGU Portal</h1>
+                                        <h2 style="color:#4e627f;margin:0 0 32px 0;font-size:17px;font-weight:400;text-align:center;">Email Verification Required</h2>
+                                
+                                        <!-- Greeting -->
+                                        <div style="color:#555;font-size:15px;line-height:1.65;margin:0 0 28px 0;text-align:center;">
+                                            Hello <strong style="color:#27417b;">' . htmlspecialchars($firstName) . '</strong>,<br><br>
+                                            An administrator has created an account for you on the <strong>LGU Portal</strong>.
+                                            Click the button below to verify your email and activate your account.
                                         </div>
-                                        <div style="text-align:center;margin:30px 0">
-                                            <a href="' . $verificationLink . '" style="display:inline-block;background:linear-gradient(135deg,#6384d2,#285ccd);color:#fff;text-decoration:none;padding:16px 48px;border-radius:12px;font-size:16px;font-weight:600;box-shadow:0 6px 15px rgba(43,91,222,0.45)">
-                                                Confirm Email
+                                
+                                        <!-- ── CONFIRM BUTTON ── -->
+                                        <div style="text-align:center;margin:0 0 28px 0">
+                                            <a href="' . $verificationLink . '"
+                                               style="display:inline-block;background:linear-gradient(135deg,#3762c8,#5f8cff);
+                                                      color:#fff;text-decoration:none;padding:17px 54px;border-radius:13px;
+                                                      font-size:17px;font-weight:700;
+                                                      box-shadow:0 6px 18px rgba(55,98,200,0.45);letter-spacing:0.02em;">
+                                                ✉&nbsp; Confirm Email
                                             </a>
                                         </div>
-                                        <div style="color:#666;font-size:13px;line-height:1.5;margin:20px 0;text-align:center;">
-                                            If the button above doesn\'t work, copy and paste this link into your browser:<br>
-                                            <a href="' . $verificationLink . '" style="color:#6384d2;word-break:break-all;">' . $verificationLink . '</a>
+                                
+                                        <!-- ── TEMPORARY PASSWORD — right below button, large & prominent ── -->
+                                        <div style="background:linear-gradient(135deg,#eef2ff,#e8edff);
+                                                    border:2px solid #b6c6f5;
+                                                    border-radius:14px;
+                                                    padding:22px 24px;
+                                                    margin:0 0 28px 0;
+                                                    text-align:center;">
+                                            <div style="font-size:12px;font-weight:700;color:#3762c8;
+                                                        text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">
+                                                🔑 &nbsp;Your Temporary Password
+                                            </div>
+                                            <div style="font-size:26px;font-weight:800;
+                                                        color:#1a2f6e;
+                                                        letter-spacing:0.12em;
+                                                        font-family:\'Courier New\',Courier,monospace;
+                                                        background:#fff;
+                                                        border:1.5px dashed #b6c6f5;
+                                                        border-radius:9px;
+                                                        padding:12px 18px;
+                                                        display:inline-block;
+                                                        word-break:break-all;">
+                                                ' . htmlspecialchars($tempPassword) . '
+                                            </div>
+                                            <div style="font-size:12.5px;color:#5a6e9e;margin-top:10px;line-height:1.5;">
+                                                Use this password to log in after you confirm your email.<br>
+                                                You will be asked to <strong>change it on first login</strong>.
+                                            </div>
                                         </div>
-                                        <div style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0;text-align:center;">
-                                            This link will expire in 24 hours.<br>
-                                            Your account will NOT be created unless you click the confirmation button.
+                                
+                                        <!-- Divider -->
+                                        <div style="border-top:1px solid #eee;margin:0 0 22px 0;"></div>
+                                
+                                        <!-- Fallback link -->
+                                        <div style="color:#888;font-size:12.5px;line-height:1.6;margin:0 0 18px 0;text-align:center;">
+                                            Button not working? Copy and paste this link into your browser:<br>
+                                            <a href="' . $verificationLink . '"
+                                               style="color:#3762c8;word-break:break-all;font-size:11.5px;">' . $verificationLink . '</a>
                                         </div>
-                                        <div style="color:#666;font-size:13px;margin-top:30px;border-top:1px solid #eee;padding-top:20px;text-align:center;">
-                                            After verification, your temporary password will be: <strong style="color:#27417b;">' . htmlspecialchars($tempPassword) . '</strong><br>
-                                            You will be asked to change this password on first login.
+                                
+                                        <!-- Expiry warning -->
+                                        <div style="background:#fff5f5;border:1px solid #fcc;border-radius:10px;
+                                                    padding:13px 18px;margin:0 0 20px 0;text-align:center;">
+                                            <span style="color:#c0392b;font-size:13.5px;font-weight:700;">
+                                                ⚠️ &nbsp;This link expires in <u>24 hours</u>.
+                                            </span><br>
+                                            <span style="color:#c0392b;font-size:12.5px;">
+                                                Your account will NOT be created unless you click the confirmation button.
+                                            </span>
                                         </div>
-                                        <p style="color:#999;font-size:11px;text-align:center;margin-top:30px">&copy; ' . date('Y') . ' LGU Portal</p>
+                                
+                                        <!-- Footer -->
+                                        <p style="color:#bbb;font-size:11px;text-align:center;margin:0">&copy; ' . date('Y') . ' LGU Portal &mdash; Do not reply to this email.</p>
                                     </div>
                                 </body></html>';
 
@@ -389,6 +453,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Create Employee Account | LGU Portal</title>
 <style>
@@ -870,6 +935,66 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 .notif-close { background: none; border: none; font-size: 20px; color: #aaa; cursor: pointer; margin-left: 10px; }
 .notif-close:hover { color: #3762c8; }
 
+/* ── Override browser autofill background in ALL modes ─────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    /* Force the filled background to match the input background */
+    -webkit-box-shadow: 0 0 0 1000px var(--input-bg, #fff) inset !important;
+    box-shadow:         0 0 0 1000px var(--input-bg, #fff) inset !important;
+    -webkit-text-fill-color: var(--text-primary, #000) !important;
+    caret-color: var(--text-primary, #000) !important;
+    border-color: var(--input-border) !important;
+    transition: background-color 9999s ease-in-out 0s; /* delay revert */
+}
+
+/* Dark mode: use dark background + white text for autofill */
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+[data-theme="dark"] input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(40, 40, 40, 0.95) inset !important;
+    box-shadow:         0 0 0 1000px rgba(40, 40, 40, 0.95) inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* ── Firefox autocomplete highlight override ─────────────────── */
+input:-moz-autofill,
+input:-moz-autofill-preview {
+    filter: none;
+    background: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Remove the blue/yellow tint on autofill focus ─────────── */
+[data-theme="dark"] input:-webkit-autofill:focus {
+    -webkit-box-shadow: 
+        0 0 0 1000px rgba(40, 40, 40, 0.95) inset,
+        0 0 0 3px rgba(95, 140, 255, 0.2) !important;
+    box-shadow: 
+        0 0 0 1000px rgba(40, 40, 40, 0.95) inset,
+        0 0 0 3px rgba(95, 140, 255, 0.2) !important;
+    border-color: #5f8cff !important;
+}
+
+/* Light mode focus autofill */
+input:-webkit-autofill:focus {
+    -webkit-box-shadow: 
+        0 0 0 1000px #fff inset,
+        0 0 0 3px rgba(55, 98, 200, 0.15) !important;
+    box-shadow: 
+        0 0 0 1000px #fff inset,
+        0 0 0 3px rgba(55, 98, 200, 0.15) !important;
+    border-color: #3762c8 !important;
+}
+
+/* ── Also fix select autofill (Firefox) ────────────────────── */
+[data-theme="dark"] select {
+    color-scheme: dark;
+}
 /* ─── Mobile ─────────────────────────────────────── */
 @media (max-width: 768px) {
     .desktop-top-nav { display: none; }
@@ -921,7 +1046,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
         align-items: center; justify-content: center;
     }
 
-    .sidebar-profile-btn { position: absolute; top: 18px; left: 18px; width: 42px; height: 42px; }
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 18px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
+    }
     .sidebar-top { position: relative; }
     .site-logo  { margin-top: 60px; text-align: center; }
 
@@ -1079,7 +1210,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="employee.php"  class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php"   class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
             <!-- Admin-only: Create Account (active on this page) -->
@@ -1097,7 +1240,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
@@ -1149,90 +1294,92 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <!-- Create Account Form -->
         <form method="POST" action="" class="create-form" id="createAccountForm" autocomplete="off">
 
-            <!-- Names -->
-            <div class="name-row">
-                <div class="form-group">
-                    <label for="first_name"><i class="fas fa-user" style="margin-right:5px;opacity:.7;"></i> First Name</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-id-card field-icon"></i>
-                        <input type="text" name="first_name" id="first_name"
-                               placeholder="Juan"
-                               value="<?= htmlspecialchars($firstName) ?>"
-                               required maxlength="50">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="last_name"><i class="fas fa-user" style="margin-right:5px;opacity:.7;"></i> Last Name</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-id-card field-icon"></i>
-                        <input type="text" name="last_name" id="last_name"
-                               placeholder="Dela Cruz"
-                               value="<?= htmlspecialchars($lastName) ?>"
-                               required maxlength="50">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Email -->
-            <div class="form-group" style="margin-bottom:32px;">
-                <label for="emailInput"><i class="fas fa-envelope" style="margin-right:5px;opacity:.7;"></i> Email Address</label>
-                <div class="input-with-icon">
-                    <i class="fas fa-at field-icon"></i>
-                    <input type="email" name="email" id="emailInput"
-                           placeholder="employee@gmail.com"
-                           value="<?= htmlspecialchars($email) ?>"
-                           required>
-                </div>
-                <!-- Inline feedback -->
-                <span class="email-feedback" id="emailError">
-                    <i class="fas fa-times-circle"></i> <span id="emailErrorText"></span>
-                </span>
-                <span class="email-feedback success" id="emailValid">
-                    <i class="fas fa-check-circle"></i> Email is available
-                </span>
-            </div>
-
-            <!-- Role -->
+        <!-- Names -->
+        <div class="name-row">
             <div class="form-group">
-                <label for="roleSelect"><i class="fas fa-briefcase" style="margin-right:5px;opacity:.7;"></i> Role</label>
+                <label for="first_name"><i class="fas fa-user" style="margin-right:5px;opacity:.7;"></i> First Name</label>
                 <div class="input-with-icon">
-                    <i class="fas fa-user-tag field-icon"></i>
-                    <select name="role" id="roleSelect" required>
-                        <option value="">— Select Role —</option>
-                        <option value="Manager"     <?= ($role === 'Manager')    ? 'selected' : '' ?>>Manager</option>
-                        <option value="Engineer"    <?= ($role === 'Engineer')   ? 'selected' : '' ?>>Engineer</option>
-                        <option value="Office Staff" <?= ($role === 'Office Staff') ? 'selected' : '' ?>>Office Staff</option>
-                        <option value="Super Admin" <?= ($role === 'Super Admin') ? 'selected' : '' ?>>Super Admin</option>
-                    </select>
+                    <i class="fas fa-id-card field-icon"></i>
+                    <input type="text" name="first_name" id="first_name"
+                        placeholder="Juan"
+                        value="<?= htmlspecialchars($firstName) ?>"
+                        required maxlength="50">
                 </div>
             </div>
 
-            <div class="section-divider">Account Credentials</div>
-
-            <!-- Temp Password (read-only, auto-generated) -->
             <div class="form-group">
-                <label><i class="fas fa-key" style="margin-right:5px;opacity:.7;"></i> Temporary Password</label>
+                <label for="last_name"><i class="fas fa-user" style="margin-right:5px;opacity:.7;"></i> Last Name</label>
                 <div class="input-with-icon">
-                    <i class="fas fa-lock field-icon"></i>
-                    <input type="text" name="temp_password" id="tempPassword"
-                           placeholder="Auto-generated on submission"
-                           value="<?= htmlspecialchars($tempPassword) ?>"
-                           readonly>
+                    <i class="fas fa-id-card field-icon"></i>
+                    <input type="text" name="last_name" id="last_name"
+                        placeholder="Dela Cruz"
+                        value="<?= htmlspecialchars($lastName) ?>"
+                        required maxlength="50">
                 </div>
-                <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
-                    <i class="fas fa-shield-alt" style="margin-right:4px;"></i>
-                    A secure password is automatically generated and sent to the employee via email.
-                </small>
             </div>
+        </div>
 
-            <!-- Submit -->
-            <div class="save-wrapper">
-                <button type="submit" name="create_account" class="submit-btn" id="submitBtn">
-                    <i class="fas fa-paper-plane"></i>
-                    Send Verification &amp; Create Account
-                </button>
+        <!-- Email -->
+        <div class="form-group" style="margin-bottom:32px;">
+            <label for="emailInput"><i class="fas fa-envelope" style="margin-right:5px;opacity:.7;"></i> Email Address</label>
+            <div class="input-with-icon">
+                <i class="fas fa-at field-icon"></i>
+                <input type="email" name="email" id="emailInput"
+                    placeholder="employee@gmail.com"
+                    value="<?= htmlspecialchars($email) ?>"
+                    required>
             </div>
+            <span class="email-feedback" id="emailError">
+                <i class="fas fa-times-circle"></i> <span id="emailErrorText"></span>
+            </span>
+            <span class="email-feedback success" id="emailValid">
+                <i class="fas fa-check-circle"></i> Email is available
+            </span>
+        </div>
+
+        <!-- Role -->
+        <div class="form-group">
+            <label for="roleSelect"><i class="fas fa-briefcase" style="margin-right:5px;opacity:.7;"></i> Role</label>
+            <div class="input-with-icon">
+                <i class="fas fa-user-tag field-icon"></i>
+                <select name="role" id="roleSelect" required>
+                    <option value="">— Select Role —</option>
+                    <option value="Manager"     <?= ($role === 'Manager')    ? 'selected' : '' ?>>Manager</option>
+                    <option value="Engineer"    <?= ($role === 'Engineer')   ? 'selected' : '' ?>>Engineer</option>
+                    <option value="Office Staff" <?= ($role === 'Office Staff') ? 'selected' : '' ?>>Office Staff</option>
+                    <option value="Super Admin" <?= ($role === 'Super Admin') ? 'selected' : '' ?>>Super Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-divider">Account Credentials</div>
+
+        <!-- Temp Password (read-only) -->
+        <div class="form-group">
+            <label><i class="fas fa-key" style="margin-right:5px;opacity:.7;"></i> Temporary Password</label>
+            <div class="input-with-icon">
+                <i class="fas fa-lock field-icon"></i>
+                <input type="text" name="temp_password" id="tempPassword"
+                    placeholder="Auto-generated on submission"
+                    value="<?= htmlspecialchars($tempPassword) ?>"
+                    readonly>
+            </div>
+            <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;">
+                <i class="fas fa-shield-alt" style="margin-right:4px;"></i>
+                A secure password is automatically generated and sent to the employee via email.
+            </small>
+        </div>
+
+        <!-- ✅ THE FIX: hidden field so PHP detects the POST even via form.submit() -->
+        <input type="hidden" name="create_account" value="1">
+
+        <!-- Submit -->
+        <div class="save-wrapper">
+            <button type="submit" class="submit-btn" id="submitBtn">
+                <i class="fas fa-paper-plane"></i>
+                Send Verification &amp; Create Account
+            </button>
+        </div>
 
         </form>
 

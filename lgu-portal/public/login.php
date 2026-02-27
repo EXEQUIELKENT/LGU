@@ -916,8 +916,51 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                 $rehashStmt->close();
             }
 
-            // 🔥 CHANGE #1: ALWAYS require OTP
-            $requireOtp = true;
+            // OTP required on domain only — bypassed on localhost for development
+            $requireOtp = !$isLocalhost;
+
+            // On localhost: skip OTP entirely — log success and redirect now
+            if ($isLocalhost) {
+                $_SESSION['employee_logged_in'] = true;
+                $_SESSION['otp_verified']        = true;
+                logLoginEvent($conn, $email, true, null, false, 0);
+
+                $checkStmt = $conn->prepare("SELECT user_id, is_first_login, role, first_name FROM employees WHERE email = ?");
+                $checkStmt->bind_param("s", $email);
+                $checkStmt->execute();
+                $result = $checkStmt->get_result();
+
+                if ($result->num_rows === 1) {
+                    $userData = $result->fetch_assoc();
+                    $_SESSION['employee_role']       = $userData['role']       ?? '';
+                    $_SESSION['employee_id']         = isset($userData['user_id']) ? (int)$userData['user_id'] : null;
+                    $_SESSION['employee_first_name'] = $userData['first_name'] ?? '';
+                    resetFailedLoginAttempts($conn, $email);
+                    $checkStmt->close();
+
+                    if (($userData['is_first_login'] ?? 0) == 1) {
+                        $_SESSION['show_change_password_modal'] = true;
+                        setNotification('info', 'Please change your password to continue.');
+                        header("Location: " . $loginUrl);
+                        exit;
+                    } else {
+                        unset($_SESSION['show_change_password_modal'], $_SESSION['notification']);
+                        $_SESSION['show_welcome_animation'] = true;
+                        echo "<script>
+                            var overlay = document.getElementById('loadingOverlay');
+                            if (overlay) overlay.classList.add('show');
+                            setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 0);
+                        </script>";
+                        exit;
+                    }
+                } else {
+                    $checkStmt->close();
+                    unset($_SESSION['show_change_password_modal']);
+                    setNotification('warning', 'User data not found. Redirecting...');
+                    echo "<script>setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1100);</script>";
+                    exit;
+                }
+            }
         }
     } else {
         $requireOtp = true;
@@ -926,7 +969,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
     $_SESSION['login_email'] = $email;
 
     // OTP GENERATION AND RESEND LOGIC
-    if ((isset($_POST['login_submit']) && $requireOtp) || isset($_POST['resend_otp'])) {
+    if (!$isLocalhost && ((isset($_POST['login_submit']) && $requireOtp) || isset($_POST['resend_otp']))) {
         $currentTime = time();
         $isResend = isset($_POST['resend_otp']);
 
@@ -3021,263 +3064,107 @@ body:has(#resetPasswordModal) {
         </div>
     </div>
     <!-- ========== FIXED RESET PASSWORD MODAL JAVASCRIPT ========== -->
-<script>
-// Reset Password Modal - Fixed Logic
-(function() {
-    // Only run if reset password modal exists
-    const resetPasswordModal = document.getElementById('resetPasswordModal');
-    if (!resetPasswordModal) return;
+    <script>
+    (function () {
+        const resetPasswordModal = document.getElementById('resetPasswordModal');
+        if (!resetPasswordModal) return;
 
-    document.body.style.overflow = 'hidden';
-    
-    // Get all elements
-    const resetNewPasswordInput = document.getElementById('reset_new_password');
-    const resetConfirmPasswordInput = document.getElementById('reset_confirm_password');
-    const toggleResetNewPassword = document.getElementById('toggleResetNewPassword');
-    const toggleResetConfirmPassword = document.getElementById('toggleResetConfirmPassword');
-    const toggleResetNewPasswordIcon = document.getElementById('toggleResetNewPasswordIcon');
-    const toggleResetConfirmPasswordIcon = document.getElementById('toggleResetConfirmPasswordIcon');
-    const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-    const resetPasswordForm = document.getElementById('resetPasswordForm');
-    
-    // Password strength elements
-    const resetStrengthFill = document.getElementById('resetStrengthFill');
-    const resetStrengthText = document.getElementById('resetStrengthText');
-    
-    // Requirement elements
-    const reqLength = document.getElementById('reset-req-length');
-    const reqUppercase = document.getElementById('reset-req-uppercase');
-    const reqLowercase = document.getElementById('reset-req-lowercase');
-    const reqNumber = document.getElementById('reset-req-number');
-    const reqSymbol = document.getElementById('reset-req-symbol');
-    const reqUnique = document.getElementById('reset-req-unique');
-    
-    const iconShow = '<i class="fas fa-eye"></i>';
-    const iconHide = '<i class="fas fa-eye-slash"></i>';
-    
-    // Toggle password visibility for new password
-    if (toggleResetNewPassword) {
-        toggleResetNewPassword.addEventListener('click', function() {
-            if (resetNewPasswordInput.type === 'password') {
-                resetNewPasswordInput.type = 'text';
-                toggleResetNewPasswordIcon.textContent = iconHide;
-                toggleResetNewPassword.setAttribute('aria-label', 'Hide password');
-            } else {
-                resetNewPasswordInput.type = 'password';
-                toggleResetNewPasswordIcon.textContent = iconShow;
-                toggleResetNewPassword.setAttribute('aria-label', 'Show password');
-            }
+        document.body.style.overflow = 'hidden';
+
+        const resetNewPwdInput     = document.getElementById('reset_new_password');
+        const resetConfirmPwdInput = document.getElementById('reset_confirm_password');
+        const toggleResetNew       = document.getElementById('toggleResetNewPassword');
+        const toggleResetConfirm   = document.getElementById('toggleResetConfirmPassword');
+        const toggleResetNewIcon     = document.getElementById('toggleResetNewPasswordIcon');
+        const toggleResetConfirmIcon = document.getElementById('toggleResetConfirmPasswordIcon');
+        const resetPasswordBtn  = document.getElementById('resetPasswordBtn');
+        const resetPasswordForm = document.getElementById('resetPasswordForm');
+        const resetStrengthFill = document.getElementById('resetStrengthFill');
+        const resetStrengthText = document.getElementById('resetStrengthText');
+
+        const EYE       = '<i class="fas fa-eye"></i>';
+        const EYE_SLASH = '<i class="fas fa-eye-slash"></i>';
+
+        // Toggle New Password
+        toggleResetNew.addEventListener('click', function () {
+            const isHidden = resetNewPwdInput.type === 'password';
+            resetNewPwdInput.type = isHidden ? 'text' : 'password';
+            toggleResetNewIcon.innerHTML = isHidden ? EYE_SLASH : EYE;
+            toggleResetNew.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
         });
-    }
-    
-    // Toggle password visibility for confirm password
-    if (toggleResetConfirmPassword) {
-        toggleResetConfirmPassword.addEventListener('click', function() {
-            if (resetConfirmPasswordInput.type === 'password') {
-                resetConfirmPasswordInput.type = 'text';
-                toggleResetConfirmPasswordIcon.textContent = iconHide;
-                toggleResetConfirmPassword.setAttribute('aria-label', 'Hide password');
-            } else {
-                resetConfirmPasswordInput.type = 'password';
-                toggleConfirmPasswordIcon.textContent = iconShow;
-                toggleResetConfirmPassword.setAttribute('aria-label', 'Show password');
-            }
+
+        // Toggle Confirm Password — note: was using wrong variable name before (typo fixed)
+        toggleResetConfirm.addEventListener('click', function () {
+            const isHidden = resetConfirmPwdInput.type === 'password';
+            resetConfirmPwdInput.type = isHidden ? 'text' : 'password';
+            toggleResetConfirmIcon.innerHTML = isHidden ? EYE_SLASH : EYE;
+            toggleResetConfirm.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
         });
-    }
-    
-    // Password strength validation function
-    function isUniqueEnoughPasswordClient(pass) {
-        if (pass.length < 8) return false;
-        
-        // Check for all same character
-        if (/^(\w)\1+$/.test(pass)) return false;
-        
-        // Check basic requirements
-        if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) {
-            return false;
-        }
-        
-        // Check for repeating patterns
-        for (let len = 1; len <= 3; len++) {
-            let pattern = pass.slice(0, len);
-            if (pattern && pattern !== pass) {
-                let repeat = pattern.repeat(Math.floor(pass.length / len));
-                if (repeat === pass) return false;
+
+        function isUniqueEnough(pass) {
+            if (pass.length < 8) return false;
+            if (/^(\w)\1+$/.test(pass)) return false;
+            if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return false;
+            for (let len = 1; len <= 3; len++) {
+                let p = pass.slice(0, len);
+                if (p && p !== pass && p.repeat(Math.floor(pass.length / len)) === pass) return false;
             }
+            const common = ['password','12345678','qwertyui','abcdefgh','iloveyou','asdfasdf','87654321'];
+            for (let bad of common) { if (pass.toLowerCase().includes(bad)) return false; }
+            if (Array.from(new Set(pass.split(''))).length < 5) return false;
+            return true;
         }
-        
-        // Check for common passwords
-        const common = ['password', '12345678', 'qwertyui', 'abcdefgh', 'iloveyou', 'asdfasdf', '87654321'];
-        for (let bad of common) {
-            if (pass.toLowerCase().includes(bad)) return false;
+
+        function calcStrength(pass) {
+            return [pass.length >= 8, /[A-Z]/.test(pass), /[a-z]/.test(pass),
+                    /[0-9]/.test(pass), /[^a-zA-Z0-9]/.test(pass), isUniqueEnough(pass)]
+                .filter(Boolean).length;
         }
-        
-        // Check for unique characters
-        const uniqueChars = Array.from(new Set(pass.split('')));
-        if (uniqueChars.length < 5) return false;
-        
-        return true;
-    }
-    
-    // Calculate password strength score
-    function calculatePasswordStrength(pass) {
-        let score = 0;
-        if (pass.length >= 8) score++;
-        if (/[A-Z]/.test(pass)) score++;
-        if (/[a-z]/.test(pass)) score++;
-        if (/[0-9]/.test(pass)) score++;
-        if (/[^a-zA-Z0-9]/.test(pass)) score++;
-        if (isUniqueEnoughPasswordClient(pass)) score++;
-        return score;
-    }
-    
-    // Update password strength meter and requirements
-    function updateResetPasswordStrength() {
-        const pass = resetNewPasswordInput.value;
-        
-        // Update requirement checkmarks
-        if (reqLength) {
-            if (pass.length >= 8) {
-                reqLength.classList.add('satisfied');
-            } else {
-                reqLength.classList.remove('satisfied');
-            }
-        }
-        
-        if (reqUppercase) {
-            if (/[A-Z]/.test(pass)) {
-                reqUppercase.classList.add('satisfied');
-            } else {
-                reqUppercase.classList.remove('satisfied');
-            }
-        }
-        
-        if (reqLowercase) {
-            if (/[a-z]/.test(pass)) {
-                reqLowercase.classList.add('satisfied');
-            } else {
-                reqLowercase.classList.remove('satisfied');
-            }
-        }
-        
-        if (reqNumber) {
-            if (/[0-9]/.test(pass)) {
-                reqNumber.classList.add('satisfied');
-            } else {
-                reqNumber.classList.remove('satisfied');
-            }
-        }
-        
-        if (reqSymbol) {
-            if (/[^a-zA-Z0-9]/.test(pass)) {
-                reqSymbol.classList.add('satisfied');
-            } else {
-                reqSymbol.classList.remove('satisfied');
-            }
-        }
-        
-        if (reqUnique) {
-            if (pass.length >= 8 && isUniqueEnoughPasswordClient(pass)) {
-                reqUnique.classList.add('satisfied');
-            } else {
-                reqUnique.classList.remove('satisfied');
-            }
-        }
-        
-        // Update strength meter
-        const score = calculatePasswordStrength(pass);
-        
-        // Reset classes
-        if (resetStrengthFill) {
+
+        function updateStrength() {
+            const pass = resetNewPwdInput.value;
+            document.getElementById('reset-req-length').classList.toggle('satisfied',    pass.length >= 8);
+            document.getElementById('reset-req-uppercase').classList.toggle('satisfied', /[A-Z]/.test(pass));
+            document.getElementById('reset-req-lowercase').classList.toggle('satisfied', /[a-z]/.test(pass));
+            document.getElementById('reset-req-number').classList.toggle('satisfied',    /[0-9]/.test(pass));
+            document.getElementById('reset-req-symbol').classList.toggle('satisfied',    /[^a-zA-Z0-9]/.test(pass));
+            document.getElementById('reset-req-unique').classList.toggle('satisfied',    pass.length >= 8 && isUniqueEnough(pass));
+
             resetStrengthFill.className = 'strength-fill';
+            if (!pass.length) { resetStrengthFill.style.width = '0%'; resetStrengthText.textContent = 'Strength: —'; return; }
+
+            const score = calcStrength(pass);
+            const levels = [
+                { max: 2, cls: 'strength-weak',   w: '25%', label: 'Weak'   },
+                { max: 4, cls: 'strength-fair',   w: '55%', label: 'Fair'   },
+                { max: 5, cls: 'strength-good',   w: '80%', label: 'Good'   },
+                { max: 6, cls: 'strength-strong', w: '100%',label: 'Strong' },
+            ];
+            const level = levels.find(l => score <= l.max) || levels[3];
+            resetStrengthFill.style.width = level.w;
+            resetStrengthFill.classList.add(level.cls);
+            resetStrengthText.textContent = 'Strength: ' + level.label;
         }
-        
-        if (pass.length === 0) {
-            if (resetStrengthFill) resetStrengthFill.style.width = '0%';
-            if (resetStrengthText) resetStrengthText.textContent = 'Strength: —';
-            return;
+
+        function validate() {
+            const newPwd     = resetNewPwdInput.value;
+            const confirmPwd = resetConfirmPwdInput.value;
+            resetPasswordBtn.disabled = !(
+                newPwd.length >= 8 &&
+                isUniqueEnough(newPwd) &&
+                confirmPwd === newPwd &&
+                confirmPwd.length > 0
+            );
         }
-        
-        if (score <= 2) {
-            if (resetStrengthFill) {
-                resetStrengthFill.style.width = '25%';
-                resetStrengthFill.classList.add('strength-weak');
-            }
-            if (resetStrengthText) resetStrengthText.textContent = 'Strength: Weak';
-        } else if (score <= 4) {
-            if (resetStrengthFill) {
-                resetStrengthFill.style.width = '55%';
-                resetStrengthFill.classList.add('strength-fair');
-            }
-            if (resetStrengthText) resetStrengthText.textContent = 'Strength: Fair';
-        } else if (score === 5) {
-            if (resetStrengthFill) {
-                resetStrengthFill.style.width = '80%';
-                resetStrengthFill.classList.add('strength-good');
-            }
-            if (resetStrengthText) resetStrengthText.textContent = 'Strength: Good';
-        } else {
-            if (resetStrengthFill) {
-                resetStrengthFill.style.width = '100%';
-                resetStrengthFill.classList.add('strength-strong');
-            }
-            if (resetStrengthText) resetStrengthText.textContent = 'Strength: Strong';
-        }
-    }
-    
-    // Validate passwords match and meet requirements
-    function validateResetPasswords() {
-        const newPwd = resetNewPasswordInput.value;
-        const confirmPwd = resetConfirmPasswordInput.value;
-        
-        let valid = true;
-        
-        // Check all requirements
-        if (newPwd.length < 8) valid = false;
-        if (!/[A-Z]/.test(newPwd)) valid = false;
-        if (!/[a-z]/.test(newPwd)) valid = false;
-        if (!/[0-9]/.test(newPwd)) valid = false;
-        if (!/[^a-zA-Z0-9]/.test(newPwd)) valid = false;
-        if (!isUniqueEnoughPasswordClient(newPwd)) valid = false;
-        
-        // Check passwords match
-        if (confirmPwd !== newPwd || confirmPwd.length === 0) valid = false;
-        
-        // Enable/disable submit button
-        if (resetPasswordBtn) {
-            resetPasswordBtn.disabled = !valid;
-        }
-    }
-    
-    // Add event listeners
-    if (resetNewPasswordInput) {
-        resetNewPasswordInput.addEventListener('input', function() {
-            updateResetPasswordStrength();
-            validateResetPasswords();
-        });
-    }
-    
-    if (resetConfirmPasswordInput) {
-        resetConfirmPasswordInput.addEventListener('input', validateResetPasswords);
-    }
-    
-    // Prevent form submission if button is disabled
-    if (resetPasswordForm) {
-        resetPasswordForm.addEventListener('submit', function(e) {
-            if (resetPasswordBtn && resetPasswordBtn.disabled) {
-                e.preventDefault();
-                return false;
-            }
-        });
-    }
-    
-    // Initialize
-    if (resetPasswordBtn) {
+
+        resetNewPwdInput.addEventListener('input',     () => { updateStrength(); validate(); });
+        resetConfirmPwdInput.addEventListener('input',  validate);
+        resetPasswordForm.addEventListener('submit', e => { if (resetPasswordBtn.disabled) e.preventDefault(); });
+
         resetPasswordBtn.disabled = true;
-    }
-    updateResetPasswordStrength();
-})();
-</script>
+        updateStrength();
+    })();
+    </script>
 <?php endif; ?>
 
 <?php if(isset($_SESSION['show_change_password_modal']) && $_SESSION['show_change_password_modal'] === true && isset($_SESSION['otp_verified']) && $_SESSION['otp_verified'] === true): ?>
@@ -3339,132 +3226,113 @@ body:has(#resetPasswordModal) {
         </div>
     </div>
     <script>
-        document.body.style.overflow = 'hidden';
-        const newPasswordInput = document.getElementById('new_password');
-        const confirmPasswordInput = document.getElementById('confirm_password');
-        const toggleNewPassword = document.getElementById('toggleNewPassword');
-        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
-        const toggleNewPasswordIcon = document.getElementById('toggleNewPasswordIcon');
-        const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
-        const changePasswordBtn = document.getElementById('changePasswordBtn');
-        const changePasswordForm = document.getElementById('changePasswordForm');
-        const iconShow = '<i class="fas fa-eye"></i>';
-        const iconHide = '<i class="fas fa-eye-slash"></i>';
-        toggleNewPassword.addEventListener('click', function() {
-            if (newPasswordInput.type === 'password') {
-                newPasswordInput.type = 'text';
-                toggleNewPasswordIcon.textContent = iconHide;
-                toggleNewPassword.setAttribute('aria-label', 'Hide password');
-            } else {
-                newPasswordInput.type = 'password';
-                toggleNewPasswordIcon.textContent = iconShow;
-                toggleNewPassword.setAttribute('aria-label', 'Show password');
-            }
-        });
+    document.body.style.overflow = 'hidden';
 
-        toggleConfirmPassword.addEventListener('click', function() {
-            if (confirmPasswordInput.type === 'password') {
-                confirmPasswordInput.type = 'text';
-                toggleConfirmPasswordIcon.textContent = iconHide;
-                toggleConfirmPassword.setAttribute('aria-label', 'Hide password');
-            } else {
-                confirmPasswordInput.type = 'password';
-                toggleConfirmPasswordIcon.textContent = iconShow;
-                toggleConfirmPassword.setAttribute('aria-label', 'Show password');
-            }
-        });
+    const newPasswordInput      = document.getElementById('new_password');
+    const confirmPasswordInput  = document.getElementById('confirm_password');
+    const toggleNewPassword     = document.getElementById('toggleNewPassword');
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const toggleNewPasswordIcon     = document.getElementById('toggleNewPasswordIcon');
+    const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
+    const changePasswordBtn   = document.getElementById('changePasswordBtn');
+    const changePasswordForm  = document.getElementById('changePasswordForm');
 
-        function isUniqueEnoughPasswordClient(pass) {
-            if (pass.length < 8) return false;
-            if (/^(\w)\1+$/.test(pass)) return false;
-            if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return false;
-            for (let len = 1; len <= 3; len++) {
-                let pattern = pass.slice(0, len);
-                if(pattern && pattern !== pass) {
-                    let repeat = pattern.repeat(Math.floor(pass.length/len));
-                    if (repeat === pass) return false;
-                }
-            }
-            let common = ['password','12345678','qwertyui','abcdefgh','iloveyou','asdfasdf','87654321'];
-            for(let bad of common) {
-                if (pass.toLowerCase().includes(bad)) return false;
-            }
-            let uniq = Array.from(new Set(pass.split('')));
-            if (uniq.length < 5) return false;
-            return true;
-        }
-        function calculatePasswordStrength(pass) {
-            let score = 0;
-            if (pass.length >= 8) score++;
-            if (/[A-Z]/.test(pass)) score++;
-            if (/[a-z]/.test(pass)) score++;
-            if (/[0-9]/.test(pass)) score++;
-            if (/[^a-zA-Z0-9]/.test(pass)) score++;
-            if (isUniqueEnoughPasswordClient(pass)) score++;
-            return score;
-        }
-        function updatePasswordStrength() {
-            const pass = newPasswordInput.value;
-            const reqLength = document.getElementById('req-length');
-            const reqUppercase = document.getElementById('req-uppercase');
-            const reqLowercase = document.getElementById('req-lowercase');
-            const reqNumber = document.getElementById('req-number');
-            const reqSymbol = document.getElementById('req-symbol');
-            const reqUnique = document.getElementById('req-unique');
-            const strengthFill = document.getElementById('strengthFill');
-            const strengthText = document.getElementById('strengthText');
-            reqLength.classList.toggle('satisfied', pass.length >= 8);
-            reqUppercase.classList.toggle('satisfied', /[A-Z]/.test(pass));
-            reqLowercase.classList.toggle('satisfied', /[a-z]/.test(pass));
-            reqNumber.classList.toggle('satisfied', /[0-9]/.test(pass));
-            reqSymbol.classList.toggle('satisfied', /[^a-zA-Z0-9]/.test(pass));
-            reqUnique.classList.toggle('satisfied', pass.length >= 8 && isUniqueEnoughPasswordClient(pass));
-            const score = calculatePasswordStrength(pass);
-            strengthFill.className = 'strength-fill';
-            if (pass.length === 0) {
-                strengthFill.style.width = '0%';
-                strengthText.textContent = 'Strength: —';
-                return;
-            }
-            if (score <= 2) {
-                strengthFill.style.width = '25%';
-                strengthFill.classList.add('strength-weak');
-                strengthText.textContent = 'Strength: Weak';
-            } else if (score <= 4) {
-                strengthFill.style.width = '55%';
-                strengthFill.classList.add('strength-fair');
-                strengthText.textContent = 'Strength: Fair';
-            } else if (score === 5) {
-                strengthFill.style.width = '80%';
-                strengthFill.classList.add('strength-good');
-                strengthText.textContent = 'Strength: Good';
-            } else {
-                strengthFill.style.width = '100%';
-                strengthFill.classList.add('strength-strong');
-                strengthText.textContent = 'Strength: Strong';
+    const EYE      = '<i class="fas fa-eye"></i>';
+    const EYE_SLASH = '<i class="fas fa-eye-slash"></i>';
+
+    // Toggle New Password
+    toggleNewPassword.addEventListener('click', function () {
+        const isHidden = newPasswordInput.type === 'password';
+        newPasswordInput.type = isHidden ? 'text' : 'password';
+        toggleNewPasswordIcon.innerHTML = isHidden ? EYE_SLASH : EYE;
+        toggleNewPassword.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+
+    // Toggle Confirm Password
+    toggleConfirmPassword.addEventListener('click', function () {
+        const isHidden = confirmPasswordInput.type === 'password';
+        confirmPasswordInput.type = isHidden ? 'text' : 'password';
+        toggleConfirmPasswordIcon.innerHTML = isHidden ? EYE_SLASH : EYE;
+        toggleConfirmPassword.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+
+    function isUniqueEnoughPasswordClient(pass) {
+        if (pass.length < 8) return false;
+        if (/^(\w)\1+$/.test(pass)) return false;
+        if (!/[A-Z]/.test(pass) || !/[a-z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return false;
+        for (let len = 1; len <= 3; len++) {
+            let pattern = pass.slice(0, len);
+            if (pattern && pattern !== pass) {
+                let repeat = pattern.repeat(Math.floor(pass.length / len));
+                if (repeat === pass) return false;
             }
         }
-        function validatePasswords() {
-            const newPwd = newPasswordInput.value;
-            const confirmPwd = confirmPasswordInput.value;
-            let valid = true;
-            if (newPwd.length < 8) valid = false;
-            if (!isUniqueEnoughPasswordClient(newPwd)) valid = false;
-            if (confirmPwd !== newPwd || confirmPwd.length === 0) valid = false;
-            changePasswordBtn.disabled = !valid;
+        const common = ['password','12345678','qwertyui','abcdefgh','iloveyou','asdfasdf','87654321'];
+        for (let bad of common) { if (pass.toLowerCase().includes(bad)) return false; }
+        if (Array.from(new Set(pass.split(''))).length < 5) return false;
+        return true;
+    }
+
+    function calculatePasswordStrength(pass) {
+        let score = 0;
+        if (pass.length >= 8)           score++;
+        if (/[A-Z]/.test(pass))         score++;
+        if (/[a-z]/.test(pass))         score++;
+        if (/[0-9]/.test(pass))         score++;
+        if (/[^a-zA-Z0-9]/.test(pass))  score++;
+        if (isUniqueEnoughPasswordClient(pass)) score++;
+        return score;
+    }
+
+    function updatePasswordStrength() {
+        const pass = newPasswordInput.value;
+        document.getElementById('req-length').classList.toggle('satisfied',    pass.length >= 8);
+        document.getElementById('req-uppercase').classList.toggle('satisfied', /[A-Z]/.test(pass));
+        document.getElementById('req-lowercase').classList.toggle('satisfied', /[a-z]/.test(pass));
+        document.getElementById('req-number').classList.toggle('satisfied',    /[0-9]/.test(pass));
+        document.getElementById('req-symbol').classList.toggle('satisfied',    /[^a-zA-Z0-9]/.test(pass));
+        document.getElementById('req-unique').classList.toggle('satisfied',    pass.length >= 8 && isUniqueEnoughPasswordClient(pass));
+
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+        const score = calculatePasswordStrength(pass);
+        strengthFill.className = 'strength-fill';
+
+        if (!pass.length) {
+            strengthFill.style.width = '0%';
+            strengthText.textContent = 'Strength: —';
+            return;
         }
-        newPasswordInput.addEventListener('input', function() {
-            updatePasswordStrength();
-            validatePasswords();
-        });
-        confirmPasswordInput.addEventListener('input', validatePasswords);
-        changePasswordBtn.disabled = true;
-        changePasswordForm.addEventListener('submit', function(e) {
-            if (!newPasswordInput.value || !confirmPasswordInput.value) {
-                e.preventDefault();
-            }
-        });
-        updatePasswordStrength();
+        const levels = [
+            { max: 2, cls: 'strength-weak',   w: '25%', label: 'Weak'   },
+            { max: 4, cls: 'strength-fair',   w: '55%', label: 'Fair'   },
+            { max: 5, cls: 'strength-good',   w: '80%', label: 'Good'   },
+            { max: 6, cls: 'strength-strong', w: '100%',label: 'Strong' },
+        ];
+        const level = levels.find(l => score <= l.max) || levels[3];
+        strengthFill.style.width = level.w;
+        strengthFill.classList.add(level.cls);
+        strengthText.textContent = 'Strength: ' + level.label;
+    }
+
+    function validatePasswords() {
+        const newPwd     = newPasswordInput.value;
+        const confirmPwd = confirmPasswordInput.value;
+        changePasswordBtn.disabled = !(
+            newPwd.length >= 8 &&
+            isUniqueEnoughPasswordClient(newPwd) &&
+            confirmPwd === newPwd &&
+            confirmPwd.length > 0
+        );
+    }
+
+    newPasswordInput.addEventListener('input',    () => { updatePasswordStrength(); validatePasswords(); });
+    confirmPasswordInput.addEventListener('input', validatePasswords);
+    changePasswordBtn.disabled = true;
+    changePasswordForm.addEventListener('submit', e => {
+        if (!newPasswordInput.value || !confirmPasswordInput.value) e.preventDefault();
+    });
+    updatePasswordStrength();
     </script>
 <?php endif; ?>
 

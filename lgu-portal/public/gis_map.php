@@ -2,9 +2,20 @@
 session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
 $INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-// If last activity is set and timeout exceeded
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
@@ -82,6 +93,7 @@ $totalRequests = count($requests);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <title>GIS Map &mdash; LGU Employee Portal</title>
@@ -689,7 +701,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
-    .sidebar-profile-btn { position: absolute; top: 18px; left: 18px; width: 42px; height: 42px; }
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 20px;
+        left: 4px;
+        width: 45px;
+        height: 58px;
+    }
     .sidebar-top { position: relative; }
     .site-logo { margin-top: 60px; text-align: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -774,7 +792,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="employee.php"  class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php"   class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <li><a href="gis_map.php"   class="nav-link active" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
             <?php if ($isAdmin): ?>
@@ -793,7 +823,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 

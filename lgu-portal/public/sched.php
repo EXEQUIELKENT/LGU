@@ -5,15 +5,28 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
 $INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
-// If last activity is set and timeout exceeded
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
     exit;
 }
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
 
 /* 🚫 Prevent browser caching of protected pages */
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -198,6 +211,7 @@ if ($result && $result->num_rows > 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 /* =========================
@@ -1069,6 +1083,76 @@ if ($result && $result->num_rows > 0) {
     border: 1.5px solid #3762c8;
     box-shadow: 0 2px 8px rgba(55,98,200,0.06);
 }
+/* ── Calendar Legend ──────────────────────────────────────────── */
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 8px 2px 0;
+    margin-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+[data-theme="dark"] .calendar-legend {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary, #555);
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .legend-item {
+    color: #bbb;
+}
+
+.legend-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+/* Match exactly the task-btn background colors */
+.legend-upcoming  { background: #1565c0; }
+.legend-ongoing   { background: #fdd835; outline: 1px solid rgba(0,0,0,0.15); }
+.legend-delayed   { background: #c62828; }
+.legend-completed { background: #2e7d32; }
+
+/* ── Expand the details-card to fit legend + scroll hint ───────── */
+.calendar-details-card {
+    /* was 180px / padding-bottom 35px — increase to fit legend */
+    max-height: 240px !important;
+    padding-bottom: 16px !important;
+}
+
+/* Push scroll indicator above the legend */
+.scroll-indicator {
+    bottom: 38px !important;   /* above legend height (~34px) */
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+    .calendar-legend {
+        gap: 5px 10px;
+    }
+    .legend-item {
+        font-size: 10px;
+    }
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+    }
+    .calendar-details-card {
+        max-height: 260px !important;
+    }
+}
 /* -- End: ListView Search Styles -- */
 /* =========================
    MOBILE VIEW ONLY
@@ -1668,9 +1752,9 @@ Sidebar (250px) takes the most relative space here.
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
-        left: 18px;
-        width: 42px;
-        height: 42px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
     }
 
     .sidebar-top {
@@ -2115,7 +2199,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <li>
@@ -2139,7 +2235,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
@@ -2191,6 +2289,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     Select a date to view schedule.
                 </div>
                 <div class="scroll-indicator">⌄</div>
+            </div>
+            <div class="calendar-legend">
+                <span class="legend-item">
+                    <span class="legend-dot legend-upcoming"></span>Upcoming
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-ongoing"></span>In Progress
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-delayed"></span>Delayed
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-completed"></span>Completed
+                </span>
             </div>
         </div>
         <!-- LIST VIEW -->

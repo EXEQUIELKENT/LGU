@@ -11,10 +11,20 @@ if ($showWelcomeAnimation) {
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
 $INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
-// If last activity is set and timeout exceeded
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
@@ -300,6 +310,7 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>LGU Employee Portal - Dashboard</title>
 <style>
@@ -1076,6 +1087,53 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     text-align: center; margin-top: 10px;
 }
 
+/* ── Clickable card affordance ─────────────────────────────── */
+.metric-card[data-href],
+.activity-item[data-href],
+.schedule-item[data-href],
+.facility-item[data-href] {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+/* metric cards already have hover; just add a ring on focus-visible */
+.metric-card[data-href]:focus-visible {
+    outline: 3px solid #3762c8;
+    outline-offset: 3px;
+}
+
+/* activity / schedule / facility rows – add a subtle right arrow hint */
+.activity-item[data-href]::after,
+.schedule-item[data-href]::after,
+.facility-item[data-href]::after {
+    content: '›';
+    font-size: 20px;
+    font-weight: 700;
+    color: rgba(55, 98, 200, 0.4);
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.activity-item[data-href]:hover::after,
+.schedule-item[data-href]:hover::after,
+.facility-item[data-href]:hover::after {
+    color: #3762c8;
+    transform: translateX(4px);
+}
+
+/* Facility items need flex so the arrow sits at the end */
+.facility-item[data-href] {
+    display: flex;
+    align-items: center;
+}
+
+/* Active press feedback */
+.metric-card[data-href]:active         { transform: translateY(-2px) scale(0.98) !important; }
+.activity-item[data-href]:active,
+.schedule-item[data-href]:active,
+.facility-item[data-href]:active       { opacity: 0.8; }
+
 /* ===========================
    WELCOME ANIMATION STYLES
 =========================== */
@@ -1337,9 +1395,9 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
-        left: 18px;
-        width: 42px;
-        height: 42px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
     }
 
     .sidebar-top {
@@ -1626,7 +1684,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="employee.php"  class="nav-link active" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php"   class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <li>
@@ -1652,7 +1722,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
@@ -1684,7 +1756,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
             <!-- Metrics Grid -->
             <div class="metrics-grid">
-                <div class="metric-card blue">
+                <div class="metric-card blue"     data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Total Requests</div>
@@ -1698,7 +1770,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card orange">
+                <div class="metric-card orange"   data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Pending Requests</div>
@@ -1711,7 +1783,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card green">
+                <div class="metric-card green"    data-href="sched.php"        tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Completed Tasks</div>
@@ -2319,6 +2391,73 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 <?php endif; ?>
+
+<script>
+(function () {
+    // ── 1. Wire up [data-href] cards (metric cards + any others) ──
+    function makeClickable(selector) {
+        document.querySelectorAll(selector + '[data-href]').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                // Don't navigate if the click was on an inner button/link
+                if (e.target.closest('button, a, input, select, textarea')) return;
+                window.location.href = el.dataset.href;
+            });
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.href = el.dataset.href;
+                }
+            });
+        });
+    }
+
+    makeClickable('.metric-card');
+
+    // ── 2. Activity items → requests.php ──────────────────────────
+    document.querySelectorAll('.activity-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.activity-item');
+
+    // ── 3. Schedule items → sched.php ─────────────────────────────
+    document.querySelectorAll('.schedule-item').forEach(function (el) {
+        el.dataset.href = 'sched.php';
+    });
+    makeClickable('.schedule-item');
+
+    // ── 4. Facility items → requests.php ──────────────────────────
+    document.querySelectorAll('.facility-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.facility-item');
+
+    // ── 5. Chart cards (Request Trends / Status Breakdown) ─────────
+    document.querySelectorAll('.chart-card').forEach(function (el) {
+        // Identify by title text
+        const title = el.querySelector('.chart-title');
+        if (!title) return;
+        const text = title.textContent.trim().toLowerCase();
+
+        if (text.includes('request trend') || text.includes('status breakdown')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('top facilities')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('upcoming maintenance')) {
+            el.dataset.href = 'sched.php';
+        } else if (text.includes('recent activity')) {
+            el.dataset.href = 'requests.php';
+        }
+        // Only add cursor/pointer if href was assigned
+        if (el.dataset.href) {
+            el.style.cursor = 'pointer';
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('role', 'link');
+        }
+    });
+    makeClickable('.chart-card');
+
+})();
+</script>
 
 </body>
 </html>

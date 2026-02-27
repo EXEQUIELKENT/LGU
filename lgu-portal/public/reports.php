@@ -5,15 +5,28 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
 $INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
-// If last activity is set and timeout exceeded
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
     exit;
 }
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
 
 /* 🚫 Prevent browser caching of protected pages */
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -165,6 +178,7 @@ if ($result && $result->num_rows > 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Maintenance Reports</title>
 <style>
@@ -387,9 +401,9 @@ tbody tr:hover { background: rgba(55,98,200,.09); }
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
-        left: 18px;
-        width: 42px;
-        height: 42px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
     }
 
     .sidebar-top {
@@ -601,8 +615,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <li>
                 <a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a>
             </li>
-            <li>
-                <a href="#" class="nav-link active" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item open">
+                <a href="#" class="nav-link nav-dropdown-toggle active" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
             </li>
             <li>
                 <a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a>
@@ -629,7 +653,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
