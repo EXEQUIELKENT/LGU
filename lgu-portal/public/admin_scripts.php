@@ -324,7 +324,7 @@ setTimeout(handleProfilePicture, 100);
 </script>
 
 <script>
-let inactivityTime = 20 * 60 * 1000;
+let inactivityTime = 2 * 60 * 1000; // 2 minutes
 let inactivityTimer;
 
 function resetInactivityTimer() {
@@ -334,7 +334,7 @@ function resetInactivityTimer() {
     }, inactivityTime);
 }
 
-['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(event => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
 resetInactivityTimer();
@@ -734,4 +734,5 @@ startClock();
         }, 3000);
     }, 150);
 })();
+
 </script>

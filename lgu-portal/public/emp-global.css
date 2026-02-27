@@ -5,25 +5,35 @@
    CSS VARIABLES FOR THEME SUPPORT
 ========================== */
 :root {
-    --text-muted: #555;
-    --card-border: rgba(0,0,0,0.12);
-    --bg-secondary: #f9f9f9;
-    --text-primary: #333;
-    --text-secondary: #666;
-    --bg-tertiary: #f2f2f2;
-    --border-color: #ddd;
-    --shadow-color: rgba(0,0,0,0.1);
+    --sidebar-expanded: 260px;
+    --sidebar-collapsed: 72px;
+
+    --sb-accent:        #3762c8;
+    --sb-accent-glow:   rgba(55, 98, 200, 0.35);
+    --sb-accent-soft:   rgba(55, 98, 200, 0.10);
+    --sb-accent-mid:    rgba(55, 98, 200, 0.20);
+    --sb-gradient:      linear-gradient(135deg, #3762c8 0%, #5f8cff 100%);
+    --sb-gradient-warm: linear-gradient(135deg, #2e54b8 0%, #7b5cfa 100%);
+
+    --sb-bg:        rgba(255, 255, 255, 0.92);
+    --sb-border:    rgba(55, 98, 200, 0.12);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.18);
+    --sb-item-h:    46px;
+    --sb-radius:    14px;
+    --sb-text:      #1a2340;
+    --sb-muted:     #7a8aaa;
+    --sb-divider:   rgba(55, 98, 200, 0.12);
 }
 
 [data-theme="dark"] {
-    --text-muted: #b5b5b5;
-    --card-border: rgba(255,255,255,0.12);
-    --bg-secondary: #2f2f2f;
-    --text-primary: #fff;
-    --text-secondary: #ccc;
-    --bg-tertiary: #333;
-    --border-color: #555;
-    --shadow-color: rgba(255,255,255,0.1);
+    --sb-bg:        rgba(18, 22, 38, 0.96);
+    --sb-border:    rgba(95, 140, 255, 0.14);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.55);
+    --sb-text:      #e8edff;
+    --sb-muted:     #6b7a9a;
+    --sb-divider:   rgba(95, 140, 255, 0.12);
+    --sb-accent-soft: rgba(95, 140, 255, 0.12);
+    --sb-accent-mid:  rgba(95, 140, 255, 0.22);
 }
 
 /* =======================

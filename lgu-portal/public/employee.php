@@ -11,7 +11,7 @@ if ($showWelcomeAnimation) {
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-$INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
+$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
 // If last activity is set and timeout exceeded
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
@@ -1629,7 +1629,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <li><a href="reports.php"   class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
-            <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
+            <li>
+                <a href="gis_map.php" class="nav-link" data-tooltip="GIS Map">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span>GIS Map</span>
+                </a>
+            </li>
+            <li>
+                <a href="admin_create.php"
+                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
+                data-tooltip="Create Account">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Create Account</span>
+                </a>
+            </li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
