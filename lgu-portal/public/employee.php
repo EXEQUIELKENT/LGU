@@ -1087,6 +1087,146 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     text-align: center; margin-top: 10px;
 }
 
+/* ── Password confirmation modal ──────────────────────────────────────── */
+#pwModalBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9000;
+    backdrop-filter: blur(5px);
+}
+#pwModalBackdrop.active { display: flex; }
+
+.pw-modal {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    box-shadow: 0 16px 60px var(--shadow-color);
+    width: 92%;
+    max-width: 400px;
+    overflow: hidden;
+    animation: pwModalIn .28s cubic-bezier(.34,1.56,.64,1);
+    border: 1px solid var(--border-color);
+}
+@keyframes pwModalIn {
+    from { opacity:0; transform:scale(.88) translateY(-18px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+}
+
+.pw-modal-header {
+    padding: 20px 24px 16px;
+    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
+    display: flex; align-items: center; gap: 12px;
+}
+.pw-modal-icon {
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,.18);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.pw-modal-header-text h3 {
+    font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px;
+}
+.pw-modal-header-text p {
+    font-size: 11px; color: #93c5fd; line-height: 1.4;
+}
+
+.pw-modal-body { padding: 22px 24px 20px; }
+
+.pw-modal-body label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--text-secondary); margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+
+.pw-input-wrap {
+    position: relative;
+}
+.pw-input-wrap input[type="password"],
+.pw-input-wrap input[type="text"] {
+    width: 100%; padding: 11px 44px 11px 14px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 11px; font-size: 15px;
+    background: var(--bg-secondary); color: var(--text-primary);
+    outline: none; transition: border .2s, box-shadow .2s;
+    font-family: inherit;
+}
+.pw-input-wrap input:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+}
+.pw-input-wrap input.pw-error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+}
+.pw-toggle-btn {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    font-size: 17px; color: var(--text-secondary);
+    padding: 2px; line-height: 1;
+    transition: color .2s;
+}
+.pw-toggle-btn:hover { color: #3762c8; }
+
+.pw-error-msg {
+    display: none; margin-top: 8px;
+    background: #fef2f2; border: 1px solid #fecaca;
+    color: #dc2626; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; font-weight: 600;
+    align-items: center; gap: 6px;
+}
+.pw-error-msg.show { display: flex; }
+
+.pw-attempts-msg {
+    display: none; margin-top: 8px;
+    font-size: 11px; color: var(--text-secondary);
+    text-align: center;
+}
+.pw-attempts-msg.show { display: block; }
+
+.pw-modal-footer {
+    padding: 0 24px 20px;
+    display: flex; gap: 10px;
+}
+.pw-cancel-btn {
+    flex: 1; padding: 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 11px; background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+}
+.pw-cancel-btn:hover {
+    background: rgba(55,98,200,.08); border-color: #3762c8; color: #3762c8;
+}
+.pw-confirm-btn {
+    flex: 2; padding: 11px;
+    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
+    color: #fff; border: none; border-radius: 11px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all .25s; display: flex; align-items: center;
+    justify-content: center; gap: 7px;
+    box-shadow: 0 4px 14px rgba(30,58,95,.3);
+}
+.pw-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(30,58,95,.4);
+}
+.pw-confirm-btn:disabled {
+    opacity: .65; cursor: not-allowed; transform: none;
+}
+
+/* Spinner */
+.pw-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: pw-spin .7s linear infinite;
+    display: none;
+}
+@keyframes pw-spin { to { transform: rotate(360deg); } }
+
 /* ── Clickable card affordance ─────────────────────────────── */
 .metric-card[data-href],
 .activity-item[data-href],
@@ -2025,6 +2165,43 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     </div>
 </div>
 
+<?php if ($isAdmin): ?>
+<div id="pwModalBackdrop">
+    <div class="pw-modal">
+        <div class="pw-modal-header">
+            <div class="pw-modal-icon">🔐</div>
+            <div class="pw-modal-header-text">
+                <h3>Confirm Your Identity</h3>
+                <p>Enter your account password to generate this report.</p>
+            </div>
+        </div>
+        <div class="pw-modal-body">
+            <label for="pwInput">Password</label>
+            <div class="pw-input-wrap">
+                <input type="password" id="pwInput"
+                       placeholder="Enter your password"
+                       autocomplete="current-password"
+                       autofocus>
+                <button class="pw-toggle-btn" type="button"
+                        id="pwToggleBtn" title="Show/hide password"
+                        tabindex="-1">👁️</button>
+            </div>
+            <div class="pw-error-msg" id="pwErrorMsg">
+                <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
+            </div>
+            <div class="pw-attempts-msg" id="pwAttemptsMsg"></div>
+        </div>
+        <div class="pw-modal-footer">
+            <button class="pw-cancel-btn" id="pwCancelBtn">Cancel</button>
+            <button class="pw-confirm-btn" id="pwConfirmBtn">
+                <div class="pw-spinner" id="pwSpinner"></div>
+                <span id="pwConfirmText">🔓 Verify &amp; Continue</span>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php include 'admin_scripts.php'; ?>
 
 <script>
@@ -2256,8 +2433,10 @@ if (statusCtx) {
      EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
      4. HTML MODAL — Add just BEFORE the closing </body> tag.
      ============================================================ -->
-<?php if ($isAdmin): ?>
-<!-- REPORT GENERATION MODAL -->
+<!-- =====================================================================
+     REPORT MODAL HTML  — replace your existing #reportModalBackdrop block
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
 <div id="reportModalBackdrop">
     <div class="report-modal">
         <div class="report-modal-header">
@@ -2265,7 +2444,6 @@ if (statusCtx) {
             <button class="report-modal-close" id="reportModalClose">&times;</button>
         </div>
         <div class="report-modal-body">
-            <!-- Date Range -->
             <div class="form-group">
                 <label>Date Range</label>
                 <div class="date-row">
@@ -2279,8 +2457,6 @@ if (statusCtx) {
                     </div>
                 </div>
             </div>
-
-            <!-- Format -->
             <div class="form-group">
                 <label>Export Format</label>
                 <div class="format-toggle">
@@ -2292,21 +2468,20 @@ if (statusCtx) {
                     </button>
                 </div>
             </div>
-
-            <!-- Generate Button -->
-            <button class="btn-generate" id="btnGenerate" onclick="submitReport()">
-                <span id="btnGenerateText">⬇️ Generate Report</span>
+            <!-- "Generate" now opens the password gate first -->
+            <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+                <span id="btnGenerateText">🔐 Verify &amp; Generate</span>
             </button>
             <p class="report-info-text">
-                Excel downloads immediately. PDF opens in a new tab — use browser's Print → Save as PDF.
+                You will be asked to confirm your password before the report is created.
             </p>
-
-            <!-- Hidden form for POST submission -->
+            <!-- Hidden form — submitted only after successful password verification -->
             <form id="reportForm" action="generate_report.php" method="POST" target="_blank" style="display:none">
-                <input type="hidden" name="report_type" id="rptTypeInput">
-                <input type="hidden" name="format"      id="rptFormatInput">
-                <input type="hidden" name="date_from"   id="rptFromInput">
-                <input type="hidden" name="date_to"     id="rptToInput">
+                <input type="hidden" name="report_type"   id="rptTypeInput">
+                <input type="hidden" name="format"        id="rptFormatInput">
+                <input type="hidden" name="date_from"     id="rptFromInput">
+                <input type="hidden" name="date_to"       id="rptToInput">
+                <input type="hidden" name="report_token"  id="rptTokenInput">
             </form>
         </div>
     </div>
@@ -2318,12 +2493,16 @@ if (statusCtx) {
      5. JAVASCRIPT — Add AFTER the existing </script> blocks,
      before closing </body>
      ============================================================ -->
-<?php if ($isAdmin): ?>
+<!-- =====================================================================
+     REPORT JS  — replace your existing report <script> block entirely
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
 <script>
-// ── Report Generation ────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────────
 let _rptType   = 'requests';
 let _rptFormat = 'excel';
 
+// ── Report modal ─────────────────────────────────────────────────────────────
 function openReportModal(type) {
     _rptType = type;
     const titles = {
@@ -2333,14 +2512,12 @@ function openReportModal(type) {
     };
     document.getElementById('reportModalTitle').textContent = titles[type] || 'Generate Report';
     document.getElementById('reportModalBackdrop').classList.add('active');
+    resetBtnGenerate();
 }
 
 function closeReportModal() {
     document.getElementById('reportModalBackdrop').classList.remove('active');
-    // Reset button state
-    const btn = document.getElementById('btnGenerate');
-    btn.disabled = false;
-    document.getElementById('btnGenerateText').textContent = '⬇️ Generate Report';
+    resetBtnGenerate();
 }
 
 function selectFormat(fmt) {
@@ -2349,45 +2526,195 @@ function selectFormat(fmt) {
     document.getElementById('fmtPdf').classList.toggle('active',   fmt === 'pdf');
 }
 
-function submitReport() {
+function resetBtnGenerate() {
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = false;
+    document.getElementById('btnGenerateText').textContent = '🔐 Verify & Generate';
+}
+
+// ── Step 1: Validate date inputs, then open password gate ────────────────────
+function startGenerate() {
     const from = document.getElementById('rptDateFrom').value;
     const to   = document.getElementById('rptDateTo').value;
     if (!from || !to) { alert('Please select both a start and end date.'); return; }
     if (from > to)    { alert('Start date must be before or equal to end date.'); return; }
 
+    // Store values for later submission
     document.getElementById('rptTypeInput').value   = _rptType;
     document.getElementById('rptFormatInput').value = _rptFormat;
     document.getElementById('rptFromInput').value   = from;
     document.getElementById('rptToInput').value     = to;
 
-    const btn = document.getElementById('btnGenerate');
-    const txt = document.getElementById('btnGenerateText');
+    // Close report modal and open password gate
+    closeReportModal();
+    openPwModal();
+}
 
-    if (_rptFormat === 'excel') {
-        // Excel — submit form (triggers download), then re-enable button after delay
-        btn.disabled = true;
-        txt.textContent = '⏳ Generating…';
-        document.getElementById('reportForm').submit();
-        setTimeout(() => {
-            btn.disabled = false;
-            txt.textContent = '⬇️ Generate Report';
-        }, 4000);
-    } else {
-        // PDF — opens in new tab, no loading state needed
-        document.getElementById('reportForm').target = '_blank';
-        document.getElementById('reportForm').submit();
+// ── Password modal ────────────────────────────────────────────────────────────
+function openPwModal() {
+    const backdrop = document.getElementById('pwModalBackdrop');
+    backdrop.classList.add('active');
+    const input = document.getElementById('pwInput');
+    input.value = '';
+    input.type  = 'password';
+    hidePwError();
+    document.getElementById('pwAttemptsMsg').classList.remove('show');
+    document.getElementById('pwConfirmBtn').disabled = false;
+    document.getElementById('pwConfirmText').style.display = '';
+    document.getElementById('pwSpinner').style.display = 'none';
+    // Focus after animation
+    setTimeout(() => input.focus(), 80);
+}
+
+function closePwModal() {
+    document.getElementById('pwModalBackdrop').classList.remove('active');
+    document.getElementById('pwInput').value = '';
+    hidePwError();
+}
+
+function showPwError(msg) {
+    const el = document.getElementById('pwErrorMsg');
+    document.getElementById('pwErrorText').textContent = msg;
+    el.classList.add('show');
+    document.getElementById('pwInput').classList.add('pw-error');
+}
+
+function hidePwError() {
+    document.getElementById('pwErrorMsg').classList.remove('show');
+    document.getElementById('pwInput').classList.remove('pw-error');
+}
+
+// ── Password toggle (show/hide) ───────────────────────────────────────────────
+document.getElementById('pwToggleBtn').addEventListener('click', function () {
+    const input = document.getElementById('pwInput');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    this.textContent = isHidden ? '🙈' : '👁️';
+});
+
+// ── Step 2: Verify password via AJAX ─────────────────────────────────────────
+async function verifyAndGenerate() {
+    const password = document.getElementById('pwInput').value;
+    if (!password) {
+        showPwError('Please enter your password.');
+        document.getElementById('pwInput').focus();
+        return;
+    }
+
+    // Set loading state
+    const confirmBtn = document.getElementById('pwConfirmBtn');
+    const confirmTxt = document.getElementById('pwConfirmText');
+    const spinner    = document.getElementById('pwSpinner');
+    confirmBtn.disabled = true;
+    confirmTxt.style.display = 'none';
+    spinner.style.display    = 'block';
+    hidePwError();
+
+    try {
+        const resp = await fetch('verify_password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ password })
+        });
+
+        let data;
+        try { data = await resp.json(); }
+        catch (e) {
+            showPwError('Server error. Please try again.');
+            return;
+        }
+
+        if (data.success && data.token) {
+            // ✅ Correct password — inject token and submit form
+            document.getElementById('rptTokenInput').value = data.token;
+            closePwModal();
+
+            const form = document.getElementById('reportForm');
+            if (_rptFormat === 'excel') {
+                form.target = '_self'; // triggers file download in same tab
+            } else {
+                form.target = '_blank'; // PDF opens in new tab
+            }
+            form.submit();
+
+            // Re-enable generate button after a delay (for Excel re-use)
+            if (_rptFormat === 'excel') {
+                setTimeout(resetBtnGenerate, 4500);
+            }
+
+        } else {
+            // ❌ Wrong password
+            showPwError(data.message || 'Incorrect password. Please try again.');
+            document.getElementById('pwInput').value = '';
+            document.getElementById('pwInput').focus();
+
+            // Show attempt warning after first failure
+            const attemptsMsg = document.getElementById('pwAttemptsMsg');
+            attemptsMsg.textContent = 'Note: Multiple failed attempts will temporarily lock verification.';
+            attemptsMsg.classList.add('show');
+
+            if (resp.status === 429) {
+                showPwError(data.message || 'Too many attempts. Please wait before trying again.');
+                confirmBtn.disabled = true; // keep disabled until modal is closed/reopened
+            }
+        }
+
+    } catch (err) {
+        showPwError('Network error. Please check your connection.');
+    } finally {
+        // Restore button state (unless it was rate-limited)
+        if (!document.getElementById('pwErrorMsg').classList.contains('show') ||
+             document.getElementById('pwErrorText').textContent.includes('Incorrect')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else if (!document.getElementById('pwAttemptsMsg').textContent.includes('lock')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else {
+            // Always restore UI unless it's the rate-limit case
+            if (resp && resp.status !== 429) {
+                confirmBtn.disabled = false;
+                confirmTxt.style.display = '';
+                spinner.style.display    = 'none';
+            }
+        }
     }
 }
 
-// Close modal handlers
+// Restore spinner on all non-429 cases reliably
+document.getElementById('pwConfirmBtn').addEventListener('click', async function() {
+    await verifyAndGenerate();
+    // Ensure spinner is hidden if button is re-enabled
+    if (!this.disabled) {
+        document.getElementById('pwSpinner').style.display = 'none';
+        document.getElementById('pwConfirmText').style.display = '';
+    }
+});
+
+// Allow Enter key in password field
+document.getElementById('pwInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('pwConfirmBtn').click();
+    }
+});
+
+// ── Close handlers ────────────────────────────────────────────────────────────
+document.getElementById('pwCancelBtn').addEventListener('click', closePwModal);
+document.getElementById('pwModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closePwModal();
+});
 document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
 document.getElementById('reportModalBackdrop').addEventListener('click', function(e) {
     if (e.target === this) closeReportModal();
 });
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.getElementById('reportModalBackdrop').classList.contains('active')) {
-        closeReportModal();
-    }
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('pwModalBackdrop').classList.contains('active'))  closePwModal();
+    if (document.getElementById('reportModalBackdrop').classList.contains('active')) closeReportModal();
 });
 </script>
 <?php endif; ?>

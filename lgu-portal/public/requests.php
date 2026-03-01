@@ -487,7 +487,6 @@ tbody tr:hover {
     inset: 0;
     background: rgba(0, 0, 0, 0.70);
 }
-/* ... (can leave out now-redundant old #imageModalImg styles, above covers it) ... */
 .image-modal-close {
     position: fixed;
     top: 20px;
@@ -776,21 +775,17 @@ tbody tr:hover {
     border-radius: 0 0 20px 20px;
     display: none;
 }
+/* AFTER */
 .detail-footer-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+    justify-content: center;     /* ✅ centered */
+    gap: 10px;
     flex-wrap: wrap;
 }
-.detail-footer-hint {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    opacity: .8;
-}
+
+
+/* ── Validate button ──────────────────────────────── */
 .btn-validate {
     display: inline-flex;
     align-items: center;
@@ -798,7 +793,7 @@ tbody tr:hover {
     background: linear-gradient(135deg, #47b066, #34a058);
     color: #fff;
     border: none;
-    padding: 11px 26px;
+    padding: 11px 22px;
     border-radius: 11px;
     font-size: 14px;
     font-weight: 700;
@@ -816,6 +811,32 @@ tbody tr:hover {
 .btn-validate:active { transform: translateY(0); }
 .btn-validate i { font-size: 15px; }
 
+/* ── Reject button ──────────────────────────────── */
+.btn-reject {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ef5350, #e53935);
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 11px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .25s ease;
+    box-shadow: 0 4px 14px rgba(229,57,53,.30);
+    letter-spacing: .02em;
+    flex-shrink: 0;
+}
+.btn-reject:hover {
+    background: linear-gradient(135deg, #e53935, #c62828);
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(229,57,53,.42);
+}
+.btn-reject:active { transform: translateY(0); }
+.btn-reject i { font-size: 15px; }
+
 /* ── Mobile ─────────────────────────────────────── */
 @media (max-width: 600px) {
     .detail-modal { width: 95%; max-height: 90vh; }
@@ -823,9 +844,9 @@ tbody tr:hover {
     .detail-modal-footer { padding: 14px 18px; }
     .detail-grid-2 { grid-template-columns: 1fr; gap: 10px; }
     .detail-evidence-thumb { width: 68px; height: 68px; }
-    .btn-validate { width: 100%; justify-content: center; }
-    .detail-footer-inner { flex-direction: column; align-items: stretch; }
-    .detail-footer-hint { justify-content: center; }
+    .btn-validate,
+    .btn-reject { flex: 1; justify-content: center; min-width: 0; }
+    .detail-footer-inner { flex-direction: row; align-items: center; }
 }
 
 /* =========================
@@ -865,6 +886,20 @@ tbody tr:hover {
 
 .alert-modal .icon-wrap.success-icon .icon {
     color: #47b066;
+    font-size: 2.1rem;
+    line-height: 1;
+}
+
+/* Reject icon wrap variant */
+.alert-modal .icon-wrap.reject-icon {
+    background: #fce8e8;
+    box-shadow: 0 2px 8px 0 rgba(229, 57, 53, 0.11);
+}
+[data-theme="dark"] .alert-modal .icon-wrap.reject-icon {
+    background: rgba(229, 57, 53, 0.15);
+}
+.alert-modal .icon-wrap.reject-icon .icon {
+    color: #e53935;
     font-size: 2.1rem;
     line-height: 1;
 }
@@ -936,16 +971,19 @@ tbody tr:hover {
     border: none;
     box-shadow: 0 3px 14px 0 rgba(71, 176, 102, 0.08);
 }
+.alert-modal .alert-btn.confirm:hover { background: #3a9654; }
 
-.alert-modal .alert-btn.confirm:hover {
-    background: #3a9654;
+/* Reject confirm button variant */
+.alert-modal .alert-btn.confirm-reject {
+    color: #fff;
+    background: #e53935;
+    border: none;
+    box-shadow: 0 3px 14px 0 rgba(229, 57, 53, 0.12);
 }
+.alert-modal .alert-btn.confirm-reject:hover { background: #c62828; }
+
 /* =======================================================
    MEDIUM SCREEN TABLE OVERFLOW FIX
-   Place this block BEFORE the existing mobile media query:
-   "/* =========================
-      MOBILE VIEW ONLY
-   ========================= */"
    ======================================================= */
 
 @media (min-width: 769px) and (max-width: 1200px) {
@@ -965,7 +1003,6 @@ tbody tr:hover {
         margin-left: calc(var(--sidebar-collapsed) + 10px) !important;
     }
 
-    /* Card must not overflow the viewport */
     .table-card {
         padding: 20px 16px !important;
         width: 100% !important;
@@ -974,19 +1011,15 @@ tbody tr:hover {
         overflow: hidden !important;
     }
 
-    /* 🔑 THE KEY FIX: wrap the table in a scrollable div by making
-       the table itself scroll — display:block enables overflow-x */
     .table-card table {
         display: block !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
         width: 100% !important;
         max-width: 100% !important;
-        /* Restore table layout for thead/tbody children */
         border-collapse: separate !important;
     }
 
-    /* thead and tbody must stay as proper table sections */
     .table-card table thead,
     .table-card table tbody {
         display: table !important;
@@ -994,32 +1027,30 @@ tbody tr:hover {
         table-layout: fixed !important;
     }
 
-    /* Column widths — prevents any column from being too greedy */
     .table-card table th:nth-child(1),
-    .table-card table td:nth-child(1) { width: 80px; }   /* Req ID */
+    .table-card table td:nth-child(1) { width: 80px; }
 
     .table-card table th:nth-child(2),
-    .table-card table td:nth-child(2) { width: 120px; }  /* Infrastructure */
+    .table-card table td:nth-child(2) { width: 120px; }
 
     .table-card table th:nth-child(3),
-    .table-card table td:nth-child(3) { width: 140px; }  /* Location */
+    .table-card table td:nth-child(3) { width: 140px; }
 
     .table-card table th:nth-child(4),
-    .table-card table td:nth-child(4) { width: 120px; }  /* Issue */
+    .table-card table td:nth-child(4) { width: 120px; }
 
     .table-card table th:nth-child(5),
-    .table-card table td:nth-child(5) { width: 150px; }  /* Date */
+    .table-card table td:nth-child(5) { width: 150px; }
 
     .table-card table th:nth-child(6),
-    .table-card table td:nth-child(6) { width: 70px; }   /* Evidence */
+    .table-card table td:nth-child(6) { width: 70px; }
 
     .table-card table th:nth-child(7),
-    .table-card table td:nth-child(7) { width: 80px; }   /* Status */
+    .table-card table td:nth-child(7) { width: 80px; }
 
     .table-card table th:nth-child(8),
-    .table-card table td:nth-child(8) { width: 65px; }   /* Action */
+    .table-card table td:nth-child(8) { width: 65px; }
 
-    /* Text truncation for long text columns */
     .table-card table td:nth-child(2),
     .table-card table td:nth-child(3),
     .table-card table td:nth-child(4) {
@@ -1028,7 +1059,6 @@ tbody tr:hover {
         overflow-wrap: break-word !important;
     }
 
-    /* Other columns: no wrap */
     .table-card table td:nth-child(1),
     .table-card table td:nth-child(5),
     .table-card table td:nth-child(7),
@@ -1036,55 +1066,21 @@ tbody tr:hover {
         white-space: nowrap !important;
     }
 
-    /* Tighter cell padding and font */
     .table-card th,
     .table-card td {
         padding: 10px 8px !important;
         font-size: 12px !important;
     }
 
-    /* Smaller evidence thumbnail */
-    .evidence-thumb {
-        width: 48px !important;
-        height: 48px !important;
-    }
-
-    .evidence-thumb-wrapper {
-        width: 50px !important;
-        height: 50px !important;
-    }
-
-    .multi-indicator {
-        font-size: 10px !important;
-        padding: 1px 4px !important;
-    }
-
-    /* Status pill */
-    .status {
-        padding: 4px 8px !important;
-        font-size: 10px !important;
-        white-space: nowrap !important;
-    }
-
-    /* View button */
-    .btn-view {
-        padding: 5px 8px !important;
-        font-size: 11px !important;
-        white-space: nowrap !important;
-    }
-
-    /* Page title */
-    .page-title {
-        font-size: 20px !important;
-    }
-
-    /* Search bar */
-    #requestSearch {
-        font-size: 0.9rem !important;
-    }
+    .evidence-thumb { width: 48px !important; height: 48px !important; }
+    .evidence-thumb-wrapper { width: 50px !important; height: 50px !important; }
+    .multi-indicator { font-size: 10px !important; padding: 1px 4px !important; }
+    .status { padding: 4px 8px !important; font-size: 10px !important; white-space: nowrap !important; }
+    .btn-view { padding: 5px 8px !important; font-size: 11px !important; white-space: nowrap !important; }
+    .page-title { font-size: 20px !important; }
+    #requestSearch { font-size: 0.9rem !important; }
 }
 
-/* Narrower range — sidebar takes more relative space */
 @media (min-width: 769px) and (max-width: 1000px) {
 
     .main-content {
@@ -1098,86 +1094,47 @@ tbody tr:hover {
         margin-left: calc(var(--sidebar-collapsed) + 6px) !important;
     }
 
-    .table-card {
-        padding: 14px 10px !important;
-    }
+    .table-card { padding: 14px 10px !important; }
 
-    /* Narrower fixed widths to fit smaller viewport */
     .table-card table th:nth-child(1),
     .table-card table td:nth-child(1) { width: 70px; }
-
     .table-card table th:nth-child(2),
     .table-card table td:nth-child(2) { width: 100px; }
-
     .table-card table th:nth-child(3),
     .table-card table td:nth-child(3) { width: 110px; }
-
     .table-card table th:nth-child(4),
     .table-card table td:nth-child(4) { width: 100px; }
-
     .table-card table th:nth-child(5),
     .table-card table td:nth-child(5) { width: 130px; }
-
     .table-card table th:nth-child(6),
     .table-card table td:nth-child(6) { width: 60px; }
-
     .table-card table th:nth-child(7),
     .table-card table td:nth-child(7) { width: 70px; }
-
     .table-card table th:nth-child(8),
     .table-card table td:nth-child(8) { width: 58px; }
 
-    .table-card th,
-    .table-card td {
-        padding: 8px 6px !important;
-        font-size: 11px !important;
-    }
-
-    .evidence-thumb {
-        width: 40px !important;
-        height: 40px !important;
-    }
-
-    .evidence-thumb-wrapper {
-        width: 42px !important;
-        height: 42px !important;
-    }
-
-    .btn-view {
-        padding: 4px 6px !important;
-        font-size: 10px !important;
-    }
-
-    .status {
-        padding: 3px 6px !important;
-        font-size: 10px !important;
-    }
-
-    .page-title {
-        font-size: 18px !important;
-    }
+    .table-card th, .table-card td { padding: 8px 6px !important; font-size: 11px !important; }
+    .evidence-thumb { width: 40px !important; height: 40px !important; }
+    .evidence-thumb-wrapper { width: 42px !important; height: 42px !important; }
+    .btn-view { padding: 4px 6px !important; font-size: 10px !important; }
+    .status { padding: 3px 6px !important; font-size: 10px !important; }
+    .page-title { font-size: 18px !important; }
 }
 
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
 @media (max-width: 768px) {
-    .desktop-top-nav {
-        display: none;
-    }
+    .desktop-top-nav { display: none; }
 
     .mobile-top-nav {
         display: flex;
         position: fixed;
-        top: 0;
-        left: 0;
-        height: 64px;
-        width: 100%;
-        align-items: center;
-        justify-content: center;
+        top: 0; left: 0;
+        height: 64px; width: 100%;
+        align-items: center; justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);
@@ -1185,271 +1142,88 @@ tbody tr:hover {
     }
 
     .mobile-toggle {
-        position: absolute;
-        left: 14px;
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        width: 38px;
-        height: 38px;
-        font-size: 20px;
-        cursor: pointer;
+        position: absolute; left: 14px;
+        background: #3762c8; color: #fff; border: none;
+        border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer;
     }
-    /* Mobile CIMM Label */
     .mobile-cimm-label {
-        position: absolute;
-        left: 70px;
-        font-size: 16px;
-        font-weight: 600;
-        color: #3762c8;
-        letter-spacing: 0.05em;
+        position: absolute; left: 70px;
+        font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: 0.05em;
     }
-    .mobile-top-nav img {
-        height: 42px;
-        object-fit: contain;
+    .mobile-top-nav img { height: 42px; object-fit: contain; }
+    .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; transition: color 0.3s ease; }
+    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
+    .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
+    .sidebar-profile-btn { position: absolute; top: 18px; left: 12px; width: 45px; height: 47px; }
+    .sidebar-top { position: relative; }
+    .site-logo { margin-top: 60px; text-align: center; }
+    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .sidebar-nav.mobile-active { left: 12px; }
+    .sidebar-nav.collapsed { width: calc(100% - 24px); }
+    .main-content, .main-content.expanded {
+        margin-left: 0 !important; padding-top: 90px;
+        height: auto; min-height: 100vh;
+        overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0px;
     }
+    .main-content::-webkit-scrollbar { width: 0 !important; background: transparent; display: none !important; }
+    .sidebar-top { padding-top: 30px; }
+    .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; }
+    .site-logo { margin: 10px auto 20px auto; }
+    .nav-list { padding: 0 20px; }
+    .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
+    .user-info { padding-bottom: 20px; }
+    .sidebar-toggle { display: none; }
 
-    .mobile-clock {
-        position: absolute;
-        right: 56px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
-        transition: color 0.3s ease;
-    }
-
-    .mobile-notif-btn {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 38px;
-        height: 38px;
-        z-index: 1;
-    }
-
-    .mobile-dark-mode-btn {
-        display: flex;
-        position: absolute;
-        margin-top: 42px;
-        top: 18px;
-        right: 18px;
-        width: 38px;
-        height: 38px;
-        z-index: 1005;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .sidebar-profile-btn {
-        position: absolute;
-        top: 18px;
-        left: 12px;
-        width: 45px;
-        height: 47px;
-    }
-
-    .sidebar-top {
-        position: relative;
-    }
-
-    .site-logo {
-        margin-top: 60px;
-        text-align: center;
-    }
-
-    .sidebar-nav {
-        left: -110%;
-        width: calc(100% - 24px);
-        height: calc(100% - 24px);
-        top: 12px;
-        bottom: 12px;
-        border-radius: 18px;
-        transition: left 0.35s ease;
-        z-index: 4000;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-    }
-
-    .sidebar-nav.mobile-active {
-        left: 12px;
-    }
-
-    .sidebar-nav.collapsed {
-        width: calc(100% - 24px);
-    }
-
-    .main-content,
-    .main-content.expanded {
-        margin-left: 0 !important;
-        padding-top: 90px;
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        margin: 0px;
-    }
-
-    .main-content::-webkit-scrollbar {
-        width: 0 !important;
-        background: transparent;
-        display: none !important;
-    }
-
-    .sidebar-top {
-        padding-top: 30px;
-    }
-
-    .sidebar-profile-btn {
-        position: relative;
-        margin: 10px 0 0 15px;
-    }
-
-    .site-logo {
-        margin: 10px auto 20px auto;
-    }
-
-    .nav-list {
-        padding: 0 20px;
-    }
-
-    .sidebar-divider,
-    .sidebar-toggle,
-    .sidebar-toggle-divider {
-        display: none !important;
-    }
-
-    .user-info {
-        padding-bottom: 20px;
-    }
-
-    .sidebar-toggle {
-        display: none;
-    }
-
-    /* ===============================
-       🚩 MOBILE-ONLY MAIN CONTENT FIXES
-       =============================== */
-
-    /* 1️⃣ MAIN CONTENT - no scroll, let body handle it */
-    /* REPLACE with: */
-    .main-content,
-    .main-content.expanded {
+    .main-content, .main-content.expanded {
         height: auto !important;
         min-height: calc(100vh - 64px) !important;
-        overflow-y: auto !important;             /* ← was visible, now scrollable */
+        overflow-y: auto !important;
         padding: 20px !important;
-        padding-top: 80px !important;            /* ← clears the 64px fixed nav */
+        padding-top: 80px !important;
         margin: 0 !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
         -webkit-overflow-scrolling: touch;
     }
     
-    /* 2️⃣ TABLE CARD */
-    .table-card {
-        margin-top: 20px;
-        padding: 22px;
-        border-radius: 18px;
-    }   
+    .table-card { margin-top: 20px; padding: 22px; border-radius: 18px; }
 
-    /* --- Notification fix: Ensure popup is above nav and lower to avoid overlap --- */
     .notif-popup {
-        top: 76px !important;
-        z-index: 5050 !important;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 40px);
-        max-width: 420px;
-        min-width: 0;
-        padding: 14px 12px;
-        font-size: 16px;
+        top: 76px !important; z-index: 5050 !important;
+        left: 50%; transform: translateX(-50%);
+        width: calc(100% - 40px); max-width: 420px;
+        min-width: 0; padding: 14px 12px; font-size: 16px;
     }
 
     /* MOBILE REQUEST CARD VIEW */
-    table {
-        display: none !important;
-    }
-    h2 {
-        display: none;
-    }
-    .mobile-request-list {
-        display: flex !important;
-        flex-direction: column;
-        gap: 16px;
-        width: 100%;
-    }
+    table { display: none !important; }
+    h2 { display: none; }
+    .mobile-request-list { display: flex !important; flex-direction: column; gap: 16px; width: 100%; }
     .request-card {
-        width: 100%;
-        background: rgba(255,255,255,0.96);
-        border-radius: 16px;
-        padding: 16px 18px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-        font-size: 14px;
+        width: 100%; background: rgba(255,255,255,0.96);
+        border-radius: 16px; padding: 16px 18px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18); font-size: 14px;
     }
-    .request-card div {
-        margin-bottom: 8px;
-        line-height: 1.4;
-    }
-    .request-card strong {
-        color: #3762c8;
-        font-weight: 600;
-    }
-    .request-card .status {
-        display: inline-block;
-        margin-left: 6px;
-    }
-    .request-actions {
-        margin-top: 10px;
-    }
-    .request-actions .btn-view {
-        display: inline-block;
-        padding: 6px 14px;
-        font-size: 13px;
-    }
-    .no-evidence {
-        font-size: 12px;
-        color: #777;
-    }
+    .request-card div { margin-bottom: 8px; line-height: 1.4; }
+    .request-card strong { color: #3762c8; font-weight: 600; }
+    .request-card .status { display: inline-block; margin-left: 6px; }
+    .request-actions { margin-top: 10px; }
+    .request-actions .btn-view { display: inline-block; padding: 6px 14px; font-size: 13px; }
+    .no-evidence { font-size: 12px; color: #777; }
 
     /* Mobile modal adjustments */
-    .detail-modal {
-        width: 95%;
-        max-height: 90vh;
-    }
-
-    .detail-modal-header,
-    .detail-modal-body,
-    .detail-modal-footer {
-        padding: 20px;
-    }
-
-    #detailEvidenceContainer {
-        gap: 10px;
-    }
-
-    .detail-evidence-thumb-wrapper {
-        width: 80px;
-        height: 80px;
-    }
+    .detail-modal { width: 95%; max-height: 90vh; }
+    .detail-modal-header, .detail-modal-body, .detail-modal-footer { padding: 20px; }
+    #detailEvidenceContainer { gap: 10px; }
+    .detail-evidence-thumb-wrapper { width: 80px; height: 80px; }
 }
 
 /* =========================
    DESKTOP VIEW - Reset mobile styles
 ========================= */
 @media (min-width: 769px) {
-    body {
-        overflow: hidden !important;
-        height: 100vh !important;
-    }
-
-    .mobile-no-requests {
-        display: none !important;
-    }
-    
-    /* Reset main content to desktop layout */
+    body { overflow: hidden !important; height: 100vh !important; }
+    .mobile-no-requests { display: none !important; }
     .main-content {
         margin-left: calc(var(--sidebar-expanded) + 20px) !important;
         margin-right: 18px !important;
@@ -1459,38 +1233,17 @@ tbody tr:hover {
         height: calc(100vh) !important;
         overflow-y: auto !important;
     }
-    
-    .main-content.expanded {
-        margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
-    }
-    
-    /* Reset table card */
-    .table-card {
-        margin-top: 0 !important;
-        padding: 30px 35px !important;
-    }
-    
-    /* Show desktop table, hide mobile cards */
-    table {
-        display: table !important;
-    }
-    
-    h2 {
-        display: block !important;
-    }
-    
-    .mobile-request-list {
-        display: none !important;
-    }
+    .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px) !important; }
+    .table-card { margin-top: 0 !important; padding: 30px 35px !important; }
+    table { display: table !important; }
+    h2 { display: block !important; }
+    .mobile-request-list { display: none !important; }
 }
 
 /* 🔥 Search Highlight */
 .search-highlight {
-    background: #fff176;
-    color: #000;
-    padding: 1px 3px;
-    border-radius: 4px;
-    font-weight: 600;
+    background: #fff176; color: #000;
+    padding: 1px 3px; border-radius: 4px; font-weight: 600;
 }
 </style>
 <script>
@@ -1503,19 +1256,10 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 (function() {
     try {
         let savedTheme = localStorage.getItem('theme');
-        
-        if (savedTheme !== 'dark' && savedTheme !== 'light') {
-            savedTheme = 'light';
-        }
-        
-        if (savedTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-        }
-        
+        if (savedTheme !== 'dark' && savedTheme !== 'light') savedTheme = 'light';
+        if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        else document.documentElement.removeAttribute('data-theme');
         localStorage.setItem('theme', savedTheme);
-        
     } catch (e) {
         console.error('Theme initialization error:', e);
         document.documentElement.removeAttribute('data-theme');
@@ -1577,7 +1321,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 
     <div class="sidebar-top">
-        <!-- Profile Button -->
         <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
             <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
             <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
@@ -1587,18 +1330,15 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
             <span class="light-icon" style="display: none;">☀️</span>
         </button>
         
-        <!-- Logo -->
         <div class="site-logo">
             <img src="assets/img/officiallogo.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
         
-        <!-- Navigation -->
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="#" class="nav-link active" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <!-- Reports Dropdown -->
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
                     <i class="fas fa-file-alt"></i>
@@ -1642,7 +1382,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<!-- Tooltip container for sidebar nav-links and logout -->
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 
 <!-- MAIN CONTENT -->
@@ -1705,9 +1444,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
                     <td class="searchable"><?php echo htmlspecialchars($row['infrastructure']); ?></td>
                     <td class="searchable"><?php echo htmlspecialchars($row['location']); ?></td>
                     <td class="searchable"><?php echo htmlspecialchars($row['issue']); ?></td>
-                    <td class="searchable">
-                        <?php echo format_datetime_ampm($row['created_at']); ?>
-                    </td>
+                    <td class="searchable"><?php echo format_datetime_ampm($row['created_at']); ?></td>
                     <td>
                         <?php 
                         if (!empty($images)):
@@ -1783,27 +1520,20 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
             data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
             data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
             data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>">
-                    <div>
-                        <strong>Request ID:</strong>
+                    <div><strong>Request ID:</strong>
                         <span class="searchable">#REQ-<?php echo str_pad($row['req_id'], 3, '0', STR_PAD_LEFT); ?></span>
                     </div>
-                    <div>
-                        <strong>Infrastructure:</strong>
+                    <div><strong>Infrastructure:</strong>
                         <span class="searchable"><?php echo htmlspecialchars($row['infrastructure']); ?></span>
                     </div>
-                    <div>
-                        <strong>Location:</strong>
+                    <div><strong>Location:</strong>
                         <span class="searchable"><?php echo htmlspecialchars($row['location']); ?></span>
                     </div>
-                    <div>
-                        <strong>Issue:</strong>
+                    <div><strong>Issue:</strong>
                         <span class="searchable"><?php echo htmlspecialchars($row['issue']); ?></span>
                     </div>
-                    <div>
-                        <strong>Date Submitted:</strong>
-                        <span class="searchable">
-                            <?php echo format_datetime_ampm($row['created_at']); ?>
-                        </span>
+                    <div><strong>Date Submitted:</strong>
+                        <span class="searchable"><?php echo format_datetime_ampm($row['created_at']); ?></span>
                     </div>
                     <div>
                         <strong>Status:</strong>
@@ -1822,8 +1552,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
                     </div>
                     <div>
                         <?php if (!empty($images)): ?>
-                            <button
-                                class="btn-view"
+                            <button class="btn-view"
                                 onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>
                                 View Evidence (<?= count($images) ?>)
                             </button>
@@ -1873,9 +1602,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         <button class="nav-arrow left hidden" type="button" title="Previous" onclick="prevImage()">❮</button>
         <img id="imageModalImg" src="" alt="Evidence Image">
         <button class="nav-arrow right hidden" type="button" title="Next" onclick="nextImage()">❯</button>
-        <div class="swipe-indicator" id="swipeIndicator">
-            ⇆ Swipe left or right
-        </div>
+        <div class="swipe-indicator" id="swipeIndicator">⇆ Swipe left or right</div>
     </div>
 </div>
 
@@ -1886,7 +1613,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         <!-- Coloured top band -->
         <div class="detail-modal-band" id="detailModalBand"></div>
 
-        <!-- Header: req ID + infrastructure + close -->
+        <!-- Header -->
         <div class="detail-modal-header">
             <div class="detail-modal-header-left">
                 <div class="detail-modal-req-id" id="detailReqId"></div>
@@ -1898,7 +1625,6 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         <!-- Scrollable body -->
         <div class="detail-modal-body">
 
-            <!-- Status pill -->
             <div class="detail-status-row">
                 <span class="detail-status-pill" id="detailStatus"></span>
             </div>
@@ -1942,13 +1668,12 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 
         </div><!-- /.detail-modal-body -->
 
-        <!-- Validate footer -->
+        <!-- Footer — Reject + Validate buttons only -->
         <div class="detail-modal-footer" id="detailModalFooter">
             <div class="detail-footer-inner">
-                <span class="detail-footer-hint">
-                    <i class="fas fa-info-circle"></i>
-                    Assign an engineer and confirm to approve
-                </span>
+                <button class="btn-reject" id="rejectBtn">
+                    <i class="fas fa-times-circle"></i> Reject Request
+                </button>
                 <button class="btn-validate" id="validateBtn">
                     <i class="fas fa-check-circle"></i> Validate Request
                 </button>
@@ -1958,7 +1683,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<!-- REPLACE the entire validateConfirmModal div with this: -->
+<!-- VALIDATE CONFIRMATION MODAL -->
 <div id="validateConfirmBackdrop" class="modal-backdrop">
     <div id="validateConfirmModal" class="alert-modal">
        <div class="icon-wrap success-icon">
@@ -1973,6 +1698,21 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
+<!-- REJECT CONFIRMATION MODAL -->
+<div id="rejectConfirmBackdrop" class="modal-backdrop">
+    <div id="rejectConfirmModal" class="alert-modal">
+        <div class="icon-wrap reject-icon">
+            <span class="icon">✕</span>
+        </div>
+        <div class="alert-title">Reject this request?</div>
+        <div class="alert-desc">This will mark the request as <strong>Rejected</strong>. It will remain visible on the GIS map with a rejected status.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" id="rejectCancelBtn">Cancel</button>
+            <button class="alert-btn confirm-reject" id="rejectConfirmBtn">Reject</button>
+        </div>
+    </div>
+</div>
+
 <?php include 'admin_scripts.php'; ?>
 
 <script>
@@ -1982,11 +1722,11 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 const lastViewedImageByRequest = {};
 let currentRequestId = null;
 
-const imageModal = document.getElementById('imageModal');
-const imageModalImg = document.getElementById('imageModalImg');
-const imageModalClose = document.querySelector('.image-modal-close');
+const imageModal        = document.getElementById('imageModal');
+const imageModalImg     = document.getElementById('imageModalImg');
+const imageModalClose   = document.querySelector('.image-modal-close');
 const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
-const swipeIndicator = document.getElementById('swipeIndicator');
+const swipeIndicator    = document.getElementById('swipeIndicator');
 
 const BASE_ZOOM = 2;
 const MAX_WHEEL_ZOOM = 5;
@@ -1995,12 +1735,7 @@ const WHEEL_ZOOM_SPEED = 0.002;
 let isZoomed = false;
 let isDragging = false;
 let isWheelZooming = false;
-
-let startX = 0;
-let startY = 0;
-let translateX = 0;
-let translateY = 0;
-let currentScale = 1;
+let startX = 0, startY = 0, translateX = 0, translateY = 0, currentScale = 1;
 
 imageModalImg.draggable = false;
 imageModalImg.addEventListener('dragstart', (e) => { e.preventDefault(); });
@@ -2010,8 +1745,7 @@ function openImageModal(src) {
     imageModal.classList.add('active');
     resetZoom();
     if (typeof galleryImages !== "undefined") {
-        galleryImages = [src];
-        currentIndex = 0;
+        galleryImages = [src]; currentIndex = 0;
         updateGalleryImage();
     }
 }
@@ -2028,17 +1762,13 @@ function closeImageModal() {
 imageModalClose.addEventListener('click', closeImageModal);
 imageModalBackdrop.addEventListener('click', closeImageModal);
 
-// Desktop double-click zoom
 imageModalImg.addEventListener('dblclick', (e) => {
     const rect = imageModalImg.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    const percentX = offsetX / rect.width;
-    const percentY = offsetY / rect.height;
-
+    const percentX = (e.clientX - rect.left) / rect.width;
+    const percentY = (e.clientY - rect.top)  / rect.height;
     if (!isZoomed) {
         isZoomed = true;
-        translateX = (0.5 - percentX) * rect.width * (BASE_ZOOM - 1);
+        translateX = (0.5 - percentX) * rect.width  * (BASE_ZOOM - 1);
         translateY = (0.5 - percentY) * rect.height * (BASE_ZOOM - 1);
         currentScale = BASE_ZOOM;
         imageModalImg.classList.add('zoomed');
@@ -2046,15 +1776,11 @@ imageModalImg.addEventListener('dblclick', (e) => {
         imageModalImg.style.cursor = 'grab';
         imageModalClose.style.display = 'none';
         imageModalClose.disabled = true;
-    } else {
-        resetZoom();
-    }
+    } else { resetZoom(); }
 });
 
-// Desktop drag
 imageModalImg.addEventListener('mousedown', (e) => {
-    if (!isZoomed) return;
-    if (e.button !== 0) return;
+    if (!isZoomed || e.button !== 0) return;
     isDragging = true;
     startX = e.clientX - translateX;
     startY = e.clientY - translateY;
@@ -2066,13 +1792,10 @@ window.addEventListener('mouseup', () => {
     isDragging = false;
     imageModalImg.style.cursor = 'grab';
     if (isWheelZooming) {
-        isWheelZooming = false;
-        currentScale = BASE_ZOOM;
+        isWheelZooming = false; currentScale = BASE_ZOOM;
         imageModalImg.style.transition = 'transform 0.2s ease';
         imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
-        setTimeout(() => {
-            imageModalImg.style.transition = '';
-        }, 200);
+        setTimeout(() => { imageModalImg.style.transition = ''; }, 200);
     }
 });
 
@@ -2083,32 +1806,25 @@ window.addEventListener('mousemove', (e) => {
     imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
 });
 
-// Desktop wheel zoom
 imageModalImg.addEventListener('wheel', (e) => {
     if (!isZoomed || !isDragging) return;
     e.preventDefault();
     isWheelZooming = true;
     const rect = imageModalImg.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    const percentX = offsetX / rect.width;
-    const percentY = offsetY / rect.height;
+    const percentX = (e.clientX - rect.left) / rect.width;
+    const percentY = (e.clientY - rect.top)  / rect.height;
     const delta = -e.deltaY * WHEEL_ZOOM_SPEED;
     const newScale = Math.min(Math.max(currentScale + delta, BASE_ZOOM), MAX_WHEEL_ZOOM);
-    const scaleDiff = newScale / currentScale;
-    translateX = translateX * scaleDiff + (0.5 - percentX) * rect.width * (scaleDiff - 1);
-    translateY = translateY * scaleDiff + (0.5 - percentY) * rect.height * (scaleDiff - 1);
+    const sd = newScale / currentScale;
+    translateX = translateX * sd + (0.5 - percentX) * rect.width  * (sd - 1);
+    translateY = translateY * sd + (0.5 - percentY) * rect.height * (sd - 1);
     currentScale = newScale;
     imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
 }, { passive: false });
 
 function resetZoom() {
-    isZoomed = false;
-    isDragging = false;
-    isWheelZooming = false;
-    translateX = 0;
-    translateY = 0;
-    currentScale = 1;
+    isZoomed = isDragging = isWheelZooming = false;
+    translateX = translateY = 0; currentScale = 1;
     imageModalImg.classList.remove('zoomed');
     imageModalImg.style.transform = 'scale(1)';
     imageModalImg.style.transformOrigin = 'center center';
@@ -2118,72 +1834,51 @@ function resetZoom() {
 }
 
 // Mobile pinch & swipe
-let initialDistance = null;
-let lastTouchY = null;
-
+let initialDistance = null, lastTouchY = null;
 imageModalImg.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-        initialDistance = getDistance(e.touches[0], e.touches[1]);
-    } else if (e.touches.length === 1) {
-        lastTouchY = e.touches[0].clientY;
-    }
+    if (e.touches.length === 2) initialDistance = getDistance(e.touches[0], e.touches[1]);
+    else if (e.touches.length === 1) lastTouchY = e.touches[0].clientY;
 });
-
 imageModalImg.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && initialDistance) {
         e.preventDefault();
-        const newDistance = getDistance(e.touches[0], e.touches[1]);
-        currentScale = Math.min(Math.max(newDistance / initialDistance, 0.5), 3);
+        const d = getDistance(e.touches[0], e.touches[1]);
+        currentScale = Math.min(Math.max(d / initialDistance, 0.5), 3);
         imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
     } else if (e.touches.length === 1 && lastTouchY !== null) {
-        const deltaY = e.touches[0].clientY - lastTouchY;
-        if (deltaY > 150) {
-            closeImageModal();
-        }
+        if (e.touches[0].clientY - lastTouchY > 150) closeImageModal();
     }
 });
-
 imageModalImg.addEventListener('touchend', () => {
     if (currentScale < 1) currentScale = 1;
     imageModalImg.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
-    initialDistance = null;
-    lastTouchY = null;
+    initialDistance = null; lastTouchY = null;
 });
-
-function getDistance(touch1, touch2) {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
+function getDistance(t1, t2) {
+    return Math.sqrt(Math.pow(t2.clientX-t1.clientX,2) + Math.pow(t2.clientY-t1.clientY,2));
 }
 
 imageModalImg.style.cursor = 'zoom-in';
 
 // Gallery logic
-let galleryImages = [];
-let currentIndex = 0;
+let galleryImages = [], currentIndex = 0;
 
 function updateEvidenceThumbnail(requestId) {
     const thumbImg = document.querySelector(`.evidence-thumb[data-request-id="${requestId}"]`);
     if (!thumbImg) return;
     const newSrc = lastViewedImageByRequest[requestId];
-    if (newSrc) {
-        thumbImg.src = newSrc;
-    }
+    if (newSrc) thumbImg.src = newSrc;
 }
 
 function showSwipeIndicator() {
     const indicator = document.getElementById('swipeIndicator');
     if (!indicator || window.innerWidth > 768) return;
     indicator.classList.add('show');
-    setTimeout(() => {
-        indicator.classList.remove('show');
-    }, 2500);
+    setTimeout(() => indicator.classList.remove('show'), 2500);
 }
 
 function openGalleryModal(images, index, requestId) {
-    galleryImages = images;
-    currentIndex = index;
-    currentRequestId = requestId;
+    galleryImages = images; currentIndex = index; currentRequestId = requestId;
     imageModal.classList.add('active');
     updateGalleryImage();
     showSwipeIndicator();
@@ -2191,13 +1886,10 @@ function openGalleryModal(images, index, requestId) {
 
 function updateGalleryImage() {
     if (!galleryImages.length) return;
-    const img = document.getElementById('imageModalImg');
-    img.src = galleryImages[currentIndex];
-    const leftArrow = document.querySelector('.nav-arrow.left');
-    const rightArrow = document.querySelector('.nav-arrow.right');
+    document.getElementById('imageModalImg').src = galleryImages[currentIndex];
     const isSingle = (galleryImages.length <= 1);
-    leftArrow.classList.toggle('hidden', isSingle);
-    rightArrow.classList.toggle('hidden', isSingle);
+    document.querySelector('.nav-arrow.left').classList.toggle('hidden', isSingle);
+    document.querySelector('.nav-arrow.right').classList.toggle('hidden', isSingle);
     resetZoom();
 }
 
@@ -2219,38 +1911,24 @@ document.addEventListener('keydown', function(e){
         if (e.key === "ArrowLeft") { prevImage(); e.preventDefault(); }
         if (e.key === "ArrowRight") { nextImage(); e.preventDefault(); }
     }
-    if (e.key === "Escape") { closeImageModal(); }
+    if (e.key === "Escape") closeImageModal();
 });
 
 // Mobile swipe
-let touchStartX = 0;
-let touchEndX = 0;
-const SWIPE_THRESHOLD = 50;
-
+let touchStartX = 0, touchEndX = 0;
 imageModalImg.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     touchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
-
 imageModalImg.addEventListener('touchend', (e) => {
     if (e.changedTouches.length !== 1) return;
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipeGesture();
+    const dx = touchEndX - touchStartX;
+    if (Math.abs(dx) >= 50 && galleryImages.length > 1) { dx > 0 ? prevImage() : nextImage(); }
 }, { passive: true });
 
-function handleSwipeGesture() {
-    const deltaX = touchEndX - touchStartX;
-    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
-    if (galleryImages.length <= 1) return;
-    if (deltaX > 0) {
-        prevImage();
-    } else {
-        nextImage();
-    }
-}
-
 // ============================
-//  REQUEST DETAIL MODAL — GIS Style
+//  REQUEST DETAIL MODAL
 // ============================
 
 let currentRequestData = null;
@@ -2263,48 +1941,41 @@ function detailStatusClass(status) {
     if (s === 'rejected') return 'rejected';
     return 'unknown';
 }
-
 const STATUS_ICON = { pending:'⏳', approved:'✅', rejected:'❌', unknown:'❔' };
 
 function openRequestDetail(button) {
     const row = button.closest('tr.request-row') || button.closest('.request-card');
     if (!row) return;
 
-    const reqId          = row.dataset.reqId;
-    const infrastructure = row.dataset.infrastructure;
-    const location       = row.dataset.location;
-    const issue          = row.dataset.issue;
-    const date           = row.dataset.date;
-    const status         = row.dataset.status;
-    const requester      = row.dataset.requester || '—';
-    const contact        = row.dataset.contact   || '—';
-    let   evidence       = [];
+    const reqId         = row.dataset.reqId;
+    const infrastructure= row.dataset.infrastructure;
+    const location      = row.dataset.location;
+    const issue         = row.dataset.issue;
+    const date          = row.dataset.date;
+    const status        = row.dataset.status;
+    const requester     = row.dataset.requester || '—';
+    const contact       = row.dataset.contact   || '—';
+    let   evidence      = [];
     try { evidence = JSON.parse(row.dataset.evidence); } catch(e) {}
 
     currentRequestData = { reqId, infrastructure, location, issue, date, status, evidence };
 
     const sc = detailStatusClass(status);
 
-    // Colour band
     document.getElementById('detailModalBand').className = `detail-modal-band ${sc}`;
+    document.getElementById('detailReqId').textContent   = `#REQ-${String(reqId).padStart(3,'0')}`;
+    document.getElementById('detailInfra').textContent   = infrastructure;
 
-    // Header
-    document.getElementById('detailReqId').textContent  = `#REQ-${String(reqId).padStart(3,'0')}`;
-    document.getElementById('detailInfra').textContent  = infrastructure;
-
-    // Status pill
     const pill = document.getElementById('detailStatus');
     pill.textContent = `${STATUS_ICON[sc] || ''} ${status || 'Unknown'}`;
     pill.className   = `detail-status-pill ${sc}`;
 
-    // Body fields
-    document.getElementById('detailLocation').textContent  = location      || '—';
-    const coords = row.dataset.coordinates || '';
+    document.getElementById('detailLocation').textContent    = location      || '—';
     document.getElementById('detailCoordinates').textContent = row.dataset.coordinates || '—';
-    document.getElementById('detailIssue').textContent     = issue         || '—';
-    document.getElementById('detailDate').textContent      = date          || '—';
-    document.getElementById('detailRequester').textContent = requester;
-    document.getElementById('detailContact').textContent   = contact;
+    document.getElementById('detailIssue').textContent       = issue         || '—';
+    document.getElementById('detailDate').textContent        = date          || '—';
+    document.getElementById('detailRequester').textContent   = requester;
+    document.getElementById('detailContact').textContent     = contact;
 
     // Evidence strip
     const strip = document.getElementById('detailEvidenceContainer');
@@ -2312,24 +1983,22 @@ function openRequestDetail(button) {
     if (evidence && evidence.length > 0) {
         evidence.forEach((src, idx) => {
             const img = document.createElement('img');
-            img.src       = src;
-            img.className = 'detail-evidence-thumb';
-            img.alt       = `Evidence ${idx + 1}`;
-            img.onclick   = () => openGalleryModal(evidence, idx, reqId);
+            img.src = src; img.className = 'detail-evidence-thumb'; img.alt = `Evidence ${idx + 1}`;
+            img.onclick = () => openGalleryModal(evidence, idx, reqId);
             strip.appendChild(img);
         });
     } else {
         strip.innerHTML = '<span style="font-size:13px;color:var(--text-secondary);">No evidence images</span>';
     }
 
-    // Footer
-    document.getElementById('detailModalFooter').style.display =
-        USER_CAN_VALIDATE ? 'block' : 'none';
+    // Show footer only for pending requests that the user can validate
+    const isPending = status.toLowerCase() === 'pending';
+    const footer = document.getElementById('detailModalFooter');
+    footer.style.display = (USER_CAN_VALIDATE && isPending) ? 'block' : 'none';
 
     document.getElementById('requestDetailBackdrop').classList.add('active');
 }
 
-// Close listeners
 document.getElementById('detailModalClose').addEventListener('click', () => {
     document.getElementById('requestDetailBackdrop').classList.remove('active');
 });
@@ -2339,22 +2008,18 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
 });
 
 // ============================
-//  VALIDATION MODAL FUNCTIONALITY
+//  VALIDATE MODAL
 // ============================
 
 document.getElementById('validateBtn').addEventListener('click', () => {
-    // No engineer loading needed — just show confirmation
     document.getElementById('validateConfirmBackdrop').classList.add('active');
 });
-
 document.getElementById('validateCancelBtn').addEventListener('click', () => {
     document.getElementById('validateConfirmBackdrop').classList.remove('active');
 });
-
 document.getElementById('validateConfirmBackdrop').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('validateConfirmBackdrop')) {
+    if (e.target === document.getElementById('validateConfirmBackdrop'))
         document.getElementById('validateConfirmBackdrop').classList.remove('active');
-    }
 });
 
 document.getElementById('validateConfirmBtn').addEventListener('click', async () => {
@@ -2362,26 +2027,20 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
 
     const confirmBtn = document.getElementById('validateConfirmBtn');
     const cancelBtn  = document.getElementById('validateCancelBtn');
-
-    confirmBtn.disabled    = true;
-    confirmBtn.textContent = 'Processing…';
-    cancelBtn.disabled     = true;
+    confirmBtn.disabled = true; confirmBtn.textContent = 'Processing…';
+    cancelBtn.disabled  = true;
 
     try {
         const response = await fetch('validate_request.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({
-                req_id: parseInt(currentRequestData.reqId, 10)
-                // no engineer_id — assigned later in Current Reports
-            })
+            body: JSON.stringify({ req_id: parseInt(currentRequestData.reqId, 10) })
         });
 
         let data;
-        try {
-            data = await response.json();
-        } catch (parseErr) {
+        try { data = await response.json(); }
+        catch (parseErr) {
             document.getElementById('validateConfirmBackdrop').classList.remove('active');
             document.getElementById('requestDetailBackdrop').classList.remove('active');
             showInlineNotif('error', '❌ Server returned an unexpected response.');
@@ -2393,31 +2052,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
 
         if (data.success) {
             const reqId = currentRequestData.reqId;
-
-            // Update desktop row status live
-            const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
-            if (row) {
-                row.dataset.status = 'Approved';
-                const statusCell = row.querySelector('.status.searchable');
-                if (statusCell) {
-                    statusCell.className  = 'status completed searchable';
-                    statusCell.dataset.original = '';
-                    statusCell.textContent = 'Approved';
-                }
-            }
-
-            // Update mobile card status live
-            const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
-            if (card) {
-                card.dataset.status = 'Approved';
-                const statusSpan = card.querySelector('.status.searchable');
-                if (statusSpan) {
-                    statusSpan.className  = 'status completed searchable';
-                    statusSpan.dataset.original = '';
-                    statusSpan.textContent = 'Approved';
-                }
-            }
-
+            updateRowStatus(reqId, 'Approved', 'completed');
             showInlineNotif('success',
                 `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
                 `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.`
@@ -2427,37 +2062,118 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         }
 
     } catch (err) {
-        console.error('Validation error:', err);
         document.getElementById('validateConfirmBackdrop').classList.remove('active');
         showInlineNotif('error', '❌ Network error. Please try again.');
     } finally {
-        confirmBtn.disabled    = false;
-        confirmBtn.textContent = 'Confirm';
-        cancelBtn.disabled     = false;
+        confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm';
+        cancelBtn.disabled  = false;
     }
 });
 
-/**
- * showInlineNotif — matches the PHP notif-popup CSS already in requests.php
- */
+// ============================
+//  REJECT MODAL
+// ============================
+
+document.getElementById('rejectBtn').addEventListener('click', () => {
+    document.getElementById('rejectConfirmBackdrop').classList.add('active');
+});
+document.getElementById('rejectCancelBtn').addEventListener('click', () => {
+    document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+});
+document.getElementById('rejectConfirmBackdrop').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('rejectConfirmBackdrop'))
+        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+});
+
+document.getElementById('rejectConfirmBtn').addEventListener('click', async () => {
+    if (!currentRequestData) return;
+
+    const confirmBtn = document.getElementById('rejectConfirmBtn');
+    const cancelBtn  = document.getElementById('rejectCancelBtn');
+    confirmBtn.disabled = true; confirmBtn.textContent = 'Rejecting…';
+    cancelBtn.disabled  = true;
+
+    try {
+        const response = await fetch('reject_request.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ req_id: parseInt(currentRequestData.reqId, 10) })
+        });
+
+        let data;
+        try { data = await response.json(); }
+        catch (parseErr) {
+            document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+            document.getElementById('requestDetailBackdrop').classList.remove('active');
+            showInlineNotif('error', '❌ Server returned an unexpected response.');
+            return;
+        }
+
+        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+        document.getElementById('requestDetailBackdrop').classList.remove('active');
+
+        if (data.success) {
+            const reqId = currentRequestData.reqId;
+            updateRowStatus(reqId, 'Rejected', 'rejected');
+            showInlineNotif('error',
+                `❌ Request #REQ-${String(reqId).padStart(3,'0')} has been rejected.`
+            );
+        } else {
+            showInlineNotif('error', `❌ ${data.message}`);
+        }
+
+    } catch (err) {
+        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+        showInlineNotif('error', '❌ Network error. Please try again.');
+    } finally {
+        confirmBtn.disabled = false; confirmBtn.textContent = 'Reject';
+        cancelBtn.disabled  = false;
+    }
+});
+
+// ============================
+//  SHARED HELPERS
+// ============================
+
+/** Update desktop row + mobile card status text and pill colour */
+function updateRowStatus(reqId, statusText, cssClass) {
+    // Desktop
+    const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
+    if (row) {
+        row.dataset.status = statusText;
+        const statusCell = row.querySelector('.status.searchable');
+        if (statusCell) {
+            statusCell.className = `status ${cssClass} searchable`;
+            statusCell.dataset.original = '';
+            statusCell.textContent = statusText;
+        }
+    }
+    // Mobile card
+    const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
+    if (card) {
+        card.dataset.status = statusText;
+        const statusSpan = card.querySelector('.status.searchable');
+        if (statusSpan) {
+            statusSpan.className = `status ${cssClass} searchable`;
+            statusSpan.dataset.original = '';
+            statusSpan.textContent = statusText;
+        }
+    }
+}
+
 function showInlineNotif(type, message) {
     const existing = document.getElementById('notifPopup');
     if (existing) existing.remove();
-
     const div = document.createElement('div');
     div.id        = 'notifPopup';
     div.className = `notif-popup notif-${type}`;
-    div.innerHTML = `
-        <span class="notif-message">${message}</span>
-        <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>
-    `;
+    div.innerHTML = `<span class="notif-message">${message}</span>
+                     <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>`;
     document.body.appendChild(div);
-
-    setTimeout(() => {
-        div.style.opacity = '0';
-        setTimeout(() => div.remove(), 400);
-    }, 5000);
+    setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 400); }, 5000);
 }
+
 // ============================
 //  SEARCH FUNCTIONALITY
 // ============================
@@ -2467,74 +2183,41 @@ document.addEventListener("DOMContentLoaded", () => {
     function escapeRegExp(text) {
         return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-
     function storeOriginal(el) {
-        if (!el.dataset.original) {
-            el.dataset.original = el.innerHTML;
-        }
+        if (!el.dataset.original) el.dataset.original = el.innerHTML;
     }
-
     function reset(el) {
-        if (el.dataset.original) {
-            el.innerHTML = el.dataset.original;
-        }
+        if (el.dataset.original) el.innerHTML = el.dataset.original;
     }
-
     function highlight(el, keyword) {
         if (!keyword) return;
         const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
-        el.innerHTML = el.innerHTML.replace(
-            regex,
-            `<span class="search-highlight">$1</span>`
-        );
+        el.innerHTML = el.innerHTML.replace(regex, `<span class="search-highlight">$1</span>`);
     }
 
     searchInput.addEventListener("input", () => {
         const keyword = searchInput.value.trim().toLowerCase();
 
-        // Desktop table
         const rows = document.querySelectorAll("table tbody tr:not(#noRequestResult)");
         let found = 0;
-
         rows.forEach(row => {
             const searchable = row.querySelectorAll(".searchable");
             let rowText = "";
-
-            searchable.forEach(el => {
-                storeOriginal(el);
-                reset(el);
-                rowText += el.textContent.toLowerCase() + " ";
-            });
-
+            searchable.forEach(el => { storeOriginal(el); reset(el); rowText += el.textContent.toLowerCase() + " "; });
             const match = rowText.includes(keyword);
             row.style.display = match || !keyword ? "" : "none";
-
-            if (match && keyword) {
-                searchable.forEach(el => highlight(el, keyword));
-                found++;
-            }
+            if (match && keyword) { searchable.forEach(el => highlight(el, keyword)); found++; }
         });
-
         document.getElementById("noRequestResult").style.display =
             keyword && found === 0 ? "" : "none";
 
-        // Mobile cards
         document.querySelectorAll(".request-card").forEach(card => {
             const searchable = card.querySelectorAll(".searchable");
             let cardText = "";
-
-            searchable.forEach(el => {
-                storeOriginal(el);
-                reset(el);
-                cardText += el.textContent.toLowerCase() + " ";
-            });
-
+            searchable.forEach(el => { storeOriginal(el); reset(el); cardText += el.textContent.toLowerCase() + " "; });
             const match = cardText.includes(keyword);
             card.style.display = match || !keyword ? "" : "none";
-
-            if (match && keyword) {
-                searchable.forEach(el => highlight(el, keyword));
-            }
+            if (match && keyword) searchable.forEach(el => highlight(el, keyword));
         });
     });
 });
