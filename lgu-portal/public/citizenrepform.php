@@ -4040,7 +4040,7 @@ input[type="file"] {
 
     function processAddressDataEnhanced(data, barangayName) {
         const addressData = data.address;
-        
+
         if (!addressData.city || !addressData.city.toLowerCase().includes('quezon')) {
             showJsNotification('error', 'Location must be within Quezon City.');
             manualAddressInput.value = '';
@@ -4050,117 +4050,148 @@ input[type="file"] {
             districtInfo.style.display = 'none';
             return null;
         }
-        
+
         const result = {};
-        
-        // Building/Company name
-        if (data.display_name && data.type) {
-            const displayParts = data.display_name.split(',');
-            if (displayParts.length > 0) {
-                const firstPart = displayParts[0].trim();
-                if (firstPart && !/^\d+$/.test(firstPart)) {
-                    result.building = toTitleCase(firstPart);
-                }
-            }
-        }
-        
-        if (!result.building && addressData.building) {
-            result.building = toTitleCase(addressData.building);
-        }
-        
-        const amenityFields = [
-            'amenity', 'shop', 'office', 'tourism', 'leisure', 
-            'commercial', 'industrial', 'retail', 'public_building',
-            'name', 'operator', 'brand'
-        ];
-        
-        for (let field of amenityFields) {
-            if (!result.building && addressData[field]) {
-                result.building = toTitleCase(addressData[field]);
-                break;
-            }
-        }
-        
+
+        // ── 1. House / Building Number ──────────────────────────────────
         if (addressData.house_number) {
-            result.houseNumber = addressData.house_number;
+            result.houseNumber = addressData.house_number.trim();
         }
-        
-        const roadFields = [
-            'road', 'street', 'highway', 'motorway', 'trunk',
-            'primary', 'secondary', 'tertiary', 'residential',
-            'pedestrian', 'footway', 'path', 'cycleway',
+
+        // ── 2. Street / Road Name ───────────────────────────────────────
+        const roadPriority = [
+            'road', 'street', 'pedestrian', 'footway', 'path',
+            'residential', 'tertiary', 'secondary', 'primary',
+            'trunk', 'motorway', 'highway', 'cycleway',
             'avenue', 'boulevard', 'lane', 'alley'
         ];
-        
-        for (let field of roadFields) {
+        for (const field of roadPriority) {
             if (addressData[field]) {
                 result.street = toTitleCase(addressData[field]);
                 break;
             }
         }
-        
-        if (addressData.suburb && addressData.suburb !== barangayName) {
-            result.subdivision = toTitleCase(addressData.suburb);
-        } else if (addressData.neighbourhood && addressData.neighbourhood !== barangayName) {
-            result.subdivision = toTitleCase(addressData.neighbourhood);
-        } else if (addressData.quarter && addressData.quarter !== barangayName) {
-            result.subdivision = toTitleCase(addressData.quarter);
+
+        // ── 3. Named Place / POI (building, shop, school, etc.) ─────────
+        // Only use as a "near" reference — NOT as the primary address line
+        const poiFields = [
+            'amenity', 'shop', 'office', 'tourism', 'leisure',
+            'public_building', 'name', 'operator', 'brand',
+            'university', 'school', 'college', 'hospital',
+            'place_of_worship', 'government'
+        ];
+
+        // Get the POI name from the first part of display_name if the result type
+        // is a named place (not just a street/road)
+        let poiName = null;
+        if (data.type && !['way', 'relation'].includes(data.type)) {
+            const firstPart = (data.display_name || '').split(',')[0].trim();
+            if (firstPart && !/^\d+$/.test(firstPart)) {
+                poiName = toTitleCase(firstPart);
+            }
         }
-        
-        if (addressData.university) {
-            result.landmark = toTitleCase(addressData.university);
-        } else if (addressData.school) {
-            result.landmark = toTitleCase(addressData.school);
+        for (const field of poiFields) {
+            if (!poiName && addressData[field]) {
+                poiName = toTitleCase(addressData[field]);
+                break;
+            }
         }
-        
+        if (addressData.building && addressData.building !== poiName) {
+            poiName = poiName || toTitleCase(addressData.building);
+        }
+        // Only keep POI if it's meaningfully different from the street & barangay
+        if (poiName) {
+            const poiLower = poiName.toLowerCase();
+            const streetLower = (result.street || '').toLowerCase();
+            const brgyLower = barangayName.toLowerCase();
+            if (poiLower !== streetLower && poiLower !== brgyLower) {
+                result.poi = poiName;
+            }
+        }
+
+        // ── 4. Subdivision / Village / Compound ─────────────────────────
+        // Use suburb / neighbourhood / quarter ONLY when it is clearly a subdivision
+        // name and NOT just repeating the barangay name.
+        const subKeys = ['neighbourhood', 'suburb', 'quarter', 'hamlet'];
+        for (const key of subKeys) {
+            if (addressData[key]) {
+                const val = toTitleCase(addressData[key]);
+                const valLower = val.toLowerCase();
+                const brgyLower = barangayName.toLowerCase();
+                // Skip if it's essentially the same as the barangay name
+                if (
+                    valLower !== brgyLower &&
+                    !brgyLower.includes(valLower) &&
+                    !valLower.includes(brgyLower) &&
+                    val !== result.street &&
+                    val !== result.poi
+                ) {
+                    result.subdivision = val;
+                    break;
+                }
+            }
+        }
+
         return result;
     }
 
     function formatAddressEnhanced(addressParts, barangayName) {
-        let parts = [];
-        let hasDetails = false;
-        
-        if (addressParts.houseNumber) {
-            parts.push(addressParts.houseNumber);
-            hasDetails = true;
+        // Google Maps-style order:
+        // [House #] [Street], [Subdivision], Brgy. [Barangay], Quezon City
+        // Near [POI], Brgy. [Barangay], Quezon City   ← fallback when no street
+
+        const parts = [];
+        const used = new Set();
+
+        const push = (val) => {
+            if (!val) return;
+            const norm = val.trim().toLowerCase();
+            if (!norm || used.has(norm)) return;
+            used.add(norm);
+            parts.push(val.trim());
+        };
+
+        const { houseNumber, street, subdivision, poi } = addressParts;
+
+        // ── Primary address line: "123 Rizal Avenue" ────────────────────
+        if (street) {
+            const streetLine = houseNumber ? `${houseNumber} ${street}` : street;
+            push(streetLine);
+        } else if (houseNumber) {
+            push(houseNumber);
         }
-        
-        if (addressParts.street) {
-            const streetName = addressParts.street;
-            if (!addressParts.building || 
-                addressParts.building.toLowerCase() !== streetName.toLowerCase()) {
-                parts.push(streetName);
-                hasDetails = true;
+
+        // ── Subdivision / Village ────────────────────────────────────────
+        if (subdivision) {
+            push(subdivision);
+        }
+
+        // ── Barangay ─────────────────────────────────────────────────────
+        push(`Brgy. ${toTitleCase(barangayName)}`);
+
+        // ── City ──────────────────────────────────────────────────────────
+        push('Quezon City');
+
+        // ── POI as "Near …" suffix when we have a street ─────────────────
+        // (shows school/company/landmark without cluttering the main address)
+        if (poi) {
+            const hasStreetInfo = !!(street || houseNumber || subdivision);
+            if (hasStreetInfo) {
+                // Append as a parenthetical reference
+                parts.push(`(Near ${poi})`);
+            } else {
+                // No street data at all — lead with the POI
+                parts.unshift(`Near ${poi}`);
+                // Remove the placeholder we pushed before POI
             }
         }
-        
-        if (addressParts.subdivision) {
-            if (!addressParts.street || 
-                addressParts.subdivision.toLowerCase() !== addressParts.street.toLowerCase()) {
-                parts.push(addressParts.subdivision);
-                hasDetails = true;
-            }
+
+        // ── Final fallback ────────────────────────────────────────────────
+        if (parts.length <= 2) {
+            // Only barangay + city — try to return something still useful
+            return `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
         }
-        
-        parts.push(toTitleCase(barangayName));
-        parts.push('Quezon City');
-        
-        if (hasDetails && addressParts.building) {
-            const buildingLower = addressParts.building.toLowerCase();
-            const isDuplicate = parts.some(part => 
-                part.toLowerCase() === buildingLower
-            );
-            if (!isDuplicate) {
-                parts.push(addressParts.building);
-            }
-        }
-        
-        if (!hasDetails && addressParts.building) {
-            parts.push('Near ' + addressParts.building);
-        } else if (!hasDetails && addressParts.landmark) {
-            parts.push('Near ' + addressParts.landmark);
-        }
-        
+
         return parts.join(', ');
     }
 
