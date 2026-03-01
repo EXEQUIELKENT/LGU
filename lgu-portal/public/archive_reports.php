@@ -431,13 +431,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <?php include 'admin_scripts.php'; ?>
 
 <script>
-document.querySelectorAll('.nav-dropdown-toggle').forEach(function(toggle) {
-    toggle.addEventListener('click', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        var parent = toggle.closest('.nav-dropdown-item');
-        if (parent) parent.classList.toggle('open');
-    });
-});
 
 document.addEventListener("DOMContentLoaded", function() {
     const input    = document.getElementById("reportSearch");

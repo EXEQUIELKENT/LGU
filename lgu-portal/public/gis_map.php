@@ -485,12 +485,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 .legend-row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    gap: 8px 14px;      /* row-gap col-gap so wrapped lines breathe */
+    flex-wrap: wrap;    /* KEY FIX: allow items to wrap instead of overflow */
 }
-.legend-row::-webkit-scrollbar { display: none; }
 .legend-section-label {
     font-size: 12px; font-weight: 700;
     color: var(--text-secondary);
@@ -514,7 +511,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     .gis-header-card { flex-direction: column; }
     #gisMap { height: 500px; min-height: 500px; }
     .gis-filter-btn { font-size: 10px; padding: 3px 7px; }
-    .gis-legend { padding: 8px 12px; gap: 5px; }
+    .gis-legend {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+    .legend-row {
+        gap: 6px 8px;
+    }
+    /* Push "Types:" label to its own line so the 6 type items wrap cleanly below it */
+    .legend-row:nth-child(2) .legend-section-label {
+        width: 100%;
+        margin-bottom: 0;
+    }
     .legend-section-label { font-size: 10px; }
     .legend-item { font-size: 10px; gap: 4px; }
     .legend-dot { width: 10px; height: 10px; }
@@ -623,7 +631,212 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     transition: transform .2s, box-shadow .2s;
 }
 .gis-evidence-thumb:hover { transform: scale(1.06); box-shadow: 0 6px 16px rgba(55,98,200,.3); }
+/* ── GIS Expand Button ─────────────────────────────────────────────────── */
+#gisExpandBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: rgba(255,255,255,0.92);
+    color: #3762c8;
+    border: 1.5px solid #c7d1f3;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+    transition: background 0.2s, transform 0.15s;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+#gisExpandBtn:hover { background: #fff; transform: scale(1.1); }
+[data-theme="dark"] #gisExpandBtn {
+    background: rgba(30,30,30,0.88);
+    color: #8ab4f8;
+    border-color: rgba(74,143,216,0.4);
+}
+[data-theme="dark"] #gisExpandBtn:hover { background: rgba(45,45,45,0.95); }
 
+/* ── GIS Fullscreen Map Modal ──────────────────────────────────────────── */
+.gis-fullmap-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 7500;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.gis-fullmap-backdrop.active { display: flex; }
+
+.gis-fullmap-modal {
+    background: var(--bg-secondary);
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    width: 100%;
+    max-width: 1200px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: gisFullMapIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes gisFullMapIn {
+    from { opacity: 0; transform: scale(0.94) translateY(-16px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Modal toolbar */
+.gis-fullmap-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.gis-fullmap-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.gis-fullmap-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 0 0 260px;
+    width: 260px;
+    margin-left: auto;
+}
+.gis-fullmap-search-wrap .gis-search-icon {
+    position: absolute; left: 11px; font-size: 13px;
+    color: var(--text-secondary); pointer-events: none; z-index:1; opacity:0.6;
+}
+#gisModalSearch {
+    width: 100%;
+    padding: 8px 30px 8px 32px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+#gisModalSearch::placeholder { color: var(--text-secondary); opacity: 0.6; }
+#gisModalSearch:focus { border-color: #3762c8; box-shadow: 0 2px 8px rgba(55,98,200,.12); }
+[data-theme="dark"] #gisModalSearch { background: var(--bg-tertiary); }
+.gis-fullmap-search-clear {
+    position: absolute; right: 8px; background: none; border: none;
+    cursor: pointer; color: var(--text-secondary); font-size: 16px;
+    padding: 2px 4px; border-radius: 4px;
+    display: none; align-items: center; justify-content: center;
+    opacity: 0.5; transition: opacity 0.2s; z-index: 2;
+}
+.gis-fullmap-search-clear:hover { opacity: 1; }
+.gis-fullmap-search-clear.visible { display: flex; }
+
+.gis-fullmap-results-badge {
+    position: absolute;
+    top: calc(100% + 6px); left: 0;
+    display: none; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    background: #dce6f8; border: 1.5px solid #3762c8;
+    border-radius: 8px; font-size: 12px; font-weight: 600;
+    color: #3762c8; white-space: nowrap; z-index: 200;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(55,98,200,.2);
+}
+.gis-fullmap-results-badge.visible { display: flex; }
+.gis-fullmap-results-badge.no-results {
+    background: #fde8e8; border-color: #f44336; color: #f44336;
+}
+
+/* Modal filter rows */
+.gis-fullmap-filters {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.gis-fullmap-filter-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Close button */
+.gis-fullmap-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-left: 4px;
+}
+.gis-fullmap-close:hover { background: rgba(244,67,54,0.1); color: #f44336; }
+
+/* Modal map container */
+#gisModalMap {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Modal no-results overlay */
+#gisModalNoResults {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color); border-radius: 16px;
+    padding: 24px 32px; text-align: center;
+    box-shadow: 0 8px 32px var(--shadow-color);
+    z-index: 1000; display: none; pointer-events: none;
+}
+#gisModalNoResults.visible { display: block; }
+
+/* Modal legend */
+.gis-fullmap-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .gis-fullmap-backdrop { padding: 0; }
+    .gis-fullmap-modal {
+        border-radius: 0;
+        height: 100vh;
+        max-width: 100%;
+    }
+    .gis-fullmap-search-wrap { flex: 1 1 auto; width: auto; }
+    .gis-fullmap-title { display: none; }
+}
 /* ── Image lightbox ─────────────────────────────────────────────────────── */
 /* ── Image gallery modal (ported from requests.php) ────────────────────── */
 .image-modal {
@@ -995,6 +1208,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="no-results-sub">Try a different keyword, status, or type filter</div>
             </div>
             <div id="gisMap"></div>
+            <!-- Expand to fullscreen button -->
+            <button id="gisExpandBtn" title="Expand map to fullscreen" onclick="openGisMapModal()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+            </button>
         </div>
 
         <!-- Legend -->
@@ -1077,6 +1299,83 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="gis-evidence-strip" id="modalEvidence"></div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- FULLSCREEN GIS MAP MODAL -->
+<div id="gisFullMapBackdrop" class="gis-fullmap-backdrop">
+    <div class="gis-fullmap-modal">
+
+        <!-- Header: title + search + layer btn + close -->
+        <div class="gis-fullmap-header">
+            <span class="gis-fullmap-title">
+                <i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map
+            </span>
+            <div class="gis-fullmap-search-wrap">
+                <i class="fas fa-search gis-search-icon"></i>
+                <input type="text" id="gisModalSearch"
+                    placeholder="Search ID, infrastructure, location&#8230;"
+                    autocomplete="off">
+                <button class="gis-fullmap-search-clear" id="gisModalSearchClear" title="Clear">&#215;</button>
+                <span class="gis-fullmap-results-badge" id="gisModalResultsBadge">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Showing&nbsp;<strong id="gisModalResultsCount">0</strong>&nbsp;of&nbsp;<strong id="gisModalTotalCount">0</strong>
+                </span>
+            </div>
+            <button class="gis-layer-btn" id="modalLayerBtn" onclick="toggleModalLayer()">&#128752;&#65039; Satellite</button>
+            <button class="gis-fullmap-close" title="Close" onclick="closeGisMapModal()">&#215;</button>
+        </div>
+
+        <!-- Filter rows -->
+        <div class="gis-fullmap-filters">
+            <div class="gis-fullmap-filter-line">
+                <span class="gis-filter-label">Status:</span>
+                <button class="gis-filter-btn status-all active" id="mFilterAll"      onclick="setModalStatusFilter('all')">&#128193; All</button>
+                <button class="gis-filter-btn status-pending"    id="mFilterPending"  onclick="setModalStatusFilter('Pending')">&#9203; Pending</button>
+                <button class="gis-filter-btn status-approved"   id="mFilterApproved" onclick="setModalStatusFilter('Approved')">&#9989; Approved</button>
+                <button class="gis-filter-btn status-rejected"   id="mFilterRejected" onclick="setModalStatusFilter('Rejected')">&#10060; Rejected</button>
+            </div>
+            <div class="gis-fullmap-filter-line">
+                <span class="gis-filter-label">Type:</span>
+                <button class="gis-filter-btn infra-btn active" id="mInfraAll"              onclick="setModalInfraFilter('all')">&#128230; All</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraRoads"            onclick="setModalInfraFilter('roads')">&#x1F6E3;&#xFE0F; Roads</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraStreetLights"     onclick="setModalInfraFilter('street lights')">&#128161; Lights</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraDrainage"         onclick="setModalInfraFilter('drainage')">&#127754; Drainage</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraPublicFacilities" onclick="setModalInfraFilter('public facilities')">&#127963;&#xFE0F; Facilities</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraWaterSupply"      onclick="setModalInfraFilter('water supply')">&#128688; Water</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraElectrical"       onclick="setModalInfraFilter('electrical')">&#9889; Electrical</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraOthers"           onclick="setModalInfraFilter('others')">&#128196; Others</button>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div style="position:relative; flex:1; min-height:0; display:flex; flex-direction:column;">
+            <div id="gisModalNoResults">
+                <div class="no-results-icon">&#128269;</div>
+                <div class="no-results-text">No matching requests found</div>
+                <div class="no-results-sub">Try a different keyword, status, or type filter</div>
+            </div>
+            <div id="gisModalMap"></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="gis-fullmap-legend">
+            <div class="legend-row">
+                <span class="legend-section-label">Status:</span>
+                <div class="legend-item"><div class="legend-dot pending"></div>Pending</div>
+                <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
+                <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
+                <span class="legend-section-label" style="margin-left:16px;">Types:</span>
+                <div class="legend-item">&#x1F6E3;&#xFE0F; Roads</div>
+                <div class="legend-item">&#128161; Lights</div>
+                <div class="legend-item">&#127754; Drainage</div>
+                <div class="legend-item">&#127963;&#xFE0F; Facilities</div>
+                <div class="legend-item">&#128688; Water</div>
+                <div class="legend-item">&#9889; Electrical</div>
+            </div>
+            <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview &middot; Click to view details</div>
+        </div>
+
     </div>
 </div>
 
@@ -1611,6 +1910,243 @@ function initMap() {
 
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
 document.addEventListener('DOMContentLoaded', () => { initMap(); initSearch(); });
+
+    /* ═══════════════════════════════════════════════════════════════════════
+    FULLSCREEN MAP MODAL
+    ═══════════════════════════════════════════════════════════════════════ */
+    let modalMap = null;
+    let modalMarkersMap = {};
+    let modalActiveStatus = 'all';
+    let modalActiveInfra  = 'all';
+    let modalActiveSearch = '';
+    let modalCurrentLayer = 'street';
+    let modalSatelliteLayer, modalStreetLayer;
+
+    function openGisMapModal() {
+        const backdrop = document.getElementById('gisFullMapBackdrop');
+        backdrop.classList.add('active');
+
+        // Sync filters from main map
+        modalActiveStatus = activeStatus;
+        modalActiveInfra  = activeInfra;
+        modalActiveSearch = activeSearch;
+        syncModalFilterButtons();
+
+        // Sync search input
+        const modalInput = document.getElementById('gisModalSearch');
+        if (modalInput) {
+            modalInput.value = activeSearch;
+            document.getElementById('gisModalSearchClear').classList.toggle('visible', activeSearch.length > 0);
+        }
+
+        setTimeout(() => {
+            if (!modalMap) {
+                initModalMap();
+            } else {
+                modalMap.invalidateSize();
+                placeModalMarkers();
+                applyModalVisibility();
+
+                // Fit to visible markers
+                const latlngs = Object.values(modalMarkersMap)
+                    .filter(m => modalMap.hasLayer(m.marker))
+                    .map(m => m.marker.getLatLng());
+                if (latlngs.length > 0) {
+                    modalMap.fitBounds(L.latLngBounds(latlngs).pad(0.12), { maxZoom: 16 });
+                }
+            }
+        }, 300);
+    }
+
+    function closeGisMapModal() {
+        document.getElementById('gisFullMapBackdrop').classList.remove('active');
+    }
+
+    // Close on backdrop click
+    document.getElementById('gisFullMapBackdrop').addEventListener('click', function(e) {
+        if (e.target === this) closeGisMapModal();
+    });
+
+    // Close on Escape (don't conflict with detail modal)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('gisFullMapBackdrop').classList.contains('active')) {
+            closeGisMapModal();
+        }
+    });
+
+    function initModalMap() {
+        const QC_POLY = [[14.7646242,121.1095933],[14.7639251,121.1093054],[14.7631436,121.1090833],[14.7627981,121.1073723],[14.7622963,121.105793],[14.7618357,121.104773],[14.7638675,121.1025355],[14.7655348,121.1016249],[14.7654178,121.1012409],[14.7651862,121.0997995],[14.7640376,121.0997537],[14.7626015,121.0990606],[14.7623292,121.0984063],[14.7615898,121.0964583],[14.7615413,121.0956111],[14.7609386,121.0948137],[14.7598163,121.0934468],[14.7591997,121.0925497],[14.7585362,121.091745],[14.7579449,121.0907068],[14.7582575,121.0896539],[14.7582657,121.089366],[14.7579696,121.0887985],[14.758085,121.0857106],[14.7578089,121.0856433],[14.7566921,121.0853354],[14.7558102,121.0851033],[14.7421927,121.0663291],[14.7421837,121.0587677],[14.742157,121.0531742],[14.7422036,121.0464397],[14.7421201,121.0404931],[14.740294,121.0385103],[14.7380574,121.0362582],[14.732682,121.0308457],[14.7298826,121.0280557],[14.7292097,121.0273872],[14.7275181,121.0257601],[14.7243718,121.0224236],[14.7225911,121.0205352],[14.7204784,121.0183472],[14.7159085,121.0136441],[14.708755,121.0161294],[14.7033858,121.0179631],[14.6884807,121.0223396],[14.6851812,121.0192022],[14.6806545,121.014895],[14.6710675,121.0058529],[14.667334,121.0022246],[14.6653244,121.0003125],[14.664741,120.9997577],[14.6551673,120.9976659],[14.6528858,120.9965706],[14.6480502,120.9945753],[14.6362678,120.9921888],[14.6305282,120.9912426],[14.6245355,120.9913147],[14.6235329,120.9926137],[14.6217104,120.9949749],[14.6200392,120.997134],[14.6193355,120.9978929],[14.6170829,121.0009647],[14.6139723,121.0052731],[14.6115939,121.0081408],[14.6098411,121.0104299],[14.607205,121.0139822],[14.607049,121.0510734],[14.6065867,121.0567956],[14.602265,121.0590045],[14.5896463,121.0582621],[14.5919521,121.0680469],[14.5930667,121.0695316],[14.5905369,121.0826503],[14.5921634,121.0827285],[14.5989494,121.082531],[14.6017929,121.0823531],[14.6033745,121.083786],[14.6138249,121.079012],[14.6195429,121.0758218],[14.6264184,121.0747689],[14.6309563,121.0774626],[14.6336149,121.0795619],[14.6345357,121.0802379],[14.6437206,121.0853712],[14.6448987,121.0876123],[14.6464517,121.0889727],[14.6468726,121.0896603],[14.6573361,121.0874608],[14.6596216,121.0912009],[14.6634173,121.0935248],[14.6643486,121.0936995],[14.6649347,121.0948585],[14.6652424,121.0956829],[14.6637413,121.0979213],[14.664832,121.0983915],[14.667012,121.0987996],[14.66828,121.0989231],[14.6692092,121.0993176],[14.6700618,121.1002379],[14.6723195,121.103246],[14.6772824,121.1079596],[14.6808973,121.1101685],[14.6844409,121.1119916],[14.6892498,121.1113444],[14.6957288,121.1114141],[14.6964194,121.1121743],[14.6980488,121.1139303],[14.7208067,121.1171018],[14.7298888,121.1183676],[14.7344121,121.1157523],[14.7379454,121.1151634],[14.7385508,121.1157523],[14.7413675,121.117651],[14.74502,121.1181852],[14.7509132,121.1196186],[14.7550217,121.1207944],[14.7559513,121.1213609],[14.7578437,121.1215498],[14.7598938,121.1235239],[14.7626983,121.125776],[14.764273,121.1246215],[14.7681074,121.1269178],[14.7714835,121.1290096],[14.771775,121.1322758],[14.7756687,121.1331762],[14.7764085,121.1317064],[14.7762065,121.1289228],[14.7760592,121.1272065],[14.774863,121.1204059],[14.7723201,121.1175027],[14.7712492,121.1139187],[14.7693916,121.1134127],[14.7665244,121.1113289],[14.7651342,121.1099963],[14.7646242,121.1095933]];
+
+        modalMap = L.map('gisModalMap', {
+            center: QC_CENTER,
+            zoom: 13,
+            maxBounds: QC_BOUNDS,
+            maxBoundsViscosity: 0.8,
+            scrollWheelZoom: true,
+            touchZoom: true,
+            doubleClickZoom: true,
+        });
+
+        modalStreetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(modalMap);
+        modalSatelliteLayer = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: 'Satellite &copy; Esri', maxZoom: 19 });
+
+        L.polygon(QC_POLY, {
+            color: '#3762c8', weight: 3, fillColor: '#3762c8',
+            fillOpacity: 0.05, dashArray: '10,6', interactive: false
+        }).addTo(modalMap);
+
+        placeModalMarkers();
+        applyModalVisibility();
+
+        const latlngs = Object.values(modalMarkersMap).map(m => m.marker.getLatLng());
+        if (latlngs.length > 0) {
+            modalMap.fitBounds(L.latLngBounds(latlngs).pad(0.12), { maxZoom: 16 });
+        }
+    }
+
+    function placeModalMarkers() {
+        ALL_REQUESTS.forEach(req => {
+            if (modalMarkersMap[req.req_id]) return;
+            let latlng = null;
+            if (req.coordinates) {
+                const parts = req.coordinates.split(',');
+                if (parts.length === 2) {
+                    const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) latlng = L.latLng(lat, lng);
+                }
+            }
+            if (!latlng) {
+                const cached = geocodeCache[req.location];
+                if (cached) latlng = L.latLng(cached.lat, cached.lng);
+                else return;
+            }
+            const icon   = makeIcon(req);
+            const marker = L.marker(latlng, { icon, riseOnHover: true })
+                .bindPopup(makePopupHtml(req), { maxWidth: 280, autoPan: false, closeButton: false })
+                .on('mouseover', function() { this.openPopup(); })
+                .on('mouseout',  function() { this.closePopup(); })
+                .on('click',     function() { this.closePopup(); openDetailModal(req.req_id); });
+            marker.addTo(modalMap);
+            modalMarkersMap[req.req_id] = {
+                marker,
+                status:     req.approval_status || 'unknown',
+                infraType:  normalizeInfraType(req.infrastructure),
+                searchText: buildSearchText(req),
+            };
+        });
+    }
+
+    function applyModalVisibility() {
+        const keyword  = modalActiveSearch.toLowerCase().trim();
+        const noRes    = document.getElementById('gisModalNoResults');
+        const badge    = document.getElementById('gisModalResultsBadge');
+        const countEl  = document.getElementById('gisModalResultsCount');
+        const totalEl  = document.getElementById('gisModalTotalCount');
+        let visibleCount = 0;
+
+        Object.values(modalMarkersMap).forEach(({ marker, status, infraType, searchText }) => {
+            const passesStatus = (modalActiveStatus === 'all' || status === modalActiveStatus);
+            const passesInfra  = (modalActiveInfra  === 'all' || infraType === modalActiveInfra);
+            const passesSearch = (!keyword || searchText.includes(keyword));
+            const show = passesStatus && passesInfra && passesSearch;
+            if (show) { if (!modalMap.hasLayer(marker)) marker.addTo(modalMap); visibleCount++; }
+            else       { if (modalMap.hasLayer(marker)) modalMap.removeLayer(marker); }
+        });
+
+        if (keyword) {
+            badge.classList.add('visible');
+            badge.classList.toggle('no-results', visibleCount === 0);
+            countEl.textContent = visibleCount;
+            if (totalEl) totalEl.textContent = Object.keys(modalMarkersMap).length;
+        } else {
+            badge.classList.remove('visible');
+        }
+
+        const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || keyword;
+        if (anyFilter && visibleCount === 0 && Object.keys(modalMarkersMap).length > 0) {
+            noRes.classList.add('visible');
+        } else {
+            noRes.classList.remove('visible');
+        }
+    }
+
+    function setModalStatusFilter(filter) {
+        modalActiveStatus = filter;
+        document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b => b.classList.remove('active'));
+        const map_id = { all:'mFilterAll', Pending:'mFilterPending', Approved:'mFilterApproved', Rejected:'mFilterRejected' };
+        const el = document.getElementById(map_id[filter]);
+        if (el) el.classList.add('active');
+        applyModalVisibility();
+    }
+
+    function setModalInfraFilter(infra) {
+        modalActiveInfra = infra;
+        document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn.infra-btn').forEach(b => b.classList.remove('active'));
+        const map_id = {
+            all:'mInfraAll', roads:'mInfraRoads', 'street lights':'mInfraStreetLights',
+            drainage:'mInfraDrainage', 'public facilities':'mInfraPublicFacilities',
+            'water supply':'mInfraWaterSupply', electrical:'mInfraElectrical', others:'mInfraOthers'
+        };
+        const el = document.getElementById(map_id[infra]);
+        if (el) el.classList.add('active');
+        applyModalVisibility();
+    }
+
+    function toggleModalLayer() {
+        const btn = document.getElementById('modalLayerBtn');
+        if (modalCurrentLayer === 'street') {
+            modalMap.removeLayer(modalStreetLayer);
+            modalMap.addLayer(modalSatelliteLayer);
+            modalCurrentLayer = 'satellite';
+            if (btn) btn.innerHTML = '&#x1F5FA;&#xFE0F; Street';
+        } else {
+            modalMap.removeLayer(modalSatelliteLayer);
+            modalMap.addLayer(modalStreetLayer);
+            modalCurrentLayer = 'street';
+            if (btn) btn.innerHTML = '&#128752;&#65039; Satellite';
+        }
+    }
+
+    function syncModalFilterButtons() {
+        // Sync status
+        document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b => b.classList.remove('active'));
+        const smap = { all:'mFilterAll', Pending:'mFilterPending', Approved:'mFilterApproved', Rejected:'mFilterRejected' };
+        const sel = document.getElementById(smap[modalActiveStatus]);
+        if (sel) sel.classList.add('active');
+
+        // Sync infra
+        document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn.infra-btn').forEach(b => b.classList.remove('active'));
+        const imap = {
+            all:'mInfraAll', roads:'mInfraRoads', 'street lights':'mInfraStreetLights',
+            drainage:'mInfraDrainage', 'public facilities':'mInfraPublicFacilities',
+            'water supply':'mInfraWaterSupply', electrical:'mInfraElectrical', others:'mInfraOthers'
+        };
+        const iel = document.getElementById(imap[modalActiveInfra]);
+        if (iel) iel.classList.add('active');
+    }
+
+    // Modal search
+    (function() {
+        const input    = document.getElementById('gisModalSearch');
+        const clearBtn = document.getElementById('gisModalSearchClear');
+        if (!input) return;
+        input.addEventListener('input', () => {
+            modalActiveSearch = input.value;
+            clearBtn.classList.toggle('visible', modalActiveSearch.length > 0);
+            applyModalVisibility();
+        });
+        clearBtn.addEventListener('click', () => {
+            input.value = ''; modalActiveSearch = '';
+            clearBtn.classList.remove('visible');
+            applyModalVisibility();
+            input.focus();
+        });
+        input.addEventListener('keydown', e => { if (e.key === 'Escape') clearBtn.click(); });
+    })();
 </script>
+
 </body>
 </html>

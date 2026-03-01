@@ -1,30 +1,16 @@
 <?php
 session_start();
-
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
 $isLocalhost = in_array(
     strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
     ['localhost', '127.0.0.1', '::1']
 );
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
+$INACTIVITY_LIMIT = 2 * 60;
+if (!$isLocalhost && isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+    session_unset(); session_destroy(); header("Location: login.php"); exit;
 }
-
-// Update last activity time
 $_SESSION['last_activity'] = time();
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -33,13 +19,10 @@ header("Pragma: no-cache");
 header("Expires: 0");
 
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    session_unset(); session_destroy();
-    header("Location: login.php"); exit;
+    session_unset(); session_destroy(); header("Location: login.php"); exit;
 }
 
 require __DIR__ . '/db.php';
-
-$currentPage = basename($_SERVER['PHP_SELF']);
 
 function getProfilePicture($employeeId, $conn) {
     if (!$employeeId) return 'profile.png';
@@ -50,9 +33,7 @@ function getProfilePicture($employeeId, $conn) {
     if ($result->num_rows === 1) {
         $row = $result->fetch_assoc();
         $profilePath = $row['profile_picture'] ?? null;
-        if ($profilePath && file_exists(__DIR__ . '/' . $profilePath)) {
-            $stmt->close(); return $profilePath;
-        }
+        if ($profilePath && file_exists(__DIR__ . '/' . $profilePath)) { $stmt->close(); return $profilePath; }
     }
     $stmt->close(); return 'profile.png';
 }
@@ -89,11 +70,13 @@ $displayName = getDisplayName();
 
 $isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
-// ─── FETCH: In Progress reports only ─────────────────────────────────────────
+$userRole          = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$canAssignEngineer = in_array($userRole, ['office staff', 'manager']);
+
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
-        r.priority_lvl, r.budget, r.created_at,
+        r.priority_lvl, r.budget, r.created_at, r.engineer_id,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
@@ -103,14 +86,19 @@ $sql = "
     LEFT JOIN requests             req ON res.req_id = req.req_id
     LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
-    WHERE (res.status = 'In Progress')
-       OR (res.status IS NULL AND r.starting_date <= CURDATE() AND r.estimated_end_date >= CURDATE())
+    WHERE res.status = 'Approved'
     ORDER BY r.rep_id DESC
 ";
 $result = $conn->query($sql);
 
 function statusPill(string $status): string {
-    $map = ['Completed' => 'completed', 'In Progress' => 'on-going', 'Pending' => 'pending-st', 'Cancelled' => 'cancelled-st'];
+    $map = [
+        'Completed'        => 'completed',
+        'In Progress'      => 'on-going',
+        'Awaiting Engineer'=> 'pending-st',
+        'Pending'          => 'pending-st',
+        'Cancelled'        => 'cancelled-st',
+    ];
     $cls = $map[$status] ?? 'on-going';
     return "<span class=\"status {$cls}\">{$status}</span>";
 }
@@ -124,8 +112,6 @@ function priorityBadge(?string $lvl): string {
 
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
-
-$reportPages = ['current_reports.php', 'pending_reports.php', 'archive_reports.php'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -178,9 +164,7 @@ $reportPages = ['current_reports.php', 'pending_reports.php', 'archive_reports.p
     box-shadow: 0 6px 20px var(--shadow-color); display: flex; flex-direction: column;
     gap: 18px; width: 100%; box-sizing: border-box; border: 1px solid var(--border-color);
 }
-.empty-state {
-    text-align: center; padding: 60px 20px; color: var(--text-secondary);
-}
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
 .empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: .6; }
 .empty-state p { font-size: 16px; font-weight: 500; }
 .table-wrapper {
@@ -202,6 +186,173 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .on-going     { background: #fff59d; color: #f57f17; }
 .pending-st   { background: #ffe0b2; color: #e65100; }
 .cancelled-st { background: #ffcdd2; color: #b71c1c; }
+
+/* ── Unassigned badge ──────────────────────────────────────────────── */
+.unassigned-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; color: #e65100;
+    background: rgba(255,152,0,.1); border: 1px solid rgba(255,152,0,.3);
+    padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+}
+
+/* ================================================================
+   ENGINEER COMBOBOX TRIGGER — portal dropdown lives in <body>
+   ================================================================ */
+.eng-combobox {
+    display: inline-block;
+    font-size: 13px;
+    width: 100%;
+    max-width: 100%;
+}
+/* Trigger button */
+.eng-combo-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 5px 9px;
+    border-radius: 9px;
+    border: 1.5px solid #ff9800;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+.eng-combo-display:hover { border-color: #e65100; background: rgba(255,152,0,.06); }
+.eng-combo-display.open {
+    border-color: #e65100;
+    box-shadow: 0 0 0 3px rgba(255,152,0,.18);
+}
+.eng-combo-label {
+    flex: 1; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); opacity: .85; min-width: 0;
+}
+.eng-combo-label.has-value { color: var(--text-primary); opacity: 1; }
+.eng-combo-arrow {
+    font-size: 11px; color: #ff9800;
+    flex-shrink: 0; transition: transform .2s; line-height: 1;
+}
+.eng-combo-display.open .eng-combo-arrow { transform: rotate(180deg); }
+
+/* ================================================================
+   PORTAL DROPDOWN — fixed to <body>, never inside table/card
+   ================================================================ */
+#engComboPortal {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    min-width: 240px;
+    background: var(--bg-secondary);
+    border: 1.5px solid #e65100;
+    border-radius: 12px;
+    box-shadow: 0 10px 32px rgba(0,0,0,.24);
+    overflow: hidden;
+    animation: comboFadeIn .15s ease;
+}
+#engComboPortal.show { display: block; }
+@keyframes comboFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+#engComboSearch {
+    width: 100%; padding: 10px 14px;
+    border: none; border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-size: 13px; outline: none;
+    box-sizing: border-box; font-family: inherit;
+}
+#engComboSearch::placeholder { color: var(--text-secondary); opacity: .65; }
+[data-theme="dark"] #engComboPortal { background: var(--bg-primary); }
+[data-theme="dark"] #engComboSearch { background: var(--bg-primary); }
+#engComboList {
+    max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+}
+#engComboList::-webkit-scrollbar { width: 5px; }
+#engComboList::-webkit-scrollbar-thumb { background: rgba(255,152,0,.4); border-radius: 4px; }
+.eng-combo-option {
+    padding: 10px 14px; font-size: 13px; cursor: pointer;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    transition: background .15s; display: flex; align-items: center; gap: 8px;
+}
+.eng-combo-option:last-child { border-bottom: none; }
+.eng-combo-option:hover, .eng-combo-option.highlighted { background: rgba(255,152,0,.14); }
+.eng-combo-option .opt-icon { font-size: 15px; flex-shrink: 0; }
+.eng-combo-no-results { padding: 14px; text-align: center; font-size: 12px; color: var(--text-secondary); opacity: .7; }
+.eng-combo-loading { padding: 14px; text-align: center; font-size: 12px; color: var(--text-secondary); }
+
+/* ================================================================
+   ENGINEER ASSIGN CONFIRM MODAL
+   ================================================================ */
+#engAssignBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17,24,39,.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 6500;
+    backdrop-filter: blur(4px);
+}
+#engAssignBackdrop.show { display: flex; }
+#engAssignModal {
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    padding: 30px 28px 24px;
+    width: 360px;
+    max-width: 92vw;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    animation: popIn .22s cubic-bezier(.6,-.01,.5,1.2) forwards;
+    text-align: center;
+}
+@keyframes popIn {
+    from { transform: translateY(24px) scale(.96); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+.eng-modal-icon {
+    width: 58px; height: 58px;
+    background: rgba(255,152,0,.12);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 14px;
+}
+#engAssignModal h3 {
+    margin: 0 0 8px;
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+#engAssignModal p {
+    margin: 0 0 22px;
+    font-size: .95rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+#engAssignModal p strong { color: var(--text-primary); }
+.eng-modal-btns { display: flex; gap: 12px; justify-content: center; }
+.eng-modal-btns button {
+    flex: 1; padding: 11px 0; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    border: none; transition: all .18s;
+}
+.eng-modal-cancel {
+    background: var(--bg-primary);
+    border: 1.5px solid var(--border-color) !important;
+    color: var(--text-primary);
+}
+.eng-modal-cancel:hover { background: rgba(0,0,0,.05); }
+.eng-modal-confirm {
+    background: linear-gradient(135deg, #ff9800, #e65100);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(255,152,0,.35);
+}
+.eng-modal-confirm:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,152,0,.45); }
+
 .mobile-report-list { display: none; }
 
 @media (max-width: 768px) {
@@ -215,13 +366,7 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
-    .sidebar-profile-btn {
-        position: absolute;
-        top: 58px;
-        left: 25px;
-        width: 45px;
-        height: 47px;
-    }
+    .sidebar-profile-btn { position: absolute; top: 58px; left: 25px; width: 45px; height: 47px; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; padding-top: 90px; height: auto; min-height: 100vh; overflow-y: auto; margin: 0; }
     .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
@@ -235,11 +380,13 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     .report-card .rc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 6px; }
     .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
+    .eng-combobox { min-width: 0; max-width: 100%; width: 100%; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
+const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
 (function() {
     try {
         let t = localStorage.getItem('theme');
@@ -310,12 +457,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-
-            <!-- Reports Dropdown -->
             <li class="nav-dropdown-item open">
                 <a href="#" class="nav-link nav-dropdown-toggle active" data-tooltip="Reports">
-                    <i class="fas fa-file-alt"></i>
-                    <span>Reports</span>
+                    <i class="fas fa-file-alt"></i><span>Reports</span>
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
@@ -324,7 +468,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                 </ul>
             </li>
-
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <li><a href="gis_map.php" class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
@@ -343,7 +486,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
         <div class="icon-wrap"><span class="icon">&#9888;</span></div>
@@ -352,6 +494,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <div class="alert-btns">
             <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
             <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ENGINEER ASSIGNMENT CONFIRMATION MODAL
+══════════════════════════════════════════════ -->
+<div id="engAssignBackdrop">
+    <div id="engAssignModal">
+        <div class="eng-modal-icon">👷</div>
+        <h3>Confirm Assignment</h3>
+        <p id="engAssignDesc">Assign <strong id="engAssignName"></strong> to <strong id="engAssignRep"></strong>?</p>
+        <div class="eng-modal-btns">
+            <button class="eng-modal-cancel" id="engAssignCancelBtn">Cancel</button>
+            <button class="eng-modal-confirm" id="engAssignConfirmBtn">Assign</button>
         </div>
     </div>
 </div>
@@ -372,7 +529,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <table id="reportsTable">
             <colgroup>
                 <col style="width:8%"><col style="width:11%"><col style="width:10%">
-                <col style="width:13%"><col style="width:10%"><col style="width:10%">
+                <col style="width:13%"><col style="width:12%"><col style="width:10%">
                 <col style="width:9%"><col style="width:9%"><col style="width:7%">
                 <col style="width:8%"><col style="width:8%">
             </colgroup>
@@ -387,15 +544,33 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <tbody>
             <?php if (!empty($rows)): ?>
                 <?php foreach ($rows as $row):
-                    $rawStatus = $row['resolution_status'] ?: 'In Progress';
-                    $notes = $row['res_note'] ?: htmlspecialchars($row['issue'] ?? '—');
+                    $rawStatus   = $row['resolution_status'] ?: 'In Progress';
+                    $notes       = $row['res_note'] ?: htmlspecialchars($row['issue'] ?? '—');
+                    $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
+                                && trim($row['engineer_name']) !== ''
+                                && trim($row['engineer_name']) !== ' ';
+                    $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
                 ?>
                 <tr>
                     <td>#REP-<?= $row['rep_id'] ?></td>
                     <td><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
                     <td><?= htmlspecialchars($row['location'] ?? '—') ?></td>
                     <td class="wrap" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
-                    <td><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></td>
+                    <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
+                        <?php if ($hasEngineer): ?>
+                            <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                        <?php elseif ($canAssignEngineer): ?>
+                            <!-- Desktop combobox trigger — dropdown is a body-level portal -->
+                            <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
+                                <div class="eng-combo-display">
+                                    <span class="eng-combo-label">— Assign engineer —</span>
+                                    <span class="eng-combo-arrow">▾</span>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <span class="unassigned-badge">⚠ Unassigned</span>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
                     <td><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
                     <td><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
@@ -418,15 +593,36 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <div class="mobile-report-list" id="mobileReportList">
     <?php if (!empty($rows)): ?>
         <?php foreach ($rows as $row):
-            $rawStatus = $row['resolution_status'] ?: 'In Progress';
-            $notes = $row['res_note'] ?: ($row['issue'] ?? '—');
+            $rawStatus   = $row['resolution_status'] ?: 'In Progress';
+            $notes       = $row['res_note'] ?: ($row['issue'] ?? '—');
+            $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
+                        && trim($row['engineer_name']) !== ''
+                        && trim($row['engineer_name']) !== ' ';
+            $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
         ?>
         <div class="report-card">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value">#REP-<?= $row['rep_id'] ?></span></div>
             <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value"><?= htmlspecialchars($notes) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Engineer:</span><span class="rc-value"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span></div>
+            <div class="rc-row">
+                <span class="rc-label">Engineer:</span>
+                <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
+                    <?php if ($hasEngineer): ?>
+                        <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                    <?php elseif ($canAssignEngineer): ?>
+                        <!-- Mobile combobox trigger — dropdown is a body-level portal -->
+                        <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
+                            <div class="eng-combo-display">
+                                <span class="eng-combo-label">— Assign engineer —</span>
+                                <span class="eng-combo-arrow">▾</span>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <span class="unassigned-badge">⚠ Unassigned</span>
+                    <?php endif; ?>
+                </span>
+            </div>
             <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
             <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
@@ -450,26 +646,299 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
 <?php include 'admin_scripts.php'; ?>
 
+<!-- ══════════════════════════════════════════════
+     GLOBAL PORTAL DROPDOWN — one element, body-level
+     Never inside table/card so it never breaks layout
+══════════════════════════════════════════════ -->
+<div id="engComboPortal">
+    <input id="engComboSearch" type="text" placeholder="🔍 Search engineer…" autocomplete="off">
+    <div id="engComboList"><div class="eng-combo-loading">Loading…</div></div>
+</div>
+
 <script>
-// Reports dropdown toggle
-document.querySelectorAll('.nav-dropdown-toggle').forEach(function(toggle) {
-    toggle.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var parent = toggle.closest('.nav-dropdown-item');
-        if (parent) parent.classList.toggle('open');
+// ════════════════════════════════════════════════════════════════
+// PORTAL COMBOBOX — single dropdown element anchored to <body>
+// ════════════════════════════════════════════════════════════════
+
+let engineersCache = null;
+let activeComboEl   = null;   // the .eng-combobox trigger currently open
+let pendingConfirm  = null;   // { repId, engineerId, engineerName }
+
+const portal     = document.getElementById('engComboPortal');
+const comboSearch= document.getElementById('engComboSearch');
+const comboList  = document.getElementById('engComboList');
+
+// ── Load engineers from server once ──────────────────────────────
+async function loadEngineers() {
+    if (engineersCache !== null) return engineersCache;
+    try {
+        const res  = await fetch('get_engineers.php');
+        const data = await res.json();
+        engineersCache = (data.success && data.engineers.length) ? data.engineers : [];
+    } catch(e) {
+        engineersCache = [];
+    }
+    return engineersCache;
+}
+
+// ── Render options into the shared list ──────────────────────────
+function renderPortalList(engineers, query) {
+    comboList.innerHTML = '';
+    const q = (query || '').toLowerCase().trim();
+    const filtered = q ? engineers.filter(e => e.name.toLowerCase().includes(q)) : engineers;
+    if (filtered.length === 0) {
+        comboList.innerHTML = '<div class="eng-combo-no-results">No engineers found</div>';
+        return;
+    }
+    filtered.forEach(eng => {
+        const item = document.createElement('div');
+        item.className   = 'eng-combo-option';
+        item.dataset.id  = eng.id;
+        item.dataset.name= eng.name;
+        item.innerHTML   = `<span class="opt-icon">👷</span>${escapeHtml(eng.name)}`;
+        comboList.appendChild(item);
     });
+}
+
+// ── Position portal below the trigger ────────────────────────────
+function positionPortal(triggerEl) {
+    // Force layout so getBoundingClientRect is accurate
+    portal.style.visibility = 'hidden';
+    portal.style.display    = 'block';
+
+    const rect    = triggerEl.getBoundingClientRect();
+    const vw      = window.innerWidth;
+    const vh      = window.innerHeight;
+    const width   = Math.max(240, rect.width);
+    const pHeight = portal.offsetHeight || 280;
+
+    // Default: open below the trigger
+    let top  = rect.bottom + 6;
+    let left = rect.left;
+
+    // Flip upward if not enough space below
+    if (top + pHeight > vh - 8 && rect.top >= pHeight + 8) {
+        top = rect.top - pHeight - 6;
+    }
+
+    // Keep within right edge
+    if (left + width > vw - 8) left = vw - width - 8;
+    // Keep within left edge
+    if (left < 8) left = 8;
+
+    portal.style.top        = top  + 'px';
+    portal.style.left       = left + 'px';
+    portal.style.width      = width + 'px';
+    portal.style.visibility = '';
+    portal.style.display    = '';
+}
+
+// ── Open portal for a given combobox element ──────────────────────
+async function openPortal(comboEl) {
+    if (activeComboEl === comboEl) { closePortal(); return; }
+    closePortal();
+
+    activeComboEl = comboEl;
+    comboEl.querySelector('.eng-combo-display').classList.add('open');
+
+    comboSearch.value   = '';
+    comboList.innerHTML = '<div class="eng-combo-loading">Loading…</div>';
+
+    // Show portal first (invisible) so we can measure its height for positioning
+    portal.classList.add('show');
+    positionPortal(comboEl.querySelector('.eng-combo-display'));
+    comboSearch.focus();
+
+    const engineers = await loadEngineers();
+    renderPortalList(engineers, '');
+    // Re-position after list is populated (height may change)
+    positionPortal(comboEl.querySelector('.eng-combo-display'));
+}
+
+// ── Close portal ──────────────────────────────────────────────────
+function closePortal() {
+    portal.classList.remove('show');
+    if (activeComboEl) {
+        activeComboEl.querySelector('.eng-combo-display').classList.remove('open');
+        activeComboEl = null;
+    }
+}
+
+// ── Attach click to every trigger ────────────────────────────────
+function initAllComboboxes() {
+    if (!CAN_ASSIGN_ENGINEER) return;
+    document.querySelectorAll('.eng-combobox').forEach(comboEl => {
+        if (comboEl._initDone) return;
+        comboEl._initDone = true;
+        comboEl.querySelector('.eng-combo-display').addEventListener('click', e => {
+            e.stopPropagation();
+            openPortal(comboEl);
+        });
+    });
+}
+
+// ── Live search ───────────────────────────────────────────────────
+comboSearch.addEventListener('input', async () => {
+    const engineers = await loadEngineers();
+    renderPortalList(engineers, comboSearch.value);
 });
 
-// Live search
+// ── Option click → confirmation modal ────────────────────────────
+comboList.addEventListener('mousedown', e => {
+    const opt = e.target.closest('.eng-combo-option');
+    if (!opt || !activeComboEl) return;
+    e.preventDefault();
+
+    const repId       = activeComboEl.dataset.repId;
+    const engineerId  = opt.dataset.id;
+    const engineerName= opt.dataset.name;
+
+    closePortal();
+    showAssignConfirm(repId, engineerId, engineerName);
+});
+
+// ── Keyboard navigation inside search ────────────────────────────
+comboSearch.addEventListener('keydown', e => {
+    const items     = [...comboList.querySelectorAll('.eng-combo-option')];
+    const highlighted = comboList.querySelector('.highlighted');
+    let idx = items.indexOf(highlighted);
+
+    if (e.key === 'ArrowDown')  { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp')   { e.preventDefault(); idx = Math.max(idx - 1, 0); }
+    else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (highlighted) highlighted.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        return;
+    } else if (e.key === 'Escape') { closePortal(); return; }
+
+    items.forEach((it, i) => it.classList.toggle('highlighted', i === idx));
+    if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+});
+
+// ── Close on outside click ────────────────────────────────────────
+document.addEventListener('click', e => {
+    if (!portal.contains(e.target) && !e.target.closest('.eng-combobox')) {
+        closePortal();
+    }
+});
+
+// ── Reposition on scroll/resize ──────────────────────────────────
+window.addEventListener('resize', () => {
+    if (activeComboEl) positionPortal(activeComboEl.querySelector('.eng-combo-display'));
+});
+document.addEventListener('scroll', () => {
+    if (activeComboEl) positionPortal(activeComboEl.querySelector('.eng-combo-display'));
+}, true);
+
+// ════════════════════════════════════════════════════════════════
+// CONFIRMATION MODAL
+// ════════════════════════════════════════════════════════════════
+
+const engAssignBackdrop  = document.getElementById('engAssignBackdrop');
+const engAssignNameEl    = document.getElementById('engAssignName');
+const engAssignRepEl     = document.getElementById('engAssignRep');
+const engAssignCancelBtn = document.getElementById('engAssignCancelBtn');
+const engAssignConfirmBtn= document.getElementById('engAssignConfirmBtn');
+
+function showAssignConfirm(repId, engineerId, engineerName) {
+    pendingConfirm = { repId, engineerId, engineerName };
+    engAssignNameEl.textContent = engineerName;
+    engAssignRepEl.textContent  = '#REP-' + repId;
+    engAssignBackdrop.classList.add('show');
+    engAssignConfirmBtn.focus();
+}
+
+function closeAssignModal() {
+    engAssignBackdrop.classList.remove('show');
+    pendingConfirm = null;
+}
+
+engAssignCancelBtn.addEventListener('click', closeAssignModal);
+engAssignBackdrop.addEventListener('click', e => {
+    if (e.target === engAssignBackdrop) closeAssignModal();
+});
+
+engAssignConfirmBtn.addEventListener('click', async () => {
+    if (!pendingConfirm) return;
+    const { repId, engineerId, engineerName } = pendingConfirm;
+    closeAssignModal();
+    await doAssignEngineer(repId, engineerId, engineerName);
+});
+
+// ════════════════════════════════════════════════════════════════
+// ASSIGN ENGINEER — API CALL + SYNC BOTH DESKTOP & MOBILE
+// ════════════════════════════════════════════════════════════════
+
+async function doAssignEngineer(repId, engineerId, engineerName) {
+    // Optimistic UI — show saving on all triggers for this rep
+    document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
+        el.textContent = 'Saving…';
+    });
+
+    try {
+        const res  = await fetch('assign_engineer.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rep_id: parseInt(repId), engineer_id: parseInt(engineerId) })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            updateAllEngineerCells(repId, data.engineer_name || engineerName);
+            showAssignNotif('success', `✔️ ${data.engineer_name || engineerName} assigned to #REP-${repId}.`);
+        } else {
+            // Restore all triggers
+            document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
+                el.textContent = '— Assign engineer —';
+            });
+            showAssignNotif('error', `❌ ${data.message}`);
+        }
+    } catch(e) {
+        document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
+            el.textContent = '— Assign engineer —';
+        });
+        showAssignNotif('error', '❌ Network error. Please try again.');
+    }
+}
+
+// Replaces ALL .engineer-cell[data-rep-id] — hits desktop td AND mobile span simultaneously
+function updateAllEngineerCells(repId, engineerName) {
+    document.querySelectorAll(`.engineer-cell[data-rep-id="${repId}"]`).forEach(cell => {
+        cell.innerHTML = `<span class="assigned-engineer-name">${escapeHtml(engineerName)}</span>`;
+    });
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showAssignNotif(type, message) {
+    const existing = document.getElementById('notifPopup');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.id        = 'notifPopup';
+    div.className = `notif-popup notif-${type}`;
+    div.innerHTML = `<span class="notif-message">${message}</span>
+                     <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>`;
+    document.body.appendChild(div);
+    setTimeout(() => { div.style.opacity='0'; setTimeout(()=>div.remove(),400); }, 4000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// LIVE SEARCH
+// ════════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", function() {
-    const input     = document.getElementById("reportSearch");
-    const tbody     = document.querySelector("#reportsTable tbody");
-    const allRows   = Array.from(tbody.querySelectorAll("tr")).filter(r => r.id !== "noDesktopResult");
-    const noDesk    = document.getElementById("noDesktopResult");
-    const mCards    = Array.from(document.querySelectorAll(".mobile-report-list .report-card")).filter(c => c.id !== "noMobileResult");
-    const noMobile  = document.getElementById("noMobileResult");
-    const mList     = document.getElementById("mobileReportList");
+    if (CAN_ASSIGN_ENGINEER) initAllComboboxes();
+
+    const input    = document.getElementById("reportSearch");
+    const tbody    = document.querySelector("#reportsTable tbody");
+    const allRows  = Array.from(tbody.querySelectorAll("tr")).filter(r => r.id !== "noDesktopResult");
+    const noDesk   = document.getElementById("noDesktopResult");
+    const mCards   = Array.from(document.querySelectorAll(".mobile-report-list .report-card")).filter(c => c.id !== "noMobileResult");
+    const noMobile = document.getElementById("noMobileResult");
+    const mList    = document.getElementById("mobileReportList");
 
     input.addEventListener("input", function() {
         const q = input.value.toLowerCase().trim();

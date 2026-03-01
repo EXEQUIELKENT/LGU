@@ -1183,6 +1183,82 @@ input[type="file"] {
     border-color: var(--input-focus-border);
     box-shadow: 0 0 0 3px var(--input-focus-shadow);
 }
+
+/* ── Map wrapper: anchor for the floating button ── */
+#map-wrapper {
+    position: relative;
+    margin: 10px 12px 12px;
+    border-radius: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ── Map div: fills the wrapper exactly ── */
+#map {
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    border-radius: 12px;
+    touch-action: none;
+    transition: min-height 0.35s ease;
+    display: block;
+}
+#map.map-tall {
+    min-height: 520px !important;
+}
+
+/* ── Expand button: top-right corner of the wrapper ── */
+#mapExpandBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.92);
+    color: #2b6cb0;
+    border: 1px solid #c7d1f3;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+    transition: background 0.2s, transform 0.15s;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+#mapExpandBtn:hover {
+    background: #fff;
+    transform: scale(1.1);
+}
+[data-theme="dark"] #mapExpandBtn {
+    background: rgba(30, 30, 30, 0.88);
+    color: #8ab4f8;
+    border-color: rgba(74, 143, 216, 0.4);
+}
+[data-theme="dark"] #mapExpandBtn:hover {
+    background: rgba(45, 45, 45, 0.95);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #map-wrapper { margin: 8px 10px 10px; border-radius: 10px; }
+    #map { min-height: 250px; border-radius: 10px; }
+    #map.map-tall { min-height: 420px !important; }
+    #mapExpandBtn { top: 8px; right: 8px; width: 34px; height: 34px; }
+}
+@media (max-width: 480px) {
+    #map-wrapper { margin: 6px 8px 8px; border-radius: 8px; }
+    #map { min-height: 200px; border-radius: 8px; }
+    #map.map-tall { min-height: 360px !important; }
+}
+@media (min-width: 769px) and (max-height: 800px) {
+    #map-wrapper { margin: 6px 10px 8px; }
+    #map { min-height: 220px; }
+    #map.map-tall { min-height: 400px !important; }
+}
 #barangaySelect {
     padding: 10px 14px;
     border-radius: 10px;
@@ -1323,14 +1399,6 @@ input[type="file"] {
 }
 .map-actions .btn-save:hover {
     background: #245a96;
-}
-#map {
-    flex: 1;
-    min-height: 300px;
-    margin: 12px;
-    border-radius: 12px;
-    overflow: hidden;
-    touch-action: none;
 }
 
 /* ===== SEARCHABLE BARANGAY COMBOBOX ===== */
@@ -1586,9 +1654,9 @@ input[type="file"] {
         gap: 8px;
     }
     
+    /* REPLACE WITH: */
     #map {
         min-height: 250px;
-        margin: 10px;
         border-radius: 10px;
     }
     
@@ -1609,9 +1677,9 @@ input[type="file"] {
 }
 
 @media (max-width: 480px) {
+    /* REPLACE WITH: */
     #map {
         min-height: 200px;
-        margin: 8px;
         border-radius: 8px;
     }
     
@@ -1961,9 +2029,9 @@ input[type="file"] {
         max-height: 92vh;
     }
 
+    /* REPLACE WITH: */
     #map {
         min-height: 220px;
-        margin: 8px 10px;
     }
 
     .map-header {
@@ -2254,8 +2322,19 @@ input[type="file"] {
 
                 <input type="text" id="manualAddressInput" data-i18n-placeholder="map_address_placeholder" placeholder="Type or auto-detect address">
             </div>
-            
-            <div id="map"></div>
+
+            <!-- REPLACE WITH: -->
+            <div id="map-wrapper">
+                <div id="map"></div>
+                <button type="button" id="mapExpandBtn" title="Expand map">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                </button>
+            </div>
             
             <div class="map-actions">
                 <button type="button" class="btn-cancel" onclick="closeMapModal()" data-i18n="map_modal_cancel">Cancel</button>
@@ -4136,64 +4215,64 @@ input[type="file"] {
     }
 
     function formatAddressEnhanced(addressParts, barangayName) {
-        // Google Maps-style order:
-        // [House #] [Street], [Subdivision], Brgy. [Barangay], Quezon City
-        // Near [POI], Brgy. [Barangay], Quezon City   ← fallback when no street
+    // Google Maps-style order:
+    // [House #] [Street], [Subdivision], Brgy. [Barangay], Quezon City
+    // Near [POI], Brgy. [Barangay], Quezon City   ← fallback when no street
 
-        const parts = [];
-        const used = new Set();
+    const parts = [];
+    const used = new Set();
 
-        const push = (val) => {
-            if (!val) return;
-            const norm = val.trim().toLowerCase();
-            if (!norm || used.has(norm)) return;
-            used.add(norm);
-            parts.push(val.trim());
-        };
+    const push = (val) => {
+        if (!val) return;
+        const norm = val.trim().toLowerCase();
+        if (!norm || used.has(norm)) return;
+        used.add(norm);
+        parts.push(val.trim());
+    };
 
-        const { houseNumber, street, subdivision, poi } = addressParts;
+    const { houseNumber, street, subdivision, poi } = addressParts;
 
-        // ── Primary address line: "123 Rizal Avenue" ────────────────────
-        if (street) {
-            const streetLine = houseNumber ? `${houseNumber} ${street}` : street;
-            push(streetLine);
-        } else if (houseNumber) {
-            push(houseNumber);
-        }
-
-        // ── Subdivision / Village ────────────────────────────────────────
-        if (subdivision) {
-            push(subdivision);
-        }
-
-        // ── Barangay ─────────────────────────────────────────────────────
-        push(`Brgy. ${toTitleCase(barangayName)}`);
-
-        // ── City ──────────────────────────────────────────────────────────
-        push('Quezon City');
-
-        // ── POI as "Near …" suffix when we have a street ─────────────────
-        // (shows school/company/landmark without cluttering the main address)
-        if (poi) {
-            const hasStreetInfo = !!(street || houseNumber || subdivision);
-            if (hasStreetInfo) {
-                // Append as a parenthetical reference
-                parts.push(`(Near ${poi})`);
-            } else {
-                // No street data at all — lead with the POI
-                parts.unshift(`Near ${poi}`);
-                // Remove the placeholder we pushed before POI
-            }
-        }
-
-        // ── Final fallback ────────────────────────────────────────────────
-        if (parts.length <= 2) {
-            // Only barangay + city — try to return something still useful
-            return `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
-        }
-
-        return parts.join(', ');
+    // ── Primary address line: "123 Rizal Avenue" ────────────────────
+    if (street) {
+        const streetLine = houseNumber ? `${houseNumber} ${street}` : street;
+        push(streetLine);
+    } else if (houseNumber) {
+        push(houseNumber);
     }
+
+    // ── Subdivision / Village ────────────────────────────────────────
+    if (subdivision) {
+        push(subdivision);
+    }
+
+    // ── Barangay ─────────────────────────────────────────────────────
+    push(`Brgy. ${toTitleCase(barangayName)}`);
+
+    // ── City ──────────────────────────────────────────────────────────
+    push('Quezon City');
+
+    // ── POI as "Near …" suffix when we have a street ─────────────────
+    // (shows school/company/landmark without cluttering the main address)
+    if (poi) {
+        const hasStreetInfo = !!(street || houseNumber || subdivision);
+        if (hasStreetInfo) {
+            // Append as a parenthetical reference
+            parts.push(`(Near ${poi})`);
+        } else {
+            // No street data at all — lead with the POI
+            parts.unshift(`Near ${poi}`);
+            // Remove the placeholder we pushed before POI
+        }
+    }
+
+    // ── Final fallback ────────────────────────────────────────────────
+    if (parts.length <= 2) {
+        // Only barangay + city — try to return something still useful
+        return `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
+    }
+
+    return parts.join(', ');
+}
 
     // ============================================
     // UTILITY FUNCTIONS
@@ -4281,38 +4360,74 @@ input[type="file"] {
 
     <!-- Auto-clear form after successful submission & notification -->
     <script>
-    <?php if (!empty($_SESSION['notification']) && $_SESSION['notification']['type'] === 'success'): ?>
-    document.addEventListener('DOMContentLoaded', function() {
-        var form = document.getElementById('maintenanceRequestForm');
-        if(form) form.reset();
-        var previewDiv = document.getElementById('image-preview');
-        if(previewDiv) previewDiv.innerHTML = '';
-        var cameraInput = document.getElementById('evidence-camera');
-        if (cameraInput) cameraInput.value = "";
-        var infraSelect = document.getElementById('infrastructureSelect');
-        var infraOther = document.getElementById('infrastructureOther');
-        if (infraOther) infraOther.style.display = 'none';
-        if (infraSelect) {
-            infraSelect.style.display = 'block';
-            infraSelect.value = '';
-        }
-        if (typeof selectedFiles !== "undefined") {
-            selectedFiles.length = 0;
-        }
-        var locationInput = document.getElementById('locationInput');
-        if (locationInput) locationInput.value = '';
-        var manualInput = document.getElementById('manualAddressInput');
-        if (manualInput) manualInput.value = '';
-        var barangaySelect = document.getElementById('barangaySelect');
-        if (barangaySelect) barangaySelect.value = '';
-        localStorage.clear();
+        <?php if (!empty($_SESSION['notification']) && $_SESSION['notification']['type'] === 'success'): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.getElementById('maintenanceRequestForm');
+            if(form) form.reset();
+            var previewDiv = document.getElementById('image-preview');
+            if(previewDiv) previewDiv.innerHTML = '';
+            var cameraInput = document.getElementById('evidence-camera');
+            if (cameraInput) cameraInput.value = "";
+            var infraSelect = document.getElementById('infrastructureSelect');
+            var infraOther = document.getElementById('infrastructureOther');
+            if (infraOther) infraOther.style.display = 'none';
+            if (infraSelect) {
+                infraSelect.style.display = 'block';
+                infraSelect.value = '';
+            }
+            if (typeof selectedFiles !== "undefined") {
+                selectedFiles.length = 0;
+            }
+            var locationInput = document.getElementById('locationInput');
+            if (locationInput) locationInput.value = '';
+            var manualInput = document.getElementById('manualAddressInput');
+            if (manualInput) manualInput.value = '';
+            var barangaySelect = document.getElementById('barangaySelect');
+            if (barangaySelect) barangaySelect.value = '';
+            localStorage.clear();
 
-        var coordLat = document.getElementById('coord_lat');
-        var coordLng = document.getElementById('coord_lng');
-        if (coordLat) coordLat.value = '';
-        if (coordLng) coordLng.value = '';
-    });
-    <?php endif; ?>
+            var coordLat = document.getElementById('coord_lat');
+            var coordLng = document.getElementById('coord_lng');
+            if (coordLat) coordLat.value = '';
+            if (coordLng) coordLng.value = '';
+        });
+        <?php endif; ?>
+        </script>
+
+        <script>
+            // ── Map div expand/collapse toggle ──────────────────────────────────
+    (function () {
+        const expandBtn = document.getElementById('mapExpandBtn');
+        const mapDiv    = document.getElementById('map');
+        if (!expandBtn || !mapDiv) return;
+
+        let expanded = false;
+
+        const ICON_EXPAND   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
+        const ICON_COLLAPSE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="10" y1="14" x2="3" y2="21"></line><line x1="21" y1="3" x2="14" y2="10"></line></svg>`;
+
+        expandBtn.addEventListener('click', () => {
+            expanded = !expanded;
+            mapDiv.classList.toggle('map-tall', expanded);
+            expandBtn.innerHTML  = expanded ? ICON_COLLAPSE : ICON_EXPAND;
+            expandBtn.title      = expanded ? 'Collapse map' : 'Expand map';
+
+            // Leaflet needs a nudge to fill the new height correctly
+            setTimeout(() => { if (map) map.invalidateSize({ animate: true }); }, 360);
+        });
+
+        // Reset when modal closes
+        const origClose = window.closeMapModal;
+        window.closeMapModal = function () {
+            if (expanded) {
+                expanded = false;
+                mapDiv.classList.remove('map-tall');
+                expandBtn.innerHTML = ICON_EXPAND;
+                expandBtn.title = 'Expand map';
+            }
+            if (origClose) origClose();
+        };
+    })();
     </script>
 
 <!-- FOOTER -->

@@ -1958,39 +1958,20 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<!-- VALIDATION CONFIRMATION MODAL -->
+<!-- REPLACE the entire validateConfirmModal div with this: -->
 <div id="validateConfirmBackdrop" class="modal-backdrop">
     <div id="validateConfirmModal" class="alert-modal">
        <div class="icon-wrap success-icon">
            <span class="icon">✓</span>
        </div>
        <div class="alert-title">Validate this request?</div>
-       <div class="alert-desc">Select the engineer to assign, then confirm validation.</div>
-
-       <!-- Engineer dropdown -->
-       <div style="width:100%;margin-bottom:14px;text-align:left;">
-           <label for="engineerSelect"
-               style="display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">
-               Assign Engineer <span style="color:#e53935;">*</span>
-           </label>
-           <select id="engineerSelect"
-               style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border-color);
-                      font-size:14px;background:var(--bg-primary);color:var(--text-primary);outline:none;
-                      transition:border .2s;">
-               <option value="">— Loading engineers… —</option>
-           </select>
-           <div id="engineerSelectError"
-               style="color:#e53935;font-size:12px;margin-top:4px;display:none;">
-               Please select an engineer.
-           </div>
-       </div>
-
+       <div class="alert-desc">This will approve the request and create a report. An engineer can be assigned from Current Reports.</div>
        <div class="alert-btns">
            <button class="alert-btn cancel" id="validateCancelBtn">Cancel</button>
            <button class="alert-btn confirm" id="validateConfirmBtn">Confirm</button>
        </div>
-    </div><!-- /alert-modal -->
-</div><!-- /validateConfirmBackdrop -->
+    </div>
+</div>
 
 <?php include 'admin_scripts.php'; ?>
 
@@ -2361,31 +2342,8 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
 //  VALIDATION MODAL FUNCTIONALITY
 // ============================
 
-document.getElementById('validateBtn').addEventListener('click', async () => {
-    const select = document.getElementById('engineerSelect');
-    select.innerHTML = '<option value="">— Loading… —</option>';
-    document.getElementById('engineerSelectError').style.display = 'none';
-
-    try {
-        const res  = await fetch('get_engineers.php');
-        const data = await res.json();
-
-        if (data.success && data.engineers.length > 0) {
-            select.innerHTML = '<option value="">— Select Engineer —</option>';
-            data.engineers.forEach(eng => {
-                const opt = document.createElement('option');
-                opt.value       = eng.id;
-                opt.textContent = eng.name;
-                select.appendChild(opt);
-            });
-        } else {
-            select.innerHTML = '<option value="">No engineers available</option>';
-        }
-    } catch (e) {
-        select.innerHTML = '<option value="">Error loading engineers</option>';
-    }
-
-    // Show confirmation modal
+document.getElementById('validateBtn').addEventListener('click', () => {
+    // No engineer loading needed — just show confirmation
     document.getElementById('validateConfirmBackdrop').classList.add('active');
 });
 
@@ -2402,17 +2360,6 @@ document.getElementById('validateConfirmBackdrop').addEventListener('click', (e)
 document.getElementById('validateConfirmBtn').addEventListener('click', async () => {
     if (!currentRequestData) return;
 
-    const select      = document.getElementById('engineerSelect');
-    const engineerId  = parseInt(select.value, 10);
-    const errorDiv    = document.getElementById('engineerSelectError');
-
-    // Validate selection
-    if (!engineerId) {
-        errorDiv.style.display = 'block';
-        return;
-    }
-    errorDiv.style.display = 'none';
-
     const confirmBtn = document.getElementById('validateConfirmBtn');
     const cancelBtn  = document.getElementById('validateCancelBtn');
 
@@ -2426,63 +2373,56 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify({
-                req_id:      parseInt(currentRequestData.reqId, 10),
-                engineer_id: engineerId
+                req_id: parseInt(currentRequestData.reqId, 10)
+                // no engineer_id — assigned later in Current Reports
             })
         });
 
-        // ✅ Parse JSON once, with error guard
         let data;
         try {
             data = await response.json();
         } catch (parseErr) {
-            const raw = await response.text().catch(() => '(unreadable)');
-            console.error('JSON parse failed. Raw response:', raw);
             document.getElementById('validateConfirmBackdrop').classList.remove('active');
             document.getElementById('requestDetailBackdrop').classList.remove('active');
-            showInlineNotif('error', '❌ Server returned an unexpected response. Check console for details.');
+            showInlineNotif('error', '❌ Server returned an unexpected response.');
             return;
         }
 
-        // ← NO second response.json() call here — remove it
-
-        // Close both modals
         document.getElementById('validateConfirmBackdrop').classList.remove('active');
         document.getElementById('requestDetailBackdrop').classList.remove('active');
 
         if (data.success) {
-        const reqId = currentRequestData.reqId;
+            const reqId = currentRequestData.reqId;
 
-        // Update desktop table row status live
-        const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
-        if (row) {
-            row.dataset.status = 'Approved';
-            const statusCell = row.querySelector('.status.searchable');
-            if (statusCell) {
-                statusCell.className        = 'status completed searchable';
-                statusCell.dataset.original = '';
-                statusCell.textContent      = 'Approved';
+            // Update desktop row status live
+            const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
+            if (row) {
+                row.dataset.status = 'Approved';
+                const statusCell = row.querySelector('.status.searchable');
+                if (statusCell) {
+                    statusCell.className  = 'status completed searchable';
+                    statusCell.dataset.original = '';
+                    statusCell.textContent = 'Approved';
+                }
             }
-        }
 
-        // Update mobile card status live
-        const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
-        if (card) {
-            card.dataset.status = 'Approved';
-            const statusSpan = card.querySelector('.status.searchable');
-            if (statusSpan) {
-                statusSpan.className        = 'status completed searchable';
-                statusSpan.dataset.original = '';
-                statusSpan.textContent      = 'Approved';
+            // Update mobile card status live
+            const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
+            if (card) {
+                card.dataset.status = 'Approved';
+                const statusSpan = card.querySelector('.status.searchable');
+                if (statusSpan) {
+                    statusSpan.className  = 'status completed searchable';
+                    statusSpan.dataset.original = '';
+                    statusSpan.textContent = 'Approved';
+                }
             }
-        }
 
-        showInlineNotif('success',
-            `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
-            `Report #REP-${data.rep_id} created — ` +
-            `Engineer: ${data.engineer} | Priority: ${data.priority}`
-        );
-    } else {
+            showInlineNotif('success',
+                `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
+                `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.`
+            );
+        } else {
             showInlineNotif('error', `❌ ${data.message}`);
         }
 
