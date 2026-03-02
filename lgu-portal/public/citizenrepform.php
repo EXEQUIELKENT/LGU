@@ -4105,22 +4105,29 @@ input[type="file"] {
     }
 
     // ── Nearby landmarks via Overpass API ──────────────────────────────────
+    // ── Nearby landmarks via Overpass API ──────────────────────────────────
     async function fetchNearbyLandmarks(lat, lng, radius) {
-        radius = radius || 150;
+        // Tighter fetch radius — don't go beyond what's truly "nearby"
+        radius = 100;
+
+        // Hard distance cutoff: landmarks further than this are NEVER shown.
+        // ~80m is roughly half a city block — clearly visible from the pin.
+        const MAX_NEAR_DISTANCE = 80;
 
         const q = `
-    [out:json][timeout:10];
-    (
-    node["name"]["amenity"~"^(fuel|school|university|hospital|clinic|pharmacy|bank|atm|restaurant|fast_food|cafe|bar|pub|convenience|supermarket|church|chapel|mosque|temple|police|fire_station|hotel|cinema|gym|park|playground|post_office|kindergarten|library|marketplace|college)$"](around:${radius},${lat},${lng});
-    node["name"]["shop"~"^(supermarket|convenience|grocery|bakery|pharmacy|hardware|clothes|electronics|department_store|mall|variety_store|laundry|butcher|florist|bookstore|optician|pet|stationery|sports)$"](around:${radius},${lat},${lng});
-    node["name"]["tourism"~"^(hotel|motel|hostel|guest_house|attraction|viewpoint)$"](around:${radius},${lat},${lng});
-    node["name"]["leisure"~"^(park|garden|playground|sports_centre|fitness_centre|swimming_pool|stadium|track)$"](around:${radius},${lat},${lng});
-    way["name"]["leisure"~"^(park|garden|stadium|sports_centre)$"](around:${radius},${lat},${lng});
-    way["name"]["landuse"~"^(residential|commercial|retail)$"](around:${radius},${lat},${lng});
-    relation["name"]["landuse"~"^(residential|commercial)$"](around:${radius},${lat},${lng});
-    );
-    out center;
-    `.trim();
+[out:json][timeout:10];
+(
+  node["name"]["amenity"~"^(fuel|school|university|hospital|clinic|pharmacy|bank|atm|restaurant|fast_food|cafe|bar|pub|convenience|supermarket|place_of_worship|police|fire_station|hotel|cinema|gym|park|playground|post_office|kindergarten|library|marketplace|college)$"](around:${radius},${lat},${lng});
+  node["name"]["shop"~"^(supermarket|convenience|grocery|bakery|pharmacy|hardware|clothes|electronics|department_store|mall|variety_store|laundry|butcher|florist|bookstore|optician|pet|stationery|sports)$"](around:${radius},${lat},${lng});
+  node["name"]["tourism"~"^(hotel|motel|hostel|guest_house|attraction|viewpoint)$"](around:${radius},${lat},${lng});
+  node["name"]["leisure"~"^(park|garden|playground|sports_centre|fitness_centre|swimming_pool|stadium|track)$"](around:${radius},${lat},${lng});
+  way["name"]["amenity"~"^(fuel|school|university|hospital|place_of_worship|police|fire_station|bank|cinema|gym|marketplace|college|library)$"](around:${radius},${lat},${lng});
+  way["name"]["leisure"~"^(park|garden|stadium|sports_centre)$"](around:${radius},${lat},${lng});
+  way["name"]["landuse"~"^(residential|commercial|retail)$"](around:${radius},${lat},${lng});
+  relation["name"]["landuse"~"^(residential|commercial)$"](around:${radius},${lat},${lng});
+);
+out center;
+`.trim();
 
         const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`;
 
@@ -4136,8 +4143,8 @@ input[type="file"] {
                 'bank', 'atm', 'hospital', 'clinic', 'pharmacy',
                 'school', 'university', 'college', 'kindergarten',
                 'hotel', 'motel', 'hostel', 'guest_house',
-                'cinema', 'park', 'stadium', 'sports_centre', 'fitness_centre', 'gym',
-                'church', 'chapel', 'mosque', 'temple',
+                'cinema', 'place_of_worship',
+                'park', 'stadium', 'sports_centre', 'fitness_centre', 'gym',
                 'police', 'fire_station', 'post_office', 'library',
                 'fast_food', 'restaurant', 'cafe', 'bar',
                 'convenience', 'grocery', 'bakery', 'hardware',
@@ -4152,20 +4159,23 @@ input[type="file"] {
                     const elLat = el.lat ?? el.center?.lat;
                     const elLng = el.lon  ?? el.center?.lon;
                     if (elLat == null || elLng == null) return null;
+
+                    // Accurate planar distance in metres
                     const dy = (lat - elLat) * 111320;
                     const dx = (lng - elLng) * 111320 * cosLat;
                     const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // ── HARD CUTOFF: skip anything further than MAX_NEAR_DISTANCE ──
+                    if (dist > MAX_NEAR_DISTANCE) return null;
+
                     const tags = el.tags;
                     const type = tags.amenity || tags.shop || tags.tourism || tags.leisure || tags.landuse || '';
                     const priority = PRIORITY.indexOf(type);
                     return { name: tags.name.trim(), dist, priority };
                 })
                 .filter(Boolean)
+                // Sort: priority first (most recognisable), then by distance
                 .sort((a, b) => {
-                    // Bucket by distance (≤80 m preferred), then priority, then raw distance
-                    const ba = a.dist <= 80 ? 0 : 1;
-                    const bb = b.dist <= 80 ? 0 : 1;
-                    if (ba !== bb) return ba - bb;
                     const pa = a.priority === -1 ? 999 : a.priority;
                     const pb = b.priority === -1 ? 999 : b.priority;
                     if (pa !== pb) return pa - pb;
