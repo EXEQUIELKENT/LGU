@@ -964,10 +964,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-profile-btn {
         position: absolute;
-        top: 20px;
-        left: 4px;
+        top: 18px;
+        left: 12px;
         width: 45px;
-        height: 58px;
+        height: 47px;
     }
     .sidebar-top { position: relative; }
     .site-logo { margin-top: 60px; text-align: center; }
