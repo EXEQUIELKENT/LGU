@@ -4051,229 +4051,246 @@ input[type="file"] {
         }, delayNeeded);
     }
 
-    function performAddressFetch(latlng, barangayName, cacheKey) {
+// ============================================================
+// REPLACE: function performAddressFetch(latlng, barangayName, cacheKey) { ... }
+// WITH the block below (includes new landmark helpers + async fetch)
+// ============================================================
+
+    // ============================================
+    // NEARBY LANDMARK DETECTION (Overpass API)
+    // ============================================
+
+    async function fetchNearbyLandmarks(lat, lng, radius = 150) {
+        const query = `
+[out:json][timeout:8];
+(
+  node["amenity"~"school|university|college|hospital|clinic|pharmacy|fuel|bank|atm|police|fire_station|place_of_worship|church|mosque|temple|hotel|government|library|cinema|theatre|post_office|marketplace|supermarket|fast_food|restaurant|cafe|gym|community_centre|social_facility|courthouse|embassy"](around:${radius},${lat},${lng});
+  node["shop"~"convenience|supermarket|mall|department_store|hardware|pharmacy|bakery|electronics|mobile_phone|clothes|shoes|jewelry|pet|car|motorcycle|bicycle|florist|butcher|laundry|beauty|optician|sports"](around:${radius},${lat},${lng});
+  node["tourism"~"hotel|motel|guest_house|hostel|attraction|museum|viewpoint"](around:${radius},${lat},${lng});
+  node["leisure"~"park|sports_centre|stadium|swimming_pool|fitness_centre|playground|golf_course"](around:${radius},${lat},${lng});
+  node["brand"](around:${radius},${lat},${lng});
+  way["amenity"~"school|university|college|hospital|clinic|fuel|bank|police|place_of_worship|hotel|government|library|marketplace|supermarket|cinema|stadium|sports_centre|community_centre|fast_food|restaurant"](around:${radius},${lat},${lng});
+  way["shop"~"mall|department_store|supermarket|convenience|hardware"](around:${radius},${lat},${lng});
+  way["tourism"~"hotel|motel|attraction"](around:${radius},${lat},${lng});
+  way["leisure"~"park|sports_centre|stadium|fitness_centre|swimming_pool"](around:${radius},${lat},${lng});
+  way["landuse"="residential"]["name"](around:${radius},${lat},${lng});
+);
+out body 25;
+`;
+        try {
+            const ctrl = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+                ? AbortSignal.timeout(7000) : undefined;
+            const resp = await fetch(
+                `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+                ctrl ? { signal: ctrl } : {}
+            );
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return data.elements || [];
+        } catch (e) {
+            console.warn('[Landmarks] Overpass fetch failed (non-fatal):', e);
+            return [];
+        }
+    }
+
+    // Score landmark priority: higher = more notable/recognisable
+    function scoreLandmark(el) {
+        const tags  = el.tags || {};
+        const a     = tags.amenity  || '';
+        const s     = tags.shop     || '';
+        const t     = tags.tourism  || '';
+        const l     = tags.leisure  || '';
+        const lu    = tags.landuse  || '';
+        const brand = tags.brand    || tags['brand:en'] || '';
+
+        // Tier 1 – landmark anchors (very recognisable)
+        if (['school','university','college','hospital','police','fire_station',
+             'fuel','bank','marketplace','stadium','government','courthouse',
+             'library','cinema','theatre','embassy'].includes(a)) return 4;
+
+        // Tier 2 – hotels, malls, major shops, churches
+        if (['hotel','motel','guest_house','hostel'].includes(t))        return 3;
+        if (['mall','department_store','supermarket'].includes(s))       return 3;
+        if (['place_of_worship','church','mosque','temple'].includes(a)) return 3;
+        if (['park','sports_centre','swimming_pool','stadium'].includes(l)) return 3;
+
+        // Tier 3 – convenience stores, fast food, cafes, clinics
+        if (['pharmacy','clinic','post_office','community_centre',
+             'fast_food','restaurant','cafe','gym','atm'].includes(a))   return 2;
+        if (['convenience','hardware','pharmacy','bakery','laundry',
+             'electronics','mobile_phone','beauty','optician'].includes(s)) return 2;
+
+        // Tier 4 – subdivisions, other named places
+        if (lu === 'residential' && tags.name)                           return 1;
+        if (brand)                                                       return 2; // branded = recognisable
+
+        return 1;
+    }
+
+    // Pick the best 1-3 unique landmarks sorted by priority
+    function selectBestLandmarks(elements, maxCount = 3) {
+        const named = elements.filter(el => {
+            if (!el.tags || !el.tags.name) return false;
+            const n = el.tags.name.trim();
+            return n.length > 1;
+        });
+
+        // Deduplicate by normalised name
+        const seen = new Set();
+        const unique = named.filter(el => {
+            const key = el.tags.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        unique.sort((a, b) => scoreLandmark(b) - scoreLandmark(a));
+        return unique.slice(0, maxCount).map(el => toTitleCase(el.tags.name.trim()));
+    }
+
+    // ── REPLACED performAddressFetch → now async, fetches landmarks in parallel ──
+    async function performAddressFetch(latlng, barangayName, cacheKey) {
         manualAddressInput.classList.add('loading');
         manualAddressInput.value = 'Fetching address...';
         abortController = new AbortController();
         const signal = abortController.signal;
-        
+
         const zoomLevels = [18, 17, 16];
         let currentZoomIndex = 0;
-        
-        function tryFetch(zoom) {
+
+        const nominatimFetch = (zoom) => {
             const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&countrycodes=ph&zoom=${zoom}&addressdetails=1&extratags=1`;
-            
             return fetch(url, { signal })
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data || !data.address) {
-                        currentZoomIndex++;
-                        if (currentZoomIndex < zoomLevels.length) {
-                            return tryFetch(zoomLevels[currentZoomIndex]);
-                        }
-                        const fallbackAddress = `${barangayName}, Quezon City`;
-                        manualAddressInput.value = fallbackAddress;
-                        manualAddressInput.classList.remove('loading');
-                        addressCache.set(cacheKey, fallbackAddress);
-                        return;
-                    }
-                    
-                    const address = processAddressDataEnhanced(data, barangayName);
-                    
-                    if (address && (address.building || address.street || address.landmark || address.houseNumber)) {
-                        const fullAddress = formatAddressEnhanced(address, barangayName);
-                        manualAddressInput.value = fullAddress;
-                        manualAddressInput.classList.remove('loading');
-                        addressCache.set(cacheKey, fullAddress);
-                    } else {
-                        currentZoomIndex++;
-                        if (currentZoomIndex < zoomLevels.length) {
-                            return tryFetch(zoomLevels[currentZoomIndex]);
-                        }
-                        const fallbackAddress = `${barangayName}, Quezon City`;
-                        manualAddressInput.value = fallbackAddress;
-                        manualAddressInput.classList.remove('loading');
-                        addressCache.set(cacheKey, fallbackAddress);
-                    }
-                })
-                .catch((error) => {
-                    if (error.name === 'AbortError') return;
-                    console.warn('Address fetch error:', error);
-                    const fallbackAddress = `${barangayName}, Quezon City`;
-                    manualAddressInput.value = fallbackAddress;
+                .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+        };
+
+        // Kick off Overpass landmark query in parallel with the first Nominatim call
+        const landmarkPromise = fetchNearbyLandmarks(latlng.lat, latlng.lng, 150);
+
+        async function tryFetch(zoom) {
+            try {
+                const isFirstTry = (zoom === zoomLevels[0]);
+
+                const [nominatimData, landmarkElements] = await Promise.all([
+                    nominatimFetch(zoom),
+                    isFirstTry ? landmarkPromise : Promise.resolve([])
+                ]);
+
+                if (!nominatimData || !nominatimData.address) {
+                    currentZoomIndex++;
+                    if (currentZoomIndex < zoomLevels.length) return tryFetch(zoomLevels[currentZoomIndex]);
+                    const fallback = `${barangayName}, Quezon City`;
+                    manualAddressInput.value = fallback;
                     manualAddressInput.classList.remove('loading');
-                    addressCache.set(cacheKey, fallbackAddress);
-                });
+                    addressCache.set(cacheKey, fallback);
+                    return;
+                }
+
+                const address   = processAddressDataEnhanced(nominatimData, barangayName);
+                const landmarks = isFirstTry ? selectBestLandmarks(await landmarkPromise) : [];
+
+                if (address && (address.building || address.street || address.landmark || address.houseNumber)) {
+                    const fullAddress = formatAddressEnhanced(address, barangayName, landmarks);
+                    manualAddressInput.value = fullAddress;
+                    manualAddressInput.classList.remove('loading');
+                    addressCache.set(cacheKey, fullAddress);
+                } else {
+                    currentZoomIndex++;
+                    if (currentZoomIndex < zoomLevels.length) return tryFetch(zoomLevels[currentZoomIndex]);
+                    // No street data, but still attach landmarks if available
+                    const fallback = landmarks.length
+                        ? `Brgy. ${toTitleCase(barangayName)}, Quezon City (Near ${landmarks.join(' & ')})`
+                        : `${barangayName}, Quezon City`;
+                    manualAddressInput.value = fallback;
+                    manualAddressInput.classList.remove('loading');
+                    addressCache.set(cacheKey, fallback);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.warn('Address fetch error:', error);
+                const fallback = `${barangayName}, Quezon City`;
+                manualAddressInput.value = fallback;
+                manualAddressInput.classList.remove('loading');
+                addressCache.set(cacheKey, fallback);
+            }
         }
-        
+
         tryFetch(zoomLevels[currentZoomIndex]);
     }
 
-    function toTitleCase(str) {
-        if (!str) return '';
-        return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-    }
 
-    function processAddressDataEnhanced(data, barangayName) {
-        const addressData = data.address;
+// ============================================================
+// REPLACE: function formatAddressEnhanced(addressParts, barangayName) { ... }
+// WITH the block below (now accepts a third `landmarks` array parameter)
+// ============================================================
 
-        if (!addressData.city || !addressData.city.toLowerCase().includes('quezon')) {
-            showJsNotification('error', 'Location must be within Quezon City.');
-            manualAddressInput.value = '';
-            manualAddressInput.classList.remove('loading');
-            locationSource = null;
-            barangaySelect.value = '';
-            districtInfo.style.display = 'none';
-            return null;
+    function formatAddressEnhanced(addressParts, barangayName, landmarks = []) {
+        // Google Maps-style order:
+        // [House #] [Street], [Subdivision], Brgy. [Barangay], Quezon City (Near A & B)
+
+        const parts = [];
+        const used  = new Set();
+
+        const push = (val) => {
+            if (!val) return;
+            const norm = val.trim().toLowerCase();
+            if (!norm || used.has(norm)) return;
+            used.add(norm);
+            parts.push(val.trim());
+        };
+
+        const { houseNumber, street, subdivision, poi } = addressParts;
+
+        // ── Primary address line: "123 Rizal Avenue" ──────────────────
+        if (street) {
+            const streetLine = houseNumber ? `${houseNumber} ${street}` : street;
+            push(streetLine);
+        } else if (houseNumber) {
+            push(houseNumber);
         }
 
-        const result = {};
+        // ── Subdivision / Village ──────────────────────────────────────
+        if (subdivision) push(subdivision);
 
-        // ── 1. House / Building Number ──────────────────────────────────
-        if (addressData.house_number) {
-            result.houseNumber = addressData.house_number.trim();
-        }
+        // ── Barangay ───────────────────────────────────────────────────
+        push(`Brgy. ${toTitleCase(barangayName)}`);
 
-        // ── 2. Street / Road Name ───────────────────────────────────────
-        const roadPriority = [
-            'road', 'street', 'pedestrian', 'footway', 'path',
-            'residential', 'tertiary', 'secondary', 'primary',
-            'trunk', 'motorway', 'highway', 'cycleway',
-            'avenue', 'boulevard', 'lane', 'alley'
-        ];
-        for (const field of roadPriority) {
-            if (addressData[field]) {
-                result.street = toTitleCase(addressData[field]);
-                break;
+        // ── City ───────────────────────────────────────────────────────
+        push('Quezon City');
+
+        // ── Build the "Near …" clause from Overpass landmarks ──────────
+        // Filter landmarks so they don't repeat anything already in parts
+        const filteredLandmarks = landmarks.filter(lm => {
+            const lmNorm = lm.toLowerCase();
+            return !parts.some(p => p.toLowerCase().includes(lmNorm) || lmNorm.includes(p.toLowerCase()));
+        });
+
+        // Also include Nominatim POI if it isn't already captured
+        const poiToAdd = (poi && !filteredLandmarks.some(l => l.toLowerCase().includes(poi.toLowerCase()))) ? poi : null;
+
+        const nearItems = [
+            ...filteredLandmarks,
+            ...(poiToAdd ? [poiToAdd] : [])
+        ].slice(0, 3); // cap at 3 landmarks max
+
+        if (nearItems.length > 0) {
+            const hasStreetInfo = !!(street || houseNumber || subdivision);
+            const nearStr = `(Near ${nearItems.join(' & ')})`;
+            if (hasStreetInfo) {
+                parts.push(nearStr);
+            } else {
+                // No street data — lead with the Near clause
+                parts.unshift(nearStr);
             }
         }
 
-        // ── 3. Named Place / POI (building, shop, school, etc.) ─────────
-        // Only use as a "near" reference — NOT as the primary address line
-        const poiFields = [
-            'amenity', 'shop', 'office', 'tourism', 'leisure',
-            'public_building', 'name', 'operator', 'brand',
-            'university', 'school', 'college', 'hospital',
-            'place_of_worship', 'government'
-        ];
-
-        // Get the POI name from the first part of display_name if the result type
-        // is a named place (not just a street/road)
-        let poiName = null;
-        if (data.type && !['way', 'relation'].includes(data.type)) {
-            const firstPart = (data.display_name || '').split(',')[0].trim();
-            if (firstPart && !/^\d+$/.test(firstPart)) {
-                poiName = toTitleCase(firstPart);
-            }
-        }
-        for (const field of poiFields) {
-            if (!poiName && addressData[field]) {
-                poiName = toTitleCase(addressData[field]);
-                break;
-            }
-        }
-        if (addressData.building && addressData.building !== poiName) {
-            poiName = poiName || toTitleCase(addressData.building);
-        }
-        // Only keep POI if it's meaningfully different from the street & barangay
-        if (poiName) {
-            const poiLower = poiName.toLowerCase();
-            const streetLower = (result.street || '').toLowerCase();
-            const brgyLower = barangayName.toLowerCase();
-            if (poiLower !== streetLower && poiLower !== brgyLower) {
-                result.poi = poiName;
-            }
+        // ── Final fallback ─────────────────────────────────────────────
+        if (parts.length <= 2) {
+            return `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
         }
 
-        // ── 4. Subdivision / Village / Compound ─────────────────────────
-        // Use suburb / neighbourhood / quarter ONLY when it is clearly a subdivision
-        // name and NOT just repeating the barangay name.
-        const subKeys = ['neighbourhood', 'suburb', 'quarter', 'hamlet'];
-        for (const key of subKeys) {
-            if (addressData[key]) {
-                const val = toTitleCase(addressData[key]);
-                const valLower = val.toLowerCase();
-                const brgyLower = barangayName.toLowerCase();
-                // Skip if it's essentially the same as the barangay name
-                if (
-                    valLower !== brgyLower &&
-                    !brgyLower.includes(valLower) &&
-                    !valLower.includes(brgyLower) &&
-                    val !== result.street &&
-                    val !== result.poi
-                ) {
-                    result.subdivision = val;
-                    break;
-                }
-            }
-        }
-
-        return result;
+        return parts.join(', ');
     }
-
-    function formatAddressEnhanced(addressParts, barangayName) {
-    // Google Maps-style order:
-    // [House #] [Street], [Subdivision], Brgy. [Barangay], Quezon City
-    // Near [POI], Brgy. [Barangay], Quezon City   ← fallback when no street
-
-    const parts = [];
-    const used = new Set();
-
-    const push = (val) => {
-        if (!val) return;
-        const norm = val.trim().toLowerCase();
-        if (!norm || used.has(norm)) return;
-        used.add(norm);
-        parts.push(val.trim());
-    };
-
-    const { houseNumber, street, subdivision, poi } = addressParts;
-
-    // ── Primary address line: "123 Rizal Avenue" ────────────────────
-    if (street) {
-        const streetLine = houseNumber ? `${houseNumber} ${street}` : street;
-        push(streetLine);
-    } else if (houseNumber) {
-        push(houseNumber);
-    }
-
-    // ── Subdivision / Village ────────────────────────────────────────
-    if (subdivision) {
-        push(subdivision);
-    }
-
-    // ── Barangay ─────────────────────────────────────────────────────
-    push(`Brgy. ${toTitleCase(barangayName)}`);
-
-    // ── City ──────────────────────────────────────────────────────────
-    push('Quezon City');
-
-    // ── POI as "Near …" suffix when we have a street ─────────────────
-    // (shows school/company/landmark without cluttering the main address)
-    if (poi) {
-        const hasStreetInfo = !!(street || houseNumber || subdivision);
-        if (hasStreetInfo) {
-            // Append as a parenthetical reference
-            parts.push(`(Near ${poi})`);
-        } else {
-            // No street data at all — lead with the POI
-            parts.unshift(`Near ${poi}`);
-            // Remove the placeholder we pushed before POI
-        }
-    }
-
-    // ── Final fallback ────────────────────────────────────────────────
-    if (parts.length <= 2) {
-        // Only barangay + city — try to return something still useful
-        return `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
-    }
-
-    return parts.join(', ');
-}
-
     // ============================================
     // UTILITY FUNCTIONS
     // ============================================
@@ -4431,24 +4448,15 @@ input[type="file"] {
     </script>
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <span><i class="fas fa-envelope"></i></span>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <span><i class="fas fa-phone"></i></span>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <span><i class="fas fa-map-marker-alt"></i></span>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         

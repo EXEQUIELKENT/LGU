@@ -517,24 +517,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 </div>
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
             <h3>InfraGovServices</h3>
-            <p>Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <span><i class="fas fa-envelope"></i></span>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <span><i class="fas fa-phone"></i></span>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <span><i class="fas fa-map-marker-alt"></i></span>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         

@@ -568,24 +568,15 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 </div>
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
-            <h3 data-i18n="site_title">InfraGovServices</h3>
+            <h3>InfraGovServices</h3>
             <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
             <div class="footer-contact">
-                <div class="contact-item">
-                    <i class="fas fa-envelope"></i>
-                    <span>contact@infragovservices.com</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-phone"></i>
-                    <span>(02) 8988-4242</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Quezon City Hall, Quezon City</span>
-                </div>
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
             </div>
         </div>
         
@@ -612,8 +603,8 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="<?= $BASE_URL ?>privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="<?= $BASE_URL ?>termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
                 <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
                 <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
