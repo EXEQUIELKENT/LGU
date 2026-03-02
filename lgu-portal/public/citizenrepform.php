@@ -4189,7 +4189,12 @@ out body 25;
                 const address   = processAddressDataEnhanced(nominatimData, barangayName);
                 const landmarks = isFirstTry ? selectBestLandmarks(await landmarkPromise) : [];
 
-                if (address && (address.building || address.street || address.landmark || address.houseNumber)) {
+                const hasUsefulData = address && (
+                    address.building || address.street || address.landmark ||
+                    address.houseNumber || address.poi || address.subdivision
+                );
+
+                if (hasUsefulData) {
                     const fullAddress = formatAddressEnhanced(address, barangayName, landmarks);
                     manualAddressInput.value = fullAddress;
                     manualAddressInput.classList.remove('loading');
@@ -4197,10 +4202,10 @@ out body 25;
                 } else {
                     currentZoomIndex++;
                     if (currentZoomIndex < zoomLevels.length) return tryFetch(zoomLevels[currentZoomIndex]);
-                    // No street data, but still attach landmarks if available
+                    // No street data at any zoom — use landmarks or clean barangay fallback
                     const fallback = landmarks.length
                         ? `Brgy. ${toTitleCase(barangayName)}, Quezon City (Near ${landmarks.join(' & ')})`
-                        : `${barangayName}, Quezon City`;
+                        : `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
                     manualAddressInput.value = fallback;
                     manualAddressInput.classList.remove('loading');
                     addressCache.set(cacheKey, fallback);
