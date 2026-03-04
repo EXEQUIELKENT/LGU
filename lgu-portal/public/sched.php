@@ -984,69 +984,682 @@ if ($result && $result->num_rows > 0) {
 [data-theme="dark"] .calendar-weekdays {
     color: #fff;
 }
-.modal {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:2000;}
-.modal.hidden {display:none !important;}
-.modal-content {background:#fff; padding:20px; border-radius:12px; width:90%; max-width:500px; max-height:80%; overflow-y:auto; position:relative;}
-.modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
-.modal h3 {margin-bottom:15px;}
-.modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
+/* ═══════════════════════════════════════════════════════
+   MODALS — REDESIGNED
+═══════════════════════════════════════════════════════ */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 40, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 16px;
+    animation: modalBackdropIn 0.2s ease;
+}
+.modal.hidden { display: none !important; }
+
+@keyframes modalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-content {
+    background: #ffffff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.22), 0 4px 12px rgba(0,0,0,0.1);
+    animation: modalSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(24px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+/* ── Modal Header ── */
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px 16px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    flex-shrink: 0;
+}
+
+.chooser-header {
+    background: linear-gradient(135deg, #1e40af 0%, #1565c0 100%);
+}
+
+.modal-header-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.modal-header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1px;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.modal-close-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+/* ── Modal Body ── */
+.modal-body {
+    overflow-y: auto;
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: none;
+}
+.modal-body::-webkit-scrollbar { display: none; }
+
+/* ── Task Detail Card (inside taskModal) ── */
+.modal-task-item {
+    background: #f7f9ff;
+    border: 1px solid rgba(55, 98, 200, 0.12);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.modal-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+}
+
+.modal-task-row-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(55, 98, 200, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.modal-task-row-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-task-row-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 1px;
+}
+
+.modal-task-row-value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111827;
+    word-break: break-word;
+}
+
+/* Status pill inside modal */
+.modal-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+.modal-status-pill.upcoming  { background: rgba(21,101,192,0.1);  color: #1565c0; }
+.modal-status-pill.ongoing   { background: rgba(249,168,37,0.12); color: #a16207; }
+.modal-status-pill.delayed   { background: rgba(198,40,40,0.1);   color: #c62828; }
+.modal-status-pill.completed { background: rgba(46,125,50,0.1);   color: #2e7d32; }
+
+.modal-priority-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+.modal-priority-pill.low      { background: rgba(46,125,50,0.1);   color: #2e7d32; }
+.modal-priority-pill.medium   { background: rgba(249,168,37,0.12); color: #a16207; }
+.modal-priority-pill.high     { background: rgba(198,40,40,0.1);   color: #c62828; }
+.modal-priority-pill.critical { background: rgba(183,28,28,0.12);  color: #b71c1c; }
+
+/* ── Chooser task buttons ── */
+.chooser-task-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid rgba(55, 98, 200, 0.15);
+    border-radius: 14px;
+    background: #f7f9ff;
+    cursor: pointer;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.chooser-task-btn:hover {
+    background: #eef2ff;
+    border-color: rgba(55, 98, 200, 0.35);
+    transform: translateX(3px);
+}
+.chooser-task-btn:active { transform: translateX(1px) scale(0.99); }
+
+.chooser-task-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.chooser-task-dot.upcoming  { background: #1565c0; }
+.chooser-task-dot.ongoing   { background: #fdd835; outline: 1px solid rgba(0,0,0,0.15); }
+.chooser-task-dot.delayed   { background: #c62828; }
+.chooser-task-dot.completed { background: #2e7d32; }
+
+.chooser-task-info { flex: 1; min-width: 0; }
+.chooser-task-name {
+    font-weight: 700;
+    font-size: 13px;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chooser-task-sub {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chooser-arrow {
+    font-size: 14px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .modal-content {
+    background: #1e2235;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .modal-task-item {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .modal-task-row-icon {
+    background: rgba(55,98,200,0.2);
+}
+[data-theme="dark"] .modal-task-row-label { color: #9ca3af; }
+[data-theme="dark"] .modal-task-row-value { color: #f1f5f9; }
+[data-theme="dark"] .chooser-task-btn {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+    color: #e2e8f0;
+}
+[data-theme="dark"] .chooser-task-btn:hover {
+    background: rgba(55,98,200,0.15);
+    border-color: rgba(95,140,255,0.4);
+}
+[data-theme="dark"] .chooser-task-name { color: #f1f5f9; }
+[data-theme="dark"] .chooser-task-sub  { color: #94a3b8; }
+[data-theme="dark"] .chooser-arrow     { color: #64748b; }
+[data-theme="dark"] .modal-status-pill.upcoming  { background: rgba(21,101,192,0.2);  color: #90caf9; }
+[data-theme="dark"] .modal-status-pill.ongoing   { background: rgba(249,168,37,0.15); color: #fdd835; }
+[data-theme="dark"] .modal-status-pill.delayed   { background: rgba(198,40,40,0.2);   color: #ef9a9a; }
+[data-theme="dark"] .modal-status-pill.completed { background: rgba(46,125,50,0.2);   color: #a5d6a7; }
+[data-theme="dark"] .modal-priority-pill.low      { background: rgba(46,125,50,0.2);   color: #a5d6a7; }
+[data-theme="dark"] .modal-priority-pill.medium   { background: rgba(249,168,37,0.15); color: #fdd835; }
+[data-theme="dark"] .modal-priority-pill.high     { background: rgba(198,40,40,0.2);   color: #ef9a9a; }
+[data-theme="dark"] .modal-priority-pill.critical { background: rgba(183,28,28,0.2);   color: #ef5350; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    .modal-content  { border-radius: 18px; max-width: 100%; }
+    .modal-header   { padding: 14px 16px 12px; gap: 10px; }
+    .modal-header-icon { width: 36px; height: 36px; font-size: 16px; }
+    .modal-title    { font-size: 14px; }
+    .modal-body     { padding: 14px 16px 18px; }
+    .chooser-task-btn { padding: 12px 14px; }
+}
 
 
-/* === Calendar Details Card === */
+/* ═══════════════════════════════════════════════════════
+   CALENDAR DETAILS CARD — REDESIGNED
+═══════════════════════════════════════════════════════ */
 .calendar-details-card {
     position: relative;
-    margin-top: 16px;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
-    border: 1px solid #000;
-    padding: 12px 14px 35px;  /* ← INCREASED from 30px to 35px to give more room */
-    max-height: 180px;
+    margin-top: 18px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
+    border-radius: 16px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    box-shadow: 0 4px 20px rgba(55, 98, 200, 0.10), 0 1px 4px rgba(0,0,0,0.06);
     overflow: hidden;
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
-    color: #000;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Scrollable content */
+[data-theme="dark"] .calendar-details-card {
+    background: linear-gradient(135deg, rgba(37, 52, 100, 0.55) 0%, rgba(26, 26, 26, 0.9) 100%);
+    border-color: rgba(95, 140, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+}
+
+/* Header strip */
+.cal-details-header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 16px 9px;
+    background: linear-gradient(90deg, #3762c8 0%, #2851b3 100%);
+    border-radius: 0;
+}
+
+.cal-details-icon {
+    font-size: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cal-details-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.92);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
 .calendar-details {
-    max-height: 140px;
+    max-height: 280px !important;
+    padding-bottom: 0 !important;
     overflow-y: auto;
-    padding-right: 8px;
-    font-size: 0.95rem;
+    padding: 12px 16px 10px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    transition: color 0.3s ease;
+}
+.calendar-details::-webkit-scrollbar { display: none; }
+
+/* Empty state */
+.cal-details-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 6px;
+    color: var(--text-secondary);
+    opacity: 0.55;
+}
+.cal-details-empty p {
+    margin: 0;
+    font-size: 12.5px;
+    text-align: center;
     line-height: 1.5;
-    color: inherit;
 }
-/* Hide scrollbar (cross-browser) */
-.calendar-details::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-}
-.calendar-details {
-    scrollbar-width: none; /* Firefox */
-}
-/* Scroll indicator (fade + arrow) */
-.scroll-indicator {
+
+/* REPLACE with: */
+.cal-details-scroll-hint {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 0 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #3762c8;
+    letter-spacing: 0.04em;
+    animation: hintBounce 1.8s ease-in-out infinite;
+    background: linear-gradient(to top, rgba(240,244,255,1) 0%, rgba(240,244,255,0.9) 70%, transparent 100%);
     position: absolute;
-    bottom: 10px;  /* ← INCREASED from 6px to 10px for better visibility */
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 20px;  /* ← INCREASED from 18px to make it more visible */
-    color: #333;  /* ← DARKER color for better contrast */
-    opacity: 0.9;  /* ← HIGHER opacity */
+    bottom: 0;
+    left: 0;
+    right: 0;
     pointer-events: none;
-    animation: scrollHint 1.6s infinite ease-in-out;
-    z-index: 10;
 }
-/* Dark Mode - Scroll Indicator */
-[data-theme="dark"] .scroll-indicator {
-    color: #bbb;  /* ← Make it lighter for dark mode */
+
+[data-theme="dark"] .cal-details-scroll-hint {
+    color: #8ab4f8;
+    background: linear-gradient(to top, rgba(26,26,26,1) 0%, rgba(26,26,26,0.9) 70%, transparent 100%);
 }
-/* Arrow bounce animation */
-@keyframes scrollHint {
-    0%   { transform: translate(-50%, 0); opacity: 0.4; }
-    50%  { transform: translate(-50%, 6px); opacity: 0.8; }
-    100% { transform: translate(-50%, 0); opacity: 0.4; }
+
+.cal-details-scroll-hint.visible {
+    display: flex;
 }
+
+@keyframes hintBounce {
+    0%, 100% { transform: translateY(0); opacity: 0.6; }
+    50%       { transform: translateY(3px); opacity: 1; }
+}
+
+/* Content inside details (task rows, holiday notice) */
+.cal-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(55,98,200,0.08);
+}
+.cal-task-row:last-child { border-bottom: none; }
+
+.cal-task-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+.cal-task-dot.pending   { background: #ff9800; }
+.cal-task-dot.ongoing   { background: #fdd835; outline: 1px solid rgba(0,0,0,0.15); }
+.cal-task-dot.delayed   { background: #c62828; }
+.cal-task-dot.completed { background: #2e7d32; }
+.cal-task-dot.upcoming  { background: #1565c0; }
+
+.cal-task-info { flex: 1; min-width: 0; }
+.cal-task-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cal-task-meta {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+.cal-holiday-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.cal-holiday-row.holiday {
+    background: rgba(255, 87, 34, 0.09);
+    color: #bf360c;
+    border-left: 3px solid #ff5722;
+}
+.cal-holiday-row.event {
+    background: rgba(33, 150, 243, 0.09);
+    color: #0d47a1;
+    border-left: 3px solid #2196f3;
+}
+[data-theme="dark"] .cal-holiday-row.holiday { background: rgba(255,107,61,0.15); color: #ff8a65; }
+[data-theme="dark"] .cal-holiday-row.event   { background: rgba(66,165,245,0.15); color: #64b5f6; }
+
+.cal-weekend-tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 20px;
+    background: rgba(255,87,34,0.1);
+    color: #d84315;
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+}
+[data-theme="dark"] .cal-weekend-tag { background: rgba(255,107,61,0.15); color: #ff8a65; }
+
+.cal-no-tasks {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    text-align: center;
+    padding: 8px 0 4px;
+}
+
+/* ── Mobile tweaks ── */
+@media (max-width: 768px) {
+    .calendar-details-card {
+        margin-top: 14px;
+        border-radius: 14px;
+    }
+    .cal-details-header {
+        padding: 9px 14px 8px;
+    }
+    .cal-details-title { font-size: 11px; }
+    .calendar-details  { max-height: 130px; padding: 10px 14px 8px; font-size: 13px; }
+    .cal-task-name     { font-size: 12.5px; }
+}
+
+/* ── Medium screen tweaks ── */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .calendar-details-card { margin-top: 12px; }
+    .calendar-details      { max-height: 120px; font-size: 12.5px; padding: 10px 14px 8px; }
+}
+
+/* ── Remove old scroll-indicator (replaced) ── */
+.scroll-indicator { display: none !important; }
+
+/* ── Modal Navigation Bar ── */
+.modal-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    background: rgba(55, 98, 200, 0.06);
+    border-bottom: 1px solid rgba(55, 98, 200, 0.1);
+    flex-shrink: 0;
+}
+
+.modal-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(55, 98, 200, 0.2);
+    background: #fff;
+    color: #3762c8;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s, opacity 0.15s;
+    flex-shrink: 0;
+}
+.modal-nav-btn:hover:not(:disabled) {
+    background: #eef2ff;
+    border-color: #3762c8;
+    transform: scale(1.08);
+}
+.modal-nav-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+.modal-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.modal-nav-counter {
+    font-size: 12px;
+    font-weight: 700;
+    color: #3762c8;
+    letter-spacing: 0.05em;
+    background: rgba(55, 98, 200, 0.1);
+    padding: 3px 12px;
+    border-radius: 999px;
+}
+
+/* Dark Mode */
+[data-theme="dark"] .modal-nav-bar {
+    background: rgba(55, 98, 200, 0.1);
+    border-bottom-color: rgba(55, 98, 200, 0.2);
+}
+[data-theme="dark"] .modal-nav-btn {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(95, 140, 255, 0.3);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .modal-nav-btn:hover:not(:disabled) {
+    background: rgba(55, 98, 200, 0.2);
+    border-color: #5f8cff;
+}
+[data-theme="dark"] .modal-nav-counter {
+    color: #8ab4f8;
+    background: rgba(55, 98, 200, 0.2);
+}
+
+/* Slide animation for task switching */
+@keyframes taskSlideLeft {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes taskSlideRight {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.modal-body.slide-left  { animation: taskSlideLeft  0.2s ease; }
+.modal-body.slide-right { animation: taskSlideRight 0.2s ease; }
+
+/* Mobile */
+@media (max-width: 768px) {
+    .modal-nav-bar { padding: 7px 16px; }
+    .modal-nav-btn { width: 30px; height: 30px; font-size: 13px; }
+    .modal-nav-counter { font-size: 11px; padding: 2px 10px; }
+}
+
+/* ── Status-themed Modal Headers ── */
+.modal-header.theme-upcoming  { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); }
+.modal-header.theme-ongoing   { background: linear-gradient(135deg, #f9a825 0%, #e65100 100%); }
+.modal-header.theme-delayed   { background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%); }
+.modal-header.theme-completed { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); }
+
+/* Nav bar accent per status */
+.modal-nav-bar.theme-upcoming  { background: rgba(21,101,192,0.07);  border-bottom-color: rgba(21,101,192,0.15); }
+.modal-nav-bar.theme-ongoing   { background: rgba(249,168,37,0.1);   border-bottom-color: rgba(249,168,37,0.2); }
+.modal-nav-bar.theme-delayed   { background: rgba(198,40,40,0.07);   border-bottom-color: rgba(198,40,40,0.15); }
+.modal-nav-bar.theme-completed { background: rgba(46,125,50,0.07);   border-bottom-color: rgba(46,125,50,0.15); }
+
+/* Nav buttons accent per status */
+.modal-nav-bar.theme-upcoming  .modal-nav-btn { color: #1565c0; border-color: rgba(21,101,192,0.25); }
+.modal-nav-bar.theme-upcoming  .modal-nav-btn:hover:not(:disabled) { background: #e3f2fd; border-color: #1565c0; }
+.modal-nav-bar.theme-upcoming  .modal-nav-counter { color: #1565c0; background: rgba(21,101,192,0.1); }
+
+.modal-nav-bar.theme-ongoing   .modal-nav-btn { color: #e65100; border-color: rgba(249,168,37,0.35); }
+.modal-nav-bar.theme-ongoing   .modal-nav-btn:hover:not(:disabled) { background: #fff8e1; border-color: #f9a825; }
+.modal-nav-bar.theme-ongoing   .modal-nav-counter { color: #e65100; background: rgba(249,168,37,0.15); }
+
+.modal-nav-bar.theme-delayed   .modal-nav-btn { color: #c62828; border-color: rgba(198,40,40,0.25); }
+.modal-nav-bar.theme-delayed   .modal-nav-btn:hover:not(:disabled) { background: #ffebee; border-color: #c62828; }
+.modal-nav-bar.theme-delayed   .modal-nav-counter { color: #c62828; background: rgba(198,40,40,0.1); }
+
+.modal-nav-bar.theme-completed .modal-nav-btn { color: #2e7d32; border-color: rgba(46,125,50,0.25); }
+.modal-nav-bar.theme-completed .modal-nav-btn:hover:not(:disabled) { background: #e8f5e9; border-color: #2e7d32; }
+.modal-nav-bar.theme-completed .modal-nav-counter { color: #2e7d32; background: rgba(46,125,50,0.1); }
+
+/* Task item left border accent per status */
+.modal-task-item.theme-upcoming  { border-left: 3px solid #1565c0; }
+.modal-task-item.theme-ongoing   { border-left: 3px solid #f9a825; }
+.modal-task-item.theme-delayed   { border-left: 3px solid #c62828; }
+.modal-task-item.theme-completed { border-left: 3px solid #2e7d32; }
+
+/* Row icon background tint per status */
+.modal-task-item.theme-upcoming  .modal-task-row-icon { background: rgba(21,101,192,0.1); }
+.modal-task-item.theme-ongoing   .modal-task-row-icon { background: rgba(249,168,37,0.12); }
+.modal-task-item.theme-delayed   .modal-task-row-icon { background: rgba(198,40,40,0.1); }
+.modal-task-item.theme-completed .modal-task-row-icon { background: rgba(46,125,50,0.1); }
+
+/* Dark mode overrides */
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-btn { color: #90caf9; border-color: rgba(144,202,249,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-btn:hover:not(:disabled) { background: rgba(21,101,192,0.2); border-color: #90caf9; }
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-counter { color: #90caf9; background: rgba(21,101,192,0.2); }
+
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-btn { color: #fdd835; border-color: rgba(253,216,53,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-btn:hover:not(:disabled) { background: rgba(249,168,37,0.15); border-color: #fdd835; }
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-counter { color: #fdd835; background: rgba(249,168,37,0.15); }
+
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-btn { color: #ef9a9a; border-color: rgba(239,154,154,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-btn:hover:not(:disabled) { background: rgba(198,40,40,0.2); border-color: #ef9a9a; }
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-counter { color: #ef9a9a; background: rgba(198,40,40,0.2); }
+
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-btn { color: #a5d6a7; border-color: rgba(165,214,167,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-btn:hover:not(:disabled) { background: rgba(46,125,50,0.2); border-color: #a5d6a7; }
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-counter { color: #a5d6a7; background: rgba(46,125,50,0.2); }
 /* ===============================
    🧾 TASK CHOOSER BUTTON FIX
 ================================ */
@@ -2309,11 +2922,22 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <div>Saturday</div>
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
+
             <div class="calendar-details-card">
-                <div class="calendar-details" id="calendarDetails">
-                    Select a date to view schedule.
+                <div class="cal-details-header">
+                    <span class="cal-details-icon" id="calDetailsIcon">📅</span>
+                    <span class="cal-details-title" id="calDetailsTitle">Select a date</span>
                 </div>
-                <div class="scroll-indicator">⌄</div>
+                <div class="calendar-details" id="calendarDetails">
+                    <div class="cal-details-empty">
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".35"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <p>Click any date to see<br>scheduled maintenance</p>
+                    </div>
+                </div>
+                <div class="cal-details-scroll-hint" id="calScrollHint">
+                    <span>scroll for more</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
             </div>
             <div class="calendar-legend">
                 <span class="legend-item">
@@ -2415,22 +3039,39 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Task Detail Modal -->
 <div id="taskModal" class="modal hidden">
     <div class="modal-content">
-        <span id="modalClose" class="modal-close">&times;</span>
-        <h3>Scheduled Tasks</h3>
-        <div id="modalBody"></div>
+        <div class="modal-header">
+            <div class="modal-header-icon">🔧</div>
+            <div class="modal-header-text">
+                <span class="modal-label">Maintenance Task</span>
+                <h3 class="modal-title">Task Details</h3>
+            </div>
+            <button id="modalClose" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <!-- Task Navigation Bar -->
+        <div class="modal-nav-bar" id="modalNavBar" style="display:none;">
+            <button class="modal-nav-btn" id="modalNavPrev" aria-label="Previous task">&#8592;</button>
+            <span class="modal-nav-counter" id="modalNavCounter">1 / 3</span>
+            <button class="modal-nav-btn" id="modalNavNext" aria-label="Next task">&#8594;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
     </div>
 </div>
-
-<!-- NEW: Multi-Task Chooser Modal (for date with >1 task) -->
+<!-- Multi-Task Chooser Modal -->
 <div id="taskChooserModal" class="modal hidden">
-  <div class="modal-content">
-    <span class="modal-close" onclick="closeTaskChooser()">&times;</span>
-    <h3>Select a Task</h3>
-    <div id="taskChooserBody"></div>
-  </div>
+    <div class="modal-content chooser-modal">
+        <div class="modal-header chooser-header">
+            <div class="modal-header-icon">📋</div>
+            <div class="modal-header-text">
+                <span class="modal-label">Multiple Tasks</span>
+                <h3 class="modal-title">Select a Task</h3>
+            </div>
+            <button class="modal-close-btn" onclick="closeTaskChooser()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="taskChooserBody"></div>
+    </div>
 </div>
 
 <!-- Logout Confirmation Alert Modal (Redesigned based on reports.php) -->
@@ -2463,44 +3104,321 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- Custom Date Picker Overlay -->
 <style>
+/* ═══════════════════════════════════════════
+   DATE PICKER POPUP — REDESIGNED
+═══════════════════════════════════════════ */
 #customDatePickerOverlay {
     position: absolute;
-    background: #fff;
-    border: 1px solid #ccc;
-    z-index: 2000; /* Increased for UX on mobile */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
     display: none;
+    width: 280px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10);
+    border: 1px solid rgba(55,98,200,0.13);
+    overflow: hidden;
+    animation: dpPopIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    font-family: inherit;
 }
-#customDatePickerOverlay input[type="date"] {
-    width: 180px;
-    padding: 6px 8px;
-    background: #f7faff; /* Match desktop calendar background */
-    border: 1px solid #b1b8d0;
-    color: #222;
-    font-size: 1rem;
-    border-radius: 7px;
-    transition: background 0.15s;
+
+@keyframes dpPopIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)     scale(1); }
 }
-#customDatePickerOverlay input[type="date"]:focus {
-    background: #e8f1ff;
-    outline: 2px solid #3762c8;
-    outline-offset: 0;
+
+/* ── Header ── */
+.dp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
 }
+
+.dp-month-year {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.02em;
+    cursor: default;
+    user-select: none;
+}
+
+.dp-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.18);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.12s;
+    flex-shrink: 0;
+}
+.dp-nav-btn:hover {
+    background: rgba(255,255,255,0.32);
+    transform: scale(1.08);
+}
+.dp-nav-btn:active { transform: scale(0.95); }
+
+/* ── Weekday labels ── */
+.dp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 10px 12px 4px;
+    gap: 2px;
+}
+.dp-weekdays span {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 0;
+}
+.dp-weekdays span:first-child,
+.dp-weekdays span:last-child {
+    color: #f87171;
+}
+
+/* ── Day grid ── */
+.dp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 2px 12px 10px;
+    gap: 3px;
+}
+
+.dp-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    color: #1e293b;
+    border: none;
+    background: transparent;
+    transition: background 0.13s, color 0.13s, transform 0.1s;
+    padding: 0;
+    line-height: 1;
+}
+.dp-day:hover {
+    background: #eef2ff;
+    color: #3762c8;
+    transform: scale(1.12);
+}
+.dp-day:active { transform: scale(0.95); }
+
+.dp-day.dp-empty {
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Weekend days */
+.dp-day.dp-weekend {
+    color: #ef4444;
+}
+.dp-day.dp-weekend:hover {
+    background: #fff0f0;
+    color: #dc2626;
+}
+
+/* Today */
+.dp-day.dp-today {
+    background: rgba(55,98,200,0.1);
+    color: #3762c8;
+    font-weight: 700;
+    position: relative;
+}
+.dp-day.dp-today::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #3762c8;
+}
+
+/* Selected */
+.dp-day.dp-selected {
+    background: linear-gradient(135deg, #3762c8, #2851b3) !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,0.35);
+    transform: scale(1.05);
+}
+.dp-day.dp-selected::after { display: none; }
+
+/* Has tasks indicator */
+.dp-day.dp-has-tasks {
+    position: relative;
+}
+.dp-day.dp-has-tasks::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #f59e0b;
+}
+.dp-day.dp-selected.dp-has-tasks::before {
+    background: rgba(255,255,255,0.7);
+}
+
+/* ── Footer ── */
+.dp-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px 12px;
+    border-top: 1px solid rgba(55,98,200,0.08);
+    gap: 8px;
+}
+
+.dp-today-btn {
+    flex: 1;
+    padding: 7px 0;
+    border-radius: 9px;
+    border: 1.5px solid rgba(55,98,200,0.2);
+    background: transparent;
+    color: #3762c8;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    letter-spacing: 0.03em;
+}
+.dp-today-btn:hover {
+    background: #eef2ff;
+    border-color: #3762c8;
+}
+
+.dp-close-btn {
+    flex: 1;
+    padding: 7px 0;
+    border-radius: 9px;
+    border: none;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.12s;
+    letter-spacing: 0.03em;
+}
+.dp-close-btn:hover { opacity: 0.88; }
+.dp-close-btn:active { transform: scale(0.97); }
+
+/* Double-click hint text */
+.dp-hint {
+    text-align: center;
+    font-size: 10px;
+    color: #9ca3af;
+    padding: 0 14px 8px;
+    letter-spacing: 0.03em;
+}
+.dp-hint strong {
+    color: #f59e0b;
+    font-weight: 700;
+}
+[data-theme="dark"] .dp-hint { color: #64748b; }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] #customDatePickerOverlay {
+    background: #1e2235;
+    border-color: rgba(95,140,255,0.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .dp-day {
+    color: #e2e8f0;
+}
+[data-theme="dark"] .dp-day:hover {
+    background: rgba(55,98,200,0.2);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .dp-day.dp-weekend {
+    color: #f87171;
+}
+[data-theme="dark"] .dp-day.dp-weekend:hover {
+    background: rgba(239,68,68,0.12);
+    color: #fca5a5;
+}
+[data-theme="dark"] .dp-day.dp-today {
+    background: rgba(55,98,200,0.2);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .dp-day.dp-today::after {
+    background: #8ab4f8;
+}
+[data-theme="dark"] .dp-footer {
+    border-top-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .dp-today-btn {
+    color: #8ab4f8;
+    border-color: rgba(95,140,255,0.3);
+}
+[data-theme="dark"] .dp-today-btn:hover {
+    background: rgba(55,98,200,0.2);
+    border-color: #5f8cff;
+}
+[data-theme="dark"] .dp-weekdays span { color: #64748b; }
+[data-theme="dark"] .dp-weekdays span:first-child,
+[data-theme="dark"] .dp-weekdays span:last-child { color: #f87171; }
+
+/* ── Mobile ── */
 @media (max-width: 768px) {
     #customDatePickerOverlay {
         position: fixed !important;
-        width: 150px;
-        z-index: 2500;
+        width: 288px;
+        left: 50% !important;
+        transform: translateX(-50%);
+        top: auto !important;
+        bottom: 24px !important;
+        border-radius: 20px;
+        animation: dpSlideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
-    #customDatePickerOverlay input[type="date"] {
-        width: 100%;
-        font-size: 1rem;
-        background: #f7faff; /* Ensure mobile also matches */
+    @keyframes dpSlideUp {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to   { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 }
 </style>
+
 <div id="customDatePickerOverlay">
-    <input type="date" id="overlayDatePicker">
+    <div class="dp-header">
+        <button class="dp-nav-btn" id="dpPrevMonth">&#8592;</button>
+        <span class="dp-month-year" id="dpMonthYear"></span>
+        <button class="dp-nav-btn" id="dpNextMonth">&#8594;</button>
+    </div>
+    <div class="dp-weekdays">
+        <span>Su</span>
+        <span>Mo</span>
+        <span>Tu</span>
+        <span>We</span>
+        <span>Th</span>
+        <span>Fr</span>
+        <span>Sa</span>
+    </div>
+    <div class="dp-grid" id="dpGrid"></div>
+    <div class="dp-hint">🟡 <strong>Double-click</strong> a dot date to view tasks</div>
+    <div class="dp-footer">
+        <button class="dp-today-btn" id="dpTodayBtn">Today</button>
+        <button class="dp-close-btn" id="dpCloseBtn">Close</button>
+    </div>
 </div>
 
 <?php include 'admin_scripts.php'; ?>
@@ -2783,59 +3701,186 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (taskModal && modalBody && modalClose && taskChooserModal && taskChooserBody) {
-        modalClose.onclick = ()=>taskModal.classList.add('hidden');
+        if (modalClose) modalClose.onclick = () => taskModal.classList.add('hidden');
         window.onclick = (e)=>{
             if(e.target===taskModal) taskModal.classList.add('hidden');
             if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
         };
     }
-    function openModal(tasks){
+    // Modal task navigation state
+    let _modalTasks = [];
+    let _modalIndex = 0;
+
+    const STATUS_THEME = {
+        upcoming:  {
+            icon: '🔵',
+            headerIcons: { upcoming: '📋', ongoing: '🔧', delayed: '⚠️', completed: '✅' }
+        },
+        ongoing:   { icon: '🔧' },
+        delayed:   { icon: '⚠️' },
+        completed: { icon: '✅' },
+    };
+
+    const STATUS_ICONS = {
+        upcoming:  '📋',
+        ongoing:   '🔧',
+        delayed:   '⚠️',
+        completed: '✅',
+    };
+
+    function applyModalTheme(key) {
+        const header  = document.querySelector('#taskModal .modal-header');
+        const navBar  = document.getElementById('modalNavBar');
+        const iconEl  = document.querySelector('#taskModal .modal-header-icon');
+        const themes  = ['theme-upcoming','theme-ongoing','theme-delayed','theme-completed'];
+
+        if (header)  { header.classList.remove(...themes);  header.classList.add('theme-' + key); }
+        if (navBar)  { navBar.classList.remove(...themes);   navBar.classList.add('theme-' + key); }
+        if (iconEl)  { iconEl.textContent = STATUS_ICONS[key] || '🔧'; }
+    }
+
+    function renderModalTask(index, direction) {
+        if (!modalBody) return;
+        const t        = _modalTasks[index];
+        const category = t.category      || 'General Maintenance';
+        const priority = t.priority      || 'Low';
+        const statusLbl= t.status_label  || 'Planned';
+        const team     = t.assigned_team || 'General Maintenance Team';
+        const key      = getStatusKey(statusLbl);
+        const priKey   = priority.toLowerCase();
+
+        // Apply status theme to header + nav bar
+        applyModalTheme(key);
+
+        // Slide animation
+        if (direction) {
+            modalBody.classList.remove('slide-left', 'slide-right');
+            void modalBody.offsetWidth;
+            modalBody.classList.add(direction === 'next' ? 'slide-left' : 'slide-right');
+        }
+
+        modalBody.innerHTML = `
+            <div class="modal-task-item theme-${key}">
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">📝</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Task</div>
+                        <div class="modal-task-row-value">${t.task}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">📍</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Location</div>
+                        <div class="modal-task-row-value">${t.location}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">📅</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Scheduled Date</div>
+                        <div class="modal-task-row-value">${t.schedule_date}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">🏷️</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Category</div>
+                        <div class="modal-task-row-value">${category}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">⚡</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Priority</div>
+                        <div class="modal-task-row-value">
+                            <span class="modal-priority-pill ${priKey}">${priority}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">🔵</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Status</div>
+                        <div class="modal-task-row-value">
+                            <span class="modal-status-pill ${key}">${statusLbl}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon">👥</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Assigned Team</div>
+                        <div class="modal-task-row-value">${team}</div>
+                    </div>
+                </div>
+            </div>`;
+
+        // Update nav bar state
+        const navBar     = document.getElementById('modalNavBar');
+        const navPrev    = document.getElementById('modalNavPrev');
+        const navNext    = document.getElementById('modalNavNext');
+        const navCounter = document.getElementById('modalNavCounter');
+
+        if (_modalTasks.length > 1) {
+            navBar.style.display = 'flex';
+            navCounter.textContent = `${index + 1} / ${_modalTasks.length}`;
+            navPrev.disabled = (index === 0);
+            navNext.disabled = (index === _modalTasks.length - 1);
+        } else {
+            navBar.style.display = 'none';
+        }
+    }
+
+    function openModal(tasks, startIndex) {
         if (!modalBody || !taskModal) return;
-        modalBody.innerHTML='';
-        tasks.forEach(t=>{
-            const div=document.createElement('div');
-            div.className='modal-task-item';
-            const category   = t.category      || 'General Maintenance';
-            const priority   = t.priority      || 'Low';
-            const statusLbl  = t.status_label  || 'Planned';
-            const team       = t.assigned_team || 'General Maintenance Team';
-            const statusKey  = getStatusKey(statusLbl);
-            if (statusKey) {
-                div.classList.add('status-' + statusKey + '-color');
-            }
-            div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
-                           <strong>Location:</strong> ${t.location}<br>
-                           <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
-                           <strong>Category:</strong> ${category}<br>
-                           <strong>Priority:</strong> ${priority}<br>
-                           <strong>Status:</strong> ${statusLbl}<br>
-                           <strong>Assigned Team:</strong> ${team}`;
-            modalBody.appendChild(div);
-        });
+        _modalTasks = tasks;
+        _modalIndex = startIndex ?? 0;
+        renderModalTask(_modalIndex, null);
         taskModal.classList.remove('hidden');
+    }
+
+    // Wire up nav buttons (do this once, outside openModal)
+    const modalNavPrev = document.getElementById('modalNavPrev');
+    const modalNavNext = document.getElementById('modalNavNext');
+    if (modalNavPrev) {
+        modalNavPrev.addEventListener('click', () => {
+            if (_modalIndex > 0) {
+                _modalIndex--;
+                renderModalTask(_modalIndex, 'prev');
+            }
+        });
+    }
+    if (modalNavNext) {
+        modalNavNext.addEventListener('click', () => {
+            if (_modalIndex < _modalTasks.length - 1) {
+                _modalIndex++;
+                renderModalTask(_modalIndex, 'next');
+            }
+        });
     }
     function openTaskChooser(date, tasks) {
         if (!taskChooserBody || !taskChooserModal) return;
         taskChooserBody.innerHTML = '';
-        tasks.forEach(t => {
-            const btn = document.createElement('button');
-            btn.className = 'task-btn';
-            btn.style.margin = '8px 0';
-            btn.style.width = '100%';
-            btn.textContent = `${t.task} – ${t.location}`;
+        tasks.forEach((t, i) => {
             const key = getStatusKey(t.status_label || '');
-            if (key) btn.classList.add('status-' + key + '-bg');
+            const btn = document.createElement('button');
+            btn.className = 'chooser-task-btn';
+            btn.innerHTML = `
+                <span class="chooser-task-dot ${key}"></span>
+                <div class="chooser-task-info">
+                    <div class="chooser-task-name">${t.task}</div>
+                    <div class="chooser-task-sub">📍 ${t.location} · ${t.status_label || 'Scheduled'}</div>
+                </div>
+                <span class="chooser-arrow">›</span>`;
             btn.onclick = () => {
                 taskChooserModal.classList.add('hidden');
-                openModal([t]);
+                openModal(tasks, i); // pass full list + starting index
             };
             taskChooserBody.appendChild(btn);
         });
         taskChooserModal.classList.remove('hidden');
     }
-    window.closeTaskChooser = function() {
-        if (taskChooserModal) taskChooserModal.classList.add('hidden');
-    };
 
     let openDropdown = null;
     let openDropdownDay = null;
@@ -2871,7 +3916,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.onclick = (ev) => {
                 ev.stopPropagation();
                 closeDropdown();
-                openModal([e]);
+                openModal(events, i + 1); // i+1 because slice(1) skips first
             };
             dropdown.appendChild(btn);
         });
@@ -3083,7 +4128,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (key) btn.classList.add('status-' + key + '-bg');
                     btn.onclick = function(ev) {
                         ev.stopPropagation();
-                        openModal([e]);
+                        openModal(events, 0); // <-- pass full list, index 0
                     };
                     tasksDiv.appendChild(btn);
                 } else if (events.length > 1) {
@@ -3096,7 +4141,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (firstKey) firstBtn.classList.add('status-' + firstKey + '-bg');
                     firstBtn.onclick = function(ev) {
                         ev.stopPropagation();
-                        openModal([first]);
+                        openModal(events, 0); // <-- pass full list, index 0
                     };
                     tasksDiv.appendChild(firstBtn);
 
@@ -3123,34 +4168,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 dayDiv.appendChild(tasksDiv);
             }
 
-            dayDiv.addEventListener('click', function() {
-                let detailsHtml = `<strong>${dateStr}</strong><br>`;
-                if (holidayEvent) {
-                    const typeLabel = holidayEvent.type === 'holiday' ? '🎉 Holiday' : '📅 Event';
-                    detailsHtml += `<div style="color: ${holidayEvent.type === 'holiday' ? '#d32f2f' : '#1565c0'}; font-weight: 600; margin: 8px 0;">${typeLabel}: ${holidayEvent.name}</div>`;
-                }
-                if (isWeekend(currentDayDate)) {
-                    detailsHtml += `<div style="color: #ff5722; font-size: 12px; margin: 4px 0;">Weekend</div>`;
-                }
-                if (events.length) {
-                    detailsHtml += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);"><strong>Maintenance Tasks:</strong></div>`;
-                    detailsHtml += events.map(e =>
-                        `• ${e.task} – ${e.location ? e.location : ''}`
-                    ).join('<br>');
-                } else if (!holidayEvent) {
-                    detailsHtml += 'No scheduled maintenance.';
-                }
-                calendarDetails.innerHTML = detailsHtml;
-            });
+            dayDiv.addEventListener('click', function () {
+                const titleEl = document.getElementById('calDetailsTitle');
+                const iconEl  = document.getElementById('calDetailsIcon');
+                const hintEl  = document.getElementById('calScrollHint');
 
+                // Build date label
+                const datObj  = new Date(dateStr + 'T00:00:00');
+                const dateLabel = datObj.toLocaleDateString('en-US', { weekday:'short', month:'long', day:'numeric', year:'numeric' });
+                if (titleEl) titleEl.textContent = dateLabel;
+
+                let html = '';
+
+                // Weekend tag
+                if (isWeekend(currentDayDate)) {
+                    html += `<div class="cal-weekend-tag">🏖️ Weekend</div>`;
+                }
+
+                // Holiday / event row
+                if (holidayEvent) {
+                    const cls = holidayEvent.type === 'holiday' ? 'holiday' : 'event';
+                    const ico = holidayEvent.type === 'holiday' ? '🎉' : '📅';
+                    if (iconEl) iconEl.textContent = ico;
+                    html += `<div class="cal-holiday-row ${cls}">${ico} ${holidayEvent.name}</div>`;
+                } else {
+                    if (iconEl) iconEl.textContent = events.length ? '🔧' : '📅';
+                }
+
+                // Task rows
+                if (events.length) {
+                    events.forEach(e => {
+                        const key = getStatusKey(e.status_label || '');
+                        const teamText = e.assigned_team ? `<span>${e.assigned_team}</span>` : '';
+                        html += `
+                            <div class="cal-task-row">
+                                <span class="cal-task-dot ${key}"></span>
+                                <div class="cal-task-info">
+                                    <div class="cal-task-name" title="${e.task}">${e.task}</div>
+                                    <div class="cal-task-meta">📍 ${e.location || '—'} · ${e.status_label || 'Scheduled'}${e.assigned_team ? ' · ' + e.assigned_team : ''}</div>
+                                </div>
+                            </div>`;
+                    });
+                } else if (!holidayEvent && !isWeekend(currentDayDate)) {
+                    html += `<div class="cal-no-tasks">No maintenance scheduled for this date.</div>`;
+                }
+
+                calendarDetails.innerHTML = html;
+
+                // Show/hide scroll hint
+                if (hintEl) {
+                    setTimeout(() => {
+                        const overflows = calendarDetails.scrollHeight > calendarDetails.clientHeight + 4;
+                        hintEl.classList.toggle('visible', overflows);
+                    }, 50);
+                }
+            });
+            
             calendarGrid.appendChild(dayDiv);
         }
     }
 
     function updateCalendarDetailsScrollHint() {
         const details = document.getElementById('calendarDetails');
-        const indicator = document.querySelector('.scroll-indicator');
-        if (!details || !indicator) return;
+        const hint    = document.getElementById('calScrollHint');
+        if (!details || !hint) return;
+        hint.classList.toggle('visible', details.scrollHeight > details.clientHeight + 4);
         if (details.scrollHeight > details.clientHeight) {
             indicator.style.display = 'block';
             indicator.style.opacity = '0.9';
@@ -3304,124 +4386,212 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', updateWeekdayLabels);
     window.addEventListener('resize', updateWeekdayLabels);
 
-    const overlayPicker = document.getElementById('customDatePickerOverlay');
-    const overlayInput  = document.getElementById('overlayDatePicker');
+    // ═══════════════════════════════════════════
+    //  DATE PICKER — REDESIGNED
+    // ═══════════════════════════════════════════
+    const overlayPicker  = document.getElementById('customDatePickerOverlay');
+    const dpMonthYear    = document.getElementById('dpMonthYear');
+    const dpGrid         = document.getElementById('dpGrid');
+    const dpPrevMonth    = document.getElementById('dpPrevMonth');
+    const dpNextMonth    = document.getElementById('dpNextMonth');
+    const dpTodayBtn     = document.getElementById('dpTodayBtn');
+    const dpCloseBtn     = document.getElementById('dpCloseBtn');
 
-    function openDatePicker(event) {
-        if (!overlayPicker || !overlayInput) return;
-        const y = currentDate.getFullYear();
-        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-        const d = String(currentDate.getDate()).padStart(2, '0');
-        overlayInput.value = `${y}-${m}-${d}`;
-        const rect = event.target.getBoundingClientRect();
-        let top = rect.bottom + window.scrollY + 4;
-        let left = rect.left + window.scrollX;
-        const overlayWidth = overlayPicker.offsetWidth || 180;
-        if (window.innerWidth <= 768) {
-            top = rect.bottom + 4;
-            left = rect.left;
-            if (left + overlayWidth > window.innerWidth - 8) {
-                left = window.innerWidth - overlayWidth - 8;
-            }
-            if (top + overlayPicker.offsetHeight > window.innerHeight - 8) {
-                top = window.innerHeight - overlayPicker.offsetHeight - 8;
-            }
-            overlayPicker.style.position = 'fixed';
-        } else {
-            if (left + overlayWidth > window.innerWidth - 8) {
-                left = window.innerWidth - overlayWidth - 8;
-            }
-            overlayPicker.style.position = 'absolute';
+    let _dpDate      = new Date(currentDate); // month being shown in picker
+    let _dpSelected  = null;                  // currently selected date string YYYY-MM-DD
+    let _dpOpen      = false;
+
+    // Build a Set of all dates that have tasks — for dot indicators
+    function getDatesWithTasks() {
+        const set = new Set();
+        (window.scheduleData || []).forEach(e => { if (e.schedule_date) set.add(e.schedule_date); });
+        return set;
+    }
+
+    function renderDpGrid() {
+        if (!dpGrid || !dpMonthYear) return;
+        const year  = _dpDate.getFullYear();
+        const month = _dpDate.getMonth();
+        dpMonthYear.textContent = _dpDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        const today       = new Date();
+        const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const taskDates   = getDatesWithTasks();
+        const firstDay    = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        dpGrid.innerHTML = '';
+
+        // Empty cells before first day
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'dp-day dp-empty';
+            dpGrid.appendChild(empty);
         }
-        overlayPicker.style.top = top + "px";
-        overlayPicker.style.left = left + "px";
-        overlayPicker.style.display = "block";
-        overlayInput.focus();
-        if (overlayInput.setSelectionRange) {
-            overlayInput.setSelectionRange(0, overlayInput.value.length);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dayOfWeek = new Date(year, month, d).getDay();
+            const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+
+            const btn = document.createElement('button');
+            btn.className   = 'dp-day';
+            btn.textContent = d;
+            btn.setAttribute('data-date', dateStr);
+
+            if (isWeekendDay)                btn.classList.add('dp-weekend');
+            if (dateStr === todayStr)        btn.classList.add('dp-today');
+            if (dateStr === _dpSelected)     btn.classList.add('dp-selected');
+            if (taskDates.has(dateStr))      btn.classList.add('dp-has-tasks');
+
+            // Single click — select the date & navigate calendar
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _dpSelected = dateStr;
+                const [y, m, dd] = dateStr.split('-').map(Number);
+                currentDate = new Date(y, m - 1, dd);
+                renderCalendar();
+                updateMobileControls();
+                renderDpGrid();
+            });
+
+            // Double click — open task modal / chooser if tasks exist
+            btn.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const tasks = (window.scheduleData || []).filter(t => t.schedule_date === dateStr);
+                if (!tasks.length) return;
+                closeDatePicker();
+                if (tasks.length === 1) {
+                    openModal(tasks, 0);
+                } else {
+                    openTaskChooser(dateStr, tasks);
+                }
+            });
+
+            // Tooltip hint on hover for days that have tasks
+            if (taskDates.has(dateStr)) {
+                btn.title = 'Double-click to view task(s)';
+            }
+
+            dpGrid.appendChild(btn);
         }
     }
 
-    document.addEventListener('click', function(e) {
-        if (!overlayPicker.contains(e.target) && e.target !== monthLabel && e.target !== mobileMonthLabel) {
-            overlayPicker.style.display = 'none';
+    function openDatePicker(event) {
+        if (!overlayPicker) return;
+        _dpDate     = new Date(currentDate);
+        _dpSelected = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+        renderDpGrid();
+
+        // Always show picker below the clicked month label element
+        overlayPicker.style.display = 'block'; // show first so offsetHeight is available
+
+        const isMob   = window.innerWidth <= 768;
+        const rect    = event.target.getBoundingClientRect();
+        const pickerW = overlayPicker.offsetWidth  || 280;
+        const pickerH = overlayPicker.offsetHeight || 320;
+        const gap     = 8;
+
+        if (isMob) {
+            // On mobile: centered horizontally, anchored just below the label
+            overlayPicker.style.position   = 'fixed';
+            overlayPicker.style.removeProperty('bottom');
+
+            let top  = rect.bottom + gap;
+            let left = rect.left + rect.width / 2 - pickerW / 2;
+
+            // Clamp horizontally within viewport
+            left = Math.max(12, Math.min(left, window.innerWidth - pickerW - 12));
+
+            // If it would overflow the bottom, flip it above the label
+            if (top + pickerH > window.innerHeight - 12) {
+                top = rect.top - pickerH - gap;
+            }
+
+            overlayPicker.style.top  = top  + 'px';
+            overlayPicker.style.left = left + 'px';
+            overlayPicker.style.removeProperty('transform');
+        } else {
+            // Desktop: anchored directly below the month label
+            overlayPicker.style.position = 'fixed';
+
+            let top  = rect.bottom + gap;
+            let left = rect.left + rect.width / 2 - pickerW / 2;
+
+            // Clamp horizontally
+            left = Math.max(12, Math.min(left, window.innerWidth - pickerW - 12));
+
+            // Flip above if overflows bottom
+            if (top + pickerH > window.innerHeight - 12) {
+                top = rect.top - pickerH - gap;
+            }
+
+            overlayPicker.style.top  = top  + 'px';
+            overlayPicker.style.left = left + 'px';
+            overlayPicker.style.removeProperty('transform');
+        }
+
+        _dpOpen = true;
+    }
+
+    function closeDatePicker() {
+        if (!overlayPicker) return;
+        overlayPicker.style.display = 'none';
+        _dpOpen = false;
+    }
+
+    // Picker navigation
+    if (dpPrevMonth) dpPrevMonth.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _dpDate.setMonth(_dpDate.getMonth() - 1);
+        renderDpGrid();
+    });
+    if (dpNextMonth) dpNextMonth.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _dpDate.setMonth(_dpDate.getMonth() + 1);
+        renderDpGrid();
+    });
+    if (dpTodayBtn) dpTodayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const t     = new Date();
+        _dpDate     = new Date(t);
+        _dpSelected = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+        currentDate = new Date(t);
+        renderCalendar();
+        updateMobileControls();
+        renderDpGrid();
+        closeDatePicker();
+    });
+    if (dpCloseBtn) dpCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeDatePicker();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (_dpOpen && overlayPicker && !overlayPicker.contains(e.target)
+            && e.target !== monthLabel && e.target !== mobileMonthLabel) {
+            closeDatePicker();
         }
     });
 
-    if (overlayPicker) {
-        overlayPicker.addEventListener('click', function(e) { e.stopPropagation(); });
-    }
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && _dpOpen) closeDatePicker();
+    });
 
-    if (overlayInput) {
-        overlayInput.addEventListener('beforeinput', function(e) {
-            if (
-                e.inputType.startsWith('insert') &&
-                typeof e.data === 'string' &&
-                e.data.match(/[0-9]/)
-            ) {
-                let inputValue = overlayInput.value;
-                const selectionStart = overlayInput.selectionStart;
-                const selectionEnd = overlayInput.selectionEnd;
-                inputValue = inputValue.slice(0, selectionStart) + e.data + inputValue.slice(selectionEnd);
-                if (selectionStart <= 4) {
-                    const yearPart = inputValue.slice(0, 4);
-                    const yearDigits = (yearPart.match(/\d/g) || []).join('');
-                    if (yearDigits.length > 4) {
-                        e.preventDefault();
-                        return;
-                    }
-                }
-            }
-        });
+    // Stop clicks inside picker from bubbling to document
+    if (overlayPicker) overlayPicker.addEventListener('click', (e) => e.stopPropagation());
 
-        overlayInput.addEventListener('input', function(e) {
-            const val = overlayInput.value;
-            if (!val) return;
-            let [y, m, d] = val.split('-');
-            if (y && y.length > 4) {
-                y = y.slice(0, 4);
-                const newVal = [y,m,d].filter(Boolean).join('-');
-                overlayInput.value = newVal;
-            }
-            const parts = overlayInput.value.split('-').map(Number);
-            if (parts.length === 3) {
-                const [yy, mm, dd] = parts;
-                if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
-                    currentDate = new Date(yy, mm - 1, dd);
-                    renderCalendar();
-                }
-            }
-        });
-
-        overlayInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                const val = overlayInput.value;
-                if (val) {
-                    let [y, m, d] = val.split('-');
-                    if (y && y.length > 4) { y = y.slice(0, 4); }
-                    currentDate = new Date(Number(y), Number(m) - 1, Number(d));
-                    renderCalendar();
-                    const tasks = window.scheduleData.filter(
-                        t => t.schedule_date === `${y}-${m}-${d}`
-                    );
-                    if (tasks.length === 1) openModal(tasks);
-                    else if (tasks.length > 1) openTaskChooser(`${y}-${m}-${d}`, tasks);
-                }
-                overlayPicker.style.display = 'none';
-            } else if (e.key === 'Escape') {
-                overlayPicker.style.display = 'none';
-            }
-        });
-    }
-
+    // Wire up month label clicks
     if (monthLabel) {
-        monthLabel.title = "Click to jump date";
-        monthLabel.style.cursor = "pointer";
+        monthLabel.title = 'Click to jump to date';
+        monthLabel.style.cursor = 'pointer';
         monthLabel.addEventListener('click', openDatePicker);
     }
     if (mobileMonthLabel) {
-        mobileMonthLabel.title = "Click to jump date";
-        mobileMonthLabel.style.cursor = "pointer";
+        mobileMonthLabel.title = 'Click to jump to date';
+        mobileMonthLabel.style.cursor = 'pointer';
         mobileMonthLabel.addEventListener('click', openDatePicker);
     }
 }); // --- END DOMContentLoaded ---

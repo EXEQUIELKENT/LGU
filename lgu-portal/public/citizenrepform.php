@@ -379,6 +379,41 @@ body {
     background: none; border: none;
     font-size: 20px; margin-left: auto;
     color: #888; cursor: pointer;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .notif-popup {
+        top: 40px;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: unset;
+        max-width: unset;
+        width: calc(100vw - 24px);
+        padding: 13px 14px;
+        font-size: 14px;
+        gap: 10px;
+        align-items: flex-start;
+        border-radius: 11px;
+        flex-wrap: nowrap;
+        box-sizing: border-box;
+    }
+    .notif-popup .notif-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .notif-popup .notif-message {
+        flex: 1;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+    .notif-popup .notif-close {
+        font-size: 18px;
+        margin-left: 6px;
+        margin-top: 1px;
+    }
 }
 
 .form-wrapper {

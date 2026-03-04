@@ -1508,61 +1508,71 @@ body {
 /* Notification popup styles */
 .notif-popup {
     position: fixed;
-    top: 40px;
+    top: 30px;
     left: 50%;
     transform: translateX(-50%);
-    min-width: 260px;
-    max-width: 90vw;
-    background: #fff;
-    color: #11294d;
-    padding: 18px 32px 18px 22px;
-    border-radius: 16px;
-    box-shadow: 0 7px 30px rgba(44,66,133,0.19);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: var(--card-bg);
+    border-radius: 13px;
+    box-shadow: 0 8px 38px rgba(34,53,126,0.23);
+    z-index: 10000;
     display: flex;
     align-items: center;
     gap: 14px;
-    z-index: 9999;
-    font-size: 16.5px;
-    opacity: 1;
-    transition: opacity 0.4s cubic-bezier(.4,.9,.1,1.1);
-    border-left: 6.5px solid #2c64d7;
     font-family: 'Poppins', Arial, sans-serif;
-}
-
-[data-theme="dark"] .notif-popup {
-    background: var(--card-bg);
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s, background 0.3s ease;
     color: var(--text-primary);
 }
-
-.notif-success { border-color: #10b759 !important; }
-.notif-warning { border-color: #fdc13f !important; }
-.notif-error { border-color: #de3f4a !important; }
-.notif-info { border-color: #2c64d7 !important; }
-
-.notif-icon {
-    font-size: 23px;
-    margin-right: 2px;
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+.notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 5px solid #dda203; }
+.notif-popup.notif-info    { border-left: 5px solid #527cdf; }
+.notif-popup .notif-close {
+    background: none; border: none;
+    font-size: 20px; margin-left: auto;
+    color: #888; cursor: pointer;
+    flex-shrink: 0;
 }
 
-.notif-message {
-    flex: 1;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    line-height: 1.35;
+@media (max-width: 768px) {
+    .notif-popup {
+        top: 40px;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: unset;
+        max-width: unset;
+        width: calc(100vw - 24px);
+        padding: 13px 14px;
+        font-size: 14px;
+        gap: 10px;
+        align-items: flex-start;
+        border-radius: 11px;
+        flex-wrap: nowrap;
+        box-sizing: border-box;
+    }
+    .notif-popup .notif-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .notif-popup .notif-message {
+        flex: 1;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+    .notif-popup .notif-close {
+        font-size: 18px;
+        margin-left: 6px;
+        margin-top: 1px;
+    }
 }
-
-.notif-close {
-    background: none;
-    border: none;
-    font-size: 21px;
-    color: #aaa;
-    cursor: pointer;
-    margin-left: 12px;
-    padding: 0;
-    transition: color 0.2s;
-}
-
-.notif-close:hover { color: #536ae2; }
 
 /* OTP Verification Form Styles */
 .otp-instruction {

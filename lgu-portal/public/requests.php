@@ -263,6 +263,8 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 #requestSearch:focus { border: 1.5px solid #3762c8; box-shadow: 0 2px 8px rgba(55,98,200,.06); }
 [data-theme="dark"] #requestSearch { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color); }
 
+table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+
 .table-card {
     background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px;
@@ -280,13 +282,14 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
 
-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; min-height: 120px; }
 thead { background: #3762c8; color: #fff; }
 thead th { padding: 14px; font-size: 14px; text-align: left; }
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; }
 th, td { padding: 14px; font-size: 14px; text-align: left; }
 tbody tr { border-bottom: 1px solid rgba(0,0,0,.1); }
+tbody { min-height: 200px; display: table-row-group; }
 tbody tr:hover { background: rgba(55,98,200,.08); }
 
 .status { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
@@ -654,6 +657,17 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-fullmap-filters { padding: 8px 16px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 .gis-fullmap-filter-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .gis-fullmap-legend { display: flex; flex-direction: column; gap: 4px; padding: 8px 16px; border-top: 1px solid var(--border-color); flex-shrink: 0; }
+.nav-dropdown-toggle .nav-arrow {
+    color: inherit;
+    transition: transform .25s ease, color .2s ease;
+}
+[data-theme="dark"] .nav-dropdown-toggle .nav-arrow {
+    color: rgba(255, 255, 255, 0.65);
+}
+[data-theme="dark"] .nav-dropdown-toggle:hover .nav-arrow,
+[data-theme="dark"] .nav-dropdown-toggle.active .nav-arrow {
+    color: #ffffff;
+}
 
 /* ═══════════════════════════════════════════════════════
    MEDIUM SCREEN FIXES
@@ -1050,7 +1064,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             </thead>
             <tbody>
             <tr id="noRequestResult" style="display:none;">
-                <td colspan="8" style="text-align:center;padding:20px;font-weight:500;">No matching data or result</td>
+                <td colspan="8" style="text-align:center;padding:48px 20px;font-weight:500;color:var(--text-secondary);">No matching data or result</td>
             </tr>
             <?php if ($result && $result->num_rows > 0): ?>
                 <?php
