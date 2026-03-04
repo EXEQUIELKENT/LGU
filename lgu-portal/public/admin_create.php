@@ -1224,7 +1224,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </ul>
             </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
-            <li><a href="gis_map.php"   class="nav-link" data-tooltip="GIS Map"><i class="fas fa-map-marked-alt"></i><span>GIS Map</span></a></li>
             <!-- Admin-only: Create Account (active on this page) -->
             <li>
                 <a href="admin_create.php" class="nav-link active" data-tooltip="Create Account">

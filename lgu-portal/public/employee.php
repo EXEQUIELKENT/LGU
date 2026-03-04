@@ -147,6 +147,72 @@ $activeUsersQuery = "SELECT COUNT(*) as total FROM employees";
 $activeUsersResult = $conn->query($activeUsersQuery);
 $activeUsers = $activeUsersResult->fetch_assoc()['total'] ?? 0;
 
+// Active Reports (current in-progress reports)
+$activeReportsQuery = "SELECT COUNT(*) as total 
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status = 'Approved'";
+$activeReportsResult = $conn->query($activeReportsQuery);
+$activeReports = $activeReportsResult->fetch_assoc()['total'] ?? 0;
+
+// Recent Current Reports preview (for dashboard section)
+$recentReportsQuery = "SELECT 
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    r.estimated_end_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status = 'Approved'
+    ORDER BY r.rep_id DESC
+    LIMIT 5";
+$recentReportsResult = $conn->query($recentReportsQuery);
+$recentReportRows = [];
+if ($recentReportsResult && $recentReportsResult->num_rows > 0) {
+    while ($r = $recentReportsResult->fetch_assoc()) {
+        $recentReportRows[] = $r;
+    }
+}
+
+// Active Reports by Priority (for chart)
+$activeReportsByPriorityQuery = "SELECT 
+    r.priority_lvl,
+    COUNT(*) as count,
+    SUM(CASE WHEN r.engineer_id IS NOT NULL THEN 1 ELSE 0 END) as assigned,
+    SUM(CASE WHEN r.engineer_id IS NULL THEN 1 ELSE 0 END) as unassigned
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status = 'Approved'
+    GROUP BY r.priority_lvl
+    ORDER BY FIELD(r.priority_lvl, 'High', 'Medium', 'Low')";
+$activeReportsByPriorityResult = $conn->query($activeReportsByPriorityQuery);
+
+$reportPriorityLabels = [];
+$reportPriorityData   = [];
+$reportAssignedData   = [];
+$reportUnassignedData = [];
+
+if ($activeReportsByPriorityResult && $activeReportsByPriorityResult->num_rows > 0) {
+    while ($row = $activeReportsByPriorityResult->fetch_assoc()) {
+        $reportPriorityLabels[] = $row['priority_lvl'] ?? 'Unknown';
+        $reportPriorityData[]   = (int)$row['count'];
+        $reportAssignedData[]   = (int)$row['assigned'];
+        $reportUnassignedData[] = (int)$row['unassigned'];
+    }
+} else {
+    $reportPriorityLabels = ['High', 'Medium', 'Low'];
+    $reportPriorityData   = [0, 0, 0];
+    $reportAssignedData   = [0, 0, 0];
+    $reportUnassignedData = [0, 0, 0];
+}
+
 // ===== CHART DATA QUERIES =====
 
 // Status Breakdown Query
@@ -1840,12 +1906,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <li>
-                <a href="gis_map.php" class="nav-link" data-tooltip="GIS Map">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <span>GIS Map</span>
-                </a>
-            </li>
-            <li>
                 <a href="admin_create.php"
                 class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
                 data-tooltip="Create Account">
@@ -1951,6 +2011,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </div>
             </div>
 
+
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <a href="requests.php" class="action-btn">
@@ -1963,10 +2024,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
-                <a href="reports.php" class="action-btn">
-                    <div class="action-icon">📊</div>
-                    <div class="action-title">Reports</div>
-                    <div class="action-subtitle">Generate reports</div>
+                <a href="current_reports.php" class="action-btn">
+                    <div class="action-icon">🔄</div>
+                    <div class="action-title">Current Reports</div>
+                    <div class="action-subtitle">In-progress repairs</div>
+                </a>
+                <a href="pending_reports.php" class="action-btn">
+                    <div class="action-icon">⏳</div>
+                    <div class="action-title">Pending Reports</div>
+                    <div class="action-subtitle">Awaiting approval</div>
                 </a>
             </div>
 
@@ -2087,6 +2153,86 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div class="no-schedules">No upcoming maintenance scheduled</div>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+
+            <!-- Active Reports Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Active Reports</div>
+                        <div class="chart-subtitle">In-progress reports by priority &amp; assignment</div>
+                    </div>
+                    <a href="current_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="activeReportsChart"></canvas>
+                </div>
+                <div style="display:flex;justify-content:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                        <span style="width:12px;height:12px;border-radius:3px;background:#4caf50;display:inline-block;"></span>Assigned
+                    </span>
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                        <span style="width:12px;height:12px;border-radius:3px;background:#ff9800;display:inline-block;"></span>Unassigned
+                    </span>
+                </div>
+            </div>
+
+            <!-- Current Reports Preview — NEW SECTION -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Current Reports</div>
+                        <div class="chart-subtitle">Active in-progress repair reports</div>
+                    </div>
+                    <a href="current_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentReportRows)): ?>
+                        <?php 
+                        $repColors = ['#f44336', '#ff9800', '#2196f3', '#9c27b0', '#4caf50'];
+                        $repColorIndex = 0;
+                        foreach ($recentReportRows as $rep):
+                            $hasEngineer = !empty($rep['engineer_id']) && !empty($rep['engineer_name']) && trim($rep['engineer_name']) !== ' ';
+                            $statusLabel = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
+                            $priority    = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High' => '#f44336', 'Medium' => '#ff9800', 'Low' => '#4caf50'];
+                            $priorityColor  = $priorityColors[$priority] ?? '#2196f3';
+                            $initial = substr($rep['infrastructure'] ?? 'R', 0, 1);
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='current_reports.php'">
+                            <div class="activity-avatar" style="background: <?= $repColors[$repColorIndex % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= $rep['rep_id'] ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $priorityColor ?>;background:<?= $priorityColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= date('M d, Y', strtotime($rep['starting_date'])) ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $hasEngineer ? 'var(--metric-blue)' : 'var(--metric-orange)' ?>;">
+                                    <?= $statusLabel ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php 
+                        $repColorIndex++;
+                        endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            🔄 No active reports at this time.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -2421,6 +2567,86 @@ if (statusCtx) {
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                             return `${label}: ${value} (${percentage}%)`;
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ===== ACTIVE REPORTS CHART =====
+const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;
+const activeReportsAssigned  = <?= json_encode($reportAssignedData) ?>;
+const activeReportsUnassigned= <?= json_encode($reportUnassignedData) ?>;
+
+const activeReportsCtx = document.getElementById('activeReportsChart');
+if (activeReportsCtx) {
+    new Chart(activeReportsCtx, {
+        type: 'bar',
+        data: {
+            labels: activeReportsLabels,
+            datasets: [
+                {
+                    label: 'Assigned',
+                    data: activeReportsAssigned,
+                    backgroundColor: 'rgba(76, 175, 80, 0.85)',
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Unassigned',
+                    data: activeReportsUnassigned,
+                    backgroundColor: 'rgba(255, 152, 0, 0.85)',
+                    borderColor: '#ff9800',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const idx   = context[0].dataIndex;
+                            const total = activeReportsAssigned[idx] + activeReportsUnassigned[idx];
+                            return ['Total: ' + total];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
                     }
                 }
             }
