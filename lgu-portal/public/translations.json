@@ -329,7 +329,15 @@
     "chip_language": "Switch language",
     "chip_language_msg": "How do I switch the language?",
     "chip_report_types": "What can I report?",
-    "chip_report_types_msg": "What types of infrastructure issues can I report?"
+    "chip_report_types_msg": "What types of infrastructure issues can I report?",
+
+    "map_combobox_search_placeholder": "🔍 Search barangay or district...",
+    "map_expand_title": "Expand map",
+    "map_collapse_title": "Collapse map",
+    "alert_nonlgu_zone": "⚠️ Not under LGU jurisdiction. {road} is maintained by DPWH. Please select a nearby local road or report directly to DPWH.",
+    "alert_dpwh_road": "⚠️ DPWH-maintained road — not under LGU jurisdiction",
+    "alert_dpwh_cannot_save": "⚠️ Cannot save this location. This road is maintained by DPWH, not the LGU. Please select a nearby local road instead.",
+    "alert_dpwh_cannot_save_named": "⚠️ Cannot save this location. {road} is maintained by DPWH. Please move your pin to a nearby local road."
   },
 
   "tl": {
@@ -662,6 +670,14 @@
     "chip_language": "Magpalit ng wika",
     "chip_language_msg": "Paano ako magpapalit ng wika?",
     "chip_report_types": "Ano ang pwede kong iulat?",
-    "chip_report_types_msg": "Anong mga uri ng isyu sa imprastraktura ang maaari kong iulat?"
+    "chip_report_types_msg": "Anong mga uri ng isyu sa imprastraktura ang maaari kong iulat?",
+    
+    "map_combobox_search_placeholder": "🔍 Maghanap ng barangay o distrito...",
+    "map_expand_title": "Palawakin ang mapa",
+    "map_collapse_title": "Bawasan ang mapa",
+    "alert_nonlgu_zone": "⚠️ Hindi nasa ilalim ng nasasakupan ng LGU. Ang {road} ay pinananatili ng DPWH. Mangyaring pumili ng malapit na lokal na kalsada o mag-ulat direkta sa DPWH.",
+    "alert_dpwh_road": "⚠️ Kalsadang pinananatili ng DPWH — hindi nasa ilalim ng nasasakupan ng LGU",
+    "alert_dpwh_cannot_save": "⚠️ Hindi ma-save ang lokasyong ito. Ang kalsadang ito ay pinananatili ng DPWH, hindi ng LGU. Mangyaring pumili ng malapit na lokal na kalsada.",
+    "alert_dpwh_cannot_save_named": "⚠️ Hindi ma-save ang lokasyong ito. Ang {road} ay pinananatili ng DPWH. Mangyaring ilipat ang iyong pin sa malapit na lokal na kalsada."
   }
 }

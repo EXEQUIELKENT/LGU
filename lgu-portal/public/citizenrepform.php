@@ -1258,11 +1258,11 @@ input[type="file"] {
                 <select id="barangaySelect" style="display:none;"></select>
                 <div class="barangay-combobox" id="barangayCombobox">
                     <div class="combobox-display" id="comboboxDisplay">
-                        <span id="comboboxLabel">Select Barangay (Quezon City)</span>
+                        <span id="comboboxLabel" data-i18n="map_barangay_placeholder">Select Barangay (Quezon City)</span>
                         <span class="combobox-arrow" id="comboboxArrow">▾</span>
                     </div>
                     <div class="combobox-dropdown" id="comboboxDropdown" style="display:none;">
-                        <input type="text" id="comboboxSearch" placeholder="🔍 Search barangay or district..." autocomplete="off">
+                        <input type="text" id="comboboxSearch" data-i18n-placeholder="map_combobox_search_placeholder" placeholder="🔍 Search barangay or district..." autocomplete="off">
                         <div class="combobox-list" id="comboboxList"></div>
                     </div>
                 </div>
@@ -1271,7 +1271,7 @@ input[type="file"] {
 
             <div id="map-wrapper">
                 <div id="map"></div>
-                <button type="button" id="mapExpandBtn" title="Expand map">
+                <button type="button" id="mapExpandBtn" data-i18n-title="map_expand_title" title="Expand map">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 3 21 3 21 9"></polyline>
                         <polyline points="9 21 3 21 3 15"></polyline>
@@ -2210,7 +2210,7 @@ input[type="file"] {
         if (nativeSelect) {
             nativeSelect.addEventListener('change', () => {
                 const val = nativeSelect.value;
-                if (!val) { selectedValue = ''; comboboxLabel.textContent = 'Select Barangay (Quezon City)'; comboboxLabel.classList.remove('selected'); return; }
+                if (!val) { selectedValue = ''; comboboxLabel.textContent = getTranslation('map_barangay_placeholder'); comboboxLabel.classList.remove('selected'); return; }
                 const b = QC_BARANGAYS_COMPREHENSIVE.find(x => x.name === val);
                 if (b && b.name !== selectedValue) { selectedValue = b.name; comboboxLabel.textContent = `${b.name} (${b.district})`; comboboxLabel.classList.add('selected'); }
             });
@@ -2293,7 +2293,7 @@ input[type="file"] {
                             fetchDetailedAddress(latlng, nearest.name);
                         } else {
                             manualAddressInput.classList.remove('loading');
-                            manualAddressInput.value = '⚠️ DPWH-maintained road — not under LGU jurisdiction';
+                            manualAddressInput.value = getTranslation('alert_dpwh_road');
                         }
                     }
                     gpsBtn.textContent = '📍';
@@ -2350,7 +2350,7 @@ input[type="file"] {
         selectedLatLng = marker.getLatLng();
         marker.on('dragend', () => { selectedLatLng = marker.getLatLng(); locationSource = 'map'; handleMapLocationUpdate(); });
         map.on('click', e => {
-            if (!isWithinQC(e.latlng)) { showJsNotification('warning', 'Please select a location within Quezon City only.'); return; }
+            if (!isWithinQC(e.latlng)) { showJsNotification('warning', getTranslation('alert_location_outside_qc')); return; }
             marker.setLatLng(e.latlng); selectedLatLng = e.latlng; locationSource = 'map'; handleMapLocationUpdate();
         });
         let isPanning = false, panStartPosition = null;
@@ -2388,7 +2388,7 @@ input[type="file"] {
                 if (fetchAddressTimeout) { clearTimeout(fetchAddressTimeout); fetchAddressTimeout = null; }
                 manualAddressInput.classList.remove('loading');
                 // Show a clear, neutral placeholder instead of an address
-                manualAddressInput.value = '⚠️ DPWH-maintained road — not under LGU jurisdiction';
+                manualAddressInput.value = getTranslation('alert_dpwh_road');
                 // Still find the nearest barangay for district info / UI consistency
                 const nearest = findNearestBarangay(selectedLatLng);
                 if (nearest) { barangaySelect.value = nearest.name; updateDistrictInfo(nearest.district); }
@@ -2430,7 +2430,8 @@ input[type="file"] {
         fetchAddressTimeout = setTimeout(() => { lastFetchTime = Date.now(); performAddressFetch(latlng, barangayName, cacheKey); }, delay);
     }
     function performAddressFetch(latlng, barangayName, cacheKey) {
-        manualAddressInput.classList.add('loading'); manualAddressInput.value = 'Fetching address...';
+        manualAddressInput.classList.add('loading');
+        manualAddressInput.value = getTranslation('map_fetching_address');
         abortController = new AbortController();
         const signal = abortController.signal;
         Promise.all([fetchNominatimAddress(latlng, signal), fetchNearbyLandmarks(latlng.lat, latlng.lng, 150).catch(() => [])])
@@ -2494,7 +2495,7 @@ input[type="file"] {
     function processAddressDataEnhanced(data, barangayName) {
         const a = data.address;
         if (!a.city || !a.city.toLowerCase().includes('quezon')) {
-            showJsNotification('error', 'Location must be within Quezon City.');
+            showJsNotification('error', 'alert_location_qc_only');
             manualAddressInput.value = ''; manualAddressInput.classList.remove('loading');
             locationSource = null; barangaySelect.value = ''; districtInfo.style.display = 'none'; return null;
         }
@@ -2559,8 +2560,13 @@ input[type="file"] {
         if (!finalValue) { showJsNotification('warning', 'Please select or enter a location.'); return; }
 
         // Block saving if address is the DPWH warning placeholder
-        if (finalValue.includes('DPWH-maintained road') || finalValue.includes('not under LGU jurisdiction')) {
-            showJsNotification('error', '⚠️ Cannot save this location. This road is maintained by DPWH, not the LGU. Please select a nearby local road instead.');
+        // AFTER
+        if (
+            finalValue.includes('DPWH-maintained road') ||
+            finalValue.includes('not under LGU jurisdiction') ||
+            finalValue.includes('Kalsadang pinananatili ng DPWH')        // covers TL cached value
+        ) {
+            showJsNotification('error', getTranslation('alert_dpwh_cannot_save'));
             return;
         }
 
@@ -2568,7 +2574,10 @@ input[type="file"] {
         if (selectedLatLng) {
             const nonLgu = isNonLguArea(selectedLatLng);
             if (nonLgu.isNonLgu) {
-                showJsNotification('error', '⚠️ Cannot save this location. ' + nonLgu.roadName + ' is maintained by DPWH. Please move your pin to a nearby local road.');
+            // AFTER
+            showJsNotification('warning',
+                getTranslation('alert_nonlgu_zone').replace('{road}', result.roadName)
+            );
                 return;
             }
         }
@@ -2846,44 +2855,97 @@ out geom;`;
         }
     }
 
+    const DPWH_CACHE_KEY  = 'cimms_dpwh_v3';
+    const DPWH_CACHE_TTL  = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    function _dpwhLoadFromCache() {
+        try {
+            const raw = localStorage.getItem(DPWH_CACHE_KEY);
+            if (!raw) return null;
+            const { ts, segs } = JSON.parse(raw);
+            if (Date.now() - ts > DPWH_CACHE_TTL) return null;
+            return segs; // [{ name, coords }]
+        } catch(e) { return null; }
+    }
+
+    function _dpwhSaveToCache(segs) {
+        try {
+            localStorage.setItem(DPWH_CACHE_KEY, JSON.stringify({ ts: Date.now(), segs }));
+        } catch(e) {}
+    }
+
+    function _dpwhDrawSegments(segs) {
+        segs.forEach(s => {
+            _dpwhRoadSegments.push({ name: s.name, coords: s.coords });
+            _drawRoadWay(s.coords);
+        });
+    }
+
+    async function _dpwhFetchOverpass() {
+        const query = _buildOverpassQuery();
+        const res = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent(query)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const segs = [], drawn = new Set();
+        (data.elements || []).forEach(way => {
+            if (!way.geometry || !way.tags?.name || drawn.has(way.id)) return;
+            drawn.add(way.id);
+            const raw = way.geometry.map(n => [n.lat, n.lon]);
+            if (raw.length < 2) return;
+            _clipToQCBoundary(raw).forEach(chunk => {
+                segs.push({ name: way.tags.name, coords: chunk });
+            });
+        });
+        return segs;
+    }
+
     async function loadNonLguOverlays() {
         if (!map) return;
         nonLguRoadLayer = L.layerGroup().addTo(map);
 
-        try {
-            const query = _buildOverpassQuery();
-            const res = await fetch('https://overpass-api.de/api/interpreter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query)
-            });
-            if (!res.ok) throw new Error('Overpass HTTP ' + res.status);
-            const data = await res.json();
-
+        // ── 1. Try cache — instant, pixel-perfect from previous fetch ────────
+        const cached = _dpwhLoadFromCache();
+        if (cached && cached.length > 0) {
             _dpwhRoadSegments = [];
-            const drawn = new Set();
-
-            (data.elements || []).forEach(way => {
-                if (!way.geometry || !way.tags || !way.tags.name) return;
-                const name = way.tags.name;
-                const rawCoords = way.geometry.map(n => [n.lat, n.lon]);
-                if (rawCoords.length < 2) return;
-                if (!drawn.has(way.id)) {
-                    drawn.add(way.id);
-                    _processAndDrawRoad(name, rawCoords);
-                }
-            });
-
+            _dpwhDrawSegments(cached);
             _dpwhLoaded = true;
 
-            if (_dpwhRoadSegments.length === 0) {
-                console.warn('[DPWH] Overpass returned no ways — falling back to static data.');
-                _loadStaticFallback();
-            }
+            // Silently refresh cache in background (no visual disruption)
+            setTimeout(async () => {
+                try {
+                    const fresh = await _dpwhFetchOverpass();
+                    if (fresh.length > 0) {
+                        _dpwhSaveToCache(fresh);
+                        // Swap visuals only if meaningfully different
+                        if (Math.abs(fresh.length - cached.length) > 2) {
+                            nonLguRoadLayer.clearLayers();
+                            _dpwhRoadSegments = [];
+                            _dpwhDrawSegments(fresh);
+                        }
+                    }
+                } catch(e) { /* keep cached */ }
+            }, 8000);
+            return;
+        }
 
-        } catch (err) {
-            console.warn('[DPWH] Overpass fetch failed, using static fallback:', err);
-            _loadStaticFallback();
+        // ── 2. No cache — show static immediately so roads are visible ───────
+        _loadStaticFallback(); // draws instantly, _dpwhLoaded = true set inside
+
+        // ── 3. Fetch accurate OSM data in background, swap when ready ────────
+        try {
+            const live = await _dpwhFetchOverpass();
+            if (live.length > 0) {
+                nonLguRoadLayer.clearLayers();
+                _dpwhRoadSegments = [];
+                _dpwhDrawSegments(live);
+                _dpwhSaveToCache(live);
+            }
+        } catch(err) {
+            console.warn('[DPWH] Overpass failed, keeping static data:', err);
         }
     }
 
@@ -3214,11 +3276,9 @@ out geom;`;
         if (result.isNonLgu) {
             if (!_nonLguActive) {
                 _nonLguActive = true;
-                showJsNotification(
-                    'warning',
-                    '⚠️ Not under LGU jurisdiction. ' +
-                    result.roadName +
-                    ' is maintained by DPWH. Please select a nearby local road or report directly to DPWH.'
+                // AFTER
+                showJsNotification('warning',
+                    getTranslation('alert_nonlgu_zone').replace('{road}', result.roadName)
                 );
             }
         } else {
@@ -3262,7 +3322,10 @@ out geom;`;
         var locationInput = document.getElementById('locationInput'); if (locationInput) locationInput.value = '';
         var manualInput = document.getElementById('manualAddressInput'); if (manualInput) manualInput.value = '';
         var barangaySelect = document.getElementById('barangaySelect'); if (barangaySelect) barangaySelect.value = '';
+        // Preserve DPWH road cache across form submissions
+        const _dpwhCacheBackup = localStorage.getItem('cimms_dpwh_v3');
         localStorage.clear();
+        if (_dpwhCacheBackup) localStorage.setItem('cimms_dpwh_v3', _dpwhCacheBackup);
         var coordLat = document.getElementById('coord_lat'), coordLng = document.getElementById('coord_lng');
         if (coordLat) coordLat.value = ''; if (coordLng) coordLng.value = '';
     });
@@ -3282,7 +3345,9 @@ out geom;`;
             expanded = !expanded;
             mapDiv.classList.toggle('map-tall', expanded);
             expandBtn.innerHTML = expanded ? ICON_COLLAPSE : ICON_EXPAND;
-            expandBtn.title     = expanded ? 'Collapse map' : 'Expand map';
+            expandBtn.title = expanded
+            ? getTranslation('map_collapse_title')
+            : getTranslation('map_expand_title');
             setTimeout(() => { if (map) map.invalidateSize({ animate: true }); }, 360);
         });
         const origClose = window.closeMapModal;
