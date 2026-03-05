@@ -757,17 +757,17 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 
 .evidence-thumb:hover {
-    transform: scale(1.18) translateY(-5px) !important;
-    box-shadow: 0 12px 30px rgba(55, 98, 200, 0.5),
-                0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(1.07) translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(55, 98, 200, 0.3),
+                0 2px 6px rgba(0, 0, 0, 0.15) !important;
     outline: 2px solid #3762c8 !important;
-    outline-offset: 3px;
-    filter: brightness(1.1) saturate(1.2);
+    outline-offset: 2px;
+    filter: brightness(1.05) saturate(1.1);
     z-index: 10;
 }
 
 .evidence-thumb:active {
-    transform: scale(1.03) translateY(-1px) !important;x
+    transform: scale(1.02) translateY(0px) !important;
     box-shadow: 0 5px 14px rgba(55, 98, 200, 0.3) !important;
     filter: brightness(0.97);
     transition-duration: 0.1s !important;

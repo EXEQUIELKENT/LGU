@@ -107,7 +107,7 @@ function priorityBadge(?string $lvl): string {
     $styles = ['High' => 'background:#fde8e8;color:#9b1c1c;', 'Medium' => 'background:#fef3c7;color:#92400e;', 'Low' => 'background:#d1fae5;color:#065f46;'];
     $lvl   = $lvl ?? 'Low';
     $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
-    return "<span style=\"{$style}padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;\">{$lvl}</span>";
+    return "<span style=\"{$style}padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;display:inline-block;\">{$lvl}</span>";
 }
 
 $rows = [];
@@ -171,13 +171,14 @@ if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $row
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
     background: var(--bg-secondary); overflow: hidden;
 }
-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
 thead { background: #ff9800; }
 thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
+thead th:last-child { text-align: center; }
+tbody tr td:last-child { text-align: center; }
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; }
-td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-td.wrap { white-space: normal; word-break: break-word; }
+td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); word-break: break-word; }
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(255,152,0,.03); }
 tbody tr:hover { background: rgba(255,152,0,.09); }
@@ -526,12 +527,6 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
     <!-- Desktop Table -->
     <div class="table-wrapper">
         <table id="reportsTable">
-            <colgroup>
-                <col style="width:8%"><col style="width:11%"><col style="width:10%">
-                <col style="width:13%"><col style="width:12%"><col style="width:10%">
-                <col style="width:9%"><col style="width:9%"><col style="width:7%">
-                <col style="width:8%"><col style="width:8%">
-            </colgroup>
             <thead>
                 <tr>
                     <th>Rep #</th><th>Infrastructure</th><th>Location</th>
@@ -554,7 +549,7 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
                     <td>#REP-<?= $row['rep_id'] ?></td>
                     <td><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
                     <td><?= htmlspecialchars($row['location'] ?? '—') ?></td>
-                    <td class="wrap" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
+                    <td title="..."> <?= htmlspecialchars($notes) ?></td>
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                         <?php if ($hasEngineer): ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
