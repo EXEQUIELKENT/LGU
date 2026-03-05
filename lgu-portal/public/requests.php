@@ -275,7 +275,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 }
 .table-card table { color: var(--text-primary); }
 .table-card th    { color: #fff; }
-.table-card td    { color: var(--text-primary); }
+.table-card td    { color: var(--text-primax`ry); }
 
 .req-title-row {
     display: flex; align-items: center;
@@ -669,6 +669,114 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     color: #ffffff;
 }
 
+/* ── Mobile Card Clipping Fix ── */
+@media (max-width: 768px) {
+
+    /* Ensure main content never overflows viewport */
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        padding-top: 80px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Card full width, no overflow */
+    .card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 16px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border-radius: 14px !important;
+    }
+
+    /* Request item cards */
+    .request-card,
+    .request-item,
+    [class*="request"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    /* Search bar row — prevent overflow */
+    .mobile-controls,
+    .search-row,
+    [class*="search"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Prevent any child from pushing width */
+    * {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Body and html hard clamp */
+    body, html {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+}
+
+/* ── Status Badge Width Fix ── */
+@media (max-width: 768px) {
+    .status {
+        display: inline-block !important;
+        width: auto !important;
+        max-width: fit-content !important;
+        align-self: flex-start !important;
+    }
+}
+
+/* ── Evidence Thumbnail Hover Animations (Table View) ── */
+.evidence-thumb-wrapper {
+    overflow: visible !important;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.evidence-thumb {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.25s ease,
+                outline 0.25s ease,
+                filter 0.25s ease !important;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+.evidence-thumb:hover {
+    transform: scale(1.18) translateY(-5px) !important;
+    box-shadow: 0 12px 30px rgba(55, 98, 200, 0.5),
+                0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    outline: 2px solid #3762c8 !important;
+    outline-offset: 3px;
+    filter: brightness(1.1) saturate(1.2);
+    z-index: 10;
+}
+
+.evidence-thumb:active {
+    transform: scale(1.03) translateY(-1px) !important;x
+    box-shadow: 0 5px 14px rgba(55, 98, 200, 0.3) !important;
+    filter: brightness(0.97);
+    transition-duration: 0.1s !important;
+}
+
+/* Prevent clipping from parent table cell */
+tbody td {
+    overflow: visible !important;
+}
 /* ═══════════════════════════════════════════════════════
    MEDIUM SCREEN FIXES
 ═══════════════════════════════════════════════════════ */
