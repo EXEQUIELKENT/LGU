@@ -738,6 +738,26 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         overflow-x: hidden !important;
         max-width: 100vw !important;
     }
+
+    /* ── Leaflet exemptions ──────────────────────────────────────────────
+       The * rule above applies max-width:100% and box-sizing:border-box to
+       every element.  Both break Leaflet on mobile:
+         • max-width:100% collapses tile <img> elements — Leaflet sets their
+           width/height inline as 256px; capping to 100% of a tiny parent
+           makes them invisible (zero-width tiles = blank map background).
+         • box-sizing:border-box corrupts Leaflet's internal div-size math
+           which assumes content-box for all its pane/layer containers.
+       Restore correct values for everything inside the map container. ── */
+    .leaflet-container,
+    .leaflet-container * {
+        max-width: none !important;
+        box-sizing: content-box !important;
+    }
+    /* The map div wrappers themselves still need border-box */
+    #gisMap,
+    #gisModalMap {
+        box-sizing: border-box !important;
+    }
 }
 
 /* ── Status Badge Width Fix ── */

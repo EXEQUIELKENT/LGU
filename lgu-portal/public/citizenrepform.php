@@ -2304,8 +2304,36 @@ input[type="file"] {
         if (addressCache && addressCache.size > 50) addressCache.clear();
 
         setTimeout(() => {
-            if (!map) { initializeMap(); }
-            else { map.invalidateSize(); if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; } updateLocationLabelsVisibility(); syncMapLayerToggleButton(); }
+            if (!map) {
+                // First open — initialise map, then once the container has its
+                // correct pixel dimensions, load the road overlay.
+                initializeMap();
+                // A second short tick lets Leaflet finish its own setup before
+                // invalidateSize + road drawing.
+                setTimeout(() => {
+                    map.invalidateSize(false);
+                    loadNonLguOverlays();
+                }, 60);
+            } else {
+                // Re-open — fix any size drift, then redraw roads so polyline
+                // coordinates are projected against the now-correct dimensions.
+                map.invalidateSize(false);
+                if (nonLguRoadLayer) {
+                    nonLguRoadLayer.clearLayers();
+                    _dpwhRoadSegments = [];
+                    const cached = _dpwhLoadFromCache();
+                    if (cached && cached.length > 0) {
+                        _dpwhDrawSegments(cached);
+                    } else {
+                        // No cache yet — run the full loader (static fallback
+                        // draws instantly; live fetch swaps in when ready).
+                        loadNonLguOverlays();
+                    }
+                }
+                if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+                updateLocationLabelsVisibility();
+                syncMapLayerToggleButton();
+            }
         }, 200);
     }
     if (labelToggleBtn) {
@@ -2410,8 +2438,9 @@ input[type="file"] {
         });
         addLocationLabels(); updateLocationLabelsVisibility(); updateLabelToggleButton();
         syncMapLayerToggleButton();
-        // async — fetches live road geometry from Overpass API (pixel-perfect alignment)
-        loadNonLguOverlays();
+        // NOTE: loadNonLguOverlays() is NOT called here.
+        // It is called by openMapModal() AFTER map.invalidateSize() so that
+        // road polylines are projected against the correct container dimensions.
     }
 
     // ── Location Update Handler ──────────────────────────────────────────
@@ -2464,6 +2493,18 @@ input[type="file"] {
         if (b) currentBoundaryLayer = L.circle([b.lat, b.lng], { radius: 800, color: '#2b6cb0', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 2, dashArray: '5, 5' }).addTo(map);
     }
 
+    // ── Save Location button state ───────────────────────────────────────
+    // Disabled while address is being fetched so the user cannot save an
+    // incomplete "Fetching address…" placeholder as their location.
+    function setSaveLocationBtnState(disabled) {
+        const btn = document.querySelector('#mapModal .btn-save');
+        if (!btn) return;
+        btn.disabled        = disabled;
+        btn.style.opacity   = disabled ? '0.55' : '';
+        btn.style.cursor    = disabled ? 'not-allowed' : '';
+        btn.title           = disabled ? 'Please wait — fetching address…' : '';
+    }
+
     // ── Address Fetching ─────────────────────────────────────────────────
     let fetchAddressTimeout = null, lastFetchTime = 0, abortController = null;
     const FETCH_DELAY = 300;
@@ -2480,6 +2521,7 @@ input[type="file"] {
     function performAddressFetch(latlng, barangayName, cacheKey) {
         manualAddressInput.classList.add('loading');
         manualAddressInput.value = getTranslation('map_fetching_address');
+        setSaveLocationBtnState(true);   // ← disable while fetching
         abortController = new AbortController();
         const signal = abortController.signal;
         Promise.all([fetchNominatimAddress(latlng, signal), fetchNearbyLandmarks(latlng.lat, latlng.lng, 150).catch(() => [])])
@@ -2488,15 +2530,17 @@ input[type="file"] {
                 if (!nominatimData) { fullAddress = buildFallbackAddress(barangayName, landmarks); }
                 else {
                     const addressParts = processAddressDataEnhanced(nominatimData, barangayName);
-                    if (!addressParts) return;
+                    if (!addressParts) { setSaveLocationBtnState(false); return; }
                     fullAddress = formatAddressEnhanced(addressParts, barangayName, landmarks);
                 }
                 manualAddressInput.value = fullAddress; manualAddressInput.classList.remove('loading'); addressCache.set(cacheKey, fullAddress);
+                setSaveLocationBtnState(false);  // ← re-enable once address is ready
             })
             .catch((error) => {
                 if (error.name === 'AbortError') return;
                 const fb = `${barangayName}, Quezon City`;
                 manualAddressInput.value = fb; manualAddressInput.classList.remove('loading'); addressCache.set(cacheKey, fb);
+                setSaveLocationBtnState(false);  // ← re-enable on error too
             });
     }
     async function fetchNominatimAddress(latlng, signal) {
