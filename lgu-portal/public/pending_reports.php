@@ -228,6 +228,112 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
+
+/* ── Logout Confirmation Modal ── */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#logoutAlertBackdrop.active { display: flex; }
+#logoutAlertModal {
+    background: var(--card-bg, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px;
+    width: 320px;
+    max-width: 92vw;
+    animation: logoutModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes logoutModalPop {
+    from { transform: translateY(24px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+#logoutAlertModal .lo-icon-wrap {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(239,68,68,.22);
+    flex-shrink: 0;
+}
+#logoutAlertModal .lo-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary, #1a1a2e) !important;
+    margin-bottom: 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+#logoutAlertModal .lo-desc {
+    font-size: .92rem !important;
+    color: var(--text-secondary, #64748b) !important;
+    margin-bottom: 24px !important;
+    line-height: 1.55 !important;
+}
+#logoutAlertModal .lo-btns {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+#logoutAlertModal .lo-btn {
+    flex: 1 !important;
+    padding: 11px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all .18s ease !important;
+    font-family: inherit !important;
+    line-height: 1 !important;
+}
+#logoutAlertModal .lo-cancel {
+    background: var(--bg-secondary, #f1f5f9) !important;
+    color: var(--text-primary, #374151) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+}
+#logoutAlertModal .lo-cancel:hover { background: var(--border-color, #e2e8f0) !important; }
+#logoutAlertModal .lo-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239,68,68,.35) !important;
+}
+#logoutAlertModal .lo-confirm:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(239,68,68,.45) !important;
+}
+[data-theme="dark"] #logoutAlertModal {
+    background: rgba(24,24,30,.98) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-icon-wrap {
+    background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)) !important;
+    border-color: rgba(239,68,68,.32) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-title { color: #e2e8f0 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-desc  { color: #94a3b8 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-cancel {
+    background: rgba(255,255,255,.07) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -335,12 +441,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
-        <div class="icon-wrap"><span class="icon">&#9888;</span></div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="lo-title">Log out of your account?</div>
+        <div class="lo-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="lo-btns">
+            <button class="lo-btn lo-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="lo-btn lo-confirm" id="logoutConfirmBtn">Log out</button>
         </div>
     </div>
 </div>

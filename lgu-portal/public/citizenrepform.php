@@ -710,39 +710,75 @@ input[type="file"] {
 
 #submitAlertBackdrop {
     position: fixed; z-index: 5000; inset: 0;
-    background: rgba(37, 59, 115, 0.20);
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: none; align-items: center; justify-content: center;
-    transition: background 0.18s;
 }
 #submitAlertBackdrop.active { display: flex; }
 #submitAlertModal {
-    background: var(--modal-bg);
-    border-radius: 18px;
-    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
-    padding: 36px 28px 22px 28px;
-    width: 340px; max-width: 95vw;
-    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
-    position: relative; display: flex; flex-direction: column; align-items: center;
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    padding: 32px 26px 22px;
+    width: 320px; max-width: 92vw;
+    animation: submitModalPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
 }
-@keyframes fadeIn {
-    from { transform: translateY(34px) scale(.95); opacity: .24; }
-    to   { transform: translateY(0) scale(1); opacity: 1; }
+@keyframes submitModalPop {
+    from { transform: translateY(24px) scale(0.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+[data-theme="dark"] #submitAlertModal {
+    background: rgba(24, 24, 30, 0.98);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 #submitAlertModal .icon-wrap {
-    display: flex; justify-content: center; align-items: center;
-    width: 62px; height: 62px; background: #fdeeed;
-    border-radius: 50%; margin: 0 auto 13px auto;
-    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(79, 201, 122, 0.12), rgba(79, 201, 122, 0.08));
+    border-radius: 50%; margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    border: 1px solid rgba(79, 201, 122, 0.2);
 }
-#submitAlertModal .icon { color: #4fc97a; font-size: 2.1rem; line-height: 1; right: 147px; top: 67px; }
-#submitAlertModal .alert-title { font-size: 1.09rem; letter-spacing: 0.04em; font-weight: bold; color: var(--text-primary); text-align: center; margin-bottom: 8px; margin-top: 6px; }
-#submitAlertModal .alert-desc  { color: var(--text-secondary); font-size: 0.99rem; text-align: center; margin-bottom: 19px; }
-#submitAlertModal .alert-btns  { display: flex; gap: 15px; justify-content: center; }
-#submitAlertModal .alert-btn   { min-width: 95px; padding: 8px 0; border-radius: 7px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background .18s, color .18s; outline: none; }
-#submitAlertModal .alert-btn.cancel { background: #e9eeff; color: #3650c7; border-color: #c7d1f3; }
-#submitAlertModal .alert-btn.cancel:hover { background: #e9eeff; color: #3650c7; }
-#submitAlertModal .alert-btn.logout { background: #4fc97a; color: #fff; border: none; cursor: pointer; }
-#submitAlertModal .alert-btn.logout:hover { background: #3bb46a; }
+[data-theme="dark"] #submitAlertModal .icon-wrap {
+    background: linear-gradient(135deg, rgba(79, 201, 122, 0.18), rgba(79, 201, 122, 0.10));
+}
+#submitAlertModal .icon { font-size: 26px; line-height: 1; }
+#submitAlertModal .alert-title {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    margin-bottom: 8px;
+}
+[data-theme="dark"] #submitAlertModal .alert-title { color: #e2e8f0; }
+#submitAlertModal .alert-desc {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.92rem; margin-bottom: 22px; line-height: 1.5;
+}
+[data-theme="dark"] #submitAlertModal .alert-desc { color: #94a3b8; }
+#submitAlertModal .alert-btns { display: flex; gap: 10px; width: 100%; }
+#submitAlertModal .alert-btn {
+    flex: 1; padding: 10px 0; border-radius: 10px; border: none;
+    font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.18s ease;
+}
+#submitAlertModal .alert-btn.cancel {
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-primary, #374151);
+    border: 1px solid var(--border-color, #e2e8f0);
+}
+#submitAlertModal .alert-btn.cancel:hover { background: var(--border-color, #e2e8f0); }
+[data-theme="dark"] #submitAlertModal .alert-btn.cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0; border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] #submitAlertModal .alert-btn.cancel:hover { background: rgba(255, 255, 255, 0.11); }
+#submitAlertModal .alert-btn.logout {
+    background: linear-gradient(135deg, #4fc97a, #34a058);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(79, 201, 122, 0.3);
+}
+#submitAlertModal .alert-btn.logout:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 201, 122, 0.4); }
 
 #mapModalBackdrop {
     position: fixed; inset: 0;
@@ -1357,6 +1393,7 @@ input[type="file"] {
                 alert_dpwh_cannot_save: '⚠️ Cannot save this location. This road is maintained by DPWH, not the LGU. Please select a nearby local road instead.',
                 alert_dpwh_cannot_save_named: '⚠️ Cannot save this location. {road} is maintained by DPWH. Please move your pin to a nearby local road.',
                 map_fetching_address: 'Fetching address...',
+                map_save_location_wait: 'Please wait — fetching address…',
                 map_barangay_placeholder: 'Select Barangay (Quezon City)',
                 map_expand_title: 'Expand map',
                 map_collapse_title: 'Collapse map',
@@ -1375,6 +1412,7 @@ input[type="file"] {
                 alert_dpwh_cannot_save: '⚠️ Hindi ma-save ang lokasyong ito. Ang kalsadang ito ay pinananatili ng DPWH, hindi ng LGU. Mangyaring pumili ng malapit na lokal na kalsada.',
                 alert_dpwh_cannot_save_named: '⚠️ Hindi ma-save ang lokasyong ito. Ang {road} ay pinananatili ng DPWH. Mangyaring ilipat ang iyong pin sa malapit na lokal na kalsada.',
                 map_fetching_address: 'Kinukuha ang address...',
+                map_save_location_wait: 'Mangyaring maghintay — kinukuha ang address…',
                 map_barangay_placeholder: 'Pumili ng Barangay (Lungsod Quezon)',
                 map_expand_title: 'Palawakin ang mapa',
                 map_collapse_title: 'Bawasan ang mapa',
@@ -2502,7 +2540,7 @@ input[type="file"] {
         btn.disabled        = disabled;
         btn.style.opacity   = disabled ? '0.55' : '';
         btn.style.cursor    = disabled ? 'not-allowed' : '';
-        btn.title           = disabled ? 'Please wait — fetching address…' : '';
+        btn.title           = disabled ? getTranslation('map_save_location_wait') : '';
     }
 
     // ── Address Fetching ─────────────────────────────────────────────────

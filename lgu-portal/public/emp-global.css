@@ -126,33 +126,6 @@ body::-webkit-scrollbar-thumb:hover,
         display: none !important;
     }
 }
-/* Logout Alert Modal */
-[data-theme="dark"] #logoutAlertModal {
-    background: var(--bg-secondary);
-}
-
-[data-theme="dark"] #logoutAlertModal .icon-wrap {
-    background: rgba(233, 68, 68, 0.15);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-title {
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-desc {
-    color: var(--text-secondary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel:hover {
-    background: rgba(55, 98, 200, 0.2);
-    color: #5f8cff;
-}
 /* =========================
    DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
 ========================= */
@@ -940,116 +913,6 @@ body::before {
     display: none;
 }
 
-#logoutAlertBackdrop {
-    position: fixed;
-    z-index: 5000;
-    inset: 0;
-    background: rgba(37, 59, 115, 0.20);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.18s;
-}
-
-#logoutAlertBackdrop.active {
-    display: flex;
-}
-
-#logoutAlertModal {
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
-    padding: 36px 28px 22px 28px;
-    width: 340px;
-    max-width: 95vw;
-    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-@keyframes fadeIn {
-    from{transform:translateY(34px) scale(.95); opacity:.24;}
-    to  {transform:translateY(0) scale(1); opacity:1;}
-}
-
-#logoutAlertModal .icon-wrap {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 62px;
-    height: 62px;
-    background: #fdeeed;
-    border-radius: 50%;
-    margin: 0 auto 13px auto;
-    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
-}
-
-#logoutAlertModal .icon-wrap .icon {
-    color: #e94444;
-    font-size: 2.1rem;
-    line-height: 1;
-}
-
-#logoutAlertModal .alert-title {
-    font-size: 1.09rem;
-    letter-spacing: 0.04em;
-    font-weight: bold;
-    color: #23285c;
-    text-align: center;
-    margin-bottom: 8px;
-    margin-top: 6px;
-}
-
-#logoutAlertModal .alert-desc {
-    color: #374565;
-    font-size: 0.99rem;
-    text-align: center;
-    margin-bottom: 19px;
-}
-
-#logoutAlertModal .alert-btns {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-}
-
-#logoutAlertModal .alert-btn {
-    min-width: 95px;
-    padding: 8px 0;
-    border-radius: 7px;
-    border: none;
-    font-weight: bold;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background .18s, color .18s;
-    outline: none;
-}
-
-#logoutAlertModal .alert-btn.cancel {
-    background: #f3f4fa;
-    color: #353d52;
-    border: 1px solid #e3e6f1;
-}
-
-#logoutAlertModal .alert-btn.cancel:hover {
-    background: #e9eeff;
-    color: #3650c7;
-    border-color: #c7d1f3;
-}
-
-#logoutAlertModal .alert-btn.logout {
-    color: #fff;
-    background: #e94444;
-    border: none;
-    box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
-}
-
-#logoutAlertModal .alert-btn.logout:hover {
-    background: #c82d2d;
-}
-
 .notif-popup {
     position: fixed;
     top: 30px;
@@ -1130,4 +993,3 @@ body::before {
         font-size: 13px;
     }
 }
-

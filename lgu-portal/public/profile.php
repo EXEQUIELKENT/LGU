@@ -791,92 +791,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     position: fixed;
     z-index: 5000;
     inset: 0;
-    background: rgba(37, 59, 115, 0.20);
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: none;
     align-items: center;
     justify-content: center;
-    transition: background 0.18s;
 }
 #saveAlertBackdrop.active {
     display: flex;
 }
 #saveAlertModal {
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
-    padding: 36px 28px 22px 28px;
-    width: 340px;
-    max-width: 95vw;
-    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
-    position: relative;
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    padding: 32px 26px 22px;
+    width: 320px;
+    max-width: 92vw;
+    animation: saveModalPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
+    text-align: center;
+}
+@keyframes saveModalPop {
+    from { transform: translateY(24px) scale(0.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+[data-theme="dark"] #saveAlertModal {
+    background: rgba(24, 24, 30, 0.98);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 #saveAlertModal .icon-wrap.save-icon-wrap {
-    background: #e8f5e9;
-    box-shadow: 0 2px 8px 0 rgba(76,175,80,0.11);   
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(55, 98, 200, 0.12), rgba(55, 98, 200, 0.08));
+    border: 1px solid rgba(55, 98, 200, 0.2);
     border-radius: 50%;
-    width: 56px;
-    height: 56px;
+    margin: 0 auto 14px;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 26px;
+}
+[data-theme="dark"] #saveAlertModal .icon-wrap.save-icon-wrap {
+    background: linear-gradient(135deg, rgba(55, 98, 200, 0.18), rgba(55, 98, 200, 0.10));
+    border-color: rgba(55, 98, 200, 0.3);
 }
 #saveAlertModal .icon-wrap.save-icon-wrap .icon.save-icon {
-    color: #4caf50;
-    font-size: 2.1rem;
+    color: #3762c8;
+    font-size: 26px;
     line-height: 1;
 }
+[data-theme="dark"] #saveAlertModal .icon-wrap.save-icon-wrap .icon.save-icon { color: #5f8cff; }
 #saveAlertModal .alert-title {
-    font-size: 1.09rem;
-    letter-spacing: 0.04em;
-    font-weight: bold;
-    color: #23285c;
-    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
     margin-bottom: 8px;
-    margin-top: 6px;
 }
+[data-theme="dark"] #saveAlertModal .alert-title { color: #e2e8f0; }
 #saveAlertModal .alert-desc {
-    color: #374565;
-    font-size: 0.99rem;
-    text-align: center;
-    margin-bottom: 19px;
+    color: var(--text-secondary, #64748b);
+    font-size: 0.92rem;
+    margin-bottom: 22px;
+    line-height: 1.5;
 }
+[data-theme="dark"] #saveAlertModal .alert-desc { color: #94a3b8; }
 #saveAlertModal .alert-btns {
     display: flex;
-    gap: 15px;
-    justify-content: center;
+    gap: 10px;
+    width: 100%;
 }
 #saveAlertModal .alert-btn {
-    min-width: 95px;
-    padding: 8px 0;
-    border-radius: 7px;
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 10px;
     border: none;
-    font-weight: bold;
-    font-size: 1rem;
+    font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
-    transition: background .18s, color .18s;
-    outline: none;
+    transition: all 0.18s ease;
 }
 #saveAlertModal .alert-btn.cancel {
-    background: #f3f4fa;
-    color: #353d52;
-    border: 1px solid #e3e6f1;
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-primary, #374151);
+    border: 1px solid var(--border-color, #e2e8f0);
 }
-#saveAlertModal .alert-btn.cancel:hover {
-    background: #e9eeff;
-    color: #3650c7;
-    border-color: #c7d1f3;
+#saveAlertModal .alert-btn.cancel:hover { background: var(--border-color, #e2e8f0); }
+[data-theme="dark"] #saveAlertModal .alert-btn.cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.1);
 }
+[data-theme="dark"] #saveAlertModal .alert-btn.cancel:hover { background: rgba(255, 255, 255, 0.11); }
 #saveAlertModal .alert-btn.save {
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
     color: #fff;
-    background: #4caf50;
-    border: none;
-    box-shadow: 0 3px 14px 0 rgba(76,175,80,0.08);
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
 }
 #saveAlertModal .alert-btn.save:hover {
-    background: #43a047;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(55, 98, 200, 0.4);
 }
 
 .profile-picture-preview {
@@ -1341,6 +1357,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         font-size: 16px;
     }
 }
+
+/* ── Logout Confirmation Modal ── */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#logoutAlertBackdrop.active { display: flex; }
+#logoutAlertModal {
+    background: var(--card-bg, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px;
+    width: 320px;
+    max-width: 92vw;
+    animation: logoutModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes logoutModalPop {
+    from { transform: translateY(24px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+#logoutAlertModal .lo-icon-wrap {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(239,68,68,.22);
+    flex-shrink: 0;
+}
+#logoutAlertModal .lo-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary, #1a1a2e) !important;
+    margin-bottom: 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+#logoutAlertModal .lo-desc {
+    font-size: .92rem !important;
+    color: var(--text-secondary, #64748b) !important;
+    margin-bottom: 24px !important;
+    line-height: 1.55 !important;
+}
+#logoutAlertModal .lo-btns {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+#logoutAlertModal .lo-btn {
+    flex: 1 !important;
+    padding: 11px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all .18s ease !important;
+    font-family: inherit !important;
+    line-height: 1 !important;
+}
+#logoutAlertModal .lo-cancel {
+    background: var(--bg-secondary, #f1f5f9) !important;
+    color: var(--text-primary, #374151) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+}
+#logoutAlertModal .lo-cancel:hover { background: var(--border-color, #e2e8f0) !important; }
+#logoutAlertModal .lo-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239,68,68,.35) !important;
+}
+#logoutAlertModal .lo-confirm:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(239,68,68,.45) !important;
+}
+[data-theme="dark"] #logoutAlertModal {
+    background: rgba(24,24,30,.98) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-icon-wrap {
+    background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)) !important;
+    border-color: rgba(239,68,68,.32) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-title { color: #e2e8f0 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-desc  { color: #94a3b8 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-cancel {
+    background: rgba(255,255,255,.07) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1487,17 +1609,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
-        <div class="icon-wrap">
-            <span class="icon">&#9888;</span>
-                </div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
-            </div>
+        <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="lo-title">Log out of your account?</div>
+        <div class="lo-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="lo-btns">
+            <button class="lo-btn lo-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="lo-btn lo-confirm" id="logoutConfirmBtn">Log out</button>
         </div>
-        </div>
+    </div>
+</div>
 
 <!-- Save Changes Confirmation Alert Modal -->
 <div id="saveAlertBackdrop">

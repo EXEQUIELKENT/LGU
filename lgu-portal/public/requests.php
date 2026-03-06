@@ -527,7 +527,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 /* ═══════════════════════════════════════════════════════
    REQUEST DETAIL MODAL (Requests view)
 ═══════════════════════════════════════════════════════ */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.52); display: none; align-items: center; justify-content: center; z-index: 8000; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; z-index: 8000; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .modal-backdrop.active { display: flex; }
 .detail-modal { background: var(--bg-primary); border-radius: 20px; box-shadow: 0 12px 50px var(--shadow-color); width: 92%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; animation: gisDetailIn .3s cubic-bezier(.34,1.56,.64,1); border: 1px solid var(--border-color); overflow: hidden; }
 @keyframes gisDetailIn { from { opacity:0; transform: scale(.9) translateY(-20px); } to { opacity:1; transform: scale(1) translateY(0); } }
@@ -620,24 +620,84 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 /* ═══════════════════════════════════════════════════════
    CONFIRM ALERT MODALS (validate / reject)
 ═══════════════════════════════════════════════════════ */
-.alert-modal { background: var(--bg-primary); border-radius: 18px; box-shadow: 0 8px 42px var(--shadow-color); padding: 36px 28px 22px; width: 340px; max-width: 95vw; animation: fadeIn .22s cubic-bezier(.6,-0.01,.52,1.23) 1; position: relative; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color); }
-.alert-modal .icon-wrap { display: flex; justify-content: center; align-items: center; width: 62px; height: 62px; background: #e8f5e9; border-radius: 50%; margin: 0 auto 13px; box-shadow: 0 2px 8px 0 rgba(71,176,102,.11); }
-[data-theme="dark"] .alert-modal .icon-wrap { background: rgba(71,176,102,.15); }
-.alert-modal .icon-wrap.success-icon .icon { color: #47b066; font-size: 2.1rem; line-height: 1; }
-.alert-modal .icon-wrap.reject-icon  { background: #fce8e8; box-shadow: 0 2px 8px 0 rgba(229,57,53,.11); }
-[data-theme="dark"] .alert-modal .icon-wrap.reject-icon { background: rgba(229,57,53,.15); }
-.alert-modal .icon-wrap.reject-icon .icon { color: #e53935; font-size: 2.1rem; line-height: 1; }
-.alert-modal .alert-title { font-size: 1.09rem; letter-spacing: .04em; font-weight: bold; color: var(--text-primary); text-align: center; margin-bottom: 8px; margin-top: 6px; }
-.alert-modal .alert-desc { color: var(--text-secondary); font-size: .99rem; text-align: center; margin-bottom: 19px; line-height: 1.5; }
-.alert-modal .alert-btns { display: flex; gap: 15px; justify-content: center; width: 100%; }
-.alert-modal .alert-btn { min-width: 95px; padding: 8px 0; border-radius: 7px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background .18s, color .18s; outline: none; flex: 1; }
-.alert-modal .alert-btn.cancel { background: #f3f4fa; color: #353d52; border: 1px solid #e3e6f1; }
-[data-theme="dark"] .alert-modal .alert-btn.cancel { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color); }
-.alert-modal .alert-btn.cancel:hover { background: #e9eeff; color: #3650c7; border-color: #c7d1f3; }
-.alert-modal .alert-btn.confirm { color: #fff; background: #47b066; border: none; box-shadow: 0 3px 14px 0 rgba(71,176,102,.08); }
-.alert-modal .alert-btn.confirm:hover { background: #3a9654; }
-.alert-modal .alert-btn.confirm-reject { color: #fff; background: #e53935; border: none; box-shadow: 0 3px 14px 0 rgba(229,57,53,.12); }
-.alert-modal .alert-btn.confirm-reject:hover { background: #c62828; }
+.alert-modal {
+    background: var(--card-bg, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    padding: 32px 26px 22px;
+    width: 320px;
+    max-width: 92vw;
+    animation: alertModalPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes alertModalPop {
+    from { transform: translateY(24px) scale(0.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+[data-theme="dark"] .alert-modal {
+    background: rgba(24, 24, 30, 0.98);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.alert-modal .icon-wrap {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(71,176,102,.12), rgba(71,176,102,.08));
+    border-radius: 50%; margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    border: 1px solid rgba(71, 176, 102, 0.2);
+}
+[data-theme="dark"] .alert-modal .icon-wrap { background: linear-gradient(135deg, rgba(71,176,102,.18), rgba(71,176,102,.10)); }
+.alert-modal .icon-wrap.success-icon .icon { color: #47b066; font-size: 26px; line-height: 1; }
+.alert-modal .icon-wrap.reject-icon {
+    background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(239,68,68,.08));
+    border-color: rgba(239, 68, 68, 0.2);
+}
+[data-theme="dark"] .alert-modal .icon-wrap.reject-icon { background: linear-gradient(135deg, rgba(239,68,68,.18), rgba(239,68,68,.10)); }
+.alert-modal .icon-wrap.reject-icon .icon { color: #ef4444; font-size: 26px; line-height: 1; }
+.alert-modal .alert-title {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    margin-bottom: 8px;
+}
+[data-theme="dark"] .alert-modal .alert-title { color: #e2e8f0; }
+.alert-modal .alert-desc {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.92rem; margin-bottom: 22px; line-height: 1.5;
+}
+[data-theme="dark"] .alert-modal .alert-desc { color: #94a3b8; }
+.alert-modal .alert-btns { display: flex; gap: 10px; width: 100%; }
+.alert-modal .alert-btn {
+    flex: 1; padding: 10px 0; border-radius: 10px; border: none;
+    font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.18s ease;
+}
+.alert-modal .alert-btn.cancel {
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-primary, #374151);
+    border: 1px solid var(--border-color, #e2e8f0);
+}
+[data-theme="dark"] .alert-modal .alert-btn.cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+.alert-modal .alert-btn.cancel:hover { background: var(--border-color, #e2e8f0); }
+[data-theme="dark"] .alert-modal .alert-btn.cancel:hover { background: rgba(255, 255, 255, 0.11); }
+.alert-modal .alert-btn.confirm {
+    background: linear-gradient(135deg, #47b066, #34a058);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(71, 176, 102, 0.3);
+}
+.alert-modal .alert-btn.confirm:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(71, 176, 102, 0.4); }
+.alert-modal .alert-btn.confirm-reject {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+.alert-modal .alert-btn.confirm-reject:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4); }
 
 /* ═══════════════════════════════════════════════════════
    FULLSCREEN MAP MODAL
@@ -895,7 +955,38 @@ tbody td {
     .nav-list { padding: 0 20px; }
     .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .user-info { padding-bottom: 20px; }
-    .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; min-width: 0; padding: 14px 12px; font-size: 16px; }
+    .notif-popup {
+        top: 76px !important;
+        z-index: 5050 !important;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: unset;
+        max-width: unset;
+        width: calc(100vw - 24px);
+        padding: 13px 14px;
+        font-size: 14px;
+        gap: 10px;
+        align-items: flex-start;
+        border-radius: 11px;
+        flex-wrap: nowrap;
+        box-sizing: border-box;
+    }
+    .notif-popup .notif-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .notif-popup .notif-message {
+        flex: 1;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+    .notif-popup .notif-close {
+        font-size: 18px;
+        margin-left: 6px;
+        margin-top: 1px;
+    }
 
     /* Requests mobile cards */
     table { display: none !important; }
@@ -985,6 +1076,112 @@ tbody td {
     margin-top: 20px; color: #fff; font-size: 16px; font-weight: 500;
     letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
 }
+
+/* ── Logout Confirmation Modal ── */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#logoutAlertBackdrop.active { display: flex; }
+#logoutAlertModal {
+    background: var(--card-bg, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px;
+    width: 320px;
+    max-width: 92vw;
+    animation: logoutModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes logoutModalPop {
+    from { transform: translateY(24px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+#logoutAlertModal .lo-icon-wrap {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(239,68,68,.22);
+    flex-shrink: 0;
+}
+#logoutAlertModal .lo-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary, #1a1a2e) !important;
+    margin-bottom: 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+#logoutAlertModal .lo-desc {
+    font-size: .92rem !important;
+    color: var(--text-secondary, #64748b) !important;
+    margin-bottom: 24px !important;
+    line-height: 1.55 !important;
+}
+#logoutAlertModal .lo-btns {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+#logoutAlertModal .lo-btn {
+    flex: 1 !important;
+    padding: 11px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all .18s ease !important;
+    font-family: inherit !important;
+    line-height: 1 !important;
+}
+#logoutAlertModal .lo-cancel {
+    background: var(--bg-secondary, #f1f5f9) !important;
+    color: var(--text-primary, #374151) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+}
+#logoutAlertModal .lo-cancel:hover { background: var(--border-color, #e2e8f0) !important; }
+#logoutAlertModal .lo-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239,68,68,.35) !important;
+}
+#logoutAlertModal .lo-confirm:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(239,68,68,.45) !important;
+}
+[data-theme="dark"] #logoutAlertModal {
+    background: rgba(24,24,30,.98) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-icon-wrap {
+    background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)) !important;
+    border-color: rgba(239,68,68,.32) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-title { color: #e2e8f0 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-desc  { color: #94a3b8 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-cancel {
+    background: rgba(255,255,255,.07) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 </style>
 <div id="loadingOverlay">
     <div class="loading-content">
@@ -1358,12 +1555,12 @@ tbody td {
 <!-- LOGOUT MODAL -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
-        <div class="icon-wrap"><span class="icon">&#9888;</span></div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="lo-title">Log out of your account?</div>
+        <div class="lo-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="lo-btns">
+            <button class="lo-btn lo-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="lo-btn lo-confirm" id="logoutConfirmBtn">Log out</button>
         </div>
     </div>
 </div>
