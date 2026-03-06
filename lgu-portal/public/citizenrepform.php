@@ -1094,10 +1094,7 @@ input[type="file"] {
 }
 </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-    <script src="ai_tfjs_analysis.js"></script>
+
     <?php include 'citizen_rendering.php'; ?>
 </head>
 <body>
@@ -1615,14 +1612,6 @@ input[type="file"] {
         confirmBtn.onclick = async function () {
             backdrop.classList.remove('active');
             showOverlay('Submitting your request');
-            let aiResult = null;
-            if (typeof InfraAI !== 'undefined' && selectedFiles.length > 0) {
-                try {
-                    const declaredType = document.getElementById('infrastructureOther')?.value.trim() || document.getElementById('infrastructureSelect')?.value || 'Other';
-                    aiResult = await InfraAI.analyzeImages(selectedFiles, declaredType, () => {});
-                } catch (err) { console.warn('[InfraAI] Analysis failed (non-fatal):', err); }
-            }
-            if (aiResult) sessionStorage.setItem('pendingAiResult', JSON.stringify(aiResult));
             localStorage.clear();
             if (phoneInput) {
                 const v = phoneInput.value.replace(/\D/g, '');
@@ -3417,21 +3406,7 @@ out geom;`;
     })();
     </script>
 
-    <!-- AI result save -->
-    <script>
-    (function() {
-        const pending = sessionStorage.getItem('pendingAiResult');
-        if (!pending) return;
-        sessionStorage.removeItem('pendingAiResult');
-        let result; try { result = JSON.parse(pending); } catch(e) { return; }
-        const reqIdEl = document.getElementById('latestReqId');
-        if (!reqIdEl) return;
-        result.req_id = parseInt(reqIdEl.value, 10);
-        if (!result.req_id) return;
-        fetch('save_ai_analysis.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result) })
-            .then(r => r.json()).then(d => console.log('[InfraAI-TFJS] Saved:', d)).catch(e => console.warn('[InfraAI-TFJS] Save failed:', e));
-    })();
-    </script>
+
 
 <footer class="footer" style="margin-top:50px;">
     <div class="footer-content">

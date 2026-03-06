@@ -1,7 +1,23 @@
 /**
- * ai_tfjs_analysis.js — InfraGovServices v3.3
+ * ai_tfjs_analysis.js — InfraGovServices v3.4
  *
- * CHANGES over v3.2:
+ * FIXES in v3.4 (road-image misclassification):
+ *  ! BUG — CLASS_MAP: 'dam' had type:'Drainage'. MobileNet frequently hallucinates
+ *    road embankments / shoulders as "dam, dike, dyke". Changed dam/dike/dyke to
+ *    type:null so they contribute severity scoring but NEVER set the category.
+ *
+ *  ! BUG — TYPE_CONTEXT_GUARD was missing 'Drainage', 'Water Supply', and 'Other'
+ *    from the guard lists for all water-barrier terms. When a user submitted with no
+ *    declared type (→ 'Other'), the guard never fired and 'dam' hijacked detectedType.
+ *    Added ALL_INFRA_TYPES constant; all water-barrier terms now guarded universally.
+ *    Also added spillway, levee, weir, floodgate to the guard.
+ *
+ *  ! BUG — Pixel-based road override only fired when declaredType === 'Roads'.
+ *    Empty/unknown declared type (→ 'Other') was not covered. Fixed to also override
+ *    when declaredType is 'Other' and pixel evidence is road-like. Additionally,
+ *    high rds (>20) now always sets detectedType = 'Roads' regardless of model output.
+ *
+ * CHANGES over v3.3:
  *  + COST ESTIMATION — new estimateCost() function returns a realistic
  *    Philippine Peso repair cost range based on infrastructure type,
  *    damage severity (1–10), repair complexity, and legitimacy score.
@@ -44,7 +60,12 @@ const InfraAI = (() => {
         // Drainage
         'cistern':           { type: 'Drainage', sv: 4 },
         'culvert':           { type: 'Drainage', sv: 6 },
-        'dam':               { type: 'Drainage', sv: 7 },
+        // dam/dike/dyke: type set to null — MobileNet routinely hallucinates these
+        // for road embankments, shoulders, and retaining walls. They still contribute
+        // their sv to severity scoring but must NEVER set the infrastructure category.
+        'dam':               { type: null, sv: 7 },
+        'dike':              { type: null, sv: 5 },
+        'dyke':              { type: null, sv: 5 },
         'gutter':            { type: 'Drainage', sv: 5 },
         'sewer':             { type: 'Drainage', sv: 7 },
         'storm drain':       { type: 'Drainage', sv: 6 },
@@ -107,7 +128,55 @@ const InfraAI = (() => {
     ]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3. TYPE KEYWORDS
+    // 2b. TYPE CONTEXT GUARD
+    //
+    // MobileNet routinely misidentifies road features as non-road structures:
+    //   • Road embankments / shoulders → 'dam', 'dike', 'dyke'
+    //   • Paved surfaces near water   → 'breakwater', 'seawall', 'jetty', 'pier'
+    //   • Painted lane markings       → 'zebra crossing' → triggers wrong category
+    //
+    // Maps class names → the declared types for which that class must NOT
+    // change `detectedType`.  The class still contributes its sv boost for
+    // severity scoring — it just cannot hijack the infrastructure category.
+    //
+    // IMPORTANT: Water-barrier terms (dam, dike, breakwater, etc.) are guarded
+    // for ALL infrastructure types — including 'Other' and 'Drainage' — because
+    // MobileNet will misfire these regardless of what the user declared.
+    // ─────────────────────────────────────────────────────────────────────────
+    // All known infrastructure categories, including the empty/unknown fallback.
+    const ALL_INFRA_TYPES = [
+        'Roads', 'Drainage', 'Water Supply', 'Street Lights',
+        'Electrical', 'Public Facilities', 'Other',
+    ];
+
+    const TYPE_CONTEXT_GUARD = {
+        // ── Water-barrier / coastal terms ─────────────────────────────────────
+        // Guarded for EVERY category: a cracked road never becomes a dam report
+        // just because MobileNet confuses the grey embankment.
+        'dam':         ALL_INFRA_TYPES,
+        'dike':        ALL_INFRA_TYPES,
+        'dyke':        ALL_INFRA_TYPES,
+        'breakwater':  ALL_INFRA_TYPES,
+        'seawall':     ALL_INFRA_TYPES,
+        'jetty':       ALL_INFRA_TYPES,
+        'pier':        ALL_INFRA_TYPES,
+        'groin':       ALL_INFRA_TYPES,
+        'groyne':      ALL_INFRA_TYPES,
+        'mole':        ALL_INFRA_TYPES,
+        'bulwark':     ALL_INFRA_TYPES,
+        'spillway':    ALL_INFRA_TYPES,
+        'levee':       ALL_INFRA_TYPES,
+        'weir':        ALL_INFRA_TYPES,
+        'floodgate':   ALL_INFRA_TYPES,
+        // ── Other MobileNet misfires ──────────────────────────────────────────
+        'bobsled':     ['Roads', 'Drainage', 'Street Lights', 'Electrical', 'Water Supply', 'Other'],
+        'bobsleigh':   ['Roads', 'Drainage', 'Street Lights', 'Electrical', 'Water Supply', 'Other'],
+        'alligator':   ALL_INFRA_TYPES,
+        'beacon':      ['Roads', 'Drainage', 'Water Supply', 'Public Facilities', 'Other'],
+        'lighthouse':  ['Roads', 'Drainage', 'Water Supply', 'Public Facilities', 'Other'],
+        'syringe':     ALL_INFRA_TYPES,
+        'ant':         ALL_INFRA_TYPES,
+    };
     // ─────────────────────────────────────────────────────────────────────────
     const TYPE_KEYWORDS = {
         'Roads':             ['road','street','pavement','asphalt','pothole','curb',
@@ -323,12 +392,29 @@ const InfraAI = (() => {
         }
         const crackDensity = crackComponents / BOT_AREA;
 
+        // ── Dark void ratio ───────────────────────────────────────────────────
+        // Fraction of the bottom road area that is dark void (l<55, s<0.25).
+        // Key differentiator between damage levels:
+        //   Thin surface crack  : darkVoidRatio ≈ 0.01–0.03  (narrow gap only)
+        //   Edge cracking       : darkVoidRatio ≈ 0.04–0.10  (partial collapse)
+        //   Major void/collapse : darkVoidRatio ≈ 0.15–0.35  (full structural failure)
+        let _totalDarkVoid = 0;
+        for (let _di = 0; _di < darkInRoad.length; _di++) _totalDarkVoid += darkInRoad[_di];
+        const darkVoidRatio = _totalDarkVoid / BOT_AREA;
+
         const landscapePenalty = Math.min(1.0, globalColourVar / 35.0);
         let roadDamageScore = 0;
         if (greyCoverage > 0.10) {
-            roadDamageScore += vertDom * 2.5;
-            roadDamageScore += roadLvCv * 3.0;
-            roadDamageScore += crackDensity * 8000;
+            // Primary driver: dark void coverage.
+            // Thin crack   : darkVoidRatio≈0.02 → 1.2 pts
+            // Edge damage  : darkVoidRatio≈0.07 → 4.2 pts
+            // Major collapse: darkVoidRatio≈0.25 → 15 pts
+            roadDamageScore += darkVoidRatio * 60;
+            // Texture disruption only amplifies when void area is already meaningful,
+            // preventing a single thin crack from inflating the score via high local contrast.
+            roadDamageScore += roadLvCv * Math.sqrt(Math.max(darkVoidRatio - 0.03, 0)) * 10;
+            // Crack component density — very reduced weight vs old formula.
+            roadDamageScore += crackDensity * 1500;
         }
         roadDamageScore *= (1.0 - landscapePenalty * 0.7);
 
@@ -361,7 +447,7 @@ const InfraAI = (() => {
             brightness, globalColourVar, greyCoverage, darkRoadCoverage,
             vertDom, roadDamageScore, crackDensity, roadLvCv,
             rustRatio, waterRatio, burnRatio, concreteRatio,
-            landscapePenalty,
+            landscapePenalty, darkVoidRatio,
             isDark:   brightness < 40,
             isBright: brightness > 220,
         };
@@ -417,13 +503,20 @@ const InfraAI = (() => {
             }
             if (isNeg) continue;
 
+            // Check context guard: the class can still contribute to severity scoring
+            // but must NOT change detectedType when it is guarded for this declaredType.
+            const _isGuarded = (key) => {
+                const guarded = TYPE_CONTEXT_GUARD[key];
+                return guarded && guarded.includes(declaredType);
+            };
+
             if (CLASS_MAP[nl]) {
                 const m     = CLASS_MAP[nl];
                 const boost = computeBoost(nl, m, pred.probability, keywords, declaredType);
                 if (boost > 0.3) {
                     matched.push({ className: pred.className, probability: pred.probability,
                                    key: nl, boost: m.sv });
-                    if (m.type && boost > maxWeighted) { detectedType = m.type; maxWeighted = boost; }
+                    if (m.type && boost > maxWeighted && !_isGuarded(nl)) { detectedType = m.type; maxWeighted = boost; }
                     totalScore += boost; posHits++;
                 }
                 continue;
@@ -436,7 +529,7 @@ const InfraAI = (() => {
                     if (boost > 0.3) {
                         matched.push({ className: pred.className, probability: pred.probability,
                                        key, boost: mapping.sv });
-                        if (mapping.type && boost > maxWeighted) { detectedType = mapping.type; maxWeighted = boost; }
+                        if (mapping.type && boost > maxWeighted && !_isGuarded(key)) { detectedType = mapping.type; maxWeighted = boost; }
                         totalScore += boost; posHits++;
                     }
                     break;
@@ -468,21 +561,47 @@ const InfraAI = (() => {
 
         let pixelSeverityBonus = 0;
         if (pixelData) {
-            const rds = pixelData.roadDamageScore || 0;
-            if (greyCov > 0.10 && rds > 0) {
-                if      (rds > 20)  { pixelSeverityBonus += 6; if (!detectedType) detectedType = 'Roads'; }
-                else if (rds > 10)  { pixelSeverityBonus += 4; if (!detectedType) detectedType = 'Roads'; }
-                else if (rds > 4)   { pixelSeverityBonus += 2; if (!detectedType) detectedType = 'Roads'; }
-                else if (rds > 1.5) { pixelSeverityBonus += 1; if (!detectedType) detectedType = 'Roads'; }
+            const rds       = pixelData.roadDamageScore || 0;
+            const voidRatio = pixelData.darkVoidRatio   || 0;
+            // Only grant road-pixel bonus when rds is meaningful (thin cracks ≈ rds < 2 don't qualify)
+            if (greyCov > 0.10 && rds > 2) {
+                if      (rds > 20) {
+                    pixelSeverityBonus += 3;
+                    // Strong structural damage signal always overrides a model-assigned type —
+                    // pixel evidence is more reliable than MobileNet label hallucinations.
+                    detectedType = 'Roads';
+                }
+                else if (rds > 12) {
+                    pixelSeverityBonus += 2;
+                    // Significant damage: override only if model gave a water-structure label
+                    // or the declared type is unknown ('Other').
+                    if (!detectedType || declaredType === 'Roads' || declaredType === 'Other') {
+                        detectedType = 'Roads';
+                    }
+                }
+                else if (rds > 6)  { pixelSeverityBonus += 1; if (!detectedType) detectedType = 'Roads'; }
             }
             if (pixelData.concreteRatio > 0.30 && !detectedType) detectedType = 'Roads';
+            // If pixel evidence is strongly road-like (lots of grey surface) and the model
+            // produced a non-road type via an unguarded label, road pixels take back the
+            // detected type.  This now also fires when declaredType is 'Other' (no type
+            // declared), which was the gap that allowed 'dam' → 'Drainage' to slip through.
+            const NON_ROAD_TYPES = ['Drainage', 'Water Supply', 'Street Lights', 'Electrical', 'Public Facilities'];
+            if (greyCov > 0.20 && rds > 3 && detectedType && NON_ROAD_TYPES.includes(detectedType)) {
+                if (declaredType === 'Roads' || declaredType === 'Other' || !declaredType) {
+                    detectedType = 'Roads';
+                }
+            }
             if (posHits > 0) {
                 if      (pixelData.rustRatio  > 0.20) pixelSeverityBonus += 2;
                 else if (pixelData.rustRatio  > 0.10) pixelSeverityBonus += 1;
                 if      (pixelData.waterRatio > 0.28) pixelSeverityBonus += 2;
                 else if (pixelData.waterRatio > 0.18) pixelSeverityBonus += 1;
-                if      (pixelData.burnRatio  > 0.14) pixelSeverityBonus += 3;
-                else if (pixelData.burnRatio  > 0.09) pixelSeverityBonus += 1;
+                // Suppress burn bonus when large dark voids explain the darkness (collapse ≠ fire)
+                if ((pixelData.darkVoidRatio || 0) < 0.08) {
+                    if      (pixelData.burnRatio  > 0.14) pixelSeverityBonus += 3;
+                    else if (pixelData.burnRatio  > 0.09) pixelSeverityBonus += 1;
+                }
             }
         }
 
@@ -515,14 +634,26 @@ const InfraAI = (() => {
         for (const r of scoreResults) {
             let sv = 1;
 
-            const rds = r.pixels.roadDamageScore || 0;
-            const greyCov = r.pixels.greyCoverage || 0;
+            const rds       = r.pixels.roadDamageScore || 0;
+            const greyCov   = r.pixels.greyCoverage    || 0;
+            const voidRatio = r.pixels.darkVoidRatio   || 0;
+
             if (greyCov > 0.10 && rds > 0) {
-                if      (rds > 20) sv = Math.max(sv, 8);
+                // Re-calibrated for darkVoidRatio-driven formula:
+                //   Major collapse     : rds > 20  → sv 9
+                //   Significant damage : rds 12-20 → sv 7
+                //   Edge/partial damage: rds 6-12  → sv 5
+                //   Surface cracking   : rds 2-6   → sv 3
+                //   Thin crack         : rds < 2   → sv 1
+                if      (rds > 20) sv = Math.max(sv, 9);
                 else if (rds > 12) sv = Math.max(sv, 7);
                 else if (rds > 6)  sv = Math.max(sv, 5);
                 else if (rds > 2)  sv = Math.max(sv, 3);
                 else               sv = Math.max(sv, 1);
+
+                // Hard cap for narrow surface cracks (voidRatio small, rds low):
+                // prevents thin-crack images from ever scoring Critical.
+                if (voidRatio < 0.04 && rds < 6) sv = Math.min(sv, 4);
             }
 
             if (r.score.positiveHits > 0 && r.score.matched.length > 0) {
@@ -530,9 +661,12 @@ const InfraAI = (() => {
                 const count = r.score.matched.reduce((s,m) => s + m.probability, 0);
                 const modelSv = Math.round(total / Math.max(count, 0.01));
                 sv = Math.max(sv, modelSv);
+                // If model sv is high but pixel evidence is weak (false positive class), cap it.
+                if (voidRatio < 0.04 && greyCov < 0.15) sv = Math.min(sv, 5);
             }
 
-            if (r.score.positiveHits > 0 || (greyCov > 0.10 && rds > 1.5)) {
+            // Only apply pixel bonus when road damage is meaningful (rds > 2)
+            if (r.score.positiveHits > 0 || (greyCov > 0.10 && rds > 2)) {
                 sv += r.score.pixelSeverityBonus;
             }
 
@@ -544,8 +678,12 @@ const InfraAI = (() => {
         if (scoreResults.length >= 3 && avgConf > 0.15)
             maxSeverity = Math.min(maxSeverity+1, 10);
 
+        // anyRoadPixelDriven now requires actual void area to prevent thin cracks
+        // from bypassing the confidence-based severity cap.
         const anyRoadPixelDriven = scoreResults.some(r =>
-            (r.pixels.greyCoverage || 0) > 0.10 && (r.pixels.roadDamageScore || 0) > 4
+            (r.pixels.greyCoverage || 0) > 0.10 &&
+            (r.pixels.roadDamageScore || 0) > 4 &&
+            (r.pixels.darkVoidRatio  || 0) > 0.04
         );
         if (!anyRoadPixelDriven) {
             if      (avgConf < 0.12) maxSeverity = Math.min(maxSeverity, 3);
@@ -646,7 +784,7 @@ const InfraAI = (() => {
             const gc  = pixelData.greyCoverage    || 0;
             if (gc > 0.10 && rds > 15)   pixelMultiplier = 1.15;  // severe cracking
             else if (gc > 0.10 && rds > 8) pixelMultiplier = 1.08;
-            if (pixelData.burnRatio  > 0.14) pixelMultiplier *= 1.12; // fire damage
+            if (pixelData.burnRatio  > 0.14 && (pixelData.darkVoidRatio || 0) < 0.08) pixelMultiplier *= 1.12; // fire damage
             if (pixelData.rustRatio  > 0.20) pixelMultiplier *= 1.08; // heavy corrosion
             if (pixelData.waterRatio > 0.28) pixelMultiplier *= 1.05; // flood damage
         }
@@ -697,7 +835,7 @@ const InfraAI = (() => {
         else if (gc > 0.10 && rds > 2)  desc += ' Road surface irregularities detected.';
         if (p.rustRatio    > 0.10)       desc += ' Rust/corrosion visible.';
         if (p.waterRatio   > 0.25)       desc += ' Water damage/flooding signs.';
-        if (p.burnRatio    > 0.12)       desc += ' Burn/char marks detected.';
+        if (p.burnRatio > 0.12 && (p.darkVoidRatio || 0) < 0.08) desc += ' Burn/char marks detected.';
         if (p.concreteRatio> 0.30 && !topKeys.length && rds < 2)
                                          desc += ' Concrete/pavement surface.';
 
@@ -776,7 +914,7 @@ const InfraAI = (() => {
                     pixels: { isDark:false, isBright:false, rustRatio:0, waterRatio:0,
                               burnRatio:0, concreteRatio:0, greyCoverage:0, darkRoadCoverage:0,
                               roadDamageScore:0, vertDom:1, crackDensity:0, roadLvCv:0,
-                              globalColourVar:0, landscapePenalty:0 },
+                              globalColourVar:0, landscapePenalty:0, darkVoidRatio:0 },
                     mobilenetPreds:[], cocoDetections:[],
                     score: { detectedType:declaredType, matched:[], totalScore:0,
                              confidence:0, pixelSeverityBonus:0, positiveHits:0, negativeHits:0 },
@@ -793,10 +931,19 @@ const InfraAI = (() => {
         const bestType    = bestResult.score.detectedType || declaredType;
         const infMatch    = bestType === declaredType ? 1 : 0;
         const anyRoadDamage = scoreResults.some(r =>
-            (r.pixels.greyCoverage||0) > 0.10 && (r.pixels.roadDamageScore||0) > 4
+            (r.pixels.greyCoverage||0) > 0.10 &&
+            (r.pixels.roadDamageScore||0) > 4 &&
+            (r.pixels.darkVoidRatio||0) > 0.04
         );
         const isLegit     = avgConf >= 0.08 || anyRoadDamage;
-        const legitimacyScore = parseFloat(Math.min(avgConf + 0.05, 1).toFixed(3));
+
+        // When MobileNet returns irrelevant predictions (avgConf ≈ 0) but pixel analysis
+        // finds meaningful structural damage, reflect that evidence in the confidence fields.
+        // rds / 50 maps: rds=5 → +0.10, rds=12 → +0.24, rds=20+ → +0.40 boost.
+        const pixelConfBoost  = anyRoadDamage
+            ? parseFloat(Math.min((bestResult.pixels.roadDamageScore || 0) / 50, 0.50).toFixed(3))
+            : 0;
+        const legitimacyScore = parseFloat(Math.min(avgConf + 0.05 + pixelConfBoost, 1).toFixed(3));
 
         const topPreds = scoreResults
             .flatMap(r => r.mobilenetPreds)
@@ -821,21 +968,21 @@ const InfraAI = (() => {
         const result = {
             detected_infrastructure:     bestType,
             infrastructure_match:        infMatch,
-            match_confidence:            parseFloat(Math.min(avgConf+0.10, 1).toFixed(3)),
+            match_confidence:            parseFloat(Math.min(avgConf + 0.10 + pixelConfBoost, 1).toFixed(3)),
             is_legitimate:               isLegit ? 1 : 0,
             legitimacy_score:            legitimacyScore,
             legitimacy_notes:            buildLegitimacyNotes(avgConf, scoreResults),
             damage_severity:             severity,
             priority_recommendation:     priority,
             damage_description:          buildDescription(scoreResults, severity, declaredType),
-            confidence_score:            parseFloat(avgConf.toFixed(3)),
+            confidence_score:            parseFloat(Math.min(avgConf + pixelConfBoost, 1).toFixed(3)),
             anomaly_flags:               JSON.stringify(buildAnomalyFlags(scoreResults, severity)),
             combined_assessment:         topPreds,
             estimated_repair_complexity: complexity,
             requires_immediate_action:   severity >= 8 ? 1 : 0,
             images_analyzed:             files.length,
             analysis_status:             'completed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.3',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.4',
             // ── NEW ──
             ai_cost_estimation:          costEstimation,
         };
@@ -875,7 +1022,7 @@ const InfraAI = (() => {
             requires_immediate_action:   0,
             images_analyzed:             0,
             analysis_status:             'failed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.3',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v3.4',
             // ── NEW: sensible fallback when AI engine is unavailable ──
             ai_cost_estimation:          'N/A – manual assessment required',
         };

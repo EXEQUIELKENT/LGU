@@ -147,10 +147,48 @@ if (!$ok) {
 
 $stmt->close();
 error_log("[InfraAI-TFJS] Saved req #{$p1}: {$p10} sev={$p9} cost={$p19}");
+
+// ── Sync priority_lvl and budget into the reports row ────────────────────────
+// Parse the cost range string (e.g. "₱900,000 – ₱6,000,000") into a numeric
+// midpoint for the budget decimal column.
+$budgetMid = 0.00;
+$costStr   = $p19;
+if ($costStr && $costStr !== 'N/A – manual assessment required') {
+    // Strip peso signs, spaces, commas then split on dash/en-dash
+    $stripped = preg_replace('/[₱\s,]/u', '', $costStr);
+    $parts    = preg_split('/[–\-]+/', $stripped);
+    if (count($parts) === 2) {
+        $lo = (float)$parts[0];
+        $hi = (float)$parts[1];
+        if ($lo > 0 && $hi >= $lo) $budgetMid = round(($lo + $hi) / 2, 2);
+    } elseif (count($parts) === 1 && (float)$parts[0] > 0) {
+        $budgetMid = (float)$parts[0];
+    }
+}
+
+// Find the reports row linked to this req_id through request_resolutions
+$syncSql  = "
+    UPDATE reports r
+    JOIN   request_resolutions rr ON r.res_id = rr.res_id
+    SET    r.priority_lvl = ?,
+           r.budget       = ?
+    WHERE  rr.req_id = ?
+";
+$syncStmt = $conn->prepare($syncSql);
+if ($syncStmt) {
+    $syncStmt->bind_param('sdi', $p10, $budgetMid, $p1);
+    $syncStmt->execute();
+    if ($syncStmt->error) error_log('[InfraAI-TFJS] Reports sync error: ' . $syncStmt->error);
+    $syncStmt->close();
+} else {
+    error_log('[InfraAI-TFJS] Reports sync prepare failed: ' . $conn->error);
+}
+
 echo json_encode([
     'success'             => true,
     'req_id'             => $p1,
     'priority'           => $p10,
     'severity'           => $p9,
-    'ai_cost_estimation' => $p19,   // echo it back so the client can display it if needed
+    'ai_cost_estimation' => $p19,
+    'budget_synced'      => $budgetMid,
 ]);

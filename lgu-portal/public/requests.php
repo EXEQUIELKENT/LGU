@@ -462,6 +462,17 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.2); margin-top: 2px; pointer-events: none;
 }
 
+/* ── Mobile marker sizing: smaller pin, smaller label ── */
+@media (max-width: 768px) {
+    .gis-pin {
+        width: 26px;
+        height: 26px;
+        border-width: 2px;
+    }
+    .gis-pin-inner { font-size: 11px; }
+    .gis-marker-label { font-size: 8.5px; padding: 1px 4px; }
+}
+
 /* Loading overlay */
 #mapLoadingOverlay {
     position: absolute; inset: 0; background: var(--bg-secondary);
@@ -857,7 +868,7 @@ tbody td {
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .sidebar-nav.mobile-active { left: 12px; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
-    .main-content, .main-content.expanded { margin-left: 0 !important; height: auto !important; min-height: calc(100vh - 64px) !important; overflow-y: auto !important; padding: 20px !important; padding-top: 80px !important; margin: 0 !important; -webkit-overflow-scrolling: touch; }
+    .main-content, .main-content.expanded { margin-left: 0 !important; height: auto !important; min-height: calc(100vh - 64px) !important; overflow-y: auto !important; padding: 20px !important; padding-top: 80px !important; margin: 0 !important; /* -webkit-overflow-scrolling removed — it creates a GPU compositing layer that breaks Leaflet marker pixel coordinates on mobile */ }
     .sidebar-top { padding-top: 30px; }
     .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; }
     .site-logo { margin: 10px auto 20px auto; }
@@ -924,8 +935,43 @@ tbody td {
     .gis-detail-modal { width: 95%; max-height: 90vh; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+<script src="ai_tfjs_analysis.js"></script>
 </head>
 <body>
+
+<!-- AI Analysis Loading Overlay -->
+<style>
+#loadingOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); display: none;
+    justify-content: center; align-items: center; z-index: 10000;
+    opacity: 0; transition: opacity 0.3s ease;
+}
+#loadingOverlay.show { display: flex; opacity: 1; }
+#loadingOverlay .loading-content { text-align: center; }
+#loadingOverlay .lgu-spinner {
+    display: inline-block; font-size: 64px; font-weight: 800;
+    color: #6384d2; letter-spacing: 8px;
+    animation: spinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99,132,210,0.4);
+    font-family: 'Poppins', Arial, sans-serif;
+}
+@keyframes spinLGU { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
+#loadingOverlay .loading-text {
+    margin-top: 20px; color: #fff; font-size: 16px; font-weight: 500;
+    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+}
+</style>
+<div id="loadingOverlay">
+    <div class="loading-content">
+        <div class="lgu-spinner">CIMM</div>
+        <div class="loading-text" id="loadingText">Processing</div>
+    </div>
+</div>
 
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
@@ -1823,30 +1869,93 @@ document.getElementById('validateConfirmBackdrop').addEventListener('click', e =
         document.getElementById('validateConfirmBackdrop').classList.remove('active');
 });
 
+// ── Overlay helpers (used by validation + AI analysis) ───────────────
+let _overlayDotsInterval = null;
+function showOverlay(msg) {
+    const overlay = document.getElementById('loadingOverlay');
+    const text    = document.getElementById('loadingText');
+    if (text) {
+        const base = (msg || 'Processing').replace(/\.+$/, '');
+        if (_overlayDotsInterval) clearInterval(_overlayDotsInterval);
+        let d = 0;
+        _overlayDotsInterval = setInterval(() => { d = (d + 1) % 4; text.textContent = base + '.'.repeat(d); }, 400);
+    }
+    if (overlay) { overlay.style.display = 'flex'; requestAnimationFrame(() => overlay.classList.add('show')); }
+}
+function updateOverlayText(msg) {
+    const text = document.getElementById('loadingText');
+    if (!text) return;
+    const base = (msg || '').replace(/\.+$/, '');
+    if (_overlayDotsInterval) clearInterval(_overlayDotsInterval);
+    let d = 0;
+    _overlayDotsInterval = setInterval(() => { d = (d + 1) % 4; text.textContent = base + '.'.repeat(d); }, 400);
+}
+function hideOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (!overlay) return;
+    if (_overlayDotsInterval) { clearInterval(_overlayDotsInterval); _overlayDotsInterval = null; }
+    overlay.classList.remove('show');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
+// ── Helper: convert an image path to a File object for InfraAI ────────
+async function imagePathToFile(path) {
+    const response = await fetch(path);
+    const blob     = await response.blob();
+    const filename = path.split('/').pop() || 'evidence.jpg';
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+}
+
 document.getElementById('validateConfirmBtn').addEventListener('click', async () => {
     if (!currentRequestData) return;
     const confirmBtn = document.getElementById('validateConfirmBtn');
     const cancelBtn  = document.getElementById('validateCancelBtn');
     confirmBtn.disabled = true; confirmBtn.textContent = 'Processing…'; cancelBtn.disabled = true;
 
+    // Close confirmation modal and show overlay
+    document.getElementById('validateConfirmBackdrop').classList.remove('active');
+    document.getElementById('requestDetailBackdrop').classList.remove('active');
+    closeGisDetailModal();
+    showOverlay('Validating request');
+
     try {
+        // ── 1. Validate request ──────────────────────────────────────────
         const response = await fetch('validate_request.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({ req_id: parseInt(currentRequestData.reqId, 10) })
         });
         let data;
         try { data = await response.json(); } catch(pe) {
-            document.getElementById('validateConfirmBackdrop').classList.remove('active');
-            document.getElementById('requestDetailBackdrop').classList.remove('active');
-            closeGisDetailModal();
+            hideOverlay();
             showInlineNotif('error', '❌ Server returned an unexpected response.'); return;
         }
-        document.getElementById('validateConfirmBackdrop').classList.remove('active');
-        document.getElementById('requestDetailBackdrop').classList.remove('active');
-        closeGisDetailModal();
 
         if (data.success) {
             const reqId = currentRequestData.reqId;
+
+            // ── 2. Run AI analysis (non-blocking) ────────────────────────
+            if (typeof InfraAI !== 'undefined' && currentRequestData.evidence && currentRequestData.evidence.length > 0) {
+                try {
+                    updateOverlayText('Analyzing evidence images');
+                    const files    = await Promise.all(currentRequestData.evidence.map(imagePathToFile));
+                    const aiResult = await InfraAI.analyzeImages(
+                        files,
+                        currentRequestData.infrastructure,
+                        (msg) => updateOverlayText(msg)
+                    );
+                    aiResult.req_id = reqId;
+                    fetch('save_ai_analysis.php', {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify(aiResult)
+                    }).then(r => r.json())
+                      .then(d => console.log('[InfraAI] Saved:', d))
+                      .catch(e => console.warn('[InfraAI] Save failed (non-fatal):', e));
+                } catch(aiErr) {
+                    console.warn('[InfraAI] Analysis failed (non-fatal):', aiErr);
+                }
+            }
+
+            // ── 3. Update UI ─────────────────────────────────────────────
             updateRowStatus(reqId, 'Approved', 'completed');
             updateGisMarker(reqId, 'Approved');
             showInlineNotif('success',
@@ -1857,9 +1966,9 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
             showInlineNotif('error', `❌ ${data.message}`);
         }
     } catch(err) {
-        document.getElementById('validateConfirmBackdrop').classList.remove('active');
         showInlineNotif('error', '❌ Network error. Please try again.');
     } finally {
+        hideOverlay();
         confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm'; cancelBtn.disabled = false;
     }
 });
@@ -2049,7 +2158,11 @@ function makeIcon(req) {
     const emoji = infraEmoji(req.infrastructure);
     const label = `#REQ-${String(req.req_id).padStart(3,'0')}`;
     const html  = `<div class="gis-marker-wrapper"><div class="gis-pin ${sc}"><div class="gis-pin-inner">${emoji}</div></div><div class="gis-marker-label">${label}</div></div>`;
-    return L.divIcon({ html, className:'', iconSize:[60,52], iconAnchor:[18,36], popupAnchor:[0,-38] });
+    // Mobile uses smaller pin (26px via CSS) so we shrink iconSize/iconAnchor to match
+    const isMob = window.innerWidth <= 768;
+    return isMob
+        ? L.divIcon({ html, className:'', iconSize:[44,36], iconAnchor:[13,26], popupAnchor:[0,-28] })
+        : L.divIcon({ html, className:'', iconSize:[60,52], iconAnchor:[18,36], popupAnchor:[0,-38] });
 }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2200,6 +2313,18 @@ function initMap() {
     streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap', maxZoom:19}).addTo(map);
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Satellite &copy; Esri', maxZoom:19});
     L.polygon(QC_POLY, {color:'#3762c8',weight:3,fillColor:'#3762c8',fillOpacity:.05,dashArray:'10,6',interactive:false}).addTo(map);
+
+    // Re-sync after initial mobile layout settles (fixed nav bar shifts layout post-load)
+    setTimeout(() => { if (map) map.invalidateSize(false); }, 150);
+    setTimeout(() => { if (map) map.invalidateSize(false); }, 500);
+
+    // Re-sync on resize / orientation change
+    let _resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(() => { if (map) map.invalidateSize(false); }, 200);
+    });
+
     if (ALL_REQUESTS.length === 0) {
         const overlay = document.getElementById('mapLoadingOverlay');
         if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }

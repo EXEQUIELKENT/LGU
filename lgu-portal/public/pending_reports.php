@@ -168,6 +168,8 @@ if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $row
 }
 [data-theme="dark"] #reportSearch { border-color: var(--border-color); }
 #reportSearch:focus { border-color: #e65100; box-shadow: 0 0 0 3px rgba(230,81,0,.15); }
+.search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
+[data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 .card {
     align-self: start; background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px; margin-top: 28px;
@@ -377,17 +379,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     $notes = $row['res_note'] ?: htmlspecialchars($row['issue'] ?? '—');
                 ?>
                 <tr>
-                    <td>#REP-<?= $row['rep_id'] ?></td>
-                    <td><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
-                    <td><?= htmlspecialchars($row['location'] ?? '—') ?></td>
-                    <td class="wrap" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
-                    <td><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></td>
-                    <td><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
-                    <td><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
-                    <td><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
-                    <td><?= priorityBadge($row['priority_lvl']) ?></td>
-                    <td>₱<?= number_format($row['budget'] ?? 0, 2) ?></td>
-                    <td><?= statusPill($rawStatus) ?></td>
+                    <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
+                    <td class="wrap searchable" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
+                    <td class="searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
+                    <td class="searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
+                    <td class="searchable"><?= priorityBadge($row['priority_lvl']) ?></td>
+                    <td class="searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></td>
+                    <td class="searchable"><?= statusPill($rawStatus) ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -405,17 +407,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             $notes = $row['res_note'] ?: ($row['issue'] ?? '—');
         ?>
         <div class="report-card">
-            <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value"><?= htmlspecialchars($notes) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Engineer:</span><span class="rc-value"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value"><?= priorityBadge($row['priority_lvl']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
-            <div class="rc-footer"><?= statusPill($rawStatus) ?></div>
+            <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Engineer:</span><span class="rc-value searchable"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge($row['priority_lvl']) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
+            <div class="rc-footer searchable"><?= statusPill($rawStatus) ?></div>
         </div>
         <?php endforeach; ?>
     <?php else: ?>
@@ -442,22 +444,72 @@ document.addEventListener("DOMContentLoaded", function() {
     const noMobile = document.getElementById("noMobileResult");
     const mList    = document.getElementById("mobileReportList");
 
+    function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
+    function resetEl(el) { if ('original' in el.dataset) el.innerHTML = el.dataset.original; }
+    function highlightEl(el, kw) {
+        if (!kw) return;
+        const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
+        // Walk only text nodes — never touch tag names or attribute values
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        textNodes.forEach(tn => {
+            if (!tn.nodeValue.trim()) return;
+            const parts = tn.nodeValue.split(regex);
+            if (parts.length < 2) return;
+            const frag = document.createDocumentFragment();
+            parts.forEach((part, i) => {
+                if (i % 2 === 1) {
+                    const mark = document.createElement('span');
+                    mark.className = 'search-highlight';
+                    mark.textContent = part;
+                    frag.appendChild(mark);
+                } else {
+                    frag.appendChild(document.createTextNode(part));
+                }
+            });
+            tn.parentNode.replaceChild(frag, tn);
+        });
+    }
+
     input.addEventListener("input", function() {
-        const q = input.value.toLowerCase().trim();
+        const q  = input.value.trim();
+        const ql = q.toLowerCase();
+
+        document.querySelectorAll('#reportsTable .searchable[data-original], .mobile-report-list .searchable[data-original]')
+            .forEach(el => resetEl(el));
+
         if (!q) {
             allRows.forEach(r => { r.style.display = ""; tbody.appendChild(r); });
             if (noDesk) noDesk.style.display = "none";
             mCards.forEach(c => { c.style.display = ""; mList.appendChild(c); });
             if (noMobile) noMobile.style.display = "none";
-        } else {
-            const dHits = [], mHits = [];
-            allRows.forEach(r => { if (r.innerText.toLowerCase().includes(q)) { dHits.push(r); r.style.display = ""; } else r.style.display = "none"; });
-            dHits.forEach(r => tbody.insertBefore(r, tbody.firstChild));
-            if (noDesk) noDesk.style.display = dHits.length ? "none" : "";
-            mCards.forEach(c => { if (c.innerText.toLowerCase().includes(q)) { mHits.push(c); c.style.display = ""; } else c.style.display = "none"; });
-            mHits.forEach(c => mList.insertBefore(c, mList.firstChild));
-            if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
+            return;
         }
+
+        const dHits = [], mHits = [];
+
+        allRows.forEach(r => {
+            const els = r.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            r.style.display = match ? '' : 'none';
+            if (match) { els.forEach(el => highlightEl(el, q)); dHits.push(r); }
+        });
+        dHits.forEach(r => tbody.insertBefore(r, tbody.firstChild));
+        if (noDesk) noDesk.style.display = dHits.length ? "none" : "";
+
+        mCards.forEach(c => {
+            const els = c.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            c.style.display = match ? '' : 'none';
+            if (match) { els.forEach(el => highlightEl(el, q)); mHits.push(c); }
+        });
+        mHits.forEach(c => mList.insertBefore(c, mList.firstChild));
+        if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
     });
 });
 </script>

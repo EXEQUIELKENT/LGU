@@ -448,6 +448,8 @@ if ($maintenance_result) {
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59,130,246,.15);
         }
+        .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
+        [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
         /* MOBILE MAINTENANCE LIST */
         .mobile-maintenance-list {
@@ -840,12 +842,12 @@ if ($maintenance_result) {
                         $location_escaped = htmlspecialchars($item['location']);
                 ?>
                 <tr>
-                    <td>#SCH-<?php echo $item['sched_id']; ?></td>
-                    <td><?php echo $date; ?></td>
-                    <td title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
-                    <td title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
-                    <td>₱<?php echo number_format($item['budget'], 2); ?></td>
-                    <td><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
+                    <td class="searchable">#SCH-<?php echo $item['sched_id']; ?></td>
+                    <td class="searchable"><?php echo $date; ?></td>
+                    <td class="searchable" title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
+                    <td class="searchable" title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
+                    <td class="searchable">₱<?php echo number_format($item['budget'], 2); ?></td>
+                    <td class="searchable"><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
                     <td><a href="#" class="link" data-i18n="reports_view_button">View</a></td>
                 </tr>
                 <?php 
@@ -885,31 +887,31 @@ if ($maintenance_result) {
                 <div class="report-card">
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_schedule_id">Schedule ID:</span>
-                        <span class="value">#SCH-<?= $item['sched_id'] ?></span>
+                        <span class="value searchable">#SCH-<?= $item['sched_id'] ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_category">Category:</span>
-                        <span class="value"><?= htmlspecialchars($item['category']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['category']) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_task">Task:</span>
-                        <span class="value"><?= htmlspecialchars($item['task']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['task']) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_location">Location:</span>
-                        <span class="value"><?= htmlspecialchars($item['location']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['location']) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_start_date">Start Date:</span>
-                        <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
+                        <span class="value searchable"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_budget">Budget:</span>
-                        <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
+                        <span class="value searchable">₱<?= number_format($item['budget'], 2) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_status">Status:</span>
-                        <span class="status-pill <?= $status_class ?>" data-i18n="<?= $status_key ?>">
+                        <span class="status-pill searchable <?= $status_class ?>" data-i18n="<?= $status_key ?>">
                             <?= htmlspecialchars($item['status']) ?>
                         </span>
                     </div>
@@ -930,77 +932,86 @@ if ($maintenance_result) {
 </div>
 </div>
 
-<!-- TABLE LIVE SEARCH (Desktop) -->
+<!-- TABLE & MOBILE LIVE SEARCH WITH HIGHLIGHT -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const table = document.querySelector("table");
+    const searchInput  = document.getElementById("requestSearch");
+    const table        = document.querySelector("table");
+    const mobileList   = document.querySelector(".mobile-maintenance-list");
     if (!table || !searchInput) return;
 
-    const tbody = table.querySelector("tbody");
-    const rows = Array.from(tbody.querySelectorAll("tr"))
-        .filter(r => r.id !== "noRequestResult");
-    const noResultRow = document.getElementById("noRequestResult");
-
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
-
-        if (query === "") {
-            rows.forEach(row => { row.style.display = ""; tbody.appendChild(row); });
-            if (noResultRow) noResultRow.style.display = "none";
-            return;
-        }
-
-        let matches = [];
-        rows.forEach(row => {
-            const rowText = row.innerText.toLowerCase();
-            if (rowText.includes(query)) {
-                matches.push(row);
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
-        });
-
-        matches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
-        if (noResultRow) noResultRow.style.display = matches.length === 0 ? "" : "none";
-    });
-});
-</script>
-
-<!-- MOBILE CARD SEARCH -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const mobileList = document.querySelector(".mobile-maintenance-list");
-    const cards = Array.from(document.querySelectorAll(".mobile-maintenance-list .report-card"))
-        .filter(card => card.id !== "noMobileResult");
+    const tbody        = table.querySelector("tbody");
+    const rows         = Array.from(tbody.querySelectorAll("tr")).filter(r => r.id !== "noRequestResult");
+    const noResultRow  = document.getElementById("noRequestResult");
+    const cards        = Array.from(document.querySelectorAll(".mobile-maintenance-list .report-card")).filter(c => c.id !== "noMobileResult");
     const noMobileResult = document.getElementById("noMobileResult");
 
-    if (!searchInput || cards.length === 0) return;
+    function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
+    function resetEl(el) { if ('original' in el.dataset) el.innerHTML = el.dataset.original; }
+    function highlightEl(el, kw) {
+        if (!kw) return;
+        const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
+        // Walk only text nodes — never touch tag names or attribute values
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        textNodes.forEach(tn => {
+            if (!tn.nodeValue.trim()) return;
+            const parts = tn.nodeValue.split(regex);
+            if (parts.length < 2) return;
+            const frag = document.createDocumentFragment();
+            parts.forEach((part, i) => {
+                if (i % 2 === 1) {
+                    const mark = document.createElement('span');
+                    mark.className = 'search-highlight';
+                    mark.textContent = part;
+                    frag.appendChild(mark);
+                } else {
+                    frag.appendChild(document.createTextNode(part));
+                }
+            });
+            tn.parentNode.replaceChild(frag, tn);
+        });
+    }
 
     searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
+        const q  = searchInput.value.trim();
+        const ql = q.toLowerCase();
 
-        if (query === "") {
+        document.querySelectorAll('table .searchable[data-original], .mobile-maintenance-list .searchable[data-original]')
+            .forEach(el => resetEl(el));
+
+        if (!q) {
+            rows.forEach(row  => { row.style.display  = ""; tbody.appendChild(row); });
+            if (noResultRow)    noResultRow.style.display    = "none";
             cards.forEach(card => { card.style.display = ""; mobileList.appendChild(card); });
             if (noMobileResult) noMobileResult.style.display = "none";
             return;
         }
 
-        let matches = [];
-        cards.forEach(card => {
-            const cardText = card.innerText.toLowerCase();
-            if (cardText.includes(query)) {
-                matches.push(card);
-                card.style.display = "";
-            } else {
-                card.style.display = "none";
-            }
-        });
+        let dMatches = [], mMatches = [];
 
-        matches.forEach(card => mobileList.insertBefore(card, mobileList.firstChild));
-        if (noMobileResult) noMobileResult.style.display = matches.length === 0 ? "" : "none";
+        rows.forEach(row => {
+            const els = row.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            row.style.display = match ? "" : "none";
+            if (match) { els.forEach(el => highlightEl(el, q)); dMatches.push(row); }
+        });
+        dMatches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
+        if (noResultRow) noResultRow.style.display = dMatches.length === 0 ? "" : "none";
+
+        cards.forEach(card => {
+            const els = card.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            card.style.display = match ? "" : "none";
+            if (match) { els.forEach(el => highlightEl(el, q)); mMatches.push(card); }
+        });
+        mMatches.forEach(card => mobileList.insertBefore(card, mobileList.firstChild));
+        if (noMobileResult) noMobileResult.style.display = mMatches.length === 0 ? "" : "none";
     });
 });
 </script>

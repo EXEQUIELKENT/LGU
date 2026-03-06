@@ -80,12 +80,17 @@ $sql = "
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
-        CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name
+        CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
+        ai.priority_recommendation AS ai_priority,
+        ai.ai_cost_estimation      AS ai_cost,
+        ai.damage_severity         AS ai_severity,
+        ai.damage_description      AS ai_description
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
     LEFT JOIN requests             req ON res.req_id = req.req_id
     LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
+    LEFT JOIN request_ai_analysis  ai  ON res.req_id    = ai.req_id
     WHERE res.status = 'Approved'
     ORDER BY r.rep_id DESC
 ";
@@ -104,10 +109,31 @@ function statusPill(string $status): string {
 }
 
 function priorityBadge(?string $lvl): string {
-    $styles = ['High' => 'background:#fde8e8;color:#9b1c1c;', 'Medium' => 'background:#fef3c7;color:#92400e;', 'Low' => 'background:#d1fae5;color:#065f46;'];
+    $styles = [
+        'Critical' => 'background:#fce7f3;color:#831843;border:1.5px solid #f9a8d4;',
+        'High'     => 'background:#fde8e8;color:#9b1c1c;border:1.5px solid #fca5a5;',
+        'Medium'   => 'background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;',
+        'Low'      => 'background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;',
+    ];
     $lvl   = $lvl ?? 'Low';
     $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
-    return "<span style=\"{$style}padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;display:inline-block;\">{$lvl}</span>";
+    return "<span style=\"{$style}padding:3px 7px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;\">{$lvl}</span>";
+}
+
+// Helper: resolve effective priority — AI result takes precedence over the
+// manually-entered reports.priority_lvl (which defaults to NULL / 'Low').
+function effectivePriority(array $row): string {
+    return $row['ai_priority'] ?? $row['priority_lvl'] ?? 'Low';
+}
+
+// Helper: resolve effective budget display string.
+// Shows AI cost range string if available; falls back to formatted decimal budget.
+function effectiveBudget(array $row): string {
+    if (!empty($row['ai_cost']) && $row['ai_cost'] !== 'N/A – manual assessment required') {
+        return htmlspecialchars($row['ai_cost']);
+    }
+    $num = (float)($row['budget'] ?? 0);
+    return '₱' . number_format($num, 2);
 }
 
 $rows = [];
@@ -171,18 +197,40 @@ if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $row
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
     background: var(--bg-secondary); overflow: hidden;
 }
-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    table-layout: fixed;
+}
+/* Percentage widths — all 11 cols sum to 100%, nothing clips */
+table colgroup col:nth-child(1)  { width: 5%;  }  /* Rep #          */
+table colgroup col:nth-child(2)  { width: 8%;  }  /* Infrastructure */
+table colgroup col:nth-child(3)  { width: 10%; }  /* Location       */
+table colgroup col:nth-child(4)  { width: 8%;  }  /* Issue / Notes  */
+table colgroup col:nth-child(5)  { width: 13%; }  /* Engineer       */
+table colgroup col:nth-child(6)  { width: 10%; }  /* Reported By    */
+table colgroup col:nth-child(7)  { width: 7%;  }  /* Start Date     */
+table colgroup col:nth-child(8)  { width: 7%;  }  /* Est. End Date  */
+table colgroup col:nth-child(9)  { width: 7%;  }  /* Priority       */
+table colgroup col:nth-child(10) { width: 16%; }  /* Budget         */
+table colgroup col:nth-child(11) { width: 9%;  }  /* Status         */
 thead { background: #ff9800; }
-thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
+thead th {
+    padding: 11px 7px; font-size: 11.5px; font-weight: 600; text-align: left;
+    color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 thead th:last-child { text-align: center; }
 tbody tr td:last-child { text-align: center; }
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; }
-td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); word-break: break-word; }
+td {
+    padding: 10px 7px; font-size: 11.5px; text-align: left;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    white-space: normal; word-break: break-word;
+}
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(255,152,0,.03); }
 tbody tr:hover { background: rgba(255,152,0,.09); }
-.status { padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap; }
+.status { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; white-space: nowrap; }
 .completed    { background: #a5d6a7; color: #1b5e20; }
 .on-going     { background: #fff59d; color: #f57f17; }
 .pending-st   { background: #ffe0b2; color: #e65100; }
@@ -195,13 +243,15 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     background: rgba(255,152,0,.1); border: 1px solid rgba(255,152,0,.3);
     padding: 3px 8px; border-radius: 20px; white-space: nowrap;
 }
+.search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
+[data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
 /* ================================================================
    ENGINEER COMBOBOX TRIGGER — portal dropdown lives in <body>
    ================================================================ */
 .eng-combobox {
     display: inline-block;
-    font-size: 13px;
+    font-size: 11px;
     width: 100%;
     max-width: 100%;
 }
@@ -210,9 +260,9 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 5px;
-    padding: 5px 9px;
-    border-radius: 9px;
+    gap: 3px;
+    padding: 3px 6px;
+    border-radius: 6px;
     border: 1.5px solid #ff9800;
     background: var(--bg-secondary);
     color: var(--text-primary);
@@ -227,16 +277,16 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .eng-combo-display:hover { border-color: #e65100; background: rgba(255,152,0,.06); }
 .eng-combo-display.open {
     border-color: #e65100;
-    box-shadow: 0 0 0 3px rgba(255,152,0,.18);
+    box-shadow: 0 0 0 2px rgba(255,152,0,.18);
 }
 .eng-combo-label {
     flex: 1; overflow: hidden; text-overflow: ellipsis;
-    font-size: 12px; font-weight: 500;
+    font-size: 10px; font-weight: 500;
     color: var(--text-secondary); opacity: .85; min-width: 0;
 }
 .eng-combo-label.has-value { color: var(--text-primary); opacity: 1; }
 .eng-combo-arrow {
-    font-size: 11px; color: #ff9800;
+    font-size: 9px; color: #ff9800;
     flex-shrink: 0; transition: transform .2s; line-height: 1;
 }
 .eng-combo-display.open .eng-combo-arrow { transform: rotate(180deg); }
@@ -248,11 +298,11 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     display: none;
     position: fixed;
     z-index: 99999;
-    min-width: 240px;
+    min-width: 190px;
     background: var(--bg-secondary);
     border: 1.5px solid #e65100;
-    border-radius: 12px;
-    box-shadow: 0 10px 32px rgba(0,0,0,.24);
+    border-radius: 9px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.22);
     overflow: hidden;
     animation: comboFadeIn .15s ease;
 }
@@ -262,30 +312,30 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     to   { opacity: 1; transform: translateY(0); }
 }
 #engComboSearch {
-    width: 100%; padding: 10px 14px;
+    width: 100%; padding: 7px 10px;
     border: none; border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary); color: var(--text-primary);
-    font-size: 13px; outline: none;
+    font-size: 11px; outline: none;
     box-sizing: border-box; font-family: inherit;
 }
 #engComboSearch::placeholder { color: var(--text-secondary); opacity: .65; }
 [data-theme="dark"] #engComboPortal { background: var(--bg-primary); }
 [data-theme="dark"] #engComboSearch { background: var(--bg-primary); }
 #engComboList {
-    max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+    max-height: 180px; overflow-y: auto; overscroll-behavior: contain;
 }
-#engComboList::-webkit-scrollbar { width: 5px; }
+#engComboList::-webkit-scrollbar { width: 4px; }
 #engComboList::-webkit-scrollbar-thumb { background: rgba(255,152,0,.4); border-radius: 4px; }
 .eng-combo-option {
-    padding: 10px 14px; font-size: 13px; cursor: pointer;
+    padding: 7px 10px; font-size: 11px; cursor: pointer;
     color: var(--text-primary); border-bottom: 1px solid var(--border-color);
-    transition: background .15s; display: flex; align-items: center; gap: 8px;
+    transition: background .15s; display: flex; align-items: center; gap: 6px;
 }
 .eng-combo-option:last-child { border-bottom: none; }
 .eng-combo-option:hover, .eng-combo-option.highlighted { background: rgba(255,152,0,.14); }
-.eng-combo-option .opt-icon { font-size: 15px; flex-shrink: 0; }
-.eng-combo-no-results { padding: 14px; text-align: center; font-size: 12px; color: var(--text-secondary); opacity: .7; }
-.eng-combo-loading { padding: 14px; text-align: center; font-size: 12px; color: var(--text-secondary); }
+.eng-combo-option .opt-icon { font-size: 12px; flex-shrink: 0; }
+.eng-combo-no-results { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); opacity: .7; }
+.eng-combo-loading { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); }
 
 /* ================================================================
    ENGINEER ASSIGN CONFIRM MODAL
@@ -527,11 +577,14 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
     <!-- Desktop Table -->
     <div class="table-wrapper">
         <table id="reportsTable">
+            <colgroup>
+                <col><col><col><col><col><col><col><col><col><col><col>
+            </colgroup>
             <thead>
                 <tr>
                     <th>Rep #</th><th>Infrastructure</th><th>Location</th>
                     <th>Issue / Notes</th><th>Engineer</th><th>Reported By</th>
-                    <th>Start Date</th><th>Est. End Date</th><th>Priority</th>
+                    <th>Start Date</th><th>End Date</th><th>Priority</th>
                     <th>Budget</th><th>Status</th>
                 </tr>
             </thead>
@@ -546,10 +599,10 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
                     $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
                 ?>
                 <tr>
-                    <td>#REP-<?= $row['rep_id'] ?></td>
-                    <td><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
-                    <td><?= htmlspecialchars($row['location'] ?? '—') ?></td>
-                    <td title="..."> <?= htmlspecialchars($notes) ?></td>
+                    <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
+                    <td class="searchable" title="..."> <?= htmlspecialchars($notes) ?></td>
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                         <?php if ($hasEngineer): ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
@@ -565,12 +618,12 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
                             <span class="unassigned-badge">⚠ Unassigned</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
-                    <td><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
-                    <td><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
-                    <td><?= priorityBadge($row['priority_lvl']) ?></td>
-                    <td>₱<?= number_format($row['budget'] ?? 0, 2) ?></td>
-                    <td><?= statusPill($rawStatus) ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
+                    <td class="searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
+                    <td class="searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
+                    <td class="searchable"><?= priorityBadge(effectivePriority($row)) ?></td>
+                    <td class="searchable"><?= effectiveBudget($row) ?></td>
+                    <td class="searchable"><?= statusPill($rawStatus) ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -595,10 +648,10 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
             $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
         ?>
         <div class="report-card">
-            <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value"><?= htmlspecialchars($notes) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <div class="rc-row">
                 <span class="rc-label">Engineer:</span>
                 <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
@@ -617,12 +670,12 @@ const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
                     <?php endif; ?>
                 </span>
             </div>
-            <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value"><?= priorityBadge($row['priority_lvl']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
-            <div class="rc-footer"><?= statusPill($rawStatus) ?></div>
+            <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(effectivePriority($row)) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable"><?= effectiveBudget($row) ?></span></div>
+            <div class="rc-footer searchable"><?= statusPill($rawStatus) ?></div>
         </div>
         <?php endforeach; ?>
     <?php else: ?>
@@ -921,7 +974,7 @@ function showAssignNotif(type, message) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// LIVE SEARCH
+// LIVE SEARCH WITH HIGHLIGHT
 // ════════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", function() {
     if (CAN_ASSIGN_ENGINEER) initAllComboboxes();
@@ -934,22 +987,73 @@ document.addEventListener("DOMContentLoaded", function() {
     const noMobile = document.getElementById("noMobileResult");
     const mList    = document.getElementById("mobileReportList");
 
+    function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
+    function resetEl(el) { if ('original' in el.dataset) el.innerHTML = el.dataset.original; }
+    function highlightEl(el, kw) {
+        if (!kw) return;
+        const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
+        // Walk only text nodes — never touch tag names or attribute values
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        textNodes.forEach(tn => {
+            if (!tn.nodeValue.trim()) return;
+            const parts = tn.nodeValue.split(regex);
+            if (parts.length < 2) return;
+            const frag = document.createDocumentFragment();
+            parts.forEach((part, i) => {
+                if (i % 2 === 1) {
+                    const mark = document.createElement('span');
+                    mark.className = 'search-highlight';
+                    mark.textContent = part;
+                    frag.appendChild(mark);
+                } else {
+                    frag.appendChild(document.createTextNode(part));
+                }
+            });
+            tn.parentNode.replaceChild(frag, tn);
+        });
+    }
+
     input.addEventListener("input", function() {
-        const q = input.value.toLowerCase().trim();
+        const q  = input.value.trim();
+        const ql = q.toLowerCase();
+
+        // Always reset all existing highlights first
+        document.querySelectorAll('#reportsTable .searchable[data-original], .mobile-report-list .searchable[data-original]')
+            .forEach(el => resetEl(el));
+
         if (!q) {
             allRows.forEach(r => { r.style.display = ""; tbody.appendChild(r); });
             if (noDesk) noDesk.style.display = "none";
             mCards.forEach(c => { c.style.display = ""; mList.appendChild(c); });
             if (noMobile) noMobile.style.display = "none";
-        } else {
-            const dHits = [], mHits = [];
-            allRows.forEach(r => { if (r.innerText.toLowerCase().includes(q)) { dHits.push(r); r.style.display = ""; } else r.style.display = "none"; });
-            dHits.forEach(r => tbody.insertBefore(r, tbody.firstChild));
-            if (noDesk) noDesk.style.display = dHits.length ? "none" : "";
-            mCards.forEach(c => { if (c.innerText.toLowerCase().includes(q)) { mHits.push(c); c.style.display = ""; } else c.style.display = "none"; });
-            mHits.forEach(c => mList.insertBefore(c, mList.firstChild));
-            if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
+            return;
         }
+
+        const dHits = [], mHits = [];
+
+        allRows.forEach(r => {
+            const els = r.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            r.style.display = match ? '' : 'none';
+            if (match) { els.forEach(el => highlightEl(el, q)); dHits.push(r); }
+        });
+        dHits.forEach(r => tbody.insertBefore(r, tbody.firstChild));
+        if (noDesk) noDesk.style.display = dHits.length ? "none" : "";
+
+        mCards.forEach(c => {
+            const els = c.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const match = [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            c.style.display = match ? '' : 'none';
+            if (match) { els.forEach(el => highlightEl(el, q)); mHits.push(c); }
+        });
+        mHits.forEach(c => mList.insertBefore(c, mList.firstChild));
+        if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
     });
 });
 </script>
