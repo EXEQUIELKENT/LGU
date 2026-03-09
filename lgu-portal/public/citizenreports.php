@@ -258,10 +258,23 @@ if ($maintenance_result) {
             background: var(--card-bg);
             box-shadow: inset 0 0 0 1px var(--border-color);
             transition: background 0.3s ease;
-            /* Allow horizontal scroll only when truly needed */
-            overflow-x: auto;
+            overflow: hidden;          /* clip rounded corners */
             width: 100%;
         }
+
+        /* Inner scroll container — header stays pinned, rows scroll */
+        .table-scroll {
+            max-height: 520px;         /* ~10 rows visible before scroll kicks in */
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: #9cafde rgba(0,0,0,.07);
+        }
+        .table-scroll::-webkit-scrollbar        { width: 6px; }
+        .table-scroll::-webkit-scrollbar-track  { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb  { background: #9cafde; border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb:hover { background: #6a8fd8; }
 
         table {
             /* Fixed layout: respects explicit widths, clips overflow */
@@ -269,18 +282,16 @@ if ($maintenance_result) {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            /* Minimum width before horizontal scroll kicks in */
-            min-width: 700px;
         }
 
-        /* Column width distribution */
-        col.col-id       { width: 90px;  }
-        col.col-date     { width: 110px; }
-        col.col-type     { width: 22%;   }   /* flexible, clips overflow */
-        col.col-location { width: 30%;   }   /* flexible, clips overflow */
-        col.col-budget   { width: 110px; }
-        col.col-status   { width: 120px; }
-        col.col-action   { width: 80px;  }
+        /* Column width distribution — all % so table always fits the viewport */
+        col.col-id       { width: 7%;  }   /* #SCH-XX */
+        col.col-date     { width: 11%; }   /* Mar 23, 2026 */
+        col.col-type     { width: 21%; }   /* task — truncated */
+        col.col-location { width: 24%; }   /* location — truncated */
+        col.col-budget   { width: 10%; }   /* ₱XX,XXX.XX */
+        col.col-status   { width: 19%; }   /* longest: "Isinasagawa" ~11 chars */
+        col.col-action   { width: 8%;  }   /* View btn */
 
         /* MODERN TABLE HEADER */
         thead th {
@@ -288,10 +299,10 @@ if ($maintenance_result) {
             top: 0;
             background: linear-gradient(to bottom, #fdfdfd, #f2f4f8);
             z-index: 2;
-            padding: 16px 14px;
+            padding: 13px 8px;
             border-bottom: 1px solid #e3e6ee;
             color: #555;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             text-align: center;
             white-space: nowrap;
@@ -310,14 +321,13 @@ if ($maintenance_result) {
             border-bottom-color: var(--border-color);
         }
 
-        /* TABLE CELLS — allow wrapping by default */
+        /* TABLE CELLS */
         td {
-            padding: 14px 14px;
+            padding: 11px 8px;
             border-bottom: 1px solid #eef0f5;
-            font-size: 14px;
+            font-size: 13px;
             color: #374151;
             text-align: center;
-            /* Allow natural wrapping — no global nowrap */
             white-space: normal;
             word-break: break-word;
             vertical-align: middle;
@@ -332,10 +342,14 @@ if ($maintenance_result) {
         td:nth-child(1),   /* Sched # */
         td:nth-child(2),   /* Date    */
         td:nth-child(5),   /* Budget  */
-        td:nth-child(6),   /* Status  */
         td:nth-child(7)    /* Action  */
         {
             white-space: nowrap;
+        }
+
+        /* Status — allow wrapping so Filipino labels fit */
+        td:nth-child(6) {
+            white-space: normal;
         }
 
         /* Task & Location: truncate with ellipsis on single line */
@@ -404,19 +418,24 @@ if ($maintenance_result) {
 
         /* STATUS PILL */
         .status-pill {
-            padding: 5px 12px;
+            padding: 4px 9px;
             border-radius: 999px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            white-space: nowrap;
+            white-space: normal;   /* wraps for long Filipino words */
+            word-break: keep-all;  /* break between words, not mid-word */
+            text-align: center;
+            max-width: 100%;
+            line-height: 1.3;
         }
         .status-pill::before {
             content: "●";
             font-size: 9px;
             margin-right: 5px;
+            flex-shrink: 0;
         }
         .status-pending  { background: #fff3cd; color: #856404; }
         .status-fixed    { background: #d4edda; color: #155724; }
@@ -601,7 +620,15 @@ if ($maintenance_result) {
                 width: 100%;
                 padding: 8px 10px;
                 box-sizing: border-box;
+                max-height: 72vh;        /* scroll instead of expanding the page */
+                overflow-y: auto;
+                overflow-x: hidden;
+                scrollbar-width: thin;
+                scrollbar-color: #9cafde rgba(0,0,0,.07);
             }
+            .mobile-maintenance-list::-webkit-scrollbar        { width: 4px; }
+            .mobile-maintenance-list::-webkit-scrollbar-track  { background: rgba(0,0,0,.05); border-radius: 3px; }
+            .mobile-maintenance-list::-webkit-scrollbar-thumb  { background: #9cafde; border-radius: 3px; }
 
             .table-search-wrapper {
                 order: 2;
@@ -653,6 +680,96 @@ if ($maintenance_result) {
             .mobile-top-nav { display: none !important; }
             .sidebar-nav { display: none !important; }
             .nav { display: flex !important; }
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SCHEDULE DETAIL MODAL — bilingual, matches requests.php style
+        ═══════════════════════════════════════════════════════ */
+        .sched-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.45);
+            display: none; align-items: center; justify-content: center;
+            z-index: 8000;
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        }
+        .sched-modal-backdrop.active { display: flex; }
+
+        .sched-detail-modal {
+            background: var(--bg-primary, #fff);
+            border-radius: 20px;
+            box-shadow: 0 12px 50px var(--shadow-color, rgba(0,0,0,.2));
+            width: 92%; max-width: 560px; max-height: 88vh;
+            display: flex; flex-direction: column;
+            animation: schedDetailIn .3s cubic-bezier(.34,1.56,.64,1);
+            border: 1px solid var(--border-color, rgba(0,0,0,.08));
+            overflow: hidden;
+        }
+        @keyframes schedDetailIn {
+            from { opacity:0; transform: scale(.9) translateY(-20px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
+        }
+
+        /* Coloured top band */
+        .sched-modal-band { height: 8px; border-radius: 20px 20px 0 0; width: 100%; flex-shrink: 0; }
+        .sched-modal-band.sched-completed  { background: linear-gradient(90deg,#4caf50,#81c784); }
+        .sched-modal-band.sched-inprogress { background: linear-gradient(90deg,#1976d2,#64b5f6); }
+        .sched-modal-band.sched-delayed    { background: linear-gradient(90deg,#f44336,#e57373); }
+        .sched-modal-band.sched-pending    { background: linear-gradient(90deg,#ff9800,#ffb74d); }
+
+        .sched-modal-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 18px 24px 14px; gap: 12px;
+            border-bottom: 1px solid var(--border-color, rgba(0,0,0,.08));
+            background: var(--bg-tertiary, rgba(255,255,255,.9)); flex-shrink: 0;
+        }
+        .sched-modal-req-id {
+            font-size: 11px; font-weight: 700;
+            color: var(--text-secondary, #555); text-transform: uppercase;
+            letter-spacing: .09em; margin-bottom: 3px;
+        }
+        .sched-modal-title { font-size: 19px; font-weight: 700; color: var(--text-primary, #1a1a2e); line-height: 1.25; }
+        .sched-modal-close {
+            background: none; border: none; font-size: 26px;
+            color: var(--text-secondary, #555); cursor: pointer;
+            width: 36px; height: 36px; display: flex; align-items: center;
+            justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0; margin-top: -2px;
+        }
+        .sched-modal-close:hover { background: rgba(55,98,200,.1); color: #3762c8; }
+
+        .sched-modal-body {
+            padding: 0 24px 20px; overflow-y: auto; flex: 1;
+            scrollbar-width: thin; scrollbar-color: #9cafde rgba(0,0,0,.07);
+        }
+        .sched-modal-body::-webkit-scrollbar { width: 5px; }
+        .sched-modal-body::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .sched-modal-body::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
+
+        /* Status pill */
+        .sched-status-row { padding-top: 16px; margin-bottom: 14px; }
+        .sched-status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+        }
+        .sched-status-pill.sched-completed  { background: rgba(76,175,80,.14);   color: #1b5e20; }
+        .sched-status-pill.sched-inprogress { background: rgba(25,118,210,.14);  color: #0d47a1; }
+        .sched-status-pill.sched-delayed    { background: rgba(244,67,54,.14);   color: #7f1d1d; }
+        .sched-status-pill.sched-pending    { background: rgba(255,152,0,.14);   color: #e65100; }
+        [data-theme="dark"] .sched-status-pill.sched-completed  { color: #81c784; }
+        [data-theme="dark"] .sched-status-pill.sched-inprogress { color: #90caf9; }
+        [data-theme="dark"] .sched-status-pill.sched-delayed    { color: #e57373; }
+        [data-theme="dark"] .sched-status-pill.sched-pending    { color: #ffb74d; }
+
+        /* Fields */
+        .sched-field        { margin-bottom: 14px; }
+        .sched-field-label  { font-size: 11px; font-weight: 700; color: #3762c8; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+        .sched-field-value  { font-size: 14px; color: var(--text-primary, #1a1a2e); line-height: 1.55; }
+        .sched-divider      { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 14px 0; }
+        .sched-grid-2       { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+
+        @media (max-width: 768px) {
+            .sched-detail-modal { width: 95%; max-height: 90vh; }
+            .sched-modal-header, .sched-modal-body { padding-left: 18px; padding-right: 18px; }
+            .sched-grid-2 { grid-template-columns: 1fr; gap: 10px; }
         }
     </style>
     <?php include 'citizen_rendering.php'; ?>
@@ -798,6 +915,7 @@ if ($maintenance_result) {
 
     <!-- DESKTOP TABLE -->
     <div class="table-wrapper">
+      <div class="table-scroll">
         <table>
             <!-- colgroup drives the fixed-layout widths -->
             <colgroup>
@@ -848,7 +966,7 @@ if ($maintenance_result) {
                     <td class="searchable" title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
                     <td class="searchable">₱<?php echo number_format($item['budget'], 2); ?></td>
                     <td class="searchable"><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
-                    <td><a href="#" class="link" data-i18n="reports_view_button">View</a></td>
+                    <td><a href="#" class="link" onclick="openSchedModal(<?= (int)$item['sched_id'] ?>);return false;" data-i18n="reports_view_button">View</a></td>
                 </tr>
                 <?php 
                     }
@@ -865,6 +983,7 @@ if ($maintenance_result) {
                 </tr>
             </tbody>
         </table>
+      </div><!-- /.table-scroll -->
     </div>
 
     <!-- MOBILE CARDS -->
@@ -916,7 +1035,7 @@ if ($maintenance_result) {
                         </span>
                     </div>
                     <div class="report-footer">
-                        <a href="#" class="evidence-btn" data-i18n="reports_view_button">View</a>
+                        <a href="#" class="evidence-btn" onclick="openSchedModal(<?= (int)$item['sched_id'] ?>);return false;" data-i18n="reports_view_button">View</a>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -1014,6 +1133,181 @@ document.addEventListener("DOMContentLoaded", () => {
         if (noMobileResult) noMobileResult.style.display = mMatches.length === 0 ? "" : "none";
     });
 });
+</script>
+
+<!-- ═══════════════ SCHEDULE DETAIL MODAL ═══════════════ -->
+<div id="schedModalBackdrop" class="sched-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedModalTitle">
+    <div id="schedDetailModal" class="sched-detail-modal">
+        <div class="sched-modal-band" id="schedModalBand"></div>
+        <div class="sched-modal-header">
+            <div>
+                <div class="sched-modal-req-id" id="schedModalId"></div>
+                <div class="sched-modal-title"  id="schedModalTitle"></div>
+            </div>
+            <button class="sched-modal-close" id="schedModalClose" aria-label="Close">×</button>
+        </div>
+        <div class="sched-modal-body">
+            <div class="sched-status-row">
+                <span class="sched-status-pill" id="schedModalStatus"></span>
+            </div>
+            <div class="sched-field">
+                <div class="sched-field-label" id="lbl-location">📍 Location</div>
+                <div class="sched-field-value" id="schedModalLocation"></div>
+            </div>
+            <div class="sched-field">
+                <div class="sched-field-label" id="lbl-category">🏷️ Category</div>
+                <div class="sched-field-value" id="schedModalCategory"></div>
+            </div>
+            <div class="sched-divider"></div>
+            <div class="sched-grid-2">
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-start">📅 Start Date</div>
+                    <div class="sched-field-value" id="schedModalStart"></div>
+                </div>
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-end">🏁 Est. Completion</div>
+                    <div class="sched-field-value" id="schedModalEnd"></div>
+                </div>
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-budget">💰 Budget</div>
+                    <div class="sched-field-value" id="schedModalBudget"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ SCHEDULE MODAL SCRIPT ═══════════════ -->
+<script>
+(function () {
+    /* ── All schedule data from PHP ── */
+    var ALL_SCHEDULES = <?php
+        $modal_data = [];
+        foreach ($maintenance_data as $m) {
+            $modal_data[] = [
+                'id'       => (int)$m['sched_id'],
+                'task'     => $m['task'],
+                'location' => $m['location'],
+                'category' => $m['category'],
+                'status'   => $m['status'],
+                'start'    => date('M d, Y', strtotime($m['starting_date'])),
+                'end'      => $m['estimated_completion_date']
+                                ? date('M d, Y', strtotime($m['estimated_completion_date']))
+                                : '—',
+                'budget'   => '₱' . number_format((float)$m['budget'], 2),
+            ];
+        }
+        echo json_encode($modal_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+    ?>;
+
+    /* ── Language detection (matches site toggle) ── */
+    function getLang() {
+        return (document.documentElement.lang || localStorage.getItem('lang') || 'en').substring(0, 2).toLowerCase();
+    }
+
+    /* ── Bilingual label maps ── */
+    var LABELS = {
+        en: {
+            location : '📍 Location',
+            category : '🏷️ Category',
+            start    : '📅 Start Date',
+            end      : '🏁 Est. Completion',
+            budget   : '💰 Budget',
+            noDate   : 'Not set',
+        },
+        tl: {
+            location : '📍 Lokasyon',
+            category : '🏷️ Kategorya',
+            start    : '📅 Petsa ng Pagsisimula',
+            end      : '🏁 Tinatayang Tapusin',
+            budget   : '💰 Badyet',
+            noDate   : 'Hindi pa natakda',
+        }
+    };
+
+    /* ── Status → CSS class + bilingual label ── */
+    var STATUS_MAP = {
+        'Completed'  : { cls: 'sched-completed',  en: '✅ Completed',   tl: '✅ Natapos'      },
+        'In Progress': { cls: 'sched-inprogress', en: '🔄 In Progress', tl: '🔄 Isinasagawa'  },
+        'Delayed'    : { cls: 'sched-delayed',    en: '⚠️ Delayed',     tl: '⚠️ Naantala'     },
+        'Pending'    : { cls: 'sched-pending',    en: '⏳ Pending',     tl: '⏳ Nakabinbin'   },
+    };
+
+    /* ── DOM refs ── */
+    var backdrop = document.getElementById('schedModalBackdrop');
+    var band     = document.getElementById('schedModalBand');
+    var idEl     = document.getElementById('schedModalId');
+    var titleEl  = document.getElementById('schedModalTitle');
+    var statusEl = document.getElementById('schedModalStatus');
+    var locEl    = document.getElementById('schedModalLocation');
+    var catEl    = document.getElementById('schedModalCategory');
+    var startEl  = document.getElementById('schedModalStart');
+    var endEl    = document.getElementById('schedModalEnd');
+    var budgetEl = document.getElementById('schedModalBudget');
+    var closeBtn = document.getElementById('schedModalClose');
+
+    /* ── Label elements ── */
+    var lblLocation = document.getElementById('lbl-location');
+    var lblCategory = document.getElementById('lbl-category');
+    var lblStart    = document.getElementById('lbl-start');
+    var lblEnd      = document.getElementById('lbl-end');
+    var lblBudget   = document.getElementById('lbl-budget');
+
+    /* ── Open ── */
+    window.openSchedModal = function (schedId) {
+        var rec = null;
+        for (var i = 0; i < ALL_SCHEDULES.length; i++) {
+            if (ALL_SCHEDULES[i].id === schedId) { rec = ALL_SCHEDULES[i]; break; }
+        }
+        if (!rec) return;
+
+        var lang   = getLang();
+        var lbl    = LABELS[lang] || LABELS.en;
+        var smap   = STATUS_MAP[rec.status] || { cls: 'sched-pending', en: rec.status, tl: rec.status };
+
+        /* Labels */
+        lblLocation.textContent = lbl.location;
+        lblCategory.textContent = lbl.category;
+        lblStart.textContent    = lbl.start;
+        lblEnd.textContent      = lbl.end;
+        lblBudget.textContent   = lbl.budget;
+
+        /* Band colour */
+        band.className = 'sched-modal-band ' + smap.cls;
+
+        /* Fields */
+        idEl.textContent     = '#SCH-' + String(rec.id).padStart(3, '0');
+        titleEl.textContent  = rec.task;
+        locEl.textContent    = rec.location  || '—';
+        catEl.textContent    = rec.category  || '—';
+        startEl.textContent  = rec.start     || lbl.noDate;
+        endEl.textContent    = rec.end       || lbl.noDate;
+        budgetEl.textContent = rec.budget    || '—';
+
+        /* Status pill */
+        statusEl.textContent = (lang === 'tl') ? smap.tl : smap.en;
+        statusEl.className   = 'sched-status-pill ' + smap.cls;
+
+        /* Show */
+        backdrop.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        closeBtn.focus();
+    };
+
+    /* ── Close ── */
+    function closeSchedModal() {
+        backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    closeBtn && closeBtn.addEventListener('click', closeSchedModal);
+    backdrop && backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) closeSchedModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && backdrop.classList.contains('active')) closeSchedModal();
+    });
+})();
 </script>
 
 <!-- FOOTER -->
