@@ -1826,6 +1826,7 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
             <button class="detail-modal-close" id="detailModalClose">&times;</button>
         </div>
         <div class="detail-modal-body">
+<<<<<<< Updated upstream
             <div class="detail-row">
                 <strong>Request ID:</strong>
                 <span id="detailReqId"></span>
@@ -1857,16 +1858,108 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
         </div>
         <div class="detail-modal-footer" id="detailModalFooter">
             <button class="btn-validate" id="validateBtn">Validate Request</button>
+=======
+            <div class="detail-status-row"><span class="detail-status-pill" id="detailStatus"><i class="fas fa-circle" style="color: var(--icon-color-light); background-color: var(--icon-color-dark);"></i></span></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marker-alt" style="color: var(--icon-color-light);"></i> Location</div><div class="detail-field-value" id="detailLocation"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marked-alt" style="color: var(--icon-color-light);"></i> Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-hammer" style="color: var(--icon-color-light);"></i> Issue / Damage</div><div class="detail-field-value" id="detailIssue"></div></div>
+            <div class="detail-divider"></div>
+            <div class="detail-grid-2">
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-calendar-alt" style="color: var(--icon-color-light);"></i> Date Submitted</div><div class="detail-field-value" id="detailDate"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-user" style="color: var(--icon-color-light);"></i> Requester</div><div class="detail-field-value" id="detailRequester"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-phone" style="color: var(--icon-color-light);"></i> Contact</div><div class="detail-field-value" id="detailContact"></div></div>
+            </div>
+            <div class="detail-divider"></div>
+            <div class="detail-field">
+                <div class="detail-field-label"><i class="fas fa-images" style="color: var(--icon-color-light);"></i> Evidence Images</div>
+                <div class="detail-evidence-strip" id="detailEvidenceContainer"></div>
+            </div>
+        </div>
+        <div class="detail-modal-footer" id="detailModalFooter">
+            <div class="detail-footer-inner">
+                <button class="btn-reject" id="reqRejectBtn"><i class="fas fa-times-circle" style="color: var(--icon-color);"></i> Reject Request</button>
+                <button class="btn-validate" id="reqValidateBtn"><i class="fas fa-check-circle" style="color: var(--icon-color);"></i> Validate Request</button>
+            </div>
+>>>>>>> Stashed changes
         </div>
     </div>
 </div>
 
+<<<<<<< Updated upstream
 <!-- VALIDATION CONFIRMATION MODAL -->
 <div id="validateConfirmBackdrop" class="modal-backdrop">
     <div id="validateConfirmModal" class="alert-modal">
         <div class="icon-wrap success-icon">
             <span class="icon">✓</span>
         </div>
+=======
+<!-- GIS VIEW — REQUEST DETAIL MODAL -->
+<div id="gisModalBackdrop" class="gis-modal-backdrop">
+    <div id="gisDetailModal" class="gis-detail-modal">
+        <div class="gis-modal-header">
+            <div class="gis-modal-header-band" id="modalHeaderBand"></div>
+            <div class="gis-modal-header-content">
+                <div>
+                    <div class="gis-modal-req-id" id="modalReqId"></div>
+                    <div class="gis-modal-infra"  id="modalInfra"></div>
+                </div>
+                <button class="gis-modal-close" id="gisModalClose">&#215;</button>
+            </div>
+        </div>
+        <div class="gis-modal-body">
+            <div class="gis-modal-status-row">
+                <span class="gis-status-pill" id="modalStatusPill">
+                    <i class="fas fa-circle" style="color: var(--color-text);"></i>
+                </span>
+            </div>
+            <div class="gis-field">
+                <div class="gis-field-label"><i class="fas fa-map-marker-alt" style="color: var(--color-text);"></i> Location</div>
+                <div class="gis-field-value" id="modalLocation"></div>
+            </div>
+            <div class="gis-field">
+                <div class="gis-field-label"><i class="fas fa-compass" style="color: var(--color-text);"></i> Coordinates</div>
+                <div class="gis-field-value" id="modalCoordinates"></div>
+            </div>
+            <div class="gis-field">
+                <div class="gis-field-label"><i class="fas fa-wrench" style="color: var(--color-text);"></i> Issue / Damage</div>
+                <div class="gis-field-value" id="modalIssue"></div>
+            </div>
+            <div class="gis-divider"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="gis-field">
+                    <div class="gis-field-label"><i class="fas fa-calendar-alt" style="color: var(--color-text);"></i> Date Submitted</div>
+                    <div class="gis-field-value" id="modalDate"></div>
+                </div>
+                <div class="gis-field">
+                    <div class="gis-field-label"><i class="fas fa-user" style="color: var(--color-text);"></i> Requester</div>
+                    <div class="gis-field-value" id="modalRequester"></div>
+                </div>
+                <div class="gis-field">
+                    <div class="gis-field-label"><i class="fas fa-phone" style="color: var(--color-text);"></i> Contact</div>
+                    <div class="gis-field-value" id="modalContact"></div>
+                </div>
+            </div>
+            <div class="gis-divider"></div>
+            <div class="gis-field">
+                <div class="gis-field-label"><i class="fas fa-images" style="color: var(--color-text);"></i> Evidence Images</div>
+                <div class="gis-evidence-strip" id="modalEvidence"></div>
+            </div>
+        </div>
+        <!-- GIS detail modal footer — validate/reject -->
+        <div class="gis-modal-footer" id="gisDetailModalFooter">
+            <div class="detail-footer-inner">
+                <button class="btn-reject"   id="gisRejectBtn"><i class="fas fa-times-circle" style="color: var(--color-text);"></i> Reject Request</button>
+                <button class="btn-validate" id="gisValidateBtn"><i class="fas fa-check-circle" style="color: var(--color-text);"></i> Validate Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VALIDATE CONFIRMATION MODAL -->
+<div id="validateConfirmBackdrop" class="modal-backdrop">
+    <div id="validateConfirmModal" class="alert-modal">
+        <div class="icon-wrap success-icon"><span class="icon" style="color: var(--color-text);">✓</span></div>
+>>>>>>> Stashed changes
         <div class="alert-title">Validate this request?</div>
         <div class="alert-desc">Are you sure you want to mark this request as validated? This action will update the request status.</div>
         <div class="alert-btns">

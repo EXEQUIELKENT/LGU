@@ -1564,19 +1564,31 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <a href="requests.php" class="action-btn">
-                    <div class="action-icon">📋</div>
+                    <div class="action-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div class="action-title">View Requests</div>
                     <div class="action-subtitle">Manage pending requests</div>
                 </a>
                 <a href="sched.php" class="action-btn">
-                    <div class="action-icon">📅</div>
+                    <div class="action-icon"><i class="fas fa-calendar-alt"></i></div>
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
+<<<<<<< Updated upstream
                 <a href="reports.php" class="action-btn">
                     <div class="action-icon">📊</div>
                     <div class="action-title">Reports</div>
                     <div class="action-subtitle">Generate reports</div>
+=======
+                <a href="current_reports.php" class="action-btn">
+                    <div class="action-icon"><i class="fas fa-sync"></i></div>
+                    <div class="action-title">Current Reports</div>
+                    <div class="action-subtitle">In-progress repairs</div>
+                </a>
+                <a href="pending_reports.php" class="action-btn">
+                    <div class="action-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="action-title">Pending Reports</div>
+                    <div class="action-subtitle">Awaiting approval</div>
+>>>>>>> Stashed changes
                 </a>
             </div>
 
@@ -1736,10 +1748,88 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <?php endif; ?>
                 </div>
             </div>
+<<<<<<< Updated upstream
+=======
+
+            <!-- ============================================================
+                 EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+                 3. HTML — Add INSIDE .dashboard-card, AFTER the closing </div> of 
+                 the .charts-grid / Recent Activity chart-card, just BEFORE 
+                 the final closing </div> of .dashboard-card.
+                 ============================================================ -->
+
+            <?php if ($isAdmin): ?>
+            <!-- ADMIN: Report Generation Section -->
+            <div class="report-gen-section">
+                <div class="report-gen-header">
+                    <h3>📊 Report Generation</h3>
+                    <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+                </div>
+                <div class="report-type-grid">
+                    <button class="report-type-btn" onclick="openReportModal('requests')">
+                        <div class="rpt-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="rpt-title">Requests Report</div>
+                        <div class="rpt-desc">All infrastructure repair requests by date range</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('schedules')">
+                        <div class="rpt-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="rpt-title">Schedules Report</div>
+                        <div class="rpt-desc">Maintenance schedule data by date range</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('summary')">
+                        <div class="rpt-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="rpt-title">Executive Summary</div>
+                        <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
+
+>>>>>>> Stashed changes
         </div>
     </div>
 </div>
 
+<<<<<<< Updated upstream
+=======
+<?php if ($isAdmin): ?>
+<div id="pwModalBackdrop">
+    <div class="pw-modal">
+        <div class="pw-modal-header">
+            <div class="pw-modal-icon"><i class="fas fa-lock"></i></div>
+            <div class="pw-modal-header-text">
+                <h3>Confirm Your Identity</h3>
+                <p>Enter your account password to generate this report.</p>
+            </div>
+        </div>
+        <div class="pw-modal-body">
+            <label for="pwInput">Password</label>
+            <div class="pw-input-wrap">
+                <input type="password" id="pwInput"
+                       placeholder="Enter your password"
+                       autocomplete="current-password"
+                       autofocus>
+                <button class="pw-toggle-btn" type="button"
+                        id="pwToggleBtn" title="Show/hide password"
+                        tabindex="-1"><i class="fas fa-eye-slash"></i></button>
+            </div>
+            <div class="pw-error-msg" id="pwErrorMsg">
+                <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
+            </div>
+            <div class="pw-attempts-msg" id="pwAttemptsMsg"></div>
+        </div>
+        <div class="pw-modal-footer">
+            <button class="pw-cancel-btn" id="pwCancelBtn">Cancel</button>
+            <button class="pw-confirm-btn" id="pwConfirmBtn">
+                <div class="pw-spinner" id="pwSpinner"></div>
+                <span id="pwConfirmText"><i class="fas fa-unlock"></i> Verify &amp; Continue</span>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+>>>>>>> Stashed changes
 <?php include 'admin_scripts.php'; ?>
 
 <script>
@@ -1907,6 +1997,448 @@ if (statusCtx) {
         }
     });
 }
+<<<<<<< Updated upstream
+=======
+
+// ===== ACTIVE REPORTS CHART =====
+const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;
+const activeReportsAssigned  = <?= json_encode($reportAssignedData) ?>;
+const activeReportsUnassigned= <?= json_encode($reportUnassignedData) ?>;
+
+const activeReportsCtx = document.getElementById('activeReportsChart');
+if (activeReportsCtx) {
+    new Chart(activeReportsCtx, {
+        type: 'bar',
+        data: {
+            labels: activeReportsLabels,
+            datasets: [
+                {
+                    label: 'Assigned',
+                    data: activeReportsAssigned,
+                    backgroundColor: 'rgba(76, 175, 80, 0.85)',
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Unassigned',
+                    data: activeReportsUnassigned,
+                    backgroundColor: 'rgba(255, 152, 0, 0.85)',
+                    borderColor: '#ff9800',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const idx   = context[0].dataIndex;
+                            const total = activeReportsAssigned[idx] + activeReportsUnassigned[idx];
+                            return ['Total: ' + total];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     4. HTML MODAL — Add just BEFORE the closing </body> tag.
+     ============================================================ -->
+<!-- =====================================================================
+     REPORT MODAL HTML  — replace your existing #reportModalBackdrop block
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
+<div id="reportModalBackdrop">
+    <div class="report-modal">
+        <div class="report-modal-header">
+            <h3 id="reportModalTitle">Generate Report</h3>
+            <button class="report-modal-close" id="reportModalClose">&times;</button>
+        </div>
+        <div class="report-modal-body">
+            <div class="form-group">
+                <label>Date Range</label>
+                <div class="date-row">
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
+                        <input type="date" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
+                    </div>
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
+                        <input type="date" id="rptDateTo" value="<?= date('Y-m-d') ?>">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Export Format</label>
+                <div class="format-toggle">
+                    <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
+                        <i class="fas fa-file-excel"></i> Excel (.xlsx)
+                    </button>
+                    <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
+                        <i class="fas fa-file-pdf"></i> PDF (Print)
+                    </button>
+                </div>
+            </div>
+            <!-- "Generate" now opens the password gate first -->
+            <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+                <span id="btnGenerateText">
+                    <i class="fas fa-key"></i> Verify &amp; Generate
+                </span>
+            </button>
+            <p class="report-info-text">
+                You will be asked to confirm your password before the report is created.
+            </p>
+            <!-- Hidden form — submitted only after successful password verification -->
+            <form id="reportForm" action="generate_report.php" method="POST" target="_blank" style="display:none">
+                <input type="hidden" name="report_type"   id="rptTypeInput">
+                <input type="hidden" name="format"        id="rptFormatInput">
+                <input type="hidden" name="date_from"     id="rptFromInput">
+                <input type="hidden" name="date_to"       id="rptToInput">
+                <input type="hidden" name="report_token"  id="rptTokenInput">
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     5. JAVASCRIPT — Add AFTER the existing </script> blocks,
+     before closing </body>
+     ============================================================ -->
+<!-- =====================================================================
+     REPORT JS  — replace your existing report <script> block entirely
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let _rptType   = 'requests';
+let _rptFormat = 'excel';
+
+// ── Report modal ─────────────────────────────────────────────────────────────
+function openReportModal(type) {
+    _rptType = type;
+    const titles = {
+        requests:  '📋 Requests Report',
+        schedules: '📅 Schedules Report',
+        summary:   '📈 Executive Summary',
+    };
+    document.getElementById('reportModalTitle').textContent = titles[type] || 'Generate Report';
+    document.getElementById('reportModalBackdrop').classList.add('active');
+    resetBtnGenerate();
+}
+
+function closeReportModal() {
+    document.getElementById('reportModalBackdrop').classList.remove('active');
+    resetBtnGenerate();
+}
+
+function selectFormat(fmt) {
+    _rptFormat = fmt;
+    document.getElementById('fmtExcel').classList.toggle('active', fmt === 'excel');
+    document.getElementById('fmtPdf').classList.toggle('active',   fmt === 'pdf');
+}
+
+function resetBtnGenerate() {
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = false;
+    document.getElementById('btnGenerateText').innerHTML = '<i class="fas fa-lock"></i> Verify & Generate';
+}
+
+// ── Step 1: Validate date inputs, then open password gate ────────────────────
+function startGenerate() {
+    const from = document.getElementById('rptDateFrom').value;
+    const to   = document.getElementById('rptDateTo').value;
+    if (!from || !to) { alert('Please select both a start and end date.'); return; }
+    if (from > to)    { alert('Start date must be before or equal to end date.'); return; }
+
+    // Store values for later submission
+    document.getElementById('rptTypeInput').value   = _rptType;
+    document.getElementById('rptFormatInput').value = _rptFormat;
+    document.getElementById('rptFromInput').value   = from;
+    document.getElementById('rptToInput').value     = to;
+
+    // Close report modal and open password gate
+    closeReportModal();
+    openPwModal();
+}
+
+// ── Password modal ────────────────────────────────────────────────────────────
+function openPwModal() {
+    const backdrop = document.getElementById('pwModalBackdrop');
+    backdrop.classList.add('active');
+    const input = document.getElementById('pwInput');
+    input.value = '';
+    input.type  = 'password';
+    hidePwError();
+    document.getElementById('pwAttemptsMsg').classList.remove('show');
+    document.getElementById('pwConfirmBtn').disabled = false;
+    document.getElementById('pwConfirmText').style.display = '';
+    document.getElementById('pwSpinner').style.display = 'none';
+    // Focus after animation
+    setTimeout(() => input.focus(), 80);
+}
+
+function closePwModal() {
+    document.getElementById('pwModalBackdrop').classList.remove('active');
+    document.getElementById('pwInput').value = '';
+    hidePwError();
+}
+
+function showPwError(msg) {
+    const el = document.getElementById('pwErrorMsg');
+    document.getElementById('pwErrorText').textContent = msg;
+    el.classList.add('show');
+    document.getElementById('pwInput').classList.add('pw-error');
+}
+
+function hidePwError() {
+    document.getElementById('pwErrorMsg').classList.remove('show');
+    document.getElementById('pwInput').classList.remove('pw-error');
+}
+
+// ── Password toggle (show/hide) ───────────────────────────────────────────────
+document.getElementById('pwToggleBtn').addEventListener('click', function () {
+    const input = document.getElementById('pwInput');
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    this.innerHTML = isHidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+});
+
+// ── Step 2: Verify password via AJAX ─────────────────────────────────────────
+async function verifyAndGenerate() {
+    const password = document.getElementById('pwInput').value;
+    if (!password) {
+        showPwError('Please enter your password.');
+        document.getElementById('pwInput').focus();
+        return;
+    }
+
+    // Set loading state
+    const confirmBtn = document.getElementById('pwConfirmBtn');
+    const confirmTxt = document.getElementById('pwConfirmText');
+    const spinner    = document.getElementById('pwSpinner');
+    confirmBtn.disabled = true;
+    confirmTxt.style.display = 'none';
+    spinner.style.display    = 'block';
+    hidePwError();
+
+    try {
+        const resp = await fetch('verify_password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ password })
+        });
+
+        let data;
+        try { data = await resp.json(); }
+        catch (e) {
+            showPwError('Server error. Please try again.');
+            return;
+        }
+
+        if (data.success && data.token) {
+            // ✅ Correct password — inject token and submit form
+            document.getElementById('rptTokenInput').value = data.token;
+            closePwModal();
+
+            const form = document.getElementById('reportForm');
+            if (_rptFormat === 'excel') {
+                form.target = '_self'; // triggers file download in same tab
+            } else {
+                form.target = '_blank'; // PDF opens in new tab
+            }
+            form.submit();
+
+            // Re-enable generate button after a delay (for Excel re-use)
+            if (_rptFormat === 'excel') {
+                setTimeout(resetBtnGenerate, 4500);
+            }
+
+        } else {
+            // ❌ Wrong password
+            showPwError(data.message || 'Incorrect password. Please try again.');
+            document.getElementById('pwInput').value = '';
+            document.getElementById('pwInput').focus();
+
+            // Show attempt warning after first failure
+            const attemptsMsg = document.getElementById('pwAttemptsMsg');
+            attemptsMsg.textContent = 'Note: Multiple failed attempts will temporarily lock verification.';
+            attemptsMsg.classList.add('show');
+
+            if (resp.status === 429) {
+                showPwError(data.message || 'Too many attempts. Please wait before trying again.');
+                confirmBtn.disabled = true; // keep disabled until modal is closed/reopened
+            }
+        }
+
+    } catch (err) {
+        showPwError('Network error. Please check your connection.');
+    } finally {
+        // Restore button state (unless it was rate-limited)
+        if (!document.getElementById('pwErrorMsg').classList.contains('show') ||
+             document.getElementById('pwErrorText').textContent.includes('Incorrect')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else if (!document.getElementById('pwAttemptsMsg').textContent.includes('lock')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else {
+            // Always restore UI unless it's the rate-limit case
+            if (resp && resp.status !== 429) {
+                confirmBtn.disabled = false;
+                confirmTxt.style.display = '';
+                spinner.style.display    = 'none';
+            }
+        }
+    }
+}
+
+// Restore spinner on all non-429 cases reliably
+document.getElementById('pwConfirmBtn').addEventListener('click', async function() {
+    await verifyAndGenerate();
+    // Ensure spinner is hidden if button is re-enabled
+    if (!this.disabled) {
+        document.getElementById('pwSpinner').style.display = 'none';
+        document.getElementById('pwConfirmText').style.display = '';
+    }
+});
+
+// Allow Enter key in password field
+document.getElementById('pwInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('pwConfirmBtn').click();
+    }
+});
+
+// ── Close handlers ────────────────────────────────────────────────────────────
+document.getElementById('pwCancelBtn').addEventListener('click', closePwModal);
+document.getElementById('pwModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closePwModal();
+});
+document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
+document.getElementById('reportModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeReportModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('pwModalBackdrop').classList.contains('active'))  closePwModal();
+    if (document.getElementById('reportModalBackdrop').classList.contains('active')) closeReportModal();
+});
+</script>
+<?php endif; ?>
+
+<script>
+(function () {
+    // ── 1. Wire up [data-href] cards (metric cards + any others) ──
+    function makeClickable(selector) {
+        document.querySelectorAll(selector + '[data-href]').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                // Don't navigate if the click was on an inner button/link
+                if (e.target.closest('button, a, input, select, textarea')) return;
+                window.location.href = el.dataset.href;
+            });
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.href = el.dataset.href;
+                }
+            });
+        });
+    }
+
+    makeClickable('.metric-card');
+
+    // ── 2. Activity items → requests.php ──────────────────────────
+    document.querySelectorAll('.activity-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.activity-item');
+
+    // ── 3. Schedule items → sched.php ─────────────────────────────
+    document.querySelectorAll('.schedule-item').forEach(function (el) {
+        el.dataset.href = 'sched.php';
+    });
+    makeClickable('.schedule-item');
+
+    // ── 4. Facility items → requests.php ──────────────────────────
+    document.querySelectorAll('.facility-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.facility-item');
+
+    // ── 5. Chart cards (Request Trends / Status Breakdown) ─────────
+    document.querySelectorAll('.chart-card').forEach(function (el) {
+        // Identify by title text
+        const title = el.querySelector('.chart-title');
+        if (!title) return;
+        const text = title.textContent.trim().toLowerCase();
+
+        if (text.includes('request trend') || text.includes('status breakdown')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('top facilities')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('upcoming maintenance')) {
+            el.dataset.href = 'sched.php';
+        } else if (text.includes('recent activity')) {
+            el.dataset.href = 'requests.php';
+        }
+        // Only add cursor/pointer if href was assigned
+        if (el.dataset.href) {
+            el.style.cursor = 'pointer';
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('role', 'link');
+        }
+    });
+    makeClickable('.chart-card');
+
+})();
+>>>>>>> Stashed changes
 </script>
 
 </body>
