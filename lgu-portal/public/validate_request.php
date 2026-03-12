@@ -40,8 +40,8 @@ if ($reqId <= 0) jsonOut(false, 'Invalid request ID.');
 
 require __DIR__ . '/db.php';
 
-// Verify request exists and is Pending
-$chk = $conn->prepare("SELECT approval_status FROM requests WHERE req_id = ? LIMIT 1");
+// Verify request exists and is Pending — also fetch issue text for res_note
+$chk = $conn->prepare("SELECT approval_status, issue FROM requests WHERE req_id = ? LIMIT 1");
 if (!$chk) jsonOut(false, 'DB prepare error: ' . $conn->error);
 $chk->bind_param('i', $reqId);
 $chk->execute();
@@ -70,9 +70,9 @@ if ($engineerId) {
     $engineerName = $engRow['full_name'];
 }
 
-// Insert request_resolutions
+// Insert request_resolutions — use the actual reported issue as the initial note
 $status = 'Approved';
-$note   = 'Validated — engineer assignment pending.';
+$note   = trim($chkRow['issue'] ?? '') ?: 'No issue description provided.';
 $ir = $conn->prepare(
     "INSERT INTO request_resolutions (req_id, status, res_note, resolved_by) VALUES (?, ?, ?, ?)"
 );

@@ -124,11 +124,23 @@ $isAdmin = in_array(
     ['admin', 'super admin']
 );
 
+$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
+
+// ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
+$conn->query("
+    ALTER TABLE request_resolutions
+    MODIFY COLUMN status ENUM('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion')
+    NOT NULL DEFAULT 'Approved'
+");
+
 
 // Fetch schedules from database
 $schedules = [];
 $sql = "SELECT * FROM maintenance_schedule ORDER BY starting_date ASC";
 $result = $conn->query($sql);
+
+$todayPhp = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
 if ($result && $result->num_rows > 0) {
     $today = new DateTime('today');
@@ -163,15 +175,6 @@ if ($result && $result->num_rows > 0) {
                 $row['priority'] = 'High';
             }
         }
-        if (empty($row['assigned_team']) || $row['assigned_team'] === 'General Maintenance Team') {
-            if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
-                $row['assigned_team'] = 'Facilities - HVAC Team';
-            } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
-                $row['assigned_team'] = 'Electrical Maintenance Team';
-            } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
-                $row['assigned_team'] = 'Safety & Compliance Team';
-            }
-        }
 
         $status_label = $row['status'];
         $priority_label = $row['priority'];
@@ -197,10 +200,96 @@ if ($result && $result->num_rows > 0) {
         $row['priority'] = $priority_label;
         // Add schedule_date alias for backward compatibility with JavaScript
         $row['schedule_date'] = date('Y-m-d', strtotime($row['starting_date']));
+        $row['source']        = 'schedule';
+        $row['engineer_name'] = '';
+        $row['budget_raw']    = 0;
+        $row['budget_display']= '';
+        $row['rep_id']        = 0;
 
         $schedules[] = $row;
     }
 }
+
+// ── Pull in Pending Reports (Scheduled / In Progress / Delayed) ──────────────
+// ── and Archive Reports (Completed) into the same $schedules array ───────────
+
+// Engineers only see their own reports; admins/others see all
+$engineerFilter = $isEngineer && $sessionUserId > 0
+    ? "AND r.engineer_id = {$sessionUserId}"
+    : "";
+
+$reportSql = "
+    SELECT
+        r.rep_id, r.starting_date, r.estimated_end_date, r.priority_lvl,
+        r.engineer_id, r.budget,
+        res.status AS resolution_status, res.res_note,
+        req.infrastructure, req.location,
+        CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    LEFT JOIN employees            e   ON r.engineer_id = e.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+      AND r.starting_date IS NOT NULL
+      {$engineerFilter}
+    ORDER BY r.starting_date ASC
+";
+$reportResult = $conn->query($reportSql);
+
+if ($reportResult && $reportResult->num_rows > 0) {
+    while ($rRow = $reportResult->fetch_assoc()) {
+        $resStatus  = $rRow['resolution_status'] ?? '';
+        $resNote    = trim($rRow['res_note'] ?? '');
+        $startDate  = $rRow['starting_date']      ?? '';
+        $endDate    = $rRow['estimated_end_date'] ?? '';
+
+        // Map to display status + color key
+        if ($resStatus === 'Completed') {
+            $statusLabel = 'Completed';
+        } elseif ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
+            $statusLabel = 'In Progress';
+        } else {
+            // Scheduled / Pending — check delay: no notes AND past end date
+            $statusLabel = 'Scheduled';
+            if (empty($resNote) && !empty($endDate)) {
+                try {
+                    $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
+                    if ($todayPhp > $endDt) {
+                        $statusLabel = 'Delayed';
+                    }
+                } catch (Exception $e) {}
+            }
+        }
+
+        $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
+        $priority = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
+
+        $schedules[] = [
+            'id'              => 0,
+            'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'        => $rRow['location'] ?? '—',
+            'schedule_date'   => !empty($startDate) ? date('Y-m-d', strtotime($startDate)) : '',
+            'estimated_end_date' => $endDate,
+            'starting_date'   => $startDate,
+            'status'          => $resStatus,
+            'status_label'    => $statusLabel,
+            'priority'        => $priority,
+            'category'        => 'Infrastructure Report',
+            'assigned_team'   => '',
+            'engineer_name'   => trim($rRow['engineer_name'] ?? '') ?: '—',
+            'budget_raw'      => (float)($rRow['budget'] ?? 0),
+            'budget_display'  => '₱' . number_format((float)($rRow['budget'] ?? 0), 2),
+            'rep_id'          => (int)$rRow['rep_id'],
+            'source'          => 'report',
+            'res_note'        => $resNote,
+        ];
+    }
+}
+
+// Sort all combined schedules by starting_date ascending
+usort($schedules, function($a, $b) {
+    return strcmp($a['schedule_date'] ?? '', $b['schedule_date'] ?? '');
+});
 ?>
 
 <!DOCTYPE html>
@@ -441,8 +530,8 @@ if ($result && $result->num_rows > 0) {
 }
 
 [data-theme="dark"] .badge-status-in-progress {
-    background: rgba(33, 150, 243, 0.2);
-    color: #64b5f6;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fdd835;
 }
 
 [data-theme="dark"] .badge-status-delayed {
@@ -452,8 +541,8 @@ if ($result && $result->num_rows > 0) {
 
 [data-theme="dark"] .badge-status-planned,
 [data-theme="dark"] .badge-status-scheduled {
-    background: rgba(158, 158, 158, 0.2);
-    color: #bdbdbd;
+    background: rgba(21, 101, 192, 0.2);
+    color: #90caf9;
 }
 
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
@@ -1007,7 +1096,7 @@ if ($result && $result->num_rows > 0) {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: center;
     gap: 6px;
     min-width: 120px;
     flex-shrink: 0;
@@ -1064,30 +1153,120 @@ if ($result && $result->num_rows > 0) {
     font-size: 14px;
 }
 
-@media (max-width: 600px) {
+/* Filter-hidden class — must override ALL display rules including mobile !important */
+.schedule-item.filter-hidden {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
     .schedule-item {
-        grid-template-columns: 4px 1fr;
+        grid-template-columns: 4px 1fr !important;
+        display: grid;
     }
     .schedule-item-meta {
-        display: none;
+        display: none !important;
     }
     .schedule-item-body {
-        padding: 12px 12px 12px 0;
+        padding: 12px 14px 12px 0 !important;
+        min-width: 0;
+    }
+    .schedule-item-title {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        word-break: break-word;
+        font-size: 14px;
+        line-height: 1.35;
+    }
+    .schedule-item-location {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        word-break: break-word;
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+    .schedule-item-location span {
+        white-space: normal !important;
+        word-break: break-word;
+    }
+    .schedule-item-badges {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    /* Show date inline in body on mobile */
+    .schedule-item-dates-desktop {
+        display: none !important;
     }
     /* Show date inline in body on mobile */
     .schedule-item-date-mobile {
         display: flex !important;
     }
+    /* Show status/priority badges on mobile */
+    .schedule-item-mobile-status {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 2px;
+    }
+}
+
+@media (max-width: 600px) {
+    .schedule-item:not(.filter-hidden) {
+        grid-template-columns: 4px 1fr !important;
+    }
+    .schedule-item-meta {
+        display: none !important;
+    }
+    .schedule-item-body {
+        padding: 12px 14px 12px 0 !important;
+    }
+    .schedule-item-dates-desktop {
+        display: none !important;
+    }
+    .schedule-item-date-mobile {
+        display: flex !important;
+    }
+    .schedule-item-mobile-status {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 2px;
+    }
+}
+
+/* Desktop-only dates shown below badge row in body */
+.schedule-item-dates-desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 6px;
 }
 
 .schedule-item-date-mobile {
     display: none;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-top: 2px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.sched-date-label-mobile {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 2px;
+}
+
+/* Mobile-only status/priority row — hidden on desktop, shown via media query below */
+.schedule-item-mobile-status {
+    display: none;
 }
 
 .schedule-date{
@@ -1129,8 +1308,8 @@ if ($result && $result->num_rows > 0) {
     color:#2e7d32;
 }
 .badge-status-in-progress {
-    background:#e3f2fd;
-    color:#1565c0;
+    background:#fff8e1;
+    color:#f57f17;
 }
 .badge-status-delayed {
     background:#ffebee;
@@ -1138,8 +1317,23 @@ if ($result && $result->num_rows > 0) {
 }
 .badge-status-planned,
 .badge-status-scheduled {
-    background:#eceff1;
-    color:#37474f;
+    background:#e3f2fd;
+    color:#1565c0;
+}
+.badge-rep-source {
+    background:#f3e5f5;
+    color:#6a1b9a;
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid rgba(106,27,154,0.18);
+}
+[data-theme="dark"] .badge-rep-source {
+    background: rgba(106,27,154,0.2);
+    color: #ce93d8;
+    border-color: rgba(206,147,216,0.25);
 }
 
 /* Global text color helpers for status (used in list, calendar number, and modal) */
@@ -1531,7 +1725,7 @@ if ($result && $result->num_rows > 0) {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
+    z-index: 6500;
     padding: 16px;
     animation: modalBackdropIn 0.2s ease;
 }
@@ -2587,6 +2781,66 @@ if ($result && $result->num_rows > 0) {
 .legend-item:has(.legend-event)     { border-color: rgba(33,150,243,0.28); }
 .legend-item:has(.legend-weekend)   { border-color: rgba(220,38,38,0.22); }
 
+/* ── Clickable filter legend pills ── */
+.legend-item[data-filter] {
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow 0.15s, border-color 0.15s, background 0.15s, transform 0.12s, opacity 0.15s;
+}
+.legend-item[data-filter]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.10);
+}
+.legend-item[data-filter]:active { transform: scale(0.96); }
+
+/* Active (selected) state */
+.legend-item[data-filter].legend-active {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.13);
+    font-weight: 700;
+}
+.legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13); border-color: #1565c0; color: #1565c0; }
+.legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
+.legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
+.legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
+
+/* Dimmed state when another filter is active */
+.legend-item[data-filter].legend-dimmed {
+    opacity: 0.42;
+}
+
+[data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
+[data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
+[data-theme="dark"] .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
+[data-theme="dark"] .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
+
+/* Calendar day dimmed when filter is active and day has no matching tasks */
+.calendar-day.legend-filter-dim { opacity: 0.35; pointer-events: none; }
+.calendar-day.legend-filter-dim.today { opacity: 0.55; }
+
+/* Filter indicator badge shown in list & calendar toolbars */
+#legendFilterBadge, #legendFilterBadgeCal {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(55,98,200,0.10);
+    border: 1.5px solid rgba(55,98,200,0.22);
+    color: #3762c8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+#legendFilterBadge.visible, #legendFilterBadgeCal.visible { display: inline-flex; }
+#legendFilterBadge:hover, #legendFilterBadgeCal:hover { background: rgba(55,98,200,0.18); }
+[data-theme="dark"] #legendFilterBadge, [data-theme="dark"] #legendFilterBadgeCal {
+    background: rgba(95,140,255,0.14);
+    border-color: rgba(95,140,255,0.30);
+    color: #8ab4f8;
+}
+
 [data-theme="dark"] .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.40); }
 [data-theme="dark"] .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.40); }
 [data-theme="dark"] .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.40); }
@@ -3338,13 +3592,9 @@ Sidebar (250px) takes the most relative space here.
 
         /* Each schedule item becomes card-like */
         .schedule-item {
-            padding: 14px;
+            grid-template-columns: 4px 1fr !important;
             margin-bottom: 12px;
             border-radius: 14px;
-            background: rgba(255,255,255,0.96);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-            flex-direction: column;
-            gap: 8px;
         }
 
         .schedule-date {
@@ -3660,16 +3910,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </div>
             <!-- LEGEND between date label and calendar grid -->
             <div class="calendar-legend calendar-legend-top">
-                <span class="legend-item">
-                    <span class="legend-dot legend-upcoming"></span>Upcoming
+                <span class="legend-item" data-filter="upcoming" title="Click to filter: Scheduled">
+                    <span class="legend-dot legend-upcoming"></span>Scheduled
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="ongoing" title="Click to filter: In Progress">
                     <span class="legend-dot legend-ongoing"></span>In Progress
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="delayed" title="Click to filter: Delayed">
                     <span class="legend-dot legend-delayed"></span>Delayed
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="completed" title="Click to filter: Completed">
                     <span class="legend-dot legend-completed"></span>Completed
                 </span>
                 <span class="legend-item">
@@ -3683,6 +3933,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 </span>
                 <span class="legend-item">
                     <span class="legend-dot legend-weekend"></span>Weekend
+                </span>
+                <span id="legendFilterBadgeCal" title="Click to clear filter">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span id="legendFilterBadgeCalLabel">Upcoming</span>
                 </span>
             </div>
             <div class="calendar-weekdays">
@@ -3735,17 +3989,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </div>
             <!-- Legend shown in list view below search bar -->
             <div class="calendar-legend">
-                <span class="legend-item">
-                    <span class="legend-dot legend-upcoming"></span>Upcoming
+                <span class="legend-item" data-filter="upcoming" title="Click to filter: Scheduled">
+                    <span class="legend-dot legend-upcoming"></span>Scheduled
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="ongoing" title="Click to filter: In Progress">
                     <span class="legend-dot legend-ongoing"></span>In Progress
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="delayed" title="Click to filter: Delayed">
                     <span class="legend-dot legend-delayed"></span>Delayed
                 </span>
-                <span class="legend-item">
+                <span class="legend-item" data-filter="completed" title="Click to filter: Completed">
                     <span class="legend-dot legend-completed"></span>Completed
+                </span>
+                <span id="legendFilterBadge" title="Click to clear filter">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span id="legendFilterBadgeLabel">Upcoming</span>
                 </span>
             </div>
             <div id="scheduleListHolder">
@@ -3780,7 +4038,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     data-category="<?= htmlspecialchars(strtolower($row['category'] ?? '')) ?>"
                     data-status="<?= htmlspecialchars(strtolower($row['status_label'] ?? '')) ?>"
                     data-priority="<?= htmlspecialchars(strtolower($row['priority'] ?? '')) ?>"
-                    data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>">
+                    data-source="<?= htmlspecialchars($row['source'] ?? 'schedule') ?>"
+                    data-rep="<?= $row['source'] === 'report' ? 'rep-' . (int)$row['rep_id'] : '' ?>"
+                    data-rep-id="<?= (int)($row['rep_id'] ?? 0) ?>"
+                    data-budget="<?= $row['source'] === 'report' ? htmlspecialchars(strtolower($row['budget_display'] ?? '')) : '' ?>"
+                    data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>"
+                    style="cursor:pointer;">
 
                     <div class="schedule-item-accent <?= $accentClass ?>"></div>
 
@@ -3791,25 +4054,58 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             <span class="searchable sched-location"><?= htmlspecialchars($row['location']) ?></span>
                         </div>
                         <div class="schedule-item-badges">
-                            <?php if (!empty($row['category'])): ?>
+                            <?php if (!empty($row['category']) && $row['category'] !== 'Infrastructure Report'): ?>
                                 <span class="badge badge-category searchable"><?= htmlspecialchars($row['category']) ?></span>
                             <?php endif; ?>
+                            <?php if (!empty($row['source']) && $row['source'] === 'report'): ?>
+                                <span class="badge badge-rep-source searchable">REP-<?= (int)$row['rep_id'] ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['source']) && $row['source'] === 'report' && $row['budget_raw'] > 0): ?>
+                                <span class="badge badge-budget-display searchable" style="background:#e8f5e9;color:#2e7d32;border:1px solid rgba(46,125,50,0.2);">
+                                    💰 <?= htmlspecialchars($row['budget_display']) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
-                        <!-- Date shown only on mobile -->
-                        <div class="schedule-item-date-mobile">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['schedule_date'])) ?></span>
-                        </div>
-                    </div>
-
-                    <div class="schedule-item-meta">
-                        <div>
-                            <div class="schedule-item-date-label">Date</div>
+                        <!-- Dates shown only on desktop (below badges) -->
+                        <div class="schedule-item-dates-desktop">
+                            <div class="schedule-item-date-label">Start Date</div>
                             <div class="schedule-item-date">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['schedule_date'])) ?></span>
                             </div>
+                            <?php if (!empty($row['estimated_end_date'])): ?>
+                            <div class="schedule-item-date-label" style="margin-top:4px;">End Date</div>
+                            <div class="schedule-item-date">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['estimated_end_date'])) ?></span>
+                            </div>
+                            <?php endif; ?>
                         </div>
+                        <!-- Date + status shown only on mobile -->
+                        <div class="schedule-item-date-mobile">
+                            <span class="sched-date-label-mobile">Start Date</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['schedule_date'])) ?></span>
+                        </div>
+                        <?php if (!empty($row['estimated_end_date'])): ?>
+                        <div class="schedule-item-date-mobile">
+                            <span class="sched-date-label-mobile">End Date</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['estimated_end_date'])) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <!-- Status + Priority badges shown on mobile (meta panel hidden) -->
+                        <div class="schedule-item-badges schedule-item-mobile-status">
+                            <?php if (!empty($row['status_label'])): ?>
+                                <span class="badge searchable <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['priority'])): ?>
+                                <span class="badge searchable <?= $priorityClass ?>"><?= htmlspecialchars($row['priority']) ?> priority</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="schedule-item-meta">
                         <div class="schedule-item-status-badges">
                             <?php if (!empty($row['status_label'])): ?>
                                 <span class="badge searchable <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
@@ -3836,7 +4132,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="modal-header-icon">🔧</div>
             <div class="modal-header-text">
                 <span class="modal-label">Maintenance Task</span>
-                <h3 class="modal-title">Task Details</h3>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <h3 class="modal-title">Task Details</h3>
+                    <span id="modalRepBadge" style="display:none;background:rgba(255,255,255,0.22);color:#fff;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.03em;border:1px solid rgba(255,255,255,0.35);flex-shrink:0;"></span>
+                </div>
             </div>
             <button id="modalClose" class="modal-close-btn" aria-label="Close">&times;</button>
         </div>
@@ -4312,7 +4611,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.IS_ENGINEER  = <?= $isEngineer ? 'true' : 'false' ?>;</script>
+<script>
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(s){ if(!s||s==='0000-00-00')return'—'; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
+</script>
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
 
 <script>
@@ -4577,6 +4881,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (s.indexOf('delay') !== -1) return 'delayed';
         if (s.indexOf('progress') !== -1 || s.indexOf('on-going') !== -1 || s.indexOf('ongoing') !== -1) return 'ongoing';
         if (s.indexOf('completed') !== -1) return 'completed';
+        if (s.indexOf('scheduled') !== -1 || s.indexOf('planned') !== -1 || s.indexOf('upcoming') !== -1) return 'upcoming';
         return 'upcoming';
     }
     function applyStatusClassesToList() {
@@ -4586,6 +4891,89 @@ document.addEventListener('DOMContentLoaded', function() {
             item.classList.add('status-' + key + '-color');
         });
     }
+
+    // ── LEGEND FILTER ─────────────────────────────────────────────────────────
+    // Shared state: null = no filter, or one of 'upcoming'|'ongoing'|'delayed'|'completed'
+    let activeLegendFilter = null;
+
+    const LEGEND_LABELS = {
+        upcoming:  'Scheduled',
+        ongoing:   'In Progress',
+        delayed:   'Delayed',
+        completed: 'Completed',
+    };
+
+    function applyLegendFilter(filter) {
+        activeLegendFilter = filter;
+
+        // ── 1. Update all legend pill states (both list + calendar legends) ──
+        document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+            const f = pill.getAttribute('data-filter');
+            pill.classList.remove('legend-active', 'legend-dimmed');
+            if (!filter) return; // no filter → all normal
+            if (f === filter) pill.classList.add('legend-active');
+            else              pill.classList.add('legend-dimmed');
+        });
+
+        // ── 2. Update clear-filter badges ──
+        const badge    = document.getElementById('legendFilterBadge');
+        const badgeCal = document.getElementById('legendFilterBadgeCal');
+        const lbl      = document.getElementById('legendFilterBadgeLabel');
+        const lblCal   = document.getElementById('legendFilterBadgeCalLabel');
+
+        if (filter) {
+            const name = LEGEND_LABELS[filter] || filter;
+            if (lbl)    lbl.textContent    = name;
+            if (lblCal) lblCal.textContent = name;
+            badge    && badge.classList.add('visible');
+            badgeCal && badgeCal.classList.add('visible');
+        } else {
+            badge    && badge.classList.remove('visible');
+            badgeCal && badgeCal.classList.remove('visible');
+        }
+
+        // ── 3. Filter list view items — also respect any active search text ──
+        if (scheduleListHolder) {
+            // If there's active search text, re-fire the search input event to let the
+            // combined search+legend logic handle visibility in one pass.
+            if (scheduleSearch && scheduleSearch.value.trim().length > 0) {
+                scheduleSearch.dispatchEvent(new Event('input'));
+            } else {
+                const items = scheduleListHolder.querySelectorAll('.schedule-item');
+                let shownCount = 0;
+                items.forEach(item => {
+                    const statusAttr = item.getAttribute('data-status') || '';
+                    const key = getStatusKey(statusAttr);
+                    const show = !filter || key === filter;
+                    item.classList.toggle('filter-hidden', !show);
+                    if (show) shownCount++;
+                });
+                const noResultMsg = document.getElementById('noResultMsg');
+                if (noResultMsg) noResultMsg.style.display = shownCount === 0 ? '' : 'none';
+            }
+        }
+
+        // ── 4. Re-render calendar with filter applied ──
+        renderCalendar();
+    }
+
+    function clearLegendFilter() { applyLegendFilter(null); }
+
+    // Wire up all legend pill clicks
+    document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+        pill.addEventListener('click', function() {
+            const f = this.getAttribute('data-filter');
+            // Toggle: clicking active filter again clears it
+            applyLegendFilter(activeLegendFilter === f ? null : f);
+        });
+    });
+
+    // Wire up clear-filter badges
+    const _clearBadge    = document.getElementById('legendFilterBadge');
+    const _clearBadgeCal = document.getElementById('legendFilterBadgeCal');
+    if (_clearBadge)    _clearBadge.addEventListener('click',    clearLegendFilter);
+    if (_clearBadgeCal) _clearBadgeCal.addEventListener('click', clearLegendFilter);
+    // ── END LEGEND FILTER ─────────────────────────────────────────────────────
 
     if (taskModal && modalBody && modalClose && taskChooserModal && taskChooserBody) {
         if (modalClose) modalClose.onclick = () => taskModal.classList.add('hidden');
@@ -4632,9 +5020,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const category = t.category      || 'General Maintenance';
         const priority = t.priority      || 'Low';
         const statusLbl= t.status_label  || 'Planned';
-        const team     = t.assigned_team || 'General Maintenance Team';
         const key      = getStatusKey(statusLbl);
         const priKey   = priority.toLowerCase();
+
+        // Update REP badge in modal header
+        const repBadgeEl = document.getElementById('modalRepBadge');
+        if (repBadgeEl) {
+            if (t.rep_id) {
+                repBadgeEl.textContent = 'REP-' + t.rep_id;
+                repBadgeEl.style.display = 'inline-block';
+            } else {
+                repBadgeEl.style.display = 'none';
+            }
+        }
 
         // Apply status theme to header + nav bar
         applyModalTheme(key);
@@ -4646,34 +5044,70 @@ document.addEventListener('DOMContentLoaded', function() {
             modalBody.classList.add(direction === 'next' ? 'slide-left' : 'slide-right');
         }
 
+        // Est. end date row (only when available)
+        const endDateRow = t.estimated_end_date
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">🏁</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Est. End Date</div>
+                        <div class="modal-task-row-value">${fmtDate(t.estimated_end_date)}</div>
+                    </div>
+               </div>`
+            : '';
+
+        // Assigned Engineer row — shown to non-engineers on report-source items
+        const engineerRow = (!window.IS_ENGINEER && t.source === 'report' && t.engineer_name && t.engineer_name !== '—')
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">👷</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Assigned Engineer</div>
+                        <div class="modal-task-row-value">${escH(t.engineer_name)}</div>
+                    </div>
+               </div>`
+            : '';
+
+        // Budget row — only for report-source items
+        const budgetNum = typeof t.budget_raw === 'number' ? t.budget_raw : parseFloat(t.budget_raw || 0);
+        const budgetStr = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const budgetRow = t.source === 'report'
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">💰</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Budget</div>
+                        <div class="modal-task-row-value">${budgetStr}</div>
+                    </div>
+               </div>`
+            : '';
+
         modalBody.innerHTML = `
             <div class="modal-task-item theme-${key}">
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon">📝</div>
                     <div class="modal-task-row-content">
-                        <div class="modal-task-row-label">Task</div>
-                        <div class="modal-task-row-value">${t.task}</div>
+                        <div class="modal-task-row-label">Task / Infrastructure</div>
+                        <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon">📍</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Location</div>
-                        <div class="modal-task-row-value">${t.location}</div>
+                        <div class="modal-task-row-value">${escH(t.location)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon">📅</div>
                     <div class="modal-task-row-content">
-                        <div class="modal-task-row-label">Scheduled Date</div>
-                        <div class="modal-task-row-value">${t.schedule_date}</div>
+                        <div class="modal-task-row-label">Start Date</div>
+                        <div class="modal-task-row-value">${fmtDate(t.schedule_date)}</div>
                     </div>
                 </div>
+                ${endDateRow}
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon">🏷️</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Category</div>
-                        <div class="modal-task-row-value">${category}</div>
+                        <div class="modal-task-row-value">${escH(category)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
@@ -4681,7 +5115,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Priority</div>
                         <div class="modal-task-row-value">
-                            <span class="modal-priority-pill ${priKey}">${priority}</span>
+                            <span class="modal-priority-pill ${priKey}">${escH(priority)}</span>
                         </div>
                     </div>
                 </div>
@@ -4690,17 +5124,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Status</div>
                         <div class="modal-task-row-value">
-                            <span class="modal-status-pill ${key}">${statusLbl}</span>
+                            <span class="modal-status-pill ${key}">${escH(statusLbl)}</span>
                         </div>
                     </div>
                 </div>
-                <div class="modal-task-row">
-                    <div class="modal-task-row-icon">👥</div>
-                    <div class="modal-task-row-content">
-                        <div class="modal-task-row-label">Assigned Team</div>
-                        <div class="modal-task-row-value">${team}</div>
-                    </div>
-                </div>
+                ${engineerRow}
+                ${budgetRow}
             </div>`;
 
         // Update nav bar state
@@ -4967,13 +5396,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const currentDayDate = new Date(year, month, d);
 
-            const events = Array.isArray(window.scheduleData) && window.scheduleData.length
+            const allEvents = Array.isArray(window.scheduleData) && window.scheduleData.length
                 ? window.scheduleData.filter(e => e.schedule_date === dateStr)
                 : [];
+
+            // Apply legend filter to events shown in calendar cells
+            const events = activeLegendFilter
+                ? allEvents.filter(e => getStatusKey(e.status_label || '') === activeLegendFilter)
+                : allEvents;
 
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
             dayDiv.setAttribute('data-date', dateStr);
+
+            // Dim days that have tasks but none match the active filter
+            if (activeLegendFilter && allEvents.length > 0 && events.length === 0) {
+                dayDiv.classList.add('legend-filter-dim');
+            }
 
             if (dateStr === todayStr) {
                 dayDiv.classList.add('today');
@@ -5098,13 +5537,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (events.length) {
                     events.forEach(e => {
                         const key = getStatusKey(e.status_label || '');
-                        const teamText = e.assigned_team ? `<span>${e.assigned_team}</span>` : '';
+                        const repTag = e.rep_id ? ` · REP-${e.rep_id}` : '';
                         html += `
                             <div class="cal-task-row">
                                 <span class="cal-task-dot ${key}"></span>
                                 <div class="cal-task-info">
-                                    <div class="cal-task-name" title="${e.task}">${e.task}</div>
-                                    <div class="cal-task-meta">📍 ${e.location || '—'} · ${e.status_label || 'Scheduled'}${e.assigned_team ? ' · ' + e.assigned_team : ''}</div>
+                                    <div class="cal-task-name" title="${escH(e.task)}">${escH(e.task)}</div>
+                                    <div class="cal-task-meta">📍 ${escH(e.location || '—')} · ${escH(e.status_label || 'Scheduled')}${escH(repTag)}</div>
                                 </div>
                             </div>`;
                     });
@@ -5161,6 +5600,43 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
     applyStatusClassesToList();
 
+    // ── LIST VIEW ITEM CLICK → Open Task Detail Modal ─────────────────────────
+    function attachListItemClickHandlers() {
+        if (!scheduleListHolder) return;
+        scheduleListHolder.querySelectorAll('.schedule-item').forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                const schedData = window.scheduleData || [];
+                const taskName  = item.getAttribute('data-task') || '';
+                const dateAttr  = (item.getAttribute('data-date') || '').split('|')[1] || '';
+                const source    = item.getAttribute('data-source') || '';
+                const repId     = parseInt(item.getAttribute('data-rep-id') || '0', 10);
+
+                let matches = [];
+
+                if (source === 'report' && repId > 0) {
+                    // Match report-sourced tasks by rep_id
+                    matches = schedData.filter(function(t) {
+                        return t.source === 'report' && parseInt(t.rep_id, 10) === repId;
+                    });
+                }
+
+                // Fallback: match by date + task name
+                if (!matches.length) {
+                    matches = schedData.filter(function(t) {
+                        return t.schedule_date === dateAttr &&
+                               (t.task || '').toLowerCase() === taskName;
+                    });
+                }
+
+                if (matches.length) {
+                    openModal(matches, 0);
+                }
+            });
+        });
+    }
+    attachListItemClickHandlers();
+    // ── END LIST VIEW ITEM CLICK ──────────────────────────────────────────────
+
     if (scheduleSearch && scheduleListHolder) {
         function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
         function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
@@ -5201,12 +5677,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset all existing highlights first
             scheduleListHolder.querySelectorAll('.searchable[data-original]').forEach(el => resetEl(el));
 
-            if (!searchVal.length) {
-                items.forEach(i => { i.style.display = ''; });
-                if (noResultMsg) noResultMsg.style.display = 'none';
-                return;
-            }
-
             items.forEach(item => {
                 const task = item.getAttribute('data-task') || '';
                 const loc  = item.getAttribute('data-location') || '';
@@ -5214,18 +5684,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 const cat  = item.getAttribute('data-category') || '';
                 const stat = item.getAttribute('data-status') || '';
                 const prio = item.getAttribute('data-priority') || '';
+                const rep  = item.getAttribute('data-rep') || '';
+                const budget = item.getAttribute('data-budget') || '';
 
-                const match = task.includes(sl) || loc.includes(sl) || date.includes(sl) ||
-                              cat.includes(sl)  || stat.includes(sl) || prio.includes(sl);
+                // Legend filter check
+                const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
 
-                item.style.display = match ? '' : 'none';
+                // Search check — if no search text, only legend filter applies
+                const searchOk = !searchVal.length || (
+                    task.includes(sl) || loc.includes(sl) || date.includes(sl) ||
+                    cat.includes(sl)  || stat.includes(sl) || prio.includes(sl) ||
+                    rep.includes(sl)  || budget.includes(sl)
+                );
 
-                if (match) {
+                const show = legendOk && searchOk;
+                item.classList.toggle('filter-hidden', !show);
+
+                if (show) {
                     shownCount++;
-                    item.querySelectorAll('.searchable').forEach(el => {
-                        storeOriginal(el);
-                        highlightEl(el, searchVal);
-                    });
+                    if (searchVal.length) {
+                        item.querySelectorAll('.searchable').forEach(el => {
+                            storeOriginal(el);
+                            highlightEl(el, searchVal);
+                        });
+                    }
                 }
             });
 

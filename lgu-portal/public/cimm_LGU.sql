@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 01, 2026 at 03:54 PM
+-- Generation Time: Mar 10, 2026 at 01:45 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -234,52 +234,6 @@ CREATE TABLE `maintenance_schedule` (
   `estimated_completion_date` datetime NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `maintenance_schedule`
---
-
-INSERT INTO `maintenance_schedule` (`sched_id`, `task`, `location`, `category`, `priority`, `status`, `engineer_id`, `assigned_team`, `budget`, `starting_date`, `estimated_completion_date`, `created_at`) VALUES
-(34, 'HVAC System Inspection', 'Quezon City Hall, Elliptical Road, Diliman', 'HVAC', 'High', 'Scheduled', 5, 'Facilities Maintenance Team', 15000.00, '2026-03-03 08:00:00', '2026-03-03 17:00:00', '2026-02-23 08:03:50'),
-(35, 'Electrical Panel Maintenance', 'Quezon City Hall Annex, Batasan Hills', 'Electrical', 'High', 'In Progress', 5, 'Electrical Team A', 22000.00, '2026-03-04 08:00:00', '2026-03-04 16:00:00', '2026-02-23 08:03:50'),
-(36, 'Generator Load Testing', 'Quezon City Hall, Elliptical Road, Diliman', 'Mechanical', 'Critical', 'Scheduled', 5, 'Power & Mechanical Team', 18000.00, '2026-03-05 09:00:00', '2026-03-05 14:00:00', '2026-02-23 08:03:50'),
-(37, 'Fire Suppression System Check', 'QC Hall of Justice, Batasan Complex, Batasan Hills', 'Safety', 'High', 'Scheduled', 5, 'Safety Compliance Team', 9500.00, '2026-03-06 08:30:00', '2026-03-06 12:00:00', '2026-02-23 08:03:50'),
-(38, 'Plumbing Leak Repair', 'Quezon City Public Library, Elliptical Road', 'Plumbing', 'Medium', 'Completed', 5, 'Repair Team B', 5500.00, '2026-02-24 09:00:00', '2026-02-24 13:00:00', '2026-02-23 08:03:50'),
-(39, 'Pothole Patching', 'Commonwealth Avenue, Batasan Hills', 'Roads', 'Critical', 'In Progress', 5, 'Road Repair Team Alpha', 85000.00, '2026-03-02 07:00:00', '2026-03-09 17:00:00', '2026-02-23 08:03:50'),
-(40, 'Road Repainting & Lane Marking', 'Quezon Avenue, South Triangle', 'Roads', 'Medium', 'Scheduled', 5, 'Road Marking Team', 42000.00, '2026-03-10 06:00:00', '2026-03-11 18:00:00', '2026-02-23 08:03:50'),
-(41, 'Sidewalk Repair', 'Tomas Morato Avenue, Sacred Heart', 'Structural', 'Medium', 'Scheduled', 5, 'Civil Works Team B', 31000.00, '2026-03-09 07:00:00', '2026-03-10 17:00:00', '2026-02-23 08:03:50'),
-(42, 'Road Crack Sealing', 'Visayas Avenue, Vasra', 'Roads', 'High', 'Delayed', 5, 'Road Repair Team Beta', 67000.00, '2026-02-20 07:00:00', '2026-02-23 17:00:00', '2026-02-23 08:03:50'),
-(43, 'Bridge Structural Inspection', 'Tandang Sora Bridge, Tandang Sora Avenue', 'Structural', 'Critical', 'Scheduled', 5, 'Structural Inspection Team', 55000.00, '2026-03-12 08:00:00', '2026-03-13 17:00:00', '2026-02-23 08:03:50'),
-(44, 'Drainage Canal Desilting', 'Batasan Road, Batasan Hills', 'Drainage', 'Critical', 'In Progress', 5, 'Drainage Maintenance Team', 120000.00, '2026-03-02 06:00:00', '2026-03-05 18:00:00', '2026-02-23 08:03:50'),
-(45, 'Drainage Pipe Replacement', 'Kalayaan Avenue, Pinyahan', 'Drainage', 'High', 'Scheduled', 5, 'Pipe Repair Team', 78000.00, '2026-03-09 07:00:00', '2026-03-10 17:00:00', '2026-02-23 08:03:50'),
-(46, 'Catch Basin Cleaning', 'Examiner Street, West Triangle', 'Drainage', 'Medium', 'Completed', 5, 'Sanitation & Drainage Team', 14000.00, '2026-02-19 07:00:00', '2026-02-19 16:00:00', '2026-02-23 08:03:50'),
-(47, 'Flood Control Gate Inspection', 'La Mesa Eco Park Entry, Novaliches', 'Drainage', 'High', 'Scheduled', 5, 'Flood Control Team', 35000.00, '2026-03-11 08:00:00', '2026-03-11 17:00:00', '2026-02-23 08:03:50'),
-(48, 'Street Light Replacement', 'Mindanao Avenue, Project 8', 'Electrical', 'High', 'Scheduled', 5, 'Electrical Team B', 48000.00, '2026-03-04 18:00:00', '2026-03-04 23:00:00', '2026-02-23 08:03:50'),
-(49, 'LED Streetlight Upgrade', 'Aurora Boulevard, Cubao', 'Electrical', 'Medium', 'In Progress', 5, 'Electrical Upgrade Team', 95000.00, '2026-03-02 17:00:00', '2026-03-03 22:00:00', '2026-02-23 08:03:50'),
-(50, 'Street Light Pole Repair', 'Sgt. Esguerra Avenue, South Triangle', 'Electrical', 'High', 'Delayed', 5, 'Electrical Repair Team', 27000.00, '2026-02-18 17:00:00', '2026-02-19 21:00:00', '2026-02-23 08:03:50'),
-(51, 'Traffic Signal Maintenance', 'EDSA-Quezon Avenue Intersection, South Triangle', 'Electrical', 'Critical', 'Scheduled', 5, 'Traffic Signal Team', 65000.00, '2026-03-06 06:00:00', '2026-03-06 14:00:00', '2026-02-23 08:03:50'),
-(52, 'Water Main Pipe Inspection', 'East Avenue, Diliman', 'Plumbing', 'High', 'Scheduled', 5, 'Water Supply Team', 43000.00, '2026-03-09 08:00:00', '2026-03-09 17:00:00', '2026-02-23 08:03:50'),
-(53, 'Water Pump Station Maintenance', 'Novaliches Water Treatment Plant, Novaliches Proper', 'Mechanical', 'Critical', 'Scheduled', 5, 'Pump Maintenance Team', 150000.00, '2026-03-16 08:00:00', '2026-03-16 17:00:00', '2026-02-23 08:03:50'),
-(54, 'Roof Repair', 'Farmer\'s Market, Araneta Center, Cubao', 'Structural', 'High', 'In Progress', 5, 'Structural Repair Team', 88000.00, '2026-03-02 08:00:00', '2026-03-04 17:00:00', '2026-02-23 08:03:50'),
-(55, 'Electrical Rewiring', 'Cubao Public Market, General Romulo Avenue', 'Electrical', 'Critical', 'Scheduled', 5, 'Electrical Team A', 72000.00, '2026-03-16 08:00:00', '2026-03-18 17:00:00', '2026-02-23 08:03:50'),
-(56, 'Plumbing Overhaul', 'Novaliches Public Market, Novaliches Proper', 'Plumbing', 'High', 'Scheduled', 5, 'Plumbing Overhaul Team', 54000.00, '2026-03-13 08:00:00', '2026-03-16 17:00:00', '2026-02-23 08:03:50'),
-(57, 'Restroom Renovation', 'Quezon Memorial Circle, Elliptical Road, Diliman', 'Sanitation', 'Medium', 'Completed', 5, 'Sanitation Team', 39000.00, '2026-02-10 08:00:00', '2026-02-16 17:00:00', '2026-02-23 08:03:50'),
-(58, 'Playground Equipment Check', 'Anonas Park, Anonas Road, Project 3', 'Safety', 'Medium', 'Scheduled', 5, 'Parks Maintenance Team', 12000.00, '2026-03-09 08:00:00', '2026-03-09 12:00:00', '2026-02-23 08:03:50'),
-(59, 'Landscape & Tree Trimming', 'Quezon Memorial Circle, Elliptical Road, Diliman', 'Sanitation', 'Low', 'Scheduled', 5, 'Parks & Landscape Team', 28000.00, '2026-03-09 06:00:00', '2026-03-10 17:00:00', '2026-02-23 08:03:50'),
-(60, 'Fountain Pump Repair', 'Welcome Rotonda, Quezon Avenue', 'Mechanical', 'Medium', 'Delayed', 5, 'Mechanical Repair Team', 21000.00, '2026-02-23 08:00:00', '2026-02-23 17:00:00', '2026-02-23 08:03:50'),
-(61, 'Aircon Overhaul', 'Quezon City General Hospital, Seminary Road, Diliman', 'HVAC', 'Critical', 'Scheduled', 5, 'HVAC Specialist Team', 175000.00, '2026-03-17 08:00:00', '2026-03-19 17:00:00', '2026-02-23 08:03:50'),
-(62, 'Elevator Maintenance', 'Quezon City General Hospital, Seminary Road, Diliman', 'Mechanical', 'Critical', 'Scheduled', 5, 'Elevator Service Team', 95000.00, '2026-03-20 08:00:00', '2026-03-20 17:00:00', '2026-02-23 08:03:50'),
-(63, 'Roof Waterproofing', 'Batasan Hills National High School, Batasan Hills', 'Structural', 'High', 'Scheduled', 5, 'Civil Works Team A', 62000.00, '2026-03-23 08:00:00', '2026-03-23 17:00:00', '2026-02-23 08:03:50'),
-(64, 'CCTV Network Upgrade', 'Cubao Station Area, EDSA, Cubao', 'Security', 'High', 'Scheduled', 5, 'Security Tech Team', 115000.00, '2026-03-23 08:00:00', '2026-03-24 17:00:00', '2026-02-23 08:03:50'),
-(65, 'Security Perimeter Fence Repair', 'QC Circle Park, Elliptical Road, Diliman', 'Security', 'Medium', 'Scheduled', 5, 'Civil Works Team B', 33000.00, '2026-03-25 08:00:00', '2026-03-25 17:00:00', '2026-02-23 08:03:50'),
-(66, 'Electrical Panel Safety Inspection', 'Quezon City Hall, Elliptical Road, Diliman', 'Electrical', 'High', 'Scheduled', 5, 'Electrical Safety Team', 31000.00, '2026-03-16 07:00:00', '2026-03-16 11:00:00', '2026-02-23 09:42:43'),
-(67, 'Street Light Pole Repainting', 'Commonwealth Avenue, Batasan Hills', 'Electrical', 'Low', 'Scheduled', 5, 'Electrical Team B', 14500.00, '2026-03-16 06:00:00', '2026-03-16 14:00:00', '2026-02-23 09:42:43'),
-(68, 'Drainage Canal Flushing', 'Tandang Sora Avenue, Tandang Sora', 'Drainage', 'High', 'Scheduled', 5, 'Drainage Maintenance Team', 27000.00, '2026-03-16 07:30:00', '2026-03-16 15:00:00', '2026-02-23 09:42:43'),
-(69, 'Barangay Hall Roof Gutter Clearing', 'Barangay Batasan Hills Hall, Batasan Hills', 'Structural', 'Medium', 'Scheduled', 5, 'Civil Works Team A', 9500.00, '2026-03-16 08:00:00', '2026-03-16 12:00:00', '2026-02-23 09:42:43'),
-(70, 'Public Market Fire Extinguisher Refilling', 'Novaliches Public Market, Novaliches Proper', 'Safety', 'High', 'Scheduled', 5, 'Safety Compliance Team', 18500.00, '2026-03-16 08:00:00', '2026-03-16 13:00:00', '2026-02-23 09:42:43'),
-(71, 'Health Center Aircon Filter Cleaning', 'Fairview Health Center, Fairview', 'HVAC', 'Medium', 'Scheduled', 5, 'HVAC Maintenance Team', 7500.00, '2026-03-16 09:00:00', '2026-03-16 12:00:00', '2026-02-23 09:42:43'),
-(72, 'CCTV Hard Drive Replacement', 'Police Station 9, Cubao, Quezon City', 'Security', 'High', 'Scheduled', 5, 'Security Tech Team', 22000.00, '2026-03-16 09:00:00', '2026-03-16 16:00:00', '2026-02-23 09:42:43'),
-(73, 'Pothole Emergency Patching', 'Visayas Avenue, Vasra, Quezon City', 'Roads', 'Critical', 'Scheduled', 5, 'Road Repair Team Alpha', 38000.00, '2026-03-16 06:00:00', '2026-03-16 18:00:00', '2026-02-23 09:42:43');
 
 -- --------------------------------------------------------
 
@@ -588,7 +542,7 @@ INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastruc
 CREATE TABLE `request_resolutions` (
   `res_id` int(10) UNSIGNED NOT NULL,
   `req_id` int(10) UNSIGNED NOT NULL,
-  `status` enum('Approved','Rejected') NOT NULL,
+  `status` enum('Approved','Rejected','Scheduled','Completed','Cancelled') NOT NULL DEFAULT 'Approved',
   `res_note` text DEFAULT NULL,
   `resolved_by` int(10) UNSIGNED NOT NULL,
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp()

@@ -86,21 +86,37 @@ $displayName = getDisplayName();
 $isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
 // ─── FETCH: Completed (Archive) reports only ──────────────────────────────────
+$conn->query("SET SESSION group_concat_max_len = 8192");
+// Create table if not yet present (idempotent)
+$conn->query("
+    CREATE TABLE IF NOT EXISTS report_progress_images (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        rep_id INT NOT NULL,
+        img_path VARCHAR(500) NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rep_id (rep_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+");
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
+        req.name AS requester_name, req.contact_number,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
-        CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name
+        CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
+        GROUP_CONCAT(DISTINCT ev.img_path  ORDER BY ev.uploaded_at  ASC SEPARATOR ',') AS evidence_images,
+        GROUP_CONCAT(DISTINCT rpi.img_path ORDER BY rpi.uploaded_at ASC SEPARATOR ',') AS progress_images
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
     LEFT JOIN requests             req ON res.req_id = req.req_id
     LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
-    WHERE (res.status = 'Completed')
-       OR (res.status IS NULL AND r.estimated_end_date < CURDATE())
+    LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
+    LEFT JOIN report_progress_images rpi ON rpi.rep_id  = r.rep_id
+    WHERE res.status IN ('Completed','Cancelled')
+    GROUP BY r.rep_id
     ORDER BY r.rep_id DESC
 ";
 $result = $conn->query($sql);
@@ -115,11 +131,39 @@ function priorityBadge(?string $lvl): string {
     $styles = ['High' => 'background:#fde8e8;color:#9b1c1c;', 'Medium' => 'background:#fef3c7;color:#92400e;', 'Low' => 'background:#d1fae5;color:#065f46;'];
     $lvl   = $lvl ?? 'Low';
     $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
-    return "<span style=\"{$style}padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;\">{$lvl}</span>";
+    return "<span style=\"{$style}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;\">{$lvl}</span>";
 }
 
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
+
+$rowsJson = [];
+foreach ($rows as $row) {
+    $imgs = [];
+    if (!empty($row['evidence_images']))
+        $imgs = array_values(array_filter(explode(',', $row['evidence_images'])));
+    $progressImgs = [];
+    if (!empty($row['progress_images']))
+        $progressImgs = array_values(array_filter(explode(',', $row['progress_images'])));
+    $rowsJson[] = [
+        'rep_id'            => (int)$row['rep_id'],
+        'req_id'            => (int)($row['req_id'] ?? 0),
+        'infrastructure'    => $row['infrastructure'] ?? '',
+        'location'          => $row['location'] ?? '',
+        'issue'             => $row['issue'] ?? '',
+        'res_note'          => $row['res_note'] ?? '',
+        'engineer_name'     => $row['engineer_name'] ?? '',
+        'reporter_name'     => $row['reporter_name'] ?? '',
+        'starting_date'     => $row['starting_date'] ?? '',
+        'estimated_end_date'=> $row['estimated_end_date'] ?? '',
+        'priority_lvl'      => $row['priority_lvl'] ?? 'Low',
+        'budget_raw'        => (float)($row['budget'] ?? 0),
+        'budget_display'    => '₱' . number_format((float)($row['budget'] ?? 0), 2),
+        'resolution_status' => $row['resolution_status'] ?? '',
+        'images'            => $imgs,
+        'progress_images'   => $progressImgs,
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -188,7 +232,20 @@ td.wrap { white-space: normal; word-break: break-word; }
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(46,125,50,.03); }
 tbody tr:hover { background: rgba(46,125,50,.09); }
-.status { padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap; }
+/* ── Status & Priority pills — compact to prevent overflow ── */
+.status {
+    padding: 3px 6px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    line-height: 1.4;
+}
 .completed    { background: #a5d6a7; color: #1b5e20; }
 .on-going     { background: #fff59d; color: #f57f17; }
 .pending-st   { background: #ffe0b2; color: #e65100; }
@@ -224,6 +281,8 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .report-card .rc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 6px; }
     .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
+    /* Mobile status pill — slightly larger is fine on cards */
+    .status { font-size: 11px; padding: 4px 8px; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
 
@@ -332,9 +391,79 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ── Compact table layout (matching current_reports style) ── */
+table { table-layout: fixed; }
+table colgroup col:nth-child(1)  { width: 6%;  }  /* Action       */
+table colgroup col:nth-child(2)  { width: 5%;  }  /* Rep #        */
+table colgroup col:nth-child(3)  { width: 8%;  }  /* Infrastructure */
+table colgroup col:nth-child(4)  { width: 10%; }  /* Location     */
+table colgroup col:nth-child(5)  { width: 8%;  }  /* Issue        */
+table colgroup col:nth-child(6)  { width: 11%; }  /* Engineer     */
+table colgroup col:nth-child(7)  { width: 9%;  }  /* Reported By  */
+table colgroup col:nth-child(8)  { width: 7%;  }  /* Start        */
+table colgroup col:nth-child(9)  { width: 7%;  }  /* End          */
+table colgroup col:nth-child(10) { width: 8%;  }  /* Priority     */
+table colgroup col:nth-child(11) { width: 12%; }  /* Budget       */
+table colgroup col:nth-child(12) { width: 9%;  }  /* Status       */
+thead th { padding: 11px 7px; font-size: 11.5px; }
+td { padding: 10px 7px; font-size: 11.5px; white-space: normal; word-break: break-word; }
+/* Keep status/priority cells from wrapping unexpectedly */
+td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
+
+/* ── View modal (green accent for archive) ── */
+.rep-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:8000; }
+.rep-modal-backdrop.active { display:flex; }
+.rep-detail-modal { background:var(--bg-primary);border-radius:20px;box-shadow:0 12px 50px var(--shadow-color);width:92%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;animation:repModalIn .3s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--border-color);overflow:hidden; }
+@keyframes repModalIn { from{opacity:0;transform:scale(.9) translateY(-20px);}to{opacity:1;transform:scale(1) translateY(0);} }
+.rep-modal-band { height:8px;border-radius:20px 20px 0 0;width:100%;background:linear-gradient(90deg,#2e7d32,#43a047); }
+.rep-modal-header { display:flex;align-items:flex-start;justify-content:space-between;padding:16px 24px 10px;gap:12px;flex-shrink:0; }
+.rep-modal-header-left { flex:1;min-width:0; }
+.rep-modal-rep-id { font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
+.rep-modal-infra { font-size:20px;font-weight:700;color:var(--text-primary);line-height:1.2; }
+.rep-modal-close { background:none;border:none;font-size:26px;color:var(--text-secondary);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s;flex-shrink:0; }
+.rep-modal-close:hover { background:rgba(46,125,50,.1);color:#2e7d32; }
+.rep-modal-body { padding:0 24px 20px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#43a047 rgba(0,0,0,.07); }
+.rep-modal-body::-webkit-scrollbar { width:6px; }
+.rep-modal-body::-webkit-scrollbar-thumb { background:#43a047;border-radius:3px; }
+.rep-field { margin-bottom:13px; }
+.rep-field-label { font-size:11px;font-weight:700;color:#2e7d32;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px; }
+.rep-field-value { font-size:14px;color:var(--text-primary);line-height:1.55; }
+.rep-divider { height:1px;background:var(--border-color);margin:14px 0; }
+.rep-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px 18px; }
+.rep-status-row { margin-bottom:12px; }
+.rep-status-pill { display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700; }
+.rep-status-pill.completed { background:rgba(46,125,50,.15);color:#1b5e20; }
+.rep-status-pill.on-going  { background:rgba(255,152,0,.15);color:#e65100; }
+.rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
+.rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
+.rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(46,125,50,.3); }
+.rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
+.btn-view-rep { background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;padding:5px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;white-space:nowrap;box-shadow:0 2px 8px rgba(46,125,50,.3); }
+.btn-view-rep:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(46,125,50,.45); }
+.rep-img-lightbox { position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;flex-direction:column; }
+.rep-img-lightbox.active { display:flex; }
+.rep-img-lightbox img { max-width:88vw;max-height:80vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-in;user-select:none; }
+.rep-img-lightbox img.zoomed { cursor:grab; }
+.rep-lb-close { position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:28px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1; }
+.rep-lb-close:hover { background:rgba(255,255,255,.3); }
+.rep-lb-nav { position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;color:#fff;font-size:26px;width:48px;height:48px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:1; }
+.rep-lb-nav:hover { background:rgba(255,255,255,.35); }
+.rep-lb-nav.left { left:20px; }
+.rep-lb-nav.right { right:20px; }
+.rep-lb-nav.hidden { display:none; }
+.rep-lb-counter { position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:13px;font-weight:600;pointer-events:none; }
+@media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}}
+/* ── Engineer description & progress images display in archive ── */
+.rep-eng-desc-box { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:12px;padding:14px 16px;margin-bottom:0; }
+.rep-progress-strip { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
+.rep-progress-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
+.rep-progress-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(46,125,50,.3); }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
+const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
 (function() {
     try {
         let t = localStorage.getItem('theme');
@@ -462,14 +591,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     <div class="table-wrapper">
         <table id="reportsTable">
-            <colgroup>
-                <col style="width:8%"><col style="width:11%"><col style="width:10%">
-                <col style="width:13%"><col style="width:10%"><col style="width:10%">
-                <col style="width:9%"><col style="width:9%"><col style="width:7%">
-                <col style="width:8%"><col style="width:8%">
-            </colgroup>
+            <colgroup><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
             <thead>
                 <tr>
+                    <th>Action</th>
                     <th>Rep #</th><th>Infrastructure</th><th>Location</th>
                     <th>Issue / Notes</th><th>Engineer</th><th>Reported By</th>
                     <th>Start Date</th><th>Est. End Date</th><th>Priority</th>
@@ -483,6 +608,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     $notes = $row['res_note'] ?: htmlspecialchars($row['issue'] ?? '—');
                 ?>
                 <tr>
+                    <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
@@ -497,9 +623,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="11" style="text-align:center;padding:24px;opacity:.6;">No archived reports found</td></tr>
+                <tr><td colspan="12" style="text-align:center;padding:24px;opacity:.6;">No archived reports found</td></tr>
             <?php endif; ?>
-                <tr id="noDesktopResult" style="display:none;"><td colspan="11" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
+                <tr id="noDesktopResult" style="display:none;"><td colspan="12" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
             </tbody>
         </table>
     </div>
@@ -521,7 +647,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
             <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge($row['priority_lvl']) ?></span></div>
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
-            <div class="rc-footer searchable"><?= statusPill($rawStatus) ?></div>
+            <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
+                <?= statusPill($rawStatus) ?>
+                <button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
+            </div>
         </div>
         <?php endforeach; ?>
     <?php else: ?>
@@ -535,9 +664,174 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 </div>
 
+
+<!-- ══════════════ VIEW DETAIL MODAL ══════════════ -->
+<div id="repModalBackdrop" class="rep-modal-backdrop">
+    <div class="rep-detail-modal">
+        <div class="rep-modal-band"></div>
+        <div class="rep-modal-header">
+            <div class="rep-modal-header-left">
+                <div class="rep-modal-rep-id" id="repModalId"></div>
+                <div class="rep-modal-infra" id="repModalInfra"></div>
+            </div>
+            <button class="rep-modal-close" id="repModalClose">&#215;</button>
+        </div>
+        <div class="rep-modal-body">
+            <div class="rep-status-row"><span class="rep-status-pill" id="repModalStatus"></span></div>
+            <div class="rep-divider"></div>
+            <div class="rep-grid-2">
+                <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128295; Issue (Original)</div><div class="rep-field-value" id="repModalIssue"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128100; Reported By</div><div class="rep-field-value" id="repModalReporter"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128197; Start Date</div><div class="rep-field-value" id="repModalStart"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128197; Est. End Date</div><div class="rep-field-value" id="repModalEnd"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128678; Priority</div><div class="rep-field-value" id="repModalPriority"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128176; Budget</div><div class="rep-field-value" id="repModalBudget"></div></div>
+            </div>
+            <div class="rep-divider"></div>
+            <!-- Engineer description + progress images (from pending_reports) -->
+            <div class="rep-eng-desc-box" id="repEngDescBox">
+                <div class="rep-field-label" style="margin-bottom:8px;">&#128221; Description of report</div>
+                <div class="rep-field-value" id="repModalDesc" style="white-space:pre-wrap;min-height:30px;"></div>
+                <div id="repProgressImgsSection" style="margin-top:12px;display:none;">
+                    <div class="rep-field-label" style="margin-bottom:8px;">&#128247; Report Progress Images</div>
+                    <div class="rep-progress-strip" id="repProgressStrip"></div>
+                </div>
+            </div>
+            <div class="rep-divider"></div>
+            <div class="rep-field">
+                <div class="rep-field-label">&#128444;&#65039; Evidence Images</div>
+                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence">No evidence images</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="rep-img-lightbox" id="repImgLightbox">
+    <button class="rep-lb-close" id="repLbClose" onclick="closeRepLightbox()">&times;</button>
+    <button class="rep-lb-nav left hidden" id="repLbPrev" onclick="repLbPrev()">&#10094;</button>
+    <img id="repLightboxImg" src="" alt="Evidence" draggable="false">
+    <button class="rep-lb-nav right hidden" id="repLbNext" onclick="repLbNext()">&#10095;</button>
+    <div class="rep-lb-counter" id="repLbCounter"></div>
+</div>
+
 <?php include 'admin_scripts.php'; ?>
 
 <script>
+
+
+// ── Report Modal JS ──
+const repBackdrop  = document.getElementById('repModalBackdrop');
+const repModalClose= document.getElementById('repModalClose');
+let repGalleryImages = [], repProgressImages = [], repActiveLbImages = [], repGalleryIndex = 0;
+
+function openRepModal(repId) {
+    const data = ALL_REPORTS.find(r => r.rep_id == repId);
+    if (!data) return;
+    document.getElementById('repModalId').textContent    = '#REP-' + data.rep_id + (data.req_id ? '  ·  REQ-' + String(data.req_id).padStart(3,'0') : '');
+    document.getElementById('repModalInfra').textContent = data.infrastructure || '—';
+    const st = data.resolution_status || 'Completed';
+    const statusEl = document.getElementById('repModalStatus');
+    statusEl.textContent = st;
+    statusEl.className   = 'rep-status-pill ' + (st==='Completed'?'completed':'on-going');
+    document.getElementById('repModalLocation').textContent  = data.location     || '—';
+    document.getElementById('repModalIssue').textContent     = data.issue        || '—';
+    document.getElementById('repModalEngineer').textContent  = data.engineer_name|| '—';
+    document.getElementById('repModalReporter').textContent  = data.reporter_name|| '—';
+    document.getElementById('repModalStart').textContent     = fmtDate(data.starting_date);
+    document.getElementById('repModalEnd').textContent       = fmtDate(data.estimated_end_date);
+    document.getElementById('repModalPriority').innerHTML    = priBadge(data.priority_lvl);
+    const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
+    document.getElementById('repModalBudget').textContent = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // Engineer description
+    document.getElementById('repModalDesc').textContent = data.res_note || '— No description provided —';
+
+    // Progress images
+    repProgressImages = data.progress_images || [];
+    const pSection = document.getElementById('repProgressImgsSection');
+    const pStrip   = document.getElementById('repProgressStrip');
+    if (repProgressImages.length) {
+        pSection.style.display = '';
+        pStrip.innerHTML = '';
+        repProgressImages.forEach((src, idx) => {
+            const img = document.createElement('img');
+            img.src = src; img.className = 'rep-progress-thumb'; img.alt = 'Progress';
+            img.onclick = () => { repActiveLbImages = repProgressImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
+            pStrip.appendChild(img);
+        });
+    } else { pSection.style.display = 'none'; }
+
+    // Evidence images
+    repGalleryImages = data.images || [];
+    repGalleryIndex  = 0;
+    const ec = document.getElementById('repEvidenceContainer');
+    if (repGalleryImages.length) {
+        ec.innerHTML = '';
+        repGalleryImages.forEach((src, idx) => {
+            const img = document.createElement('img');
+            img.src=src; img.className='rep-evidence-thumb'; img.alt='Evidence';
+            img.onclick=()=>{ repActiveLbImages = repGalleryImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
+            ec.appendChild(img);
+        });
+    } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
+    repBackdrop.classList.add('active');
+}
+function closeRepModal(){ repBackdrop.classList.remove('active'); }
+repModalClose.addEventListener('click', closeRepModal);
+repBackdrop.addEventListener('click', e => { if(e.target===repBackdrop) closeRepModal(); });
+document.addEventListener('keydown', e => {
+    if (e.key==='Escape') {
+        if (document.getElementById('repImgLightbox').classList.contains('active')) { closeRepLightbox(); return; }
+        closeRepModal();
+    }
+    if (document.getElementById('repImgLightbox').classList.contains('active')) {
+        if (e.key==='ArrowLeft') repLbPrev();
+        if (e.key==='ArrowRight') repLbNext();
+    }
+});
+
+// Gallery lightbox
+let repLbZoomed=false, repLbDragging=false, repLbStartX=0, repLbStartY=0, repLbTX=0, repLbTY=0, repLbScale=1;
+function openRepLightbox(idx){ repGalleryIndex=idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); }
+function closeRepLightbox(){ document.getElementById('repImgLightbox').classList.remove('active'); repLbResetZoom(); }
+function repLbUpdateImg(){
+    const img=document.getElementById('repLightboxImg'); img.src=repActiveLbImages[repGalleryIndex]||'';
+    const single=repActiveLbImages.length<=1;
+    document.getElementById('repLbPrev').classList.toggle('hidden',single);
+    document.getElementById('repLbNext').classList.toggle('hidden',single);
+    document.getElementById('repLbCounter').textContent=repActiveLbImages.length>1?(repGalleryIndex+1)+' / '+repActiveLbImages.length:'';
+    repLbResetZoom();
+}
+function repLbPrev(){ if(repActiveLbImages.length>1){repGalleryIndex=(repGalleryIndex-1+repActiveLbImages.length)%repActiveLbImages.length;repLbUpdateImg();} }
+function repLbNext(){ if(repActiveLbImages.length>1){repGalleryIndex=(repGalleryIndex+1)%repActiveLbImages.length;repLbUpdateImg();} }
+function repLbResetZoom(){
+    repLbZoomed=repLbDragging=false; repLbTX=repLbTY=0; repLbScale=1;
+    const img=document.getElementById('repLightboxImg'); img.classList.remove('zoomed'); img.style.transform='scale(1)'; img.style.cursor='zoom-in';
+    const c=document.getElementById('repLbClose'); if(c){c.style.display='flex';c.disabled=false;}
+}
+document.getElementById('repImgLightbox').addEventListener('click',e=>{if(e.target===document.getElementById('repImgLightbox'))closeRepLightbox();});
+document.getElementById('repLightboxImg').addEventListener('dblclick',e=>{
+    const img=document.getElementById('repLightboxImg'); const rect=img.getBoundingClientRect();
+    const px=(e.clientX-rect.left)/rect.width, py=(e.clientY-rect.top)/rect.height;
+    if(!repLbZoomed){repLbZoomed=true;repLbScale=2;repLbTX=(0.5-px)*rect.width;repLbTY=(0.5-py)*rect.height;img.classList.add('zoomed');img.style.transform=`scale(2) translate(${repLbTX}px,${repLbTY}px)`;img.style.cursor='grab';const c=document.getElementById('repLbClose');if(c){c.style.display='none';c.disabled=true;}}else repLbResetZoom();
+});
+document.getElementById('repLightboxImg').addEventListener('mousedown',e=>{if(!repLbZoomed||e.button!==0)return;repLbDragging=true;repLbStartX=e.clientX-repLbTX;repLbStartY=e.clientY-repLbTY;document.getElementById('repLightboxImg').style.cursor='grabbing';});
+window.addEventListener('mouseup',()=>{if(!repLbZoomed)return;repLbDragging=false;document.getElementById('repLightboxImg').style.cursor='grab';});
+window.addEventListener('mousemove',e=>{if(!repLbZoomed||!repLbDragging)return;repLbTX=e.clientX-repLbStartX;repLbTY=e.clientY-repLbStartY;document.getElementById('repLightboxImg').style.transform=`scale(${repLbScale}) translate(${repLbTX}px,${repLbTY}px)`;});
+let repLbTouchSX=0,repLbInitDist=null;
+document.getElementById('repLightboxImg').addEventListener('touchstart',e=>{if(e.touches.length===2)repLbInitDist=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);else if(e.touches.length===1)repLbTouchSX=e.changedTouches[0].screenX;},{passive:true});
+document.getElementById('repLightboxImg').addEventListener('touchend',e=>{repLbInitDist=null;if(e.changedTouches.length===1&&repGalleryImages.length>1){const dx=e.changedTouches[0].screenX-repLbTouchSX;if(Math.abs(dx)>=50){dx>0?repLbPrev():repLbNext();}}},{passive:true});
+document.getElementById('repLightboxImg').draggable=false;
+document.getElementById('repLightboxImg').addEventListener('dragstart',e=>e.preventDefault());
+
+function fmtDate(s){ if(!s)return'—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function priBadge(l){
+    const st={Critical:'background:#fce7f3;color:#831843;',High:'background:#fde8e8;color:#9b1c1c;',Medium:'background:#fef3c7;color:#92400e;',Low:'background:#d1fae5;color:#065f46;'};
+    l=l||'Low'; const s=st[l]||'background:#e5e7eb;color:#374151;';
+    return `<span style="${s}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;">${escH(l)}</span>`;
+}
 
 document.addEventListener("DOMContentLoaded", function() {
     const input    = document.getElementById("reportSearch");
@@ -554,7 +848,6 @@ document.addEventListener("DOMContentLoaded", function() {
     function highlightEl(el, kw) {
         if (!kw) return;
         const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
-        // Walk only text nodes — never touch tag names or attribute values
         const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
         const textNodes = [];
         let node;
