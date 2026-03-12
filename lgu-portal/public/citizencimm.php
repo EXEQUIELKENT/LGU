@@ -39,19 +39,64 @@ if ($pending_result) {
     $pending_count = $pending_row['count'];
 }
 
-// Get recent maintenance for preview
+// Get recent maintenance for preview — same combined source as citizenreports.php
 $recent_maintenance = array();
-$maintenance_result = $conn->query("
-    SELECT sched_id, task, location, status, starting_date 
-    FROM maintenance_schedule 
-    ORDER BY starting_date DESC 
-    LIMIT 3
+
+// ── 1. Pull from maintenance_schedule ────────────────────────────────────────
+$maint_q = $conn->query("
+    SELECT sched_id, task, location, category, status, starting_date, budget
+    FROM maintenance_schedule
+    ORDER BY starting_date DESC
 ");
-if ($maintenance_result) {
-    while ($row = $maintenance_result->fetch_assoc()) {
-        $recent_maintenance[] = $row;
+if ($maint_q) {
+    while ($row = $maint_q->fetch_assoc()) {
+        $recent_maintenance[] = [
+            'id_label'     => '#SCH-' . str_pad($row['sched_id'], 3, '0', STR_PAD_LEFT),
+            'task'         => $row['task'],
+            'location'     => $row['location'],
+            'status'       => $row['status'],
+            'starting_date'=> $row['starting_date'],
+        ];
     }
 }
+
+// ── 2. Pull from reports (joined with request_resolutions + requests) ─────────
+$rpt_q = $conn->query("
+    SELECT
+        r.rep_id, r.starting_date,
+        res.status AS resolution_status,
+        req.infrastructure, req.location
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    WHERE r.starting_date IS NOT NULL
+    ORDER BY r.starting_date DESC
+");
+if ($rpt_q) {
+    while ($rRow = $rpt_q->fetch_assoc()) {
+        $resStatus = $rRow['resolution_status'] ?? '';
+        if ($resStatus === 'Completed') {
+            $dispStatus = 'Completed';
+        } elseif (in_array($resStatus, ['In Progress', 'Pending Completion'])) {
+            $dispStatus = 'In Progress';
+        } else {
+            $dispStatus = 'Scheduled';
+        }
+        $recent_maintenance[] = [
+            'id_label'     => '#RPT-' . str_pad($rRow['rep_id'], 3, '0', STR_PAD_LEFT),
+            'task'         => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'     => $rRow['location'] ?? '—',
+            'status'       => $dispStatus,
+            'starting_date'=> $rRow['starting_date'],
+        ];
+    }
+}
+
+// ── 3. Sort combined by starting_date DESC, limit 5 ──────────────────────────
+usort($recent_maintenance, function($a, $b) {
+    return strcmp($b['starting_date'] ?? '', $a['starting_date'] ?? '');
+});
+$recent_maintenance = array_slice($recent_maintenance, 0, 5);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -759,9 +804,31 @@ if ($maintenance_result) {
             font-weight: 600;
         }
 
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-progress { background: #cce5ff; color: #004085; }
+        .status-pending   { background: #fff3cd; color: #856404; }
+        .status-progress  { background: #cce5ff; color: #004085; }
         .status-completed { background: #d4edda; color: #155724; }
+        .status-delayed   { background: #ffebee; color: #c62828; }
+
+        [data-theme="dark"] .status-pending   { background: rgba(133,100,4,0.22);   color: #fdd835; }
+        [data-theme="dark"] .status-progress  { background: rgba(0,64,133,0.22);    color: #90caf9; }
+        [data-theme="dark"] .status-completed { background: rgba(21,87,36,0.22);    color: #81c784; }
+        [data-theme="dark"] .status-delayed   { background: rgba(198,40,40,0.22);   color: #e57373; }
+
+        .activity-id {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-secondary, #3762c8);
+            background: rgba(55,98,200,0.08);
+            border-radius: 6px;
+            padding: 1px 6px;
+            margin-right: 6px;
+            letter-spacing: 0.03em;
+            vertical-align: middle;
+        }
+        [data-theme="dark"] .activity-id {
+            background: rgba(95,140,255,0.15);
+            color: #8ab4f8;
+        }
 
         /* ============================================================
            RESPONSIVE
@@ -1091,20 +1158,29 @@ if ($maintenance_result) {
             
             <?php if (!empty($recent_maintenance)): ?>
                 <ul class="activity-list">
-                    <?php foreach ($recent_maintenance as $item): 
+                    <?php foreach ($recent_maintenance as $item):
                         $status_class = 'status-pending';
+                        $status_key   = 'reports_status_scheduled';
                         if ($item['status'] === 'Completed') {
                             $status_class = 'status-completed';
+                            $status_key   = 'reports_status_completed';
                         } elseif ($item['status'] === 'In Progress') {
                             $status_class = 'status-progress';
+                            $status_key   = 'reports_status_in_progress';
+                        } elseif ($item['status'] === 'Delayed') {
+                            $status_class = 'status-delayed';
+                            $status_key   = 'reports_status_delayed';
                         }
                     ?>
                         <li class="activity-item">
                             <div class="activity-info">
-                                <h4><?= htmlspecialchars($item['task']) ?></h4>
-                                <p><?= htmlspecialchars($item['location']) ?> • <?= date('M d, Y', strtotime($item['starting_date'])) ?></p>
+                                <h4>
+                                    <span class="activity-id"><?= htmlspecialchars($item['id_label']) ?></span>
+                                    <?= htmlspecialchars($item['task']) ?>
+                                </h4>
+                                <p><?= htmlspecialchars($item['location']) ?> • <?= !empty($item['starting_date']) ? date('M d, Y', strtotime($item['starting_date'])) : '—' ?></p>
                             </div>
-                            <span class="status-badge <?= $status_class ?>"><?= htmlspecialchars($item['status']) ?></span>
+                            <span class="status-badge <?= $status_class ?>" data-i18n="<?= $status_key ?>"><?= htmlspecialchars($item['status']) ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
@@ -1271,6 +1347,72 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════════
+     INLINE FALLBACK TRANSLATIONS — citizencimm.php activity section
+     Same pattern as citizenrepform.php / citizenreports.php.
+════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    var PAGE_TRANSLATIONS = {
+        en: {
+            activity_title:             'Recent Maintenance Activity',
+            activity_subtitle:          'Stay informed about the latest infrastructure maintenance in your community',
+            activity_view_all:          'View All Reports',
+            activity_empty:             'No recent maintenance activities to display.',
+            reports_status_scheduled:   'Scheduled',
+            reports_status_completed:   'Completed',
+            reports_status_in_progress: 'In Progress',
+            reports_status_delayed:     'Delayed',
+        },
+        tl: {
+            activity_title:             'Kamakailang Aktibidad sa Pagpapanatili',
+            activity_subtitle:          'Manatiling may kaalaman tungkol sa pinakabagong pagpapanatili ng imprastraktura sa inyong komunidad',
+            activity_view_all:          'Tingnan ang Lahat ng Ulat',
+            activity_empty:             'Walang kamakailang aktibidad sa pagpapanatili na ipapakita.',
+            reports_status_scheduled:   'Nakaplanong',
+            reports_status_completed:   'Natapos',
+            reports_status_in_progress: 'Isinasagawa',
+            reports_status_delayed:     'Naantala',
+        }
+    };
+
+    function getTranslation(key) {
+        var lang = localStorage.getItem('lang') || 'en';
+        if (window.__preloadedTranslations && window.__preloadedTranslations[lang]) {
+            var val = window.__preloadedTranslations[lang][key];
+            if (val) return val;
+        }
+        return (PAGE_TRANSLATIONS[lang] && PAGE_TRANSLATIONS[lang][key])
+            || (PAGE_TRANSLATIONS['en'][key])
+            || key;
+    }
+
+    function applyPageFallbacks() {
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n');
+            var val = getTranslation(key);
+            if (val && val !== key) el.textContent = val;
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n-placeholder');
+            var val = getTranslation(key);
+            if (val && val !== key) el.placeholder = val;
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n-title');
+            var val = getTranslation(key);
+            if (val && val !== key) el.title = val;
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyPageFallbacks);
+    } else {
+        applyPageFallbacks();
+    }
+    document.addEventListener('i18nReady', applyPageFallbacks);
+})();
+</script>
 <?php include 'citizen_global.php'; ?>
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>

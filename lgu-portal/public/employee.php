@@ -125,6 +125,15 @@ $isAdmin = in_array(
     ['admin', 'super admin']
 );
 
+// Engineer detection — same pattern as sched.php
+$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
+
+// Engineer SQL filter clause (applied to all engineer-personalised queries)
+$engFilter = $isEngineer && $sessionUserId > 0
+    ? "AND r.engineer_id = {$sessionUserId}"
+    : "";
+
 // ===== DASHBOARD METRICS =====
 
 // Total Requests
@@ -137,8 +146,15 @@ $pendingRequestsQuery = "SELECT COUNT(*) as total FROM requests WHERE approval_s
 $pendingRequestsResult = $conn->query($pendingRequestsQuery);
 $pendingRequests = $pendingRequestsResult->fetch_assoc()['total'] ?? 0;
 
-// Completed Tasks
-$completedTasksQuery = "SELECT COUNT(*) as total FROM maintenance_schedule WHERE status = 'Completed'";
+// Completed Tasks — sourced from archive_reports (same as archive_reports.php),
+// personalised per engineer when the logged-in user is an engineer
+$completedTasksQuery = "
+    SELECT COUNT(*) as total
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status IN ('Completed','Cancelled')
+    {$engFilter}
+";
 $completedTasksResult = $conn->query($completedTasksQuery);
 $completedTasks = $completedTasksResult->fetch_assoc()['total'] ?? 0;
 
@@ -155,8 +171,8 @@ $activeReportsQuery = "SELECT COUNT(*) as total
 $activeReportsResult = $conn->query($activeReportsQuery);
 $activeReports = $activeReportsResult->fetch_assoc()['total'] ?? 0;
 
-// Recent Current Reports preview (for dashboard section)
-$recentReportsQuery = "SELECT 
+// Recent Current Reports preview — personalised for engineers
+$recentReportsQuery = "SELECT
     r.rep_id,
     r.priority_lvl,
     r.starting_date,
@@ -171,6 +187,7 @@ $recentReportsQuery = "SELECT
     LEFT JOIN requests req ON res.req_id = req.req_id
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
     WHERE res.status = 'Approved'
+    {$engFilter}
     ORDER BY r.rep_id DESC
     LIMIT 5";
 $recentReportsResult = $conn->query($recentReportsQuery);
@@ -178,6 +195,59 @@ $recentReportRows = [];
 if ($recentReportsResult && $recentReportsResult->num_rows > 0) {
     while ($r = $recentReportsResult->fetch_assoc()) {
         $recentReportRows[] = $r;
+    }
+}
+
+// Recent Pending Reports preview — personalised for engineers
+$recentPendingQuery = "SELECT
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+    {$engFilter}
+    ORDER BY r.starting_date ASC
+    LIMIT 5";
+$recentPendingResult = $conn->query($recentPendingQuery);
+$recentPendingRows = [];
+if ($recentPendingResult && $recentPendingResult->num_rows > 0) {
+    while ($r = $recentPendingResult->fetch_assoc()) {
+        $recentPendingRows[] = $r;
+    }
+}
+
+// Recent Archive Reports preview — personalised for engineers
+$recentArchiveQuery = "SELECT
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    r.estimated_end_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status IN ('Completed','Cancelled')
+    {$engFilter}
+    ORDER BY r.rep_id DESC
+    LIMIT 5";
+$recentArchiveResult = $conn->query($recentArchiveQuery);
+$recentArchiveRows = [];
+if ($recentArchiveResult && $recentArchiveResult->num_rows > 0) {
+    while ($r = $recentArchiveResult->fetch_assoc()) {
+        $recentArchiveRows[] = $r;
     }
 }
 
@@ -313,60 +383,103 @@ $lastMonthCount = $lastMonthResult->fetch_assoc()['count'] ?? 1; // Avoid divisi
 
 $requestsTrend = $lastMonthCount > 0 ? (($currentMonthCount - $lastMonthCount) / $lastMonthCount) * 100 : 0;
 
-// ===== UPDATED: Apply same logic as sched.php =====
-$upcomingSchedulesQuery = "SELECT 
-    task,
-    location,
-    starting_date,
-    status,
-    priority,
-    category,
-    assigned_team
-    FROM maintenance_schedule
-    WHERE status != 'Completed'
-    ORDER BY starting_date ASC
-    LIMIT 5";
-
-$upcomingSchedulesResult = $conn->query($upcomingSchedulesQuery);
+// ===== UPCOMING MAINTENANCE — same combined source as sched.php =====
+// Pull non-completed items from maintenance_schedule AND from reports
+// (with engineer filter on the reports side when logged in as engineer)
 $upcomingSchedules = [];
+$todayDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
-if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
-    $today = new DateTime('today');
-    
-    while ($row = $upcomingSchedulesResult->fetch_assoc()) {
-        // Apply same status computation logic as sched.php
-        $status_label = $row['status'];
-        $priority_label = $row['priority'];
-        
-        if ($row['status'] != 'Completed' && !empty($row['starting_date'])) {
+// ── 1. maintenance_schedule (no engineer filter — assigned_team, not engineer_id) ──
+$schedSql = "SELECT sched_id, task, location, starting_date, estimated_completion_date AS end_date,
+              status, priority, category, assigned_team
+              FROM maintenance_schedule
+              WHERE status != 'Completed'
+              ORDER BY starting_date ASC";
+$schedRes = $conn->query($schedSql);
+if ($schedRes) {
+    while ($row = $schedRes->fetch_assoc()) {
+        $status_label   = $row['status'];
+        $priority_label = $row['priority'] ?? 'Low';
+        if (!empty($row['starting_date'])) {
             try {
-                $dueDate = new DateTime($row['starting_date']);
-                $diffDays = (int)$today->diff($dueDate)->format('%r%a');
-                
-                // If task is overdue
-                if ($diffDays < 0) {
-                    $status_label = 'Delayed';
-                    $priority_label = 'Critical';
-                } 
-                // If task is today
-                elseif ($diffDays === 0) {
-                    $status_label = 'In Progress';
-                    $priority_label = 'High';
-                }
-                // If task is upcoming (future)
-                else {
-                    $status_label = 'Scheduled';
-                }
-            } catch (Exception $e) {
-                // Keep original status on error
-            }
+                $dueDate  = new DateTime($row['starting_date'], new DateTimeZone('Asia/Manila'));
+                $diffDays = (int)$todayDt->diff($dueDate)->format('%r%a');
+                if ($diffDays < 0)       { $status_label = 'Delayed';     $priority_label = 'Critical'; }
+                elseif ($diffDays === 0) { $status_label = 'In Progress'; $priority_label = 'High'; }
+                else                     { $status_label = 'Scheduled'; }
+            } catch (Exception $e) {}
         }
-        
-        $row['status_label'] = $status_label;
-        $row['priority'] = $priority_label;
-        $upcomingSchedules[] = $row;
+        $upcomingSchedules[] = [
+            'task'          => $row['task'],
+            'location'      => $row['location'],
+            'starting_date' => $row['starting_date'],
+            'end_date'      => $row['end_date'] ?? '',
+            'status_label'  => $status_label,
+            'priority'      => $priority_label,
+            'category'      => $row['category'] ?? 'General Maintenance',
+            'assigned_team' => $row['assigned_team'] ?? '',
+            'engineer_name' => '',
+            'source'        => 'schedule',
+            'rep_id'        => 0,
+        ];
     }
 }
+
+// ── 2. reports (with engineer filter for engineers) ───────────────────────────
+$rptUpSql = "
+    SELECT r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
+           r.priority_lvl, r.budget,
+           res.status AS resolution_status, res.res_note,
+           req.infrastructure, req.location,
+           CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    LEFT JOIN employees            e   ON r.engineer_id = e.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+      AND r.starting_date IS NOT NULL
+    {$engFilter}
+    ORDER BY r.starting_date ASC
+";
+$rptUpRes = $conn->query($rptUpSql);
+if ($rptUpRes) {
+    while ($rRow = $rptUpRes->fetch_assoc()) {
+        $resStatus = $rRow['resolution_status'] ?? '';
+        $resNote   = trim($rRow['res_note'] ?? '');
+        $endDate   = $rRow['end_date'] ?? '';
+        if ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
+            $statusLabel = 'In Progress';
+        } else {
+            $statusLabel = 'Scheduled';
+            if (empty($resNote) && !empty($endDate)) {
+                try {
+                    $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
+                    if ($todayDt > $endDt) $statusLabel = 'Delayed';
+                } catch (Exception $e) {}
+            }
+        }
+        $priorityMap = ['High'=>'High','Medium'=>'Medium','Low'=>'Low','Critical'=>'Critical'];
+        $upcomingSchedules[] = [
+            'task'          => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'      => $rRow['location'] ?? '—',
+            'starting_date' => $rRow['starting_date'],
+            'end_date'      => $endDate,
+            'status_label'  => $statusLabel,
+            'priority'      => $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low',
+            'category'      => 'Infrastructure Report',
+            'assigned_team' => '',
+            'engineer_name' => trim($rRow['engineer_name'] ?? '') ?: '—',
+            'source'        => 'report',
+            'rep_id'        => (int)$rRow['rep_id'],
+        ];
+    }
+}
+
+// ── 3. Sort combined by starting_date ASC, keep top 5 ────────────────────────
+usort($upcomingSchedules, function($a, $b) {
+    return strcmp($a['starting_date'] ?? '', $b['starting_date'] ?? '');
+});
+$upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 
 ?>
 <!DOCTYPE html>
@@ -2056,6 +2169,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div class="dashboard-header">
                 <h1 class="dashboard-title">Dashboard Overview</h1>
                 <p class="dashboard-subtitle">Welcome back, <?= htmlspecialchars($displayName) ?></p>
+                <?php if ($isEngineer): ?>
+                <div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;
+                            background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
+                            border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;
+                            color:#3762c8;">
+                    <span>👷</span>
+                    <span>Engineer view — reports &amp; tasks are filtered to your assignments only</span>
+                </div>
+                <?php endif; ?>
             </div>
 
             <!-- Metrics Grid -->
@@ -2087,17 +2209,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card green"    data-href="sched.php"        tabindex="0" role="link">
+                <div class="metric-card green"    data-href="archive_reports.php" tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
-                            <div class="metric-title">Completed Tasks</div>
+                            <div class="metric-title">Completed Tasks<?= $isEngineer ? ' (Mine)' : '' ?></div>
                         </div>
                         <div class="metric-icon">✅</div>
                     </div>
                     <div class="metric-value"><?= number_format($completedTasks) ?></div>
                     <div class="metric-trend positive">
                         <span class="metric-trend-icon">↗</span>
-                        <span>This month</span>
+                        <span>Archived reports</span>
                     </div>
                 </div>
 
@@ -2211,46 +2333,52 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <!-- Upcoming Maintenance Schedules -->
+                <!-- Upcoming Maintenance Schedules — combined sched + reports, engineer-personalised -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
-                            <div class="chart-title">Upcoming Maintenance</div>
-                            <div class="chart-subtitle">Next scheduled tasks</div>
+                            <div class="chart-title">Upcoming Maintenance<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                            <div class="chart-subtitle">Next scheduled tasks<?= $isEngineer ? ' assigned to you' : ' from schedule &amp; reports' ?></div>
                         </div>
                         <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
                     <div class="schedule-list">
-                        <?php 
+                        <?php
                         if (!empty($upcomingSchedules)):
-                            foreach ($upcomingSchedules as $schedule): 
-                                $priority = strtolower($schedule['priority'] ?? 'low');
-                                $iconClass = 'low-priority';
-                                if ($priority === 'high' || $priority === 'critical') {
-                                    $iconClass = 'high-priority';
-                                } elseif ($priority === 'medium') {
-                                    $iconClass = 'medium-priority';
-                                }
-                                
-                                $badgeClass = 'low';
-                                if ($priority === 'high' || $priority === 'critical') {
-                                    $badgeClass = 'high';
-                                } elseif ($priority === 'medium') {
-                                    $badgeClass = 'medium';
-                                }
+                            foreach ($upcomingSchedules as $schedule):
+                                $priority   = strtolower($schedule['priority'] ?? 'low');
+                                $statusLbl  = $schedule['status_label'] ?? 'Scheduled';
+                                $iconClass  = 'low-priority';
+                                if ($priority === 'high' || $priority === 'critical') $iconClass = 'high-priority';
+                                elseif ($priority === 'medium') $iconClass = 'medium-priority';
+                                $badgeClass = ($priority === 'high' || $priority === 'critical') ? 'high' : ($priority === 'medium' ? 'medium' : 'low');
+                                $statusIcon = match($statusLbl) {
+                                    'Delayed'     => '⚠️',
+                                    'In Progress' => '🔄',
+                                    'Completed'   => '✅',
+                                    default       => '📅',
+                                };
+                                $engLabel = !empty($schedule['engineer_name']) && $schedule['engineer_name'] !== '—'
+                                    ? $schedule['engineer_name']
+                                    : ($schedule['source'] === 'schedule' ? ($schedule['assigned_team'] ?: 'Unassigned') : 'Unassigned');
                         ?>
-                        <div class="schedule-item">
-                            <div class="schedule-icon <?= $iconClass ?>">📅</div>
+                        <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
+                            <div class="schedule-icon <?= $iconClass ?>"><?= $statusIcon ?></div>
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
-                                <div class="schedule-location"><?= htmlspecialchars($schedule['location']) ?></div>
+                                <div class="schedule-location">
+                                    <?= htmlspecialchars($schedule['location']) ?>
+                                    <?php if (!$isEngineer): ?>
+                                    · <em style="color:var(--text-secondary);font-size:11px;"><?= htmlspecialchars($engLabel) ?></em>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="schedule-date-container">
-                                <div class="schedule-date"><?= date('M d, Y', strtotime($schedule['starting_date'])) ?></div>
-                                <span class="schedule-badge <?= $badgeClass ?>"><?= ucfirst($priority) ?></span>
+                                <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
+                                <span class="schedule-badge <?= $badgeClass ?>"><?= htmlspecialchars($statusLbl) ?></span>
                             </div>
                         </div>
-                        <?php 
+                        <?php
                             endforeach;
                         else:
                         ?>
@@ -2282,12 +2410,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </div>
             </div>
 
-            <!-- Current Reports Preview — NEW SECTION -->
+            <!-- Current Reports Preview -->
             <div class="chart-card" style="margin-top: 20px;">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title">Current Reports</div>
-                        <div class="chart-subtitle">Active in-progress repair reports</div>
+                        <div class="chart-title">Current Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-subtitle">Active in-progress repair reports<?= $isEngineer ? ' assigned to you' : '' ?></div>
                     </div>
                     <a href="current_reports.php" class="view-all-link">View all →</a>
                 </div>
@@ -2335,6 +2463,130 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <?php else: ?>
                         <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
                             🔄 No active reports at this time.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- ── Pending Reports Preview ─────────────────────────────────── -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Pending Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isEngineer ? ' assigned to you' : '' ?></div>
+                    </div>
+                    <a href="pending_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentPendingRows)): ?>
+                        <?php
+                        $pColors = ['#ff9800','#2196f3','#9c27b0','#f44336','#4caf50'];
+                        $pIdx = 0;
+                        foreach ($recentPendingRows as $rep):
+                            $resStatus = $rep['resolution_status'] ?? '';
+                            $statusMap = [
+                                'In Progress'        => ['label'=>'In Progress',   'color'=>'var(--metric-blue)'],
+                                'Pending Completion' => ['label'=>'Pending Approval','color'=>'var(--metric-orange)'],
+                                'Scheduled'          => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                                'Pending'            => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                                ''                   => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                            ];
+                            $sm = $statusMap[$resStatus] ?? ['label'=>$resStatus,'color'=>'var(--metric-blue)'];
+                            $priority = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High'=>'#f44336','Medium'=>'#ff9800','Low'=>'#4caf50'];
+                            $pColor = $priorityColors[$priority] ?? '#2196f3';
+                            $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
+                            $hasEngineer = !empty($rep['engineer_id']) && trim($rep['engineer_name'] ?? '') !== '';
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='pending_reports.php'">
+                            <div class="activity-avatar" style="background:<?= $pColors[$pIdx % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= str_pad($rep['rep_id'], 3, '0', STR_PAD_LEFT) ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $pColor ?>;background:<?= $pColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= !empty($rep['starting_date']) ? date('M d, Y', strtotime($rep['starting_date'])) : '—' ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $sm['color'] ?>;">
+                                    <?= $sm['label'] ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $pIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            ⏳ No pending reports<?= $isEngineer ? ' assigned to you' : '' ?> at this time.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- ── Archive Reports Preview ────────────────────────────────────── -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Archive Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isEngineer ? ' you handled' : '' ?></div>
+                    </div>
+                    <a href="archive_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentArchiveRows)): ?>
+                        <?php
+                        $aColors = ['#4caf50','#2196f3','#9c27b0','#ff9800','#f44336'];
+                        $aIdx = 0;
+                        foreach ($recentArchiveRows as $rep):
+                            $resStatus = $rep['resolution_status'] ?? 'Completed';
+                            $isCancelled = $resStatus === 'Cancelled';
+                            $statusColor = $isCancelled ? 'var(--metric-red)' : 'var(--metric-green)';
+                            $statusLabel = $isCancelled ? 'Cancelled' : 'Completed';
+                            $priority = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High'=>'#f44336','Medium'=>'#ff9800','Low'=>'#4caf50'];
+                            $aColor = $priorityColors[$priority] ?? '#4caf50';
+                            $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
+                            $engName = trim($rep['engineer_name'] ?? '');
+                            $hasEngineer = !empty($rep['engineer_id']) && $engName !== '';
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='archive_reports.php'">
+                            <div class="activity-avatar" style="background:<?= $aColors[$aIdx % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= str_pad($rep['rep_id'], 3, '0', STR_PAD_LEFT) ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($engName) : '<em style="color:var(--text-secondary)">No engineer</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $aColor ?>;background:<?= $aColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= !empty($rep['starting_date']) ? date('M d, Y', strtotime($rep['starting_date'])) : '—' ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $statusColor ?>;">
+                                    <?= $statusLabel ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $aIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            ✅ No archived reports<?= $isEngineer ? ' for you' : '' ?> yet.
                         </p>
                     <?php endif; ?>
                 </div>

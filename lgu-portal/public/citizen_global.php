@@ -8,7 +8,28 @@
     const BASE = '<?= $BASE_URL ?>';
     const JSON_PATH = BASE + 'translations.json';
 
-    // Use preloaded translations if available
+    // Use preloaded translations if available — but verify they're not stale.
+    // citizen_rendering.php embeds translations inline; if translations.json was
+    // updated after the last deploy, the preloaded object won't have the new keys.
+    // We check for keys that only exist in the current version on BOTH the en AND tl
+    // sides. Previously only pre.en was checked — meaning old embeds that had the key
+    // in English but were missing the Filipino translations would pass the check and
+    // cause many labels to stay in English. Now we verify the tl translations are also
+    // present and up-to-date before trusting the preloaded data.
+    const REQUIRED_KEY    = 'reports_stat_title_scheduled'; // present in current en + tl
+    const REQUIRED_KEY_TL = 'reports_legend_filter_title_scheduled'; // new tl-only sentinel
+    (function validatePreload() {
+        const pre = window.__preloadedTranslations;
+        const stale = pre && (
+            !pre.en || pre.en[REQUIRED_KEY] === undefined ||
+            !pre.tl || pre.tl[REQUIRED_KEY] === undefined ||
+            pre.tl[REQUIRED_KEY_TL] === undefined
+        );
+        if (stale) {
+            console.warn('[i18n] Preloaded translations are stale (missing tl keys) — will re-fetch from server.');
+            window.__preloadedTranslations = null;
+        }
+    })();
     let translations = window.__preloadedTranslations || null;
     let currentLang = window.__currentLang || localStorage.getItem('lang') || 'en';
 
@@ -217,8 +238,19 @@
         console.log('[i18n] translations exist:', !!translations);
         
         if (!translations && window.__preloadedTranslations) {
-            translations = window.__preloadedTranslations;
-            console.log('[i18n] Loaded translations from window.__preloadedTranslations');
+            // Only use the preload if it has the current keys on BOTH en AND tl sides.
+            // Checking en alone is insufficient — old embeds may pass the en check
+            // but still be missing newer Filipino translations.
+            const pre = window.__preloadedTranslations;
+            const fresh = pre && pre.en && pre.en[REQUIRED_KEY] !== undefined &&
+                          pre.tl && pre.tl[REQUIRED_KEY] !== undefined &&
+                          pre.tl[REQUIRED_KEY_TL] !== undefined;
+            if (fresh) {
+                translations = pre;
+                console.log('[i18n] Loaded translations from window.__preloadedTranslations');
+            } else {
+                console.warn('[i18n] Ignoring stale window.__preloadedTranslations in init()');
+            }
         }
         
         if (!translations && currentLang === 'tl') {

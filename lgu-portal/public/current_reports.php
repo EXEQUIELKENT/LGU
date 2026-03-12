@@ -116,6 +116,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($action === 'accept_assignment') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId <= 0 || !$isEngineer) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid request.']); exit;
+        }
+        $stmt = $conn->prepare("UPDATE reports SET engineer_accepted = 1 WHERE rep_id = ? AND engineer_id = ?");
+        $stmt->bind_param("ii", $repId, $engineerId);
+        $stmt->execute();
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+        while (ob_get_level() > 0) ob_end_clean();
+        echo json_encode(['success' => $affected > 0]); exit;
+    }
+
+    if ($action === 'decline_assignment') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId <= 0 || !$isEngineer) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid request.']); exit;
+        }
+        $stmt = $conn->prepare("UPDATE reports SET engineer_id = NULL, engineer_accepted = 0 WHERE rep_id = ? AND engineer_id = ?");
+        $stmt->bind_param("ii", $repId, $engineerId);
+        $stmt->execute();
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+        while (ob_get_level() > 0) ob_end_clean();
+        echo json_encode(['success' => $affected > 0]); exit;
+    }
+
     if ($action === 'update_report') {
         $repId    = (int)($input['rep_id'] ?? 0);
         $priority = in_array($input['priority'] ?? '', ['Low','Medium','High','Critical']) ? $input['priority'] : 'Low';
@@ -187,7 +217,7 @@ $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
-        r.priority_lvl, r.budget, r.created_at, r.engineer_id,
+        r.priority_lvl, r.budget, r.created_at, r.engineer_id, r.engineer_accepted,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates,
@@ -218,11 +248,12 @@ $result = $conn->query($sql);
 
 function statusPill(string $status): string {
     $map = [
-        'Completed'        => 'completed',
-        'In Progress'      => 'on-going',
-        'Awaiting Engineer'=> 'pending-st',
-        'Pending'          => 'pending-st',
-        'Cancelled'        => 'cancelled-st',
+        'Completed'          => 'completed',
+        'In Progress'        => 'on-going',
+        'Awaiting Engineer'  => 'pending-st',
+        'Pending Acceptance' => 'pending-accept-st',
+        'Pending'            => 'pending-st',
+        'Cancelled'          => 'cancelled-st',
     ];
     $cls = $map[$status] ?? 'on-going';
     return "<span class=\"status {$cls}\">{$status}</span>";
@@ -273,6 +304,7 @@ foreach ($rows as $row) {
         'issue'             => $row['issue'] ?? '',
         'res_note'          => $row['res_note'] ?? '',
         'engineer_name'     => $row['engineer_name'] ?? '',
+        'engineer_accepted' => (bool)($row['engineer_accepted'] ?? false),
         'reporter_name'     => $row['reporter_name'] ?? '',
         'requester_name'    => $row['requester_name'] ?? '',
         'contact_number'    => $row['contact_number'] ?? '',
@@ -747,6 +779,37 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .rep-status-pill.on-going  { background:rgba(255,152,0,.15);color:#e65100; }
 .rep-status-pill.completed { background:rgba(76,175,80,.15);color:#1b5e20; }
 .rep-status-pill.pending   { background:rgba(255,152,0,.1);color:#e65100; }
+.rep-status-pill.pending-accept { background:rgba(99,102,241,.15);color:#3730a3; }
+
+/* Pending Acceptance status pill in table */
+.status.pending-accept-st {
+    background: rgba(99,102,241,.12);
+    color: #4338ca;
+    border: 1px solid rgba(99,102,241,.28);
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+[data-theme="dark"] .status.pending-accept-st { background: rgba(99,102,241,.22); color: #a5b4fc; }
+
+/* Accept Assignment button */
+.btn-accept-rep {
+    padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff; box-shadow: 0 4px 12px rgba(34,197,94,.3);
+    transition: all .18s ease;
+}
+.btn-accept-rep:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(34,197,94,.4); }
+
+/* Decline Assignment button */
+.btn-decline-rep {
+    padding: 9px 18px; border-radius: 10px; cursor: pointer;
+    font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-secondary, #f1f5f9);
+    color: #ef4444;
+    border: 1.5px solid rgba(239,68,68,.35);
+    transition: all .18s ease;
+}
+.btn-decline-rep:hover { background: rgba(239,68,68,.08); border-color: #ef4444; }
 .rep-editable-field { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text-primary);outline:none;width:100%;box-sizing:border-box;transition:border-color .2s,box-shadow .2s; }
 .rep-editable-field:focus { border-color:#ff9800;box-shadow:0 0 0 3px rgba(255,152,0,.15); }
 select.rep-editable-field { cursor:pointer; }
@@ -991,7 +1054,8 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
                                 && trim($row['engineer_name']) !== ''
                                 && trim($row['engineer_name']) !== ' ';
-                    $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
+                    $engAccepted   = !empty($row['engineer_accepted']);
+                    $displayStatus = !$hasEngineer ? 'Awaiting Engineer' : ($engAccepted ? 'In Progress' : 'Pending Acceptance');
                 ?>
                 <tr>
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button></td>
@@ -1043,7 +1107,8 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
                         && trim($row['engineer_name']) !== ''
                         && trim($row['engineer_name']) !== ' ';
-            $displayStatus = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
+            $engAccepted   = !empty($row['engineer_accepted']);
+            $displayStatus = !$hasEngineer ? 'Awaiting Engineer' : ($engAccepted ? 'In Progress' : 'Pending Acceptance');
         ?>
         <div class="report-card">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
@@ -1143,8 +1208,12 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         </div>
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
             <div class="rep-footer-inner">
-                <button class="btn-save-rep" id="repSaveBtn" style="display:none;" onclick="confirmSave()"><i class="fas fa-save"></i> Save Changes</button>
-                <button class="btn-approve-rep" id="repApproveBtn" onclick="confirmApprove()"><i class="fas fa-check-circle"></i> Approved</button>
+                <!-- Shown after acceptance -->
+                <button class="btn-save-rep"    id="repSaveBtn"    style="display:none;" onclick="confirmSave()"><i class="fas fa-save"></i> Save Changes</button>
+                <button class="btn-approve-rep" id="repApproveBtn" style="display:none;" onclick="confirmApprove()"><i class="fas fa-check-circle"></i> Approved</button>
+                <!-- Shown while pending acceptance -->
+                <button class="btn-decline-rep" id="repDeclineBtn" style="display:none;" onclick="confirmDecline()"><i class="fas fa-times-circle"></i> Decline</button>
+                <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="doAcceptAssignment()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
             </div>
         </div>
     </div>
@@ -1158,6 +1227,19 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <button class="rep-lb-nav right hidden" id="repLbNext" onclick="repLbNext()">&#10095;</button>
     <div class="rep-lb-counter" id="repLbCounter"></div>
     <div class="rep-lb-counter" id="repLbSwipe" style="opacity:0;transition:opacity .4s;font-size:12px;bottom:46px;">&#8646; Swipe to navigate</div>
+</div>
+
+<!-- Decline Assignment Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repDeclineConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-times-circle" style="color:#ef4444;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Decline Assignment?</div>
+        <div class="rep-confirm-desc">You will be unassigned from this report. The report will return to <strong>Awaiting Engineer</strong> status and someone else may be assigned.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeDeclineConfirm()">Cancel</button>
+            <button class="rep-confirm-btn" id="repDeclineConfirmBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doDeclineAssignment()"><i class="fas fa-times-circle"></i> Confirm Decline</button>
+        </div>
+    </div>
 </div>
 
 <!-- Save Confirmation Modal -->
@@ -1486,8 +1568,11 @@ function openRepModal(repId) {
 
     const statusEl = document.getElementById('repModalStatus');
     const st = data.resolution_status || 'In Progress';
-    statusEl.textContent = st;
-    statusEl.className   = 'rep-status-pill ' + (st==='Completed'?'completed':st==='Pending'?'pending':'on-going');
+    const hasEng = data.engineer_name && data.engineer_name.trim() !== '';
+    const displaySt = !hasEng ? 'Awaiting Engineer' : (data.engineer_accepted ? st : 'Pending Acceptance');
+    statusEl.textContent = displaySt;
+    const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending'?'pending':'on-going';
+    statusEl.className = 'rep-status-pill ' + stClass;
 
     document.getElementById('repModalLocation').textContent = data.location || '—';
     document.getElementById('repModalIssue').textContent    = data.issue || '—';
@@ -1518,12 +1603,27 @@ function openRepModal(repId) {
     const budgetField   = document.getElementById('repModalBudget');
 
     if (IS_ENGINEER) {
-        priorityField.innerHTML = '<select class="rep-editable-field" id="repPrioritySelect">' +
-            ['Low','Medium','High','Critical'].map(v=>`<option value="${v}"${data.priority_lvl===v?' selected':''}>${v}</option>`).join('') +
-            '</select>';
-        // Peso-prefixed budget input
-        budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(data.budget_raw))}" min="0" step="0.01" placeholder="0.00"></div>`;
-        document.getElementById('repSaveBtn').style.display = 'inline-flex';
+        const isPendingAcceptance = !data.engineer_accepted;
+        if (isPendingAcceptance) {
+            // Read-only view — engineer must accept first
+            priorityField.innerHTML = priBadge(data.priority_lvl);
+            const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
+            budgetField.textContent = bdAmt;
+            document.getElementById('repSaveBtn').style.display    = 'none';
+            document.getElementById('repApproveBtn').style.display = 'none';
+            document.getElementById('repDeclineBtn').style.display = 'inline-flex';
+            document.getElementById('repAcceptBtn').style.display  = 'inline-flex';
+        } else {
+            // Accepted — editable fields + save/approve buttons
+            priorityField.innerHTML = '<select class="rep-editable-field" id="repPrioritySelect">' +
+                ['Low','Medium','High','Critical'].map(v=>`<option value="${v}"${data.priority_lvl===v?' selected':''}>${v}</option>`).join('') +
+                '</select>';
+            budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(data.budget_raw))}" min="0" step="0.01" placeholder="0.00"></div>`;
+            document.getElementById('repSaveBtn').style.display    = 'inline-flex';
+            document.getElementById('repApproveBtn').style.display = '';
+            document.getElementById('repDeclineBtn').style.display = 'none';
+            document.getElementById('repAcceptBtn').style.display  = 'none';
+        }
     } else {
         priorityField.innerHTML = priBadge(data.priority_lvl);
         // Always show peso sign for non-engineer display
@@ -1578,6 +1678,7 @@ document.addEventListener('keydown', e => {
         if (document.getElementById('repImgLightbox').classList.contains('active')) { closeRepLightbox(); return; }
         if (document.getElementById('repSaveConfirmBackdrop').classList.contains('active')) { closeSaveConfirm(); return; }
         if (document.getElementById('repApproveConfirmBackdrop').classList.contains('active')) { closeApproveConfirm(); return; }
+        if (document.getElementById('repDeclineConfirmBackdrop').classList.contains('active')) { closeDeclineConfirm(); return; }
         closeRepModal();
     }
     if (document.getElementById('repImgLightbox').classList.contains('active')) {
@@ -1604,6 +1705,64 @@ function closeApproveConfirm() { document.getElementById('repApproveConfirmBackd
 document.getElementById('repApproveConfirmBackdrop').addEventListener('click', e => {
     if (e.target === document.getElementById('repApproveConfirmBackdrop')) closeApproveConfirm();
 });
+
+// ── Accept / Decline assignment ──
+function confirmDecline() {
+    if (!currentRepData || !IS_ENGINEER) return;
+    document.getElementById('repDeclineConfirmBackdrop').classList.add('active');
+}
+function closeDeclineConfirm() { document.getElementById('repDeclineConfirmBackdrop').classList.remove('active'); }
+document.getElementById('repDeclineConfirmBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('repDeclineConfirmBackdrop')) closeDeclineConfirm();
+});
+
+async function doAcceptAssignment() {
+    if (!currentRepData || !IS_ENGINEER) return;
+    const btn = document.getElementById('repAcceptBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accepting…';
+    try {
+        const res  = await fetch('current_reports.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'accept_assignment',rep_id:currentRepData.rep_id})});
+        const data = await res.json();
+        if (data.success) {
+            // Update local cache
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
+            if (idx > -1) { ALL_REPORTS[idx].engineer_accepted = true; currentRepData = ALL_REPORTS[idx]; }
+            showRepNotif('success','✔️ Assignment accepted! You can now edit and approve this report.');
+            // Re-open modal in accepted state
+            closeRepModal();
+            openRepModal(currentRepData.rep_id);
+        } else {
+            showRepNotif('error','❌ ' + (data.message || 'Failed to accept.'));
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Accept Assignment';
+        }
+    } catch(e) {
+        showRepNotif('error','❌ Network error.');
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Accept Assignment';
+    }
+}
+
+async function doDeclineAssignment() {
+    if (!currentRepData || !IS_ENGINEER) return;
+    closeDeclineConfirm();
+    const repId = currentRepData.rep_id;
+    const btn = document.getElementById('repDeclineBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Declining…';
+    try {
+        const res  = await fetch('current_reports.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'decline_assignment',rep_id:repId})});
+        const data = await res.json();
+        if (data.success) {
+            closeRepModal();
+            showRepNotif('success','ℹ️ You have declined the assignment. The report is back to Awaiting Engineer.');
+            setTimeout(() => location.reload(), 1800);
+        } else {
+            showRepNotif('error','❌ ' + (data.message || 'Failed to decline.'));
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-times-circle"></i> Decline';
+        }
+    } catch(e) {
+        showRepNotif('error','❌ Network error.');
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-times-circle"></i> Decline';
+    }
+}
 
 async function doSaveRepFields() {
     if (!currentRepData || !IS_ENGINEER) return;

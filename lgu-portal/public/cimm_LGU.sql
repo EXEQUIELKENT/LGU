@@ -447,7 +447,8 @@ CREATE TABLE `reports` (
   `report_by` int(10) UNSIGNED NOT NULL,
   `priority_lvl` varchar(50) DEFAULT NULL,
   `budget` decimal(15,2) NOT NULL DEFAULT 0.00,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `engineer_accepted` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
