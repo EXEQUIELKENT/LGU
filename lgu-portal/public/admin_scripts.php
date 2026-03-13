@@ -187,10 +187,37 @@ if (profileIconBtn) {
         e.preventDefault();
         window.location.href = 'profile.php';
     });
-    profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
-    profileIconBtn.addEventListener('focus',      navTooltipHandler);
-    profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
-    profileIconBtn.addEventListener('blur',       hideNavTooltip);
+
+    const engWarningPop = document.getElementById('engProfileWarningPop');
+
+    function positionEngWarning() {
+        if (!engWarningPop) return;
+        const rect = profileIconBtn.getBoundingClientRect();
+        engWarningPop.style.left = (rect.left) + 'px';
+        engWarningPop.style.top  = (rect.bottom + 10 + window.scrollY) + 'px';
+    }
+
+    if (window.empEngineerIncomplete) {
+        // Always visible — position on load and on sidebar resize/toggle
+        positionEngWarning();
+        if (engWarningPop) engWarningPop.classList.add('persistent');
+
+        // Reposition on sidebar collapse/expand
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function() {
+                setTimeout(positionEngWarning, 320); // after transition
+            });
+        }
+        window.addEventListener('resize', positionEngWarning);
+
+    } else {
+        // Normal tooltip behaviour (collapsed sidebar only)
+        profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
+        profileIconBtn.addEventListener('focus',      navTooltipHandler);
+        profileIconBtn.addEventListener('mouseleave', navLinkMouseLeaveHandler);
+        profileIconBtn.addEventListener('blur',       hideNavTooltip);
+    }
 }
 
 const logoutBtn = document.getElementById('logoutBtn');

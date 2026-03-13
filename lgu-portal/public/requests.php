@@ -1287,6 +1287,7 @@ tbody td {
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
 
 <!-- ═══════════════════════════════════════════════════════
      MAIN CONTENT — two swappable views

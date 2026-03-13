@@ -299,6 +299,7 @@ foreach ($rows as $row) {
     $rowsJson[] = [
         'rep_id'            => (int)$row['rep_id'],
         'req_id'            => (int)($row['req_id'] ?? 0),
+        'engineer_id'       => (int)($row['engineer_id'] ?? 0),
         'infrastructure'    => $row['infrastructure'] ?? '',
         'location'          => $row['location'] ?? '',
         'issue'             => $row['issue'] ?? '',
@@ -428,6 +429,34 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .pending-st   { background: #ffe0b2; color: #e65100; }
 .cancelled-st { background: #ffcdd2; color: #b71c1c; }
 
+/* ── Engineer inline profile button ──────────────────────────────── */
+.eng-name-with-profile {
+    display: inline-flex; align-items: center; gap: 5px; width: 100%;
+}
+.eng-profile-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid rgba(255,152,0,.45);
+    background: rgba(255,255,255,.92);
+    cursor: pointer; padding: 0; overflow: hidden; flex-shrink: 0;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    outline: none; vertical-align: middle;
+}
+.eng-profile-btn:hover {
+    border-color: #ff9800;
+    box-shadow: 0 2px 10px rgba(255,152,0,.4);
+    transform: scale(1.12);
+}
+.eng-profile-btn img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; display: block;
+}
+.eng-profile-btn svg { width: 100%; height: 100%; display: block; }
+[data-theme="dark"] .eng-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(255,152,0,.4);
+}
+
 /* ── Unassigned badge ──────────────────────────────────────────────── */
 .unassigned-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -526,6 +555,131 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .eng-combo-option:last-child { border-bottom: none; }
 .eng-combo-option:hover, .eng-combo-option.highlighted { background: rgba(255,152,0,.14); }
 .eng-combo-option .opt-icon { font-size: 12px; flex-shrink: 0; }
+.eng-opt-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 1.5px solid rgba(255,152,0,.35);
+    background: rgba(0,0,0,.06);
+}
+
+
+/* ================================================================
+   ENGINEER DETAILS MODAL
+   ================================================================ */
+#engDetailsBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 7500;
+}
+#engDetailsBackdrop.show { display: flex; }
+#engDetailsModal {
+    background: var(--bg-primary, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.22), 0 0 0 1px rgba(0,0,0,.05);
+    width: 420px; max-width: 94vw; max-height: 88vh;
+    display: flex; flex-direction: column;
+    animation: engDetailsPop .28s cubic-bezier(.34,1.56,.64,1) forwards;
+    overflow: hidden;
+}
+@media (min-width: 769px) {
+    #engDetailsModal {
+        width: 620px;
+    }
+    .eng-det-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+@keyframes engDetailsPop {
+    from { transform: translateY(22px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+[data-theme="dark"] #engDetailsModal {
+    background: rgba(24,24,30,.98);
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08);
+}
+.eng-det-band { height: 6px; width: 100%; background: linear-gradient(90deg,#ff9800,#ffb74d); flex-shrink: 0; }
+.eng-det-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 22px 12px; flex-shrink: 0;
+}
+.eng-det-avatar {
+    width: 62px; height: 62px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 2.5px solid #ff9800;
+    box-shadow: 0 4px 12px rgba(255,152,0,.25);
+    background: #ffffff;
+}
+.eng-det-avatar-wrap {
+    width: 62px; height: 62px; border-radius: 50%;
+    flex-shrink: 0; overflow: hidden;
+    border: 2.5px solid #ff9800;
+    box-shadow: 0 4px 12px rgba(255,152,0,.25);
+}
+.eng-det-avatar-wrap img {
+    width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%;
+}
+.eng-det-title-wrap { flex: 1; min-width: 0; }
+.eng-det-name {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .eng-det-name { color: #e2e8f0; }
+.eng-det-discipline {
+    font-size: 12px; color: #ff9800; font-weight: 600;
+    margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.eng-det-close {
+    background: none; border: none; font-size: 24px;
+    color: var(--text-secondary, #64748b); cursor: pointer;
+    width: 34px; height: 34px; display: flex; align-items: center;
+    justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0;
+}
+.eng-det-close:hover { background: rgba(255,152,0,.1); color: #ff9800; }
+.eng-det-body {
+    padding: 4px 22px 20px; overflow-y: auto; flex: 1;
+    scrollbar-width: thin; scrollbar-color: #ffb74d rgba(0,0,0,.07);
+}
+.eng-det-body::-webkit-scrollbar { width: 5px; }
+.eng-det-body::-webkit-scrollbar-thumb { background: #ffb74d; border-radius: 3px; }
+.eng-det-section-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    color: #e65100; text-transform: uppercase; margin: 18px 0 12px;
+}
+.eng-det-section-title:first-child { margin-top: 4px; }
+/* Grid: each cell has bottom padding so rows breathe */
+.eng-det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+.eng-det-field-label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; color: var(--text-secondary, #64748b);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px;
+}
+.eng-det-field-value {
+    font-size: 13.5px; color: var(--text-primary, #1a1a2e); line-height: 1.55;
+    word-break: break-word;
+}
+[data-theme="dark"] .eng-det-field-value { color: #e2e8f0; }
+/* Full-width single fields (email, address, specialization) get extra top room */
+.eng-det-field-single { margin-top: 14px; }
+.eng-det-skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.eng-det-skill-badge {
+    padding: 5px 13px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    background: rgba(255,152,0,.12); color: #e65100;
+    border: 1px solid rgba(255,152,0,.3);
+}
+.eng-det-divider { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 16px 0 0; }
+.eng-det-footer {
+    padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08));
+    flex-shrink: 0; display: flex; justify-content: center;
+}
+.eng-det-back-btn {
+    padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    background: linear-gradient(135deg,#ff9800,#e65100);
+    color: #fff; box-shadow: 0 4px 12px rgba(255,152,0,.3);
+    transition: all .18s ease;
+}
+.eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,152,0,.4); }
 .eng-combo-no-results { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); opacity: .7; }
 .eng-combo-loading { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); }
 
@@ -565,14 +719,51 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 }
 .eng-modal-icon {
     width: 60px; height: 60px;
-    background: linear-gradient(135deg, rgba(255, 152, 0, 0.12), rgba(255, 152, 0, 0.08));
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 26px; margin: 0 auto 14px;
-    border: 1px solid rgba(255, 152, 0, 0.2);
+    margin: 0 auto 14px;
+    overflow: hidden;
+    border: 2.5px solid #ff9800;
+    box-shadow: 0 4px 12px rgba(255,152,0,.25);
+    background: #ffffff;
+    flex-shrink: 0;
 }
-[data-theme="dark"] .eng-modal-icon {
-    background: linear-gradient(135deg, rgba(255, 152, 0, 0.18), rgba(255, 152, 0, 0.10));
+.eng-modal-icon img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+[data-theme="dark"] .eng-modal-icon { border-color: #ff9800; }
+#engViewDetailsBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,152,0,.35);
+    background: rgba(255,152,0,.07);
+    color: #e65100;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    cursor: pointer;
+    transition: all .18s ease;
+}
+#engViewDetailsBtn:hover {
+    background: rgba(255,152,0,.15);
+    border-color: #ff9800;
+    color: #ff6f00;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255,152,0,.2);
+}
+[data-theme="dark"] #engViewDetailsBtn {
+    color: #ffb74d;
+    border-color: rgba(255,152,0,.3);
+    background: rgba(255,152,0,.1);
+}
+[data-theme="dark"] #engViewDetailsBtn:hover {
+    background: rgba(255,152,0,.2);
+    border-color: #ffa726;
+    color: #ffa726;
 }
 #engAssignModal h3 {
     margin: 0 0 8px;
@@ -983,6 +1174,8 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
+
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
         <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
@@ -1000,12 +1193,40 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 ══════════════════════════════════════════════ -->
 <div id="engAssignBackdrop">
     <div id="engAssignModal">
-        <div class="eng-modal-icon">👷</div>
+        <div class="eng-modal-icon" id="engModalAvatar">
+            <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">
+        </div>
         <h3>Confirm Assignment</h3>
         <p id="engAssignDesc">Assign <strong id="engAssignName"></strong> to <strong id="engAssignRep"></strong>?</p>
         <div class="eng-modal-btns">
             <button class="eng-modal-cancel" id="engAssignCancelBtn">Cancel</button>
             <button class="eng-modal-confirm" id="engAssignConfirmBtn">Assign</button>
+        </div>
+        <button id="engViewDetailsBtn" onclick="showEngineerDetailsModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            View Engineer Details
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ENGINEER DETAILS MODAL
+══════════════════════════════════════════════ -->
+<div id="engDetailsBackdrop">
+    <div id="engDetailsModal">
+        <div class="eng-det-band"></div>
+        <div class="eng-det-header">
+            <div id="engDetAvatarWrap" class="eng-det-avatar-wrap"></div>
+            <div class="eng-det-title-wrap">
+                <div class="eng-det-name" id="engDetName"></div>
+                <div class="eng-det-discipline" id="engDetDiscipline"></div>
+            </div>
+            <button class="eng-det-close" id="engDetClose">&#215;</button>
+        </div>
+        <div class="eng-det-body" id="engDetBody"></div>
+        <div class="eng-det-footer">
+            <button class="eng-det-back-btn" id="engDetBackBtn">← Back to Assignment</button>
         </div>
     </div>
 </div>
@@ -1066,7 +1287,16 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     <?php if (!$isEngineer): ?>
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                         <?php if ($hasEngineer): ?>
+                            <?php if ($canAssignEngineer): ?>
+                            <span class="eng-name-with-profile">
+                                <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
+                                </button>
+                                <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                            </span>
+                            <?php else: ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                            <?php endif; ?>
                         <?php elseif ($canAssignEngineer): ?>
                             <!-- Desktop combobox trigger — dropdown is a body-level portal -->
                             <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
@@ -1120,7 +1350,16 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <span class="rc-label">Engineer:</span>
                 <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                     <?php if ($hasEngineer): ?>
+                        <?php if ($canAssignEngineer): ?>
+                        <span class="eng-name-with-profile">
+                            <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
+                            </button>
+                            <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                        </span>
+                        <?php else: ?>
                         <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                        <?php endif; ?>
                     <?php elseif ($canAssignEngineer): ?>
                         <!-- Mobile combobox trigger — dropdown is a body-level portal -->
                         <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
@@ -1319,7 +1558,12 @@ function renderPortalList(engineers, query) {
         item.className   = 'eng-combo-option';
         item.dataset.id  = eng.id;
         item.dataset.name= eng.name;
-        item.innerHTML   = `<span class="opt-icon">👷</span>${escapeHtml(eng.name)}`;
+        const imgSrc = eng.profile_picture || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        const avatarHtml = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
+            onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'">`;
+        item.innerHTML   = avatarHtml + escapeHtml(eng.name);
+        // Store full engineer object for details modal
+        item._engData = eng;
         comboList.appendChild(item);
     });
 }
@@ -1416,9 +1660,10 @@ comboList.addEventListener('mousedown', e => {
     const repId       = activeComboEl.dataset.repId;
     const engineerId  = opt.dataset.id;
     const engineerName= opt.dataset.name;
+    const engData     = opt._engData || null;
 
     closePortal();
-    showAssignConfirm(repId, engineerId, engineerName);
+    showAssignConfirm(repId, engineerId, engineerName, engData);
 });
 
 // ── Keyboard navigation inside search ────────────────────────────
@@ -1464,10 +1709,24 @@ const engAssignRepEl     = document.getElementById('engAssignRep');
 const engAssignCancelBtn = document.getElementById('engAssignCancelBtn');
 const engAssignConfirmBtn= document.getElementById('engAssignConfirmBtn');
 
-function showAssignConfirm(repId, engineerId, engineerName) {
-    pendingConfirm = { repId, engineerId, engineerName };
+function showAssignConfirm(repId, engineerId, engineerName, engData) {
+    pendingConfirm = { repId, engineerId, engineerName, engData: engData || null };
     engAssignNameEl.textContent = engineerName;
     engAssignRepEl.textContent  = '#REP-' + repId;
+
+    // Update the confirm modal avatar with the engineer's profile picture
+    const avatarEl = document.getElementById('engModalAvatar');
+    if (avatarEl) {
+        const picSrc = engData && engData.profile_picture ? engData.profile_picture : '';
+        const imgEl = avatarEl.querySelector('img') || document.createElement('img');
+        imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
+        imgEl.alt = '';
+        imgEl.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'; };
+        imgEl.src = picSrc || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        avatarEl.innerHTML = '';
+        avatarEl.appendChild(imgEl);
+    }
+
     engAssignBackdrop.classList.add('show');
     engAssignConfirmBtn.focus();
 }
@@ -1490,6 +1749,141 @@ engAssignConfirmBtn.addEventListener('click', async () => {
 });
 
 // ════════════════════════════════════════════════════════════════
+// ENGINEER DETAILS MODAL
+// ════════════════════════════════════════════════════════════════
+const engDetailsBackdrop = document.getElementById('engDetailsBackdrop');
+const engDetClose        = document.getElementById('engDetClose');
+const engDetBackBtn      = document.getElementById('engDetBackBtn');
+
+// ── Direct profile view (from inline profile button) ─────────────
+async function openEngineerProfileById(engineerId) {
+    if (!CAN_ASSIGN_ENGINEER) return;
+    const engineers = await loadEngineers();
+    const eng = engineers.find(e => e.id == engineerId);
+    if (!eng) return;
+    _populateEngDetailsModal(eng);
+    // Back button just closes — no assignment modal underneath
+    engDetBackBtn.textContent = 'Close';
+    engDetBackBtn.onclick = closeEngineerDetailsModal;
+    engDetailsBackdrop.classList.add('show');
+}
+
+// ── Called from the assignment confirmation modal ─────────────────
+function showEngineerDetailsModal() {
+    if (!pendingConfirm || !pendingConfirm.engData) return;
+    _populateEngDetailsModal(pendingConfirm.engData);
+    engDetBackBtn.textContent = '← Back to Assignment';
+    engDetBackBtn.onclick = closeEngineerDetailsModal;
+    engDetailsBackdrop.classList.add('show');
+}
+
+// ── Shared body builder ───────────────────────────────────────────
+function _populateEngDetailsModal(eng) {
+    // Avatar
+    const detWrap = document.getElementById('engDetAvatarWrap');
+    if (detWrap) {
+        const detPic = eng.profile_picture || '';
+        const dImg = document.createElement('img');
+        dImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
+        dImg.alt = '';
+        dImg.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'; };
+        dImg.src = detPic || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        detWrap.innerHTML = '';
+        detWrap.appendChild(dImg);
+    }
+    document.getElementById('engDetName').textContent = eng.name || '—';
+    document.getElementById('engDetDiscipline').textContent = eng.engineering_discipline || 'Engineer';
+
+    const fv = (v) => v ? escapeHtml(String(v)) : '<span style="opacity:.5;">—</span>';
+    let html = '';
+
+    // Personal info
+    html += `<div class="eng-det-section-title">👤 Personal Information</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Full Name</div>
+                 <div class="eng-det-field-value">${fv(eng.full_name || eng.name)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="4"/><path d="M12 15v6M9 18h6"/></svg>Gender</div>
+                 <div class="eng-det-field-value">${fv(eng.gender)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Date of Birth</div>
+                 <div class="eng-det-field-value">${fv(eng.date_of_birth)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 1.2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.07 6.07l1.12-1.12a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Contact Number</div>
+                 <div class="eng-det-field-value">${fv(eng.contact_number)}</div>
+               </div>
+               <div style="grid-column:1/-1">
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>Email Address</div>
+                 <div class="eng-det-field-value">${fv(eng.email)}</div>
+               </div>
+             </div>
+             <div class="eng-det-field-single">
+               <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 13-9 13S3 16 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Address</div>
+               <div class="eng-det-field-value">${fv(eng.address)}</div>
+             </div>`;
+
+    // Professional info
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">🏗️ Professional Details</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Engineering Discipline</div>
+                 <div class="eng-det-field-value">${fv(eng.engineering_discipline)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Department</div>
+                 <div class="eng-det-field-value">${fv(eng.department)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Years of Experience</div>
+                 <div class="eng-det-field-value">${eng.years_of_experience !== null && eng.years_of_experience !== '' ? escapeHtml(String(eng.years_of_experience)) + ' yr(s)' : '<span style="opacity:.5;">—</span>'}</div>
+               </div>
+             </div>`;
+
+    if (eng.areas_of_specialization) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Areas of Specialization</div>
+                   <div class="eng-det-field-value">${fv(eng.areas_of_specialization)}</div>
+                 </div>`;
+    }
+
+    // Skills
+    const skills = [];
+    if (eng.skill_structural_design) skills.push('Structural Design');
+    if (eng.skill_site_inspection)   skills.push('Site Inspection');
+    if (eng.skill_project_planning)  skills.push('Project Planning');
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">🛠️ Skills & Tools</div>`;
+    if (skills.length) {
+        html += '<div class="eng-det-skills">' + skills.map(s => `<span class="eng-det-skill-badge">${s}</span>`).join('') + '</div>';
+    } else {
+        html += '<div class="eng-det-field-value" style="opacity:.5;">No skills listed</div>';
+    }
+    if (eng.cad_software) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>CAD Software</div>
+                   <div class="eng-det-field-value">${fv(eng.cad_software)}</div>
+                 </div>`;
+    }
+
+    document.getElementById('engDetBody').innerHTML = html;
+}
+
+function closeEngineerDetailsModal() {
+    engDetailsBackdrop.classList.remove('show');
+}
+
+engDetClose.addEventListener('click', closeEngineerDetailsModal);
+engDetBackBtn.addEventListener('click', closeEngineerDetailsModal);
+engDetailsBackdrop.addEventListener('click', e => {
+    if (e.target === engDetailsBackdrop) closeEngineerDetailsModal();
+});
+
+// ════════════════════════════════════════════════════════════════
 // ASSIGN ENGINEER — API CALL + SYNC BOTH DESKTOP & MOBILE
 // ════════════════════════════════════════════════════════════════
 
@@ -1508,7 +1902,7 @@ async function doAssignEngineer(repId, engineerId, engineerName) {
         const data = await res.json();
 
         if (data.success) {
-            updateAllEngineerCells(repId, data.engineer_name || engineerName);
+            updateAllEngineerCells(repId, data.engineer_name || engineerName, engineerId);
             showAssignNotif('success', `✔️ ${data.engineer_name || engineerName} assigned to #REP-${repId}.`);
         } else {
             // Restore all triggers
@@ -1526,9 +1920,20 @@ async function doAssignEngineer(repId, engineerId, engineerName) {
 }
 
 // Replaces ALL .engineer-cell[data-rep-id] — hits desktop td AND mobile span simultaneously
-function updateAllEngineerCells(repId, engineerName) {
+function updateAllEngineerCells(repId, engineerName, engineerId) {
+    const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>`;
     document.querySelectorAll(`.engineer-cell[data-rep-id="${repId}"]`).forEach(cell => {
-        cell.innerHTML = `<span class="assigned-engineer-name">${escapeHtml(engineerName)}</span>`;
+        if (CAN_ASSIGN_ENGINEER && engineerId) {
+            cell.innerHTML = `<span class="eng-name-with-profile">` +
+                `<button class="eng-profile-btn" onclick="openEngineerProfileById(${parseInt(engineerId)})" title="View Engineer Profile">${FALLBACK_SVG}</button>` +
+                `<span class="assigned-engineer-name">${escapeHtml(engineerName)}</span>` +
+                `</span>`;
+        } else {
+            cell.innerHTML = `<span class="assigned-engineer-name">${escapeHtml(engineerName)}</span>`;
+        }
+        // Update ALL_REPORTS cache entry too
+        const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+        if (idx > -1) ALL_REPORTS[idx].engineer_id = parseInt(engineerId) || 0;
     });
 }
 
@@ -1719,24 +2124,35 @@ document.getElementById('repDeclineConfirmBackdrop').addEventListener('click', e
 async function doAcceptAssignment() {
     if (!currentRepData || !IS_ENGINEER) return;
     const btn = document.getElementById('repAcceptBtn');
+    // Capture rep ID now — before any modal close nulls currentRepData
+    const acceptedRepId = currentRepData.rep_id;
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accepting…';
+
+    // ── Step 1: network-only try/catch — UI manipulation is NOT inside here ──
+    let succeeded = false;
+    let errMsg    = 'Failed to accept.';
     try {
-        const res  = await fetch('current_reports.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'accept_assignment',rep_id:currentRepData.rep_id})});
+        const res  = await fetch('current_reports.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'accept_assignment', rep_id:acceptedRepId})});
         const data = await res.json();
         if (data.success) {
-            // Update local cache
-            const idx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
-            if (idx > -1) { ALL_REPORTS[idx].engineer_accepted = true; currentRepData = ALL_REPORTS[idx]; }
-            showRepNotif('success','✔️ Assignment accepted! You can now edit and approve this report.');
-            // Re-open modal in accepted state
-            closeRepModal();
-            openRepModal(currentRepData.rep_id);
+            succeeded = true;
         } else {
-            showRepNotif('error','❌ ' + (data.message || 'Failed to accept.'));
-            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Accept Assignment';
+            errMsg = data.message || 'Failed to accept.';
         }
     } catch(e) {
-        showRepNotif('error','❌ Network error.');
+        errMsg = 'Network error. Please check your connection and try again.';
+    }
+
+    // ── Step 2: UI updates run outside try/catch so they can't fake a network error ──
+    if (succeeded) {
+        const idx = ALL_REPORTS.findIndex(r => r.rep_id == acceptedRepId);
+        if (idx > -1) { ALL_REPORTS[idx].engineer_accepted = true; currentRepData = ALL_REPORTS[idx]; }
+        closeRepModal();
+        openRepModal(acceptedRepId);
+        // Show after re-open so the notif sits on top of the refreshed modal
+        showRepNotif('success', '✔️ Assignment accepted! You can now edit and approve this report.');
+    } else {
+        showRepNotif('error', '❌ ' + errMsg);
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-check-circle"></i> Accept Assignment';
     }
 }

@@ -2148,6 +2148,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
 
 <!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">

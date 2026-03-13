@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 10, 2026 at 01:45 PM
+-- Generation Time: Mar 13, 2026 at 07:08 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -67,6 +67,32 @@ INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`
 (14, 'Warv', 'Villa', NULL, 'villawarv@gmail.com', 'Super Admin', '$2y$10$5VxEbVQGo6bZLhJ4TGSKVutVoH6/uzXnEm.FmlKovuZHQVbdUbUhS', 0, 1, NULL, NULL, '2026-02-03 09:33:18', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (15, 'Exequiel', 'Bartolome', NULL, 'bartolomeexequielkent2003@gmail.com', 'Super Admin', '$2y$10$NnT5QBl0A66tRTJoYAgvc.NggVXq6jyym0g.WOUKkY4ddT4Zhl76S', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (16, 'Marycarl', 'Dagondong', NULL, 'marycarldagondong28@gmail.com', 'Super Admin', '$2y$10$nxvAvmwcwXVD.08n0fT.7eoyDHUCArLsH4IYgWXm/OM6xqT79vvcK', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `engineer_profiles`
+--
+
+CREATE TABLE `engineer_profiles` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `full_name` varchar(200) DEFAULT NULL,
+  `gender` varchar(20) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `contact_number` varchar(30) DEFAULT NULL,
+  `engineering_discipline` varchar(100) DEFAULT NULL,
+  `department` varchar(200) DEFAULT NULL,
+  `years_of_experience` int(11) DEFAULT NULL,
+  `areas_of_specialization` text DEFAULT NULL,
+  `skill_structural_design` tinyint(1) DEFAULT 0,
+  `skill_site_inspection` tinyint(1) DEFAULT 0,
+  `skill_project_planning` tinyint(1) DEFAULT 0,
+  `cad_software` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -561,6 +587,13 @@ ALTER TABLE `employees`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `engineer_profiles`
+--
+ALTER TABLE `engineer_profiles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `evidence_images`
 --
 ALTER TABLE `evidence_images`
@@ -653,6 +686,12 @@ ALTER TABLE `request_resolutions`
 --
 ALTER TABLE `employees`
   MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT for table `engineer_profiles`
+--
+ALTER TABLE `engineer_profiles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`

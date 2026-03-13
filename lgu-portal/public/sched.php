@@ -3845,6 +3845,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
 
 <div class="main-content">
 
