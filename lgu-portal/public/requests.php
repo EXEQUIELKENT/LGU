@@ -1591,6 +1591,114 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 
 <!-- MAIN CONTENT -->
 <div class="main-content">
+
+    <!-- ══════════ VIEW 1: GIS MAP (default) ══════════ -->
+    <div id="gisView">
+    <div class="gis-page">
+
+        <!-- Header -->
+        <div class="gis-header-card">
+            <div class="gis-header-left">
+                <h1>🗺️ GIS Request Map</h1>
+                <p>Live geographic overview of all infrastructure repair requests</p>
+            </div>
+            <button class="view-toggle-btn" onclick="switchView('requests')" title="View Requests">
+                <i class="fas fa-clipboard-list"></i>
+                <span class="btn-text">View Requests</span>
+            </button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="gis-toolbar-card">
+            <div class="gis-map-toolbar">
+                <span class="gis-map-title">
+                    <i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map
+                </span>
+                <div class="gis-search-wrap">
+                    <i class="fas fa-search gis-search-icon"></i>
+                    <input type="text" id="gisSearch" placeholder="Search ID, infrastructure, location…" autocomplete="off">
+                    <button class="gis-search-clear" id="gisSearchClear" title="Clear">&#215;</button>
+                    <span class="gis-search-results-badge" id="gisResultsBadge">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Showing&nbsp;<strong id="gisResultsCount">0</strong>&nbsp;of&nbsp;<strong id="gisTotalCount">0</strong>&nbsp;request(s)
+                    </span>
+                </div>
+                <button class="gis-layer-btn" id="layerBtn" onclick="toggleLayer()">🛰️ Satellite</button>
+            </div>
+            <div class="gis-filter-row">
+                <div class="gis-filter-row-line">
+                    <span class="gis-filter-label">Status:</span>
+                    <button class="gis-filter-btn status-all active"   id="filterAll"      onclick="setStatusFilter('all')">📁 All</button>
+                    <button class="gis-filter-btn status-pending"      id="filterPending"  onclick="setStatusFilter('Pending')">⏳ Pending</button>
+                    <button class="gis-filter-btn status-approved"     id="filterApproved" onclick="setStatusFilter('Approved')">✅ Approved</button>
+                    <button class="gis-filter-btn status-rejected"     id="filterRejected" onclick="setStatusFilter('Rejected')">❌ Rejected</button>
+                </div>
+                <div class="gis-filter-row-line">
+                    <span class="gis-filter-label">Type:</span>
+                    <button class="gis-filter-btn infra-btn active" id="infraAll"              onclick="setInfraFilter('all')">📦 All Types</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraRoads"            onclick="setInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraStreetLights"     onclick="setInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Street Lights</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraDrainage"         onclick="setInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraPublicFacilities" onclick="setInfraFilter('public facilities')"><i class="fas fa-building"></i> Public Facilities</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraWaterSupply"      onclick="setInfraFilter('water supply')"><i class="fas fa-tint"></i> Water Supply</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraElectrical"       onclick="setInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
+                    <button class="gis-filter-btn infra-btn"        id="infraOthers"           onclick="setInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="gis-map-card">
+            <div style="position:relative;">
+                <div id="mapLoadingOverlay">
+                    <div class="map-spinner"></div>
+                    <div class="map-loading-text">Loading request locations…</div>
+                    <div class="geocode-progress-bar-wrap">
+                        <div class="geocode-progress-bar" id="geocodeProgressBar"></div>
+                    </div>
+                    <div class="map-loading-sub" id="geocodeProgressText">Preparing map…</div>
+                </div>
+                <div id="gisNoResultsOverlay">
+                    <div class="no-results-icon">🔍</div>
+                    <div class="no-results-text">No matching requests found</div>
+                    <div class="no-results-sub">Try a different keyword, status, or type filter</div>
+                </div>
+                <div id="gisMap"></div>
+                <button id="gisExpandBtn" title="Expand map to fullscreen" onclick="openGisMapModal()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="gis-legend">
+                <div class="legend-row">
+                    <span class="legend-section-label">Status:</span>
+                    <div class="legend-item"><div class="legend-dot pending"></div>Pending</div>
+                    <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
+                    <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
+                </div>
+                <div class="legend-row">
+                    <span class="legend-section-label">Types:</span>
+                    <div class="legend-item"><i class="fas fa-road"></i> Roads</div>
+                    <div class="legend-item"><i class="fas fa-lightbulb"></i> Lights</div>
+                    <div class="legend-item"><i class="fas fa-water"></i> Drainage</div>
+                    <div class="legend-item"><i class="fas fa-building"></i> Facilities</div>
+                    <div class="legend-item"><i class="fas fa-tint"></i> Water</div>
+                    <div class="legend-item"><i class="fas fa-bolt"></i> Electrical</div>
+                </div>
+                <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview · Click to view details</div>
+            </div>
+        </div>
+
+    </div>
+    </div><!-- #gisView -->
+
+    <!-- ══════════ VIEW 2: REQUESTS TABLE ══════════ -->
+    <div id="requestsView" style="display:none;">
+>>>>>>> Stashed changes
     <div class="table-card">
         <h2 class="page-title">Infrastructure Repair Requests</h2>
 
@@ -1830,6 +1938,15 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
             <div class="detail-row">
                 <strong>Request ID:</strong>
                 <span id="detailReqId"></span>
+            <div class="detail-status-row"><span class="detail-status-pill" id="detailStatus"></span></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="detail-field-value" id="detailLocation"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-coins"></i> Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="detail-field-value" id="detailIssue"></div></div>
+            <div class="detail-divider"></div>
+            <div class="detail-grid-2">
+                <div class="detail-field"><div class="detail-field-label"><i class="far fa-calendar-alt"></i> Date Submitted</div><div class="detail-field-value" id="detailDate"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="far fa-user"></i> Requester</div><div class="detail-field-value" id="detailRequester"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-phone"></i> Contact</div><div class="detail-field-value" id="detailContact"></div></div>
             </div>
             <div class="detail-row">
                 <strong>Infrastructure:</strong>
@@ -1862,7 +1979,47 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
-<!-- VALIDATION CONFIRMATION MODAL -->
+<!-- GIS VIEW — REQUEST DETAIL MODAL -->
+<div id="gisModalBackdrop" class="gis-modal-backdrop">
+    <div id="gisDetailModal" class="gis-detail-modal">
+        <div class="gis-modal-header">
+            <div class="gis-modal-header-band" id="modalHeaderBand"></div>
+            <div class="gis-modal-header-content">
+                <div>
+                    <div class="gis-modal-req-id" id="modalReqId"></div>
+                    <div class="gis-modal-infra"  id="modalInfra"></div>
+                </div>
+                <button class="gis-modal-close" id="gisModalClose">&#215;</button>
+            </div>
+        </div>
+        <div class="gis-modal-body">
+            <div class="gis-modal-status-row"><span class="gis-status-pill" id="modalStatusPill"></span></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="gis-field-value" id="modalLocation"></div></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-coins"></i> Coordinates</div><div class="gis-field-value" id="modalCoordinates"></div></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="gis-field-value" id="modalIssue"></div></div>
+            <div class="gis-divider"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="gis-field"><div class="gis-field-label"><i class="far fa-calendar-alt"></i> Date Submitted</div><div class="gis-field-value" id="modalDate"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="far fa-user"></i> Requester</div><div class="gis-field-value" id="modalRequester"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="fas fa-phone"></i> Contact</div><div class="gis-field-value" id="modalContact"></div></div>
+            </div>
+            <div class="gis-divider"></div>
+            <div class="gis-field">
+                <div class="gis-field-label"><i class="far fa-images"></i> Evidence Images</div>
+                <div class="gis-evidence-strip" id="modalEvidence"></div>
+            </div>
+        </div>
+        <!-- GIS detail modal footer — validate/reject -->
+        <div class="gis-modal-footer" id="gisDetailModalFooter">
+            <div class="detail-footer-inner">
+                <button class="btn-reject"   id="gisRejectBtn"><i class="fas fa-times-circle"></i> Reject Request</button>
+                <button class="btn-validate" id="gisValidateBtn"><i class="fas fa-check-circle"></i> Validate Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VALIDATE CONFIRMATION MODAL -->
 <div id="validateConfirmBackdrop" class="modal-backdrop">
     <div id="validateConfirmModal" class="alert-modal">
         <div class="icon-wrap success-icon">
@@ -1877,6 +2034,87 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     </div>
 </div>
 
+<!-- REJECT CONFIRMATION MODAL -->
+<div id="rejectConfirmBackdrop" class="modal-backdrop">
+    <div id="rejectConfirmModal" class="alert-modal">
+        <div class="icon-wrap reject-icon"><span class="icon">✕</span></div>
+        <div class="alert-title">Reject this request?</div>
+        <div class="alert-desc">This will mark the request as <strong>Rejected</strong>. It will remain visible on the GIS map with a rejected status.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel"         id="rejectCancelBtn">Cancel</button>
+            <button class="alert-btn confirm-reject" id="rejectConfirmBtn">Reject</button>
+        </div>
+    </div>
+</div>
+
+<!-- FULLSCREEN GIS MAP MODAL -->
+<div id="gisFullMapBackdrop" class="gis-fullmap-backdrop">
+    <div class="gis-fullmap-modal">
+        <div class="gis-fullmap-header">
+            <span class="gis-fullmap-title"><i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map</span>
+            <div class="gis-fullmap-search-wrap">
+                <i class="fas fa-search gis-search-icon"></i>
+                <input type="text" id="gisModalSearch" placeholder="Search ID, infrastructure, location…" autocomplete="off">
+                <button class="gis-fullmap-search-clear" id="gisModalSearchClear" title="Clear">&#215;</button>
+                <span class="gis-fullmap-results-badge" id="gisModalResultsBadge">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Showing&nbsp;<strong id="gisModalResultsCount">0</strong>&nbsp;of&nbsp;<strong id="gisModalTotalCount">0</strong>
+                </span>
+            </div>
+            <button class="gis-layer-btn" id="modalLayerBtn" onclick="toggleModalLayer()">🛰️ Satellite</button>
+            <button class="gis-fullmap-close" title="Close" onclick="closeGisMapModal()">&#215;</button>
+        </div>
+        <div class="gis-fullmap-filters">
+            <div class="gis-fullmap-filter-line">
+                <span class="gis-filter-label">Status:</span>
+                <button class="gis-filter-btn status-all active" id="mFilterAll"      onclick="setModalStatusFilter('all')">📁 All</button>
+                <button class="gis-filter-btn status-pending"    id="mFilterPending"  onclick="setModalStatusFilter('Pending')">⏳ Pending</button>
+                <button class="gis-filter-btn status-approved"   id="mFilterApproved" onclick="setModalStatusFilter('Approved')">✅ Approved</button>
+                <button class="gis-filter-btn status-rejected"   id="mFilterRejected" onclick="setModalStatusFilter('Rejected')">❌ Rejected</button>
+            </div>
+            <div class="gis-fullmap-filter-line">
+                <span class="gis-filter-label">Type:</span>
+                <button class="gis-filter-btn infra-btn active" id="mInfraAll"              onclick="setModalInfraFilter('all')"><i class="fas fa-boxes"></i> All</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraRoads"            onclick="setModalInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraStreetLights"     onclick="setModalInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Lights</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraDrainage"         onclick="setModalInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraPublicFacilities" onclick="setModalInfraFilter('public facilities')"><i class="fas fa-building"></i> Facilities</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraWaterSupply"      onclick="setModalInfraFilter('water supply')"><i class="fas fa-water"></i> Water</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraElectrical"       onclick="setModalInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraOthers"           onclick="setModalInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
+            </div>
+        </div>
+        <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;">
+            <div id="gisModalNoResults">
+                <div class="no-results-icon">🔍</div>
+                <div class="no-results-text">No matching requests found</div>
+                <div class="no-results-sub">Try a different keyword, status, or type filter</div>
+            </div>
+            <div id="gisModalMap"></div>
+        </div>
+        <div class="gis-fullmap-legend">
+            <div class="legend-row">
+                <span class="legend-section-label">Status:</span>
+                <div class="legend-item"><div class="legend-dot pending"></div>Pending</div>
+                <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
+                <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
+                <span class="legend-section-label" style="margin-left:16px;">Types:</span>
+                <div class="legend-item"><i class="fas fa-road"></i> Roads</div>
+                <div class="legend-item"><i class="fas fa-lightbulb"></i> Lights</div>
+                <div class="legend-item"><i class="fas fa-water"></i> Drainage</div>
+                <div class="legend-item"><i class="fas fa-building"></i> Facilities</div>
+                <div class="legend-item"><i class="fas fa-tint"></i> Water</div>
+                <div class="legend-item"><i class="fas fa-bolt"></i> Electrical</div>
+            </div>
+            <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview · Click to view details</div>
+        </div>
+    </div>
+</div>
+
+<?php include 'admin_scripts.php'; ?>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+>>>>>>> Stashed changes
 <script>
 
 // ============================

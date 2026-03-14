@@ -2691,6 +2691,174 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     function openModal(tasks){
+
+    // Modal task navigation state
+    let _modalTasks = [];
+    let _modalIndex = 0;
+
+    const STATUS_THEME = {
+        upcoming:  {
+            icon: '🔵',
+            headerIcons: { upcoming: '📋', ongoing: '🔧', delayed: '⚠️', completed: '✅' }
+        },
+        ongoing:   { icon: '🔧' },
+        delayed:   { icon: '⚠️' },
+        completed: { icon: '✅' },
+    };
+
+    const STATUS_ICONS = {
+        upcoming:  '📋',
+        ongoing:   '🔧',
+        delayed:   '⚠️',
+        completed: '✅',
+    };
+
+    function applyModalTheme(key) {
+        const header  = document.querySelector('#taskModal .modal-header');
+        const navBar  = document.getElementById('modalNavBar');
+        const iconEl  = document.querySelector('#taskModal .modal-header-icon');
+        const themes  = ['theme-upcoming','theme-ongoing','theme-delayed','theme-completed'];
+
+        if (header)  { header.classList.remove(...themes);  header.classList.add('theme-' + key); }
+        if (navBar)  { navBar.classList.remove(...themes);   navBar.classList.add('theme-' + key); }
+        if (iconEl)  { iconEl.textContent = STATUS_ICONS[key] || '🔧'; }
+    }
+
+    function renderModalTask(index, direction) {
+        if (!modalBody) return;
+        const t        = _modalTasks[index];
+        const category = t.category      || 'General Maintenance';
+        const priority = t.priority      || 'Low';
+        const statusLbl= t.status_label  || 'Planned';
+        const key      = getStatusKey(statusLbl);
+        const priKey   = priority.toLowerCase();
+
+        // Update REP badge in modal header
+        const repBadgeEl = document.getElementById('modalRepBadge');
+        if (repBadgeEl) {
+            if (t.rep_id) {
+                repBadgeEl.textContent = 'REP-' + t.rep_id;
+                repBadgeEl.style.display = 'inline-block';
+            } else {
+                repBadgeEl.style.display = 'none';
+            }
+        }
+
+        // Apply status theme to header + nav bar
+        applyModalTheme(key);
+
+        // Slide animation
+        if (direction) {
+            modalBody.classList.remove('slide-left', 'slide-right');
+            void modalBody.offsetWidth;
+            modalBody.classList.add(direction === 'next' ? 'slide-left' : 'slide-right');
+        }
+
+        // Est. end date row (only when available)
+        const endDateRow = t.estimated_end_date
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">🏁</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Est. End Date</div>
+                        <div class="modal-task-row-value">${fmtDate(t.estimated_end_date)}</div>
+                    </div>
+               </div>`
+            : '';
+
+        // Assigned Engineer row — shown to non-engineers on report-source items
+        const engineerRow = (!window.IS_ENGINEER && t.source === 'report' && t.engineer_name && t.engineer_name !== '—')
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">👷</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Assigned Engineer</div>
+                        <div class="modal-task-row-value">${escH(t.engineer_name)}</div>
+                    </div>
+               </div>`
+            : '';
+
+        // Budget row — only for report-source items
+        const budgetNum = typeof t.budget_raw === 'number' ? t.budget_raw : parseFloat(t.budget_raw || 0);
+        const budgetStr = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const budgetRow = t.source === 'report'
+            ? `<div class="modal-task-row">
+                    <div class="modal-task-row-icon">💰</div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Budget</div>
+                        <div class="modal-task-row-value">${budgetStr}</div>
+                    </div>
+               </div>`
+            : '';
+
+        modalBody.innerHTML = `
+            <div class="modal-task-item theme-${key}">
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-file"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Task / Infrastructure</div>
+                        <div class="modal-task-row-value">${escH(t.task)}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Location</div>
+                        <div class="modal-task-row-value">${escH(t.location)}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Start Date</div>
+                        <div class="modal-task-row-value">${fmtDate(t.schedule_date)}</div>
+                    </div>
+                </div>
+                ${endDateRow}
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-tags"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Category</div>
+                        <div class="modal-task-row-value">${escH(category)}</div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Priority</div>
+                        <div class="modal-task-row-value">
+                            <span class="modal-priority-pill ${priKey}">${escH(priority)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-task-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-info-circle"></i></div>
+                        <div class="modal-task-row-label">Status</div>
+                        <div class="modal-task-row-value">
+                            <span class="modal-status-pill ${key}">${escH(statusLbl)}</span>
+                        </div>
+                    </div>
+                </div>
+                ${engineerRow}
+                ${budgetRow}
+            </div>`;
+
+        // Update nav bar state
+        const navBar     = document.getElementById('modalNavBar');
+        const navPrev    = document.getElementById('modalNavPrev');
+        const navNext    = document.getElementById('modalNavNext');
+        const navCounter = document.getElementById('modalNavCounter');
+
+        if (_modalTasks.length > 1) {
+            navBar.style.display = 'flex';
+            navCounter.textContent = `${index + 1} / ${_modalTasks.length}`;
+            navPrev.disabled = (index === 0);
+            navNext.disabled = (index === _modalTasks.length - 1);
+        } else {
+            navBar.style.display = 'none';
+        }
+    }
+
+    function openModal(tasks, startIndex) {
+
         if (!modalBody || !taskModal) return;
         modalBody.innerHTML='';
         tasks.forEach(t=>{

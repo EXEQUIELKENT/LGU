@@ -1512,7 +1512,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Total Requests</div>
                         </div>
-                        <div class="metric-icon">📋</div>
+                        <div class="metric-icon"><i class="fas fa-clipboard-list"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($totalRequests) ?></div>
                     <div class="metric-trend <?= $requestsTrend >= 0 ? 'positive' : 'negative' ?>">
@@ -1526,7 +1526,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Pending Requests</div>
                         </div>
-                        <div class="metric-icon">⏳</div>
+                        <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($pendingRequests) ?></div>
                     <div class="metric-trend">
@@ -1539,7 +1539,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Completed Tasks</div>
                         </div>
-                        <div class="metric-icon">✅</div>
+                        <div class="metric-icon"><i class="fas fa-check"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($completedTasks) ?></div>
                     <div class="metric-trend positive">
@@ -1553,7 +1553,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Active Users</div>
                         </div>
-                        <div class="metric-icon">👥</div>
+                        <div class="metric-icon"><i class="fas fa-users"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($activeUsers) ?></div>
                     <div class="metric-trend">
@@ -1565,19 +1565,29 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <a href="requests.php" class="action-btn">
-                    <div class="action-icon">📋</div>
+                    <div class="action-icon"><i class="fas fa-file"></i></div>
                     <div class="action-title">View Requests</div>
                     <div class="action-subtitle">Manage pending requests</div>
                 </a>
                 <a href="sched.php" class="action-btn">
-                    <div class="action-icon">📅</div>
+                    <div class="action-icon"><i class="fas fa-calendar-alt"></i></div>
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
                 <a href="reports.php" class="action-btn">
-                    <div class="action-icon">📊</div>
+                    <div class="action-icon"><i class="fas fa-chart-pie"></i></div>
                     <div class="action-title">Reports</div>
                     <div class="action-subtitle">Generate reports</div>
+                </a>
+                <a href="current_reports.php" class="action-btn">
+                    <div class="action-icon"><i class="fas fa-wrench"></i></div>
+                    <div class="action-title">Current Reports</div>
+                    <div class="action-subtitle">In-progress repairs</div>
+                </a>
+                <a href="pending_reports.php" class="action-btn">
+                    <div class="action-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="action-title">Pending Reports</div>
+                    <div class="action-subtitle">Awaiting approval</div>
                 </a>
             </div>
 
@@ -1737,9 +1747,99 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- ============================================================
+                 EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+                 3. HTML — Add INSIDE .dashboard-card, AFTER the closing </div> of 
+                 the .charts-grid / Recent Activity chart-card, just BEFORE 
+                 the final closing </div> of .dashboard-card.
+                 ============================================================ -->
+
+            <?php if ($isAdmin): ?>
+            <!-- ADMIN: Report Generation Section -->
+            <div class="report-gen-section">
+                <div class="report-gen-header">
+                    <h3>📊 Report Generation</h3>
+                    <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+                </div>
+                <div class="report-type-grid">
+                    <button class="report-type-btn" onclick="openReportModal('requests')">
+                        <div class="rpt-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="rpt-title">Requests Report</div>
+                        <div class="rpt-desc">All infrastructure repair requests by date range</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('schedules')">
+                        <div class="rpt-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="rpt-title">Schedules Report</div>
+                        <div class="rpt-desc">Maintenance tasks & infrastructure reports on the calendar</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('summary')">
+                        <div class="rpt-icon"><i class="fas fa-chart-pie"></i></div>
+                        <div class="rpt-title">Executive Summary</div>
+                        <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('current_reports')">
+                        <div class="rpt-icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="rpt-title">Current Reports</div>
+                        <div class="rpt-desc">Reports assigned to engineers — awaiting or accepted</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('pending_reports')">
+                        <div class="rpt-icon"><i class="fas fa-hourglass-start"></i></div>
+                        <div class="rpt-title">Pending Reports</div>
+                        <div class="rpt-desc">Reports that are scheduled, in progress, or pending completion</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('archive_reports')">
+                        <div class="rpt-icon"><i class="fas fa-archive"></i></div>
+                        <div class="rpt-title">Archive Reports</div>
+                        <div class="rpt-desc">Completed and cancelled reports</div>
+                    </button>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
+
+<?php if ($isAdmin): ?>
+<div id="pwModalBackdrop">
+    <div class="pw-modal">
+        <div class="pw-modal-header">
+            <div class="pw-modal-icon"><i class="fas fa-lock"></i></div>
+            <div class="pw-modal-header-text">
+                <h3>Confirm Your Identity</h3>
+                <p>Enter your account password to generate this report.</p>
+            </div>
+        </div>
+        <div class="pw-modal-body">
+            <label for="pwInput">Password</label>
+            <div class="pw-input-wrap">
+                <input type="text" id="pwInput"
+                       placeholder="Enter your password"
+                       autocomplete="off"
+                       data-lpignore="true"
+                       data-form-type="other"
+                       style="-webkit-text-security:disc;font-family:text-security-disc,inherit"
+                       onfocus="this.type='password';this.style.removeProperty('-webkit-text-security')"
+                       onblur="if(!this.value){this.type='text';this.style.setProperty('-webkit-text-security','disc')}">
+                <button class="pw-toggle-btn" type="button"
+                        id="pwToggleBtn" title="Show/hide password"
+                        tabindex="-1"><i class="fas fa-eye"></i></button>
+            </div>
+            <div class="pw-error-msg" id="pwErrorMsg">
+                <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
+            </div>
+            <div class="pw-attempts-msg" id="pwAttemptsMsg"></div>
+        </div>
+        <div class="pw-modal-footer">
+            <button class="pw-cancel-btn" id="pwCancelBtn">Cancel</button>
+            <button class="pw-confirm-btn" id="pwConfirmBtn">
+                <div class="pw-spinner" id="pwSpinner"></div>
+                <span id="pwConfirmText"><i class="fas fa-unlock"></i> Verify &amp; Continue</span>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php include 'admin_scripts.php'; ?>
 
@@ -1966,6 +2066,720 @@ if (statusCtx) {
         }
     });
 }
+
+
+// ===== ACTIVE REPORTS CHART =====
+const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;
+const activeReportsAssigned  = <?= json_encode($reportAssignedData) ?>;
+const activeReportsUnassigned= <?= json_encode($reportUnassignedData) ?>;
+
+const activeReportsCtx = document.getElementById('activeReportsChart');
+if (activeReportsCtx) {
+    new Chart(activeReportsCtx, {
+        type: 'bar',
+        data: {
+            labels: activeReportsLabels,
+            datasets: [
+                {
+                    label: 'Assigned',
+                    data: activeReportsAssigned,
+                    backgroundColor: 'rgba(76, 175, 80, 0.85)',
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Unassigned',
+                    data: activeReportsUnassigned,
+                    backgroundColor: 'rgba(255, 152, 0, 0.85)',
+                    borderColor: '#ff9800',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const idx   = context[0].dataIndex;
+                            const total = activeReportsAssigned[idx] + activeReportsUnassigned[idx];
+                            return ['Total: ' + total];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<!-- =====================================================================
+     REPORT MODAL HTML  — replace your existing #reportModalBackdrop block
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
+<div id="reportModalBackdrop">
+    <div class="report-modal">
+        <div class="report-modal-header">
+            <h3 id="reportModalTitle">Generate Report</h3>
+            <button class="report-modal-close" id="reportModalClose">&times;</button>
+        </div>
+        <div class="report-modal-body">
+            <div class="form-group">
+                <label>Date Range</label>
+                <div class="date-row">
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
+                        <div class="rpt-date-display" id="rptFromDisplay" tabindex="0" role="button" aria-label="Select start date">
+                            <span class="rdt-text" id="rptFromText"><?= date('M d, Y', strtotime(date('Y-m-01'))) ?></span>
+                            <span class="rdt-icon"><i class="fas fa-calendar-day"></i></span>
+                        </div>
+                        <input type="hidden" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
+                    </div>
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
+                        <div class="rpt-date-display" id="rptToDisplay" tabindex="0" role="button" aria-label="Select end date">
+                            <span class="rdt-text" id="rptToText"><?= date('M d, Y') ?></span>
+                            <span class="rdt-icon"><i class="fas fa-calendar-day"></i></span>
+                        </div>
+                        <input type="hidden" id="rptDateTo" value="<?= date('Y-m-d') ?>">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Export Format</label>
+                <div class="format-toggle">
+                    <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
+                        <i class="fas fa-file-csv"></i> CSV (.csv)
+                    </button>
+                    <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
+                        <i class="fas fa-file-pdf"></i> PDF (Print)
+                    </button>
+                </div>
+            </div>
+            <!-- "Generate" now opens the password gate first -->
+            <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+                <span id="btnGenerateText">🔒 <i class="fas fa-key"></i> Verify &amp; Generate</span>
+            </button>
+            <p class="report-info-text">
+                You will be asked to confirm your password before the report is created.
+            </p>
+            <!-- Hidden form — submitted only after successful password verification -->
+            <form id="reportForm" action="generate_report.php" method="POST" target="_blank" style="display:none">
+                <input type="hidden" name="report_type"   id="rptTypeInput">
+                <input type="hidden" name="format"        id="rptFormatInput">
+                <input type="hidden" name="date_from"     id="rptFromInput">
+                <input type="hidden" name="date_to"       id="rptToInput">
+                <input type="hidden" name="report_token"  id="rptTokenInput">
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Report custom date picker overlays -->
+<?php if ($isAdmin): ?>
+<div class="rdt-picker-overlay" id="rptFromPickerOverlay">
+    <div class="rdt-dp-header">
+        <button class="rdt-dp-nav" id="rptFromPrev" type="button">&#8592;</button>
+        <div class="rdt-dp-header-center">
+            <button class="rdt-dp-month-btn" id="rptFromMonthBtn" type="button"></button>
+            <button class="rdt-dp-year-btn"  id="rptFromYearBtn"  type="button"></button>
+        </div>
+        <button class="rdt-dp-nav" id="rptFromNext" type="button">&#8594;</button>
+    </div>
+    <div class="rdt-year-dropdown"  id="rptFromYearDrop"></div>
+    <div class="rdt-month-dropdown" id="rptFromMonthDrop">
+        <button class="rdt-month-opt" data-month="0"  type="button">Jan</button><button class="rdt-month-opt" data-month="1"  type="button">Feb</button><button class="rdt-month-opt" data-month="2"  type="button">Mar</button>
+        <button class="rdt-month-opt" data-month="3"  type="button">Apr</button><button class="rdt-month-opt" data-month="4"  type="button">May</button><button class="rdt-month-opt" data-month="5"  type="button">Jun</button>
+        <button class="rdt-month-opt" data-month="6"  type="button">Jul</button><button class="rdt-month-opt" data-month="7"  type="button">Aug</button><button class="rdt-month-opt" data-month="8"  type="button">Sep</button>
+        <button class="rdt-month-opt" data-month="9"  type="button">Oct</button><button class="rdt-month-opt" data-month="10" type="button">Nov</button><button class="rdt-month-opt" data-month="11" type="button">Dec</button>
+    </div>
+    <div class="rdt-dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+    <div class="rdt-dp-grid" id="rptFromGrid"></div>
+    <div class="rdt-dp-footer">
+        <button class="rdt-dp-clear" id="rptFromClear" type="button">Clear</button>
+        <button class="rdt-dp-done"  id="rptFromDone"  type="button">Done</button>
+    </div>
+</div>
+<div class="rdt-picker-overlay" id="rptToPickerOverlay">
+    <div class="rdt-dp-header">
+        <button class="rdt-dp-nav" id="rptToPrev" type="button">&#8592;</button>
+        <div class="rdt-dp-header-center">
+            <button class="rdt-dp-month-btn" id="rptToMonthBtn" type="button"></button>
+            <button class="rdt-dp-year-btn"  id="rptToYearBtn"  type="button"></button>
+        </div>
+        <button class="rdt-dp-nav" id="rptToNext" type="button">&#8594;</button>
+    </div>
+    <div class="rdt-year-dropdown"  id="rptToYearDrop"></div>
+    <div class="rdt-month-dropdown" id="rptToMonthDrop">
+        <button class="rdt-month-opt" data-month="0"  type="button">Jan</button><button class="rdt-month-opt" data-month="1"  type="button">Feb</button><button class="rdt-month-opt" data-month="2"  type="button">Mar</button>
+        <button class="rdt-month-opt" data-month="3"  type="button">Apr</button><button class="rdt-month-opt" data-month="4"  type="button">May</button><button class="rdt-month-opt" data-month="5"  type="button">Jun</button>
+        <button class="rdt-month-opt" data-month="6"  type="button">Jul</button><button class="rdt-month-opt" data-month="7"  type="button">Aug</button><button class="rdt-month-opt" data-month="8"  type="button">Sep</button>
+        <button class="rdt-month-opt" data-month="9"  type="button">Oct</button><button class="rdt-month-opt" data-month="10" type="button">Nov</button><button class="rdt-month-opt" data-month="11" type="button">Dec</button>
+    </div>
+    <div class="rdt-dp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+    <div class="rdt-dp-grid" id="rptToGrid"></div>
+    <div class="rdt-dp-footer">
+        <button class="rdt-dp-clear" id="rptToClear" type="button">Clear</button>
+        <button class="rdt-dp-done"  id="rptToDone"  type="button">Done</button>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- =====================================================================
+     REPORT JS  — replace your existing report <script> block entirely
+     ===================================================================== -->
+     <?php if ($isAdmin): ?>
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let _rptType   = 'requests';
+let _rptFormat = 'excel';
+
+// ── Report modal ─────────────────────────────────────────────────────────────
+function openReportModal(type) {
+    _rptType = type;
+    const titles = {
+        requests:        '📋 Requests Report',
+        schedules:       '📅 Schedules Report',
+        summary:         '📈 Executive Summary',
+        current_reports: '📌 Current Reports',
+        pending_reports: '⏳ Pending Reports',
+        archive_reports: '🗄️ Archive Reports',
+    };
+    document.getElementById('reportModalTitle').textContent = titles[type] || 'Generate Report';
+    document.getElementById('reportModalBackdrop').classList.add('active');
+    resetBtnGenerate();
+}
+
+function closeReportModal() {
+    document.getElementById('reportModalBackdrop').classList.remove('active');
+    resetBtnGenerate();
+}
+
+function selectFormat(fmt) {
+    _rptFormat = fmt;
+    document.getElementById('fmtExcel').classList.toggle('active', fmt === 'excel');
+    document.getElementById('fmtPdf').classList.toggle('active',   fmt === 'pdf');
+}
+
+function resetBtnGenerate() {
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = false;
+    document.getElementById('btnGenerateText').innerHTML = '<i class="fas fa-lock"></i> Verify & Generate';
+}
+
+// ── Step 1: Validate date inputs, then open password gate ────────────────────
+function startGenerate() {
+    const from = document.getElementById('rptDateFrom').value;
+    const to   = document.getElementById('rptDateTo').value;
+    if (!from || !to) { alert('Please select both a start and end date.'); return; }
+    if (from > to)    { alert('Start date must be before or equal to end date.'); return; }
+
+    // Store values for later submission
+    document.getElementById('rptTypeInput').value   = _rptType;
+    document.getElementById('rptFormatInput').value = _rptFormat;
+    document.getElementById('rptFromInput').value   = from;
+    document.getElementById('rptToInput').value     = to;
+
+    // Close report modal and open password gate
+    closeReportModal();
+    openPwModal();
+}
+
+// ── Password modal ────────────────────────────────────────────────────────────
+function openPwModal() {
+    const backdrop = document.getElementById('pwModalBackdrop');
+    backdrop.classList.add('active');
+    const input = document.getElementById('pwInput');
+    input.value = '';
+    input.type  = 'text';
+    input.style.setProperty('-webkit-text-security', 'disc');
+    hidePwError();
+    document.getElementById('pwAttemptsMsg').classList.remove('show');
+    document.getElementById('pwConfirmBtn').disabled = false;
+    document.getElementById('pwConfirmText').style.display = '';
+    document.getElementById('pwSpinner').style.display = 'none';
+    // Focus after animation
+    setTimeout(() => input.focus(), 80);
+}
+
+function closePwModal() {
+    document.getElementById('pwModalBackdrop').classList.remove('active');
+    document.getElementById('pwInput').value = '';
+    hidePwError();
+}
+
+function showPwError(msg) {
+    const el = document.getElementById('pwErrorMsg');
+    document.getElementById('pwErrorText').textContent = msg;
+    el.classList.add('show');
+    document.getElementById('pwInput').classList.add('pw-error');
+}
+
+function hidePwError() {
+    document.getElementById('pwErrorMsg').classList.remove('show');
+    document.getElementById('pwInput').classList.remove('pw-error');
+}
+
+// ── Password toggle (show/hide) ───────────────────────────────────────────────
+document.getElementById('pwToggleBtn').addEventListener('click', function () {
+    const input = document.getElementById('pwInput');
+    // isHidden = currently masked (either real type=password or type=text with -webkit-text-security)
+    const isHidden = input.type === 'password' ||
+                     (input.type === 'text' && input.style.webkitTextSecurity === 'disc');
+    if (isHidden) {
+        input.type = 'text';
+        input.style.removeProperty('-webkit-text-security');
+        this.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        input.type = 'text';
+        input.style.setProperty('-webkit-text-security', 'disc');
+        this.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+});
+
+// ── Step 2: Verify password via AJAX ─────────────────────────────────────────
+async function verifyAndGenerate() {
+    const password = document.getElementById('pwInput').value;
+    if (!password) {
+        showPwError('Please enter your password.');
+        document.getElementById('pwInput').focus();
+        return;
+    }
+
+    // Set loading state
+    const confirmBtn = document.getElementById('pwConfirmBtn');
+    const confirmTxt = document.getElementById('pwConfirmText');
+    const spinner    = document.getElementById('pwSpinner');
+    confirmBtn.disabled = true;
+    confirmTxt.style.display = 'none';
+    spinner.style.display    = 'block';
+    hidePwError();
+
+    try {
+        const resp = await fetch('verify_password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ password })
+        });
+
+        let data;
+        try { data = await resp.json(); }
+        catch (e) {
+            showPwError('Server error. Please try again.');
+            return;
+        }
+
+        if (data.success && data.token) {
+            // ✅ Correct password — inject token and submit form
+            document.getElementById('rptTokenInput').value = data.token;
+            closePwModal();
+
+            const form = document.getElementById('reportForm');
+            if (_rptFormat === 'excel') {
+                form.target = '_self'; // triggers file download in same tab
+            } else {
+                form.target = '_blank'; // PDF opens in new tab
+            }
+            form.submit();
+
+            // Re-enable generate button after a delay (for Excel re-use)
+            if (_rptFormat === 'excel') {
+                setTimeout(resetBtnGenerate, 4500);
+            }
+
+        } else {
+            // ❌ Wrong password
+            showPwError(data.message || 'Incorrect password. Please try again.');
+            document.getElementById('pwInput').value = '';
+            document.getElementById('pwInput').focus();
+
+            // Show attempt warning after first failure
+            const attemptsMsg = document.getElementById('pwAttemptsMsg');
+            attemptsMsg.textContent = 'Note: Multiple failed attempts will temporarily lock verification.';
+            attemptsMsg.classList.add('show');
+
+            if (resp.status === 429) {
+                showPwError(data.message || 'Too many attempts. Please wait before trying again.');
+                confirmBtn.disabled = true; // keep disabled until modal is closed/reopened
+            }
+        }
+
+    } catch (err) {
+        showPwError('Network error. Please check your connection.');
+    } finally {
+        // Restore button state (unless it was rate-limited)
+        if (!document.getElementById('pwErrorMsg').classList.contains('show') ||
+             document.getElementById('pwErrorText').textContent.includes('Incorrect')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else if (!document.getElementById('pwAttemptsMsg').textContent.includes('lock')) {
+            confirmBtn.disabled = false;
+            confirmTxt.style.display = '';
+            spinner.style.display    = 'none';
+        } else {
+            // Always restore UI unless it's the rate-limit case
+            if (resp && resp.status !== 429) {
+                confirmBtn.disabled = false;
+                confirmTxt.style.display = '';
+                spinner.style.display    = 'none';
+            }
+        }
+    }
+}
+
+// Restore spinner on all non-429 cases reliably
+document.getElementById('pwConfirmBtn').addEventListener('click', async function() {
+    await verifyAndGenerate();
+    // Ensure spinner is hidden if button is re-enabled
+    if (!this.disabled) {
+        document.getElementById('pwSpinner').style.display = 'none';
+        document.getElementById('pwConfirmText').style.display = '';
+    }
+});
+
+// Allow Enter key in password field
+document.getElementById('pwInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('pwConfirmBtn').click();
+    }
+});
+
+// ── Close handlers ────────────────────────────────────────────────────────────
+document.getElementById('pwCancelBtn').addEventListener('click', closePwModal);
+document.getElementById('pwModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closePwModal();
+});
+document.getElementById('reportModalClose').addEventListener('click', closeReportModal);
+document.getElementById('reportModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeReportModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('pwModalBackdrop').classList.contains('active'))  closePwModal();
+    if (document.getElementById('reportModalBackdrop').classList.contains('active')) closeReportModal();
+});
+
+// ── Report custom date pickers ────────────────────────────────────────────────
+(function() {
+    var MONTHS_FULL  = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+    var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec'];
+    var today = new Date();
+
+    function pad2(n) { return String(n).padStart(2,'0'); }
+    function fmtISO(d) { return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+    function fmtDisplay(d) { return MONTHS_SHORT[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); }
+    function parseISO(s) { var p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+
+    function makePicker(cfg) {
+        // cfg: { overlay, display, textEl, hiddenInput, prevBtn, nextBtn,
+        //        monthBtn, yearBtn, yearDrop, monthDrop, grid,
+        //        clearBtn, doneBtn, allowFuture }
+        var viewYear, viewMonth, selDate;
+
+        function init() {
+            var v = cfg.hiddenInput.value;
+            selDate = v ? parseISO(v) : null;
+            viewYear  = selDate ? selDate.getFullYear()  : today.getFullYear();
+            viewMonth = selDate ? selDate.getMonth()     : today.getMonth();
+        }
+
+        function setSelected(d) {
+            selDate = d;
+            cfg.hiddenInput.value = d ? fmtISO(d) : '';
+            cfg.textEl.textContent = d ? fmtDisplay(d) : cfg.placeholder;
+            cfg.textEl.classList.toggle('placeholder', !d);
+        }
+
+        function renderGrid() {
+            cfg.yearDrop.classList.remove('open');
+            cfg.monthDrop.classList.remove('open');
+            cfg.yearBtn.classList.remove('active');
+            cfg.monthBtn.classList.remove('active');
+
+            cfg.monthBtn.textContent = MONTHS_SHORT[viewMonth];
+            cfg.yearBtn.textContent  = viewYear;
+
+            var firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+            var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+            var todayStr    = fmtISO(today);
+            var selStr      = selDate ? fmtISO(selDate) : '';
+
+            cfg.grid.innerHTML = '';
+            for (var i = 0; i < firstDay; i++) {
+                var emp = document.createElement('div');
+                emp.className = 'rdt-dp-day rdt-empty';
+                cfg.grid.appendChild(emp);
+            }
+            for (var d = 1; d <= daysInMonth; d++) {
+                var dateObj = new Date(viewYear, viewMonth, d);
+                var dateStr = fmtISO(dateObj);
+                var dow     = dateObj.getDay();
+                var btn     = document.createElement('button');
+                btn.type = 'button'; btn.className = 'rdt-dp-day';
+                btn.textContent  = d;
+                btn.dataset.date = dateStr;
+                if (dow === 0 || dow === 6)  btn.classList.add('rdt-weekend');
+                if (dateStr === todayStr)    btn.classList.add('rdt-today');
+                if (dateStr === selStr)      btn.classList.add('rdt-selected');
+                if (!cfg.allowFuture && dateObj > today) btn.classList.add('rdt-future');
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var p = this.dataset.date.split('-');
+                    setSelected(new Date(+p[0],+p[1]-1,+p[2]));
+                    renderGrid();
+                });
+                cfg.grid.appendChild(btn);
+            }
+        }
+
+        function buildYearGrid() {
+            cfg.yearDrop.innerHTML = '';
+            var endY = today.getFullYear() + (cfg.allowFuture ? 10 : 0);
+            for (var y = endY; y >= endY - 109; y--) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'rdt-year-opt' + (y === viewYear ? ' selected' : '');
+                b.textContent  = y; b.dataset.year = y;
+                b.addEventListener('click', function(e) {
+                    e.stopPropagation(); viewYear = +this.dataset.year; renderGrid();
+                });
+                cfg.yearDrop.appendChild(b);
+            }
+            setTimeout(function() {
+                var sel = cfg.yearDrop.querySelector('.selected');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            }, 30);
+        }
+
+        function positionOverlay() {
+            var rect = cfg.display.getBoundingClientRect();
+            var vw = window.innerWidth, vh = window.innerHeight;
+            cfg.overlay.style.visibility = 'hidden';
+            cfg.overlay.style.display    = 'block';
+            var ow = cfg.overlay.offsetWidth  || 284;
+            var oh = Math.min(cfg.overlay.scrollHeight || 380, vh * 0.8);
+            cfg.overlay.style.visibility = '';
+            var top  = rect.bottom + 6;
+            var left = rect.left + rect.width / 2 - ow / 2;
+            left = Math.max(8, Math.min(left, vw - ow - 8));
+            if (top + oh > vh - 10 && rect.top > oh + 10) top = rect.top - oh - 6;
+            if (top < 8) top = 8;
+            cfg.overlay.style.top  = top  + 'px';
+            cfg.overlay.style.left = left + 'px';
+            cfg.overlay.style.display = 'none';
+        }
+
+        function openPicker() {
+            init();
+            renderGrid();
+            positionOverlay();
+            cfg.overlay.style.removeProperty('animation');
+            cfg.overlay.style.display    = 'block';
+            cfg.overlay.style.visibility = 'visible';
+            void cfg.overlay.offsetWidth;
+            cfg.overlay.style.animation = 'rdtPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+        }
+        function closePicker() { cfg.overlay.style.display = 'none'; }
+        function isOpen() { return cfg.overlay.style.display === 'block'; }
+
+        cfg.display.addEventListener('click', function(e) {
+            isOpen() ? closePicker() : openPicker();
+        });
+        cfg.display.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isOpen() ? closePicker() : openPicker(); }
+            if (e.key === 'Escape') closePicker();
+        });
+        cfg.prevBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+            renderGrid();
+        });
+        cfg.nextBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+            renderGrid();
+        });
+        cfg.yearBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            cfg.monthDrop.classList.remove('open'); cfg.monthBtn.classList.remove('active');
+            var nowOpen = cfg.yearDrop.classList.toggle('open');
+            cfg.yearBtn.classList.toggle('active', nowOpen);
+            if (nowOpen) buildYearGrid();
+        });
+        cfg.monthBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            cfg.yearDrop.classList.remove('open'); cfg.yearBtn.classList.remove('active');
+            var nowOpen = cfg.monthDrop.classList.toggle('open');
+            cfg.monthBtn.classList.toggle('active', nowOpen);
+            Array.from(cfg.monthDrop.querySelectorAll('.rdt-month-opt')).forEach(function(b) {
+                b.classList.toggle('selected', +b.dataset.month === viewMonth);
+            });
+        });
+        cfg.monthDrop.addEventListener('click', function(e) {
+            var b = e.target.closest('.rdt-month-opt'); if (!b) return;
+            e.stopPropagation(); viewMonth = +b.dataset.month; renderGrid();
+        });
+        cfg.clearBtn.addEventListener('click', function(e) { e.stopPropagation(); setSelected(null); renderGrid(); });
+        cfg.doneBtn.addEventListener('click',  function(e) { e.stopPropagation(); closePicker(); });
+
+        document.addEventListener('click', function(e) {
+            if (isOpen() && !cfg.overlay.contains(e.target) && !cfg.display.contains(e.target)) closePicker();
+        });
+        window.addEventListener('resize', function() { if (isOpen()) positionOverlay(); });
+        cfg.overlay.addEventListener('wheel',  function(e) { e.stopPropagation(); }, { passive: true });
+        cfg.overlay.addEventListener('scroll', function(e) { e.stopPropagation(); }, true);
+
+        cfg.overlay.style.display = 'none';
+    }
+
+    // Wire "From" picker
+    makePicker({
+        overlay:     document.getElementById('rptFromPickerOverlay'),
+        display:     document.getElementById('rptFromDisplay'),
+        textEl:      document.getElementById('rptFromText'),
+        hiddenInput: document.getElementById('rptDateFrom'),
+        prevBtn:     document.getElementById('rptFromPrev'),
+        nextBtn:     document.getElementById('rptFromNext'),
+        monthBtn:    document.getElementById('rptFromMonthBtn'),
+        yearBtn:     document.getElementById('rptFromYearBtn'),
+        yearDrop:    document.getElementById('rptFromYearDrop'),
+        monthDrop:   document.getElementById('rptFromMonthDrop'),
+        grid:        document.getElementById('rptFromGrid'),
+        clearBtn:    document.getElementById('rptFromClear'),
+        doneBtn:     document.getElementById('rptFromDone'),
+        placeholder: 'Select start date',
+        allowFuture: false
+    });
+
+    // Wire "To" picker
+    makePicker({
+        overlay:     document.getElementById('rptToPickerOverlay'),
+        display:     document.getElementById('rptToDisplay'),
+        textEl:      document.getElementById('rptToText'),
+        hiddenInput: document.getElementById('rptDateTo'),
+        prevBtn:     document.getElementById('rptToPrev'),
+        nextBtn:     document.getElementById('rptToNext'),
+        monthBtn:    document.getElementById('rptToMonthBtn'),
+        yearBtn:     document.getElementById('rptToYearBtn'),
+        yearDrop:    document.getElementById('rptToYearDrop'),
+        monthDrop:   document.getElementById('rptToMonthDrop'),
+        grid:        document.getElementById('rptToGrid'),
+        clearBtn:    document.getElementById('rptToClear'),
+        doneBtn:     document.getElementById('rptToDone'),
+        placeholder: 'Select end date',
+        allowFuture: false
+    });
+})();
+</script>
+<?php endif; ?>
+
+<script>
+(function () {
+    // ── 1. Wire up [data-href] cards (metric cards + any others) ──
+    function makeClickable(selector) {
+        document.querySelectorAll(selector + '[data-href]').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                // Don't navigate if the click was on an inner button/link
+                if (e.target.closest('button, a, input, select, textarea')) return;
+                window.location.href = el.dataset.href;
+            });
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.href = el.dataset.href;
+                }
+            });
+        });
+    }
+
+    makeClickable('.metric-card');
+
+    // ── 2. Activity items → requests.php ──────────────────────────
+    document.querySelectorAll('.activity-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.activity-item');
+
+    // ── 3. Schedule items → sched.php ─────────────────────────────
+    document.querySelectorAll('.schedule-item').forEach(function (el) {
+        el.dataset.href = 'sched.php';
+    });
+    makeClickable('.schedule-item');
+
+    // ── 4. Facility items → requests.php ──────────────────────────
+    document.querySelectorAll('.facility-item').forEach(function (el) {
+        el.dataset.href = 'requests.php';
+    });
+    makeClickable('.facility-item');
+
+    // ── 5. Chart cards (Request Trends / Status Breakdown) ─────────
+    document.querySelectorAll('.chart-card').forEach(function (el) {
+        // Identify by title text
+        const title = el.querySelector('.chart-title');
+        if (!title) return;
+        const text = title.textContent.trim().toLowerCase();
+
+        if (text.includes('request trend') || text.includes('status breakdown')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('top facilities')) {
+            el.dataset.href = 'requests.php';
+        } else if (text.includes('upcoming maintenance')) {
+            el.dataset.href = 'sched.php';
+        } else if (text.includes('recent activity')) {
+            el.dataset.href = 'requests.php';
+        }
+        // Only add cursor/pointer if href was assigned
+        if (el.dataset.href) {
+            el.style.cursor = 'pointer';
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('role', 'link');
+        }
+    });
+    makeClickable('.chart-card');
+
+})();
 </script>
 
 </body>
