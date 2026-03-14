@@ -5,7 +5,28 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-$INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
+$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
+
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
+    session_unset();
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+
+// Update last activity time
+$_SESSION['last_activity'] = time();
 
 /* 🚫 Prevent browser caching of protected pages */
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -98,10 +119,28 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
+$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
+
+// ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
+$conn->query("
+    ALTER TABLE request_resolutions
+    MODIFY COLUMN status ENUM('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion')
+    NOT NULL DEFAULT 'Approved'
+");
+
+
 // Fetch schedules from database
 $schedules = [];
 $sql = "SELECT * FROM maintenance_schedule ORDER BY starting_date ASC";
 $result = $conn->query($sql);
+
+$todayPhp = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
 if ($result && $result->num_rows > 0) {
     $today = new DateTime('today');
@@ -136,15 +175,6 @@ if ($result && $result->num_rows > 0) {
                 $row['priority'] = 'High';
             }
         }
-        if (empty($row['assigned_team']) || $row['assigned_team'] === 'General Maintenance Team') {
-            if (strpos($taskLower, 'aircon') !== false || strpos($taskLower, 'hvac') !== false) {
-                $row['assigned_team'] = 'Facilities - HVAC Team';
-            } elseif (strpos($taskLower, 'generator') !== false || strpos($taskLower, 'power') !== false) {
-                $row['assigned_team'] = 'Electrical Maintenance Team';
-            } elseif (strpos($taskLower, 'fire') !== false || strpos($taskLower, 'safety') !== false) {
-                $row['assigned_team'] = 'Safety & Compliance Team';
-            }
-        }
 
         $status_label = $row['status'];
         $priority_label = $row['priority'];
@@ -170,10 +200,96 @@ if ($result && $result->num_rows > 0) {
         $row['priority'] = $priority_label;
         // Add schedule_date alias for backward compatibility with JavaScript
         $row['schedule_date'] = date('Y-m-d', strtotime($row['starting_date']));
+        $row['source']        = 'schedule';
+        $row['engineer_name'] = '';
+        $row['budget_raw']    = 0;
+        $row['budget_display']= '';
+        $row['rep_id']        = 0;
 
         $schedules[] = $row;
     }
 }
+
+// ── Pull in Pending Reports (Scheduled / In Progress / Delayed) ──────────────
+// ── and Archive Reports (Completed) into the same $schedules array ───────────
+
+// Engineers only see their own reports; admins/others see all
+$engineerFilter = $isEngineer && $sessionUserId > 0
+    ? "AND r.engineer_id = {$sessionUserId}"
+    : "";
+
+$reportSql = "
+    SELECT
+        r.rep_id, r.starting_date, r.estimated_end_date, r.priority_lvl,
+        r.engineer_id, r.budget,
+        res.status AS resolution_status, res.res_note,
+        req.infrastructure, req.location,
+        CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    LEFT JOIN employees            e   ON r.engineer_id = e.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+      AND r.starting_date IS NOT NULL
+      {$engineerFilter}
+    ORDER BY r.starting_date ASC
+";
+$reportResult = $conn->query($reportSql);
+
+if ($reportResult && $reportResult->num_rows > 0) {
+    while ($rRow = $reportResult->fetch_assoc()) {
+        $resStatus  = $rRow['resolution_status'] ?? '';
+        $resNote    = trim($rRow['res_note'] ?? '');
+        $startDate  = $rRow['starting_date']      ?? '';
+        $endDate    = $rRow['estimated_end_date'] ?? '';
+
+        // Map to display status + color key
+        if ($resStatus === 'Completed') {
+            $statusLabel = 'Completed';
+        } elseif ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
+            $statusLabel = 'In Progress';
+        } else {
+            // Scheduled / Pending — check delay: no notes AND past end date
+            $statusLabel = 'Scheduled';
+            if (empty($resNote) && !empty($endDate)) {
+                try {
+                    $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
+                    if ($todayPhp > $endDt) {
+                        $statusLabel = 'Delayed';
+                    }
+                } catch (Exception $e) {}
+            }
+        }
+
+        $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
+        $priority = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
+
+        $schedules[] = [
+            'id'              => 0,
+            'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'        => $rRow['location'] ?? '—',
+            'schedule_date'   => !empty($startDate) ? date('Y-m-d', strtotime($startDate)) : '',
+            'estimated_end_date' => $endDate,
+            'starting_date'   => $startDate,
+            'status'          => $resStatus,
+            'status_label'    => $statusLabel,
+            'priority'        => $priority,
+            'category'        => 'Infrastructure Report',
+            'assigned_team'   => '',
+            'engineer_name'   => trim($rRow['engineer_name'] ?? '') ?: '—',
+            'budget_raw'      => (float)($rRow['budget'] ?? 0),
+            'budget_display'  => '₱' . number_format((float)($rRow['budget'] ?? 0), 2),
+            'rep_id'          => (int)$rRow['rep_id'],
+            'source'          => 'report',
+            'res_note'        => $resNote,
+        ];
+    }
+}
+
+// Sort all combined schedules by starting_date ascending
+usort($schedules, function($a, $b) {
+    return strcmp($a['schedule_date'] ?? '', $b['schedule_date'] ?? '');
+});
 ?>
 
 <!DOCTYPE html>
@@ -184,6 +300,7 @@ if ($result && $result->num_rows > 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 /* =========================
@@ -230,31 +347,9 @@ if ($result && $result->num_rows > 0) {
 }
 
 /* Dark Mode - Mobile Controls */
-[data-theme="dark"] .mobile-controls {
-    background: var(--bg-secondary);
-    box-shadow: 0 4px 16px var(--shadow-color);
-}
+/* Mobile Calendar button dark mode — handled in .mob-icon-btn dark block above */
 
-[data-theme="dark"] .mobile-controls input {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .mobile-controls input::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.7;
-}
-
-[data-theme="dark"] .mobile-controls button {
-    background: #3762c8;
-    color: #fff;
-}
-
-[data-theme="dark"] .mobile-controls button:hover {
-    background: #2851b3;
-}
-/* Dark Mode Fixes */
+/* Additional Modal Elements *//* Dark Mode Fixes */
 
 /* Task Chooser Modal */
 [data-theme="dark"] #taskChooserModal .modal-content {
@@ -346,29 +441,11 @@ if ($result && $result->num_rows > 0) {
     color: var(--text-primary);
 }
 
-/* Schedule Search Input and Calendar Button */
-[data-theme="dark"] #scheduleSearch,
-[data-theme="dark"] #mobileScheduleSearch {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] #scheduleSearch:focus,
-[data-theme="dark"] #mobileScheduleSearch:focus {
-    background: rgba(55, 98, 200, 0.15);
-    border-color: #3762c8;
-}
+/* Schedule Search Input and Calendar Button — dark mode handled in toolbar block above */
 
 [data-theme="dark"] #toCalendarBtn,
 [data-theme="dark"] #mobileToCalendarBtn {
-    background: #3762c8;
-    color: #fff;
-}
-
-[data-theme="dark"] #toCalendarBtn:hover,
-[data-theme="dark"] #mobileToCalendarBtn:hover {
-    background: #2851b3;
+    /* inherit from .view-switch-btn dark mode */
 }
 
 /* Additional Modal Elements */
@@ -394,22 +471,27 @@ if ($result && $result->num_rows > 0) {
 }
 
 [data-theme="dark"] .calendar-day {
-    background: #2a2a2a;
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #252a3d;
+    color: #e2e8f0;
+    border: 1.5px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="dark"] .calendar-day > div:first-child {
+    color: #cbd5e1;
 }
 
 [data-theme="dark"] .calendar-day .day-tasks {
-    color: #fff;
+    color: #e2e8f0;
 }
 
 [data-theme="dark"] .calendar-day.has-event {
-    background: #1e3a5f;
-    border-color: rgba(55, 98, 200, 0.3);
+    background: rgba(55,98,200,0.13);
+    border-color: rgba(95, 140, 255, 0.22);
 }
 
 [data-theme="dark"] .calendar-day:hover {
-    background: #3a3a3a;
+    background: rgba(55,98,200,0.18);
+    border-color: rgba(95,140,255,0.3);
 }
 /* Dark Mode - Scroll Indicator */
 [data-theme="dark"] .scroll-indicator {
@@ -448,8 +530,8 @@ if ($result && $result->num_rows > 0) {
 }
 
 [data-theme="dark"] .badge-status-in-progress {
-    background: rgba(33, 150, 243, 0.2);
-    color: #64b5f6;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fdd835;
 }
 
 [data-theme="dark"] .badge-status-delayed {
@@ -459,8 +541,8 @@ if ($result && $result->num_rows > 0) {
 
 [data-theme="dark"] .badge-status-planned,
 [data-theme="dark"] .badge-status-scheduled {
-    background: rgba(158, 158, 158, 0.2);
-    color: #bdbdbd;
+    background: rgba(21, 101, 192, 0.2);
+    color: #90caf9;
 }
 
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
@@ -509,178 +591,682 @@ if ($result && $result->num_rows > 0) {
     color: var(--text-primary);
 }
 
-/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
-.toggle-btn {
-    min-width: 40px;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top:20px;
-    background:#3762c8;
-    color:#fff;
-    border:none;
-    padding:10px 18px;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:600;
+/* ═══════════════════════════════════════════════════════
+   SHARED TOOLBAR BASE — calendar header + list toolbar
+═══════════════════════════════════════════════════════ */
+.calendar-header,
+.list-view-toolbar {
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    box-sizing: border-box;
+    margin-bottom: 12px;
 }
 
-/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
-.schedule-btn {
-    width: 38%;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top:20px;
-    margin-right: 5px;
-    background:#3762c8;
-    color:#fff;
-    border:none;
-    padding:10px 18px;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:600;
+[data-theme="dark"] .calendar-header,
+[data-theme="dark"] .list-view-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
 }
 
-/* BUTTON ENHANCEMENT: Ensure .toggle-btn is min 40px wide, 38px tall, centered content */
-.calendar-btn {
-    width: 45px;
-    height: 45px;
-    display: flex;
+/* ═══════════════════════════════════════════════════════
+   CALENDAR HEADER — 3-column grid for true centering
+═══════════════════════════════════════════════════════ */
+.calendar-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
     margin-bottom: 20px;
-    background:#3762c8;
-    color:#fff;
-    border:none;
-    padding:10px 18px;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:600;
+    margin-top: 0;
+    font-weight: 600;
+}
+
+/* Left slot — prev arrow, left-aligned */
+.cal-header-left {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Right slot — list-view btn + next arrow, right-aligned */
+.cal-header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* Month label — truly centered in middle column */
+#monthLabel,
+#mobileMonthLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+#monthLabel:hover,
+#mobileMonthLabel:hover {
+    background: rgba(55, 98, 200, 0.1);
+    color: #3762c8;
+}
+
+[data-theme="dark"] #monthLabel,
+[data-theme="dark"] #mobileMonthLabel {
+    color: #e2e8f0;
+}
+[data-theme="dark"] #monthLabel:hover,
+[data-theme="dark"] #mobileMonthLabel:hover {
+    background: rgba(95, 140, 255, 0.18);
+    color: #8ab4f8;
+}
+
+#monthLabel::after,
+#mobileMonthLabel::after { display: none; }
+
+/* ── Shared icon button (nav arrows + view-switch) ── */
+.cal-nav-btn,
+.view-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.22);
+    background: rgba(255, 255, 255, 0.85);
+    color: #3762c8;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.12s;
+    box-shadow: 0 1px 4px rgba(55,98,200,0.10);
+    box-sizing: border-box;
+}
+
+/* Nav arrows are square */
+.cal-nav-btn {
+    width: 36px;
+    padding: 0;
+}
+
+/* View-switch has text label + padding */
+.view-switch-btn {
+    padding: 0 13px;
+}
+
+/* Hover — fill blue */
+.cal-nav-btn:hover,
+.view-switch-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.28);
+    transform: translateY(-1px);
+}
+.cal-nav-btn:active,
+.view-switch-btn:active { transform: scale(0.96); }
+
+[data-theme="dark"] .cal-nav-btn,
+[data-theme="dark"] .view-switch-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(95, 140, 255, 0.28);
+    color: #8ab4f8;
+    box-shadow: none;
+}
+[data-theme="dark"] .cal-nav-btn:hover,
+[data-theme="dark"] .view-switch-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(55, 98, 200, 0.4);
+}
+
+/* ── Keep legacy class names working (used by JS) ── */
+.toggle-btn,
+.schedule-btn,
+.calendar-btn {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 13px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.22);
+    background: rgba(255, 255, 255, 0.85);
+    color: #3762c8;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.12s;
+    box-shadow: 0 1px 4px rgba(55,98,200,0.10);
+    box-sizing: border-box;
+}
+.toggle-btn { width: 36px; padding: 0; }
+
+.toggle-btn:hover,
+.schedule-btn:hover,
+.calendar-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(55,98,200,0.28);
+    transform: translateY(-1px);
+}
+.toggle-btn:active,
+.schedule-btn:active,
+.calendar-btn:active { transform: scale(0.96); }
+
+[data-theme="dark"] .toggle-btn,
+[data-theme="dark"] .schedule-btn,
+[data-theme="dark"] .calendar-btn {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.28);
+    color: #8ab4f8;
+    box-shadow: none;
+}
+[data-theme="dark"] .toggle-btn:hover,
+[data-theme="dark"] .schedule-btn:hover,
+[data-theme="dark"] .calendar-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(55,98,200,0.4);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LIST VIEW TOOLBAR
+═══════════════════════════════════════════════════════ */
+.list-view-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Search wrap — takes all remaining width */
+.list-view-toolbar .search-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.list-view-toolbar .search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .list-view-toolbar .search-wrap svg { color: #64748b; }
+
+#scheduleSearch {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+}
+#scheduleSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#scheduleSearch::placeholder {
+    color: #94a3b8;
+    font-size: 12.5px;
+}
+
+[data-theme="dark"] #scheduleSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #scheduleSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #scheduleSearch::placeholder { color: #64748b; }
+
+/* Mobile */
+@media (max-width: 768px) {
+    .calendar-header {
+        padding: 7px 8px;
+        border-radius: 12px;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    #monthLabel {
+        font-size: 13px;
+        padding: 5px 8px;
+        gap: 4px;
+    }
+    .cal-nav-btn,
+    .toggle-btn {
+        width: 32px;
+        height: 32px;
+    }
+    /* On mobile: hide the text labels on view-switch buttons — show icons only */
+    .view-switch-btn .btn-label,
+    .schedule-btn .btn-label {
+        display: none;
+    }
+    .view-switch-btn,
+    .schedule-btn {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    .list-view-toolbar {
+        padding: 7px 8px;
+        border-radius: 12px;
+        gap: 7px;
+        margin-bottom: 12px;
+    }
+    #scheduleSearch {
+        height: 36px;
+        font-size: 12.5px;
+        padding-left: 32px;
+    }
 }
 
 /* ===== Arrow + counter wrapper ===== */
 .more-tasks-wrap {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 4px;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 3px;
+    width: 100%;
 }
 
-/* Arrow button (centered) */
+/* Arrow button */
 .more-tasks-btn {
-    width: 20px;
-    height: 20px;
-    border: none;
-    background: transparent;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid rgba(55,98,200,0.22);
+    background: rgba(255,255,255,0.9);
+    border-radius: 6px;
     cursor: pointer;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
-    font-size: 14px;
+    font-size: 11px;
     line-height: 1;
-    color: #333;
-
-    transition: transform 0.25s ease;
+    color: #3762c8;
+    transition: background 0.18s, border-color 0.18s, transform 0.25s ease;
+    flex-shrink: 0;
 }
-
+.more-tasks-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+}
 .more-tasks-btn.open {
     transform: rotate(180deg);
+    background: #3762c8;
+    color: #fff;
+}
+[data-theme="dark"] .more-tasks-btn {
+    background: rgba(55,98,200,0.15);
+    border-color: rgba(95,140,255,0.3);
+    color: #8ab4f8;
 }
 
-/* Counter badge (desktop only) */
+/* Counter badge */
 .task-counter {
-    font-size: 12px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    background: #e5e7eb;
-    color: #111;
-    font-weight: 600;
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(55,98,200,0.12);
+    color: #3762c8;
+    font-weight: 700;
     white-space: nowrap;
+    border: 1px solid rgba(55,98,200,0.18);
 }
-
+[data-theme="dark"] .task-counter {
+    background: rgba(55,98,200,0.2);
+    color: #8ab4f8;
+    border-color: rgba(95,140,255,0.25);
+}
 
 /* --- UX Improvements for Dropdown & Arrow --- */
-.more-tasks-btn {
-    transition: transform 0.25s ease;
-}
-.more-tasks-btn.open {
-    transform: rotate(180deg);
-}
 .task-dropdown {
-    animation: dropdownFade 0.2s ease-out;
-    z-index:999; /* stays above */
+    opacity: 0; /* start hidden so there is zero flash before animation fires */
+    animation: dropdownFade 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    z-index:999;
 }
 @keyframes dropdownFade {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(4px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)  scale(1);    }
 }
 
-/* ===== Calendar overflow task dropdown ===== */
-
+/* ===== Calendar overflow task dropdown — REDESIGNED ===== */
 .calendar-day {
     position: relative;
     overflow: visible;
 }
 
-/* Arrow button */
-.more-tasks-btn {
-    width: 100%;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 14px;
-    margin-top: 4px;
-    color: #333;
-}
-
-/* Floating dropdown panel */
+/* Floating dropdown panel — matches calendar cell width exactly */
 .task-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 4px);
     left: 0;
-    width: 100%;
+    right: 0;        /* stretch to cell edges so width = cell width */
+    width: auto;     /* let left+right define the width */
     background: #fff;
-    z-index: 50;
-    border-radius: 8px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    z-index: 9999;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(55,98,200,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    border: 1.5px solid rgba(55,98,200,0.15);
     padding: 6px;
+    box-sizing: border-box;
+}
+[data-theme="dark"] .task-dropdown {
+    background: #1e2235;
+    border-color: rgba(95,140,255,0.22);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
 }
 
-/* Task buttons inside dropdown */
+/* Task buttons — uniform full width, text wraps within cell width */
 .task-dropdown .task-btn {
     display: block;
     width: 100%;
-    margin: 6px 0;
+    box-sizing: border-box;
+    margin: 3px 0;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 11px;
+    padding: 6px 10px;
+    white-space: normal;     /* allow wrap so long names stay inside cell */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.3;
 }
 
-.schedule-item{
-    display:flex;
-    justify-content:space-between;
-    padding:14px 0;
-    border-bottom:1px solid rgba(0,0,0,.1);
-    color: #000;
-    transition: color 0.3s ease, border-color 0.3s ease;
+/* ═══════════════════════════════════════════════════
+   LIST VIEW — REDESIGNED MODERN CARDS
+═══════════════════════════════════════════════════ */
+.schedule-item {
+    display: grid;
+    grid-template-columns: 5px 1fr auto;
+    gap: 0 14px;
+    align-items: stretch;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    cursor: default;
+}
+.schedule-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(55,98,200,0.12);
+    border-color: rgba(55,98,200,0.25);
+}
+
+/* Status accent bar (leftmost column) */
+.schedule-item-accent {
+    width: 5px;
+    border-radius: 14px 0 0 14px;
+    background: #9ca3af;
+    grid-row: 1;
+    grid-column: 1;
+    align-self: stretch;
+}
+.schedule-item-accent.accent-upcoming  { background: #1565c0; }
+.schedule-item-accent.accent-in-progress { background: #f59e0b; }
+.schedule-item-accent.accent-delayed   { background: #c62828; }
+.schedule-item-accent.accent-completed { background: #2e7d32; }
+
+/* Main content area */
+.schedule-item-body {
+    padding: 14px 0 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.schedule-item-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-item-location {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-item-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+/* Right-side meta panel */
+.schedule-item-meta {
+    padding: 14px 16px 14px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.schedule-item-date {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.schedule-item-date-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 1px;
+}
+
+.schedule-item-status-badges {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
 }
 
 [data-theme="dark"] .schedule-item {
-    border-bottom-color: var(--border-color);
-    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-.schedule-item strong,
-.schedule-item div {
-    color: inherit;
+[data-theme="dark"] .schedule-item:hover {
+    box-shadow: 0 8px 24px rgba(55,98,200,0.2);
+}
+
+/* List view header/toolbar — see shared toolbar block above */
+
+/* Empty state for list */
+.list-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* Filter-hidden class — must override ALL display rules including mobile !important */
+.schedule-item.filter-hidden {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .schedule-item {
+        grid-template-columns: 4px 1fr !important;
+        display: grid;
+    }
+    .schedule-item-meta {
+        display: none !important;
+    }
+    .schedule-item-body {
+        padding: 12px 14px 12px 0 !important;
+        min-width: 0;
+    }
+    .schedule-item-title {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        word-break: break-word;
+        font-size: 14px;
+        line-height: 1.35;
+    }
+    .schedule-item-location {
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        word-break: break-word;
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+    .schedule-item-location span {
+        white-space: normal !important;
+        word-break: break-word;
+    }
+    .schedule-item-badges {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    /* Show date inline in body on mobile */
+    .schedule-item-dates-desktop {
+        display: none !important;
+    }
+    /* Show date inline in body on mobile */
+    .schedule-item-date-mobile {
+        display: flex !important;
+    }
+    /* Show status/priority badges on mobile */
+    .schedule-item-mobile-status {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 2px;
+    }
+}
+
+@media (max-width: 600px) {
+    .schedule-item:not(.filter-hidden) {
+        grid-template-columns: 4px 1fr !important;
+    }
+    .schedule-item-meta {
+        display: none !important;
+    }
+    .schedule-item-body {
+        padding: 12px 14px 12px 0 !important;
+    }
+    .schedule-item-dates-desktop {
+        display: none !important;
+    }
+    .schedule-item-date-mobile {
+        display: flex !important;
+    }
+    .schedule-item-mobile-status {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 2px;
+    }
+}
+
+/* Desktop-only dates shown below badge row in body */
+.schedule-item-dates-desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 6px;
+}
+
+.schedule-item-date-mobile {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.sched-date-label-mobile {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 2px;
+}
+
+/* Mobile-only status/priority row — hidden on desktop, shown via media query below */
+.schedule-item-mobile-status {
+    display: none;
 }
 
 .schedule-date{
@@ -722,8 +1308,8 @@ if ($result && $result->num_rows > 0) {
     color:#2e7d32;
 }
 .badge-status-in-progress {
-    background:#e3f2fd;
-    color:#1565c0;
+    background:#fff8e1;
+    color:#f57f17;
 }
 .badge-status-delayed {
     background:#ffebee;
@@ -731,8 +1317,23 @@ if ($result && $result->num_rows > 0) {
 }
 .badge-status-planned,
 .badge-status-scheduled {
-    background:#eceff1;
-    color:#37474f;
+    background:#e3f2fd;
+    color:#1565c0;
+}
+.badge-rep-source {
+    background:#f3e5f5;
+    color:#6a1b9a;
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid rgba(106,27,154,0.18);
+}
+[data-theme="dark"] .badge-rep-source {
+    background: rgba(106,27,154,0.2);
+    color: #ce93d8;
+    border-color: rgba(206,147,216,0.25);
 }
 
 /* Global text color helpers for status (used in list, calendar number, and modal) */
@@ -748,49 +1349,157 @@ if ($result && $result->num_rows > 0) {
 .status-upcoming-color {
     color:#1565c0 !important;
 }
-.calendar-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:15px;
-    margin-top: -22px;
-    font-weight:600;
+/* ═══════════════════════════════════════════════════
+   CALENDAR WEEKDAYS HEADER — REDESIGNED
+═══════════════════════════════════════════════════ */
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 8px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    box-shadow: 0 3px 10px rgba(55,98,200,0.25);
 }
+.calendar-weekdays div {
+    padding: 9px 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.82);
+    text-align: center;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+/* Highlight weekend column headers */
+.calendar-weekdays div:first-child,
+.calendar-weekdays div:last-child {
+    color: #ffb3b3;
+    background: rgba(0,0,0,0.07);
+}
+[data-theme="dark"] .calendar-weekdays {
+    background: linear-gradient(135deg, #253880 0%, #1a2b6e 100%);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .calendar-weekdays div {
+    color: rgba(255,255,255,0.7);
+}
+[data-theme="dark"] .calendar-weekdays div:first-child,
+[data-theme="dark"] .calendar-weekdays div:last-child {
+    color: #ff9a9a;
+    background: rgba(0,0,0,0.12);
+}
+
+/* ═══════════════════════════════════════════════════
+   CALENDAR GRID — REDESIGNED CELLS
+═══════════════════════════════════════════════════ */
 .calendar-grid{
     display:grid;
     grid-template-columns:repeat(7,1fr);
-    gap:8px;
+    gap:6px;
 }
 .calendar-day {
-    padding: 10px;
-    text-align: center;
-    border-radius: 8px;
-    background: #f2f4f8;
+    padding: 8px 6px 6px;
+    text-align: center;       /* center inline/text content */
+    border-radius: 12px;
+    background: #f8faff;
+    border: 1.5px solid transparent;
     cursor: pointer;
     font-size: 13px;
-    min-height: 80px;
+    min-height: 88px;
     display: flex;
     flex-direction: column;
+    align-items: center;      /* center children horizontally */
     justify-content: flex-start;
-    gap: 5px;
-    color: #333;
-    transition: background 0.3s ease, color 0.3s ease;
+    gap: 4px;
+    color: #1e293b;
+    transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.15s;
+    position: relative;
+    overflow: visible;
+}
+/* Day number — the first child div */
+.calendar-day > div:first-child {
+    font-size: 13px;
+    font-weight: 600;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    line-height: 1;
+    flex-shrink: 0;
+    color: #334155;
+    transition: background 0.15s, color 0.15s;
+}
+/* TODAY INDICATOR — filled circle on the date number */
+.calendar-day.today > div:first-child {
+    background: #3762c8;
+    color: #fff !important;
+    font-weight: 800;
+    box-shadow: 0 2px 8px rgba(55,98,200,0.45);
+}
+[data-theme="dark"] .calendar-day.today > div:first-child {
+    background: #4f7ce8;
+    box-shadow: 0 2px 10px rgba(79,124,232,0.5);
+}
+.calendar-day.today {
+    border-color: rgba(55,98,200,0.3);
+    background: #eef2ff;
+}
+[data-theme="dark"] .calendar-day.today {
+    border-color: rgba(95,140,255,0.35);
+    background: rgba(55,98,200,0.12);
+}
+/* Hover — highlight only, no lift/transform */
+.calendar-day:not(:empty):hover {
+    background: #e8eeff;
+    border-color: rgba(55,98,200,0.30);
+    box-shadow: 0 0 0 2px rgba(55,98,200,0.13);
+}
+[data-theme="dark"] .calendar-day:not(:empty):hover {
+    background: rgba(55,98,200,0.15);
+    border-color: rgba(95,140,255,0.35);
+    box-shadow: 0 0 0 2px rgba(95,140,255,0.15);
+}
+/* Cell with open dropdown — ring highlight, no transform */
+.calendar-day.has-open-dropdown,
+.calendar-day.has-open-dropdown:hover {
+    box-shadow: 0 0 0 2px rgba(55,98,200,0.40) !important;
+    background: #e8eeff !important;
+    border-color: rgba(55,98,200,0.35) !important;
+}
+[data-theme="dark"] .calendar-day.has-open-dropdown,
+[data-theme="dark"] .calendar-day.has-open-dropdown:hover {
+    box-shadow: 0 0 0 2px rgba(95,140,255,0.50) !important;
+    background: rgba(55,98,200,0.18) !important;
+    border-color: rgba(95,140,255,0.45) !important;
 }
 .calendar-day .day-tasks {
     font-size: 11px;
     color: #333;
     margin-top: auto;
-    text-align: left;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
 }
-/* Weekend styling - light red background */
+/* Weekend styling */
 .calendar-day.weekend {
-    background: #ffe5e5 !important;
-    border: 1px solid rgba(244, 67, 54, 0.2);
+    background: #fff5f5 !important;
+    border-color: rgba(239,68,68,0.13) !important;
 }
-
+.calendar-day.weekend > div:first-child {
+    color: #dc2626;
+}
 [data-theme="dark"] .calendar-day.weekend {
-    background: rgba(244, 67, 54, 0.15) !important;
-    border: 1px solid rgba(244, 67, 54, 0.3);
+    background: rgba(239,68,68,0.09) !important;
+    border-color: rgba(239,68,68,0.22) !important;
+}
+[data-theme="dark"] .calendar-day.weekend > div:first-child {
+    color: #f87171;
 }
 
 /* Holiday badge */
@@ -833,31 +1542,82 @@ if ($result && $result->num_rows > 0) {
     box-shadow: 0 1px 3px rgba(66, 165, 245, 0.4);
 }
 
-/* Holiday/Event title in calendar day */
-.holiday-event-title {
-    font-size: 10px;
-    font-weight: 600;
-    color: #d32f2f;
-    margin-top: 2px;
-    line-height: 1.2;
-    text-align: center;
-}
-
-[data-theme="dark"] .holiday-event-title {
-    color: #ff6b6b;
-}
-
+/* Holiday/Event title in calendar day — truncated in cell, full on hover tooltip */
+.holiday-event-title,
 .event-title {
+    position: relative;
     font-size: 10px;
     font-weight: 600;
-    color: #1565c0;
     margin-top: 2px;
     line-height: 1.2;
     text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
 }
+.holiday-event-title { color: #d32f2f; }
+.event-title         { color: #1565c0; }
 
-[data-theme="dark"] .event-title {
-    color: #64b5f6;
+[data-theme="dark"] .holiday-event-title { color: #ff6b6b; }
+[data-theme="dark"] .event-title         { color: #64b5f6; }
+
+/* Full-name tooltip on hover — floats above the cell, never resizes it */
+.holiday-event-title::after,
+.event-title::after {
+    content: attr(data-full);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: normal;
+    word-break: break-word;
+    max-width: 180px;
+    min-width: 100px;
+    background: #1e293b;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.35;
+    padding: 5px 8px;
+    border-radius: 7px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 99999;
+    text-align: center;
+}
+[data-theme="dark"] .holiday-event-title::after,
+[data-theme="dark"] .event-title::after {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+/* Small arrow */
+.holiday-event-title::before,
+.event-title::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e293b;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 99999;
+}
+[data-theme="dark"] .holiday-event-title::before,
+[data-theme="dark"] .event-title::before {
+    border-top-color: #e2e8f0;
+}
+.holiday-event-title:hover::after,
+.holiday-event-title:hover::before,
+.event-title:hover::after,
+.event-title:hover::before {
+    opacity: 1;
 }
 
 /* Mobile-specific adjustments */
@@ -867,10 +1627,15 @@ if ($result && $result->num_rows > 0) {
         font-size: 8px;
         padding: 1px 4px;
     }
-    
+
     .holiday-event-title,
     .event-title {
         font-size: 9px;
+    }
+    .calendar-weekdays div {
+        font-size: 10px;
+        padding: 7px 0 6px;
+        letter-spacing: 0.06em;
     }
 }
 /* Calendar day with holiday/event - enhanced visibility */
@@ -906,10 +1671,16 @@ if ($result && $result->num_rows > 0) {
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
-    margin: 2px;
+    margin: 2px 0;
     cursor: pointer;
     font-size: 10px;
     font-weight: 600;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.3;
 }
 .task-btn:hover {
     background: #2a4fa3;
@@ -930,95 +1701,768 @@ if ($result && $result->num_rows > 0) {
     background:#1565c0;
 }
 .calendar-day.has-event{
-    background:#e0e7ff;
-    font-weight:600;
+    background: #e8eeff;
+    border-color: rgba(55,98,200,0.18);
 }
-.calendar-day:hover{background:#dbe3ff}
+[data-theme="dark"] .calendar-day.has-event{
+    background: rgba(55,98,200,0.13);
+    border-color: rgba(95,140,255,0.22);
+}
 .calendar-details{
     margin-top:15px;
     font-size:13px;
 }
 .hidden{display:none}
-.calendar-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    margin-bottom: 5px;
-    font-weight: 600;
-    color: #333;
-    text-align: center;
-    transition: color 0.3s ease;
+/* ═══════════════════════════════════════════════════════
+   MODALS — REDESIGNED
+═══════════════════════════════════════════════════════ */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 40, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 6500;
+    padding: 16px;
+    animation: modalBackdropIn 0.2s ease;
 }
-.calendar-weekdays div {
-    padding: 6px 0;
-    font-size: 13px;
+.modal.hidden { display: none !important; }
+
+@keyframes modalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-[data-theme="dark"] .calendar-weekdays {
+.modal-content {
+    background: #ffffff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.22), 0 4px 12px rgba(0,0,0,0.1);
+    animation: modalSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(24px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+/* ── Modal Header ── */
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px 16px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    flex-shrink: 0;
+}
+
+.chooser-header {
+    background: linear-gradient(135deg, #1e40af 0%, #1565c0 100%);
+}
+
+.modal-header-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.modal-header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1px;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.15);
     color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s ease, transform 0.15s ease;
 }
-.modal {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:2000;}
-.modal.hidden {display:none !important;}
-.modal-content {background:#fff; padding:20px; border-radius:12px; width:90%; max-width:500px; max-height:80%; overflow-y:auto; position:relative;}
-.modal-close {position:absolute; top:10px; right:15px; font-size:22px; cursor:pointer;}
-.modal h3 {margin-bottom:15px;}
-.modal-task-item {margin-bottom:10px; padding:8px; border-left:4px solid #3762c8; background:#f0f4ff; border-radius:4px;}
+.modal-close-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+/* ── Modal Body ── */
+.modal-body {
+    overflow-y: auto;
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: none;
+}
+.modal-body::-webkit-scrollbar { display: none; }
+
+/* ── Task Detail Card (inside taskModal) ── */
+.modal-task-item {
+    background: #f7f9ff;
+    border: 1px solid rgba(55, 98, 200, 0.12);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.modal-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+}
+
+.modal-task-row-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(55, 98, 200, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.modal-task-row-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-task-row-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 1px;
+}
+
+.modal-task-row-value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111827;
+    word-break: break-word;
+}
+
+/* Status pill inside modal */
+.modal-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+.modal-status-pill.upcoming  { background: rgba(21,101,192,0.1);  color: #1565c0; }
+.modal-status-pill.ongoing   { background: rgba(234,179,8,0.15); color: #713f12; }
+.modal-priority-pill.medium   { background: rgba(234,179,8,0.15); color: #713f12; }
+.modal-status-pill.delayed   { background: rgba(198,40,40,0.1);   color: #c62828; }
+.modal-status-pill.completed { background: rgba(46,125,50,0.1);   color: #2e7d32; }
+
+.modal-priority-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+.modal-priority-pill.low      { background: rgba(46,125,50,0.1);   color: #2e7d32; }
+.modal-priority-pill.medium   { background: rgba(249,168,37,0.12); color: #a16207; }
+.modal-priority-pill.high     { background: rgba(198,40,40,0.1);   color: #c62828; }
+.modal-priority-pill.critical { background: rgba(183,28,28,0.12);  color: #b71c1c; }
+
+/* ── Chooser task buttons ── */
+.chooser-task-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid rgba(55, 98, 200, 0.15);
+    border-radius: 14px;
+    background: #f7f9ff;
+    cursor: pointer;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.chooser-task-btn:hover {
+    background: #eef2ff;
+    border-color: rgba(55, 98, 200, 0.35);
+    transform: translateX(3px);
+}
+.chooser-task-btn:active { transform: translateX(1px) scale(0.99); }
+
+.chooser-task-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.chooser-task-dot.upcoming  { background: #1565c0; }
+.chooser-task-dot.ongoing   { background: #fdd835; outline: 1px solid rgba(0,0,0,0.15); }
+.chooser-task-dot.delayed   { background: #c62828; }
+.chooser-task-dot.completed { background: #2e7d32; }
+
+.chooser-task-info { flex: 1; min-width: 0; }
+.chooser-task-name {
+    font-weight: 700;
+    font-size: 13px;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chooser-task-sub {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chooser-arrow {
+    font-size: 14px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] .modal-content {
+    background: #1e2235;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .modal-task-item {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .modal-task-row-icon {
+    background: rgba(55,98,200,0.2);
+}
+[data-theme="dark"] .modal-task-row-label { color: #9ca3af; }
+[data-theme="dark"] .modal-task-row-value { color: #f1f5f9; }
+[data-theme="dark"] .chooser-task-btn {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+    color: #e2e8f0;
+}
+[data-theme="dark"] .chooser-task-btn:hover {
+    background: rgba(55,98,200,0.15);
+    border-color: rgba(95,140,255,0.4);
+}
+[data-theme="dark"] .chooser-task-name { color: #f1f5f9; }
+[data-theme="dark"] .chooser-task-sub  { color: #94a3b8; }
+[data-theme="dark"] .chooser-arrow     { color: #64748b; }
+[data-theme="dark"] .modal-status-pill.upcoming  { background: rgba(21,101,192,0.2);  color: #90caf9; }
+[data-theme="dark"] .modal-status-pill.ongoing   { background: rgba(234,179,8,0.18); color: #fde047; }
+[data-theme="dark"] .modal-priority-pill.medium   { background: rgba(234,179,8,0.18); color: #fde047; }
+[data-theme="dark"] .modal-status-pill.delayed   { background: rgba(198,40,40,0.2);   color: #ef9a9a; }
+[data-theme="dark"] .modal-status-pill.completed { background: rgba(46,125,50,0.2);   color: #a5d6a7; }
+[data-theme="dark"] .modal-priority-pill.low      { background: rgba(46,125,50,0.2);   color: #a5d6a7; }
+[data-theme="dark"] .modal-priority-pill.medium   { background: rgba(249,168,37,0.15); color: #fdd835; }
+[data-theme="dark"] .modal-priority-pill.high     { background: rgba(198,40,40,0.2);   color: #ef9a9a; }
+[data-theme="dark"] .modal-priority-pill.critical { background: rgba(183,28,28,0.2);   color: #ef5350; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    .modal-content  { border-radius: 18px; max-width: 100%; }
+    .modal-header   { padding: 14px 16px 12px; gap: 10px; }
+    .modal-header-icon { width: 36px; height: 36px; font-size: 16px; }
+    .modal-title    { font-size: 14px; }
+    .modal-body     { padding: 14px 16px 18px; }
+    .chooser-task-btn { padding: 12px 14px; }
+}
 
 
-/* === Calendar Details Card === */
+/* ═══════════════════════════════════════════════════════
+   CALENDAR DETAILS CARD — REDESIGNED
+═══════════════════════════════════════════════════════ */
 .calendar-details-card {
     position: relative;
     margin-top: 16px;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
-    border: 1px solid #000;
-    padding: 12px 14px 35px;  /* ← INCREASED from 30px to 35px to give more room */
-    max-height: 180px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1.5px solid rgba(55, 98, 200, 0.15);
+    box-shadow: 0 4px 20px rgba(55, 98, 200, 0.08), 0 1px 4px rgba(0,0,0,0.05);
     overflow: hidden;
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
-    color: #000;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Scrollable content */
+[data-theme="dark"] .calendar-details-card {
+    background: #1a1e30;
+    border-color: rgba(95, 140, 255, 0.18);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+}
+
+/* Header strip — redesigned with icon badge */
+.cal-details-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px 10px;
+    background: linear-gradient(90deg, #3762c8 0%, #2851b3 100%);
+    border-radius: 0;
+}
+
+.cal-details-header-icon-wrap {
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 15px;
+}
+
+.cal-details-icon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.cal-details-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cal-details-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.cal-details-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.01em;
+}
+
+/* Scrollable body */
 .calendar-details {
-    max-height: 140px;
+    max-height: 280px !important;
+    padding-bottom: 0 !important;
     overflow-y: auto;
-    padding-right: 8px;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    color: inherit;
+    padding: 12px 16px 10px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    transition: color 0.3s ease;
 }
-/* Hide scrollbar (cross-browser) */
-.calendar-details::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+.calendar-details::-webkit-scrollbar { display: none; }
+
+/* Empty state */
+.cal-details-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0 14px;
+    color: var(--text-secondary);
 }
-.calendar-details {
-    scrollbar-width: none; /* Firefox */
+.cal-details-empty-icon {
+    width: 52px;
+    height: 52px;
+    background: rgba(55,98,200,0.07);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3762c8;
+    opacity: 0.5;
 }
-/* Scroll indicator (fade + arrow) */
-.scroll-indicator {
+[data-theme="dark"] .cal-details-empty-icon {
+    background: rgba(95,140,255,0.1);
+    color: #8ab4f8;
+}
+.cal-details-empty p {
+    margin: 0;
+    font-size: 12.5px;
+    text-align: center;
+    line-height: 1.6;
+    opacity: 0.55;
+}
+
+/* REPLACE with: */
+.cal-details-scroll-hint {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 0 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #3762c8;
+    letter-spacing: 0.04em;
+    animation: hintBounce 1.8s ease-in-out infinite;
+    background: linear-gradient(to top, rgba(240,244,255,1) 0%, rgba(240,244,255,0.9) 70%, transparent 100%);
     position: absolute;
-    bottom: 10px;  /* ← INCREASED from 6px to 10px for better visibility */
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 20px;  /* ← INCREASED from 18px to make it more visible */
-    color: #333;  /* ← DARKER color for better contrast */
-    opacity: 0.9;  /* ← HIGHER opacity */
+    bottom: 0;
+    left: 0;
+    right: 0;
     pointer-events: none;
-    animation: scrollHint 1.6s infinite ease-in-out;
-    z-index: 10;
 }
-/* Dark Mode - Scroll Indicator */
-[data-theme="dark"] .scroll-indicator {
-    color: #bbb;  /* ← Make it lighter for dark mode */
+
+[data-theme="dark"] .cal-details-scroll-hint {
+    color: #8ab4f8;
+    background: linear-gradient(to top, rgba(26,26,26,1) 0%, rgba(26,26,26,0.9) 70%, transparent 100%);
 }
-/* Arrow bounce animation */
-@keyframes scrollHint {
-    0%   { transform: translate(-50%, 0); opacity: 0.4; }
-    50%  { transform: translate(-50%, 6px); opacity: 0.8; }
-    100% { transform: translate(-50%, 0); opacity: 0.4; }
+
+.cal-details-scroll-hint.visible {
+    display: flex;
 }
+
+@keyframes hintBounce {
+    0%, 100% { transform: translateY(0); opacity: 0.6; }
+    50%       { transform: translateY(3px); opacity: 1; }
+}
+
+/* Content inside details (task rows, holiday notice) */
+.cal-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(55,98,200,0.08);
+}
+.cal-task-row:last-child { border-bottom: none; }
+
+.cal-task-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+.cal-task-dot.pending   { background: #ff9800; }
+.cal-task-dot.ongoing   { background: #fdd835; outline: 1px solid rgba(0,0,0,0.15); }
+.cal-task-dot.delayed   { background: #c62828; }
+.cal-task-dot.completed { background: #2e7d32; }
+.cal-task-dot.upcoming  { background: #1565c0; }
+
+.cal-task-info { flex: 1; min-width: 0; }
+.cal-task-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cal-task-meta {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+.cal-holiday-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+.cal-holiday-row.holiday {
+    background: rgba(255, 87, 34, 0.09);
+    color: #bf360c;
+    border-left: 3px solid #ff5722;
+}
+.cal-holiday-row.event {
+    background: rgba(33, 150, 243, 0.09);
+    color: #0d47a1;
+    border-left: 3px solid #2196f3;
+}
+[data-theme="dark"] .cal-holiday-row.holiday { background: rgba(255,107,61,0.15); color: #ff8a65; }
+[data-theme="dark"] .cal-holiday-row.event   { background: rgba(66,165,245,0.15); color: #64b5f6; }
+
+.cal-weekend-tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 20px;
+    background: rgba(255,87,34,0.1);
+    color: #d84315;
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+}
+[data-theme="dark"] .cal-weekend-tag { background: rgba(255,107,61,0.15); color: #ff8a65; }
+
+.cal-no-tasks {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    text-align: center;
+    padding: 8px 0 4px;
+}
+
+/* ── Mobile tweaks ── */
+@media (max-width: 768px) {
+    .calendar-details-card {
+        margin-top: 12px;
+        border-radius: 14px;
+    }
+    .cal-details-header {
+        padding: 9px 14px 8px;
+        gap: 8px;
+    }
+    .cal-details-header-icon-wrap {
+        width: 28px;
+        height: 28px;
+        font-size: 13px;
+    }
+    .cal-details-title  { font-size: 11.5px; }
+    .cal-details-label  { font-size: 8px; }
+    .calendar-details   { max-height: 130px; padding: 10px 14px 8px; font-size: 13px; }
+    .cal-task-name      { font-size: 12.5px; }
+    .calendar-day {
+        min-height: 64px;
+        padding: 6px 4px;
+        border-radius: 10px;
+    }
+    .calendar-day > div:first-child {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        font-size: 11px;
+    }
+}
+
+/* ── Medium screen tweaks ── */
+@media (min-width: 769px) and (max-width: 1200px) {
+    .calendar-details-card { margin-top: 12px; }
+    .calendar-details      { max-height: 120px; font-size: 12.5px; padding: 10px 14px 8px; }
+}
+
+/* ── Remove old scroll-indicator (replaced) ── */
+.scroll-indicator { display: none !important; }
+
+/* ── Modal Navigation Bar ── */
+.modal-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    background: rgba(55, 98, 200, 0.06);
+    border-bottom: 1px solid rgba(55, 98, 200, 0.1);
+    flex-shrink: 0;
+}
+
+.modal-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1.5px solid rgba(55, 98, 200, 0.2);
+    background: #fff;
+    color: #3762c8;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s, opacity 0.15s;
+    flex-shrink: 0;
+}
+.modal-nav-btn:hover:not(:disabled) {
+    background: #eef2ff;
+    border-color: #3762c8;
+    transform: scale(1.08);
+}
+.modal-nav-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+.modal-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.modal-nav-counter {
+    font-size: 12px;
+    font-weight: 700;
+    color: #3762c8;
+    letter-spacing: 0.05em;
+    background: rgba(55, 98, 200, 0.1);
+    padding: 3px 12px;
+    border-radius: 999px;
+}
+
+/* Dark Mode */
+[data-theme="dark"] .modal-nav-bar {
+    background: rgba(55, 98, 200, 0.1);
+    border-bottom-color: rgba(55, 98, 200, 0.2);
+}
+[data-theme="dark"] .modal-nav-btn {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(95, 140, 255, 0.3);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .modal-nav-btn:hover:not(:disabled) {
+    background: rgba(55, 98, 200, 0.2);
+    border-color: #5f8cff;
+}
+[data-theme="dark"] .modal-nav-counter {
+    color: #8ab4f8;
+    background: rgba(55, 98, 200, 0.2);
+}
+
+/* Slide animation for task switching */
+@keyframes taskSlideLeft {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes taskSlideRight {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.modal-body.slide-left  { animation: taskSlideLeft  0.2s ease; }
+.modal-body.slide-right { animation: taskSlideRight 0.2s ease; }
+
+/* Mobile */
+@media (max-width: 768px) {
+    .modal-nav-bar { padding: 7px 16px; }
+    .modal-nav-btn { width: 30px; height: 30px; font-size: 13px; }
+    .modal-nav-counter { font-size: 11px; padding: 2px 10px; }
+}
+
+/* ── Status-themed Modal Headers ── */
+.modal-header.theme-upcoming  { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); }
+.modal-header.theme-ongoing   { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); }
+
+/* Dark text for yellow header — white on yellow is unreadable */
+.modal-header.theme-ongoing .modal-label  { color: rgba(28, 20, 0, 0.6); }
+.modal-header.theme-ongoing .modal-title  { color: #1c1400; }
+.modal-header.theme-ongoing .modal-close-btn {
+    color: #1c1400;
+    background: rgba(0, 0, 0, 0.1);
+}
+.modal-header.theme-ongoing .modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.18);
+}
+.modal-header.theme-ongoing .modal-header-icon {
+    background: rgba(0, 0, 0, 0.1);
+}
+.modal-header.theme-delayed   { background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%); }
+.modal-header.theme-completed { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); }
+
+/* Nav bar accent per status */
+.modal-nav-bar.theme-upcoming  { background: rgba(21,101,192,0.07);  border-bottom-color: rgba(21,101,192,0.15); }
+.modal-nav-bar.theme-ongoing   { background: rgba(234,179,8,0.1);   border-bottom-color: rgba(234,179,8,0.2); }
+.modal-nav-bar.theme-delayed   { background: rgba(198,40,40,0.07);   border-bottom-color: rgba(198,40,40,0.15); }
+.modal-nav-bar.theme-completed { background: rgba(46,125,50,0.07);   border-bottom-color: rgba(46,125,50,0.15); }
+
+/* Nav buttons accent per status */
+.modal-nav-bar.theme-upcoming  .modal-nav-btn { color: #1565c0; border-color: rgba(21,101,192,0.25); }
+.modal-nav-bar.theme-upcoming  .modal-nav-btn:hover:not(:disabled) { background: #e3f2fd; border-color: #1565c0; }
+.modal-nav-bar.theme-upcoming  .modal-nav-counter { color: #1565c0; background: rgba(21,101,192,0.1); }
+
+.modal-nav-bar.theme-ongoing   .modal-nav-btn { color: #78350f; border-color: rgba(234,179,8,0.35); }
+.modal-nav-bar.theme-ongoing   .modal-nav-btn:hover:not(:disabled) { background: #fef9c3; border-color: #eab308; }
+.modal-nav-bar.theme-ongoing   .modal-nav-counter { color: #78350f; background: rgba(234,179,8,0.15); }
+
+.modal-nav-bar.theme-delayed   .modal-nav-btn { color: #c62828; border-color: rgba(198,40,40,0.25); }
+.modal-nav-bar.theme-delayed   .modal-nav-btn:hover:not(:disabled) { background: #ffebee; border-color: #c62828; }
+.modal-nav-bar.theme-delayed   .modal-nav-counter { color: #c62828; background: rgba(198,40,40,0.1); }
+
+.modal-nav-bar.theme-completed .modal-nav-btn { color: #2e7d32; border-color: rgba(46,125,50,0.25); }
+.modal-nav-bar.theme-completed .modal-nav-btn:hover:not(:disabled) { background: #e8f5e9; border-color: #2e7d32; }
+.modal-nav-bar.theme-completed .modal-nav-counter { color: #2e7d32; background: rgba(46,125,50,0.1); }
+
+/* Task item left border accent per status */
+.modal-task-item.theme-upcoming  { border-left: 3px solid #1565c0; }
+.modal-task-item.theme-ongoing   { border-left: 3px solid #eab308; }
+.modal-task-item.theme-delayed   { border-left: 3px solid #c62828; }
+.modal-task-item.theme-completed { border-left: 3px solid #2e7d32; }
+
+/* Row icon background tint per status */
+.modal-task-item.theme-upcoming  .modal-task-row-icon { background: rgba(21,101,192,0.1); }
+.modal-task-item.theme-ongoing   .modal-task-row-icon { background: rgba(234,179,8,0.12); }
+.modal-task-item.theme-delayed   .modal-task-row-icon { background: rgba(198,40,40,0.1); }
+.modal-task-item.theme-completed .modal-task-row-icon { background: rgba(46,125,50,0.1); }
+
+/* Dark mode overrides */
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-btn { color: #90caf9; border-color: rgba(144,202,249,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-btn:hover:not(:disabled) { background: rgba(21,101,192,0.2); border-color: #90caf9; }
+[data-theme="dark"] .modal-nav-bar.theme-upcoming  .modal-nav-counter { color: #90caf9; background: rgba(21,101,192,0.2); }
+
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-btn { color: #fde047; border-color: rgba(253,224,71,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-btn:hover:not(:disabled) { background: rgba(234,179,8,0.18); border-color: #fde047; }
+[data-theme="dark"] .modal-nav-bar.theme-ongoing   .modal-nav-counter { color: #fde047; background: rgba(234,179,8,0.18); }
+
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-btn { color: #ef9a9a; border-color: rgba(239,154,154,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-btn:hover:not(:disabled) { background: rgba(198,40,40,0.2); border-color: #ef9a9a; }
+[data-theme="dark"] .modal-nav-bar.theme-delayed   .modal-nav-counter { color: #ef9a9a; background: rgba(198,40,40,0.2); }
+
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-btn { color: #a5d6a7; border-color: rgba(165,214,167,0.25); }
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-btn:hover:not(:disabled) { background: rgba(46,125,50,0.2); border-color: #a5d6a7; }
+[data-theme="dark"] .modal-nav-bar.theme-completed .modal-nav-counter { color: #a5d6a7; background: rgba(46,125,50,0.2); }
 /* ===============================
    🧾 TASK CHOOSER BUTTON FIX
 ================================ */
@@ -1036,26 +2480,418 @@ if ($result && $result->num_rows > 0) {
     word-break: break-word;
 }
 
-/* -- Start: ListView Search Styles -- */
-#scheduleSearch {
-    width: 100%;
-    font-size: 1rem;
-    padding: 9px 11px;
-    border: 1px solid #b1b8d0;
-    border-radius: 8px;
-    margin-bottom: 18px;
-    margin-top: 0;
-    outline: none;
-    background: #f8faff;
-    color: #23285c;
+/* ═══════════════════════════════════════════════════════
+   MOBILE TOOLBARS — matches desktop calendar-header + list-toolbar
+   Hidden on desktop, shown on mobile via CSS media query.
+   JS only toggles WHICH mobile toolbar is active (list vs calendar).
+═══════════════════════════════════════════════════════ */
+.mob-toolbar {
+    display: none; /* hidden on desktop always */
     box-sizing: border-box;
-    transition: border 0.19s, box-shadow 0.19s;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    margin-bottom: 0px;
+    gap: 8px;
+    align-items: center;
 }
-#scheduleSearch:focus {
-    border: 1.5px solid #3762c8;
-    box-shadow: 0 2px 8px rgba(55,98,200,0.06);
+
+[data-theme="dark"] .mob-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+
+/* On mobile: show whichever toolbar JS marks active */
+@media (max-width: 768px) {
+    /* Hide desktop toolbars */
+    .calendar-header,
+    .list-view-toolbar {
+        display: none !important;
+    }
+
+    /* Mobile list toolbar: flex row */
+    #mobileListControls.mob-active {
+        display: flex;
+    }
+
+    /* Mobile calendar header: 3-col grid */
+    #mobileCalendarControls.mob-active {
+        display: grid;
+    }
+}
+
+/* ── List toolbar layout ── */
+#mobileListControls {
+    flex-direction: row;
+}
+
+/* ── Calendar header: 3-column grid for true centering ── */
+.mob-cal-header {
+    grid-template-columns: 1fr auto 1fr;
+}
+.mob-cal-left  { display: flex; align-items: center; justify-content: flex-start; }
+.mob-cal-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* ── Mobile month label chip ── */
+#mobileMonthLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+#mobileMonthLabel:hover {
+    background: rgba(55, 98, 200, 0.1);
+    color: #3762c8;
+}
+[data-theme="dark"] #mobileMonthLabel { color: #e2e8f0; }
+[data-theme="dark"] #mobileMonthLabel:hover {
+    background: rgba(95, 140, 255, 0.18);
+    color: #8ab4f8;
+}
+#mobileMonthLabel::after { display: none; }
+
+/* ── Nav arrow buttons ── */
+.mob-nav-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(55, 98, 200, 0.22);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.85);
+    color: #3762c8;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+    box-shadow: 0 1px 4px rgba(55,98,200,0.10);
+    box-sizing: border-box;
+    padding: 0;
+}
+.mob-nav-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(55,98,200,0.28);
+}
+.mob-nav-btn:active { transform: scale(0.94); }
+
+[data-theme="dark"] .mob-nav-btn {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.28);
+    color: #8ab4f8;
+    box-shadow: none;
+}
+[data-theme="dark"] .mob-nav-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+}
+
+/* ── Icon-only view-switch buttons (calendar ↔ list) ── */
+.mob-icon-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(55, 98, 200, 0.22);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.85);
+    color: #3762c8;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+    box-shadow: 0 1px 4px rgba(55,98,200,0.10);
+    box-sizing: border-box;
+    padding: 0;
+}
+.mob-icon-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(55,98,200,0.28);
+}
+.mob-icon-btn:active { transform: scale(0.94); }
+
+[data-theme="dark"] .mob-icon-btn {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.28);
+    color: #8ab4f8;
+    box-shadow: none;
+}
+[data-theme="dark"] .mob-icon-btn:hover {
+    background: #3762c8;
+    border-color: #3762c8;
+    color: #fff;
+}
+
+/* ── Mobile search wrap ── */
+.mob-search-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+.mob-search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .mob-search-wrap svg { color: #64748b; }
+
+#mobileScheduleSearch {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px 0 32px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255,255,255,0.85);
+    font-size: 12.5px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+#mobileScheduleSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#mobileScheduleSearch::placeholder { color: #94a3b8; font-size: 12px; }
+
+[data-theme="dark"] #mobileScheduleSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #mobileScheduleSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #mobileScheduleSearch::placeholder { color: #64748b; }
+/* -- Start: ListView Search Styles -- */
+/* #scheduleSearch styles are defined in the toolbar block above */
+/* ── Calendar Legend ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   LEGEND — UNIFIED DESIGN (calendar view + list view)
+═══════════════════════════════════════════════════════ */
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    background: var(--bg-tertiary, #f7f9ff);
+    border: 1px solid var(--border-color, rgba(55,98,200,0.10));
+    border-radius: 12px;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+[data-theme="dark"] .calendar-legend {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.09);
+}
+
+/* Each pill chip */
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 7px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary, #fff);
+    border: 1px solid var(--border-color, rgba(0,0,0,0.07));
+    white-space: nowrap;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] .legend-item {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.10);
+    color: var(--text-primary);
+    box-shadow: none;
+}
+
+/* Status dot inside each pill */
+.legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+/* Dot colors — match task-btn status colors */
+.legend-upcoming  { background: #1565c0; }
+.legend-ongoing   { background: #f59e0b; }
+.legend-delayed   { background: #c62828; }
+.legend-completed { background: #2e7d32; }
+
+/* Special legend shapes */
+/* Today — filled blue circle (mirrors the date number indicator) */
+.legend-dot.legend-today {
+    background: #3762c8;
+    box-shadow: 0 0 0 2px rgba(55,98,200,0.30);
+}
+/* Holiday — orange square */
+.legend-dot.legend-holiday {
+    background: #ff5722;
+    border-radius: 3px;
+}
+/* Event — blue square */
+.legend-dot.legend-event {
+    background: #2196f3;
+    border-radius: 3px;
+}
+/* Weekend — red dot */
+.legend-dot.legend-weekend {
+    background: #dc2626;
+}
+
+/* Pill border accent per status */
+.legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.22); }
+.legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.28); }
+.legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.22); }
+.legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.22); }
+.legend-item:has(.legend-today)     { border-color: rgba(55,98,200,0.30); }
+.legend-item:has(.legend-holiday)   { border-color: rgba(255,87,34,0.30); }
+.legend-item:has(.legend-event)     { border-color: rgba(33,150,243,0.28); }
+.legend-item:has(.legend-weekend)   { border-color: rgba(220,38,38,0.22); }
+
+/* ── Clickable filter legend pills ── */
+.legend-item[data-filter] {
+    cursor: pointer;
+    user-select: none;
+    transition: box-shadow 0.15s, border-color 0.15s, background 0.15s, transform 0.12s, opacity 0.15s;
+}
+.legend-item[data-filter]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.10);
+}
+.legend-item[data-filter]:active { transform: scale(0.96); }
+
+/* Active (selected) state */
+.legend-item[data-filter].legend-active {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.13);
+    font-weight: 700;
+}
+.legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13); border-color: #1565c0; color: #1565c0; }
+.legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
+.legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
+.legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
+
+/* Dimmed state when another filter is active */
+.legend-item[data-filter].legend-dimmed {
+    opacity: 0.42;
+}
+
+[data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
+[data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
+[data-theme="dark"] .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
+[data-theme="dark"] .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
+
+/* Calendar day dimmed when filter is active and day has no matching tasks */
+.calendar-day.legend-filter-dim { opacity: 0.35; pointer-events: none; }
+.calendar-day.legend-filter-dim.today { opacity: 0.55; }
+
+/* Filter indicator badge shown in list & calendar toolbars */
+#legendFilterBadge, #legendFilterBadgeCal {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(55,98,200,0.10);
+    border: 1.5px solid rgba(55,98,200,0.22);
+    color: #3762c8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+#legendFilterBadge.visible, #legendFilterBadgeCal.visible { display: inline-flex; }
+#legendFilterBadge:hover, #legendFilterBadgeCal:hover { background: rgba(55,98,200,0.18); }
+[data-theme="dark"] #legendFilterBadge, [data-theme="dark"] #legendFilterBadgeCal {
+    background: rgba(95,140,255,0.14);
+    border-color: rgba(95,140,255,0.30);
+    color: #8ab4f8;
+}
+
+[data-theme="dark"] .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.40); }
+[data-theme="dark"] .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.40); }
+[data-theme="dark"] .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.40); }
+[data-theme="dark"] .legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.40); }
+[data-theme="dark"] .legend-item:has(.legend-today)     { border-color: rgba(95,140,255,0.45); }
+[data-theme="dark"] .legend-item:has(.legend-holiday)   { border-color: rgba(255,107,61,0.45); }
+[data-theme="dark"] .legend-item:has(.legend-event)     { border-color: rgba(66,165,245,0.42); }
+[data-theme="dark"] .legend-item:has(.legend-weekend)   { border-color: rgba(248,113,113,0.38); }
+
+/* Calendar top-legend spacing */
+.calendar-legend-top {
+    margin-top: -10px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+}
+
+/* List view legend spacing */
+#scheduleView .calendar-legend {
+    margin-bottom: 14px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .calendar-legend {
+        gap: 5px;
+        padding: 6px 8px;
+        border-radius: 10px;
+    }
+    .legend-item {
+        font-size: 10.5px;
+        padding: 3px 8px 3px 6px;
+        gap: 5px;
+    }
+    .legend-dot {
+        width: 8px;
+        height: 8px;
+    }
+}
+
+/* ── Expand the details-card to fit scroll hint ───────── */
+.calendar-details-card {
+    max-height: 240px !important;
+    padding-bottom: 4px !important;
+}
+.scroll-indicator {
+    bottom: 4px !important;
 }
 /* -- End: ListView Search Styles -- */
+.search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
+[data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
+.sched-location, .sched-date { display: inline; }
 /* =========================
    MOBILE VIEW ONLY
 ========================= */
@@ -1250,36 +3086,6 @@ if ($result && $result->num_rows > 0) {
 /* ===============================
     Clickable Month Label Indicator
 ================================ */
-#monthLabel,
-#mobileMonthLabel {
-    cursor: pointer;
-    position: relative;
-    padding-right: 18px;
-}
-
-#monthLabel::after,
-#mobileMonthLabel::after {
-    content: "▾";
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.9em;
-    opacity: 0.6;
-    transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-#monthLabel:hover::after,
-#mobileMonthLabel:hover::after {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.2);
-}
-
-#monthLabel:hover,
-#mobileMonthLabel:hover {
-    text-decoration: underline;
-}
-
 @media (min-width: 769px) and (max-width: 1200px) {
     /* Card padding reduction */
     .card {
@@ -1374,8 +3180,9 @@ if ($result && $result->num_rows > 0) {
 
     /* Weekday label row */
     .calendar-weekdays div {
-        font-size: 11px !important;
-        padding: 4px 0 !important;
+        font-size: 10px !important;
+        padding: 7px 0 6px !important;
+        letter-spacing: 0.07em !important;
     }
 
     /* Calendar header */
@@ -1409,18 +3216,14 @@ if ($result && $result->num_rows > 0) {
 
     /* Calendar details card */
     .calendar-details-card {
-        padding: 10px 12px 32px !important;
+        padding: 10px 12px 8px !important;
     }
 
     .calendar-details {
         font-size: 13px !important;
     }
 
-    /* Schedule list view */
-    .schedule-btn {
-        width: auto !important;
-        padding: 8px 14px !important;
-    }
+    /* Schedule list view — button handled by .view-switch-btn */
 
     /* Search input in list view */
     #scheduleSearch {
@@ -1506,12 +3309,9 @@ Sidebar (250px) takes the most relative space here.
 
     /* Weekday labels */
     .calendar-weekdays div {
-        font-size: 10px !important;
-        padding: 3px 0 !important;
-        /* Abbreviate to 3 chars at this size */
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
+        font-size: 9px !important;
+        padding: 6px 0 5px !important;
+        letter-spacing: 0.05em !important;
     }
 
     /* Holiday badges - minimal */
@@ -1584,12 +3384,14 @@ Sidebar (250px) takes the most relative space here.
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 5000;
         box-shadow: 0 4px 18px var(--shadow-color);
         border-bottom: 1px solid var(--border-color);
         transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
     .mobile-toggle {
         position: absolute;
         left: 14px;
@@ -1601,252 +3403,6 @@ Sidebar (250px) takes the most relative space here.
         height: 38px;
         font-size: 20px;
         cursor: pointer;
-    }
-    .mobile-top-nav img {
-        height: 42px;
-        object-fit: contain;
-    }
-    .mobile-clock {
-        position: absolute;
-        right: 56px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
-        transition: color 0.3s ease;
-    }
-    .mobile-notif-btn {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 38px;
-        height: 38px;
-        z-index: 1;
-    }
-
-    /* === MOBILE SIDEBAR DARK MODE POSITION === */
-    .mobile-dark-mode-btn {
-        display: flex;
-        position: absolute;
-        margin-top: 42px;
-        top: 18px;
-        right: 18px;
-        width: 38px;
-        height: 38px;
-        z-index: 1005;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Align profile properly */
-    .sidebar-profile-btn {
-        position: absolute;
-        top: 18px;
-        left: 18px;
-        width: 42px;
-        height: 42px;
-    }
-
-    .sidebar-top {
-        position: relative; /* anchor for absolute children */
-    }
-
-    /* Center logo between profile & dark mode */
-    .site-logo {
-        margin-top: 60px;
-        text-align: center;
-    }
-
-    /* Show sidebar, sidebar nav rules */
-    .sidebar-nav {
-        left: -110%;
-        width: calc(100% - 24px);
-        height: calc(100% - 24px);
-        top: 12px;
-        bottom: 12px;
-        border-radius: 18px;
-        transition: left 0.35s ease;
-        z-index: 4000;
-    }
-
-    .sidebar-nav.mobile-active {
-        left: 12px;
-    }
-
-    /* Disable desktop collapse behavior */
-    .sidebar-nav.collapsed {
-        width: calc(100% - 24px);
-    }
-    
-    /* Show mobile dark mode button only in mobile view */
-    @media (max-width: 768px) {
-        .mobile-dark-mode-btn {
-            display: flex;
-        }
-    }
-    
-    /* Hide dark mode button in desktop sidebar */
-    @media (min-width: 769px) {
-        .mobile-dark-mode-btn {
-            display: none !important;
-        }
-    }
-
-    /* Show mobile top nav in mobile */
-    .mobile-top-nav {
-        display: flex;
-    }
-
-    /* MOBILE CONTROLS (INSIDE CARD) */
-    .mobile-controls {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;        /* allow wrapping on tiny screens */
-        gap: 6px;               /* smaller gap for tight screens */
-        margin: 0 4px 12px 4px;
-        padding: 10px 12px;
-        background: rgba(255,255,255,0.92);
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    /* LIST VIEW CONTROLS */
-    #mobileListControls input {
-        flex: 1 1 auto;                           /* grow and shrink */
-        min-width: 100px;                         /* prevent too small */
-        max-width: calc(100% - 50px);             /* slightly more room to reduce space */
-        padding: 8px 8px;                         /* less horizontal padding */
-        border-radius: 10px;
-        border: 1px solid #b1b8d0;
-        font-size: 0.9rem;
-        margin-right: 4px;                        /* reduce space between input and button */
-    }
-    /* Mobile List → Calendar button matches calendar button style */
-    #mobileListControls button.mobile-calendar-btn {
-        flex: 0 0 38px;                   /* slightly less width */
-        height: 38px;                     /* match input height if needed */
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        font-size: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 0;
-        margin: 0;
-        transition: transform 0.1s ease-in-out;
-    }
-
-    /* Active touch scale effect like calendar buttons */
-    #mobileListControls button.mobile-calendar-btn:active {
-        transform: scale(0.95);
-    }
-
-    /* CALENDAR CONTROLS */
-    #mobileCalendarControls {
-        display: flex;
-        flex-wrap: wrap;           /* wrap if space is tight */
-        align-items: center;
-        justify-content: space-between;
-        gap: 4px;
-        padding: 8px 10px;
-    }
-
-    /* Month label centered & responsive */
-    #mobileCalendarControls span#mobileMonthLabel {
-        flex: 1 1 auto;           /* grow to fill space */
-        min-width: 80px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 0.95rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* Buttons responsive */
-    #mobileCalendarControls button {
-        flex: 0 0 auto;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0;
-        margin: 0;
-    }
-    #mobileToListBtn {
-        flex: 0 0 auto;
-        min-width: 36px;
-        padding: 0 6px; /* allow icon+text to fit */
-    }
-
-    /* Active touch scale */
-    #mobileCalendarControls button:active {
-        transform: scale(0.95);
-    }
-
-    /* Hide desktop controls INSIDE card on mobile */
-    #scheduleView > div:first-child,
-    .calendar-header {
-        display: none !important;
-    }
-
-    /* Hide desktop sidebar initially */
-    .sidebar-nav {
-        left: -110%;
-        width: calc(100% - 24px);
-        height: calc(100% - 24px);
-        top: 12px;
-        bottom: 12px;
-        border-radius: 18px;
-        transition: left 0.35s ease;
-        z-index: 4000;
-    }
-
-    /* Show sidebar when active */
-    .sidebar-nav.mobile-active {
-        left: 12px;
-    }
-
-    /* Disable desktop collapse behavior */
-    .sidebar-nav.collapsed {
-        width: calc(100% - 24px);
-    }
-
-    /* Main content always full width */
-    .main-content,
-    .main-content.expanded {
-        margin-left: 0 !important;
-        padding-top: 90px;
-    }
-
-    /* MOBILE TOP NAV */
-    .mobile-top-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 64px;
-        background: var(--bg-secondary);
-        backdrop-filter: blur(12px);
-        align-items: center;
-        justify-content: center;
-        z-index: 5000;
-        box-shadow: 0 4px 18px var(--shadow-color);
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
     /* Mobile CIMM Label */
     .mobile-cimm-label {
@@ -1862,20 +3418,94 @@ Sidebar (250px) takes the most relative space here.
         object-fit: contain;
     }
 
-    .mobile-toggle {
+    .mobile-clock {
         position: absolute;
-        left: 16px;
-        background: #3762c8;
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        width: 38px;
-        height: 38px;
-        font-size: 20px;
-        cursor: pointer;
+        right: 56px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        transition: color 0.3s ease;
     }
 
-    /* Sidebar internal layout for mobile */
+    .mobile-notif-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 38px;
+        height: 38px;
+        z-index: 1;
+    }
+
+    .mobile-dark-mode-btn {
+        display: flex;
+        position: absolute;
+        margin-top: 42px;
+        top: 18px;
+        right: 18px;
+        width: 38px;
+        height: 38px;
+        z-index: 1005;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar-profile-btn {
+        position: absolute;
+        top: 18px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
+    }
+
+    .sidebar-top {
+        position: relative;
+    }
+
+    .site-logo {
+        margin-top: 60px;
+        text-align: center;
+    }
+
+    .sidebar-nav {
+        left: -110%;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        top: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+        transition: left 0.35s ease;
+        z-index: 4000;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .sidebar-nav.mobile-active {
+        left: 12px;
+    }
+
+    .sidebar-nav.collapsed {
+        width: calc(100% - 24px);
+    }
+
+    .main-content,
+    .main-content.expanded {
+        margin-left: 0 !important;
+        padding-top: 90px;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0px;
+    }
+
+    .main-content::-webkit-scrollbar {
+        width: 0 !important;
+        background: transparent;
+        display: none !important;
+    }
+
     .sidebar-top {
         padding-top: 30px;
     }
@@ -1899,15 +3529,16 @@ Sidebar (250px) takes the most relative space here.
         display: none !important;
     }
 
-    /* Logout stays bottom */
     .user-info {
         padding-bottom: 20px;
     }
 
-    /* Hide desktop toggle */
     .sidebar-toggle {
         display: none;
     }
+    /* CALENDAR CONTROLS — handled by .mob-toolbar / .mob-cal-header above */
+
+    /* Desktop toolbars are hidden on mobile — handled in .mob-toolbar CSS block above */
 
     /* ---------- CALENDAR VIEW ---------- */
 
@@ -1957,20 +3588,13 @@ Sidebar (250px) takes the most relative space here.
             box-shadow: 0 6px 20px rgba(0,0,0,0.18);
         }
 
-        /* Search spacing */
-        #scheduleSearch {
-            margin-bottom: 14px;
-        }
+        /* Search spacing — margin handled by toolbar gap */
 
         /* Each schedule item becomes card-like */
         .schedule-item {
-            padding: 14px;
+            grid-template-columns: 4px 1fr !important;
             margin-bottom: 12px;
             border-radius: 14px;
-            background: rgba(255,255,255,0.96);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-            flex-direction: column;
-            gap: 8px;
         }
 
         .schedule-date {
@@ -2169,8 +3793,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <div class="sidebar-top">
         <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
-            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
-            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg"
+                 onerror="this.style.display='none';var f=document.getElementById('profileFallbackIcon');if(f){f.style.display='flex';}"
+                 <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
+            <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                </svg>
+            </span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span>
@@ -2184,131 +3816,317 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li>
+                <a href="admin_create.php"
+                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
+                data-tooltip="Create Account">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Create Account</span>
+                </a>
+            </li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
     <div class="sidebar-divider"></div>
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
 
 <div class="main-content">
 
     <div class="card">
 
         <!-- MOBILE CONTROLS (MOBILE ONLY, INSIDE CARD) -->
-        <div class="mobile-controls" id="mobileListControls" style="display:none;">
-            <input id="mobileScheduleSearch" type="text"
-                   placeholder="Search schedules...">
-            <button id="mobileToCalendarBtn" class="mobile-calendar-btn">📅</button>
+
+        <!-- Mobile: List view toolbar -->
+        <div class="mob-toolbar" id="mobileListControls">
+            <div class="mob-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="mobileScheduleSearch" type="text" placeholder="Search schedules...">
+            </div>
+            <button id="mobileToCalendarBtn" class="mob-icon-btn" title="Switch to Calendar View">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
         </div>
-        <div class="mobile-controls" id="mobileCalendarControls" style="display:none;">
-            <button id="mobilePrevMonth" class="mobile-toggle-btn">&#8592;</button>
-            <span id="mobileMonthLabel" title="Click to jump date"></span>
-            <button id="mobileToListBtn" class="mobile-schedule-btn">📋</button>
-            <button id="mobileNextMonth" class="mobile-toggle-btn">&#8594;</button>
+
+        <!-- Mobile: Calendar header -->
+        <div class="mob-toolbar mob-cal-header" id="mobileCalendarControls">
+            <div class="mob-cal-left">
+                <button id="mobilePrevMonth" class="mob-nav-btn" title="Previous month">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+            </div>
+            <span id="mobileMonthLabel" title="Click to jump to date">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55;flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span id="mobileMonthLabelText"></span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="opacity:0.45;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+            <div class="mob-cal-right">
+                <button id="mobileToListBtn" class="mob-icon-btn" title="Switch to List View">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </button>
+                <button id="mobileNextMonth" class="mob-nav-btn" title="Next month">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
         </div>
 
         <!-- CALENDAR VIEW -->
         <div id="calendarView">
             <div class="calendar-header">
-                <button id="prevMonth" class="toggle-btn" style="padding:5px 10px;">&#8592;</button>
-                <span id="monthLabel" title="Click to jump date"></span>
-                <div style="display:flex; gap:8px;">
-                    <button id="toListBtn" class="schedule-btn" title="Schedule List">
-                        📋
-                    </button>
-                    <button id="nextMonth" class="toggle-btn" style="padding:5px 10px;">
-                        &#8594;
+                <div class="cal-header-left">
+                    <button id="prevMonth" class="cal-nav-btn" title="Previous month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                     </button>
                 </div>
+                <span id="monthLabel" title="Click to jump to date">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.55;flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span id="monthLabelText"></span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="opacity:0.45;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+                <div class="cal-header-right">
+                    <button id="toListBtn" class="view-switch-btn" title="Switch to List View">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span class="btn-label">List View</span>
+                    </button>
+                    <button id="nextMonth" class="cal-nav-btn" title="Next month">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- LEGEND between date label and calendar grid -->
+            <div class="calendar-legend calendar-legend-top">
+                <span class="legend-item" data-filter="upcoming" title="Click to filter: Scheduled">
+                    <span class="legend-dot legend-upcoming"></span>Scheduled
+                </span>
+                <span class="legend-item" data-filter="ongoing" title="Click to filter: In Progress">
+                    <span class="legend-dot legend-ongoing"></span>In Progress
+                </span>
+                <span class="legend-item" data-filter="delayed" title="Click to filter: Delayed">
+                    <span class="legend-dot legend-delayed"></span>Delayed
+                </span>
+                <span class="legend-item" data-filter="completed" title="Click to filter: Completed">
+                    <span class="legend-dot legend-completed"></span>Completed
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-today"></span>Today
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-holiday"></span>Holiday
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-event"></span>Event
+                </span>
+                <span class="legend-item">
+                    <span class="legend-dot legend-weekend"></span>Weekend
+                </span>
+                <span id="legendFilterBadgeCal" title="Click to clear filter">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span id="legendFilterBadgeCalLabel">Upcoming</span>
+                </span>
             </div>
             <div class="calendar-weekdays">
-                <div>Sunday</div>
-                <div>Monday</div>
-                <div>Tuesday</div>
-                <div>Wednesday</div>
-                <div>Thursday</div>
-                <div>Friday</div>
-                <div>Saturday</div>
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
+
             <div class="calendar-details-card">
-                <div class="calendar-details" id="calendarDetails">
-                    Select a date to view schedule.
+                <div class="cal-details-header">
+                    <div class="cal-details-header-icon-wrap">
+                        <span class="cal-details-icon" id="calDetailsIcon">📅</span>
+                    </div>
+                    <div class="cal-details-header-text">
+                        <span class="cal-details-label">SELECTED DATE</span>
+                        <span class="cal-details-title" id="calDetailsTitle">Select a date</span>
+                    </div>
                 </div>
-                <div class="scroll-indicator">⌄</div>
+                <div class="calendar-details" id="calendarDetails">
+                    <div class="cal-details-empty">
+                        <div class="cal-details-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <p>Click any date to see<br>scheduled maintenance</p>
+                    </div>
+                </div>
+                <div class="cal-details-scroll-hint" id="calScrollHint">
+                    <span>scroll for more</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
             </div>
         </div>
         <!-- LIST VIEW -->
         <div id="scheduleView" class="hidden">
-            <div style="display:flex; gap:10px; align-items:center;">
-                <input id="scheduleSearch" type="text"
-                       placeholder="Search by task, location, category, status, or date..."
-                       style="flex:1;">
-                <button id="toCalendarBtn" class="calendar-btn" title="Calendar View">
-                    📅
+            <div class="list-view-toolbar">
+                <div class="search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input id="scheduleSearch" type="text"
+                           placeholder="Search by task, location, category, status, or date...">
+                </div>
+                <button id="toCalendarBtn" class="view-switch-btn" title="Switch to Calendar View">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span class="btn-label">Calendar</span>
                 </button>
+            </div>
+            <!-- Legend shown in list view below search bar -->
+            <div class="calendar-legend">
+                <span class="legend-item" data-filter="upcoming" title="Click to filter: Scheduled">
+                    <span class="legend-dot legend-upcoming"></span>Scheduled
+                </span>
+                <span class="legend-item" data-filter="ongoing" title="Click to filter: In Progress">
+                    <span class="legend-dot legend-ongoing"></span>In Progress
+                </span>
+                <span class="legend-item" data-filter="delayed" title="Click to filter: Delayed">
+                    <span class="legend-dot legend-delayed"></span>Delayed
+                </span>
+                <span class="legend-item" data-filter="completed" title="Click to filter: Completed">
+                    <span class="legend-dot legend-completed"></span>Completed
+                </span>
+                <span id="legendFilterBadge" title="Click to clear filter">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span id="legendFilterBadgeLabel">Upcoming</span>
+                </span>
             </div>
             <div id="scheduleListHolder">
             <?php if (empty($schedules)): ?>
-                <p id="noScheduleMsg">No scheduled maintenance.</p>
+                <div class="list-empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".4"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <p id="noScheduleMsg">No scheduled maintenance.</p>
+                </div>
             <?php else: foreach ($schedules as $row): ?>
+                <?php
+                    $priorityClass = 'badge-priority-low';
+                    $priorityLower = strtolower($row['priority'] ?? '');
+                    if ($priorityLower === 'medium')   $priorityClass = 'badge-priority-medium';
+                    elseif ($priorityLower === 'high')     $priorityClass = 'badge-priority-high';
+                    elseif ($priorityLower === 'critical') $priorityClass = 'badge-priority-critical';
+
+                    $statusClass = 'badge-status-planned';
+                    $statusLower = strtolower($row['status_label'] ?? '');
+                    if ($statusLower === 'completed')    $statusClass = 'badge-status-completed';
+                    elseif ($statusLower === 'in progress') $statusClass = 'badge-status-in-progress';
+                    elseif ($statusLower === 'delayed')     $statusClass = 'badge-status-delayed';
+                    elseif ($statusLower === 'scheduled')   $statusClass = 'badge-status-scheduled';
+
+                    $accentClass = 'accent-upcoming';
+                    if ($statusLower === 'in progress')    $accentClass = 'accent-in-progress';
+                    elseif ($statusLower === 'delayed')    $accentClass = 'accent-delayed';
+                    elseif ($statusLower === 'completed')  $accentClass = 'accent-completed';
+                ?>
                 <div class="schedule-item"
                     data-task="<?= htmlspecialchars(strtolower($row['task'])) ?>"
                     data-location="<?= htmlspecialchars(strtolower($row['location'])) ?>"
                     data-category="<?= htmlspecialchars(strtolower($row['category'] ?? '')) ?>"
                     data-status="<?= htmlspecialchars(strtolower($row['status_label'] ?? '')) ?>"
                     data-priority="<?= htmlspecialchars(strtolower($row['priority'] ?? '')) ?>"
-                    data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>">
-                    <div>
-                        <strong><?= htmlspecialchars($row['task']) ?></strong><br>
-                        <?= htmlspecialchars($row['location']) ?><br>
-                        <?php if (!empty($row['category'])): ?>
-                            <span class="badge badge-category"><?= htmlspecialchars($row['category']) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="schedule-date">
-                        <?= date("F d, Y", strtotime($row['schedule_date'])) ?><br>
-                        <?php
-                            $priorityClass = 'badge-priority-low';
-                            $priorityLower = strtolower($row['priority'] ?? '');
-                            if ($priorityLower === 'medium') {
-                                $priorityClass = 'badge-priority-medium';
-                            } elseif ($priorityLower === 'high') {
-                                $priorityClass = 'badge-priority-high';
-                            } elseif ($priorityLower === 'critical') {
-                                $priorityClass = 'badge-priority-critical';
-                            }
+                    data-source="<?= htmlspecialchars($row['source'] ?? 'schedule') ?>"
+                    data-rep="<?= $row['source'] === 'report' ? 'rep-' . (int)$row['rep_id'] : '' ?>"
+                    data-rep-id="<?= (int)($row['rep_id'] ?? 0) ?>"
+                    data-budget="<?= $row['source'] === 'report' ? htmlspecialchars(strtolower($row['budget_display'] ?? '')) : '' ?>"
+                    data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>"
+                    style="cursor:pointer;">
 
-                            $statusClass = 'badge-status-planned';
-                            $statusLower = strtolower($row['status_label'] ?? '');
-                            if ($statusLower === 'completed') {
-                                $statusClass = 'badge-status-completed';
-                            } elseif ($statusLower === 'in progress') {
-                                $statusClass = 'badge-status-in-progress';
-                            } elseif ($statusLower === 'delayed') {
-                                $statusClass = 'badge-status-delayed';
-                            } elseif ($statusLower === 'scheduled') {
-                                $statusClass = 'badge-status-scheduled';
-                            }
-                        ?>
-                        <?php if (!empty($row['status_label'])): ?>
-                            <span class="badge <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
+                    <div class="schedule-item-accent <?= $accentClass ?>"></div>
+
+                    <div class="schedule-item-body">
+                        <div class="schedule-item-title searchable"><?= htmlspecialchars($row['task']) ?></div>
+                        <div class="schedule-item-location">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                            <span class="searchable sched-location"><?= htmlspecialchars($row['location']) ?></span>
+                        </div>
+                        <div class="schedule-item-badges">
+                            <?php if (!empty($row['category']) && $row['category'] !== 'Infrastructure Report'): ?>
+                                <span class="badge badge-category searchable"><?= htmlspecialchars($row['category']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['source']) && $row['source'] === 'report'): ?>
+                                <span class="badge badge-rep-source searchable">REP-<?= (int)$row['rep_id'] ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['source']) && $row['source'] === 'report' && $row['budget_raw'] > 0): ?>
+                                <span class="badge badge-budget-display searchable" style="background:#e8f5e9;color:#2e7d32;border:1px solid rgba(46,125,50,0.2);">
+                                    💰 <?= htmlspecialchars($row['budget_display']) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <!-- Dates shown only on desktop (below badges) -->
+                        <div class="schedule-item-dates-desktop">
+                            <div class="schedule-item-date-label">Start Date</div>
+                            <div class="schedule-item-date">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['schedule_date'])) ?></span>
+                            </div>
+                            <?php if (!empty($row['estimated_end_date'])): ?>
+                            <div class="schedule-item-date-label" style="margin-top:4px;">End Date</div>
+                            <div class="schedule-item-date">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['estimated_end_date'])) ?></span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <!-- Date + status shown only on mobile -->
+                        <div class="schedule-item-date-mobile">
+                            <span class="sched-date-label-mobile">Start Date</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['schedule_date'])) ?></span>
+                        </div>
+                        <?php if (!empty($row['estimated_end_date'])): ?>
+                        <div class="schedule-item-date-mobile">
+                            <span class="sched-date-label-mobile">End Date</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span class="searchable sched-date"><?= date("M d, Y", strtotime($row['estimated_end_date'])) ?></span>
+                        </div>
                         <?php endif; ?>
-                        <?php if (!empty($row['priority'])): ?>
-                            <span class="badge <?= $priorityClass ?>"><?= htmlspecialchars($row['priority']) ?> priority</span>
-                        <?php endif; ?>
+                        <!-- Status + Priority badges shown on mobile (meta panel hidden) -->
+                        <div class="schedule-item-badges schedule-item-mobile-status">
+                            <?php if (!empty($row['status_label'])): ?>
+                                <span class="badge searchable <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['priority'])): ?>
+                                <span class="badge searchable <?= $priorityClass ?>"><?= htmlspecialchars($row['priority']) ?> priority</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="schedule-item-meta">
+                        <div class="schedule-item-status-badges">
+                            <?php if (!empty($row['status_label'])): ?>
+                                <span class="badge searchable <?= $statusClass ?>"><?= htmlspecialchars($row['status_label']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($row['priority'])): ?>
+                                <span class="badge searchable <?= $priorityClass ?>"><?= htmlspecialchars($row['priority']) ?> priority</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
-                <p id="noResultMsg" style="display:none;">No matching data or result.</p>
+                <p id="noResultMsg" style="display:none; text-align:center; padding:20px; color:var(--text-secondary);">No matching data or result.</p>
             <?php endif; ?>
             </div>
         </div>
@@ -2316,35 +4134,53 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Task Detail Modal -->
 <div id="taskModal" class="modal hidden">
     <div class="modal-content">
-        <span id="modalClose" class="modal-close">&times;</span>
-        <h3>Scheduled Tasks</h3>
-        <div id="modalBody"></div>
+        <div class="modal-header">
+            <div class="modal-header-icon">🔧</div>
+            <div class="modal-header-text">
+                <span class="modal-label">Maintenance Task</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <h3 class="modal-title">Task Details</h3>
+                    <span id="modalRepBadge" style="display:none;background:rgba(255,255,255,0.22);color:#fff;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.03em;border:1px solid rgba(255,255,255,0.35);flex-shrink:0;"></span>
+                </div>
+            </div>
+            <button id="modalClose" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <!-- Task Navigation Bar -->
+        <div class="modal-nav-bar" id="modalNavBar" style="display:none;">
+            <button class="modal-nav-btn" id="modalNavPrev" aria-label="Previous task">&#8592;</button>
+            <span class="modal-nav-counter" id="modalNavCounter">1 / 3</span>
+            <button class="modal-nav-btn" id="modalNavNext" aria-label="Next task">&#8594;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
     </div>
 </div>
-
-<!-- NEW: Multi-Task Chooser Modal (for date with >1 task) -->
+<!-- Multi-Task Chooser Modal -->
 <div id="taskChooserModal" class="modal hidden">
-  <div class="modal-content">
-    <span class="modal-close" onclick="closeTaskChooser()">&times;</span>
-    <h3>Select a Task</h3>
-    <div id="taskChooserBody"></div>
-  </div>
+    <div class="modal-content chooser-modal">
+        <div class="modal-header chooser-header">
+            <div class="modal-header-icon">📋</div>
+            <div class="modal-header-text">
+                <span class="modal-label">Multiple Tasks</span>
+                <h3 class="modal-title">Select a Task</h3>
+            </div>
+            <button class="modal-close-btn" onclick="closeTaskChooser()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body" id="taskChooserBody"></div>
+    </div>
 </div>
 
 <!-- Logout Confirmation Alert Modal (Redesigned based on reports.php) -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
-        <div class="icon-wrap">
-            <span class="icon">&#9888;</span>
-        </div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="lo-title">Log out of your account?</div>
+        <div class="lo-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="lo-btns">
+            <button class="lo-btn lo-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="lo-btn lo-confirm" id="logoutConfirmBtn">Log out</button>
         </div>
     </div>
 </div>
@@ -2364,51 +4200,432 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- Custom Date Picker Overlay -->
 <style>
+/* ═══════════════════════════════════════════
+   DATE PICKER POPUP — REDESIGNED
+═══════════════════════════════════════════ */
 #customDatePickerOverlay {
-    position: absolute;
-    background: #fff;
-    border: 1px solid #ccc;
-    z-index: 2000; /* Increased for UX on mobile */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    position: fixed;
+    z-index: 9999;
     display: none;
+    visibility: hidden;        /* hidden until JS finishes positioning   */
+    top: -9999px;              /* park offscreen so no flash at (0,0)    */
+    left: -9999px;
+    width: 280px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10);
+    border: 1px solid rgba(55,98,200,0.13);
+    overflow: hidden;
+    font-family: inherit;
+    /* animation is re-applied in JS after position is set */
 }
-#customDatePickerOverlay input[type="date"] {
-    width: 180px;
-    padding: 6px 8px;
-    background: #f7faff; /* Match desktop calendar background */
-    border: 1px solid #b1b8d0;
-    color: #222;
-    font-size: 1rem;
-    border-radius: 7px;
-    transition: background 0.15s;
+
+@keyframes dpPopIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1);    }
 }
-#customDatePickerOverlay input[type="date"]:focus {
-    background: #e8f1ff;
-    outline: 2px solid #3762c8;
-    outline-offset: 0;
+
+/* ── Header ── */
+.dp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
 }
+
+.dp-month-year {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.02em;
+    cursor: default;
+    user-select: none;
+}
+
+.dp-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.18);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.12s;
+    flex-shrink: 0;
+}
+.dp-nav-btn:hover {
+    background: rgba(255,255,255,0.32);
+    transform: scale(1.08);
+}
+.dp-nav-btn:active { transform: scale(0.95); }
+
+/* ── Weekday labels ── */
+.dp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 10px 12px 4px;
+    gap: 2px;
+}
+.dp-weekdays span {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 0;
+}
+.dp-weekdays span:first-child,
+.dp-weekdays span:last-child {
+    color: #f87171;
+}
+
+/* ── Day grid ── */
+.dp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 2px 12px 10px;
+    gap: 3px;
+}
+
+.dp-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    color: #1e293b;
+    border: none;
+    background: transparent;
+    transition: background 0.13s, color 0.13s, transform 0.1s;
+    padding: 0;
+    line-height: 1;
+}
+.dp-day:hover {
+    background: #eef2ff;
+    color: #3762c8;
+    transform: scale(1.12);
+}
+.dp-day:active { transform: scale(0.95); }
+
+.dp-day.dp-empty {
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Weekend days */
+.dp-day.dp-weekend {
+    color: #ef4444;
+}
+.dp-day.dp-weekend:hover {
+    background: #fff0f0;
+    color: #dc2626;
+}
+
+/* Today */
+.dp-day.dp-today {
+    background: rgba(55,98,200,0.1);
+    color: #3762c8;
+    font-weight: 700;
+    position: relative;
+}
+.dp-day.dp-today::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #3762c8;
+}
+
+/* Selected */
+.dp-day.dp-selected {
+    background: linear-gradient(135deg, #3762c8, #2851b3) !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,0.35);
+    transform: scale(1.05);
+}
+.dp-day.dp-selected::after { display: none; }
+
+/* Has tasks indicator */
+.dp-day.dp-has-tasks {
+    position: relative;
+}
+.dp-day.dp-has-tasks::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #f59e0b;
+}
+.dp-day.dp-selected.dp-has-tasks::before {
+    background: rgba(255,255,255,0.7);
+}
+
+/* ── Footer ── */
+.dp-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px 12px;
+    border-top: 1px solid rgba(55,98,200,0.08);
+    gap: 8px;
+}
+
+.dp-today-btn {
+    flex: 1;
+    padding: 7px 0;
+    border-radius: 9px;
+    border: 1.5px solid rgba(55,98,200,0.2);
+    background: transparent;
+    color: #3762c8;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    letter-spacing: 0.03em;
+}
+.dp-today-btn:hover {
+    background: #eef2ff;
+    border-color: #3762c8;
+}
+
+.dp-close-btn {
+    flex: 1;
+    padding: 7px 0;
+    border-radius: 9px;
+    border: none;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.12s;
+    letter-spacing: 0.03em;
+}
+.dp-close-btn:hover { opacity: 0.88; }
+.dp-close-btn:active { transform: scale(0.97); }
+
+/* Double-click hint text */
+.dp-hint {
+    text-align: center;
+    font-size: 10px;
+    color: #9ca3af;
+    padding: 0 14px 8px;
+    letter-spacing: 0.03em;
+}
+.dp-hint strong {
+    color: #f59e0b;
+    font-weight: 700;
+}
+[data-theme="dark"] .dp-hint { color: #64748b; }
+
+/* ── Dark Mode ── */
+[data-theme="dark"] #customDatePickerOverlay {
+    background: #1e2235;
+    border-color: rgba(95,140,255,0.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .dp-day {
+    color: #e2e8f0;
+}
+[data-theme="dark"] .dp-day:hover {
+    background: rgba(55,98,200,0.2);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .dp-day.dp-weekend {
+    color: #f87171;
+}
+[data-theme="dark"] .dp-day.dp-weekend:hover {
+    background: rgba(239,68,68,0.12);
+    color: #fca5a5;
+}
+[data-theme="dark"] .dp-day.dp-today {
+    background: rgba(55,98,200,0.2);
+    color: #8ab4f8;
+}
+[data-theme="dark"] .dp-day.dp-today::after {
+    background: #8ab4f8;
+}
+[data-theme="dark"] .dp-footer {
+    border-top-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .dp-today-btn {
+    color: #8ab4f8;
+    border-color: rgba(95,140,255,0.3);
+}
+[data-theme="dark"] .dp-today-btn:hover {
+    background: rgba(55,98,200,0.2);
+    border-color: #5f8cff;
+}
+[data-theme="dark"] .dp-weekdays span { color: #64748b; }
+[data-theme="dark"] .dp-weekdays span:first-child,
+[data-theme="dark"] .dp-weekdays span:last-child { color: #f87171; }
+
+/* ── Mobile — NO bottom override; JS handles positioning like desktop ── */
 @media (max-width: 768px) {
     #customDatePickerOverlay {
-        position: fixed !important;
-        width: 150px;
-        z-index: 2500;
-    }
-    #customDatePickerOverlay input[type="date"] {
-        width: 100%;
-        font-size: 1rem;
-        background: #f7faff; /* Ensure mobile also matches */
+        width: 288px;
+        border-radius: 20px;
     }
 }
+
+/* ── Logout Confirmation Modal ── */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#logoutAlertBackdrop.active { display: flex; }
+#logoutAlertModal {
+    background: var(--card-bg, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px;
+    width: 320px;
+    max-width: 92vw;
+    animation: logoutModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes logoutModalPop {
+    from { transform: translateY(24px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+#logoutAlertModal .lo-icon-wrap {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(239,68,68,.22);
+    flex-shrink: 0;
+}
+#logoutAlertModal .lo-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary, #1a1a2e) !important;
+    margin-bottom: 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+#logoutAlertModal .lo-desc {
+    font-size: .92rem !important;
+    color: var(--text-secondary, #64748b) !important;
+    margin-bottom: 24px !important;
+    line-height: 1.55 !important;
+}
+#logoutAlertModal .lo-btns {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+#logoutAlertModal .lo-btn {
+    flex: 1 !important;
+    padding: 11px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all .18s ease !important;
+    font-family: inherit !important;
+    line-height: 1 !important;
+}
+#logoutAlertModal .lo-cancel {
+    background: var(--bg-secondary, #f1f5f9) !important;
+    color: var(--text-primary, #374151) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+}
+#logoutAlertModal .lo-cancel:hover { background: var(--border-color, #e2e8f0) !important; }
+#logoutAlertModal .lo-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239,68,68,.35) !important;
+}
+#logoutAlertModal .lo-confirm:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(239,68,68,.45) !important;
+}
+[data-theme="dark"] #logoutAlertModal {
+    background: rgba(24,24,30,.98) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-icon-wrap {
+    background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)) !important;
+    border-color: rgba(239,68,68,.32) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-title { color: #e2e8f0 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-desc  { color: #94a3b8 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-cancel {
+    background: rgba(255,255,255,.07) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 </style>
+
 <div id="customDatePickerOverlay">
-    <input type="date" id="overlayDatePicker">
+    <div class="dp-header">
+        <button class="dp-nav-btn" id="dpPrevMonth">&#8592;</button>
+        <span class="dp-month-year" id="dpMonthYear"></span>
+        <button class="dp-nav-btn" id="dpNextMonth">&#8594;</button>
+    </div>
+    <div class="dp-weekdays">
+        <span>Su</span>
+        <span>Mo</span>
+        <span>Tu</span>
+        <span>We</span>
+        <span>Th</span>
+        <span>Fr</span>
+        <span>Sa</span>
+    </div>
+    <div class="dp-grid" id="dpGrid"></div>
+    <div class="dp-hint">🟡 <strong>Double-click</strong> a dot date to view tasks</div>
+    <div class="dp-footer">
+        <button class="dp-today-btn" id="dpTodayBtn">Today</button>
+        <button class="dp-close-btn" id="dpCloseBtn">Close</button>
+    </div>
 </div>
 
 <?php include 'admin_scripts.php'; ?>
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.IS_ENGINEER  = <?= $isEngineer ? 'true' : 'false' ?>;</script>
+<script>
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(s){ if(!s||s==='0000-00-00')return'—'; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
+</script>
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
 
 <script>
@@ -2673,6 +4890,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (s.indexOf('delay') !== -1) return 'delayed';
         if (s.indexOf('progress') !== -1 || s.indexOf('on-going') !== -1 || s.indexOf('ongoing') !== -1) return 'ongoing';
         if (s.indexOf('completed') !== -1) return 'completed';
+        if (s.indexOf('scheduled') !== -1 || s.indexOf('planned') !== -1 || s.indexOf('upcoming') !== -1) return 'upcoming';
         return 'upcoming';
     }
     function applyStatusClassesToList() {
@@ -2683,8 +4901,91 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ── LEGEND FILTER ─────────────────────────────────────────────────────────
+    // Shared state: null = no filter, or one of 'upcoming'|'ongoing'|'delayed'|'completed'
+    let activeLegendFilter = null;
+
+    const LEGEND_LABELS = {
+        upcoming:  'Scheduled',
+        ongoing:   'In Progress',
+        delayed:   'Delayed',
+        completed: 'Completed',
+    };
+
+    function applyLegendFilter(filter) {
+        activeLegendFilter = filter;
+
+        // ── 1. Update all legend pill states (both list + calendar legends) ──
+        document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+            const f = pill.getAttribute('data-filter');
+            pill.classList.remove('legend-active', 'legend-dimmed');
+            if (!filter) return; // no filter → all normal
+            if (f === filter) pill.classList.add('legend-active');
+            else              pill.classList.add('legend-dimmed');
+        });
+
+        // ── 2. Update clear-filter badges ──
+        const badge    = document.getElementById('legendFilterBadge');
+        const badgeCal = document.getElementById('legendFilterBadgeCal');
+        const lbl      = document.getElementById('legendFilterBadgeLabel');
+        const lblCal   = document.getElementById('legendFilterBadgeCalLabel');
+
+        if (filter) {
+            const name = LEGEND_LABELS[filter] || filter;
+            if (lbl)    lbl.textContent    = name;
+            if (lblCal) lblCal.textContent = name;
+            badge    && badge.classList.add('visible');
+            badgeCal && badgeCal.classList.add('visible');
+        } else {
+            badge    && badge.classList.remove('visible');
+            badgeCal && badgeCal.classList.remove('visible');
+        }
+
+        // ── 3. Filter list view items — also respect any active search text ──
+        if (scheduleListHolder) {
+            // If there's active search text, re-fire the search input event to let the
+            // combined search+legend logic handle visibility in one pass.
+            if (scheduleSearch && scheduleSearch.value.trim().length > 0) {
+                scheduleSearch.dispatchEvent(new Event('input'));
+            } else {
+                const items = scheduleListHolder.querySelectorAll('.schedule-item');
+                let shownCount = 0;
+                items.forEach(item => {
+                    const statusAttr = item.getAttribute('data-status') || '';
+                    const key = getStatusKey(statusAttr);
+                    const show = !filter || key === filter;
+                    item.classList.toggle('filter-hidden', !show);
+                    if (show) shownCount++;
+                });
+                const noResultMsg = document.getElementById('noResultMsg');
+                if (noResultMsg) noResultMsg.style.display = shownCount === 0 ? '' : 'none';
+            }
+        }
+
+        // ── 4. Re-render calendar with filter applied ──
+        renderCalendar();
+    }
+
+    function clearLegendFilter() { applyLegendFilter(null); }
+
+    // Wire up all legend pill clicks
+    document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+        pill.addEventListener('click', function() {
+            const f = this.getAttribute('data-filter');
+            // Toggle: clicking active filter again clears it
+            applyLegendFilter(activeLegendFilter === f ? null : f);
+        });
+    });
+
+    // Wire up clear-filter badges
+    const _clearBadge    = document.getElementById('legendFilterBadge');
+    const _clearBadgeCal = document.getElementById('legendFilterBadgeCal');
+    if (_clearBadge)    _clearBadge.addEventListener('click',    clearLegendFilter);
+    if (_clearBadgeCal) _clearBadgeCal.addEventListener('click', clearLegendFilter);
+    // ── END LEGEND FILTER ─────────────────────────────────────────────────────
+
     if (taskModal && modalBody && modalClose && taskChooserModal && taskChooserBody) {
-        modalClose.onclick = ()=>taskModal.classList.add('hidden');
+        if (modalClose) modalClose.onclick = () => taskModal.classList.add('hidden');
         window.onclick = (e)=>{
             if(e.target===taskModal) taskModal.classList.add('hidden');
             if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
@@ -2860,51 +5161,53 @@ document.addEventListener('DOMContentLoaded', function() {
     function openModal(tasks, startIndex) {
 
         if (!modalBody || !taskModal) return;
-        modalBody.innerHTML='';
-        tasks.forEach(t=>{
-            const div=document.createElement('div');
-            div.className='modal-task-item';
-            const category   = t.category      || 'General Maintenance';
-            const priority   = t.priority      || 'Low';
-            const statusLbl  = t.status_label  || 'Planned';
-            const team       = t.assigned_team || 'General Maintenance Team';
-            const statusKey  = getStatusKey(statusLbl);
-            if (statusKey) {
-                div.classList.add('status-' + statusKey + '-color');
-            }
-            div.innerHTML=`<strong>Task:</strong> ${t.task}<br>
-                           <strong>Location:</strong> ${t.location}<br>
-                           <strong>Scheduled Date:</strong> ${t.schedule_date}<br>
-                           <strong>Category:</strong> ${category}<br>
-                           <strong>Priority:</strong> ${priority}<br>
-                           <strong>Status:</strong> ${statusLbl}<br>
-                           <strong>Assigned Team:</strong> ${team}`;
-            modalBody.appendChild(div);
-        });
+        _modalTasks = tasks;
+        _modalIndex = startIndex ?? 0;
+        renderModalTask(_modalIndex, null);
         taskModal.classList.remove('hidden');
+    }
+
+    // Wire up nav buttons (do this once, outside openModal)
+    const modalNavPrev = document.getElementById('modalNavPrev');
+    const modalNavNext = document.getElementById('modalNavNext');
+    if (modalNavPrev) {
+        modalNavPrev.addEventListener('click', () => {
+            if (_modalIndex > 0) {
+                _modalIndex--;
+                renderModalTask(_modalIndex, 'prev');
+            }
+        });
+    }
+    if (modalNavNext) {
+        modalNavNext.addEventListener('click', () => {
+            if (_modalIndex < _modalTasks.length - 1) {
+                _modalIndex++;
+                renderModalTask(_modalIndex, 'next');
+            }
+        });
     }
     function openTaskChooser(date, tasks) {
         if (!taskChooserBody || !taskChooserModal) return;
         taskChooserBody.innerHTML = '';
-        tasks.forEach(t => {
-            const btn = document.createElement('button');
-            btn.className = 'task-btn';
-            btn.style.margin = '8px 0';
-            btn.style.width = '100%';
-            btn.textContent = `${t.task} – ${t.location}`;
+        tasks.forEach((t, i) => {
             const key = getStatusKey(t.status_label || '');
-            if (key) btn.classList.add('status-' + key + '-bg');
+            const btn = document.createElement('button');
+            btn.className = 'chooser-task-btn';
+            btn.innerHTML = `
+                <span class="chooser-task-dot ${key}"></span>
+                <div class="chooser-task-info">
+                    <div class="chooser-task-name">${t.task}</div>
+                    <div class="chooser-task-sub">📍 ${t.location} · ${t.status_label || 'Scheduled'}</div>
+                </div>
+                <span class="chooser-arrow">›</span>`;
             btn.onclick = () => {
                 taskChooserModal.classList.add('hidden');
-                openModal([t]);
+                openModal(tasks, i); // pass full list + starting index
             };
             taskChooserBody.appendChild(btn);
         });
         taskChooserModal.classList.remove('hidden');
     }
-    window.closeTaskChooser = function() {
-        if (taskChooserModal) taskChooserModal.classList.add('hidden');
-    };
 
     let openDropdown = null;
     let openDropdownDay = null;
@@ -2912,7 +5215,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (openDropdown) {
             openDropdown.remove();
             openDropdown = null;
-            openDropdownDay = null;
+            if (openDropdownDay) {
+                openDropdownDay.classList.remove('has-open-dropdown');
+                openDropdownDay = null;
+            }
             document.querySelectorAll('.more-tasks-btn.open').forEach(b => b.classList.remove('open'));
         }
     }
@@ -2940,11 +5246,12 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.onclick = (ev) => {
                 ev.stopPropagation();
                 closeDropdown();
-                openModal([e]);
+                openModal(events, i + 1); // i+1 because slice(1) skips first
             };
             dropdown.appendChild(btn);
         });
         dayDiv.appendChild(dropdown);
+        dayDiv.classList.add('has-open-dropdown');
         openDropdown = dropdown;
         openDropdownDay = dayDiv;
         if (arrowBtn) arrowBtn.classList.add('open');
@@ -3078,11 +5385,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const year=currentDate.getFullYear();
         const month=currentDate.getMonth();
         const monthText=currentDate.toLocaleString('default',{month:'long', year:'numeric'});
-        if (monthLabel) monthLabel.textContent=monthText;
-        if(mobileMonthLabel) mobileMonthLabel.textContent=monthText;
+        const monthLabelText = document.getElementById('monthLabelText');
+        if (monthLabelText) monthLabelText.textContent = monthText;
+        else if (monthLabel) monthLabel.textContent=monthText;
+        const mobMonthLabelText = document.getElementById('mobileMonthLabelText');
+        if (mobMonthLabelText) mobMonthLabelText.textContent = monthText;
+        else if (mobileMonthLabel) mobileMonthLabel.textContent=monthText;
 
         const firstDay=new Date(year, month,1).getDay();
         const daysInMonth=new Date(year,month+1,0).getDate();
+        const todayLocal = new Date();
+        const todayStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth()+1).padStart(2,'0')}-${String(todayLocal.getDate()).padStart(2,'0')}`;
 
         for(let i=0;i<firstDay;i++) {
             const emptyDiv = document.createElement('div');
@@ -3094,13 +5407,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const currentDayDate = new Date(year, month, d);
 
-            const events = Array.isArray(window.scheduleData) && window.scheduleData.length
+            const allEvents = Array.isArray(window.scheduleData) && window.scheduleData.length
                 ? window.scheduleData.filter(e => e.schedule_date === dateStr)
                 : [];
+
+            // Apply legend filter to events shown in calendar cells
+            const events = activeLegendFilter
+                ? allEvents.filter(e => getStatusKey(e.status_label || '') === activeLegendFilter)
+                : allEvents;
 
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day' + (events.length ? ' has-event' : '');
             dayDiv.setAttribute('data-date', dateStr);
+
+            // Dim days that have tasks but none match the active filter
+            if (activeLegendFilter && allEvents.length > 0 && events.length === 0) {
+                dayDiv.classList.add('legend-filter-dim');
+            }
+
+            if (dateStr === todayStr) {
+                dayDiv.classList.add('today');
+            }
 
             if (isWeekend(currentDayDate)) {
                 dayDiv.classList.add('weekend');
@@ -3130,10 +5457,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!isMobile) {
                     const title = document.createElement('div');
                     title.className = holidayEvent.type === 'holiday' ? 'holiday-event-title' : 'event-title';
-                    title.textContent = holidayEvent.name.length > 18
-                        ? holidayEvent.name.substring(0, 18) + '...'
-                        : holidayEvent.name;
-                    title.title = holidayEvent.name;
+                    title.textContent = holidayEvent.name;          // always full name — CSS truncates
+                    title.setAttribute('data-full', holidayEvent.name); // drives ::after tooltip
                     dayDiv.appendChild(title);
                 }
             }
@@ -3152,7 +5477,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (key) btn.classList.add('status-' + key + '-bg');
                     btn.onclick = function(ev) {
                         ev.stopPropagation();
-                        openModal([e]);
+                        openModal(events, 0); // <-- pass full list, index 0
                     };
                     tasksDiv.appendChild(btn);
                 } else if (events.length > 1) {
@@ -3165,7 +5490,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (firstKey) firstBtn.classList.add('status-' + firstKey + '-bg');
                     firstBtn.onclick = function(ev) {
                         ev.stopPropagation();
-                        openModal([first]);
+                        openModal(events, 0); // <-- pass full list, index 0
                     };
                     tasksDiv.appendChild(firstBtn);
 
@@ -3192,34 +5517,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 dayDiv.appendChild(tasksDiv);
             }
 
-            dayDiv.addEventListener('click', function() {
-                let detailsHtml = `<strong>${dateStr}</strong><br>`;
-                if (holidayEvent) {
-                    const typeLabel = holidayEvent.type === 'holiday' ? '🎉 Holiday' : '📅 Event';
-                    detailsHtml += `<div style="color: ${holidayEvent.type === 'holiday' ? '#d32f2f' : '#1565c0'}; font-weight: 600; margin: 8px 0;">${typeLabel}: ${holidayEvent.name}</div>`;
-                }
-                if (isWeekend(currentDayDate)) {
-                    detailsHtml += `<div style="color: #ff5722; font-size: 12px; margin: 4px 0;">Weekend</div>`;
-                }
-                if (events.length) {
-                    detailsHtml += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);"><strong>Maintenance Tasks:</strong></div>`;
-                    detailsHtml += events.map(e =>
-                        `• ${e.task} – ${e.location ? e.location : ''}`
-                    ).join('<br>');
-                } else if (!holidayEvent) {
-                    detailsHtml += 'No scheduled maintenance.';
-                }
-                calendarDetails.innerHTML = detailsHtml;
-            });
+            dayDiv.addEventListener('click', function () {
+                const titleEl = document.getElementById('calDetailsTitle');
+                const iconEl  = document.getElementById('calDetailsIcon');
+                const hintEl  = document.getElementById('calScrollHint');
 
+                // Build date label
+                const datObj  = new Date(dateStr + 'T00:00:00');
+                const dateLabel = datObj.toLocaleDateString('en-US', { weekday:'short', month:'long', day:'numeric', year:'numeric' });
+                if (titleEl) titleEl.textContent = dateLabel;
+
+                let html = '';
+
+                // Weekend tag
+                if (isWeekend(currentDayDate)) {
+                    html += `<div class="cal-weekend-tag">🏖️ Weekend</div>`;
+                }
+
+                // Holiday / event row
+                if (holidayEvent) {
+                    const cls = holidayEvent.type === 'holiday' ? 'holiday' : 'event';
+                    const ico = holidayEvent.type === 'holiday' ? '🎉' : '📅';
+                    if (iconEl) iconEl.textContent = ico;
+                    html += `<div class="cal-holiday-row ${cls}">${ico} ${holidayEvent.name}</div>`;
+                } else {
+                    if (iconEl) iconEl.textContent = events.length ? '🔧' : '📅';
+                }
+
+                // Task rows
+                if (events.length) {
+                    events.forEach(e => {
+                        const key = getStatusKey(e.status_label || '');
+                        const repTag = e.rep_id ? ` · REP-${e.rep_id}` : '';
+                        html += `
+                            <div class="cal-task-row">
+                                <span class="cal-task-dot ${key}"></span>
+                                <div class="cal-task-info">
+                                    <div class="cal-task-name" title="${escH(e.task)}">${escH(e.task)}</div>
+                                    <div class="cal-task-meta">📍 ${escH(e.location || '—')} · ${escH(e.status_label || 'Scheduled')}${escH(repTag)}</div>
+                                </div>
+                            </div>`;
+                    });
+                } else if (!holidayEvent && !isWeekend(currentDayDate)) {
+                    html += `<div class="cal-no-tasks">No maintenance scheduled for this date.</div>`;
+                }
+
+                calendarDetails.innerHTML = html;
+
+                // Show/hide scroll hint
+                if (hintEl) {
+                    setTimeout(() => {
+                        const overflows = calendarDetails.scrollHeight > calendarDetails.clientHeight + 4;
+                        hintEl.classList.toggle('visible', overflows);
+                    }, 50);
+                }
+            });
+            
             calendarGrid.appendChild(dayDiv);
         }
     }
 
     function updateCalendarDetailsScrollHint() {
         const details = document.getElementById('calendarDetails');
-        const indicator = document.querySelector('.scroll-indicator');
-        if (!details || !indicator) return;
+        const hint    = document.getElementById('calScrollHint');
+        if (!details || !hint) return;
+        hint.classList.toggle('visible', details.scrollHeight > details.clientHeight + 4);
         if (details.scrollHeight > details.clientHeight) {
             indicator.style.display = 'block';
             indicator.style.opacity = '0.9';
@@ -3249,37 +5611,117 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
     applyStatusClassesToList();
 
-    if (scheduleSearch && scheduleListHolder) {
-        scheduleSearch.addEventListener('input', function() {
-            const searchVal = this.value.trim().toLowerCase();
-            const items = scheduleListHolder.querySelectorAll('.schedule-item');
-            let shownCount = 0;
-            if (!searchVal.length) {
-                items.forEach(i => { i.style.display = ''; });
-                if (noResultMsg) noResultMsg.style.display = 'none';
-                return;
-            }
-            items.forEach(item => {
-                const task = item.getAttribute('data-task') || '';
-                const loc = item.getAttribute('data-location') || '';
-                const date = item.getAttribute('data-date') || '';
-                const cat = item.getAttribute('data-category') || '';
-                const stat = item.getAttribute('data-status') || '';
-                const prio = item.getAttribute('data-priority') || '';
-                if (
-                    task.includes(searchVal) ||
-                    loc.includes(searchVal) ||
-                    date.includes(searchVal) ||
-                    cat.includes(searchVal) ||
-                    stat.includes(searchVal) ||
-                    prio.includes(searchVal)
-                ) {
-                    item.style.display = '';
-                    shownCount++;
-                } else {
-                    item.style.display = 'none';
+    // ── LIST VIEW ITEM CLICK → Open Task Detail Modal ─────────────────────────
+    function attachListItemClickHandlers() {
+        if (!scheduleListHolder) return;
+        scheduleListHolder.querySelectorAll('.schedule-item').forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                const schedData = window.scheduleData || [];
+                const taskName  = item.getAttribute('data-task') || '';
+                const dateAttr  = (item.getAttribute('data-date') || '').split('|')[1] || '';
+                const source    = item.getAttribute('data-source') || '';
+                const repId     = parseInt(item.getAttribute('data-rep-id') || '0', 10);
+
+                let matches = [];
+
+                if (source === 'report' && repId > 0) {
+                    // Match report-sourced tasks by rep_id
+                    matches = schedData.filter(function(t) {
+                        return t.source === 'report' && parseInt(t.rep_id, 10) === repId;
+                    });
+                }
+
+                // Fallback: match by date + task name
+                if (!matches.length) {
+                    matches = schedData.filter(function(t) {
+                        return t.schedule_date === dateAttr &&
+                               (t.task || '').toLowerCase() === taskName;
+                    });
+                }
+
+                if (matches.length) {
+                    openModal(matches, 0);
                 }
             });
+        });
+    }
+    attachListItemClickHandlers();
+    // ── END LIST VIEW ITEM CLICK ──────────────────────────────────────────────
+
+    if (scheduleSearch && scheduleListHolder) {
+        function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
+        function resetEl(el) { if ('original' in el.dataset) el.innerHTML = el.dataset.original; }
+        function highlightEl(el, kw) {
+            if (!kw) return;
+            const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
+            // Walk only text nodes — never touch tag names or attribute values
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+            const textNodes = [];
+            let node;
+            while ((node = walker.nextNode())) textNodes.push(node);
+            textNodes.forEach(tn => {
+                if (!tn.nodeValue.trim()) return;
+                const parts = tn.nodeValue.split(regex);
+                if (parts.length < 2) return;
+                const frag = document.createDocumentFragment();
+                parts.forEach((part, i) => {
+                    if (i % 2 === 1) {
+                        const mark = document.createElement('span');
+                        mark.className = 'search-highlight';
+                        mark.textContent = part;
+                        frag.appendChild(mark);
+                    } else {
+                        frag.appendChild(document.createTextNode(part));
+                    }
+                });
+                tn.parentNode.replaceChild(frag, tn);
+            });
+        }
+
+        scheduleSearch.addEventListener('input', function() {
+            const searchVal = this.value.trim();
+            const sl = searchVal.toLowerCase();
+            const items = scheduleListHolder.querySelectorAll('.schedule-item');
+            let shownCount = 0;
+
+            // Reset all existing highlights first
+            scheduleListHolder.querySelectorAll('.searchable[data-original]').forEach(el => resetEl(el));
+
+            items.forEach(item => {
+                const task = item.getAttribute('data-task') || '';
+                const loc  = item.getAttribute('data-location') || '';
+                const date = item.getAttribute('data-date') || '';
+                const cat  = item.getAttribute('data-category') || '';
+                const stat = item.getAttribute('data-status') || '';
+                const prio = item.getAttribute('data-priority') || '';
+                const rep  = item.getAttribute('data-rep') || '';
+                const budget = item.getAttribute('data-budget') || '';
+
+                // Legend filter check
+                const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
+
+                // Search check — if no search text, only legend filter applies
+                const searchOk = !searchVal.length || (
+                    task.includes(sl) || loc.includes(sl) || date.includes(sl) ||
+                    cat.includes(sl)  || stat.includes(sl) || prio.includes(sl) ||
+                    rep.includes(sl)  || budget.includes(sl)
+                );
+
+                const show = legendOk && searchOk;
+                item.classList.toggle('filter-hidden', !show);
+
+                if (show) {
+                    shownCount++;
+                    if (searchVal.length) {
+                        item.querySelectorAll('.searchable').forEach(el => {
+                            storeOriginal(el);
+                            highlightEl(el, searchVal);
+                        });
+                    }
+                }
+            });
+
             if (noResultMsg) {
                 noResultMsg.style.display = shownCount === 0 ? '' : 'none';
             }
@@ -3307,20 +5749,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateMobileControls() {
         if (!mobileListControls || !mobileCalendarControls) return;
-        if (!isMobileView()) {
-            mobileListControls.style.display = "none";
-            mobileCalendarControls.style.display = "none";
-            return;
-        }
+
+        // CSS handles desktop vs mobile visibility via @media (max-width: 768px).
+        // JS only toggles which mobile toolbar is active (list vs calendar).
         if (showingCalendar) {
-            mobileCalendarControls.style.display = "";
-            mobileListControls.style.display = "none";
-            if (mobileMonthLabel && monthLabel) {
-                mobileMonthLabel.textContent = monthLabel.textContent;
-            }
+            mobileCalendarControls.classList.add('mob-active');
+            mobileListControls.classList.remove('mob-active');
+            // Sync month label text
+            const mlt    = document.getElementById('monthLabelText');
+            const mobMlt = document.getElementById('mobileMonthLabelText');
+            const text   = mlt ? mlt.textContent : (monthLabel ? monthLabel.textContent : '');
+            if (mobMlt) mobMlt.textContent = text;
         } else {
-            mobileListControls.style.display = "";
-            mobileCalendarControls.style.display = "none";
+            mobileListControls.classList.add('mob-active');
+            mobileCalendarControls.classList.remove('mob-active');
         }
     }
 
@@ -3373,124 +5815,207 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', updateWeekdayLabels);
     window.addEventListener('resize', updateWeekdayLabels);
 
-    const overlayPicker = document.getElementById('customDatePickerOverlay');
-    const overlayInput  = document.getElementById('overlayDatePicker');
+    // ═══════════════════════════════════════════
+    //  DATE PICKER — REDESIGNED
+    // ═══════════════════════════════════════════
+    const overlayPicker  = document.getElementById('customDatePickerOverlay');
+    const dpMonthYear    = document.getElementById('dpMonthYear');
+    const dpGrid         = document.getElementById('dpGrid');
+    const dpPrevMonth    = document.getElementById('dpPrevMonth');
+    const dpNextMonth    = document.getElementById('dpNextMonth');
+    const dpTodayBtn     = document.getElementById('dpTodayBtn');
+    const dpCloseBtn     = document.getElementById('dpCloseBtn');
 
-    function openDatePicker(event) {
-        if (!overlayPicker || !overlayInput) return;
-        const y = currentDate.getFullYear();
-        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-        const d = String(currentDate.getDate()).padStart(2, '0');
-        overlayInput.value = `${y}-${m}-${d}`;
-        const rect = event.target.getBoundingClientRect();
-        let top = rect.bottom + window.scrollY + 4;
-        let left = rect.left + window.scrollX;
-        const overlayWidth = overlayPicker.offsetWidth || 180;
-        if (window.innerWidth <= 768) {
-            top = rect.bottom + 4;
-            left = rect.left;
-            if (left + overlayWidth > window.innerWidth - 8) {
-                left = window.innerWidth - overlayWidth - 8;
-            }
-            if (top + overlayPicker.offsetHeight > window.innerHeight - 8) {
-                top = window.innerHeight - overlayPicker.offsetHeight - 8;
-            }
-            overlayPicker.style.position = 'fixed';
-        } else {
-            if (left + overlayWidth > window.innerWidth - 8) {
-                left = window.innerWidth - overlayWidth - 8;
-            }
-            overlayPicker.style.position = 'absolute';
+    let _dpDate      = new Date(currentDate); // month being shown in picker
+    let _dpSelected  = null;                  // currently selected date string YYYY-MM-DD
+    let _dpOpen      = false;
+
+    // Build a Set of all dates that have tasks — for dot indicators
+    function getDatesWithTasks() {
+        const set = new Set();
+        (window.scheduleData || []).forEach(e => { if (e.schedule_date) set.add(e.schedule_date); });
+        return set;
+    }
+
+    function renderDpGrid() {
+        if (!dpGrid || !dpMonthYear) return;
+        const year  = _dpDate.getFullYear();
+        const month = _dpDate.getMonth();
+        dpMonthYear.textContent = _dpDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        const today       = new Date();
+        const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const taskDates   = getDatesWithTasks();
+        const firstDay    = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        dpGrid.innerHTML = '';
+
+        // Empty cells before first day
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'dp-day dp-empty';
+            dpGrid.appendChild(empty);
         }
-        overlayPicker.style.top = top + "px";
-        overlayPicker.style.left = left + "px";
-        overlayPicker.style.display = "block";
-        overlayInput.focus();
-        if (overlayInput.setSelectionRange) {
-            overlayInput.setSelectionRange(0, overlayInput.value.length);
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dayOfWeek = new Date(year, month, d).getDay();
+            const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+
+            const btn = document.createElement('button');
+            btn.className   = 'dp-day';
+            btn.textContent = d;
+            btn.setAttribute('data-date', dateStr);
+
+            if (isWeekendDay)                btn.classList.add('dp-weekend');
+            if (dateStr === todayStr)        btn.classList.add('dp-today');
+            if (dateStr === _dpSelected)     btn.classList.add('dp-selected');
+            if (taskDates.has(dateStr))      btn.classList.add('dp-has-tasks');
+
+            // Single click — select the date & navigate calendar
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _dpSelected = dateStr;
+                const [y, m, dd] = dateStr.split('-').map(Number);
+                currentDate = new Date(y, m - 1, dd);
+                renderCalendar();
+                updateMobileControls();
+                renderDpGrid();
+            });
+
+            // Double click — open task modal / chooser if tasks exist
+            btn.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const tasks = (window.scheduleData || []).filter(t => t.schedule_date === dateStr);
+                if (!tasks.length) return;
+                closeDatePicker();
+                if (tasks.length === 1) {
+                    openModal(tasks, 0);
+                } else {
+                    openTaskChooser(dateStr, tasks);
+                }
+            });
+
+            // Tooltip hint on hover for days that have tasks
+            if (taskDates.has(dateStr)) {
+                btn.title = 'Double-click to view task(s)';
+            }
+
+            dpGrid.appendChild(btn);
         }
     }
 
-    document.addEventListener('click', function(e) {
-        if (!overlayPicker.contains(e.target) && e.target !== monthLabel && e.target !== mobileMonthLabel) {
-            overlayPicker.style.display = 'none';
+    function openDatePicker(event) {
+        if (!overlayPicker) return;
+        _dpDate     = new Date(currentDate);
+        _dpSelected = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+        renderDpGrid();
+
+        // ── Step 1: make picker measurable but invisible ──────────────────
+        overlayPicker.style.removeProperty('animation');  // reset animation
+        overlayPicker.style.display    = 'block';
+        overlayPicker.style.visibility = 'hidden';        // no flash while we measure
+
+        // ── Step 2: measure dimensions ────────────────────────────────────
+        const anchorEl = event.currentTarget
+            || (event.target && event.target.closest && event.target.closest('#monthLabel, #mobileMonthLabel'))
+            || event.target;
+        const rect    = anchorEl.getBoundingClientRect();
+        const pickerW = overlayPicker.offsetWidth  || 280;
+        const pickerH = overlayPicker.offsetHeight || 340;
+        const gap     = 8;
+        const vw      = window.innerWidth;
+        const vh      = window.innerHeight;
+
+        // ── Step 3: calculate position (same logic for mobile & desktop) ──
+        let top  = rect.bottom + gap;              // default: below the label
+        let left = rect.left + rect.width / 2 - pickerW / 2;  // horizontally centred
+
+        // Clamp horizontally so it never bleeds off the screen
+        left = Math.max(12, Math.min(left, vw - pickerW - 12));
+
+        // Flip above the label if it would overflow the bottom of the viewport
+        if (top + pickerH > vh - 12) {
+            top = rect.top - pickerH - gap;
+        }
+
+        // Safety clamp: never go above viewport top
+        if (top < 8) top = 8;
+
+        // ── Step 4: apply position ────────────────────────────────────────
+        overlayPicker.style.position  = 'fixed';
+        overlayPicker.style.top       = top  + 'px';
+        overlayPicker.style.left      = left + 'px';
+        overlayPicker.style.removeProperty('bottom');
+        overlayPicker.style.removeProperty('transform');
+
+        // ── Step 5: reveal with animation (no stale position flash) ───────
+        overlayPicker.style.visibility = 'visible';
+        void overlayPicker.offsetWidth;             // force reflow so animation restarts
+        overlayPicker.style.animation = 'dpPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+
+        _dpOpen = true;
+    }
+
+    function closeDatePicker() {
+        if (!overlayPicker) return;
+        overlayPicker.style.display = 'none';
+        _dpOpen = false;
+    }
+
+    // Picker navigation
+    if (dpPrevMonth) dpPrevMonth.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _dpDate.setMonth(_dpDate.getMonth() - 1);
+        renderDpGrid();
+    });
+    if (dpNextMonth) dpNextMonth.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _dpDate.setMonth(_dpDate.getMonth() + 1);
+        renderDpGrid();
+    });
+    if (dpTodayBtn) dpTodayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const t     = new Date();
+        _dpDate     = new Date(t);
+        _dpSelected = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+        currentDate = new Date(t);
+        renderCalendar();
+        updateMobileControls();
+        renderDpGrid();
+        closeDatePicker();
+    });
+    if (dpCloseBtn) dpCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeDatePicker();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        const clickedLabel = e.target.closest && (e.target.closest('#monthLabel') || e.target.closest('#mobileMonthLabel'));
+        if (_dpOpen && overlayPicker && !overlayPicker.contains(e.target) && !clickedLabel) {
+            closeDatePicker();
         }
     });
 
-    if (overlayPicker) {
-        overlayPicker.addEventListener('click', function(e) { e.stopPropagation(); });
-    }
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && _dpOpen) closeDatePicker();
+    });
 
-    if (overlayInput) {
-        overlayInput.addEventListener('beforeinput', function(e) {
-            if (
-                e.inputType.startsWith('insert') &&
-                typeof e.data === 'string' &&
-                e.data.match(/[0-9]/)
-            ) {
-                let inputValue = overlayInput.value;
-                const selectionStart = overlayInput.selectionStart;
-                const selectionEnd = overlayInput.selectionEnd;
-                inputValue = inputValue.slice(0, selectionStart) + e.data + inputValue.slice(selectionEnd);
-                if (selectionStart <= 4) {
-                    const yearPart = inputValue.slice(0, 4);
-                    const yearDigits = (yearPart.match(/\d/g) || []).join('');
-                    if (yearDigits.length > 4) {
-                        e.preventDefault();
-                        return;
-                    }
-                }
-            }
-        });
+    // Stop clicks inside picker from bubbling to document
+    if (overlayPicker) overlayPicker.addEventListener('click', (e) => e.stopPropagation());
 
-        overlayInput.addEventListener('input', function(e) {
-            const val = overlayInput.value;
-            if (!val) return;
-            let [y, m, d] = val.split('-');
-            if (y && y.length > 4) {
-                y = y.slice(0, 4);
-                const newVal = [y,m,d].filter(Boolean).join('-');
-                overlayInput.value = newVal;
-            }
-            const parts = overlayInput.value.split('-').map(Number);
-            if (parts.length === 3) {
-                const [yy, mm, dd] = parts;
-                if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
-                    currentDate = new Date(yy, mm - 1, dd);
-                    renderCalendar();
-                }
-            }
-        });
-
-        overlayInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                const val = overlayInput.value;
-                if (val) {
-                    let [y, m, d] = val.split('-');
-                    if (y && y.length > 4) { y = y.slice(0, 4); }
-                    currentDate = new Date(Number(y), Number(m) - 1, Number(d));
-                    renderCalendar();
-                    const tasks = window.scheduleData.filter(
-                        t => t.schedule_date === `${y}-${m}-${d}`
-                    );
-                    if (tasks.length === 1) openModal(tasks);
-                    else if (tasks.length > 1) openTaskChooser(`${y}-${m}-${d}`, tasks);
-                }
-                overlayPicker.style.display = 'none';
-            } else if (e.key === 'Escape') {
-                overlayPicker.style.display = 'none';
-            }
-        });
-    }
-
+    // Wire up month label clicks
     if (monthLabel) {
-        monthLabel.title = "Click to jump date";
-        monthLabel.style.cursor = "pointer";
+        monthLabel.title = 'Click to jump to date';
+        monthLabel.style.cursor = 'pointer';
         monthLabel.addEventListener('click', openDatePicker);
     }
     if (mobileMonthLabel) {
-        mobileMonthLabel.title = "Click to jump date";
-        mobileMonthLabel.style.cursor = "pointer";
+        mobileMonthLabel.title = 'Click to jump to date';
+        mobileMonthLabel.style.cursor = 'pointer';
         mobileMonthLabel.addEventListener('click', openDatePicker);
     }
 }); // --- END DOMContentLoaded ---

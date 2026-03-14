@@ -5,25 +5,35 @@
    CSS VARIABLES FOR THEME SUPPORT
 ========================== */
 :root {
-    --text-muted: #555;
-    --card-border: rgba(0,0,0,0.12);
-    --bg-secondary: #f9f9f9;
-    --text-primary: #333;
-    --text-secondary: #666;
-    --bg-tertiary: #f2f2f2;
-    --border-color: #ddd;
-    --shadow-color: rgba(0,0,0,0.1);
+    --sidebar-expanded: 260px;
+    --sidebar-collapsed: 72px;
+
+    --sb-accent:        #3762c8;
+    --sb-accent-glow:   rgba(55, 98, 200, 0.35);
+    --sb-accent-soft:   rgba(55, 98, 200, 0.10);
+    --sb-accent-mid:    rgba(55, 98, 200, 0.20);
+    --sb-gradient:      linear-gradient(135deg, #3762c8 0%, #5f8cff 100%);
+    --sb-gradient-warm: linear-gradient(135deg, #2e54b8 0%, #7b5cfa 100%);
+
+    --sb-bg:        rgba(255, 255, 255, 0.92);
+    --sb-border:    rgba(55, 98, 200, 0.12);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.18);
+    --sb-item-h:    46px;
+    --sb-radius:    14px;
+    --sb-text:      #1a2340;
+    --sb-muted:     #7a8aaa;
+    --sb-divider:   rgba(55, 98, 200, 0.12);
 }
 
 [data-theme="dark"] {
-    --text-muted: #b5b5b5;
-    --card-border: rgba(255,255,255,0.12);
-    --bg-secondary: #2f2f2f;
-    --text-primary: #fff;
-    --text-secondary: #ccc;
-    --bg-tertiary: #333;
-    --border-color: #555;
-    --shadow-color: rgba(255,255,255,0.1);
+    --sb-bg:        rgba(18, 22, 38, 0.96);
+    --sb-border:    rgba(95, 140, 255, 0.14);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.55);
+    --sb-text:      #e8edff;
+    --sb-muted:     #6b7a9a;
+    --sb-divider:   rgba(95, 140, 255, 0.12);
+    --sb-accent-soft: rgba(95, 140, 255, 0.12);
+    --sb-accent-mid:  rgba(95, 140, 255, 0.22);
 }
 
 /* =======================
@@ -115,33 +125,6 @@ body::-webkit-scrollbar-thumb:hover,
     .main-content::-webkit-scrollbar {
         display: none !important;
     }
-}
-/* Logout Alert Modal */
-[data-theme="dark"] #logoutAlertModal {
-    background: var(--bg-secondary);
-}
-
-[data-theme="dark"] #logoutAlertModal .icon-wrap {
-    background: rgba(233, 68, 68, 0.15);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-title {
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-desc {
-    color: var(--text-secondary);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] #logoutAlertModal .alert-btn.cancel:hover {
-    background: rgba(55, 98, 200, 0.2);
-    color: #5f8cff;
 }
 /* =========================
    DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
@@ -236,8 +219,20 @@ body.sidebar-collapsed .desktop-top-nav {
     animation: none;
 }
 
+/* has-notif: badge/styling indicator only — NO animation here */
 .nav-btn.notif-btn.has-notif {
+    /* intentionally empty — animation handled by .ringing class */
+}
+
+/* ringing: added only by JS when genuinely new notifications arrive */
+.nav-btn.notif-btn.ringing {
     animation: bellRing 0.5s ease-in-out;
+}
+
+/* Mobile button needs translateY(-50%) preserved throughout animation,
+   otherwise the button snaps out of position after animation ends */
+.mobile-notif-btn.ringing {
+    animation: bellRingMobile 0.5s ease-in-out;
 }
 
 @keyframes bellRing {
@@ -245,6 +240,13 @@ body.sidebar-collapsed .desktop-top-nav {
     10%, 30% { transform: rotate(-10deg); }
     20%, 40% { transform: rotate(10deg); }
     50% { transform: rotate(0deg); }
+}
+
+@keyframes bellRingMobile {
+    0%, 100% { transform: translateY(-50%) rotate(0deg); }
+    10%, 30% { transform: translateY(-50%) rotate(-10deg); }
+    20%, 40% { transform: translateY(-50%) rotate(10deg); }
+    50% { transform: translateY(-50%) rotate(0deg); }
 }
 .notif-badge {
     position: absolute;
@@ -563,21 +565,26 @@ body::before {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: #fff;
-    border: 2px solid #3762c8;
+    background: rgba(255,255,255,.92);
+    border: 1.5px solid rgba(59,130,246,.45);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
     z-index: 1002;
+    outline: none;
+}
+[data-theme="dark"] .sidebar-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(59,130,246,.4);
 }
 /* Highlight the sidebar profile-btn/avatar if on profile page */
 .sidebar-profile-btn.active,
 .profile-btn.active {
-    border: 2px solid #4f46e5 !important;
-    box-shadow: 0 0 0 2px rgba(79,70,229,.3) !important;
+    border: 1.5px solid #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.25) !important;
 }
 .sidebar-profile-btn img {
     width: 100%;
@@ -586,7 +593,6 @@ body::before {
 }
 .profile-fallback-icon {
     display: none;
-    font-size: 24px;
     width: 100%;
     height: 100%;
     align-items: center;
@@ -596,14 +602,27 @@ body::before {
     left: 0;
     z-index: 1;
 }
+.profile-fallback-icon svg,
+.profile-fallback-icon img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 50%;
+}
+/* Show fallback when the real image is hidden or errors */
+.sidebar-profile-btn .profile-fallback-icon.visible {
+    display: flex;
+}
 
 .sidebar-profile-btn img {
     position: relative;
     z-index: 2;
 }
 .sidebar-profile-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 4px 14px rgba(55,98,200,0.35);
+    border-color: #3b82f6;
+    box-shadow: 0 2px 10px rgba(59,130,246,.4);
+    transform: scale(1.12);
 }
 .sidebar-nav.collapsed .sidebar-profile-btn {
     position: relative;
@@ -911,116 +930,6 @@ body::before {
     display: none;
 }
 
-#logoutAlertBackdrop {
-    position: fixed;
-    z-index: 5000;
-    inset: 0;
-    background: rgba(37, 59, 115, 0.20);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.18s;
-}
-
-#logoutAlertBackdrop.active {
-    display: flex;
-}
-
-#logoutAlertModal {
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 42px rgba(17, 39, 77, 0.15);
-    padding: 36px 28px 22px 28px;
-    width: 340px;
-    max-width: 95vw;
-    animation: fadeIn 0.22s cubic-bezier(.6,-0.01,.52,1.23) 1;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-@keyframes fadeIn {
-    from{transform:translateY(34px) scale(.95); opacity:.24;}
-    to  {transform:translateY(0) scale(1); opacity:1;}
-}
-
-#logoutAlertModal .icon-wrap {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 62px;
-    height: 62px;
-    background: #fdeeed;
-    border-radius: 50%;
-    margin: 0 auto 13px auto;
-    box-shadow: 0 2px 8px 0 rgba(236,82,82,0.11);
-}
-
-#logoutAlertModal .icon-wrap .icon {
-    color: #e94444;
-    font-size: 2.1rem;
-    line-height: 1;
-}
-
-#logoutAlertModal .alert-title {
-    font-size: 1.09rem;
-    letter-spacing: 0.04em;
-    font-weight: bold;
-    color: #23285c;
-    text-align: center;
-    margin-bottom: 8px;
-    margin-top: 6px;
-}
-
-#logoutAlertModal .alert-desc {
-    color: #374565;
-    font-size: 0.99rem;
-    text-align: center;
-    margin-bottom: 19px;
-}
-
-#logoutAlertModal .alert-btns {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-}
-
-#logoutAlertModal .alert-btn {
-    min-width: 95px;
-    padding: 8px 0;
-    border-radius: 7px;
-    border: none;
-    font-weight: bold;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background .18s, color .18s;
-    outline: none;
-}
-
-#logoutAlertModal .alert-btn.cancel {
-    background: #f3f4fa;
-    color: #353d52;
-    border: 1px solid #e3e6f1;
-}
-
-#logoutAlertModal .alert-btn.cancel:hover {
-    background: #e9eeff;
-    color: #3650c7;
-    border-color: #c7d1f3;
-}
-
-#logoutAlertModal .alert-btn.logout {
-    color: #fff;
-    background: #e94444;
-    border: none;
-    box-shadow: 0 3px 14px 0 rgba(236,82,82,0.08);
-}
-
-#logoutAlertModal .alert-btn.logout:hover {
-    background: #c82d2d;
-}
-
 .notif-popup {
     position: fixed;
     top: 30px;
@@ -1100,54 +1009,4 @@ body::before {
     .desktop-cimm-label {
         font-size: 13px;
     }
-}
-
-/* =======================
-   VISIBILITY FIXES FOR DARK/LIGHT MODE
-========================== */
-
-/* Fix Metric Number + Text Visibility */
-.metric-value,
-.metric-title,
-.metric-trend span {
-    color: var(--text-primary) !important;
-}
-
-.metric-title {
-    opacity: 0.85;
-}
-
-.metric-trend {
-    color: var(--text-secondary) !important;
-}
-
-/* Fix Cards & Background Contrast */
-.metric-card,
-.chart-card,
-.dashboard-card {
-    background: var(--card-bg) !important;
-    border: 1px solid var(--card-border) !important;
-}
-
-/* Fix Activity & Schedule Text Contrast */
-.activity-title,
-.schedule-task,
-.facility-name,
-.chart-title {
-    color: var(--text-primary) !important;
-}
-
-.activity-description,
-.schedule-location,
-.chart-subtitle,
-.schedule-date {
-    color: var(--text-muted) !important;
-}
-
-/* Fix Numbers & Percentages (IMPORTANT) */
-.facility-count,
-.metric-value,
-.schedule-badge,
-.metric-trend span {
-    color: var(--text-primary) !important;
 }

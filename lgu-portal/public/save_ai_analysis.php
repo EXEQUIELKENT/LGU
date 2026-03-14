@@ -1,29 +1,30 @@
 <?php
 /**
- * save_ai_analysis.php — InfraGovServices
+ * save_ai_analysis.php — InfraGovServices v3.3
  * Saves TensorFlow.js client-side analysis results to the database.
  * Called via fetch() after a successful form submission.
  *
- * POST body (JSON) — 18 parameters:
- *   Type string: issididsissdsssiis
- *    1 i  req_id
- *    2 s  declared_infrastructure
- *    3 s  detected_infrastructure
- *    4 i  infrastructure_match
- *    5 d  match_confidence
- *    6 i  is_legitimate
- *    7 d  legitimacy_score
- *    8 s  legitimacy_notes
- *    9 i  damage_severity
- *   10 s  priority_recommendation
- *   11 s  damage_description
- *   12 d  confidence_score
- *   13 s  anomaly_flags
- *   14 s  combined_assessment
- *   15 s  estimated_repair_complexity
- *   16 i  requires_immediate_action
- *   17 i  images_analyzed
- *   18 s  analysis_status
+ * POST body (JSON) — 19 parameters:
+ *   Type string: issididsissdsssiiss
+ *    1  i  req_id
+ *    2  s  declared_infrastructure
+ *    3  s  detected_infrastructure
+ *    4  i  infrastructure_match
+ *    5  d  match_confidence
+ *    6  i  is_legitimate
+ *    7  d  legitimacy_score
+ *    8  s  legitimacy_notes
+ *    9  i  damage_severity
+ *   10  s  priority_recommendation
+ *   11  s  damage_description
+ *   12  d  confidence_score
+ *   13  s  anomaly_flags
+ *   14  s  combined_assessment
+ *   15  s  estimated_repair_complexity
+ *   16  i  requires_immediate_action
+ *   17  i  images_analyzed
+ *   18  s  analysis_status
+ *   19  s  ai_cost_estimation          ← NEW in v3.3
  */
 
 session_start();
@@ -74,6 +75,10 @@ $p17 = _i($data['images_analyzed']              ?? 0, 0, 10);
 $p18 = in_array($data['analysis_status'] ?? '', ['completed','failed'], true)
        ? $data['analysis_status'] : 'completed';
 
+// ── NEW: param 19 — cost estimation string (e.g. "₱5,000 – ₱25,000") ──────
+// Accept any UTF-8 string up to 100 chars; fall back gracefully if absent.
+$p19 = _s($data['ai_cost_estimation'] ?? 'N/A – manual assessment required', 100);
+
 $sql = "
     INSERT INTO request_ai_analysis (
         req_id, declared_infrastructure, detected_infrastructure,
@@ -82,8 +87,8 @@ $sql = "
         damage_severity, priority_recommendation, damage_description,
         confidence_score, anomaly_flags, combined_assessment,
         estimated_repair_complexity, requires_immediate_action,
-        images_analyzed, analysis_status, analyzed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        images_analyzed, analysis_status, ai_cost_estimation, analyzed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ON DUPLICATE KEY UPDATE
         declared_infrastructure     = VALUES(declared_infrastructure),
         detected_infrastructure     = VALUES(detected_infrastructure),
@@ -102,6 +107,7 @@ $sql = "
         requires_immediate_action   = VALUES(requires_immediate_action),
         images_analyzed             = VALUES(images_analyzed),
         analysis_status             = VALUES(analysis_status),
+        ai_cost_estimation          = VALUES(ai_cost_estimation),
         analyzed_at                 = NOW()
 ";
 
@@ -113,11 +119,13 @@ if (!$stmt) {
     exit;
 }
 
-// Type string verified by Python: 'issididsissdsssiis' (18 chars, 18 params)
+// Type string: 'issididsissdsssiiss'
+// Verified count: i(1) s(2) s(3) i(4) d(5) i(6) d(7) s(8) i(9) s(10)
+//                 s(11) d(12) s(13) s(14) s(15) i(16) i(17) s(18) s(19) = 19 params ✓
 $stmt->bind_param(
-    'issididsissdsssiis',
+    'issididsissdsssiiss',
     $p1, $p2, $p3, $p4, $p5, $p6, $p7, $p8, $p9,
-    $p10, $p11, $p12, $p13, $p14, $p15, $p16, $p17, $p18
+    $p10, $p11, $p12, $p13, $p14, $p15, $p16, $p17, $p18, $p19
 );
 
 if ($stmt->error) {
@@ -138,5 +146,49 @@ if (!$ok) {
 }
 
 $stmt->close();
-error_log("[InfraAI-TFJS] Saved req #{$p1}: {$p10} sev={$p9}");
-echo json_encode(['success' => true, 'req_id' => $p1, 'priority' => $p10, 'severity' => $p9]);
+error_log("[InfraAI-TFJS] Saved req #{$p1}: {$p10} sev={$p9} cost={$p19}");
+
+// ── Sync priority_lvl and budget into the reports row ────────────────────────
+// Parse the cost range string (e.g. "₱900,000 – ₱6,000,000") into a numeric
+// midpoint for the budget decimal column.
+$budgetMid = 0.00;
+$costStr   = $p19;
+if ($costStr && $costStr !== 'N/A – manual assessment required') {
+    // Strip peso signs, spaces, commas then split on dash/en-dash
+    $stripped = preg_replace('/[₱\s,]/u', '', $costStr);
+    $parts    = preg_split('/[–\-]+/', $stripped);
+    if (count($parts) === 2) {
+        $lo = (float)$parts[0];
+        $hi = (float)$parts[1];
+        if ($lo > 0 && $hi >= $lo) $budgetMid = round(($lo + $hi) / 2, 2);
+    } elseif (count($parts) === 1 && (float)$parts[0] > 0) {
+        $budgetMid = (float)$parts[0];
+    }
+}
+
+// Find the reports row linked to this req_id through request_resolutions
+$syncSql  = "
+    UPDATE reports r
+    JOIN   request_resolutions rr ON r.res_id = rr.res_id
+    SET    r.priority_lvl = ?,
+           r.budget       = ?
+    WHERE  rr.req_id = ?
+";
+$syncStmt = $conn->prepare($syncSql);
+if ($syncStmt) {
+    $syncStmt->bind_param('sdi', $p10, $budgetMid, $p1);
+    $syncStmt->execute();
+    if ($syncStmt->error) error_log('[InfraAI-TFJS] Reports sync error: ' . $syncStmt->error);
+    $syncStmt->close();
+} else {
+    error_log('[InfraAI-TFJS] Reports sync prepare failed: ' . $conn->error);
+}
+
+echo json_encode([
+    'success'             => true,
+    'req_id'             => $p1,
+    'priority'           => $p10,
+    'severity'           => $p9,
+    'ai_cost_estimation' => $p19,
+    'budget_synced'      => $budgetMid,
+]);

@@ -17,20 +17,12 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
 }
 
-// Get repairs count from repair_archive
+// Get repairs count from repair_archive (kept for reference, no longer shown in cards)
 $repairs_count = 0;
 $repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
 if ($repairs_result) {
     $repairs_row = $repairs_result->fetch_assoc();
-    $repairs_count = $repairs_row['count'];
-}
-
-// Get ongoing count from maintenance_schedule (In Progress status)
-$ongoing_count = 0;
-$ongoing_result = $conn->query("SELECT COUNT(*) as count FROM maintenance_schedule WHERE status = 'In Progress'");
-if ($ongoing_result) {
-    $ongoing_row = $ongoing_result->fetch_assoc();
-    $ongoing_count = $ongoing_row['count'];
+    $repairs_count = (int)$repairs_row['count'];
 }
 
 // Get pending count from requests (Pending approval status)
@@ -38,20 +30,95 @@ $pending_count = 0;
 $pending_result = $conn->query("SELECT COUNT(*) as count FROM requests WHERE approval_status = 'Pending'");
 if ($pending_result) {
     $pending_row = $pending_result->fetch_assoc();
-    $pending_count = $pending_row['count'];
+    $pending_count = (int)$pending_row['count'];
 }
 
 // Get maintenance schedule data for table
 $maintenance_data = array();
+
+// ── 1. Pull from maintenance_schedule ────────────────────────────────────────
 $maintenance_result = $conn->query("
-    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date, budget 
+    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date AS end_date, budget 
     FROM maintenance_schedule 
-    ORDER BY starting_date DESC 
-    LIMIT 10
+    ORDER BY starting_date DESC
 ");
 if ($maintenance_result) {
     while ($row = $maintenance_result->fetch_assoc()) {
-        $maintenance_data[] = $row;
+        $maintenance_data[] = [
+            'display_id'   => (int)$row['sched_id'],
+            'modal_id'     => (int)$row['sched_id'],
+            'id_label'     => '#SCH-' . str_pad($row['sched_id'], 3, '0', STR_PAD_LEFT),
+            'task'         => $row['task'],
+            'location'     => $row['location'],
+            'category'     => $row['category'] ?? 'General Maintenance',
+            'status'       => $row['status'],
+            'starting_date'=> $row['starting_date'],
+            'end_date'     => $row['end_date'],
+            'budget'       => (float)$row['budget'],
+        ];
+    }
+}
+
+// ── 2. Pull from reports (joined with request_resolutions + requests) ─────────
+// rep_id is offset by 10000 so modal IDs never collide with sched_ids
+$report_result = $conn->query("
+    SELECT
+        r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
+        r.priority_lvl, r.budget,
+        res.status AS resolution_status,
+        req.infrastructure, req.location
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    WHERE r.starting_date IS NOT NULL
+    ORDER BY r.starting_date DESC
+");
+if ($report_result) {
+    while ($rRow = $report_result->fetch_assoc()) {
+        // Map resolution_status → simple display status
+        $resStatus = $rRow['resolution_status'] ?? '';
+        if ($resStatus === 'Completed') {
+            $dispStatus = 'Completed';
+        } elseif (in_array($resStatus, ['In Progress', 'Pending Completion'])) {
+            $dispStatus = 'In Progress';
+        } elseif ($resStatus === 'Scheduled' || $resStatus === 'Pending') {
+            $dispStatus = 'Scheduled';
+        } else {
+            $dispStatus = 'Scheduled';
+        }
+
+        $maintenance_data[] = [
+            'display_id'   => (int)$rRow['rep_id'],
+            'modal_id'     => 10000 + (int)$rRow['rep_id'],
+            'id_label'     => '#RPT-' . str_pad($rRow['rep_id'], 3, '0', STR_PAD_LEFT),
+            'task'         => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'     => $rRow['location'] ?? '—',
+            'category'     => 'Infrastructure Report',
+            'status'       => $dispStatus,
+            'starting_date'=> $rRow['starting_date'],
+            'end_date'     => $rRow['end_date'],
+            'budget'       => (float)$rRow['budget'],
+        ];
+    }
+}
+
+// ── 3. Sort combined by starting_date DESC, limit 10 ─────────────────────────
+usort($maintenance_data, function($a, $b) {
+    return strcmp($b['starting_date'] ?? '', $a['starting_date'] ?? '');
+});
+$maintenance_data = array_slice($maintenance_data, 0, 10);
+
+// ── Tally counts directly from the combined table data ───────────────────────
+$count_scheduled = 0;
+$count_ongoing   = 0;
+$count_delayed   = 0;
+$count_completed = 0;
+foreach ($maintenance_data as $_item) {
+    switch ($_item['status']) {
+        case 'Completed':   $count_completed++; break;
+        case 'In Progress': $count_ongoing++;   break;
+        case 'Delayed':     $count_delayed++;   break;
+        default:            $count_scheduled++; break; // Scheduled / Pending
     }
 }
 ?>
@@ -146,7 +213,6 @@ if ($maintenance_result) {
             display: block;
         }
 
-        /* Hide .show-on-mobile when in desktop view (i.e., min-width > 768px) */
         @media (min-width: 769px) {
             .show-on-mobile {
                 display: none !important;
@@ -158,10 +224,11 @@ if ($maintenance_result) {
             margin: auto;
             padding: 0 40px;
         }
+
         /* STAT CARDS */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 15px;
             margin-bottom: 50px;
         }
@@ -172,7 +239,7 @@ if ($maintenance_result) {
             text-align: left;
             background: var(--stat-card-bg);
             backdrop-filter: blur(10px);
-            padding: 30px;
+            padding: 24px 28px;
             border-radius: 18px;
             border: 1px solid var(--border-color);
             transition: all .25s ease;
@@ -186,19 +253,38 @@ if ($maintenance_result) {
             background: rgba(255, 255, 255, 0.15);
         }
         .stat-icon {
-            font-size: 32px;
+            font-size: 28px;
             background: rgba(255,255,255,.25);
-            padding: 14px;
+            padding: 12px;
             border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         [data-theme="dark"] .stat-icon {
             background: rgba(255,255,255,.15);
         }
+        /* Per-status icon tint */
+        .stat-card.stat-scheduled .stat-icon { background: rgba(21,101,192,0.22); }
+        .stat-card.stat-ongoing   .stat-icon { background: rgba(245,158,11,0.22); }
+        .stat-card.stat-delayed   .stat-icon { background: rgba(198,40,40,0.22);  }
+        .stat-card.stat-completed .stat-icon { background: rgba(46,125,50,0.22);  }
+        [data-theme="dark"] .stat-card.stat-scheduled .stat-icon { background: rgba(21,101,192,0.30); }
+        [data-theme="dark"] .stat-card.stat-ongoing   .stat-icon { background: rgba(245,158,11,0.28); }
+        [data-theme="dark"] .stat-card.stat-delayed   .stat-icon { background: rgba(198,40,40,0.30);  }
+        [data-theme="dark"] .stat-card.stat-completed .stat-icon { background: rgba(46,125,50,0.30);  }
+        /* Per-status number colour */
+        .stat-card.stat-scheduled .number { color: #1565c0; }
+        .stat-card.stat-ongoing   .number { color: #f57f17; }
+        .stat-card.stat-delayed   .number { color: #c62828; }
+        .stat-card.stat-completed .number { color: #2e7d32; }
+        [data-theme="dark"] .stat-card.stat-scheduled .number { color: #90caf9; }
+        [data-theme="dark"] .stat-card.stat-ongoing   .number { color: #fdd835; }
+        [data-theme="dark"] .stat-card.stat-delayed   .number { color: #e57373; }
+        [data-theme="dark"] .stat-card.stat-completed .number { color: #81c784; }
         .stat-card h3 {
-            font-size: 14px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             opacity: 0.8;
@@ -207,12 +293,12 @@ if ($maintenance_result) {
             color: var(--text-primary);
         }
         .stat-card .number {
-            font-size: 40px;
+            font-size: 38px;
             font-weight: 600;
             color: var(--text-primary);
         }
 
-        /* RECENT ACTIVITY TABLE & MOBILE CARDS */
+        /* CONTENT CARD */
         .content-card {
             background: var(--content-card-bg);
             border-radius: 18px;
@@ -221,7 +307,7 @@ if ($maintenance_result) {
             box-shadow: 0 10px 30px var(--shadow-color);
             transition: all .25s ease;
             border: 1px solid var(--border-color);
-        }       
+        }
         .card-header {
             display: flex;
             justify-content: space-between;
@@ -229,7 +315,6 @@ if ($maintenance_result) {
             text-align: center;
             margin-bottom: 20px;
         }
-        /* Center card-header h2 */
         .card-header h2 {
             margin: 0 auto;
             text-align: center;
@@ -237,7 +322,6 @@ if ($maintenance_result) {
             font-size: 30px;
             color: var(--text-primary);
         }
-        /* Make card-header h2 larger on mobile view for .show-on-mobile */
         @media (max-width: 768px) {
             .show-on-mobile.card-header h2 {
                 font-size: 30px !important;
@@ -252,50 +336,65 @@ if ($maintenance_result) {
             }
         }
 
-        /* TABLE POLISH - IMPROVED TABLE CONTAINER */
+        /* =============================================
+           TABLE — FIXED LAYOUT + OVERFLOW CONTAINMENT
+        =============================================== */
         .table-wrapper {
             border-radius: 16px;
             background: var(--card-bg);
             box-shadow: inset 0 0 0 1px var(--border-color);
             transition: background 0.3s ease;
-            overflow-x: visible;
+            overflow: hidden;          /* clip rounded corners */
+            width: 100%;
         }
 
-        @media (max-width: 1150px) {
-            .table-wrapper {
-                overflow-x: auto;
-            }
-            table {
-                min-width: 900px;
-            }
+        /* Inner scroll container — header stays pinned, rows scroll */
+        .table-scroll {
+            max-height: 520px;         /* ~10 rows visible before scroll kicks in */
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: #9cafde rgba(0,0,0,.07);
         }
+        .table-scroll::-webkit-scrollbar        { width: 6px; }
+        .table-scroll::-webkit-scrollbar-track  { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb  { background: #9cafde; border-radius: 3px; }
+        .table-scroll::-webkit-scrollbar-thumb:hover { background: #6a8fd8; }
 
         table {
+            /* Fixed layout: respects explicit widths, clips overflow */
+            table-layout: fixed;
             width: 100%;
-            max-width: 100%;
             border-collapse: separate;
             border-spacing: 0;
         }
 
-        /* MODERN TABLE HEADER - UPGRADE + STICKY */
+        /* Column width distribution — all % so table always fits the viewport */
+        col.col-id       { width: 7%;  }   /* #SCH-XX */
+        col.col-date     { width: 11%; }   /* Mar 23, 2026 */
+        col.col-type     { width: 21%; }   /* task — truncated */
+        col.col-location { width: 24%; }   /* location — truncated */
+        col.col-budget   { width: 10%; }   /* ₱XX,XXX.XX */
+        col.col-status   { width: 19%; }   /* longest: "Isinasagawa" ~11 chars */
+        col.col-action   { width: 8%;  }   /* View btn */
+
+        /* MODERN TABLE HEADER */
         thead th {
             position: sticky;
             top: 0;
-            background: linear-gradient(
-                to bottom,
-                #fdfdfd,
-                #f2f4f8
-            );
+            background: linear-gradient(to bottom, #fdfdfd, #f2f4f8);
             z-index: 2;
-            padding: 16px 18px;
+            padding: 13px 8px;
             border-bottom: 1px solid #e3e6ee;
             color: #555;
-            font-size: 15px;
+            font-size: 12px;
             font-weight: 600;
             text-align: center;
             white-space: nowrap;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            overflow: hidden;
         }
 
         [data-theme="dark"] thead th {
@@ -308,22 +407,16 @@ if ($maintenance_result) {
             border-bottom-color: var(--border-color);
         }
 
-        th:nth-child(1) { width: 100px; }
-        th:nth-child(2) { width: 130px; }
-        th:nth-child(3) { width: auto; min-width: 140px; }
-        th:nth-child(4) { width: auto; min-width: 150px; }
-        th:nth-child(5) { width: 120px; }
-        th:nth-child(6) { width: 110px; }
-        th:nth-child(7) { width: 100px; }
-
-        /* TABLE ZEBRA + HOVER LIFT */
+        /* TABLE CELLS */
         td {
-            padding: 16px 18px;
+            padding: 11px 8px;
             border-bottom: 1px solid #eef0f5;
-            font-size: 15px;
+            font-size: 13px;
             color: #374151;
             text-align: center;
-            white-space: nowrap;
+            white-space: normal;
+            word-break: break-word;
+            vertical-align: middle;
         }
 
         [data-theme="dark"] td {
@@ -331,16 +424,51 @@ if ($maintenance_result) {
             color: var(--text-secondary);
         }
 
-        td:nth-child(1) {
-            text-align: center;
-        }
-        td:nth-child(3),
-        td:nth-child(4) {
-            text-align: left;
+        /* Columns that should NOT wrap (short fixed values) */
+        td:nth-child(1),   /* Sched # */
+        td:nth-child(2),   /* Date    */
+        td:nth-child(5),   /* Budget  */
+        td:nth-child(7)    /* Action  */
+        {
+            white-space: nowrap;
         }
 
+        /* Status — allow wrapping so Filipino labels fit */
+        td:nth-child(6) {
+            white-space: normal;
+        }
+
+        /* Task & Location: truncate with ellipsis on single line */
+        td:nth-child(3),   /* Type/Task */
+        td:nth-child(4)    /* Location  */
+        {
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 0; /* triggers ellipsis in table-layout:fixed */
+        }
+
+        /* Show full text on hover via title attribute (tooltip) */
+        td:nth-child(3):hover,
+        td:nth-child(4):hover {
+            overflow: visible;
+            white-space: normal;
+            word-break: break-word;
+            /* Slight highlight to indicate expanded */
+            background: #f0f5ff;
+            position: relative;
+            z-index: 1;
+        }
+
+        [data-theme="dark"] td:nth-child(3):hover,
+        [data-theme="dark"] td:nth-child(4):hover {
+            background: rgba(55, 98, 200, 0.15);
+        }
+
+        /* TABLE ZEBRA + HOVER */
         tbody tr {
-            transition: background .2s ease, transform .15s ease;
+            transition: background .2s ease;
         }
         tbody tr:nth-child(even) {
             background: #fafbff;
@@ -355,54 +483,195 @@ if ($maintenance_result) {
             background: rgba(55, 98, 200, 0.1);
         }
 
-        /* VIEW BUTTON UPGRADE */
+        /* VIEW BUTTON */
         td a.link {
-            padding: 7px 18px;
-            font-size: 14px;
+            padding: 6px 16px;
+            font-size: 13px;
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: #fff;
             border-radius: 999px;
             text-decoration: none;
             font-weight: 600;
             box-shadow: 0 4px 10px rgba(59,130,246,.35);
-            transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+            transition: transform .15s ease, box-shadow .15s ease;
             display: inline-block;
+            white-space: nowrap;
         }
         td a.link:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(59,130,246,.45);
         }
 
-        /* STATUS PILL - UPGRADED STYLE */
+        /* STATUS PILL */
         .status-pill {
-            padding: 6px 14px;
+            padding: 4px 9px;
             border-radius: 999px;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 95px;
+            white-space: normal;   /* wraps for long Filipino words */
+            word-break: keep-all;  /* break between words, not mid-word */
+            text-align: center;
+            max-width: 100%;
+            line-height: 1.3;
         }
         .status-pill::before {
             content: "●";
-            font-size: 10px;
-            margin-right: 6px;
+            font-size: 9px;
+            margin-right: 5px;
+            flex-shrink: 0;
         }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-fixed { background: #d4edda; color: #155724; }
-        .status-progress { background: #cce5ff; color: #004085; }
-        .status-delayed { background: #f8d7da; color: #721c24; }
+        /* ── Status pill colors — mirrors sched.php legend exactly ── */
+        .status-pending  { background: #e3f2fd; color: #1565c0; }   /* Scheduled/Pending → blue */
+        .status-fixed    { background: #e8f5e9; color: #2e7d32; }   /* Completed         → green */
+        .status-progress { background: #fff8e1; color: #f57f17; }   /* In Progress        → amber */
+        .status-delayed  { background: #ffebee; color: #c62828; }   /* Delayed            → red */
 
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 13px;
+        [data-theme="dark"] .status-pending  { background: rgba(21,101,192,0.2);   color: #90caf9; }
+        [data-theme="dark"] .status-fixed    { background: rgba(76,175,80,0.2);    color: #81c784; }
+        [data-theme="dark"] .status-progress { background: rgba(245,158,11,0.18);  color: #fdd835; }
+        [data-theme="dark"] .status-delayed  { background: rgba(244,67,54,0.2);    color: #e57373; }
+
+        /* TABLE SEARCH BAR */
+        .table-search-wrapper {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 10px;
         }
-        /* Mobile maintenance list (hidden by default, replaces table on mobile) */
+        #requestSearch {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid #d2d6db;
+            font-size: 15px;
+            outline: none;
+            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        [data-theme="dark"] #requestSearch {
+            border-color: var(--border-color);
+        }
+        #requestSearch:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+        }
+        .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
+        [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
+
+        /* ── STATUS LEGEND ── */
+        .status-legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            background: var(--bg-tertiary, #f7f9ff);
+            border: 1px solid var(--border-color, rgba(55,98,200,0.10));
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
+        [data-theme="dark"] .status-legend {
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(255,255,255,0.09);
+        }
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px 4px 7px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-secondary, #fff);
+            border: 1px solid var(--border-color, rgba(0,0,0,0.07));
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            transition: box-shadow 0.15s, border-color 0.15s, background 0.15s, transform 0.12s, opacity 0.15s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        [data-theme="dark"] .legend-item {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.10);
+            box-shadow: none;
+        }
+        .legend-item:hover  { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.10); }
+        .legend-item:active { transform: scale(0.96); }
+
+        .legend-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: inline-block;
+        }
+        .legend-upcoming  { background: #1565c0; }
+        .legend-ongoing   { background: #f59e0b; }
+        .legend-delayed   { background: #c62828; }
+        .legend-completed { background: #2e7d32; }
+
+        /* Pill border accent per status */
+        .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.22); }
+        .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.28); }
+        .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.22); }
+        .legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.22); }
+
+        [data-theme="dark"] .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.40); }
+        [data-theme="dark"] .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.40); }
+        [data-theme="dark"] .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.40); }
+        [data-theme="dark"] .legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.40); }
+
+        /* Active (selected) state */
+        .legend-item.legend-active { box-shadow: 0 2px 10px rgba(0,0,0,0.13); font-weight: 700; }
+        .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13);  border-color: #1565c0; color: #1565c0; }
+        .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
+        .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
+        .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
+        .legend-item.legend-dimmed { opacity: 0.42; }
+
+        [data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
+        [data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
+        [data-theme="dark"] .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
+        [data-theme="dark"] .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
+
+        /* Clear-filter badge */
+        #legendClearBadge {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px 3px 8px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 700;
+            background: rgba(55,98,200,0.10);
+            border: 1.5px solid rgba(55,98,200,0.22);
+            color: #3762c8;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        #legendClearBadge.visible { display: inline-flex; }
+        #legendClearBadge:hover   { background: rgba(55,98,200,0.18); }
+        [data-theme="dark"] #legendClearBadge {
+            background: rgba(95,140,255,0.14);
+            border-color: rgba(95,140,255,0.30);
+            color: #8ab4f8;
+        }
+
+        @media (max-width: 768px) {
+            .status-legend { gap: 5px; padding: 6px 8px; border-radius: 10px; }
+            .legend-item   { font-size: 11px; padding: 3px 9px 3px 6px; }
+        }
+
+        /* MOBILE MAINTENANCE LIST */
         .mobile-maintenance-list {
             display: none;
         }
-        /* --- Begin drop-in mobile card layout --- */
+
         .report-card {
             width: 100%;
             font-size: 14px;
@@ -414,14 +683,14 @@ if ($maintenance_result) {
             flex-direction: column;
             gap: 10px;
             transition: background 0.3s ease, box-shadow 0.3s ease;
+            box-sizing: border-box;
         }
-        /* Modified report-row for mobile stack label and value inline instead of left/right */
         .report-row {
             display: flex;
             flex-direction: row;
-            align-items: center;
+            align-items: flex-start;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.5;
             gap: 7px;
         }
         .report-row .label {
@@ -434,10 +703,11 @@ if ($maintenance_result) {
         .report-row .value {
             font-weight: 500;
             text-align: left;
-            max-width: 100%;
-            margin-left: 0;
             flex: 1 1 auto;
             color: var(--text-secondary);
+            /* Allow long text to wrap on mobile cards */
+            word-break: break-word;
+            white-space: normal;
         }
         .report-footer {
             display: flex;
@@ -457,74 +727,18 @@ if ($maintenance_result) {
             border: none;
             cursor: pointer;
         }
-        .evidence-btn:hover {
-            background: #2851b3;
-        }
-        /* --- End drop-in mobile card layout --- */
-        .maintenance-card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 15px;
-            box-shadow: 0 6px 18px var(--shadow-color);
-            color: var(--text-primary);
-            transition: all .25s ease;
-        }
-        .maintenance-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px var(--shadow-color);
-        }
-        .maintenance-card .status-pill {
-            margin-top: 8px;
-        }
-        .card-action {
-            display: inline-block;
-            margin-top: 10px;
-            font-weight: 600;
-            color: #005bb3;
-            text-decoration: none;
-        }
+        .evidence-btn:hover { background: #2851b3; }
 
-        /* === TABLE SEARCH BAR (DESKTOP + RESPONSIVE) === */
-        .table-search-wrapper {
-            width: 100%;
-            max-width: 100%;
-            margin-bottom: 18px;
-        }
-        #requestSearch {
-            width: 100%;
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid #d2d6db;
-            font-size: 15px;
-            outline: none;
-            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
-            background: var(--card-bg);
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] #requestSearch {
-            border-color: var(--border-color);
-        }
-        
-        #requestSearch:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-        }
-        @media (max-width: 1024px) {    
-        .footer-content {
-            grid-template-columns: 1fr 1fr;
-        }
-}
-
-    /* ===== MOBILE BREAKPOINT (768px and below) ===== */
-    @media (max-width: 768px) {
-            /* HIDE DESKTOP NAVIGATION */
-            .nav {
-                display: none !important;
+        @media (max-width: 1024px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
             }
+        }
 
-            /* SHOW MOBILE TOP NAV */
+        /* ===== MOBILE BREAKPOINT ===== */
+        @media (max-width: 768px) {
+            .nav { display: none !important; }
+
             .mobile-top-nav {
                 display: flex !important;
                 position: fixed;
@@ -557,10 +771,7 @@ if ($maintenance_result) {
                 cursor: pointer;
                 transition: all 0.3s ease;
             }
-
-            .mobile-toggle:active {
-                transform: scale(0.95);
-            }
+            .mobile-toggle:active { transform: scale(0.95); }
 
             .mobile-top-nav img {
                 height: 42px;
@@ -585,35 +796,43 @@ if ($maintenance_result) {
                 z-index: 1;
             }
 
-            .dashboard-container { 
-                padding: 20px 13px 40px; 
-            }
+            .dashboard-container { padding: 20px 13px 40px; }
             .container { padding: 0 5px; }
             .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 18px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
             }
             .welcome-section h1 {
                 text-align: center;
                 font-size: 2rem;
                 font-weight: 600;
             }
+
+            /* Hide desktop table, show mobile cards */
             table { display: none !important; }
-            
             .mobile-maintenance-list {
                 display: flex;
                 flex-direction: column;
                 gap: 20px;
                 width: 100%;
-                padding: 8px 20px;
+                padding: 8px 10px;
+                box-sizing: border-box;
+                max-height: 72vh;        /* scroll instead of expanding the page */
+                overflow-y: auto;
+                overflow-x: hidden;
+                scrollbar-width: thin;
+                scrollbar-color: #9cafde rgba(0,0,0,.07);
             }
+            .mobile-maintenance-list::-webkit-scrollbar        { width: 4px; }
+            .mobile-maintenance-list::-webkit-scrollbar-track  { background: rgba(0,0,0,.05); border-radius: 3px; }
+            .mobile-maintenance-list::-webkit-scrollbar-thumb  { background: #9cafde; border-radius: 3px; }
 
-            /* === MOBILE SEARCH POSITIONING === */
             .table-search-wrapper {
                 order: 2;
                 margin-top: 10px;
                 margin-bottom: 18px;
                 padding: 0 10px;
+                box-sizing: border-box;
             }
             .mobile-maintenance-list .card-header {
                 display: flex;
@@ -621,88 +840,17 @@ if ($maintenance_result) {
                 align-items: center;
             }
 
-            /* Add inside the existing section */
-            .footer {
-                padding: 40px 20px 20px;
-            }
-
+            .footer { padding: 40px 20px 20px; }
             .footer-content {
                 grid-template-columns: 1fr;
                 gap: 30px;
                 margin-bottom: 30px;
             }
-
             .footer-bottom {
                 flex-direction: column;
                 gap: 20px;
                 padding-top: 20px;
                 margin-top: 20px;
-            }
-
-            /* === Maintenance card (same visual as request-card) === */
-            .report-card {
-                width: 100%;
-                background: var(--card-bg);
-                border-radius: 16px;
-                padding: 16px 18px;
-                box-shadow: 0 8px 20px var(--shadow-color);
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                font-size: 14px;
-            }
-
-            /* Row layout */
-            .report-row {
-                display: flex;
-                align-items: center;
-                gap: 7px;
-                line-height: 1.4;
-            }
-
-            /* Label & value formatting */
-            .report-row .label {
-                font-weight: 600;
-                opacity: 0.7;
-                flex-shrink: 0;
-            }
-
-            .report-row .value {
-                font-weight: 500;
-                flex: 1;
-                text-align: left;
-            }
-
-            /* Footer (status + action button) */
-            .report-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-top: 8px;
-            }
-
-            /* View button */
-            .evidence-btn {
-                text-align: center;
-                width: 90px;
-                padding: 8px 14px;
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 600;
-                background: #3762c8;
-                color: #fff;
-                border: none;
-                cursor: pointer;
-                transition: background .2s ease;
-            }
-
-            .evidence-btn:hover {
-                background: #2851b3;
-            }
-
-            /* Status pill spacing */
-            .report-footer .status-pill {
-                margin-right: 6px;
             }
 
             .content-card {
@@ -711,45 +859,115 @@ if ($maintenance_result) {
             }
         }
 
-        /* ===== SMALLER MOBILE (500px and below) ===== */
         @media (max-width: 500px) {
-            .stat-card { padding: 20px 10px; }
-            .stat-icon { font-size: 25px; padding: 8px; }
-            .stat-card .number { font-size: 28px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card { padding: 16px 10px; }
+            .stat-icon { font-size: 22px; padding: 8px; }
+            .stat-card .number { font-size: 26px; }
             .card-header h2 { font-size: 1.0rem; }
             .report-card { padding: 12px; }
-            
-            #requestSearch {
-                font-size: 14px;
-                padding: 9px 14px;
-            }
+            #requestSearch { font-size: 14px; padding: 9px 14px; }
         }
 
-        /* ===== VERY SMALL MOBILE (360px and below) ===== */
         @media (max-width: 360px) {
-            .mobile-clock {
-                font-size: 12px;
-                right: 52px;
-            }
-
-            .report-card {
-                padding: 12px 3vw !important;
-            }
+            .mobile-clock { font-size: 12px; right: 52px; }
+            .report-card { padding: 12px 3vw !important; }
         }
 
-        /* ===== ENSURE DESKTOP NAV SHOWS ON LARGE SCREENS ===== */
         @media (min-width: 769px) {
-            .mobile-top-nav {
-                display: none !important;
-            }
+            .mobile-top-nav { display: none !important; }
+            .sidebar-nav { display: none !important; }
+            .nav { display: flex !important; }
+        }
 
-            .sidebar-nav {
-                display: none !important;
-            }
+        /* ═══════════════════════════════════════════════════════
+           SCHEDULE DETAIL MODAL — bilingual, matches requests.php style
+        ═══════════════════════════════════════════════════════ */
+        .sched-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.45);
+            display: none; align-items: center; justify-content: center;
+            z-index: 8000;
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        }
+        .sched-modal-backdrop.active { display: flex; }
 
-            .nav {
-                display: flex !important;
-            }
+        .sched-detail-modal {
+            background: var(--bg-primary, #fff);
+            border-radius: 20px;
+            box-shadow: 0 12px 50px var(--shadow-color, rgba(0,0,0,.2));
+            width: 92%; max-width: 560px; max-height: 88vh;
+            display: flex; flex-direction: column;
+            animation: schedDetailIn .3s cubic-bezier(.34,1.56,.64,1);
+            border: 1px solid var(--border-color, rgba(0,0,0,.08));
+            overflow: hidden;
+        }
+        @keyframes schedDetailIn {
+            from { opacity:0; transform: scale(.9) translateY(-20px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
+        }
+
+        /* Coloured top band — matches sched.php legend */
+        .sched-modal-band { height: 8px; border-radius: 20px 20px 0 0; width: 100%; flex-shrink: 0; }
+        .sched-modal-band.sched-completed  { background: linear-gradient(90deg,#2e7d32,#66bb6a); }
+        .sched-modal-band.sched-inprogress { background: linear-gradient(90deg,#f57f17,#ffd54f); }
+        .sched-modal-band.sched-delayed    { background: linear-gradient(90deg,#c62828,#ef5350); }
+        .sched-modal-band.sched-pending    { background: linear-gradient(90deg,#1565c0,#42a5f5); }
+
+        .sched-modal-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 18px 24px 14px; gap: 12px;
+            border-bottom: 1px solid var(--border-color, rgba(0,0,0,.08));
+            background: var(--bg-tertiary, rgba(255,255,255,.9)); flex-shrink: 0;
+        }
+        .sched-modal-req-id {
+            font-size: 11px; font-weight: 700;
+            color: var(--text-secondary, #555); text-transform: uppercase;
+            letter-spacing: .09em; margin-bottom: 3px;
+        }
+        .sched-modal-title { font-size: 19px; font-weight: 700; color: var(--text-primary, #1a1a2e); line-height: 1.25; }
+        .sched-modal-close {
+            background: none; border: none; font-size: 26px;
+            color: var(--text-secondary, #555); cursor: pointer;
+            width: 36px; height: 36px; display: flex; align-items: center;
+            justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0; margin-top: -2px;
+        }
+        .sched-modal-close:hover { background: rgba(55,98,200,.1); color: #3762c8; }
+
+        .sched-modal-body {
+            padding: 0 24px 20px; overflow-y: auto; flex: 1;
+            scrollbar-width: thin; scrollbar-color: #9cafde rgba(0,0,0,.07);
+        }
+        .sched-modal-body::-webkit-scrollbar { width: 5px; }
+        .sched-modal-body::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .sched-modal-body::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
+
+        /* Status pill */
+        .sched-status-row { padding-top: 16px; margin-bottom: 14px; }
+        .sched-status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+        }
+        .sched-status-pill.sched-completed  { background: #e8f5e9; color: #2e7d32; }   /* green  */
+        .sched-status-pill.sched-inprogress { background: #fff8e1; color: #f57f17; }   /* amber  */
+        .sched-status-pill.sched-delayed    { background: #ffebee; color: #c62828; }   /* red    */
+        .sched-status-pill.sched-pending    { background: #e3f2fd; color: #1565c0; }   /* blue   */
+        [data-theme="dark"] .sched-status-pill.sched-completed  { background: rgba(76,175,80,0.2);   color: #81c784; }
+        [data-theme="dark"] .sched-status-pill.sched-inprogress { background: rgba(245,158,11,0.18); color: #fdd835; }
+        [data-theme="dark"] .sched-status-pill.sched-delayed    { background: rgba(244,67,54,0.2);   color: #e57373; }
+        [data-theme="dark"] .sched-status-pill.sched-pending    { background: rgba(21,101,192,0.2);  color: #90caf9; }
+
+        /* Fields */
+        .sched-field        { margin-bottom: 14px; }
+        .sched-field-label  { font-size: 11px; font-weight: 700; color: #3762c8; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+        .sched-field-value  { font-size: 14px; color: var(--text-primary, #1a1a2e); line-height: 1.55; }
+        .sched-divider      { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 14px 0; }
+        .sched-grid-2       { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+
+        @media (max-width: 768px) {
+            .sched-detail-modal { width: 95%; max-height: 90vh; }
+            .sched-modal-header, .sched-modal-body { padding-left: 18px; padding-right: 18px; }
+            .sched-grid-2 { grid-template-columns: 1fr; gap: 10px; }
         }
     </style>
     <?php include 'citizen_rendering.php'; ?>
@@ -779,7 +997,6 @@ if ($maintenance_result) {
             <div class="nav-actions">
                 <div class="desktop-clock" id="desktopClock"></div>
 
-                <!-- TRANSLATE BUTTON (desktop) -->
                 <button class="translate-btn" id="translateBtn" data-i18n-title="translate_btn_title" title="Translate to Filipino">
                     <span class="globe-icon">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -823,7 +1040,6 @@ if ($maintenance_result) {
     <div class="mobile-top-nav">
         <button class="mobile-toggle" id="mobileToggle">☰</button>
 
-        <!-- MOBILE TRANSLATE BUTTON -->
         <button class="mobile-translate-btn" id="mobileTranslateBtn" data-i18n-title="translate_btn_title" title="Translate">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
@@ -853,40 +1069,46 @@ if ($maintenance_result) {
 <div class="dashboard-container">
     <div class="container">
     <div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon">🛠️</div>
+    <div class="stat-card stat-scheduled" onclick="filterByLegend('upcoming')" data-i18n-title="reports_stat_title_scheduled" title="Filter: Scheduled">
+        <div class="stat-icon">📅</div>
         <div>
-            <h3 data-i18n="reports_stat_repairs">Repairs</h3>
-            <div class="number"><?= $repairs_count ?></div>
+            <h3 data-i18n="reports_stat_scheduled">Scheduled</h3>
+            <div class="number"><?= $count_scheduled ?></div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">⏳</div>
+    <div class="stat-card stat-ongoing" onclick="filterByLegend('ongoing')" data-i18n-title="reports_stat_title_ongoing" title="Filter: On-Going">
+        <div class="stat-icon">🔄</div>
         <div>
-            <h3 data-i18n="reports_stat_ongoing">On-Going Repairs</h3>
-            <div class="number"><?= $ongoing_count ?></div>
+            <h3 data-i18n="reports_stat_ongoing">On-Going</h3>
+            <div class="number"><?= $count_ongoing ?></div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">📍</div>
+    <div class="stat-card stat-delayed" onclick="filterByLegend('delayed')" data-i18n-title="reports_stat_title_delayed" title="Filter: Delayed">
+        <div class="stat-icon">⚠️</div>
         <div>
-            <h3 data-i18n="reports_stat_pending">Pending</h3>
-            <div class="number"><?= $pending_count ?></div>
+            <h3 data-i18n="reports_stat_delayed">Delayed</h3>
+            <div class="number"><?= $count_delayed ?></div>
+        </div>
+    </div>
+    <div class="stat-card stat-completed" onclick="filterByLegend('completed')" data-i18n-title="reports_stat_title_completed" title="Filter: Completed">
+        <div class="stat-icon">✅</div>
+        <div>
+            <h3 data-i18n="reports_stat_completed">Completed</h3>
+            <div class="number"><?= $count_completed ?></div>
         </div>
     </div>
 </div>
 
-<!-- Update the content card header -->
 <div class="content-card">
-    <!-- Desktop/tablet label -->
+    <!-- Mobile header -->
     <div class="card-header show-on-mobile">
         <h2 data-i18n="reports_page_title">Recent Maintenance Reports</h2>
     </div>
+    <!-- Desktop header -->
     <div class="card-header">
         <h2 class="hide-on-mobile" data-i18n="reports_page_title">Recent Maintenance Reports</h2>
     </div>
 
-    <!-- Update search input -->
     <div class="table-search-wrapper">
         <input
             id="requestSearch"
@@ -896,9 +1118,40 @@ if ($maintenance_result) {
         >
     </div>
 
-    <!-- Update table headers -->
+    <!-- STATUS LEGEND (clickable filter) -->
+    <div class="status-legend">
+        <span class="legend-item" data-filter="upcoming" data-i18n-title="reports_legend_filter_title_scheduled" title="Click to filter: Scheduled">
+            <span class="legend-dot legend-upcoming"></span><span data-i18n="reports_legend_scheduled">Scheduled</span>
+        </span>
+        <span class="legend-item" data-filter="ongoing" data-i18n-title="reports_legend_filter_title_ongoing" title="Click to filter: In Progress">
+            <span class="legend-dot legend-ongoing"></span><span data-i18n="reports_legend_ongoing">In Progress</span>
+        </span>
+        <span class="legend-item" data-filter="delayed" data-i18n-title="reports_legend_filter_title_delayed" title="Click to filter: Delayed">
+            <span class="legend-dot legend-delayed"></span><span data-i18n="reports_legend_delayed">Delayed</span>
+        </span>
+        <span class="legend-item" data-filter="completed" data-i18n-title="reports_legend_filter_title_completed" title="Click to filter: Completed">
+            <span class="legend-dot legend-completed"></span><span data-i18n="reports_legend_completed">Completed</span>
+        </span>
+        <span id="legendClearBadge" data-i18n-title="reports_legend_clear" title="Click to clear filter">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span id="legendClearLabel">Scheduled</span>
+        </span>
+    </div>
+
+    <!-- DESKTOP TABLE -->
     <div class="table-wrapper">
+      <div class="table-scroll">
         <table>
+            <!-- colgroup drives the fixed-layout widths -->
+            <colgroup>
+                <col class="col-id">
+                <col class="col-date">
+                <col class="col-type">
+                <col class="col-location">
+                <col class="col-budget">
+                <col class="col-status">
+                <col class="col-action">
+            </colgroup>
             <thead>
                 <tr>
                     <th data-i18n="reports_table_sched">Sched #</th>
@@ -914,30 +1167,34 @@ if ($maintenance_result) {
                 <?php 
                 if (count($maintenance_data) > 0) {
                     foreach ($maintenance_data as $item) {
-                        // Determine status pill class
                         $status_class = 'status-pending';
-                        $status_key = 'reports_status_pending';
+                        $status_key = 'reports_status_scheduled';
+                        $status_filter_key = 'upcoming';
                         if ($item['status'] === 'Completed') {
                             $status_class = 'status-fixed';
                             $status_key = 'reports_status_completed';
+                            $status_filter_key = 'completed';
                         } elseif ($item['status'] === 'In Progress') {
                             $status_class = 'status-progress';
                             $status_key = 'reports_status_in_progress';
+                            $status_filter_key = 'ongoing';
                         } elseif ($item['status'] === 'Delayed') {
                             $status_class = 'status-delayed';
                             $status_key = 'reports_status_delayed';
+                            $status_filter_key = 'delayed';
                         }
-                        // Format date
-                        $date = date('M d, Y', strtotime($item['starting_date']));
+                        $date = !empty($item['starting_date']) ? date('M d, Y', strtotime($item['starting_date'])) : '—';
+                        $task_escaped     = htmlspecialchars($item['task']);
+                        $location_escaped = htmlspecialchars($item['location']);
                 ?>
-                <tr>
-                    <td>#SCH-<?php echo $item['sched_id']; ?></td>
-                    <td><?php echo $date; ?></td>
-                    <td><?php echo htmlspecialchars($item['task']); ?></td>
-                    <td><?php echo htmlspecialchars($item['location']); ?></td>
-                    <td>₱<?php echo number_format($item['budget'], 2); ?></td>
-                    <td><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo $item['status']; ?></span></td>
-                    <td><a href="#" class="link" data-i18n="reports_view_button">View</a></td>
+                <tr data-status="<?php echo $status_filter_key; ?>">
+                    <td class="searchable"><?php echo htmlspecialchars($item['id_label']); ?></td>
+                    <td class="searchable"><?php echo $date; ?></td>
+                    <td class="searchable" title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
+                    <td class="searchable" title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
+                    <td class="searchable">₱<?php echo number_format($item['budget'], 2); ?></td>
+                    <td class="searchable"><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo htmlspecialchars($item['status']); ?></span></td>
+                    <td><a href="#" class="link" onclick="openSchedModal(<?= (int)$item['modal_id'] ?>);return false;" data-i18n="reports_view_button">View</a></td>
                 </tr>
                 <?php 
                     }
@@ -954,73 +1211,69 @@ if ($maintenance_result) {
                 </tr>
             </tbody>
         </table>
+      </div><!-- /.table-scroll -->
     </div>
 
-    <!-- Update mobile cards -->
+    <!-- MOBILE CARDS -->
     <div class="mobile-maintenance-list">
         <?php if (!empty($maintenance_data)): ?>
             <?php foreach ($maintenance_data as $item): 
-                // Status pill
                 $status_class = 'status-pending';
-                $status_key = 'reports_status_pending';
+                $status_key = 'reports_status_scheduled';
+                $status_filter_key = 'upcoming';
                 if ($item['status'] === 'Completed') {
                     $status_class = 'status-fixed';
                     $status_key = 'reports_status_completed';
+                    $status_filter_key = 'completed';
                 } elseif ($item['status'] === 'In Progress') {
                     $status_class = 'status-progress';
                     $status_key = 'reports_status_in_progress';
+                    $status_filter_key = 'ongoing';
                 } elseif ($item['status'] === 'Delayed') {
                     $status_class = 'status-delayed';
                     $status_key = 'reports_status_delayed';
+                    $status_filter_key = 'delayed';
                 }
             ?>
-                <div class="report-card">
+                <div class="report-card" data-status="<?= $status_filter_key ?>"><?php // data-status for legend filter ?>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_schedule_id">Schedule ID:</span>
-                        <span class="value">#SCH-<?= $item['sched_id'] ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['id_label']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_category">Category:</span>
-                        <span class="value"><?= htmlspecialchars($item['category']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['category']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_task">Task:</span>
-                        <span class="value"><?= htmlspecialchars($item['task']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['task']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_location">Location:</span>
-                        <span class="value"><?= htmlspecialchars($item['location']) ?></span>
+                        <span class="value searchable"><?= htmlspecialchars($item['location']) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_start_date">Start Date:</span>
-                        <span class="value"><?= date('M d, Y', strtotime($item['starting_date'])) ?></span>
+                        <span class="value searchable"><?= !empty($item['starting_date']) ? date('M d, Y', strtotime($item['starting_date'])) : '—' ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_budget">Budget:</span>
-                        <span class="value">₱<?= number_format($item['budget'], 2) ?></span>
+                        <span class="value searchable">₱<?= number_format($item['budget'], 2) ?></span>
                     </div>
-
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_status">Status:</span>
-                        <span class="status-pill <?= $status_class ?>" data-i18n="<?= $status_key ?>">
+                        <span class="status-pill searchable <?= $status_class ?>" data-i18n="<?= $status_key ?>">
                             <?= htmlspecialchars($item['status']) ?>
                         </span>
                     </div>
-
                     <div class="report-footer">
-                        <a href="#" class="evidence-btn" data-i18n="reports_view_button">View</a>
+                        <a href="#" class="evidence-btn" onclick="openSchedModal(<?= (int)$item['modal_id'] ?>);return false;" data-i18n="reports_view_button">View</a>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="report-card" data-i18n="reports_no_data">No maintenance schedules available</div>
         <?php endif; ?>
-        <!-- MOBILE "NO MATCHING DATA" PLACEHOLDER -->
         <div id="noMobileResult" class="report-card" style="display:none; text-align:center; font-weight:600;" data-i18n="reports_no_match">
             No matching data
         </div>
@@ -1030,101 +1283,331 @@ if ($maintenance_result) {
 </div>
 </div>
 
-<!-- TABLE LIVE SEARCH & REORDER SCRIPT (Desktop table only) -->
+<!-- TABLE & MOBILE LIVE SEARCH WITH HIGHLIGHT -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const table = document.querySelector("table");
+    const searchInput    = document.getElementById("requestSearch");
+    const table          = document.querySelector("table");
+    const mobileList     = document.querySelector(".mobile-maintenance-list");
     if (!table || !searchInput) return;
 
-    const tbody = table.querySelector("tbody");
-    // Exclude no-result row from movable rows.
-    const rows = Array.from(tbody.querySelectorAll("tr"))
-        .filter(r => r.id !== "noRequestResult");
-    const noResultRow = document.getElementById("noRequestResult");
+    const tbody          = table.querySelector("tbody");
+    const rows           = Array.from(tbody.querySelectorAll("tr")).filter(r => r.id !== "noRequestResult");
+    const noResultRow    = document.getElementById("noRequestResult");
+    const cards          = Array.from(document.querySelectorAll(".mobile-maintenance-list .report-card")).filter(c => c.id !== "noMobileResult");
+    const noMobileResult = document.getElementById("noMobileResult");
 
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
+    // ── Legend filter state ───────────────────────────────────────────────────
+    let activeLegendFilter = null;
 
-        // Reset: show all, restore original order
-        if (query === "") {
-            rows.forEach(row => {
-                row.style.display = "";
-                tbody.appendChild(row);
-            });
-            if (noResultRow) noResultRow.style.display = "none";
-            return;
-        }
+    const LEGEND_LABELS = {
+        upcoming:  'Scheduled',
+        ongoing:   'In Progress',
+        delayed:   'Delayed',
+        completed: 'Completed',
+    };
 
-        // Search and mark matches
-        rows.forEach(row => {
-            // Only search visible text content (all columns)
-            const rowText = row.innerText.toLowerCase();
-            if (rowText.includes(query)) {
-                matches.push(row);
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
+    // Prefer the already-translated text in the legend pill if available
+    function getLegendLabel(filter) {
+        const pill = document.querySelector(`.legend-item[data-filter="${filter}"] [data-i18n]`);
+        return pill ? pill.textContent.trim() : (LEGEND_LABELS[filter] || filter);
+    }
+
+    const clearBadge  = document.getElementById('legendClearBadge');
+    const clearLabel  = document.getElementById('legendClearLabel');
+
+    function applyLegendFilter(filter) {
+        activeLegendFilter = filter;
+
+        // Update pill states
+        document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+            const f = pill.getAttribute('data-filter');
+            pill.classList.remove('legend-active', 'legend-dimmed');
+            if (!filter) return;
+            if (f === filter) pill.classList.add('legend-active');
+            else              pill.classList.add('legend-dimmed');
         });
 
-        // Move all matching rows to the top (in entered order)
-        matches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
+        // Update clear badge
+        if (filter) {
+            if (clearLabel) clearLabel.textContent = getLegendLabel(filter);
+            clearBadge && clearBadge.classList.add('visible');
+        } else {
+            clearBadge && clearBadge.classList.remove('visible');
+        }
 
-        // Show/hide "No matching data"
-        if (noResultRow) noResultRow.style.display = matches.length === 0 ? "" : "none";
+        // Re-run combined filter
+        runFilter();
+    }
+
+    // Wire legend pill clicks
+    document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
+        pill.addEventListener('click', function () {
+            const f = this.getAttribute('data-filter');
+            applyLegendFilter(activeLegendFilter === f ? null : f);
+        });
     });
+    clearBadge && clearBadge.addEventListener('click', () => applyLegendFilter(null));
+
+    // ── Shared filter runner (search + legend combined) ───────────────────────
+    function escapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function storeOriginal(el) { if (!('original' in el.dataset)) el.dataset.original = el.innerHTML; }
+    function resetEl(el) { if ('original' in el.dataset) el.innerHTML = el.dataset.original; }
+    function highlightEl(el, kw) {
+        if (!kw) return;
+        const regex = new RegExp(`(${escapeRegExp(kw)})`, 'gi');
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        textNodes.forEach(tn => {
+            if (!tn.nodeValue.trim()) return;
+            const parts = tn.nodeValue.split(regex);
+            if (parts.length < 2) return;
+            const frag = document.createDocumentFragment();
+            parts.forEach((part, i) => {
+                if (i % 2 === 1) {
+                    const mark = document.createElement('span');
+                    mark.className = 'search-highlight';
+                    mark.textContent = part;
+                    frag.appendChild(mark);
+                } else {
+                    frag.appendChild(document.createTextNode(part));
+                }
+            });
+            tn.parentNode.replaceChild(frag, tn);
+        });
+    }
+
+    function runFilter() {
+        const q  = searchInput.value.trim();
+        const ql = q.toLowerCase();
+
+        // Reset highlights
+        document.querySelectorAll('table .searchable[data-original], .mobile-maintenance-list .searchable[data-original]')
+            .forEach(el => resetEl(el));
+
+        let dMatches = [], mMatches = [];
+
+        rows.forEach(row => {
+            const statusKey = row.getAttribute('data-status') || '';
+            const legendOk  = !activeLegendFilter || statusKey === activeLegendFilter;
+            const els       = row.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const searchOk  = !q || [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            const show      = legendOk && searchOk;
+            row.style.display = show ? "" : "none";
+            if (show) {
+                if (q) els.forEach(el => highlightEl(el, q));
+                dMatches.push(row);
+            }
+        });
+        if (q) dMatches.forEach(row => tbody.insertBefore(row, tbody.firstChild));
+        if (noResultRow) noResultRow.style.display = dMatches.length === 0 ? "" : "none";
+
+        cards.forEach(card => {
+            const statusKey = card.getAttribute('data-status') || '';
+            const legendOk  = !activeLegendFilter || statusKey === activeLegendFilter;
+            const els       = card.querySelectorAll('.searchable');
+            els.forEach(el => storeOriginal(el));
+            const searchOk  = !q || [...els].some(el => el.textContent.toLowerCase().includes(ql));
+            const show      = legendOk && searchOk;
+            card.style.display = show ? "" : "none";
+            if (show) {
+                if (q) els.forEach(el => highlightEl(el, q));
+                mMatches.push(card);
+            }
+        });
+        if (q) mMatches.forEach(card => mobileList.insertBefore(card, mobileList.firstChild));
+        if (noMobileResult) noMobileResult.style.display = mMatches.length === 0 ? "" : "none";
+    }
+
+    searchInput.addEventListener("input", runFilter);
+
+    // Expose so stat cards (onclick) can trigger legend filter
+    window.filterByLegend = function(f) {
+        applyLegendFilter(activeLegendFilter === f ? null : f);
+        // Scroll table into view smoothly
+        const card = document.querySelector('.content-card');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 });
 </script>
 
-<!-- MOBILE CARD SEARCH + REORDER SCRIPT -->
+<!-- ═══════════════ SCHEDULE DETAIL MODAL ═══════════════ -->
+<div id="schedModalBackdrop" class="sched-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedModalTitle">
+    <div id="schedDetailModal" class="sched-detail-modal">
+        <div class="sched-modal-band" id="schedModalBand"></div>
+        <div class="sched-modal-header">
+            <div>
+                <div class="sched-modal-req-id" id="schedModalId"></div>
+                <div class="sched-modal-title"  id="schedModalTitle"></div>
+            </div>
+            <button class="sched-modal-close" id="schedModalClose" aria-label="Close">×</button>
+        </div>
+        <div class="sched-modal-body">
+            <div class="sched-status-row">
+                <span class="sched-status-pill" id="schedModalStatus"></span>
+            </div>
+            <div class="sched-field">
+                <div class="sched-field-label" id="lbl-location">📍 Location</div>
+                <div class="sched-field-value" id="schedModalLocation"></div>
+            </div>
+            <div class="sched-field">
+                <div class="sched-field-label" id="lbl-category">🏷️ Category</div>
+                <div class="sched-field-value" id="schedModalCategory"></div>
+            </div>
+            <div class="sched-divider"></div>
+            <div class="sched-grid-2">
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-start">📅 Start Date</div>
+                    <div class="sched-field-value" id="schedModalStart"></div>
+                </div>
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-end">🏁 Est. Completion</div>
+                    <div class="sched-field-value" id="schedModalEnd"></div>
+                </div>
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-budget">💰 Budget</div>
+                    <div class="sched-field-value" id="schedModalBudget"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ SCHEDULE MODAL SCRIPT ═══════════════ -->
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const searchInput = document.getElementById("requestSearch");
-    const mobileList = document.querySelector(".mobile-maintenance-list");
-    const cards = Array.from(document.querySelectorAll(".mobile-maintenance-list .report-card"))
-        .filter(card => card.id !== "noMobileResult");
-    const noMobileResult = document.getElementById("noMobileResult");
-
-    if (!searchInput || cards.length === 0) return;
-
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value.toLowerCase().trim();
-        let matches = [];
-
-        // Reset state
-        if (query === "") {
-            cards.forEach(card => {
-                card.style.display = "";
-                mobileList.appendChild(card);
-            });
-            if (noMobileResult) noMobileResult.style.display = "none";
-            return;
+(function () {
+    /* ── All schedule data from PHP ── */
+    var ALL_SCHEDULES = <?php
+        $modal_data = [];
+        foreach ($maintenance_data as $m) {
+            $modal_data[] = [
+                'id'       => (int)$m['modal_id'],
+                'task'     => $m['task'],
+                'location' => $m['location'],
+                'category' => $m['category'],
+                'status'   => $m['status'],
+                'start'    => !empty($m['starting_date']) ? date('M d, Y', strtotime($m['starting_date'])) : '—',
+                'end'      => !empty($m['end_date'])
+                                ? date('M d, Y', strtotime($m['end_date']))
+                                : '—',
+                'budget'   => '₱' . number_format((float)$m['budget'], 2),
+            ];
         }
+        echo json_encode($modal_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+    ?>;
 
-        // Search cards
-        cards.forEach(card => {
-            const cardText = card.innerText.toLowerCase();
-            if (cardText.includes(query)) {
-                matches.push(card);
-                card.style.display = "";
-            } else {
-                card.style.display = "none";
-            }
-        });
+    /* ── Language detection (matches site toggle) ── */
+    function getLang() {
+        return (document.documentElement.lang || localStorage.getItem('lang') || 'en').substring(0, 2).toLowerCase();
+    }
 
-        // Move matching cards to top
-        matches.forEach(card => {
-            mobileList.insertBefore(card, mobileList.firstChild);
-        });
-
-        // Show / hide "No matching data"
-        if (noMobileResult) {
-            noMobileResult.style.display = matches.length === 0 ? "" : "none";
+    /* ── Bilingual label maps ── */
+    var LABELS = {
+        en: {
+            location : '📍 Location',
+            category : '🏷️ Category',
+            start    : '📅 Start Date',
+            end      : '🏁 Est. Completion',
+            budget   : '💰 Budget',
+            noDate   : 'Not set',
+        },
+        tl: {
+            location : '📍 Lokasyon',
+            category : '🏷️ Kategorya',
+            start    : '📅 Petsa ng Pagsisimula',
+            end      : '🏁 Tinatayang Tapusin',
+            budget   : '💰 Badyet',
+            noDate   : 'Hindi pa natakda',
         }
+    };
+
+    /* ── Status → CSS class + bilingual label ── */
+    var STATUS_MAP = {
+        'Completed'  : { cls: 'sched-completed',  en: '✅ Completed',   tl: '✅ Natapos'      },
+        'In Progress': { cls: 'sched-inprogress', en: '🔄 In Progress', tl: '🔄 Isinasagawa'  },
+        'Delayed'    : { cls: 'sched-delayed',    en: '⚠️ Delayed',     tl: '⚠️ Naantala'     },
+        'Pending'    : { cls: 'sched-pending',    en: '⏳ Pending',     tl: '⏳ Nakabinbin'   },
+        'Scheduled'  : { cls: 'sched-pending',    en: '📅 Scheduled',   tl: '📅 Nakaplanong'  },
+    };
+
+    /* ── DOM refs ── */
+    var backdrop = document.getElementById('schedModalBackdrop');
+    var band     = document.getElementById('schedModalBand');
+    var idEl     = document.getElementById('schedModalId');
+    var titleEl  = document.getElementById('schedModalTitle');
+    var statusEl = document.getElementById('schedModalStatus');
+    var locEl    = document.getElementById('schedModalLocation');
+    var catEl    = document.getElementById('schedModalCategory');
+    var startEl  = document.getElementById('schedModalStart');
+    var endEl    = document.getElementById('schedModalEnd');
+    var budgetEl = document.getElementById('schedModalBudget');
+    var closeBtn = document.getElementById('schedModalClose');
+
+    /* ── Label elements ── */
+    var lblLocation = document.getElementById('lbl-location');
+    var lblCategory = document.getElementById('lbl-category');
+    var lblStart    = document.getElementById('lbl-start');
+    var lblEnd      = document.getElementById('lbl-end');
+    var lblBudget   = document.getElementById('lbl-budget');
+
+    /* ── Open ── */
+    window.openSchedModal = function (schedId) {
+        var rec = null;
+        for (var i = 0; i < ALL_SCHEDULES.length; i++) {
+            if (ALL_SCHEDULES[i].id === schedId) { rec = ALL_SCHEDULES[i]; break; }
+        }
+        if (!rec) return;
+
+        var lang   = getLang();
+        var lbl    = LABELS[lang] || LABELS.en;
+        var smap   = STATUS_MAP[rec.status] || { cls: 'sched-pending', en: rec.status, tl: rec.status };
+
+        /* Labels */
+        lblLocation.textContent = lbl.location;
+        lblCategory.textContent = lbl.category;
+        lblStart.textContent    = lbl.start;
+        lblEnd.textContent      = lbl.end;
+        lblBudget.textContent   = lbl.budget;
+
+        /* Band colour */
+        band.className = 'sched-modal-band ' + smap.cls;
+
+        /* Fields */
+        idEl.textContent     = '#SCH-' + String(rec.id).padStart(3, '0');
+        titleEl.textContent  = rec.task;
+        locEl.textContent    = rec.location  || '—';
+        catEl.textContent    = rec.category  || '—';
+        startEl.textContent  = rec.start     || lbl.noDate;
+        endEl.textContent    = rec.end       || lbl.noDate;
+        budgetEl.textContent = rec.budget    || '—';
+
+        /* Status pill */
+        statusEl.textContent = (lang === 'tl') ? smap.tl : smap.en;
+        statusEl.className   = 'sched-status-pill ' + smap.cls;
+
+        /* Show */
+        backdrop.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        closeBtn.focus();
+    };
+
+    /* ── Close ── */
+    function closeSchedModal() {
+        backdrop.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    closeBtn && closeBtn.addEventListener('click', closeSchedModal);
+    backdrop && backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) closeSchedModal();
     });
-});
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && backdrop.classList.contains('active')) closeSchedModal();
+    });
+})();
 </script>
 
 <!-- FOOTER -->
@@ -1197,7 +1680,222 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     </div>
 </footer>
+<!-- ═══════════════════════════════════════════════════════════════════
+     INLINE FALLBACK TRANSLATIONS — citizenreports.php
+     Same pattern as citizenrepform.php: hardcoded en/tl for every
+     data-i18n key on this page. Runs on DOMContentLoaded AND on the
+     i18nReady event so it catches both the initial page load and any
+     toggle fired after citizen_global.php finishes its fetch.
+     This ensures labels translate even if the preloaded translations
+     object is stale or the fetch hasn't resolved yet.
+════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    var PAGE_TRANSLATIONS = {
+        en: {
+            site_title:                          'InfraGovServices',
+            nav_login:                           'Log in',
+            nav_home:                            'Home',
+            nav_reports:                         'Reports',
+            nav_requests:                        'Requests',
+            nav_about:                           'About',
+            translate_btn_title:                 'Translate to Filipino',
+            lang_label:                          'EN',
+            /* ── stat cards ── */
+            reports_stat_scheduled:              'Scheduled',
+            reports_stat_ongoing:                'On-Going',
+            reports_stat_delayed:                'Delayed',
+            reports_stat_completed:              'Completed',
+            reports_stat_title_scheduled:        'Filter: Scheduled',
+            reports_stat_title_ongoing:          'Filter: On-Going',
+            reports_stat_title_delayed:          'Filter: Delayed',
+            reports_stat_title_completed:        'Filter: Completed',
+            /* ── main card ── */
+            reports_page_title:                  'Recent Maintenance Reports',
+            reports_search_placeholder:          'Search by Date, Type, Location, Budget, or Status...',
+            /* ── legend ── */
+            reports_legend_scheduled:            'Scheduled',
+            reports_legend_ongoing:              'In Progress',
+            reports_legend_delayed:              'Delayed',
+            reports_legend_completed:            'Completed',
+            reports_legend_filter_title_scheduled:  'Click to filter: Scheduled',
+            reports_legend_filter_title_ongoing:    'Click to filter: In Progress',
+            reports_legend_filter_title_delayed:    'Click to filter: Delayed',
+            reports_legend_filter_title_completed:  'Click to filter: Completed',
+            reports_legend_clear:                'Click to clear filter',
+            /* ── table headers ── */
+            reports_table_sched:                 'Sched #',
+            reports_table_date:                  'Date',
+            reports_table_type:                  'Type',
+            reports_table_location:              'Location',
+            reports_table_budget:                'Budget',
+            reports_table_status:                'Status',
+            reports_table_action:                'Action',
+            /* ── status pills ── */
+            reports_status_scheduled:            'Scheduled',
+            reports_status_completed:            'Completed',
+            reports_status_in_progress:          'In Progress',
+            reports_status_delayed:              'Delayed',
+            /* ── misc ── */
+            reports_view_button:                 'View',
+            reports_no_data:                     'No maintenance schedules available',
+            reports_no_match:                    'No matching data',
+            /* ── mobile card labels ── */
+            reports_mobile_schedule_id:          'Schedule ID:',
+            reports_mobile_category:             'Category:',
+            reports_mobile_task:                 'Task:',
+            reports_mobile_location:             'Location:',
+            reports_mobile_start_date:           'Start Date:',
+            reports_mobile_budget:               'Budget:',
+            reports_mobile_status:               'Status:',
+            /* ── footer ── */
+            footer_desc:         'Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.',
+            footer_quick_links:  'Quick Links',
+            footer_link_home:    'Home',
+            footer_link_reports: 'Reports',
+            footer_link_submit:  'Submit Request',
+            footer_link_about:   'About Us',
+            footer_resources:    'Resources',
+            footer_link_guide:   'User Guide',
+            footer_link_faqs:    'FAQs',
+            footer_link_areas:   'Service Areas',
+            footer_link_emergency: 'Emergency Contacts',
+            footer_legal:        'Legal',
+            footer_link_privacy: 'Privacy Policy',
+            footer_link_terms:   'Terms of Service',
+            footer_link_data:    'Data Protection',
+            footer_link_access:  'Accessibility',
+            footer_copyright:    '© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved',
+        },
+        tl: {
+            site_title:                          'InfraGovServices',
+            nav_login:                           'Mag-login',
+            nav_home:                            'Tahanan',
+            nav_reports:                         'Mga Ulat',
+            nav_requests:                        'Mga Kahilingan',
+            nav_about:                           'Tungkol Sa',
+            translate_btn_title:                 'I-translate sa Ingles',
+            lang_label:                          'FIL',
+            /* ── stat cards ── */
+            reports_stat_scheduled:              'Nakaplanong',
+            reports_stat_ongoing:                'Isinasagawa',
+            reports_stat_delayed:                'Naantala',
+            reports_stat_completed:              'Natapos',
+            reports_stat_title_scheduled:        'I-filter: Nakaplanong',
+            reports_stat_title_ongoing:          'I-filter: Isinasagawa',
+            reports_stat_title_delayed:          'I-filter: Naantala',
+            reports_stat_title_completed:        'I-filter: Natapos',
+            /* ── main card ── */
+            reports_page_title:                  'Kamakailang Ulat ng Pagpapanatili',
+            reports_search_placeholder:          'Maghanap ayon sa Petsa, Uri, Lokasyon, Badyet, o Katayuan...',
+            /* ── legend ── */
+            reports_legend_scheduled:            'Nakaplanong',
+            reports_legend_ongoing:              'Isinasagawa',
+            reports_legend_delayed:              'Naantala',
+            reports_legend_completed:            'Natapos',
+            reports_legend_filter_title_scheduled:  'I-click para i-filter: Nakaplanong',
+            reports_legend_filter_title_ongoing:    'I-click para i-filter: Isinasagawa',
+            reports_legend_filter_title_delayed:    'I-click para i-filter: Naantala',
+            reports_legend_filter_title_completed:  'I-click para i-filter: Natapos',
+            reports_legend_clear:                'I-click para alisin ang filter',
+            /* ── table headers ── */
+            reports_table_sched:                 'Iskedyul #',
+            reports_table_date:                  'Petsa',
+            reports_table_type:                  'Uri',
+            reports_table_location:              'Lokasyon',
+            reports_table_budget:                'Badyet',
+            reports_table_status:                'Katayuan',
+            reports_table_action:                'Aksyon',
+            /* ── status pills ── */
+            reports_status_scheduled:            'Nakaplanong',
+            reports_status_completed:            'Natapos',
+            reports_status_in_progress:          'Isinasagawa',
+            reports_status_delayed:              'Naantala',
+            /* ── misc ── */
+            reports_view_button:                 'Tingnan',
+            reports_no_data:                     'Walang available na iskedyul ng pagpapanatili',
+            reports_no_match:                    'Walang tumutugmang data',
+            /* ── mobile card labels ── */
+            reports_mobile_schedule_id:          'ID ng Iskedyul:',
+            reports_mobile_category:             'Kategorya:',
+            reports_mobile_task:                 'Gawain:',
+            reports_mobile_location:             'Lokasyon:',
+            reports_mobile_start_date:           'Petsa ng Pagsisimula:',
+            reports_mobile_budget:               'Badyet:',
+            reports_mobile_status:               'Katayuan:',
+            /* ── footer ── */
+            footer_desc:         'Sistema ng Pamamahala ng Pagpapanatili ng Imprastraktura ng Komunidad para sa Lungsod Quezon. Nakatuon sa pagbibigay ng mahusay, malinaw, at matuging mga serbisyong pang-imprastraktura para sa lahat ng residente.',
+            footer_quick_links:  'Mabilis na mga Link',
+            footer_link_home:    'Tahanan',
+            footer_link_reports: 'Mga Ulat',
+            footer_link_submit:  'Magsumite ng Kahilingan',
+            footer_link_about:   'Tungkol Sa Amin',
+            footer_resources:    'Mga Mapagkukunan',
+            footer_link_guide:   'Gabay ng Gumagamit',
+            footer_link_faqs:    'Mga Madalas na Tanong',
+            footer_link_areas:   'Mga Lugar ng Serbisyo',
+            footer_link_emergency: 'Mga Emergency na Kontak',
+            footer_legal:        'Ligal',
+            footer_link_privacy: 'Patakaran sa Privacy',
+            footer_link_terms:   'Mga Tuntunin ng Serbisyo',
+            footer_link_data:    'Proteksyon ng Data',
+            footer_link_access:  'Aksesibilidad',
+            footer_copyright:    '© 2026 LGU Lungsod Quezon · InfraGovServices · Lahat ng Karapatan ay Nakalaan',
+        }
+    };
+
+    /* Same helper as citizenrepform.php — checks live preload first, falls back to inline table */
+    function getTranslation(key) {
+        var lang = localStorage.getItem('lang') || 'en';
+        if (window.__preloadedTranslations && window.__preloadedTranslations[lang]) {
+            var val = window.__preloadedTranslations[lang][key];
+            if (val) return val;
+        }
+        return (PAGE_TRANSLATIONS[lang] && PAGE_TRANSLATIONS[lang][key])
+            || (PAGE_TRANSLATIONS['en'][key])
+            || key;
+    }
+
+    /* Walk every data-i18n* element and apply the translation */
+    function applyPageFallbacks() {
+        var lang = localStorage.getItem('lang') || 'en';
+
+        /* textContent keys */
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n');
+            var val = getTranslation(key);
+            if (val && val !== key) el.textContent = val;
+        });
+
+        /* placeholder keys */
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n-placeholder');
+            var val = getTranslation(key);
+            if (val && val !== key) el.placeholder = val;
+        });
+
+        /* title attribute keys */
+        document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+            var key = el.getAttribute('data-i18n-title');
+            var val = getTranslation(key);
+            if (val && val !== key) el.title = val;
+        });
+    }
+
+    /* Run on initial load */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyPageFallbacks);
+    } else {
+        applyPageFallbacks();
+    }
+
+    /* Also re-run whenever citizen_global.php fires its i18nReady event
+       (covers the toggle-to-Filipino case after a fresh fetch) */
+    document.addEventListener('i18nReady', applyPageFallbacks);
+})();
+</script>
 <?php include 'citizen_global.php'; ?>
+<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>

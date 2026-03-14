@@ -11,10 +11,20 @@ if ($showWelcomeAnimation) {
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-$INACTIVITY_LIMIT = 20 * 60; // seconds (20 minutes)
+// AFTER
+// Detect localhost — disable inactivity timeout during local development
+$isLocalhost = in_array(
+    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
+    ['localhost', '127.0.0.1', '::1']
+);
+$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
 
-// If last activity is set and timeout exceeded
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT) {
+// If last activity is set and timeout exceeded (skipped on localhost)
+if (
+    !$isLocalhost &&
+    isset($_SESSION['last_activity']) &&
+    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
+) {
     session_unset();
     session_destroy();
     header("Location: login.php");
@@ -110,6 +120,20 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+$isAdmin = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin']
+);
+
+// Engineer detection — same pattern as sched.php
+$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
+
+// Engineer SQL filter clause (applied to all engineer-personalised queries)
+$engFilter = $isEngineer && $sessionUserId > 0
+    ? "AND r.engineer_id = {$sessionUserId}"
+    : "";
+
 // ===== DASHBOARD METRICS =====
 
 // Total Requests
@@ -122,8 +146,15 @@ $pendingRequestsQuery = "SELECT COUNT(*) as total FROM requests WHERE approval_s
 $pendingRequestsResult = $conn->query($pendingRequestsQuery);
 $pendingRequests = $pendingRequestsResult->fetch_assoc()['total'] ?? 0;
 
-// Completed Tasks
-$completedTasksQuery = "SELECT COUNT(*) as total FROM maintenance_schedule WHERE status = 'Completed'";
+// Completed Tasks — sourced from archive_reports (same as archive_reports.php),
+// personalised per engineer when the logged-in user is an engineer
+$completedTasksQuery = "
+    SELECT COUNT(*) as total
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status IN ('Completed','Cancelled')
+    {$engFilter}
+";
 $completedTasksResult = $conn->query($completedTasksQuery);
 $completedTasks = $completedTasksResult->fetch_assoc()['total'] ?? 0;
 
@@ -131,6 +162,126 @@ $completedTasks = $completedTasksResult->fetch_assoc()['total'] ?? 0;
 $activeUsersQuery = "SELECT COUNT(*) as total FROM employees";
 $activeUsersResult = $conn->query($activeUsersQuery);
 $activeUsers = $activeUsersResult->fetch_assoc()['total'] ?? 0;
+
+// Active Reports (current in-progress reports)
+$activeReportsQuery = "SELECT COUNT(*) as total 
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status = 'Approved'";
+$activeReportsResult = $conn->query($activeReportsQuery);
+$activeReports = $activeReportsResult->fetch_assoc()['total'] ?? 0;
+
+// Recent Current Reports preview — personalised for engineers
+$recentReportsQuery = "SELECT
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    r.estimated_end_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status = 'Approved'
+    {$engFilter}
+    ORDER BY r.rep_id DESC
+    LIMIT 5";
+$recentReportsResult = $conn->query($recentReportsQuery);
+$recentReportRows = [];
+if ($recentReportsResult && $recentReportsResult->num_rows > 0) {
+    while ($r = $recentReportsResult->fetch_assoc()) {
+        $recentReportRows[] = $r;
+    }
+}
+
+// Recent Pending Reports preview — personalised for engineers
+$recentPendingQuery = "SELECT
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+    {$engFilter}
+    ORDER BY r.starting_date ASC
+    LIMIT 5";
+$recentPendingResult = $conn->query($recentPendingQuery);
+$recentPendingRows = [];
+if ($recentPendingResult && $recentPendingResult->num_rows > 0) {
+    while ($r = $recentPendingResult->fetch_assoc()) {
+        $recentPendingRows[] = $r;
+    }
+}
+
+// Recent Archive Reports preview — personalised for engineers
+$recentArchiveQuery = "SELECT
+    r.rep_id,
+    r.priority_lvl,
+    r.starting_date,
+    r.estimated_end_date,
+    req.infrastructure,
+    req.location,
+    res.status AS resolution_status,
+    CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+    r.engineer_id
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    LEFT JOIN requests req ON res.req_id = req.req_id
+    LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    WHERE res.status IN ('Completed','Cancelled')
+    {$engFilter}
+    ORDER BY r.rep_id DESC
+    LIMIT 5";
+$recentArchiveResult = $conn->query($recentArchiveQuery);
+$recentArchiveRows = [];
+if ($recentArchiveResult && $recentArchiveResult->num_rows > 0) {
+    while ($r = $recentArchiveResult->fetch_assoc()) {
+        $recentArchiveRows[] = $r;
+    }
+}
+
+// Active Reports by Priority (for chart)
+$activeReportsByPriorityQuery = "SELECT 
+    r.priority_lvl,
+    COUNT(*) as count,
+    SUM(CASE WHEN r.engineer_id IS NOT NULL THEN 1 ELSE 0 END) as assigned,
+    SUM(CASE WHEN r.engineer_id IS NULL THEN 1 ELSE 0 END) as unassigned
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status = 'Approved'
+    GROUP BY r.priority_lvl
+    ORDER BY FIELD(r.priority_lvl, 'High', 'Medium', 'Low')";
+$activeReportsByPriorityResult = $conn->query($activeReportsByPriorityQuery);
+
+$reportPriorityLabels = [];
+$reportPriorityData   = [];
+$reportAssignedData   = [];
+$reportUnassignedData = [];
+
+if ($activeReportsByPriorityResult && $activeReportsByPriorityResult->num_rows > 0) {
+    while ($row = $activeReportsByPriorityResult->fetch_assoc()) {
+        $reportPriorityLabels[] = $row['priority_lvl'] ?? 'Unknown';
+        $reportPriorityData[]   = (int)$row['count'];
+        $reportAssignedData[]   = (int)$row['assigned'];
+        $reportUnassignedData[] = (int)$row['unassigned'];
+    }
+} else {
+    $reportPriorityLabels = ['High', 'Medium', 'Low'];
+    $reportPriorityData   = [0, 0, 0];
+    $reportAssignedData   = [0, 0, 0];
+    $reportUnassignedData = [0, 0, 0];
+}
 
 // ===== CHART DATA QUERIES =====
 
@@ -232,60 +383,103 @@ $lastMonthCount = $lastMonthResult->fetch_assoc()['count'] ?? 1; // Avoid divisi
 
 $requestsTrend = $lastMonthCount > 0 ? (($currentMonthCount - $lastMonthCount) / $lastMonthCount) * 100 : 0;
 
-// ===== UPDATED: Apply same logic as sched.php =====
-$upcomingSchedulesQuery = "SELECT 
-    task,
-    location,
-    starting_date,
-    status,
-    priority,
-    category,
-    assigned_team
-    FROM maintenance_schedule
-    WHERE status != 'Completed'
-    ORDER BY starting_date ASC
-    LIMIT 5";
-
-$upcomingSchedulesResult = $conn->query($upcomingSchedulesQuery);
+// ===== UPCOMING MAINTENANCE — same combined source as sched.php =====
+// Pull non-completed items from maintenance_schedule AND from reports
+// (with engineer filter on the reports side when logged in as engineer)
 $upcomingSchedules = [];
+$todayDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
-if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
-    $today = new DateTime('today');
-    
-    while ($row = $upcomingSchedulesResult->fetch_assoc()) {
-        // Apply same status computation logic as sched.php
-        $status_label = $row['status'];
-        $priority_label = $row['priority'];
-        
-        if ($row['status'] != 'Completed' && !empty($row['starting_date'])) {
+// ── 1. maintenance_schedule (no engineer filter — assigned_team, not engineer_id) ──
+$schedSql = "SELECT sched_id, task, location, starting_date, estimated_completion_date AS end_date,
+              status, priority, category, assigned_team
+              FROM maintenance_schedule
+              WHERE status != 'Completed'
+              ORDER BY starting_date ASC";
+$schedRes = $conn->query($schedSql);
+if ($schedRes) {
+    while ($row = $schedRes->fetch_assoc()) {
+        $status_label   = $row['status'];
+        $priority_label = $row['priority'] ?? 'Low';
+        if (!empty($row['starting_date'])) {
             try {
-                $dueDate = new DateTime($row['starting_date']);
-                $diffDays = (int)$today->diff($dueDate)->format('%r%a');
-                
-                // If task is overdue
-                if ($diffDays < 0) {
-                    $status_label = 'Delayed';
-                    $priority_label = 'Critical';
-                } 
-                // If task is today
-                elseif ($diffDays === 0) {
-                    $status_label = 'In Progress';
-                    $priority_label = 'High';
-                }
-                // If task is upcoming (future)
-                else {
-                    $status_label = 'Scheduled';
-                }
-            } catch (Exception $e) {
-                // Keep original status on error
-            }
+                $dueDate  = new DateTime($row['starting_date'], new DateTimeZone('Asia/Manila'));
+                $diffDays = (int)$todayDt->diff($dueDate)->format('%r%a');
+                if ($diffDays < 0)       { $status_label = 'Delayed';     $priority_label = 'Critical'; }
+                elseif ($diffDays === 0) { $status_label = 'In Progress'; $priority_label = 'High'; }
+                else                     { $status_label = 'Scheduled'; }
+            } catch (Exception $e) {}
         }
-        
-        $row['status_label'] = $status_label;
-        $row['priority'] = $priority_label;
-        $upcomingSchedules[] = $row;
+        $upcomingSchedules[] = [
+            'task'          => $row['task'],
+            'location'      => $row['location'],
+            'starting_date' => $row['starting_date'],
+            'end_date'      => $row['end_date'] ?? '',
+            'status_label'  => $status_label,
+            'priority'      => $priority_label,
+            'category'      => $row['category'] ?? 'General Maintenance',
+            'assigned_team' => $row['assigned_team'] ?? '',
+            'engineer_name' => '',
+            'source'        => 'schedule',
+            'rep_id'        => 0,
+        ];
     }
 }
+
+// ── 2. reports (with engineer filter for engineers) ───────────────────────────
+$rptUpSql = "
+    SELECT r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
+           r.priority_lvl, r.budget,
+           res.status AS resolution_status, res.res_note,
+           req.infrastructure, req.location,
+           CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+    LEFT JOIN requests             req ON res.req_id = req.req_id
+    LEFT JOIN employees            e   ON r.engineer_id = e.user_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+      AND r.starting_date IS NOT NULL
+    {$engFilter}
+    ORDER BY r.starting_date ASC
+";
+$rptUpRes = $conn->query($rptUpSql);
+if ($rptUpRes) {
+    while ($rRow = $rptUpRes->fetch_assoc()) {
+        $resStatus = $rRow['resolution_status'] ?? '';
+        $resNote   = trim($rRow['res_note'] ?? '');
+        $endDate   = $rRow['end_date'] ?? '';
+        if ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
+            $statusLabel = 'In Progress';
+        } else {
+            $statusLabel = 'Scheduled';
+            if (empty($resNote) && !empty($endDate)) {
+                try {
+                    $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
+                    if ($todayDt > $endDt) $statusLabel = 'Delayed';
+                } catch (Exception $e) {}
+            }
+        }
+        $priorityMap = ['High'=>'High','Medium'=>'Medium','Low'=>'Low','Critical'=>'Critical'];
+        $upcomingSchedules[] = [
+            'task'          => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'      => $rRow['location'] ?? '—',
+            'starting_date' => $rRow['starting_date'],
+            'end_date'      => $endDate,
+            'status_label'  => $statusLabel,
+            'priority'      => $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low',
+            'category'      => 'Infrastructure Report',
+            'assigned_team' => '',
+            'engineer_name' => trim($rRow['engineer_name'] ?? '') ?: '—',
+            'source'        => 'report',
+            'rep_id'        => (int)$rRow['rep_id'],
+        ];
+    }
+}
+
+// ── 3. Sort combined by starting_date ASC, keep top 5 ────────────────────────
+usort($upcomingSchedules, function($a, $b) {
+    return strcmp($a['starting_date'] ?? '', $b['starting_date'] ?? '');
+});
+$upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 
 ?>
 <!DOCTYPE html>
@@ -295,6 +489,7 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <link rel="stylesheet" href="emp-global.css">
+<link rel="stylesheet" href="sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>LGU Employee Portal - Dashboard</title>
 <style>
@@ -919,6 +1114,523 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     font-size: 14px;
 }
 
+/* ── Report Generation Section ──────────────────────────── */
+.report-gen-section {
+    margin-top: 28px;
+    border-top: 2px dashed var(--border-color);
+    padding-top: 24px;
+}
+.report-gen-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.report-gen-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
+}
+.report-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+.report-type-btn {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all .25s ease;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.report-type-btn:hover {
+    border-color: #3762c8;
+    box-shadow: 0 6px 20px rgba(55,98,200,.15);
+    transform: translateY(-3px);
+}
+.report-type-btn .rpt-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: rgba(55,98,200,.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    transition: transform .25s ease;
+}
+.report-type-btn:hover .rpt-icon { transform: scale(1.12) rotate(4deg); }
+.report-type-btn .rpt-title {
+    font-size: 14px; font-weight: 600;
+}
+.report-type-btn .rpt-desc {
+    font-size: 11px; color: var(--text-secondary);
+}
+
+/* ── Report Modal ───────────────────────────────────────── */
+#reportModalBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none; align-items: center; justify-content: center;
+    z-index: 8500;
+    backdrop-filter: blur(4px);
+}
+#reportModalBackdrop.active { display: flex; }
+.report-modal {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    box-shadow: 0 12px 50px var(--shadow-color);
+    width: 92%;
+    max-width: 480px;
+    animation: modalSlideIn .3s ease;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+.report-modal-header {
+    padding: 22px 26px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.report-modal-header h3 { font-size: 18px; font-weight: 700; color: #fff; }
+.report-modal-close {
+    background: rgba(255,255,255,.2); border: none;
+    color: #fff; font-size: 22px; width: 34px; height: 34px;
+    border-radius: 8px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.report-modal-close:hover { background: rgba(255,255,255,.35); }
+.report-modal-body { padding: 26px; }
+.form-group { margin-bottom: 18px; }
+.form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 7px;
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.form-group select,
+.form-group input[type="date"] {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px; font-size: 14px;
+    background: var(--bg-secondary); color: var(--text-primary);
+    outline: none; transition: border .2s;
+    font-family: inherit;
+}
+.form-group select:focus,
+.form-group input[type="date"]:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.12);
+}
+.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ── Report custom date picker (ported from profile.php DOB picker) ── */
+.rpt-date-display {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-size: 13.5px; cursor: pointer; user-select: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-height: 42px; box-sizing: border-box; font-family: inherit;
+}
+.rpt-date-display:hover { border-color: #3762c8; }
+.rpt-date-display:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.12); outline: none; }
+.rpt-date-display .rdt-text { flex: 1; }
+.rpt-date-display .rdt-text.placeholder { color: var(--text-secondary); opacity: .6; }
+.rpt-date-display .rdt-icon { font-size: 15px; margin-left: 8px; flex-shrink: 0; opacity: .7; }
+.rdt-picker-overlay {
+    position: fixed; z-index: 99999;
+    display: none; visibility: hidden;
+    top: -9999px; left: -9999px;
+    width: 284px; max-height: 80vh;
+    overflow-y: auto; overflow-x: hidden;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.10);
+    border: 1px solid rgba(55,98,200,.13);
+    font-family: inherit; scroll-behavior: smooth;
+}
+.rdt-picker-overlay::-webkit-scrollbar { width: 5px; }
+.rdt-picker-overlay::-webkit-scrollbar-track { background: transparent; }
+.rdt-picker-overlay::-webkit-scrollbar-thumb { background: rgba(55,98,200,.25); border-radius: 4px; }
+.rdt-dp-header {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 13px 9px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    gap: 6px;
+}
+@keyframes rdtPopIn {
+    from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.rdt-dp-nav {
+    width: 28px; height: 28px; border-radius: 8px; border: none;
+    background: rgba(255,255,255,.18); color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .12s; flex-shrink: 0;
+}
+.rdt-dp-nav:hover  { background: rgba(255,255,255,.32); transform: scale(1.08); }
+.rdt-dp-nav:active { transform: scale(0.95); }
+.rdt-dp-header-center {
+    display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
+}
+.rdt-dp-month-btn, .rdt-dp-year-btn {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    font-size: 13px; font-weight: 700;
+    padding: 4px 9px; border-radius: 7px;
+    cursor: pointer; letter-spacing: .02em;
+    transition: background .15s; font-family: inherit;
+}
+.rdt-dp-month-btn:hover, .rdt-dp-year-btn:hover { background: rgba(255,255,255,.3); }
+.rdt-dp-month-btn.active, .rdt-dp-year-btn.active {
+    background: rgba(255,255,255,.4); box-shadow: 0 0 0 2px rgba(255,255,255,.5);
+}
+.rdt-year-dropdown {
+    display: none; padding: 6px 8px;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);
+    max-height: 180px; overflow-y: auto; overscroll-behavior: contain;
+}
+.rdt-year-dropdown::-webkit-scrollbar { width: 5px; }
+.rdt-year-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.rdt-year-dropdown.open { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.rdt-year-opt {
+    padding: 6px 4px; border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary);
+    font-size: 12.5px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.rdt-year-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.rdt-year-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.rdt-month-dropdown {
+    display: none; padding: 6px 8px;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);
+    max-height: 180px; overflow-y: auto; overscroll-behavior: contain;
+}
+.rdt-month-dropdown::-webkit-scrollbar { width: 5px; }
+.rdt-month-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.rdt-month-dropdown.open { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+.rdt-month-opt {
+    padding: 7px 4px; border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary);
+    font-size: 12px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.rdt-month-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.rdt-month-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.rdt-dp-weekdays {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    padding: 8px 10px 2px; gap: 2px;
+}
+.rdt-dp-weekdays span {
+    text-align: center; font-size: 10px; font-weight: 700;
+    color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; padding: 2px 0;
+}
+.rdt-dp-weekdays span:first-child,
+.rdt-dp-weekdays span:last-child { color: #f87171; }
+.rdt-dp-grid {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    padding: 2px 10px 8px; gap: 3px;
+}
+.rdt-dp-day {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 12.5px; font-weight: 500;
+    cursor: pointer; color: #1e293b; border: none;
+    background: transparent;
+    transition: background .13s, color .13s, transform .1s;
+    padding: 0; line-height: 1;
+}
+.rdt-dp-day:hover         { background: #eef2ff; color: #3762c8; transform: scale(1.12); }
+.rdt-dp-day:active        { transform: scale(0.95); }
+.rdt-dp-day.rdt-empty     { cursor: default; pointer-events: none; }
+.rdt-dp-day.rdt-weekend   { color: #ef4444; }
+.rdt-dp-day.rdt-weekend:hover { background: #fff0f0; color: #dc2626; }
+.rdt-dp-day.rdt-today     { background: rgba(55,98,200,.1); color: #3762c8; font-weight: 700; position: relative; }
+.rdt-dp-day.rdt-today::after {
+    content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:#3762c8;
+}
+.rdt-dp-day.rdt-selected  {
+    background: linear-gradient(135deg, #3762c8, #2851b3) !important;
+    color: #fff !important; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35); transform: scale(1.05);
+}
+.rdt-dp-day.rdt-selected::after { display: none; }
+.rdt-dp-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 12px; border-top: 1px solid rgba(55,98,200,.08); gap: 8px;
+}
+.rdt-dp-clear {
+    flex: 1; padding: 7px 0; border-radius: 9px;
+    border: 1.5px solid rgba(239,68,68,.3);
+    background: transparent; color: #ef4444;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: background .15s; letter-spacing: .03em; font-family: inherit;
+}
+.rdt-dp-clear:hover { background: #fff0f0; border-color: #ef4444; }
+.rdt-dp-done {
+    flex: 1; padding: 7px 0; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: opacity .15s; letter-spacing: .03em; font-family: inherit;
+}
+.rdt-dp-done:hover { opacity: .88; }
+/* Dark mode */
+[data-theme="dark"] .rdt-picker-overlay {
+    background: #1e2235;
+    border-color: rgba(95,140,255,.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .rdt-dp-day  { color: #e2e8f0; }
+[data-theme="dark"] .rdt-dp-day:hover { background: rgba(55,98,200,.2); color: #8ab4f8; }
+[data-theme="dark"] .rdt-dp-day.rdt-weekend { color: #f87171; }
+[data-theme="dark"] .rdt-dp-day.rdt-today   { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .rdt-dp-day.rdt-today::after { background: #8ab4f8; }
+[data-theme="dark"] .rdt-dp-footer { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .rdt-dp-weekdays span  { color: #64748b; }
+[data-theme="dark"] .rdt-dp-weekdays span:first-child,
+[data-theme="dark"] .rdt-dp-weekdays span:last-child { color: #f87171; }
+[data-theme="dark"] .rdt-year-dropdown,
+[data-theme="dark"] .rdt-month-dropdown { background: #1e2235; border-bottom-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .rdt-year-opt,
+[data-theme="dark"] .rdt-month-opt { color: #e2e8f0; }
+[data-theme="dark"] .rdt-year-opt:hover,
+[data-theme="dark"] .rdt-month-opt:hover { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .rdt-dp-clear { color: #f87171; border-color: rgba(239,68,68,.4); }
+[data-theme="dark"] .rdt-dp-clear:hover { background: rgba(239,68,68,.1); }
+.format-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.fmt-btn {
+    padding: 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px; background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s; text-align: center;
+}
+.fmt-btn.active {
+    border-color: #3762c8; background: rgba(55,98,200,.1); color: #3762c8;
+}
+.btn-generate {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all .25s; margin-top: 6px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(55,98,200,.35); }
+.btn-generate:active { transform: translateY(0); }
+.btn-generate:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.report-info-text {
+    font-size: 11px; color: var(--text-secondary);
+    text-align: center; margin-top: 10px;
+}
+
+/* ── Password confirmation modal ──────────────────────────────────────── */
+#pwModalBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9000;
+    backdrop-filter: blur(5px);
+}
+#pwModalBackdrop.active { display: flex; }
+
+.pw-modal {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    box-shadow: 0 16px 60px var(--shadow-color);
+    width: 92%;
+    max-width: 400px;
+    overflow: hidden;
+    animation: pwModalIn .28s cubic-bezier(.34,1.56,.64,1);
+    border: 1px solid var(--border-color);
+}
+@keyframes pwModalIn {
+    from { opacity:0; transform:scale(.88) translateY(-18px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+}
+
+.pw-modal-header {
+    padding: 20px 24px 16px;
+    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
+    display: flex; align-items: center; gap: 12px;
+}
+.pw-modal-icon {
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,.18);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.pw-modal-header-text h3 {
+    font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px;
+}
+.pw-modal-header-text p {
+    font-size: 11px; color: #93c5fd; line-height: 1.4;
+}
+
+.pw-modal-body { padding: 22px 24px 20px; }
+
+.pw-modal-body label {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--text-secondary); margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+
+.pw-input-wrap {
+    position: relative;
+}
+.pw-input-wrap input[type="password"],
+.pw-input-wrap input[type="text"] {
+    width: 100%; padding: 11px 44px 11px 14px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 11px; font-size: 15px;
+    background: var(--bg-secondary); color: var(--text-primary);
+    outline: none; transition: border .2s, box-shadow .2s;
+    font-family: inherit;
+}
+.pw-input-wrap input:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+}
+.pw-input-wrap input.pw-error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+}
+.pw-toggle-btn {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    font-size: 17px; color: var(--text-secondary);
+    padding: 2px; line-height: 1;
+    transition: color .2s;
+}
+.pw-toggle-btn:hover { color: #3762c8; }
+
+.pw-error-msg {
+    display: none; margin-top: 8px;
+    background: #fef2f2; border: 1px solid #fecaca;
+    color: #dc2626; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; font-weight: 600;
+    align-items: center; gap: 6px;
+}
+.pw-error-msg.show { display: flex; }
+
+.pw-attempts-msg {
+    display: none; margin-top: 8px;
+    font-size: 11px; color: var(--text-secondary);
+    text-align: center;
+}
+.pw-attempts-msg.show { display: block; }
+
+.pw-modal-footer {
+    padding: 0 24px 20px;
+    display: flex; gap: 10px;
+}
+.pw-cancel-btn {
+    flex: 1; padding: 11px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 11px; background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+}
+.pw-cancel-btn:hover {
+    background: rgba(55,98,200,.08); border-color: #3762c8; color: #3762c8;
+}
+.pw-confirm-btn {
+    flex: 2; padding: 11px;
+    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
+    color: #fff; border: none; border-radius: 11px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all .25s; display: flex; align-items: center;
+    justify-content: center; gap: 7px;
+    box-shadow: 0 4px 14px rgba(30,58,95,.3);
+}
+.pw-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(30,58,95,.4);
+}
+.pw-confirm-btn:disabled {
+    opacity: .65; cursor: not-allowed; transform: none;
+}
+
+/* Spinner */
+.pw-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: pw-spin .7s linear infinite;
+    display: none;
+}
+@keyframes pw-spin { to { transform: rotate(360deg); } }
+
+/* ── Clickable card affordance ─────────────────────────────── */
+.metric-card[data-href],
+.activity-item[data-href],
+.schedule-item[data-href],
+.facility-item[data-href] {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+/* metric cards already have hover; just add a ring on focus-visible */
+.metric-card[data-href]:focus-visible {
+    outline: 3px solid #3762c8;
+    outline-offset: 3px;
+}
+
+/* activity / schedule / facility rows – add a subtle right arrow hint */
+.activity-item[data-href]::after,
+.schedule-item[data-href]::after,
+.facility-item[data-href]::after {
+    content: '›';
+    font-size: 20px;
+    font-weight: 700;
+    color: rgba(55, 98, 200, 0.4);
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.activity-item[data-href]:hover::after,
+.schedule-item[data-href]:hover::after,
+.facility-item[data-href]:hover::after {
+    color: #3762c8;
+    transform: translateX(4px);
+}
+
+/* Facility items need flex so the arrow sits at the end */
+.facility-item[data-href] {
+    display: flex;
+    align-items: center;
+}
+
+/* Active press feedback */
+.metric-card[data-href]:active         { transform: translateY(-2px) scale(0.98) !important; }
+.activity-item[data-href]:active,
+.schedule-item[data-href]:active,
+.facility-item[data-href]:active       { opacity: 0.8; }
+
 /* ===========================
    WELCOME ANIMATION STYLES
 =========================== */
@@ -1180,9 +1892,9 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     .sidebar-profile-btn {
         position: absolute;
         top: 18px;
-        left: 18px;
-        width: 42px;
-        height: 42px;
+        left: 12px;
+        width: 45px;
+        height: 47px;
     }
 
     .sidebar-top {
@@ -1366,7 +2078,117 @@ if ($upcomingSchedulesResult && $upcomingSchedulesResult->num_rows > 0) {
     .facility-count {
         font-size: 13px;
     }
+    .report-type-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .report-type-btn { padding: 14px 10px; }
+    .report-type-btn .rpt-icon { width: 42px; height: 42px; font-size: 22px; }
+    .date-row { grid-template-columns: 1fr; gap: 12px; }
 }
+
+/* ── Logout Confirmation Modal ── */
+#logoutAlertBackdrop {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#logoutAlertBackdrop.active { display: flex; }
+#logoutAlertModal {
+    background: var(--card-bg, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px;
+    width: 320px;
+    max-width: 92vw;
+    animation: logoutModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+@keyframes logoutModalPop {
+    from { transform: translateY(24px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);   opacity: 1; }
+}
+#logoutAlertModal .lo-icon-wrap {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(239,68,68,.22);
+    flex-shrink: 0;
+}
+#logoutAlertModal .lo-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary, #1a1a2e) !important;
+    margin-bottom: 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+#logoutAlertModal .lo-desc {
+    font-size: .92rem !important;
+    color: var(--text-secondary, #64748b) !important;
+    margin-bottom: 24px !important;
+    line-height: 1.55 !important;
+}
+#logoutAlertModal .lo-btns {
+    display: flex !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+#logoutAlertModal .lo-btn {
+    flex: 1 !important;
+    padding: 11px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all .18s ease !important;
+    font-family: inherit !important;
+    line-height: 1 !important;
+}
+#logoutAlertModal .lo-cancel {
+    background: var(--bg-secondary, #f1f5f9) !important;
+    color: var(--text-primary, #374151) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+}
+#logoutAlertModal .lo-cancel:hover { background: var(--border-color, #e2e8f0) !important; }
+#logoutAlertModal .lo-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(239,68,68,.35) !important;
+}
+#logoutAlertModal .lo-confirm:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(239,68,68,.45) !important;
+}
+[data-theme="dark"] #logoutAlertModal {
+    background: rgba(24,24,30,.98) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-icon-wrap {
+    background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)) !important;
+    border-color: rgba(239,68,68,.32) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-title { color: #e2e8f0 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-desc  { color: #94a3b8 !important; }
+[data-theme="dark"] #logoutAlertModal .lo-cancel {
+    background: rgba(255,255,255,.07) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+[data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1448,8 +2270,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     <div class="sidebar-top">
         <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
-            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
-            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg"
+                 onerror="this.style.display='none';var f=document.getElementById('profileFallbackIcon');if(f){f.style.display='flex';}"
+                 <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
+            <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                </svg>
+            </span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span>
@@ -1461,12 +2291,34 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div class="sidebar-divider logo-divider"></div>
         </div>
         <div class="sidebar-logo-spacer"></div>
-        
+
         <ul class="nav-list">
-            <li><a href="#" class="nav-link active" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
-            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="reports.php" class="nav-link" data-tooltip="Reports"><i class="fas fa-file-alt"></i><span>Reports</span></a></li>
-            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="employee.php"  class="nav-link active" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
+            <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <!-- Reports Dropdown -->
+            <li class="nav-dropdown-item">
+                <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                    <i class="fas fa-chevron-down nav-arrow"></i>
+                </a>
+                <ul class="nav-sub-list">
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                </ul>
+            </li>
+            <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li>
+                <a href="admin_create.php"
+                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
+                data-tooltip="Create Account">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Create Account</span>
+                </a>
+            </li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -1475,23 +2327,24 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
-        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">Logout</button>
+        <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
+            Logout <i class="fas fa-sign-out-alt"></i>
+        </button>
     </div>
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
+<?php include 'eng_profile_warning.php'; ?>
 
 <!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
-        <div class="icon-wrap">
-            <span class="icon">&#9888;</span>
-        </div>
-        <div class="alert-title">Log out of your account?</div>
-        <div class="alert-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
-        <div class="alert-btns">
-            <button class="alert-btn cancel" id="logoutCancelBtn">Cancel</button>
-            <button class="alert-btn logout" id="logoutConfirmBtn">Log out</button>
+        <div class="lo-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+        <div class="lo-title">Log out of your account?</div>
+        <div class="lo-desc">Are you sure you want to log out? Any ongoing activity will be ended.</div>
+        <div class="lo-btns">
+            <button class="lo-btn lo-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="lo-btn lo-confirm" id="logoutConfirmBtn">Log out</button>
         </div>
     </div>
 </div>
@@ -1503,11 +2356,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <div class="dashboard-header">
                 <h1 class="dashboard-title">Dashboard Overview</h1>
                 <p class="dashboard-subtitle">Welcome back, <?= htmlspecialchars($displayName) ?></p>
+                <?php if ($isEngineer): ?>
+                <div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;
+                            background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
+                            border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;
+                            color:#3762c8;">
+                    <span>👷</span>
+                    <span>Engineer view — reports &amp; tasks are filtered to your assignments only</span>
+                </div>
+                <?php endif; ?>
             </div>
 
             <!-- Metrics Grid -->
             <div class="metrics-grid">
-                <div class="metric-card blue">
+                <div class="metric-card blue"     data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Total Requests</div>
@@ -1521,7 +2383,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card orange">
+                <div class="metric-card orange"   data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Pending Requests</div>
@@ -1534,17 +2396,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card green">
+                <div class="metric-card green"    data-href="archive_reports.php" tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
-                            <div class="metric-title">Completed Tasks</div>
+                            <div class="metric-title">Completed Tasks<?= $isEngineer ? ' (Mine)' : '' ?></div>
                         </div>
                         <div class="metric-icon"><i class="fas fa-check"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($completedTasks) ?></div>
                     <div class="metric-trend positive">
                         <span class="metric-trend-icon">↗</span>
-                        <span>This month</span>
+                        <span>Archived reports</span>
                     </div>
                 </div>
 
@@ -1561,6 +2423,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
             </div>
+
 
             <!-- Quick Actions -->
             <div class="quick-actions">
@@ -1662,52 +2525,262 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <!-- Upcoming Maintenance Schedules -->
+                <!-- Upcoming Maintenance Schedules — combined sched + reports, engineer-personalised -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
-                            <div class="chart-title">Upcoming Maintenance</div>
-                            <div class="chart-subtitle">Next scheduled tasks</div>
+                            <div class="chart-title">Upcoming Maintenance<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                            <div class="chart-subtitle">Next scheduled tasks<?= $isEngineer ? ' assigned to you' : ' from schedule &amp; reports' ?></div>
                         </div>
                         <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
                     <div class="schedule-list">
-                        <?php 
+                        <?php
                         if (!empty($upcomingSchedules)):
-                            foreach ($upcomingSchedules as $schedule): 
-                                $priority = strtolower($schedule['priority'] ?? 'low');
-                                $iconClass = 'low-priority';
-                                if ($priority === 'high' || $priority === 'critical') {
-                                    $iconClass = 'high-priority';
-                                } elseif ($priority === 'medium') {
-                                    $iconClass = 'medium-priority';
-                                }
-                                
-                                $badgeClass = 'low';
-                                if ($priority === 'high' || $priority === 'critical') {
-                                    $badgeClass = 'high';
-                                } elseif ($priority === 'medium') {
-                                    $badgeClass = 'medium';
-                                }
+                            foreach ($upcomingSchedules as $schedule):
+                                $priority   = strtolower($schedule['priority'] ?? 'low');
+                                $statusLbl  = $schedule['status_label'] ?? 'Scheduled';
+                                $iconClass  = 'low-priority';
+                                if ($priority === 'high' || $priority === 'critical') $iconClass = 'high-priority';
+                                elseif ($priority === 'medium') $iconClass = 'medium-priority';
+                                $badgeClass = ($priority === 'high' || $priority === 'critical') ? 'high' : ($priority === 'medium' ? 'medium' : 'low');
+                                $statusIcon = match($statusLbl) {
+                                    'Delayed'     => '⚠️',
+                                    'In Progress' => '🔄',
+                                    'Completed'   => '✅',
+                                    default       => '📅',
+                                };
+                                $engLabel = !empty($schedule['engineer_name']) && $schedule['engineer_name'] !== '—'
+                                    ? $schedule['engineer_name']
+                                    : ($schedule['source'] === 'schedule' ? ($schedule['assigned_team'] ?: 'Unassigned') : 'Unassigned');
                         ?>
-                        <div class="schedule-item">
-                            <div class="schedule-icon <?= $iconClass ?>">📅</div>
+                        <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
+                            <div class="schedule-icon <?= $iconClass ?>"><?= $statusIcon ?></div>
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
-                                <div class="schedule-location"><?= htmlspecialchars($schedule['location']) ?></div>
+                                <div class="schedule-location">
+                                    <?= htmlspecialchars($schedule['location']) ?>
+                                    <?php if (!$isEngineer): ?>
+                                    · <em style="color:var(--text-secondary);font-size:11px;"><?= htmlspecialchars($engLabel) ?></em>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="schedule-date-container">
-                                <div class="schedule-date"><?= date('M d, Y', strtotime($schedule['starting_date'])) ?></div>
-                                <span class="schedule-badge <?= $badgeClass ?>"><?= ucfirst($priority) ?></span>
+                                <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
+                                <span class="schedule-badge <?= $badgeClass ?>"><?= htmlspecialchars($statusLbl) ?></span>
                             </div>
                         </div>
-                        <?php 
+                        <?php
                             endforeach;
                         else:
                         ?>
                         <div class="no-schedules">No upcoming maintenance scheduled</div>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+
+            <!-- Active Reports Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Active Reports</div>
+                        <div class="chart-subtitle">In-progress reports by priority &amp; assignment</div>
+                    </div>
+                    <a href="current_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="activeReportsChart"></canvas>
+                </div>
+                <div style="display:flex;justify-content:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                        <span style="width:12px;height:12px;border-radius:3px;background:#4caf50;display:inline-block;"></span>Assigned
+                    </span>
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                        <span style="width:12px;height:12px;border-radius:3px;background:#ff9800;display:inline-block;"></span>Unassigned
+                    </span>
+                </div>
+            </div>
+
+            <!-- Current Reports Preview -->
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Active in-progress repair reports<?= $isEngineer ? ' assigned to you' : '' ?></div>
+                    </div>
+                    <a href="current_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentReportRows)): ?>
+                        <?php 
+                        $repColors = ['#f44336', '#ff9800', '#2196f3', '#9c27b0', '#4caf50'];
+                        $repColorIndex = 0;
+                        foreach ($recentReportRows as $rep):
+                            $hasEngineer = !empty($rep['engineer_id']) && !empty($rep['engineer_name']) && trim($rep['engineer_name']) !== ' ';
+                            $statusLabel = $hasEngineer ? 'In Progress' : 'Awaiting Engineer';
+                            $priority    = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High' => '#f44336', 'Medium' => '#ff9800', 'Low' => '#4caf50'];
+                            $priorityColor  = $priorityColors[$priority] ?? '#2196f3';
+                            $initial = substr($rep['infrastructure'] ?? 'R', 0, 1);
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='current_reports.php'">
+                            <div class="activity-avatar" style="background: <?= $repColors[$repColorIndex % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= $rep['rep_id'] ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $priorityColor ?>;background:<?= $priorityColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= date('M d, Y', strtotime($rep['starting_date'])) ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $hasEngineer ? 'var(--metric-blue)' : 'var(--metric-orange)' ?>;">
+                                    <?= $statusLabel ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php 
+                        $repColorIndex++;
+                        endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            🔄 No active reports at this time.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- ── Pending Reports Preview ─────────────────────────────────── -->
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='pending_reports.php'">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isEngineer ? ' assigned to you' : '' ?></div>
+                    </div>
+                    <a href="pending_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentPendingRows)): ?>
+                        <?php
+                        $pColors = ['#ff9800','#2196f3','#9c27b0','#f44336','#4caf50'];
+                        $pIdx = 0;
+                        foreach ($recentPendingRows as $rep):
+                            $resStatus = $rep['resolution_status'] ?? '';
+                            $statusMap = [
+                                'In Progress'        => ['label'=>'In Progress',   'color'=>'var(--metric-blue)'],
+                                'Pending Completion' => ['label'=>'Pending Approval','color'=>'var(--metric-orange)'],
+                                'Scheduled'          => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                                'Pending'            => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                                ''                   => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
+                            ];
+                            $sm = $statusMap[$resStatus] ?? ['label'=>$resStatus,'color'=>'var(--metric-blue)'];
+                            $priority = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High'=>'#f44336','Medium'=>'#ff9800','Low'=>'#4caf50'];
+                            $pColor = $priorityColors[$priority] ?? '#2196f3';
+                            $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
+                            $hasEngineer = !empty($rep['engineer_id']) && trim($rep['engineer_name'] ?? '') !== '';
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='pending_reports.php'">
+                            <div class="activity-avatar" style="background:<?= $pColors[$pIdx % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= str_pad($rep['rep_id'], 3, '0', STR_PAD_LEFT) ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $pColor ?>;background:<?= $pColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= !empty($rep['starting_date']) ? date('M d, Y', strtotime($rep['starting_date'])) : '—' ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $sm['color'] ?>;">
+                                    <?= $sm['label'] ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $pIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            ⏳ No pending reports<?= $isEngineer ? ' assigned to you' : '' ?> at this time.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- ── Archive Reports Preview ────────────────────────────────────── -->
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='archive_reports.php'">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isEngineer ? ' you handled' : '' ?></div>
+                    </div>
+                    <a href="archive_reports.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentArchiveRows)): ?>
+                        <?php
+                        $aColors = ['#4caf50','#2196f3','#9c27b0','#ff9800','#f44336'];
+                        $aIdx = 0;
+                        foreach ($recentArchiveRows as $rep):
+                            $resStatus = $rep['resolution_status'] ?? 'Completed';
+                            $isCancelled = $resStatus === 'Cancelled';
+                            $statusColor = $isCancelled ? 'var(--metric-red)' : 'var(--metric-green)';
+                            $statusLabel = $isCancelled ? 'Cancelled' : 'Completed';
+                            $priority = $rep['priority_lvl'] ?? 'Low';
+                            $priorityColors = ['High'=>'#f44336','Medium'=>'#ff9800','Low'=>'#4caf50'];
+                            $aColor = $priorityColors[$priority] ?? '#4caf50';
+                            $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
+                            $engName = trim($rep['engineer_name'] ?? '');
+                            $hasEngineer = !empty($rep['engineer_id']) && $engName !== '';
+                        ?>
+                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='archive_reports.php'">
+                            <div class="activity-avatar" style="background:<?= $aColors[$aIdx % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REP-<?= str_pad($rep['rep_id'], 3, '0', STR_PAD_LEFT) ?> — <?= htmlspecialchars($rep['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rep['location'] ?? '—') ?>
+                                    · <?= $hasEngineer ? htmlspecialchars($engName) : '<em style="color:var(--text-secondary)">No engineer</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $aColor ?>;background:<?= $aColor ?>22;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($priority) ?>
+                                </span>
+                                <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                    <?= !empty($rep['starting_date']) ? date('M d, Y', strtotime($rep['starting_date'])) : '—' ?>
+                                </span>
+                                <span style="font-size:11px;font-weight:600;color:<?= $statusColor ?>;">
+                                    <?= $statusLabel ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $aIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            ✅ No archived reports<?= $isEngineer ? ' for you' : '' ?> yet.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
 
