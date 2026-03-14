@@ -3,7 +3,6 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 20, 2026 at 10:46 AM
 -- Generation Time: Mar 13, 2026 at 07:08 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
@@ -95,6 +94,7 @@ CREATE TABLE `engineer_profiles` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `evidence_images`
@@ -106,6 +106,27 @@ CREATE TABLE `evidence_images` (
   `img_path` varchar(255) NOT NULL,
   `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `evidence_images`
+--
+
+INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VALUES
+(112, 114, 'uploads/evidence/evidence_114_699c0a5230144.jpg', '2026-02-23 08:05:38'),
+(113, 115, 'uploads/evidence/evidence_115_699c0b41a81bd.jpg', '2026-02-23 08:09:37'),
+(114, 116, 'uploads/evidence/evidence_116_699c0bed09160.jpg', '2026-02-23 08:12:29'),
+(115, 117, 'uploads/evidence/evidence_117_699c0c7806a9e.jpg', '2026-02-23 08:14:48'),
+(116, 118, 'uploads/evidence/evidence_118_699c0d5bc4095.jpg', '2026-02-23 08:18:35'),
+(117, 119, 'uploads/evidence/evidence_119_699c0e172ada4.jpg', '2026-02-23 08:21:43'),
+(118, 120, 'uploads/evidence/evidence_120_699c0f4babdb5.jpg', '2026-02-23 08:26:51'),
+(119, 121, 'uploads/evidence/evidence_121_699c106e86722.jpg', '2026-02-23 08:31:42'),
+(121, 123, 'uploads/evidence/evidence_123_699c18e367413.jpg', '2026-02-23 09:07:47'),
+(122, 124, 'uploads/evidence/evidence_124_699c1afaa3eb5.jpg', '2026-02-23 09:16:42'),
+(123, 125, 'uploads/evidence/evidence_125_699c206a510e9.jpg', '2026-02-23 09:39:54'),
+(124, 125, 'uploads/evidence/evidence_125_699c206a60fb8.jpg', '2026-02-23 09:39:54'),
+(125, 125, 'uploads/evidence/evidence_125_699c206a65524.jpg', '2026-02-23 09:39:54');
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `login_logs`
@@ -123,10 +144,103 @@ CREATE TABLE `login_logs` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-(138, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 18:01:49'),
-(139, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 21:35:34'),
-(140, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 22:30:25');
+--
+-- Dumping data for table `login_logs`
+--
 
+INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_address`, `user_agent`, `otp_used`, `otp_resends`, `created_at`) VALUES
+(135, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:08:52'),
+(136, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:17:27'),
+(137, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:43:29'),
+(138, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 09:20:12'),
+(139, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 10:11:44'),
+(140, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 10:12:11'),
+(141, 'bartolomeexequielkent@gmail.com', 0, 'Invalid OTP', '175.176.24.250', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:31:41'),
+(142, 'bartolomeexequielkent@gmail.com', 1, NULL, '175.176.24.250', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-24 05:32:01'),
+(143, 'bartolomeexequielkent2003@gmail.com', 0, 'Invalid OTP', '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:44:42'),
+(144, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:44:55'),
+(145, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:55:19'),
+(146, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.3', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 06:16:00'),
+(147, 'bartolomeexequielkent@gmail.com', 1, NULL, '209.35.160.37', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 07:23:04'),
+(148, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '209.35.160.37', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 07:23:42'),
+(149, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:51:20'),
+(150, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:14'),
+(151, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:25'),
+(152, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:55'),
+(153, 'villawarv@gmail.com', 1, NULL, '110.54.148.146', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 1, 0, '2026-02-24 07:53:26'),
+(154, 'stephanie.saguns@gmail.com', 1, NULL, '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 1, 0, '2026-02-24 07:58:25'),
+(155, 'marycarldagondong28@gmail.com', 1, NULL, '110.54.148.146', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 1, 0, '2026-02-24 08:13:25'),
+(156, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 16:18:08'),
+(157, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 16:57:36'),
+(158, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 08:51:05'),
+(159, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 08:51:30'),
+(160, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:01:53'),
+(161, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:02:44'),
+(162, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:03:23'),
+(163, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:08:12'),
+(164, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:09:05'),
+(165, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:11:44'),
+(166, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:15:06'),
+(167, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:18:52'),
+(168, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:28:57'),
+(169, 'bartolomeexequielkent2003@gmail.com', 0, 'Invalid OTP', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:39:44'),
+(170, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-27 10:40:03'),
+(171, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:54:59'),
+(172, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:10:01'),
+(173, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:18:29'),
+(174, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:33:54'),
+(175, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-27 11:45:25'),
+(176, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:52:57'),
+(177, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:59:37'),
+(178, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 12:52:25'),
+(179, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:02:05'),
+(180, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:08:03'),
+(181, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:12:33'),
+(182, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:19:29'),
+(183, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:32:14'),
+(184, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:04:25'),
+(185, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:10:31'),
+(186, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:23:41'),
+(187, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:32:20'),
+(188, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:41:55'),
+(189, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:51:41'),
+(190, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:15:38'),
+(191, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:17:57'),
+(192, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:22:08'),
+(193, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:24:29'),
+(194, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:41:21'),
+(195, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:43:51'),
+(196, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:51:19'),
+(197, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:56:33'),
+(198, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:16:47'),
+(199, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:24:52'),
+(200, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:28:42'),
+(201, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:33:02'),
+(202, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:48:52'),
+(203, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:58:09'),
+(204, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:03:07'),
+(205, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:15:50'),
+(206, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:26:11'),
+(207, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:17:58'),
+(208, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:30:12'),
+(209, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:38:33'),
+(210, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:45:43'),
+(211, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:58:06'),
+(212, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:01:49'),
+(213, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:08:10'),
+(214, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:18:44'),
+(215, 'testingyarn2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:20:20'),
+(216, 'testingyarn2003@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:22:01'),
+(217, 'bartolomeexequielkent@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:22:53'),
+(218, 'testingyarn2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:23:31'),
+(219, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:41:11'),
+(220, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:41:15'),
+(221, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:45:49'),
+(222, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:48:33'),
+(223, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 23:16:40'),
+(224, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-03-01 22:04:51');
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `maintenance_schedule`
@@ -147,6 +261,8 @@ CREATE TABLE `maintenance_schedule` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
 -- Table structure for table `materials_equipment_costs`
 --
@@ -160,6 +276,7 @@ CREATE TABLE `materials_equipment_costs` (
   `quantity` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `notifications`
@@ -176,6 +293,121 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`, `request_type`, `is_read`, `created_at`) VALUES
+(466, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(467, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(468, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(469, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(470, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(471, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(472, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(473, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(474, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=114', 'Roads', 0, '2026-02-23 08:05:38'),
+(475, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(476, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(477, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(478, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(479, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(480, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(481, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(482, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(483, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=115', 'Signage', 0, '2026-02-23 08:09:37'),
+(484, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(485, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(486, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(487, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(488, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(489, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(490, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(491, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(492, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=116', 'Roads', 0, '2026-02-23 08:12:29'),
+(493, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(494, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(495, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(496, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(497, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(498, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(499, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(500, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(501, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=117', 'Street Lights', 0, '2026-02-23 08:14:48'),
+(502, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(503, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(504, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(505, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(506, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(507, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(508, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(509, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(510, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=118', 'Public Facilities', 0, '2026-02-23 08:18:35'),
+(511, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:43'),
+(512, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:43'),
+(513, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:44'),
+(514, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:44'),
+(515, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:45'),
+(516, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:45'),
+(517, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:45'),
+(518, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:45'),
+(519, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=119', 'Drainage', 0, '2026-02-23 08:21:45'),
+(520, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(521, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(522, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(523, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(524, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(525, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(526, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(527, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(528, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=120', 'Electrical', 0, '2026-02-23 08:26:51'),
+(529, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(530, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(531, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(532, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(533, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(534, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(535, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(536, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(537, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=121', 'Waiting Shed', 0, '2026-02-23 08:31:42'),
+(538, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(539, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(540, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(541, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(542, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(543, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(544, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(545, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(546, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=122', 'Traffic light', 0, '2026-02-23 09:00:28'),
+(547, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(548, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(549, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(550, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(551, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(552, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(553, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(554, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(555, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=123', 'traffic light', 0, '2026-02-23 09:07:47'),
+(556, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(557, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(558, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(559, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(560, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(561, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(562, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(563, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(564, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=124', 'Roads', 0, '2026-02-23 09:16:42'),
+(565, 3, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(566, 1, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(567, 2, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(568, 5, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(569, 8, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(570, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(571, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(572, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
+(573, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54');
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `password_resets`
@@ -190,6 +422,7 @@ CREATE TABLE `password_resets` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `pending_registrations`
@@ -206,6 +439,8 @@ CREATE TABLE `pending_registrations` (
   `verification_token_expires` datetime NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `repair_archive`
@@ -242,6 +477,8 @@ CREATE TABLE `reports` (
   `engineer_accepted` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
 -- Table structure for table `requests`
 --
@@ -257,6 +494,25 @@ CREATE TABLE `requests` (
   `coordinates` varchar(50) DEFAULT NULL COMMENT 'Stored as lat,lng — populated when citizen pins location on map',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `requests`
+--
+
+INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contact_number`, `name`, `approval_status`, `coordinates`, `created_at`) VALUES
+(114, 'Roads', 'Diliman, Ugong Norte, Quezon City, Zamboanga Street', 'Nasira  daanan sa lugar namin.', '09876456355', 'Marites Santos', 'Pending', '14.6612,121.0534', '2026-02-23 08:05:38'),
+(115, 'Signage', 'Geronimo Compound, Santo Domingo (Matalahib), Quezon City, Polaris Street', 'nasira signage sa santo domingo road', '09874321334', 'Carlo Anotio', 'Pending', '14.6756,121.0312', '2026-02-23 08:09:37'),
+(116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Pending', '14.6845,121.0389', '2026-02-23 08:12:29'),
+(117, 'Street Lights', 'Project 7, N.S. Amoranto (Gintong Silahis), Quezon City, Miller Avenue', 'natumba street ligts banda dito sa Project 7', '09654432171', 'Jhoven Bartolome', 'Pending', '14.6391,121.0294', '2026-02-23 08:14:48'),
+(118, 'Public Facilities', 'Pasong Tamo, Sikatuna Village, Quezon City, Kasay-Kasay Street', 'nasira  cubicle sa pasong tamo public CR', '09856345143', 'Marisol Valencia', 'Pending', '14.6767,121.0623', '2026-02-23 08:18:35'),
+(119, 'Drainage', 'Libis, Quezon City', 'nagbara sa dami ng basura', '09786543456', 'Jeffrey Las-ay', 'Pending', '14.6345,121.0612', '2026-02-23 08:21:43'),
+(120, 'Electrical', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'Bumagsak wiring dito sa project 8 santo domango', '09765432111', 'Marycarl Mallari', 'Pending', '14.6467,121.0334', '2026-02-23 08:26:51'),
+(121, 'Waiting Shed', 'Pansol, Krus Na Ligas, Quezon City, Montalban Street', 'bumagsak  yung bubong ng waiting shed sa panson', '09785634522', 'Jasmin Padilla', 'Pending', '14.6543,121.0721', '2026-02-23 08:31:42'),
+(123, 'traffic light', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'nasira traffic light', '09123456785', 'Hannah Roxas', 'Pending', '14.6467,121.0330', '2026-02-23 09:07:47'),
+(124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Pending', '14.6845,121.0395', '2026-02-23 09:16:42'),
+(125, 'Traffic light', 'Santo Domingo (Matalahib), Quezon City', 'The Traffic light in the Santo domingo is broken.', '09009356577', 'Kent Bartolome', 'Pending', '14.6756,121.0309', '2026-02-23 09:39:54');
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `request_ai_analysis`
@@ -286,6 +542,25 @@ CREATE TABLE `request_ai_analysis` (
   `analyzed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `request_ai_analysis`
+--
+
+INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastructure`, `detected_infrastructure`, `infrastructure_match`, `match_confidence`, `is_legitimate`, `legitimacy_score`, `legitimacy_notes`, `damage_severity`, `priority_recommendation`, `damage_description`, `confidence_score`, `anomaly_flags`, `combined_assessment`, `estimated_repair_complexity`, `requires_immediate_action`, `images_analyzed`, `analysis_status`, `ai_cost_estimation`, `analyzed_at`, `created_at`) VALUES
+(28, 114, '', 'Roads', 1, 0.596, 1, 0.546, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.496, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (9%); minivan (7%); parking meter (7%); jigsaw puzzle (6%); car mirror (3%); alp (3%)', 'Major', 1, 1, 'completed', 'P4,480,000 - P6,000,000', '2026-02-23 08:05:39', '2026-02-23 08:05:39'),
+(29, 115, '', 'Roads', 0, 0.986, 1, 0.936, 'AI confidence: 89%. Infrastructure indicators detected.', 5, 'Medium', 'Roads issue across 1 image. Detected: street sign, stop sign. Rust/corrosion visible. Moderate damage.', 0.886, '[\"rust_detected\"]', 'street sign (68%); birdhouse (4%); flagpole, flagstaff (3%); mailbox, letter box (2%); mortarboard (1%); traffic light, traffic signal, stoplight (1%)', 'Moderate', 0, 1, 'completed', 'P50,000 - P70,000', '2026-02-23 08:09:38', '2026-02-23 08:09:38'),
+(30, 116, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'stone wall (46%); patio, terrace (4%); bannister, banister, balustrade, balusters, handrail (3%); picket fence, paling (3%); cliff, drop, drop-off (2%); valley, vale (2%)', 'Major', 1, 1, 'completed', 'P3,370,000 - P6,000,000', '2026-02-23 08:12:29', '2026-02-23 08:12:29'),
+(31, 117, '', 'Street Lights', 1, 0.225, 1, 0.175, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.125, '[\"immediate_action_required\",\"road_structural_damage\"]', 'parking meter (20%); bubble (18%); pole (5%); syringe (4%); water bottle (3%); reel (3%)', 'Major', 1, 1, 'completed', 'P410,000 - P750,000', '2026-02-23 08:14:48', '2026-02-23 08:14:48'),
+(32, 118, '', 'Public Facilities', 1, 1.000, 1, 1.000, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Public Facilities issue across 1 image. Detected: toilet seat, toilet. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 1.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'toilet seat (59%); toilet tissue, toilet paper, bathroom tissue (13%); soap dispenser (12%); washbasin, handbasin, washbowl, lavabo, wash-hand basin (4%); switch, electric switch, electrical switch (2%); paper towel (1%)', 'Major', 1, 1, 'completed', 'P1,520,000 - P1,800,000', '2026-02-23 08:18:36', '2026-02-23 08:18:36'),
+(33, 119, '', 'Drainage', 1, 0.414, 1, 0.364, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Drainage issue across 1 image. Detected: dam. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.314, '[\"immediate_action_required\",\"road_structural_damage\"]', 'patio, terrace (23%); dam, dike, dyke (16%); pier (3%); greenhouse, nursery, glasshouse (2%); pot, flowerpot (2%); boathouse (2%)', 'Major', 1, 1, 'completed', 'P2,480,000 - P4,000,000', '2026-02-23 08:21:46', '2026-02-23 08:21:46'),
+(34, 120, '', 'Roads', 0, 0.303, 1, 0.253, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: cable, car. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.203, '[\"immediate_action_required\",\"road_structural_damage\"]', 'sports car, sport car (22%); jinrikisha, ricksha, rickshaw (7%); cab, hack, taxi, taxicab (4%); convertible (3%); chain (3%); parking meter (2%)', 'Major', 1, 1, 'completed', 'P3,590,000 - P6,000,000', '2026-02-23 08:26:52', '2026-02-23 08:26:52'),
+(35, 121, '', 'Roads', 0, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'solar dish, solar collector, solar furnace (35%); bullet train, bullet (4%); cab, hack, taxi, taxicab (2%); drilling platform, offshore rig (2%); bobsled, bobsleigh, bob (2%); dock, dockage, docking facility (2%)', 'Major', 1, 1, 'completed', 'P3,370,000 - P6,000,000', '2026-02-23 08:31:43', '2026-02-23 08:31:43'),
+(37, 123, '', 'Roads', 0, 0.772, 1, 0.722, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: traffic light. Road structural damage detected (cracks/heaving). Burn/char marks detected. Severe - immediate action required.', 0.672, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (84%); horizontal bar, high bar (4%); pole (2%); parallel bars, bars (1%); spotlight, spot (1%); bow (0%)', 'Major', 1, 1, 'completed', 'P5,260,000 - P6,000,000', '2026-02-23 09:07:48', '2026-02-23 09:07:48'),
+(38, 124, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'vault (6%); monastery (5%); umbrella (3%); trimaran (3%); hammer (2%); sundial (2%)', 'Major', 1, 1, 'completed', 'P3,370,000 - P6,000,000', '2026-02-23 09:16:44', '2026-02-23 09:16:44'),
+(39, 125, '', 'Roads', 0, 0.731, 1, 0.681, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 3 images. Detected: traffic light. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.631, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (94%); traffic light, traffic signal, stoplight (85%); traffic light, traffic signal, stoplight (57%); horizontal bar, high bar (4%); crane (3%); street sign (3%)', 'Major', 1, 3, 'completed', 'P4,650,000 - P6,000,000', '2026-02-23 09:39:55', '2026-02-23 09:39:55');
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `request_resolutions`
@@ -428,17 +703,13 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
   MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=225;
-
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
 --
 ALTER TABLE `maintenance_schedule`
-  MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
- MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
-
+  MODIFY `sched_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT for table `materials_equipment_costs`
