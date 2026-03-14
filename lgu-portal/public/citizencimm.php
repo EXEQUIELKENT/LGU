@@ -987,25 +987,40 @@ if ($maintenance_result) {
     <section class="trust-section animate-on-scroll">
         <div class="trust-grid">
             <div class="trust-item animate-on-scroll delay-1">
-                <div class="trust-icon">🔒</div>
+                <div class="trust-icon" style="color: blue;"><i class="fas fa-lock text-primary"></i></div>
                 <div class="trust-title" data-i18n="trust_secure_title">Secure &amp; Private</div>
                 <div class="trust-desc" data-i18n="trust_secure_desc">Your data is protected with strong, trusted security.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-2">
-                <div class="trust-icon">⚡</div>
+                <div class="trust-icon" style="color: blue;"><i class="fas fa-clock text-warning"></i></div>
                 <div class="trust-title" data-i18n="trust_fast_title">Fast Response</div>
                 <div class="trust-desc" data-i18n="trust_fast_desc">Reports are handled within 24–48 hours based on priority.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-3">
-                <div class="trust-icon">🎯</div>
+                <div class="trust-icon" style="color: blue;"><i class="fas fa-check-circle text-success"></i></div>
                 <div class="trust-title" data-i18n="trust_verified_title">Verified Reports</div>
                 <div class="trust-desc" data-i18n="trust_verified_desc">Every report is carefully checked for accuracy.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-4">
-                <div class="trust-icon">🏆</div>
+                <div class="trust-icon" style="color: blue;"><i class="fas fa-award text-danger"></i></div>
                 <div class="trust-title" data-i18n="trust_excellence_title">Service Excellence</div>
                 <div class="trust-desc" data-i18n="trust_excellence_desc">Committed to quality, transparency, and public service.</div>
             </div>
+            <script>
+                function switchToDarkMode() {
+                    const trustItems = document.querySelectorAll('.trust-item');
+                    trustItems.forEach(item => {
+                        item.querySelector('.trust-icon').style.color = 'white';
+                    });
+                }
+
+                function switchToLightMode() {
+                    const trustItems = document.querySelectorAll('.trust-item');
+                    trustItems.forEach(item => {
+                        item.querySelector('.trust-icon').style.color = 'black';
+                    });
+                }
+            </script>
         </div><!-- end trust-grid -->
     </section>
 

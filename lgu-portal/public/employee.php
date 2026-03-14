@@ -1511,7 +1511,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Total Requests</div>
                         </div>
-                        <div class="metric-icon">📋</div>
+                        <div class="metric-icon"><i class="fas fa-file-alt"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($totalRequests) ?></div>
                     <div class="metric-trend <?= $requestsTrend >= 0 ? 'positive' : 'negative' ?>">
@@ -1525,7 +1525,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Pending Requests</div>
                         </div>
-                        <div class="metric-icon">⏳</div>
+                        <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($pendingRequests) ?></div>
                     <div class="metric-trend">
@@ -1538,7 +1538,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Completed Tasks</div>
                         </div>
-                        <div class="metric-icon">✅</div>
+                        <div class="metric-icon"><i class="fas fa-check"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($completedTasks) ?></div>
                     <div class="metric-trend positive">
@@ -1552,7 +1552,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Active Users</div>
                         </div>
-                        <div class="metric-icon">👥</div>
+                        <div class="metric-icon"><i class="fas fa-users"></i></div>
                     </div>
                     <div class="metric-value"><?= number_format($activeUsers) ?></div>
                     <div class="metric-trend">
@@ -1564,7 +1564,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <a href="requests.php" class="action-btn">
+<<<<<<< Updated upstream
                     <div class="action-icon"><i class="fas fa-clipboard-list"></i></div>
+=======
+                    <div class="action-icon"><i class="fas fa-file-alt"></i></div>
+>>>>>>> Stashed changes
                     <div class="action-title">View Requests</div>
                     <div class="action-subtitle">Manage pending requests</div>
                 </a>
@@ -1580,7 +1584,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <div class="action-subtitle">Generate reports</div>
 =======
                 <a href="current_reports.php" class="action-btn">
+<<<<<<< Updated upstream
                     <div class="action-icon"><i class="fas fa-sync"></i></div>
+=======
+                    <div class="action-icon"><i class="fas fa-sync-alt"></i></div>
+>>>>>>> Stashed changes
                     <div class="action-title">Current Reports</div>
                     <div class="action-subtitle">In-progress repairs</div>
                 </a>
@@ -1767,7 +1775,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </div>
                 <div class="report-type-grid">
                     <button class="report-type-btn" onclick="openReportModal('requests')">
+<<<<<<< Updated upstream
                         <div class="rpt-icon"><i class="fas fa-clipboard-list"></i></div>
+=======
+                        <div class="rpt-icon"><i class="fas fa-file-alt"></i></div>
+>>>>>>> Stashed changes
                         <div class="rpt-title">Requests Report</div>
                         <div class="rpt-desc">All infrastructure repair requests by date range</div>
                     </button>
@@ -1781,6 +1793,24 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div class="rpt-title">Executive Summary</div>
                         <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
                     </button>
+<<<<<<< Updated upstream
+=======
+                    <button class="report-type-btn" onclick="openReportModal('current_reports')">
+                        <div class="rpt-icon"><i class="fas fa-user-clock"></i></div>
+                        <div class="rpt-title">Current Reports</div>
+                        <div class="rpt-desc">Reports assigned to engineers — awaiting or accepted</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('pending_reports')">
+                        <div class="rpt-icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="rpt-title">Pending Reports</div>
+                        <div class="rpt-desc">Reports that are scheduled, in progress, or pending completion</div>
+                    </button>
+                    <button class="report-type-btn" onclick="openReportModal('archive_reports')">
+                        <div class="rpt-icon"><i class="fas fa-archive"></i></div>
+                        <div class="rpt-title">Archive Reports</div>
+                        <div class="rpt-desc">Completed and cancelled reports</div>
+                    </button>
+>>>>>>> Stashed changes
                 </div>
             </div>
             <?php endif; ?>
@@ -1811,7 +1841,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                        autofocus>
                 <button class="pw-toggle-btn" type="button"
                         id="pwToggleBtn" title="Show/hide password"
+<<<<<<< Updated upstream
                         tabindex="-1"><i class="fas fa-eye-slash"></i></button>
+=======
+                        tabindex="-1"><i class="fas fa-eye"></i></button>
+>>>>>>> Stashed changes
             </div>
             <div class="pw-error-msg" id="pwErrorMsg">
                 <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
@@ -2101,11 +2135,27 @@ if (activeReportsCtx) {
                 <div class="date-row">
                     <div>
                         <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
+<<<<<<< Updated upstream
                         <input type="date" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
                     </div>
                     <div>
                         <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
                         <input type="date" id="rptDateTo" value="<?= date('Y-m-d') ?>">
+=======
+                        <div class="rpt-date-display" id="rptFromDisplay" tabindex="0" role="button" aria-label="Select start date">
+                            <span class="rdt-text" id="rptFromText"><?= date('M d, Y', strtotime(date('Y-m-01'))) ?></span>
+                            <span class="rdt-icon"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                        <input type="hidden" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
+                    </div>
+                    <div>
+                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
+                        <div class="rpt-date-display" id="rptToDisplay" tabindex="0" role="button" aria-label="Select end date">
+                            <span class="rdt-text" id="rptToText"><?= date('M d, Y') ?></span>
+                            <span class="rdt-icon"><i class="fas fa-calendar-alt"></i></span>
+                        </div>
+                        <input type="hidden" id="rptDateTo" value="<?= date('Y-m-d') ?>">
+>>>>>>> Stashed changes
                     </div>
                 </div>
             </div>
@@ -2113,7 +2163,11 @@ if (activeReportsCtx) {
                 <label>Export Format</label>
                 <div class="format-toggle">
                     <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
+<<<<<<< Updated upstream
                         <i class="fas fa-file-excel"></i> Excel (.xlsx)
+=======
+                        <i class="fas fa-file-csv"></i> CSV (.csv)
+>>>>>>> Stashed changes
                     </button>
                     <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
                         <i class="fas fa-file-pdf"></i> PDF (Print)
@@ -2122,9 +2176,13 @@ if (activeReportsCtx) {
             </div>
             <!-- "Generate" now opens the password gate first -->
             <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+<<<<<<< Updated upstream
                 <span id="btnGenerateText">
                     <i class="fas fa-key"></i> Verify &amp; Generate
                 </span>
+=======
+                <span id="btnGenerateText"><i class="fas fa-lock"></i> Verify &amp; Generate</span>
+>>>>>>> Stashed changes
             </button>
             <p class="report-info-text">
                 You will be asked to confirm your password before the report is created.
@@ -2183,7 +2241,13 @@ function selectFormat(fmt) {
 function resetBtnGenerate() {
     const btn = document.getElementById('btnGenerate');
     btn.disabled = false;
+<<<<<<< Updated upstream
     document.getElementById('btnGenerateText').innerHTML = '<i class="fas fa-lock"></i> Verify & Generate';
+=======
+    document.getElementById('btnGenerate').classList.remove('thenicon-check', 'thenicon-spin');
+    document.getElementById('btnGenerate').classList.add('fas', 'fa-lock');
+    document.getElementById('btnGenerateText').textContent = 'Verify & Generate';
+>>>>>>> Stashed changes
 }
 
 // ── Step 1: Validate date inputs, then open password gate ────────────────────
@@ -2241,9 +2305,24 @@ function hidePwError() {
 // ── Password toggle (show/hide) ───────────────────────────────────────────────
 document.getElementById('pwToggleBtn').addEventListener('click', function () {
     const input = document.getElementById('pwInput');
+<<<<<<< Updated upstream
     const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
     this.innerHTML = isHidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+=======
+    // isHidden = currently masked (either real type=password or type=text with -webkit-text-security)
+    const isHidden = input.type === 'password' ||
+                     (input.type === 'text' && input.style.webkitTextSecurity === 'disc');
+    if (isHidden) {
+        input.type = 'text';
+        input.style.removeProperty('-webkit-text-security');
+        this.innerHTML = '<i class="far fa-eye"></i>';
+    } else {
+        input.type = 'text';
+        input.style.setProperty('-webkit-text-security', 'disc');
+        this.innerHTML = '<i class="far fa-eye-slash"></i>';
+    }
+>>>>>>> Stashed changes
 });
 
 // ── Step 2: Verify password via AJAX ─────────────────────────────────────────
