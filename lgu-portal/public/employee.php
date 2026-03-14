@@ -2437,11 +2437,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
-                <a href="reports.php" class="action-btn">
-                    <div class="action-icon"><i class="fas fa-chart-pie"></i></div>
-                    <div class="action-title">Reports</div>
-                    <div class="action-subtitle">Generate reports</div>
-                </a>
                 <a href="current_reports.php" class="action-btn">
                     <div class="action-icon"><i class="fas fa-wrench"></i></div>
                     <div class="action-title">Current Reports</div>

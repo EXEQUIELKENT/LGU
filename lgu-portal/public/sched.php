@@ -4991,8 +4991,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if(e.target===taskChooserModal) taskChooserModal.classList.add('hidden');
         };
     }
-    function openModal(tasks){
-
     // Modal task navigation state
     let _modalTasks = [];
     let _modalIndex = 0;
@@ -5093,21 +5091,21 @@ document.addEventListener('DOMContentLoaded', function() {
         modalBody.innerHTML = `
             <div class="modal-task-item theme-${key}">
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-file"></i></div>
+                    <div class="modal-task-row-icon">📝</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Task / Infrastructure</div>
                         <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="modal-task-row-icon">📍</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Location</div>
                         <div class="modal-task-row-value">${escH(t.location)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="modal-task-row-icon">📅</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Start Date</div>
                         <div class="modal-task-row-value">${fmtDate(t.schedule_date)}</div>
@@ -5115,14 +5113,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 ${endDateRow}
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-tags"></i></div>
+                    <div class="modal-task-row-icon">🏷️</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Category</div>
                         <div class="modal-task-row-value">${escH(category)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="modal-task-row-icon">⚡</div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Priority</div>
                         <div class="modal-task-row-value">
@@ -5131,7 +5129,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="modal-task-row-icon">🔵</div>
+                    <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Status</div>
                         <div class="modal-task-row-value">
                             <span class="modal-status-pill ${key}">${escH(statusLbl)}</span>
@@ -5159,7 +5158,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openModal(tasks, startIndex) {
-
         if (!modalBody || !taskModal) return;
         _modalTasks = tasks;
         _modalIndex = startIndex ?? 0;
