@@ -61,6 +61,7 @@ if ($maintenance_result) {
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>InfraGovServices - Community Infrastructure Maintenance</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
@@ -273,8 +274,6 @@ if ($maintenance_result) {
             margin: 0 auto;
         }
 
-
-
         .trust-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -293,6 +292,14 @@ if ($maintenance_result) {
             transition: all 0.3s ease;
             position: relative;
             z-index: 2;
+        }
+
+        .trust-icon { 
+            font-size: 36px; 
+            margin-bottom: 15px; 
+            display: block;
+            visibility: visible;
+            opacity: 1;
         }
 
         .trust-item::after {
@@ -987,71 +994,26 @@ if ($maintenance_result) {
     <section class="trust-section animate-on-scroll">
         <div class="trust-grid">
             <div class="trust-item animate-on-scroll delay-1">
-                <div class="trust-icon" style="color: blue;"><i class="fas fa-lock text-primary"></i></div>
+                <div class="trust-icon" style="color: #042cb1;"><i class="fas fa-lock"></i></div>
                 <div class="trust-title" data-i18n="trust_secure_title">Secure &amp; Private</div>
                 <div class="trust-desc" data-i18n="trust_secure_desc">Your data is protected with strong, trusted security.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-2">
-                <div class="trust-icon" style="color: blue;"><i class="fas fa-clock text-warning"></i></div>
+                <div class="trust-icon" style="color: #042cb1;;"><i class="fas fa-bolt"></i></div>
                 <div class="trust-title" data-i18n="trust_fast_title">Fast Response</div>
                 <div class="trust-desc" data-i18n="trust_fast_desc">Reports are handled within 24–48 hours based on priority.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-3">
-                <div class="trust-icon" style="color: blue;"><i class="fas fa-check-circle text-success"></i></div>
+                <div class="trust-icon" style="color: #042cb1;;"><i class="fas fa-check-circle"></i></div>
                 <div class="trust-title" data-i18n="trust_verified_title">Verified Reports</div>
                 <div class="trust-desc" data-i18n="trust_verified_desc">Every report is carefully checked for accuracy.</div>
             </div>
             <div class="trust-item animate-on-scroll delay-4">
-                <div class="trust-icon" style="color: blue;"><i class="fas fa-award text-danger"></i></div>
+                <div class="trust-icon" style="color: #042cb1;;"><i class="fas fa-award"></i></div>
                 <div class="trust-title" data-i18n="trust_excellence_title">Service Excellence</div>
                 <div class="trust-desc" data-i18n="trust_excellence_desc">Committed to quality, transparency, and public service.</div>
             </div>
-            <script>
-                function switchToDarkMode() {
-                    const trustItems = document.querySelectorAll('.trust-item');
-                    trustItems.forEach(item => {
-                        item.querySelector('.trust-icon').style.color = 'white';
-                    });
-                }
-
-                function switchToLightMode() {
-                    const trustItems = document.querySelectorAll('.trust-item');
-                    trustItems.forEach(item => {
-                        item.querySelector('.trust-icon').style.color = 'black';
-                    });
-                }
-            </script>
         </div><!-- end trust-grid -->
-    </section>
-
-    <!-- HOW IT WORKS SECTION -->
-    <section class="how-it-works-section animate-on-scroll">
-        <div class="section-header-card">
-            <h2 class="section-title" data-i18n="hiw_title">How CIMMS Works</h2>
-            <p class="section-subtitle" data-i18n="hiw_subtitle">Simple, fast, and effective — report infrastructure issues in just a few steps.</p>
-            <div class="steps-container">
-                <div class="step-card animate-on-scroll delay-1">
-                    <div class="step-number">1</div>
-                    <h3 class="step-title" data-i18n="step1_title">Report the Issue</h3>
-                    <p class="step-description" data-i18n="step1_desc">Residents submit infrastructure concerns through the system using a simple form, including photos, descriptions, and exact location details.</p>
-                </div>
-                <div class="step-card animate-on-scroll delay-2">
-                    <div class="step-number">2</div>
-                    <h3 class="step-title" data-i18n="step2_title">Review &amp; Verification</h3>
-                    <p class="step-description" data-i18n="step2_desc">Office staff review submissions within 24 hours, validate the information, and AI will determine urgency and service priority.</p>
-                </div>
-                <div class="step-card animate-on-scroll delay-3">
-                    <div class="step-number">3</div>
-                    <h3 class="step-title" data-i18n="step3_title">Maintenance Scheduled</h3>
-                    <p class="step-description" data-i18n="step3_desc">Approved reports are forwarded to engineering and public works teams for scheduling and task assignment. Citizens receive progress updates.</p>
-                </div>
-                <div class="step-card animate-on-scroll delay-4">
-                    <div class="step-number">4</div>
-                    <h3 class="step-title" data-i18n="step4_title">Issue Resolved</h3>
-                    <p class="step-description" data-i18n="step4_desc">Maintenance work is completed, documented, and marked as completed, ensuring transparency and accountability.</p>
-                </div>
-            </div>
-        </div><!-- end section-header-card -->
     </section>
 
     <!-- FEATURES SECTION -->
@@ -1061,35 +1023,35 @@ if ($maintenance_result) {
         
         <div class="features-grid">
             <div class="feature-card animate-on-scroll delay-1">
-                <div class="feature-icon">📋</div>
+                <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-clipboard-list"></i></div>
                 <h3 class="feature-title" data-i18n="feat1_title">Submit Requests</h3>
                 <p class="feature-description" data-i18n="feat1_desc">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-2">
-                <div class="feature-icon">📊</div>
+                <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-chart-pie"></i></div>
                 <h3 class="feature-title" data-i18n="feat2_title">Track Maintenance</h3>
                 <p class="feature-description" data-i18n="feat2_desc">Monitor the status of maintenance schedules, view completed repairs, and stay informed about ongoing infrastructure improvements in your area.</p>
                 <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link" data-i18n="feat2_link">View Reports →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-3">
-                <div class="feature-icon">🗺️</div>
+                <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-map-marked-alt"></i></div>
                 <h3 class="feature-title" data-i18n="feat3_title">Location-Based Reporting</h3>
                 <p class="feature-description" data-i18n="feat3_desc">Use interactive maps and GPS-based tagging to accurately identify problem areas.</p>
                 <a href="<?= $BASE_URL ?>citizenrepform.php" class="feature-link" data-i18n="feat3_link">Try It Now →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-1">
-                <div class="feature-icon">⚡</div>
+                <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-bolt"></i></div>
                 <h3 class="feature-title" data-i18n="feat4_title">Real-Time Updates</h3>
                 <p class="feature-description" data-i18n="feat4_desc">Receive instant notifications about report progress and maintenance activities.</p>
                 <a href="<?= $BASE_URL ?>citizenreports.php" class="feature-link" data-i18n="feat4_link">Check Status →</a>
             </div>
 
             <div class="feature-card animate-on-scroll delay-2">
-                <div class="feature-icon">🤝</div>
+                <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-hands-helping"></i></div>
                 <h3 class="feature-title" data-i18n="feat5_title">Community Engagement</h3>
                 <p class="feature-description" data-i18n="feat5_desc">Encourage active participation of citizens in improving Quezon City's infrastructure through transparency and collaboration.</p>
                 <a href="<?= $BASE_URL ?>about.php" class="feature-link" data-i18n="feat5_link">Learn More →</a>
