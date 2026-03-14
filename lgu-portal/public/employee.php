@@ -2598,10 +2598,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             </div>
 
             <!-- Current Reports Preview -->
-            <div class="chart-card" style="margin-top: 20px;">
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title">Current Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Active in-progress repair reports<?= $isEngineer ? ' assigned to you' : '' ?></div>
                     </div>
                     <a href="current_reports.php" class="view-all-link">View all →</a>
@@ -2656,10 +2656,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             </div>
 
             <!-- ── Pending Reports Preview ─────────────────────────────────── -->
-            <div class="chart-card" style="margin-top: 20px;">
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='pending_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title">Pending Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isEngineer ? ' assigned to you' : '' ?></div>
                     </div>
                     <a href="pending_reports.php" class="view-all-link">View all →</a>
@@ -2720,10 +2720,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             </div>
 
             <!-- ── Archive Reports Preview ────────────────────────────────────── -->
-            <div class="chart-card" style="margin-top: 20px;">
+            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='archive_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title">Archive Reports<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                        <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isEngineer ? ' you handled' : '' ?></div>
                     </div>
                     <a href="archive_reports.php" class="view-all-link">View all →</a>
