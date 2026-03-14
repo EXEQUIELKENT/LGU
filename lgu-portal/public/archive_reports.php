@@ -733,7 +733,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                                     && trim($row['engineer_name']) !== '' && trim($row['engineer_name']) !== ' ';
                     ?>
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
-                        <?php if ($hasEngineer && $canAssignEngineer): ?>
+                        <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                             <span class="eng-name-with-profile">
                                 <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
@@ -779,7 +779,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <div class="rc-row">
                 <span class="rc-label">Engineer:</span>
                 <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
-                    <?php if ($hasEngineer && $canAssignEngineer): ?>
+                    <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                         <span class="eng-name-with-profile">
                             <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
@@ -1064,6 +1064,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // ENGINEER DETAILS MODAL
 // ════════════════════════════════════════════════════════════════
 const IS_ENGINEER          = <?= $isEngineer ? 'true' : 'false' ?>;
+const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
 const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer ? 'true' : 'false' ?>;
 let engineersCache = null;
 
@@ -1078,9 +1079,22 @@ async function loadEngineers() {
 }
 
 async function openEngineerProfileById(engineerId) {
-    if (!CAN_ASSIGN_ENGINEER) return;
+    if (!CAN_ASSIGN_ENGINEER && !IS_ADMIN) return;
+    let eng = null;
+    // Try bulk list first (works for roles that get_engineers.php allows)
     const engineers = await loadEngineers();
-    const eng = engineers.find(e => e.id == engineerId);
+    eng = engineers.find(e => e.id == engineerId);
+    // Fallback: fetch a single engineer by ID — works for admin even if
+    // get_engineers.php restricts the bulk list by role
+    if (!eng) {
+        try {
+            const res  = await fetch('get_engineers.php?id=' + encodeURIComponent(engineerId));
+            const data = await res.json();
+            if (data.success && data.engineers && data.engineers.length) {
+                eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
+            }
+        } catch(e) { /* silent — modal stays closed if fetch fails */ }
+    }
     if (!eng) return;
     _populateEngDetailsModal(eng);
     const backBtn = document.getElementById('engDetBackBtn');

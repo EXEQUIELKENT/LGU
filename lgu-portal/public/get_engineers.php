@@ -15,14 +15,19 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
     jsonOut(false, 'Unauthorized');
 }
 
-// Only office staff and manager can fetch this list
+// Office staff, manager, and admins can fetch this list
 $userRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$allowed  = ['office staff', 'manager'];
+$allowed  = ['office staff', 'manager', 'admin', 'super admin'];
 if (!in_array($userRole, $allowed)) {
     jsonOut(false, 'Permission denied.');
 }
 
 require __DIR__ . '/db.php';
+
+// Optional single-engineer lookup — used by the profile button fallback
+// when the caller (e.g. admin) couldn't find the engineer in the bulk cache.
+$singleId   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$idClause   = $singleId > 0 ? ' AND e.user_id = ?' : '';
 
 // INNER JOIN with engineer_profiles — engineers without a profile record are excluded entirely
 $stmt = $conn->prepare(
@@ -46,12 +51,16 @@ $stmt = $conn->prepare(
         ep.cad_software
      FROM employees e
      INNER JOIN engineer_profiles ep ON ep.user_id = e.user_id
-     WHERE e.role = 'Engineer'
+     WHERE e.role = 'Engineer'{$idClause}
      ORDER BY e.first_name ASC, e.last_name ASC"
 );
 
 if (!$stmt) {
     jsonOut(false, 'DB prepare error: ' . $conn->error);
+}
+
+if ($singleId > 0) {
+    $stmt->bind_param('i', $singleId);
 }
 
 $stmt->execute();
