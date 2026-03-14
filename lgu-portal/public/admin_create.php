@@ -1247,6 +1247,131 @@ input:-webkit-autofill:focus {
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ═══════════════════════════════════════════
+   SEARCHABLE COMBOBOX — role dropdown
+═══════════════════════════════════════════ */
+.prof-combobox {
+    position: relative;
+    width: 100%;
+    display: block;
+}
+.prof-combobox-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    padding-left: 42px;
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-height: 46px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.prof-combobox-display:hover { border-color: #3762c8; }
+.prof-combobox-display.open {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.15);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.prof-combobox-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+    opacity: .75;
+    transition: color .15s;
+}
+.prof-combobox-label.selected {
+    color: var(--text-primary);
+    opacity: 1;
+    font-weight: 500;
+}
+.prof-combobox-arrow {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+    transition: transform .2s;
+    flex-shrink: 0;
+}
+.prof-combobox-display.open .prof-combobox-arrow { transform: rotate(180deg); }
+
+.prof-combobox-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 2px solid #3762c8;
+    border-top: none;
+    border-radius: 0 0 9px 9px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.22);
+    z-index: 99999;
+    overflow: hidden;
+    display: none;
+}
+.prof-combobox-dropdown.open { display: block; }
+[data-theme="dark"] .prof-combobox-dropdown {
+    background: #1e1e24;
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.prof-combobox-search {
+    width: 100%;
+    padding: 9px 13px;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.prof-combobox-search::placeholder { color: var(--text-secondary); opacity: .6; }
+[data-theme="dark"] .prof-combobox-search { background: #1e1e24; }
+.prof-combobox-list {
+    max-height: 196px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.prof-combobox-list::-webkit-scrollbar { width: 5px; }
+.prof-combobox-list::-webkit-scrollbar-track { background: transparent; }
+.prof-combobox-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.prof-combobox-option {
+    padding: 9px 14px;
+    font-size: 13.5px;
+    cursor: pointer;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background .12s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.prof-combobox-option:last-child { border-bottom: none; }
+.prof-combobox-option:hover,
+.prof-combobox-option.highlighted { background: rgba(55,98,200,.09); }
+.prof-combobox-option.selected-opt {
+    background: rgba(55,98,200,.14);
+    font-weight: 600;
+    color: #3762c8;
+}
+[data-theme="dark"] .prof-combobox-option.selected-opt { color: #7aa3f5; }
+.prof-combobox-no-results {
+    padding: 13px 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    opacity: .7;
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1462,16 +1587,27 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
         <!-- Role -->
         <div class="form-group">
-            <label for="roleSelect"><i class="fas fa-briefcase" style="margin-right:5px;opacity:.7;"></i> Role</label>
+            <label for="roleSelectDisplay"><i class="fas fa-briefcase" style="margin-right:5px;opacity:.7;"></i> Role</label>
             <div class="input-with-icon">
-                <i class="fas fa-user-tag field-icon"></i>
-                <select name="role" id="roleSelect" required>
-                    <option value="">— Select Role —</option>
-                    <option value="Manager"     <?= ($role === 'Manager')    ? 'selected' : '' ?>>Manager</option>
-                    <option value="Engineer"    <?= ($role === 'Engineer')   ? 'selected' : '' ?>>Engineer</option>
-                    <option value="Office Staff" <?= ($role === 'Office Staff') ? 'selected' : '' ?>>Office Staff</option>
-                    <option value="Super Admin" <?= ($role === 'Super Admin') ? 'selected' : '' ?>>Super Admin</option>
-                </select>
+                <i class="fas fa-user-tag field-icon" style="z-index:1;pointer-events:none;"></i>
+                <input type="hidden" name="role" id="roleHidden" value="<?= htmlspecialchars($role) ?>" required>
+                <div class="prof-combobox" id="cbRole" style="width:100%;">
+                    <div class="prof-combobox-display" id="roleSelectDisplay">
+                        <span class="prof-combobox-label<?= $role ? ' selected' : '' ?>" id="roleSelectLabel">
+                            <?= $role ? htmlspecialchars($role) : '— Select Role —' ?>
+                        </span>
+                        <span class="prof-combobox-arrow">▾</span>
+                    </div>
+                    <div class="prof-combobox-dropdown" id="cbRoleDropdown">
+                        <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">
+                        <div class="prof-combobox-list">
+                            <div class="prof-combobox-option<?= $role === 'Manager'      ? ' selected-opt' : '' ?>" data-value="Manager">Manager</div>
+                            <div class="prof-combobox-option<?= $role === 'Engineer'     ? ' selected-opt' : '' ?>" data-value="Engineer">Engineer</div>
+                            <div class="prof-combobox-option<?= $role === 'Office Staff' ? ' selected-opt' : '' ?>" data-value="Office Staff">Office Staff</div>
+                            <div class="prof-combobox-option<?= $role === 'Admin'        ? ' selected-opt' : '' ?>" data-value="Admin">Admin</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1654,7 +1790,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         // Gather form data for summary
         const firstName = (document.getElementById('first_name').value || '').trim();
         const lastName  = (document.getElementById('last_name').value  || '').trim();
-        const role      = document.getElementById('roleSelect').value;
+        const role      = document.getElementById('roleHidden').value;
 
         document.getElementById('confirmSummary').innerHTML =
             `<strong>Name:</strong> ${firstName} ${lastName}<br>` +
@@ -1688,6 +1824,116 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
         form.submit();
     });
+}());
+
+// ═════════════════════════════════════════════
+//  SEARCHABLE COMBOBOX ENGINE — role dropdown
+// ═════════════════════════════════════════════
+(function() {
+    var combos = [
+        { display: 'roleSelectDisplay', dropdown: 'cbRoleDropdown', hidden: 'roleHidden', label: 'roleSelectLabel' },
+    ];
+
+    function initCombo(cfg) {
+        var displayEl  = document.getElementById(cfg.display);
+        var dropdownEl = document.getElementById(cfg.dropdown);
+        var hiddenEl   = document.getElementById(cfg.hidden);
+        var labelEl    = document.getElementById(cfg.label);
+        if (!displayEl || !dropdownEl) return;
+        var searchEl   = dropdownEl.querySelector('.prof-combobox-search');
+        var listEl     = dropdownEl.querySelector('.prof-combobox-list');
+        var allOptions = Array.from(listEl.querySelectorAll('.prof-combobox-option'));
+        var isOpen     = false;
+        var highlighted = -1;
+
+        function getVisible() {
+            return allOptions.filter(function(o){ return o.style.display !== 'none'; });
+        }
+        function openDropdown() {
+            isOpen = true;
+            displayEl.classList.add('open');
+            dropdownEl.classList.add('open');
+            searchEl.value = '';
+            filterOptions('');
+            setTimeout(function() {
+                searchEl.focus();
+                var sel = listEl.querySelector('.selected-opt');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            }, 30);
+        }
+        function closeDropdown() {
+            isOpen = false;
+            displayEl.classList.remove('open');
+            dropdownEl.classList.remove('open');
+            searchEl.value = '';
+            filterOptions('');
+            highlighted = -1;
+        }
+        function selectOption(value, text) {
+            hiddenEl.value = value;
+            labelEl.textContent = text.trim();
+            labelEl.classList.toggle('selected', !!value);
+            allOptions.forEach(function(o) {
+                o.classList.toggle('selected-opt', o.dataset.value === value);
+            });
+            closeDropdown();
+        }
+        function filterOptions(q) {
+            var ql = q.toLowerCase().trim();
+            var visible = 0;
+            allOptions.forEach(function(o) {
+                var match = !ql || o.textContent.toLowerCase().includes(ql);
+                o.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+            var noRes = listEl.querySelector('.prof-combobox-no-results');
+            if (!visible) {
+                if (!noRes) {
+                    var d = document.createElement('div');
+                    d.className = 'prof-combobox-no-results';
+                    d.textContent = 'No results found';
+                    listEl.appendChild(d);
+                }
+            } else if (noRes) { noRes.remove(); }
+            highlighted = -1;
+        }
+
+        displayEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            isOpen ? closeDropdown() : openDropdown();
+        });
+        searchEl.addEventListener('input', function() { filterOptions(searchEl.value); });
+        listEl.addEventListener('mousedown', function(e) {
+            var opt = e.target.closest('.prof-combobox-option');
+            if (!opt) return;
+            e.preventDefault();
+            selectOption(opt.dataset.value, opt.textContent);
+        });
+        searchEl.addEventListener('keydown', function(e) {
+            var vis = getVisible();
+            if (e.key === 'ArrowDown')    { e.preventDefault(); highlighted = Math.min(highlighted+1, vis.length-1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); highlighted = Math.max(highlighted-1, 0); }
+            else if (e.key === 'Enter')   { e.preventDefault(); if (highlighted>=0&&vis[highlighted]) selectOption(vis[highlighted].dataset.value, vis[highlighted].textContent); return; }
+            else if (e.key === 'Escape')  { closeDropdown(); return; }
+            vis.forEach(function(o,i){ o.classList.toggle('highlighted', i===highlighted); });
+            if (vis[highlighted]) vis[highlighted].scrollIntoView({ block:'nearest' });
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        combos.forEach(function(cfg) {
+            var disp = document.getElementById(cfg.display);
+            var dd   = document.getElementById(cfg.dropdown);
+            if (!disp || !dd) return;
+            var root = disp.closest('.prof-combobox');
+            if (root && !root.contains(e.target) && !dd.contains(e.target)) {
+                dd.classList.remove('open');
+                disp.classList.remove('open');
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() { combos.forEach(initCombo); });
 }());
 </script>
 

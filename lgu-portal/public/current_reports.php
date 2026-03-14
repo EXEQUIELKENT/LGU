@@ -1452,7 +1452,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <button class="btn-approve-rep" id="repApproveBtn" style="display:none;" onclick="confirmApprove()"><i class="fas fa-check-circle"></i> Approved</button>
                 <!-- Shown while pending acceptance -->
                 <button class="btn-decline-rep" id="repDeclineBtn" style="display:none;" onclick="confirmDecline()"><i class="fas fa-times-circle"></i> Decline</button>
-                <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="doAcceptAssignment()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
+                <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="confirmAccept()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
             </div>
         </div>
     </div>
@@ -1466,6 +1466,19 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <button class="rep-lb-nav right hidden" id="repLbNext" onclick="repLbNext()">&#10095;</button>
     <div class="rep-lb-counter" id="repLbCounter"></div>
     <div class="rep-lb-counter" id="repLbSwipe" style="opacity:0;transition:opacity .4s;font-size:12px;bottom:46px;">&#8646; Swipe to navigate</div>
+</div>
+
+<!-- Accept Assignment Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repAcceptConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);"><i class="fas fa-check-circle" style="color:#22c55e;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Accept Assignment?</div>
+        <div class="rep-confirm-desc">You are confirming that you accept this report assignment. You will be able to edit and submit updates once accepted.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAcceptConfirm()">Cancel</button>
+            <button class="rep-confirm-btn" id="repAcceptConfirmBtn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 12px rgba(34,197,94,.3);" onclick="doAcceptAssignment()"><i class="fas fa-check-circle"></i> Confirm Accept</button>
+        </div>
+    </div>
 </div>
 
 <!-- Decline Assignment Confirmation Modal -->
@@ -2083,6 +2096,7 @@ document.addEventListener('keydown', e => {
         if (document.getElementById('repImgLightbox').classList.contains('active')) { closeRepLightbox(); return; }
         if (document.getElementById('repSaveConfirmBackdrop').classList.contains('active')) { closeSaveConfirm(); return; }
         if (document.getElementById('repApproveConfirmBackdrop').classList.contains('active')) { closeApproveConfirm(); return; }
+        if (document.getElementById('repAcceptConfirmBackdrop').classList.contains('active')) { closeAcceptConfirm(); return; }
         if (document.getElementById('repDeclineConfirmBackdrop').classList.contains('active')) { closeDeclineConfirm(); return; }
         closeRepModal();
     }
@@ -2112,6 +2126,15 @@ document.getElementById('repApproveConfirmBackdrop').addEventListener('click', e
 });
 
 // ── Accept / Decline assignment ──
+function confirmAccept() {
+    if (!currentRepData || !IS_ENGINEER) return;
+    document.getElementById('repAcceptConfirmBackdrop').classList.add('active');
+}
+function closeAcceptConfirm() { document.getElementById('repAcceptConfirmBackdrop').classList.remove('active'); }
+document.getElementById('repAcceptConfirmBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('repAcceptConfirmBackdrop')) closeAcceptConfirm();
+});
+
 function confirmDecline() {
     if (!currentRepData || !IS_ENGINEER) return;
     document.getElementById('repDeclineConfirmBackdrop').classList.add('active');
@@ -2123,6 +2146,7 @@ document.getElementById('repDeclineConfirmBackdrop').addEventListener('click', e
 
 async function doAcceptAssignment() {
     if (!currentRepData || !IS_ENGINEER) return;
+    closeAcceptConfirm();
     const btn = document.getElementById('repAcceptBtn');
     // Capture rep ID now — before any modal close nulls currentRepData
     const acceptedRepId = currentRepData.rep_id;

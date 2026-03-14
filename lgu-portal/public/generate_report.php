@@ -70,16 +70,19 @@ require __DIR__ . '/db.php';
 
 // ── Input validation ──────────────────────────────────────────────────────────
 $format     = in_array($_POST['format'] ?? '', ['excel','pdf']) ? $_POST['format'] : 'excel';
-$reportType = in_array($_POST['report_type'] ?? '', ['requests','schedules','summary'])
+$reportType = in_array($_POST['report_type'] ?? '', ['requests','schedules','summary','current_reports','pending_reports','archive_reports'])
               ? $_POST['report_type'] : 'requests';
 $dateFrom   = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-01')));
 $dateTo     = date('Y-m-d', strtotime($_POST['date_to']   ?? date('Y-m-d')));
 if ($dateFrom > $dateTo) { [$dateFrom, $dateTo] = [$dateTo, $dateFrom]; }
 
 $reportTitles = [
-    'requests'  => 'Infrastructure Repair Requests Report',
-    'schedules' => 'Maintenance Schedule Report',
-    'summary'   => 'Executive Summary Report',
+    'requests'        => 'Infrastructure Repair Requests Report',
+    'schedules'       => 'Maintenance Schedule Report',
+    'summary'         => 'Executive Summary Report',
+    'current_reports' => 'Current Reports',
+    'pending_reports' => 'Pending Reports',
+    'archive_reports' => 'Archive Reports',
 ];
 $reportTitle = $reportTitles[$reportType];
 $generatedBy = trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? '')) ?: 'Admin';
@@ -104,23 +107,171 @@ function fetchRequests($conn, $from, $to) {
 }
 
 function fetchSchedules($conn, $from, $to) {
+    $rows = [];
+
+    // ── Source 1: maintenance_schedule table ─────────────────────────────────
     $stmt = $conn->prepare("
         SELECT
-            task, location,
-            DATE_FORMAT(starting_date,'%b %d, %Y')         AS start_fmt,
-            status, priority,
-            IFNULL(category,'—')                            AS category,
-            IFNULL(assigned_team,'Unassigned')              AS assigned_team
-        FROM maintenance_schedule
-        WHERE DATE(starting_date) BETWEEN ? AND ?
-        ORDER BY
-            FIELD(priority,'Critical','High','Medium','Low'),
-            starting_date ASC
+            ms.task,
+            ms.location,
+            ms.starting_date,
+            DATE_FORMAT(ms.starting_date,'%b %d, %Y')             AS start_fmt,
+            DATE_FORMAT(ms.estimated_completion_date,'%b %d, %Y') AS end_fmt,
+            ms.status,
+            ms.priority,
+            IFNULL(ms.category,'General Maintenance')              AS category,
+            IFNULL(ms.assigned_team,'Unassigned')                  AS assigned_team,
+            TRIM(CONCAT(IFNULL(e.first_name,''),' ',IFNULL(e.last_name,''))) AS engineer_name,
+            FORMAT(ms.budget,2)                                    AS budget_fmt,
+            'Maintenance Task'                                     AS source_type
+        FROM maintenance_schedule ms
+        LEFT JOIN employees e ON ms.engineer_id = e.user_id
+        WHERE DATE(ms.starting_date) BETWEEN ? AND ?
+        ORDER BY FIELD(ms.priority,'Critical','High','Medium','Low'), ms.starting_date ASC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+        $today = new DateTime('today');
+        $statusLabel = $r['status'];
+        try {
+            $dueDate = new DateTime($r['starting_date']);
+            $diffDays = (int)$today->diff($dueDate)->format('%r%a');
+            if ($r['status'] !== 'Completed' && $r['status'] !== 'In Progress') {
+                if ($diffDays < 0) { $statusLabel = 'Delayed'; $r['priority'] = 'Critical'; }
+                elseif ($diffDays === 0) { $statusLabel = 'In Progress'; $r['priority'] = 'High'; }
+            }
+        } catch (Exception $e) {}
+        $r['status'] = $statusLabel;
+        $rows[] = $r;
+    }
+    $stmt->close();
+
+    // ── Source 2: reports table (infrastructure reports shown on the calendar) ─
+    $stmt2 = $conn->prepare("
+        SELECT
+            IFNULL(req.infrastructure,'Infrastructure Report')    AS task,
+            IFNULL(req.location,'—')                              AS location,
+            r.starting_date,
+            DATE_FORMAT(r.starting_date,'%b %d, %Y')             AS start_fmt,
+            DATE_FORMAT(r.estimated_end_date,'%b %d, %Y')        AS end_fmt,
+            res.status                                            AS status,
+            IFNULL(r.priority_lvl,'Low')                         AS priority,
+            'Infrastructure Report'                               AS category,
+            '—'                                                   AS assigned_team,
+            TRIM(CONCAT(IFNULL(e.first_name,''),' ',IFNULL(e.last_name,''))) AS engineer_name,
+            FORMAT(r.budget,2)                                    AS budget_fmt,
+            'Infrastructure Report'                               AS source_type
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+        LEFT JOIN requests             req ON res.req_id = req.req_id
+        LEFT JOIN employees            e   ON r.engineer_id = e.user_id
+        WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+          AND r.starting_date IS NOT NULL
+          AND DATE(r.starting_date) BETWEEN ? AND ?
+        ORDER BY r.starting_date ASC
+    ");
+    $stmt2->bind_param('ss', $from, $to);
+    $stmt2->execute();
+    foreach ($stmt2->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+        $r['status'] = match($r['status']) {
+            'Completed'          => 'Completed',
+            'In Progress',
+            'Pending Completion' => 'In Progress',
+            default              => 'Scheduled',
+        };
+        $rows[] = $r;
+    }
+    $stmt2->close();
+
+    usort($rows, fn($a, $b) => strcmp($a['starting_date'] ?? '', $b['starting_date'] ?? ''));
+    return $rows;
+}
+
+function fetchCurrentReports($conn, $from, $to) {
+    // Reports currently assigned (Approved status = awaiting/accepted by engineer)
+    $stmt = $conn->prepare("
+        SELECT
+            CONCAT('RPT-', LPAD(r.rep_id, 4, '0'))                       AS rep_id_fmt,
+            IFNULL(req.infrastructure,'—')                                AS infrastructure,
+            IFNULL(req.location,'—')                                      AS location,
+            IFNULL(req.issue,'—')                                         AS issue,
+            IFNULL(r.priority_lvl,'—')                                    AS priority_lvl,
+            FORMAT(r.budget,2)                                            AS budget_fmt,
+            DATE_FORMAT(r.starting_date,'%b %d, %Y')                     AS start_fmt,
+            DATE_FORMAT(r.estimated_end_date,'%b %d, %Y')                AS end_fmt,
+            TRIM(CONCAT(IFNULL(e1.first_name,''),' ',IFNULL(e1.last_name,''))) AS engineer_name,
+            IF(r.engineer_accepted=1,'Accepted','Pending Acceptance')     AS acceptance,
+            DATE_FORMAT(r.created_at,'%b %d, %Y %h:%i %p')               AS created_fmt
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+        LEFT JOIN requests             req ON res.req_id = req.req_id
+        LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
+        WHERE res.status = 'Approved'
+          AND DATE(r.created_at) BETWEEN ? AND ?
+        ORDER BY r.rep_id DESC
     ");
     $stmt->bind_param('ss', $from, $to);
     $stmt->execute();
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
+
+function fetchPendingReports($conn, $from, $to) {
+    // Reports in active workflow (Scheduled, In Progress, Pending Completion)
+    $stmt = $conn->prepare("
+        SELECT
+            CONCAT('RPT-', LPAD(r.rep_id, 4, '0'))                       AS rep_id_fmt,
+            IFNULL(req.infrastructure,'—')                                AS infrastructure,
+            IFNULL(req.location,'—')                                      AS location,
+            IFNULL(req.issue,'—')                                         AS issue,
+            IFNULL(r.priority_lvl,'—')                                    AS priority_lvl,
+            FORMAT(r.budget,2)                                            AS budget_fmt,
+            DATE_FORMAT(r.starting_date,'%b %d, %Y')                     AS start_fmt,
+            DATE_FORMAT(r.estimated_end_date,'%b %d, %Y')                AS end_fmt,
+            res.status                                                    AS resolution_status,
+            TRIM(CONCAT(IFNULL(e1.first_name,''),' ',IFNULL(e1.last_name,''))) AS engineer_name,
+            DATE_FORMAT(r.created_at,'%b %d, %Y %h:%i %p')               AS created_fmt
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+        LEFT JOIN requests             req ON res.req_id = req.req_id
+        LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
+        WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+          AND DATE(r.starting_date) BETWEEN ? AND ?
+        ORDER BY r.starting_date ASC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function fetchArchiveReports($conn, $from, $to) {
+    // Completed or Cancelled reports
+    $stmt = $conn->prepare("
+        SELECT
+            CONCAT('RPT-', LPAD(r.rep_id, 4, '0'))                       AS rep_id_fmt,
+            IFNULL(req.infrastructure,'—')                                AS infrastructure,
+            IFNULL(req.location,'—')                                      AS location,
+            IFNULL(req.issue,'—')                                         AS issue,
+            IFNULL(r.priority_lvl,'—')                                    AS priority_lvl,
+            FORMAT(r.budget,2)                                            AS budget_fmt,
+            DATE_FORMAT(r.starting_date,'%b %d, %Y')                     AS start_fmt,
+            DATE_FORMAT(r.estimated_end_date,'%b %d, %Y')                AS end_fmt,
+            res.status                                                    AS resolution_status,
+            TRIM(CONCAT(IFNULL(e1.first_name,''),' ',IFNULL(e1.last_name,''))) AS engineer_name,
+            DATE_FORMAT(r.created_at,'%b %d, %Y %h:%i %p')               AS created_fmt
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
+        LEFT JOIN requests             req ON res.req_id = req.req_id
+        LEFT JOIN employees            e1  ON r.engineer_id = e1.user_id
+        WHERE res.status IN ('Completed','Cancelled')
+          AND DATE(r.created_at) BETWEEN ? AND ?
+        ORDER BY r.rep_id DESC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
 
 function fetchSummary($conn, $from, $to) {
     $n = function($sql) use ($conn, $from, $to) {
@@ -255,7 +406,7 @@ function buildStylesXml(): string {
 XML;
 }
 
-function statusStyle(string $s): int {
+function statusStyleXls(string $s): int {
     return match(strtolower($s)) {
         'approved','completed'  => 6,
         'pending','scheduled'   => 7,
@@ -264,7 +415,7 @@ function statusStyle(string $s): int {
         default                 => 7,
     };
 }
-function priorityStyle(string $p): int {
+function priorityStyleXls(string $p): int {
     return match(strtolower($p)) {
         'critical' => 10,
         'high'     => 11,
@@ -333,9 +484,9 @@ function buildSheetXml(array $def, array &$pool): string {
             $center = $def['centerCols'][$ci] ?? false;
             $badge  = $def['badgeCols'][$ci] ?? null;
             if ($badge === 'status') {
-                $cells .= sc($ref, makeSharedStrings($pool, (string)$val), statusStyle((string)$val));
+                $cells .= sc($ref, makeSharedStrings($pool, (string)$val), statusStyleXls((string)$val));
             } elseif ($badge === 'priority') {
-                $cells .= sc($ref, makeSharedStrings($pool, (string)$val), priorityStyle((string)$val));
+                $cells .= sc($ref, makeSharedStrings($pool, (string)$val), priorityStyleXls((string)$val));
             } elseif (is_numeric($val) && ($def['numericCols'][$ci] ?? false)) {
                 $cells .= nc($ref, $val, $center ? $ctrBase : $baseS);
             } else {
@@ -489,22 +640,57 @@ function buildPDFHtml(string $reportTitle,string $reportType,string $dateFrom,st
         $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
     } elseif ($reportType === 'schedules') {
         $countNote = count($data) . ' record' . (count($data) !== 1 ? 's' : '');
-        $heads = ['Task','Location','Start Date','Status','Priority','Category','Team'];
+        $heads = ['Task / Infrastructure','Location','Start Date','Est. Completion','Status','Priority','Category','Type','Engineer','Budget'];
         $rows  = '';
         foreach ($data as $i => $r) {
             $sc = $statusCss($r['status']); $pc = $priorityCss($r['priority']);
+            $endFmt = $r['end_fmt'] ?? '—';
             $rows .= '<tr class="'.($i%2?'even':'').'">'
                 . '<td><strong>'.htmlspecialchars($r['task']).'</strong></td>'
                 . '<td class="small">'.htmlspecialchars($r['location']).'</td>'
-                . "<td class='nowrap'>{$r['start_fmt']}</td>"
+                . "<td class='nowrap small'>{$r['start_fmt']}</td>"
+                . "<td class='nowrap small'>{$endFmt}</td>"
                 . '<td>'.$badge($r['status'],$sc).'</td>'
                 . '<td>'.$badge($r['priority'],$pc).'</td>'
                 . '<td class="small">'.htmlspecialchars($r['category']).'</td>'
-                . '<td class="small">'.htmlspecialchars($r['assigned_team']).'</td></tr>';
+                . '<td class="small" style="font-size:9px;color:#6366f1">'.htmlspecialchars($r['source_type']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['engineer_name'] ?: 'Unassigned').'</td>'
+                . '<td class="small nowrap">'.htmlspecialchars('PHP ' . ($r['budget_fmt'] ?? '0.00')).'</td>'
+                . '</tr>';
         }
-        if (!$rows) $rows = '<tr><td colspan="7" class="empty-row">No records found for this period.</td></tr>';
+        if (!$rows) $rows = '<tr><td colspan="10" class="empty-row">No records found for this period.</td></tr>';
         $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
         $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
+
+    } elseif (in_array($reportType, ['current_reports','pending_reports','archive_reports'])) {
+        $countNote = count($data) . ' record' . (count($data) !== 1 ? 's' : '');
+        $isCurrent = $reportType === 'current_reports';
+        $heads = $isCurrent
+            ? ['Report ID','Infrastructure','Location','Issue','Priority','Budget','Start Date','Est. End','Engineer','Acceptance','Created At']
+            : ['Report ID','Infrastructure','Location','Issue','Priority','Budget','Start Date','Est. End','Status','Engineer','Created At'];
+        $rows = '';
+        foreach ($data as $i => $r) {
+            $sc  = $statusCss($isCurrent ? $r['acceptance'] : $r['resolution_status']);
+            $pc  = $priorityCss($r['priority_lvl'] ?? '—');
+            $stv = $isCurrent ? $r['acceptance'] : $r['resolution_status'];
+            $rows .= '<tr class="'.($i%2?'even':'').'">'
+                . "<td class='mono'>{$r['rep_id_fmt']}</td>"
+                . '<td>'.htmlspecialchars($r['infrastructure']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['location']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['issue']).'</td>'
+                . '<td>'.$badge($r['priority_lvl'] ?? '—', $pc).'</td>'
+                . '<td class="small nowrap">PHP '.htmlspecialchars($r['budget_fmt']).'</td>'
+                . "<td class='nowrap small'>{$r['start_fmt']}</td>"
+                . "<td class='nowrap small'>{$r['end_fmt']}</td>"
+                . '<td>'.$badge($stv, $sc).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['engineer_name'] ?: 'Unassigned').'</td>'
+                . "<td class='small nowrap'>{$r['created_fmt']}</td>"
+                . '</tr>';
+        }
+        if (!$rows) $rows = '<tr><td colspan="11" class="empty-row">No records found for this period.</td></tr>';
+        $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
+        $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
+
     } else {
         $d = $data;
         $pendPct = $d['total_requests']>0  ? round($d['pending']/$d['total_requests']*100) : 0;
@@ -648,46 +834,279 @@ HTML;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  CSV BUILDER  (replaces XLSX — simpler, Excel-compatible, structured output)
+// ══════════════════════════════════════════════════════════════════════════════
+function csvCell($v): string {
+    return '"' . str_replace('"', '""', (string)$v) . '"';
+}
+function csvRow(array $cells): string {
+    return implode(',', array_map('csvCell', $cells)) . "\r\n";
+}
+function csvBlank(): string { return "\r\n"; }
+
+function buildCSV(string $title, string $period, string $by, string $at, array $sections): string {
+    $out = "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
+
+    // ── Document header ───────────────────────────────────────────────────────
+    $out .= csvRow(['CIMM LGU — Community Infrastructure Monitoring & Management']);
+    $out .= csvRow([$title]);
+    $out .= csvBlank();
+    $out .= csvRow(['Report Period:', $period]);
+    $out .= csvRow(['Generated By:', $by]);
+    $out .= csvRow(['Generated At:', $at]);
+    $out .= csvRow(['Classification:', 'CONFIDENTIAL — Internal Use Only']);
+    $out .= csvBlank();
+    $out .= csvBlank();
+
+    foreach ($sections as $sec) {
+        $headers = $sec['headers'];
+        $rows    = $sec['rows'] ?? [];
+        $cols    = count($headers);
+        $total   = count($rows);
+
+        // Section divider bar
+        $divider = array_fill(0, $cols, '');
+        $divider[0] = str_repeat('=', 64);
+        $out .= csvRow($divider);
+
+        // Section title
+        $titleRow = array_fill(0, $cols, '');
+        $titleRow[0] = $sec['title'] ?? 'DATA';
+        $out .= csvRow($titleRow);
+
+        // Record count
+        $countRow = array_fill(0, $cols, '');
+        $countRow[0] = "Total records: {$total}";
+        $out .= csvRow($countRow);
+        $out .= csvBlank();
+
+        // Column headers
+        $out .= csvRow($headers);
+
+        // Data rows
+        if (empty($rows)) {
+            $emptyRow = array_fill(0, $cols, '');
+            $emptyRow[0] = 'No records found for the selected date range.';
+            $out .= csvRow($emptyRow);
+        } else {
+            foreach ($rows as $row) {
+                $out .= csvRow(array_values($row));
+            }
+        }
+
+        // Summary block
+        if (!empty($sec['summary'])) {
+            $out .= csvBlank();
+            $sumHdr = array_fill(0, $cols, '');
+            $sumHdr[0] = 'SUMMARY'; $sumHdr[1] = 'VALUE';
+            $out .= csvRow($sumHdr);
+            foreach ($sec['summary'] as [$lbl, $val]) {
+                $sumRow = array_fill(0, $cols, '');
+                $sumRow[0] = $lbl; $sumRow[1] = $val;
+                $out .= csvRow($sumRow);
+            }
+        }
+
+        $out .= csvBlank();
+        $out .= csvBlank();
+    }
+
+    $out .= csvRow(['— End of Report —', $title, $period]);
+    return $out;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PDF HELPERS  (status/priority badge CSS)
+// ══════════════════════════════════════════════════════════════════════════════
+function statusStyle(string $s): array {
+    return match(strtolower($s)) {
+        'approved','completed'                        => ['#dcfce7','#166534','#16a34a'],
+        'pending','scheduled','pending acceptance'    => ['#fef9c3','#713f12','#ca8a04'],
+        'rejected','delayed','cancelled'              => ['#fee2e2','#7f1d1d','#dc2626'],
+        'in progress','pending completion'            => ['#ede9fe','#4c1d95','#7c3aed'],
+        default                                       => ['#f1f5f9','#334155','#64748b'],
+    };
+}
+function priorityStyle(string $p): array {
+    return match(strtolower($p)) {
+        'critical' => ['#fee2e2','#7f1d1d','#dc2626'],
+        'high'     => ['#ffedd5','#7c2d12','#ea580c'],
+        'medium'   => ['#fef9c3','#713f12','#ca8a04'],
+        'low'      => ['#dbeafe','#1e3a5f','#2563eb'],
+        default    => ['#f1f5f9','#334155','#64748b'],
+    };
+}
+function htmlBadge(string $v, array $css): string {
+    [$bg,$txt,$bdr] = $css;
+    return "<span class='badge' style='background:{$bg};color:{$txt};border:1px solid {$bdr}40'>" . htmlspecialchars($v) . "</span>";
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
-$meta = ['meta_by' => $generatedBy, 'meta_date' => $generatedAt, 'meta_period' => $periodStr];
-
 if ($format === 'excel') {
-    $sheetDefs = [];
+    // ── CSV output ────────────────────────────────────────────────────────────
+    $sections = [];
+
     if ($reportType === 'requests') {
-        $rows = fetchRequests($conn, $dateFrom, $dateTo);
-        $mapped = array_map(fn($r) => [$r['req_id_fmt'],$r['infrastructure'],$r['location'],$r['issue'],$r['approval_status'],$r['created_fmt']], $rows);
-        $sheetDefs[] = $meta + ['name'=>'Requests','title'=>'Infrastructure Repair Requests Report','headers'=>['Request ID','Infrastructure','Location','Issue / Description','Status','Date Submitted'],'colWidths'=>[14,22,28,36,14,20],'centerCols'=>[0=>true,4=>true,5=>true],'badgeCols'=>[4=>'status'],'numericCols'=>[],'totalRow'=>false,'rows'=>$mapped];
+        $rows     = fetchRequests($conn, $dateFrom, $dateTo);
+        $pending  = count(array_filter($rows, fn($r) => $r['approval_status'] === 'Pending'));
+        $approved = count(array_filter($rows, fn($r) => $r['approval_status'] === 'Approved'));
+        $rejected = count(array_filter($rows, fn($r) => $r['approval_status'] === 'Rejected'));
+        $sections[] = [
+            'title'   => 'Infrastructure Repair Requests',
+            'headers' => ['Request ID','Infrastructure','Location','Issue / Description','Status','Date Submitted'],
+            'rows'    => array_map(fn($r) => [
+                $r['req_id_fmt'], $r['infrastructure'], $r['location'],
+                $r['issue'],      $r['approval_status'], $r['created_fmt'],
+            ], $rows),
+            'summary' => [
+                ['Total Requests', count($rows)],
+                ['Pending',  $pending],
+                ['Approved', $approved],
+                ['Rejected', $rejected],
+            ],
+        ];
+
     } elseif ($reportType === 'schedules') {
-        $rows = fetchSchedules($conn, $dateFrom, $dateTo);
-        $mapped = array_map(fn($r) => [$r['task'],$r['location'],$r['start_fmt'],$r['status'],$r['priority'],$r['category'],$r['assigned_team']], $rows);
-        $sheetDefs[] = $meta + ['name'=>'Schedules','title'=>'Maintenance Schedule Report','headers'=>['Task','Location','Start Date','Status','Priority','Category','Assigned Team'],'colWidths'=>[30,26,14,14,12,16,20],'centerCols'=>[2=>true,3=>true,4=>true],'badgeCols'=>[3=>'status',4=>'priority'],'numericCols'=>[],'totalRow'=>false,'rows'=>$mapped];
+        $rows     = fetchSchedules($conn, $dateFrom, $dateTo);
+        $byStatus = [];
+        foreach ($rows as $r) { $byStatus[$r['status']] = ($byStatus[$r['status']] ?? 0) + 1; }
+        $sections[] = [
+            'title'   => 'Maintenance Schedule (Tasks & Infrastructure Reports)',
+            'headers' => ['Task / Infrastructure','Location','Start Date','Est. Completion','Status','Priority','Category','Type','Engineer','Team','Budget (PHP)'],
+            'rows'    => array_map(fn($r) => [
+                $r['task'],                $r['location'],          $r['start_fmt'],
+                $r['end_fmt'] ?? '—',      $r['status'],            $r['priority'],
+                $r['category'],            $r['source_type'],       $r['engineer_name'] ?: 'Unassigned',
+                $r['assigned_team'],       $r['budget_fmt'],
+            ], $rows),
+            'summary' => array_merge(
+                [['Total Items', count($rows)]],
+                array_map(fn($s, $c) => [$s, $c], array_keys($byStatus), array_values($byStatus))
+            ),
+        ];
+
     } elseif ($reportType === 'summary') {
-        $sum = fetchSummary($conn, $dateFrom, $dateTo);
+        $sum     = fetchSummary($conn, $dateFrom, $dateTo);
         $pendPct = $sum['total_requests']>0  ? round($sum['pending']/$sum['total_requests']*100,1) : 0;
         $donePct = $sum['total_schedules']>0 ? round($sum['completed_tasks']/$sum['total_schedules']*100,1) : 0;
-        $sheetDefs[] = $meta + ['name'=>'Overview','title'=>'Executive Summary Report','headers'=>['Category','Metric','Value','Notes'],'colWidths'=>[22,28,14,32],'centerCols'=>[2=>true],'badgeCols'=>[],'numericCols'=>[2=>true],'totalRow'=>false,'rows'=>[['Requests','Total Requests',$sum['total_requests'],''],['Requests','Pending',$sum['pending'],"{$pendPct}% of total"],['Requests','Approved',$sum['approved'],''],['Requests','Rejected',$sum['rejected'],''],['Schedules','Total Maintenance Tasks',$sum['total_schedules'],''],['Schedules','Completed',$sum['completed_tasks'],"{$donePct}% completion rate"],['Schedules','In Progress',$sum['in_progress'],''],['Schedules','Delayed',$sum['delayed'],'Requires attention']]];
-        $infra = array_map(fn($r,$i)=>[($i+1),$r['lbl'],$r['cnt']], $sum['top_infra'], array_keys($sum['top_infra']));
-        $sheetDefs[] = $meta + ['name'=>'Top Infrastructure','title'=>'Top Infrastructure Types by Request Volume','headers'=>['Rank','Infrastructure Type','Request Count'],'colWidths'=>[10,36,18],'centerCols'=>[0=>true,2=>true],'badgeCols'=>[],'numericCols'=>[2=>true],'totalRow'=>false,'rows'=>$infra?:[['-','No data available',0]]];
-        $locs = array_map(fn($r,$i)=>[($i+1),$r['lbl'],$r['cnt']], $sum['top_locations'], array_keys($sum['top_locations']));
-        $sheetDefs[] = $meta + ['name'=>'Top Locations','title'=>'Top Locations by Request Volume','headers'=>['Rank','Location','Request Count'],'colWidths'=>[10,46,18],'centerCols'=>[0=>true,2=>true],'badgeCols'=>[],'numericCols'=>[2=>true],'totalRow'=>false,'rows'=>$locs?:[['-','No data available',0]]];
+        $sections[] = [
+            'title'   => 'Citizen Requests Overview',
+            'headers' => ['Metric','Value','Rate / Note'],
+            'rows'    => [
+                ['Total Requests Submitted', $sum['total_requests'], ''],
+                ['Pending Approval',         $sum['pending'],        "{$pendPct}% of total"],
+                ['Approved',                 $sum['approved'],       ''],
+                ['Rejected',                 $sum['rejected'],       ''],
+            ],
+        ];
+        $sections[] = [
+            'title'   => 'Maintenance Schedule Overview',
+            'headers' => ['Metric','Value','Rate / Note'],
+            'rows'    => [
+                ['Total Maintenance Tasks', $sum['total_schedules'],  ''],
+                ['Completed',              $sum['completed_tasks'],  "{$donePct}% completion rate"],
+                ['In Progress',            $sum['in_progress'],      ''],
+                ['Delayed',                $sum['delayed'],          'Requires attention'],
+            ],
+        ];
+        $infra = array_map(fn($r,$i) => [($i+1),$r['lbl'],$r['cnt']], $sum['top_infra'], array_keys($sum['top_infra']));
+        $sections[] = [
+            'title'   => 'Top 5 Infrastructure Types',
+            'headers' => ['Rank','Infrastructure Type','Request Count'],
+            'rows'    => $infra ?: [['-','No data available',0]],
+        ];
+        $locs = array_map(fn($r,$i) => [($i+1),$r['lbl'],$r['cnt']], $sum['top_locations'], array_keys($sum['top_locations']));
+        $sections[] = [
+            'title'   => 'Top 5 Locations by Request Volume',
+            'headers' => ['Rank','Location','Request Count'],
+            'rows'    => $locs ?: [['-','No data available',0]],
+        ];
+
+    } elseif ($reportType === 'current_reports') {
+        $rows     = fetchCurrentReports($conn, $dateFrom, $dateTo);
+        $accepted = count(array_filter($rows, fn($r) => $r['acceptance'] === 'Accepted'));
+        $sections[] = [
+            'title'   => 'Current Reports — Assigned to Engineers',
+            'headers' => ['Report ID','Infrastructure','Location','Issue','Priority','Budget (PHP)','Start Date','Est. End Date','Engineer','Acceptance','Date Created'],
+            'rows'    => array_map(fn($r) => [
+                $r['rep_id_fmt'],             $r['infrastructure'],     $r['location'],
+                $r['issue'],                  $r['priority_lvl'],       $r['budget_fmt'],
+                $r['start_fmt'],              $r['end_fmt'],             $r['engineer_name'] ?: 'Unassigned',
+                $r['acceptance'],             $r['created_fmt'],
+            ], $rows),
+            'summary' => [
+                ['Total Current Reports', count($rows)],
+                ['Accepted by Engineer',  $accepted],
+                ['Pending Acceptance',    count($rows) - $accepted],
+            ],
+        ];
+
+    } elseif ($reportType === 'pending_reports') {
+        $rows     = fetchPendingReports($conn, $dateFrom, $dateTo);
+        $byStatus = [];
+        foreach ($rows as $r) { $byStatus[$r['resolution_status']] = ($byStatus[$r['resolution_status']] ?? 0) + 1; }
+        $sections[] = [
+            'title'   => 'Pending Reports — Scheduled / In Progress / Pending Completion',
+            'headers' => ['Report ID','Infrastructure','Location','Issue','Priority','Budget (PHP)','Start Date','Est. End Date','Status','Engineer','Date Created'],
+            'rows'    => array_map(fn($r) => [
+                $r['rep_id_fmt'],             $r['infrastructure'],     $r['location'],
+                $r['issue'],                  $r['priority_lvl'],       $r['budget_fmt'],
+                $r['start_fmt'],              $r['end_fmt'],             $r['resolution_status'],
+                $r['engineer_name'] ?: 'Unassigned', $r['created_fmt'],
+            ], $rows),
+            'summary' => array_merge(
+                [['Total Pending Reports', count($rows)]],
+                array_map(fn($s,$c) => [$s,$c], array_keys($byStatus), array_values($byStatus))
+            ),
+        ];
+
+    } elseif ($reportType === 'archive_reports') {
+        $rows      = fetchArchiveReports($conn, $dateFrom, $dateTo);
+        $completed = count(array_filter($rows, fn($r) => $r['resolution_status'] === 'Completed'));
+        $cancelled = count(array_filter($rows, fn($r) => $r['resolution_status'] === 'Cancelled'));
+        $sections[] = [
+            'title'   => 'Archive Reports — Completed & Cancelled',
+            'headers' => ['Report ID','Infrastructure','Location','Issue','Priority','Budget (PHP)','Start Date','Est. End Date','Status','Engineer','Date Created'],
+            'rows'    => array_map(fn($r) => [
+                $r['rep_id_fmt'],             $r['infrastructure'],     $r['location'],
+                $r['issue'],                  $r['priority_lvl'],       $r['budget_fmt'],
+                $r['start_fmt'],              $r['end_fmt'],             $r['resolution_status'],
+                $r['engineer_name'] ?: 'Unassigned', $r['created_fmt'],
+            ], $rows),
+            'summary' => [
+                ['Total Archived Reports', count($rows)],
+                ['Completed',  $completed],
+                ['Cancelled',  $cancelled],
+            ],
+        ];
     }
-    $tmpFile  = buildXLSX($sheetDefs, $reportTitle);
-    $filename = 'CIMM_' . ucfirst($reportType) . '_' . date('Ymd') . '.xlsx';
+
+    $csvContent = buildCSV($reportTitle, $periodStr, $generatedBy, $generatedAt, $sections);
+    $filename   = 'CIMM_' . str_replace(['_',' '], '-', ucwords($reportType, '_')) . '_' . date('Ymd') . '.csv';
     ob_end_clean();
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . filesize($tmpFile));
+    header('Content-Length: ' . strlen($csvContent));
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
-    readfile($tmpFile);
-    unlink($tmpFile);
+    echo $csvContent;
     exit;
+
 } else {
-    if ($reportType === 'requests')       $data = fetchRequests($conn, $dateFrom, $dateTo);
-    elseif ($reportType === 'schedules')  $data = fetchSchedules($conn, $dateFrom, $dateTo);
-    else                                  $data = fetchSummary($conn, $dateFrom, $dateTo);
+    // ── PDF ───────────────────────────────────────────────────────────────────
+    $data = match($reportType) {
+        'requests'        => fetchRequests($conn, $dateFrom, $dateTo),
+        'schedules'       => fetchSchedules($conn, $dateFrom, $dateTo),
+        'summary'         => fetchSummary($conn, $dateFrom, $dateTo),
+        'current_reports' => fetchCurrentReports($conn, $dateFrom, $dateTo),
+        'pending_reports' => fetchPendingReports($conn, $dateFrom, $dateTo),
+        'archive_reports' => fetchArchiveReports($conn, $dateFrom, $dateTo),
+        default           => fetchRequests($conn, $dateFrom, $dateTo),
+    };
+    ob_end_clean();
     header('Content-Type: text/html; charset=UTF-8');
-    echo buildPDFHtml($reportTitle,$reportType,$dateFrom,$dateTo,$data,$generatedBy,$generatedAt,$periodStr);
+    echo buildPDFHtml($reportTitle, $reportType, $dateFrom, $dateTo, $data, $generatedBy, $generatedAt, $periodStr);
     exit;
 }
