@@ -565,21 +565,26 @@ body::before {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: #fff;
-    border: 2px solid #3762c8;
+    background: rgba(255,255,255,.92);
+    border: 1.5px solid rgba(255,152,0,.45);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
     z-index: 1002;
+    outline: none;
+}
+[data-theme="dark"] .sidebar-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(255,152,0,.4);
 }
 /* Highlight the sidebar profile-btn/avatar if on profile page */
 .sidebar-profile-btn.active,
 .profile-btn.active {
-    border: 2px solid #4f46e5 !important;
-    box-shadow: 0 0 0 2px rgba(79,70,229,.3) !important;
+    border: 1.5px solid #ff9800 !important;
+    box-shadow: 0 0 0 2px rgba(255,152,0,.25) !important;
 }
 .sidebar-profile-btn img {
     width: 100%;
@@ -588,7 +593,6 @@ body::before {
 }
 .profile-fallback-icon {
     display: none;
-    font-size: 24px;
     width: 100%;
     height: 100%;
     align-items: center;
@@ -598,14 +602,27 @@ body::before {
     left: 0;
     z-index: 1;
 }
+.profile-fallback-icon svg,
+.profile-fallback-icon img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 50%;
+}
+/* Show fallback when the real image is hidden or errors */
+.sidebar-profile-btn .profile-fallback-icon.visible {
+    display: flex;
+}
 
 .sidebar-profile-btn img {
     position: relative;
     z-index: 2;
 }
 .sidebar-profile-btn:hover {
-    transform: scale(1.08);
-    box-shadow: 0 4px 14px rgba(55,98,200,0.35);
+    border-color: #ff9800;
+    box-shadow: 0 2px 10px rgba(255,152,0,.4);
+    transform: scale(1.12);
 }
 .sidebar-nav.collapsed .sidebar-profile-btn {
     position: relative;

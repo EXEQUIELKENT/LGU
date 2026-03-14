@@ -83,7 +83,11 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
+$isAdmin       = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
+$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$engineerId    = (int)($_SESSION['employee_id'] ?? 0);
+$userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
 
 // ─── FETCH: Completed (Archive) reports only ──────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
@@ -100,7 +104,7 @@ $conn->query("
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
-        r.priority_lvl, r.budget, r.created_at,
+        r.priority_lvl, r.budget, r.created_at, r.engineer_id,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number,
@@ -152,6 +156,7 @@ foreach ($rows as $row) {
         'location'          => $row['location'] ?? '',
         'issue'             => $row['issue'] ?? '',
         'res_note'          => $row['res_note'] ?? '',
+        'engineer_id'       => (int)($row['engineer_id'] ?? 0),
         'engineer_name'     => $row['engineer_name'] ?? '',
         'reporter_name'     => $row['reporter_name'] ?? '',
         'starting_date'     => $row['starting_date'] ?? '',
@@ -459,6 +464,98 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-progress-strip { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
 .rep-progress-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-progress-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(46,125,50,.3); }
+
+/* ── Engineer inline profile button ──────────────────────────────── */
+.eng-name-with-profile {
+    display: inline-flex; align-items: center; gap: 5px; width: 100%;
+}
+.eng-profile-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid rgba(46,125,50,.45);
+    background: rgba(255,255,255,.92);
+    cursor: pointer; padding: 0; overflow: hidden; flex-shrink: 0;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    outline: none; vertical-align: middle;
+}
+.eng-profile-btn:hover {
+    border-color: #2e7d32;
+    box-shadow: 0 2px 10px rgba(46,125,50,.4);
+    transform: scale(1.12);
+}
+.eng-profile-btn img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; display: block;
+}
+.eng-profile-btn svg { width: 100%; height: 100%; display: block; }
+[data-theme="dark"] .eng-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(46,125,50,.4);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ENGINEER DETAILS MODAL
+   ════════════════════════════════════════════════════════════════ */
+#engDetailsBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 7500;
+}
+#engDetailsBackdrop.show { display: flex; }
+#engDetailsModal {
+    background: var(--bg-primary, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.22), 0 0 0 1px rgba(0,0,0,.05);
+    width: 420px; max-width: 94vw; max-height: 88vh;
+    display: flex; flex-direction: column;
+    animation: engDetailsPop .28s cubic-bezier(.34,1.56,.64,1) forwards;
+    overflow: hidden;
+}
+@media (min-width: 769px) {
+    #engDetailsModal { width: 620px; }
+    .eng-det-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+@keyframes engDetailsPop {
+    from { transform: translateY(22px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+[data-theme="dark"] #engDetailsModal {
+    background: rgba(24,24,30,.98);
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08);
+}
+.eng-det-band { height: 6px; width: 100%; background: linear-gradient(90deg,#2e7d32,#43a047); flex-shrink: 0; }
+.eng-det-header { display: flex; align-items: center; gap: 14px; padding: 18px 22px 12px; flex-shrink: 0; }
+.eng-det-avatar-wrap {
+    width: 62px; height: 62px; border-radius: 50%;
+    flex-shrink: 0; overflow: hidden;
+    border: 2.5px solid #2e7d32;
+    box-shadow: 0 4px 12px rgba(46,125,50,.25);
+}
+.eng-det-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.eng-det-title-wrap { flex: 1; min-width: 0; }
+.eng-det-name { font-size: 1.05rem; font-weight: 700; color: var(--text-primary, #1a1a2e); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme="dark"] .eng-det-name { color: #e2e8f0; }
+.eng-det-discipline { font-size: 12px; color: #2e7d32; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eng-det-close { background: none; border: none; font-size: 24px; color: var(--text-secondary, #64748b); cursor: pointer; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0; }
+.eng-det-close:hover { background: rgba(46,125,50,.1); color: #2e7d32; }
+.eng-det-body { padding: 4px 22px 20px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #43a047 rgba(0,0,0,.07); }
+.eng-det-body::-webkit-scrollbar { width: 5px; }
+.eng-det-body::-webkit-scrollbar-thumb { background: #43a047; border-radius: 3px; }
+.eng-det-section-title { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #2e7d32; text-transform: uppercase; margin: 18px 0 12px; }
+.eng-det-section-title:first-child { margin-top: 4px; }
+.eng-det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+.eng-det-field-label { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: var(--text-secondary, #64748b); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.eng-det-field-value { font-size: 13.5px; color: var(--text-primary, #1a1a2e); line-height: 1.55; word-break: break-word; }
+[data-theme="dark"] .eng-det-field-value { color: #e2e8f0; }
+.eng-det-field-single { margin-top: 14px; }
+.eng-det-skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.eng-det-skill-badge { padding: 5px 13px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(46,125,50,.12); color: #2e7d32; border: 1px solid rgba(46,125,50,.3); }
+.eng-det-divider { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 16px 0 0; }
+.eng-det-footer { padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08)); flex-shrink: 0; display: flex; justify-content: center; }
+.eng-det-back-btn { padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: linear-gradient(135deg,#2e7d32,#43a047); color: #fff; box-shadow: 0 4px 12px rgba(46,125,50,.3); transition: all .18s ease; }
+.eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(46,125,50,.4); }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -519,9 +616,17 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         <button class="sidebar-toggle" id="sidebarToggle"><span class="toggle-icon">◀</span></button>
     </div>
     <div class="sidebar-top">
-        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor:pointer;">
-            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
-            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg"
+                 onerror="this.style.display='none';var f=document.getElementById('profileFallbackIcon');if(f){f.style.display='flex';}"
+                 <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
+            <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                </svg>
+            </span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span><span class="light-icon" style="display:none;">☀️</span>
@@ -593,12 +698,20 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 
     <div class="table-wrapper">
         <table id="reportsTable">
-            <colgroup><col><col><col><col><col><col><col><col><col><col><col><col></colgroup>
+            <colgroup>
+                <?php if ($isEngineer): ?>
+                <col><col><col><col><col><col><col><col><col><col><col>
+                <?php else: ?>
+                <col><col><col><col><col><col><col><col><col><col><col><col>
+                <?php endif; ?>
+            </colgroup>
             <thead>
                 <tr>
                     <th>Action</th>
                     <th>Rep #</th><th>Infrastructure</th><th>Location</th>
-                    <th>Issue / Notes</th><th>Engineer</th><th>Reported By</th>
+                    <th>Issue / Notes</th>
+                    <?php if (!$isEngineer): ?><th>Engineer</th><?php endif; ?>
+                    <th>Reported By</th>
                     <th>Start Date</th><th>Est. End Date</th><th>Priority</th>
                     <th>Budget</th><th>Status</th>
                 </tr>
@@ -615,7 +728,23 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
                     <td class="wrap searchable" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></td>
+                    <?php if (!$isEngineer):
+                        $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
+                                    && trim($row['engineer_name']) !== '' && trim($row['engineer_name']) !== ' ';
+                    ?>
+                    <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
+                        <?php if ($hasEngineer && $canAssignEngineer): ?>
+                            <span class="eng-name-with-profile">
+                                <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
+                                </button>
+                                <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                            </span>
+                        <?php else: ?>
+                            <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
                     <td class="searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></td>
                     <td class="searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></td>
                     <td class="searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
@@ -625,9 +754,9 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="12" style="text-align:center;padding:24px;opacity:.6;">No archived reports found</td></tr>
+                <tr><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:24px;opacity:.6;">No archived reports found</td></tr>
             <?php endif; ?>
-                <tr id="noDesktopResult" style="display:none;"><td colspan="12" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
+                <tr id="noDesktopResult" style="display:none;"><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
             </tbody>
         </table>
     </div>
@@ -643,7 +772,26 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Engineer:</span><span class="rc-value searchable"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span></div>
+            <?php if (!$isEngineer):
+                $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
+                            && trim($row['engineer_name']) !== '' && trim($row['engineer_name']) !== ' ';
+            ?>
+            <div class="rc-row">
+                <span class="rc-label">Engineer:</span>
+                <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
+                    <?php if ($hasEngineer && $canAssignEngineer): ?>
+                        <span class="eng-name-with-profile">
+                            <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
+                            </button>
+                            <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
+                        </span>
+                    <?php else: ?>
+                        <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name'] ?? '—') ?></span>
+                    <?php endif; ?>
+                </span>
+            </div>
+            <?php endif; ?>
             <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
             <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
@@ -911,6 +1059,154 @@ document.addEventListener("DOMContentLoaded", function() {
         if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
     });
 });
+
+// ════════════════════════════════════════════════════════════════
+// ENGINEER DETAILS MODAL
+// ════════════════════════════════════════════════════════════════
+const IS_ENGINEER          = <?= $isEngineer ? 'true' : 'false' ?>;
+const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer ? 'true' : 'false' ?>;
+let engineersCache = null;
+
+async function loadEngineers() {
+    if (engineersCache !== null) return engineersCache;
+    try {
+        const res  = await fetch('get_engineers.php');
+        const data = await res.json();
+        engineersCache = (data.success && data.engineers.length) ? data.engineers : [];
+    } catch(e) { engineersCache = []; }
+    return engineersCache;
+}
+
+async function openEngineerProfileById(engineerId) {
+    if (!CAN_ASSIGN_ENGINEER) return;
+    const engineers = await loadEngineers();
+    const eng = engineers.find(e => e.id == engineerId);
+    if (!eng) return;
+    _populateEngDetailsModal(eng);
+    const backBtn = document.getElementById('engDetBackBtn');
+    backBtn.textContent = 'Close';
+    backBtn.onclick = closeEngineerDetailsModal;
+    document.getElementById('engDetailsBackdrop').classList.add('show');
+}
+
+function _populateEngDetailsModal(eng) {
+    const detWrap = document.getElementById('engDetAvatarWrap');
+    if (detWrap) {
+        const FALLBACK = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        const dImg = document.createElement('img');
+        dImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
+        dImg.alt = ''; dImg.onerror = function(){ this.src = FALLBACK; };
+        dImg.src = eng.profile_picture || FALLBACK;
+        detWrap.innerHTML = ''; detWrap.appendChild(dImg);
+    }
+    document.getElementById('engDetName').textContent = eng.name || '—';
+    document.getElementById('engDetDiscipline').textContent = eng.engineering_discipline || 'Engineer';
+    const fv = (v) => v ? escapeHtml(String(v)) : '<span style="opacity:.5;">—</span>';
+    let html = '';
+    html += `<div class="eng-det-section-title">&#128100; Personal Information</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Full Name</div>
+                 <div class="eng-det-field-value">${fv(eng.full_name||eng.name)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="4"/><path d="M12 15v6M9 18h6"/></svg>Gender</div>
+                 <div class="eng-det-field-value">${fv(eng.gender)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Date of Birth</div>
+                 <div class="eng-det-field-value">${fv(eng.date_of_birth)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 1.2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.07 6.07l1.12-1.12a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Contact Number</div>
+                 <div class="eng-det-field-value">${fv(eng.contact_number)}</div>
+               </div>
+               <div style="grid-column:1/-1">
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>Email Address</div>
+                 <div class="eng-det-field-value">${fv(eng.email)}</div>
+               </div>
+             </div>
+             <div class="eng-det-field-single">
+               <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 13-9 13S3 16 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Address</div>
+               <div class="eng-det-field-value">${fv(eng.address)}</div>
+             </div>`;
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">&#127959; Professional Details</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Engineering Discipline</div>
+                 <div class="eng-det-field-value">${fv(eng.engineering_discipline)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Department</div>
+                 <div class="eng-det-field-value">${fv(eng.department)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Years of Experience</div>
+                 <div class="eng-det-field-value">${eng.years_of_experience!=null&&eng.years_of_experience!==''?escapeHtml(String(eng.years_of_experience))+' yr(s)':'<span style="opacity:.5;">—</span>'}</div>
+               </div>
+             </div>`;
+    if (eng.areas_of_specialization) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Areas of Specialization</div>
+                   <div class="eng-det-field-value">${fv(eng.areas_of_specialization)}</div>
+                 </div>`;
+    }
+    const skills = [];
+    if (eng.skill_structural_design) skills.push('Structural Design');
+    if (eng.skill_site_inspection)   skills.push('Site Inspection');
+    if (eng.skill_project_planning)  skills.push('Project Planning');
+    html += `<div class="eng-det-divider"></div><div class="eng-det-section-title">&#128295; Skills &amp; Tools</div>`;
+    if (skills.length) {
+        html += '<div class="eng-det-skills">'+skills.map(s=>`<span class="eng-det-skill-badge">${s}</span>`).join('')+'</div>';
+    } else {
+        html += '<div class="eng-det-field-value" style="opacity:.5;">No skills listed</div>';
+    }
+    if (eng.cad_software) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>CAD Software</div>
+                   <div class="eng-det-field-value">${fv(eng.cad_software)}</div>
+                 </div>`;
+    }
+    document.getElementById('engDetBody').innerHTML = html;
+}
+
+function closeEngineerDetailsModal() {
+    document.getElementById('engDetailsBackdrop').classList.remove('show');
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('engDetClose').addEventListener('click', closeEngineerDetailsModal);
+    document.getElementById('engDetBackBtn').addEventListener('click', closeEngineerDetailsModal);
+    document.getElementById('engDetailsBackdrop').addEventListener('click', function(e) {
+        if (e.target === this) closeEngineerDetailsModal();
+    });
+});
+
 </script>
+
+<!-- ══════════════ ENGINEER DETAILS MODAL ══════════════ -->
+<div id="engDetailsBackdrop">
+    <div id="engDetailsModal">
+        <div class="eng-det-band"></div>
+        <div class="eng-det-header">
+            <div id="engDetAvatarWrap" class="eng-det-avatar-wrap"></div>
+            <div class="eng-det-title-wrap">
+                <div class="eng-det-name" id="engDetName"></div>
+                <div class="eng-det-discipline" id="engDetDiscipline"></div>
+            </div>
+            <button class="eng-det-close" id="engDetClose">&#215;</button>
+        </div>
+        <div class="eng-det-body" id="engDetBody"></div>
+        <div class="eng-det-footer">
+            <button class="eng-det-back-btn" id="engDetBackBtn">Close</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

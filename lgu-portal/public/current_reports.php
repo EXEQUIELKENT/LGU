@@ -1131,9 +1131,17 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <button class="sidebar-toggle" id="sidebarToggle"><span class="toggle-icon">◀</span></button>
     </div>
     <div class="sidebar-top">
-        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor:pointer;">
-            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
-            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
+        <div class="sidebar-profile-btn" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg"
+                 onerror="this.style.display='none';var f=document.getElementById('profileFallbackIcon');if(f){f.style.display='flex';}"
+                 <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
+            <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                </svg>
+            </span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span><span class="light-icon" style="display:none;">☀️</span>

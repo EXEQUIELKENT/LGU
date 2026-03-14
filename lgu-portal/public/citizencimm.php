@@ -856,6 +856,16 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         .animate-on-scroll.delay-3 { transition-delay: 0.3s; }
         .animate-on-scroll.delay-4 { transition-delay: 0.4s; }
 
+        /* While the guide is active, collapse all animate-on-scroll transitions to
+           zero so getBoundingClientRect() always measures the final settled position.
+           Without this, a parent card mid-animation (e.g. feature-card.delay-2 =
+           0.2s delay + 0.8s transition) shifts the child element's coordinates and
+           the spotlight lands in the wrong place on the first visit to that step. */
+        body.guide-active .animate-on-scroll {
+            transition-duration: 0s !important;
+            transition-delay:    0s !important;
+        }
+
         @media (max-width: 768px) {
             .cta-button {
                 font-size: 15px;
@@ -919,6 +929,251 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                 90% { opacity: 1; }
                 50% { top: calc(100% + 15px); opacity: 1; }
             }
+        }
+
+        /* ============================================================
+           GUIDE BUTTON — entry point pulse
+           ============================================================ */
+        .guide-entry-btn {
+            position: relative;
+        }
+        @keyframes guideBtnPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.55); }
+            70%  { box-shadow: 0 0 0 14px rgba(255,255,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+        }
+        .guide-entry-btn.pulse-once {
+            animation: guideBtnPulse 0.9s ease-out 2;
+        }
+
+        /* ============================================================
+           GUIDE OVERLAY + SPOTLIGHT
+           ============================================================ */
+        #guideOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99980;
+            pointer-events: all;
+            background: transparent;
+            display: none;
+        }
+        #guideSpotlight {
+            position: fixed;
+            z-index: 99982;
+            border-radius: 14px;
+            pointer-events: none;
+            background: transparent;
+            /* Smooth position/size transitions between steps */
+            transition:
+                top    0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                left   0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                width  0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Dark surround + glowing blue ring */
+            box-shadow:
+                0 0 0 9999px rgba(0, 0, 0, 0.72),
+                0 0 0 2.5px #3b82f6,
+                0 0 0 5px  rgba(59, 130, 246, 0.20),
+                0 0 26px   rgba(59, 130, 246, 0.55);
+            animation: guideSpotPulse 2.2s ease-in-out infinite;
+        }
+        @keyframes guideSpotPulse {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 9999px rgba(0, 0, 0, 0.72),
+                    0 0 0 2.5px #3b82f6,
+                    0 0 0 5px  rgba(59, 130, 246, 0.20),
+                    0 0 22px   rgba(59, 130, 246, 0.50);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 9999px rgba(0, 0, 0, 0.72),
+                    0 0 0 3.5px #3b82f6,
+                    0 0 0 8px  rgba(59, 130, 246, 0.15),
+                    0 0 42px   rgba(59, 130, 246, 0.82);
+            }
+        }
+
+        /* ============================================================
+           GUIDE CARD (floating tooltip)
+           ============================================================ */
+        #guideCard {
+            position: fixed;
+            z-index: 99990;
+            width: 340px;
+            max-width: calc(100vw - 32px);
+            background: var(--bg-secondary, #fff);
+            border: 1.5px solid rgba(59, 130, 246, 0.45);
+            border-radius: 20px;
+            box-shadow:
+                0 24px 56px rgba(0, 0, 0, 0.32),
+                0 0 0 1px   rgba(59, 130, 246, 0.12);
+            overflow: hidden;
+            pointer-events: all;
+        }
+        @keyframes guideCardIn {
+            from { opacity: 0; transform: scale(0.88) translateY(12px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0);    }
+        }
+        [data-theme="dark"] #guideCard {
+            background: rgba(15, 23, 42, 0.97);
+            box-shadow:
+                0 24px 56px rgba(0, 0, 0, 0.65),
+                0 0 0 1px   rgba(59, 130, 246, 0.28);
+        }
+
+        /* Top accent bar */
+        .guide-accent-bar {
+            height: 4px;
+            background: linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa, #3b82f6, #1d4ed8);
+            background-size: 300% 100%;
+            animation: guideBarShimmer 2.5s linear infinite;
+        }
+        @keyframes guideBarShimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Header row */
+        .guide-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 16px 4px;
+        }
+        .guide-step-num {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #2b6cb0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        [data-theme="dark"] .guide-step-num { color: #60a5fa; }
+        .guide-close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            color: var(--text-secondary, #666);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.16s;
+            font-family: inherit;
+        }
+        .guide-close-btn:hover {
+            background: rgba(59, 130, 246, 0.12);
+            color: #2b6cb0;
+        }
+
+        /* Body */
+        .guide-card-body {
+            padding: 2px 18px 12px;
+        }
+        .guide-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary, #000);
+            margin-bottom: 7px;
+            line-height: 1.3;
+        }
+        .guide-card-desc {
+            font-size: 13px;
+            color: var(--text-secondary, #444);
+            line-height: 1.65;
+        }
+        .guide-card-desc b {
+            color: var(--text-primary, #000);
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .guide-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 18px 13px;
+            border-top: 1px solid var(--border-color, rgba(0,0,0,0.08));
+            gap: 10px;
+        }
+        #guideDots {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            max-width: 140px;
+        }
+        .guide-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--border-color, rgba(0,0,0,0.18));
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .guide-dot:hover  { background: rgba(59,130,246,0.45); transform: scale(1.15); }
+        .guide-dot.active { background: #2b6cb0;               transform: scale(1.35); }
+        [data-theme="dark"] .guide-dot.active { background: #3b82f6; }
+
+        .guide-nav-btns {
+            display: flex;
+            gap: 7px;
+            flex-shrink: 0;
+        }
+        .guide-btn {
+            padding: 7px 14px;
+            border-radius: 9px;
+            border: none;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.16s;
+            font-family: inherit;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .guide-btn-prev {
+            background: var(--bg-secondary, #f1f5f9);
+            color: var(--text-secondary, #555);
+            border: 1px solid var(--border-color, #ddd);
+        }
+        .guide-btn-prev:hover:not(:disabled) { background: var(--border-color, #e2e8f0); }
+        .guide-btn-prev:disabled { opacity: 0.32; cursor: not-allowed; }
+        [data-theme="dark"] .guide-btn-prev {
+            background: rgba(255,255,255,0.07);
+            color: #ccc;
+            border-color: rgba(255,255,255,0.1);
+        }
+        [data-theme="dark"] .guide-btn-prev:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
+
+        .guide-btn-next {
+            background: linear-gradient(135deg, #2b6cb0, #1d4ed8);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(43,108,176,0.40);
+        }
+        .guide-btn-next:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 16px rgba(43,108,176,0.58);
+        }
+
+        /* Mobile: smaller card — JS handles all top/left/bottom positioning */
+        @media (max-width: 639px) {
+            #guideCard {
+                max-width: calc(100vw - 28px);
+            }
+            .guide-card-header  { padding: 8px 13px 3px; }
+            .guide-card-body    { padding: 1px 13px 8px; }
+            .guide-card-footer  { padding: 7px 13px 10px; }
+            .guide-card-title   { font-size: 13.5px; }
+            .guide-card-desc    { font-size: 12px; line-height: 1.55; }
+            .guide-step-num     { font-size: 9.5px; }
+            .guide-btn          { padding: 6px 11px; font-size: 11.5px; }
+            #guideDots          { gap: 4px; }
+            .guide-dot          { width: 6px; height: 6px; }
         }
     </style>
 <?php include 'citizen_rendering.php'; ?>
@@ -1026,7 +1281,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         <p class="hero-tagline" data-i18n="hero_tagline">Empowering Quezon City residents with efficient, transparent, and responsive infrastructure services</p>
         <div class="hero-cta">
             <a href="<?= $BASE_URL ?>citizenrepform.php" class="cta-button cta-primary" data-i18n="cta_submit_report">Submit a Report</a>
-            <a href="#features" class="cta-button cta-secondary" data-i18n="cta_learn_more">Learn More</a>
+            <button type="button" class="cta-button cta-secondary guide-entry-btn" id="guideBtn" data-i18n="cta_guide">🗺️ Guide</button>
         </div>
     </section>
 
@@ -1363,6 +1618,39 @@ document.addEventListener('DOMContentLoaded', function() {
             reports_status_completed:   'Completed',
             reports_status_in_progress: 'In Progress',
             reports_status_delayed:     'Delayed',
+            cta_guide:                  '🗺️ Guide',
+            /* ── Guide UI chrome ── */
+            guide_step_label:  'Step {n} of {total}',
+            guide_back:        '← Back',
+            guide_next:        'Next →',
+            guide_finish:      'Finish ✓',
+            guide_close:       'Close Guide',
+            guide_dot_label:   'Go to step {n}',
+            /* ── Guide step titles ── */
+            guide_nav_title:      '🗺️ Navigation Bar',
+            guide_lang_title:     '🌐 Language & Dark Mode Controls',
+            guide_submit_title:   '📋 Submit a Report Button',
+            guide_stats_title:    '📊 Live Statistics',
+            guide_features_title: '🛠️ Service Action Links',
+            guide_activity_title: '📂 View All Reports Button',
+            guide_ongoing_title:  '🔄 Ongoing Repairs',
+            guide_about_title:    'ℹ️ Learn More About Us Button',
+            guide_footer_title:   '🔗 Footer',
+            guide_chatbot_title:  '🤖 AI Chat Assistant',
+            /* ── Guide step descriptions ── */
+            guide_nav_desc:      'The top bar on every page. Use <b>Home</b>, <b>Reports</b>, <b>Requests</b>, and <b>About</b> to navigate. On mobile, tap <b>☰</b> to open the sidebar menu.',
+            guide_lang_desc:     'Click the <b>globe / "EN" button</b> to switch between English and Filipino. Click the <b>moon / sun button</b> to toggle Dark Mode for comfortable night-time viewing.',
+            guide_lang_desc_mobile: 'This top bar contains two controls: the <b>globe button</b> (with the current language letter) — tap it to switch between <b>English</b> and <b>Filipino</b>. And the <b>sun/moon button</b> on the far right — tap it to toggle <b>Dark Mode</b>.',
+            guide_submit_desc:   'Click here to open the <b>Request Form</b>. Describe the infrastructure problem, attach photos, and pin the exact location — your report goes directly to the engineering team.',
+            guide_stats_desc:    'Real-time counters from the city database — <b>Completed Repairs</b>, <b>Ongoing Repairs</b>, and <b>Pending Requests</b>. Numbers update automatically as the LGU processes reports.',
+            guide_features_desc: 'Each service card has a clickable action link — <b>Submit Request →</b>, <b>View Reports →</b>, <b>Try It Now →</b>, <b>Check Status →</b>, and <b>Learn More →</b>. Click any to go straight to that feature.',
+            guide_activity_desc: 'Opens the complete <b>Reports page</b> where you can browse, search, and filter every infrastructure maintenance project by status, location, or date.',
+            guide_activity_desc_mobile: 'Tap here to open the full <b>Reports page</b> — browse and filter every infrastructure project by status, location, or date.',
+            guide_ongoing_desc:  'The <b>Recent Maintenance Activity</b> list shows the latest work in your community. Items marked <b>In Progress</b> are repairs currently underway.',
+            guide_ongoing_desc_mobile: 'Items tagged <b>In Progress</b> are repairs actively being worked on right now. Scroll down to see the <b>View All Reports</b> button for the full list.',
+            guide_about_desc:    'Opens the <b>About page</b> with the full CIMMS story — our mission, the team behind the system, and how the LGU is using technology to modernise public infrastructure services.',
+            guide_footer_desc:   'Quick-access links at the very bottom — <b>Quick Links</b> (Home, Reports, Submit), <b>Resources</b> (User Guide, FAQs), and <b>Legal</b> pages like Privacy Policy and Terms of Service.',
+            guide_chatbot_desc:  'Tap this floating button any time to open the <b>AI Chat Assistant</b>. Ask questions about services, check on a report status, or get step-by-step help submitting a new request.',
         },
         tl: {
             activity_title:             'Kamakailang Aktibidad sa Pagpapanatili',
@@ -1373,6 +1661,39 @@ document.addEventListener('DOMContentLoaded', function() {
             reports_status_completed:   'Natapos',
             reports_status_in_progress: 'Isinasagawa',
             reports_status_delayed:     'Naantala',
+            cta_guide:                  '🗺️ Gabay',
+            /* ── Guide UI chrome ── */
+            guide_step_label:  'Hakbang {n} sa {total}',
+            guide_back:        '← Bumalik',
+            guide_next:        'Susunod →',
+            guide_finish:      'Tapos ✓',
+            guide_close:       'Isara ang Gabay',
+            guide_dot_label:   'Pumunta sa hakbang {n}',
+            /* ── Guide step titles ── */
+            guide_nav_title:      '🗺️ Bar ng Nabigasyon',
+            guide_lang_title:     '🌐 Mga Kontrol ng Wika at Dark Mode',
+            guide_submit_title:   '📋 Pindutan ng Pagsusumite ng Ulat',
+            guide_stats_title:    '📊 Mga Istatistika',
+            guide_features_title: '🛠️ Mga Link ng Aksyon sa Serbisyo',
+            guide_activity_title: '📂 Pindutan ng Lahat ng Ulat',
+            guide_ongoing_title:  '🔄 Mga Isinasagawang Pag-aayos',
+            guide_about_title:    'ℹ️ Pindutan ng Higit Pang Impormasyon',
+            guide_footer_title:   '🔗 Footer ng Pahina',
+            guide_chatbot_title:  '🤖 AI Chat Assistant',
+            /* ── Guide step descriptions ── */
+            guide_nav_desc:      'Ang tuktok na bar sa bawat pahina. Gamitin ang <b>Home</b>, <b>Reports</b>, <b>Requests</b>, at <b>About</b> para lumipat ng pahina. Sa mobile, i-tap ang <b>☰</b> para buksan ang sidebar menu.',
+            guide_lang_desc:     'I-click ang <b>globe / "EN" na pindutan</b> para lumipat sa pagitan ng English at Filipino. I-click ang <b>moon / sun na pindutan</b> para i-toggle ang Dark Mode para sa komportableng panonood sa gabi.',
+            guide_lang_desc_mobile: 'Ang bar na ito ay naglalaman ng dalawang kontrol: ang <b>globe na pindutan</b> (may titik ng kasalukuyang wika) — i-tap para lumipat sa <b>English</b> o <b>Filipino</b>. At ang <b>sun/moon na pindutan</b> sa kanan — i-tap para i-toggle ang <b>Dark Mode</b>.',
+            guide_submit_desc:   'I-click dito para buksan ang <b>Request Form</b>. Ilarawan ang problema sa imprastraktura, mag-attach ng mga larawan, at i-pin ang eksaktong lokasyon — ang iyong ulat ay direktang napupunta sa engineering team.',
+            guide_stats_desc:    'Mga real-time na counter mula sa database ng lungsod — <b>Mga Natapos na Pag-aayos</b>, <b>Mga Isinasagawang Pag-aayos</b>, at <b>Mga Nakabinbing Kahilingan</b>. Awtomatikong nag-a-update habang pinoproseso ng LGU ang mga ulat.',
+            guide_features_desc: 'Ang bawat card ng serbisyo ay may clickable na link — <b>Submit Request →</b>, <b>View Reports →</b>, <b>Try It Now →</b>, <b>Check Status →</b>, at <b>Learn More →</b>. I-click ang alinman para pumunta sa feature na iyon.',
+            guide_activity_desc: 'Nagbubukas ng kumpletong <b>pahina ng Mga Ulat</b> kung saan maaari kang mag-browse, maghanap, at mag-filter ng bawat proyekto ng pagpapanatili ayon sa katayuan, lokasyon, o petsa.',
+            guide_activity_desc_mobile: 'I-tap dito para buksan ang buong <b>pahina ng Mga Ulat</b> — mag-browse at mag-filter ng bawat proyekto ng imprastraktura ayon sa katayuan, lokasyon, o petsa.',
+            guide_ongoing_desc:  'Ang listahan ng <b>Kamakailang Aktibidad sa Pagpapanatili</b> ay nagpapakita ng pinakabagong trabaho sa inyong komunidad. Ang mga aytem na may markang <b>In Progress</b> ay mga pag-aayos na kasalukuyang isinasagawa.',
+            guide_ongoing_desc_mobile: 'Ang mga aytem na may tatak na <b>In Progress</b> ay mga pag-aayos na aktibong ginagawa ngayon. Mag-scroll pababa para makita ang pindutang <b>View All Reports</b> para sa buong listahan.',
+            guide_about_desc:    'Nagbubukas ng <b>pahina ng About</b> na may buong kwento ng CIMMS — ang aming misyon, ang koponan sa likod ng sistema, at kung paano ginagamit ng LGU ang teknolohiya para modernisahin ang mga pampublikong serbisyo sa imprastraktura.',
+            guide_footer_desc:   'Mga mabilis na link sa pinakababa ng bawat pahina — <b>Mga Mabilis na Link</b> (Home, Reports, Submit), <b>Mga Mapagkukunan</b> (User Guide, FAQs), at <b>Mga Legal</b> na pahina tulad ng Privacy Policy at Terms of Service.',
+            guide_chatbot_desc:  'I-tap ang floating button na ito anumang oras para buksan ang <b>AI Chat Assistant</b>. Magtanong tungkol sa mga serbisyo, tingnan ang katayuan ng ulat, o kumuha ng hakbang-hakbang na tulong sa pagsusumite ng bagong kahilingan.',
         }
     };
 
@@ -1411,11 +1732,575 @@ document.addEventListener('DOMContentLoaded', function() {
         applyPageFallbacks();
     }
     document.addEventListener('i18nReady', applyPageFallbacks);
+
+    /* Expose for the guide IIFE's gT() helper */
+    window.__PAGE_TRANSLATIONS_REF = PAGE_TRANSLATIONS;
 })();
 </script>
 <?php include 'citizen_global.php'; ?>
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     INTERACTIVE PAGE GUIDE — overlay + spotlight + card
+════════════════════════════════════════════════════════════════ -->
+<div id="guideOverlay">
+    <div id="guideSpotlight"></div>
+    <div id="guideCard">
+        <div class="guide-accent-bar"></div>
+        <div class="guide-card-header">
+            <span class="guide-step-num" id="guideStepNum">Step 1 of 10</span>
+            <button class="guide-close-btn" id="guideCloseBtn" title="Close Guide">✕</button>
+        </div>
+        <div class="guide-card-body">
+            <div class="guide-card-title" id="guideCardTitle"></div>
+            <div class="guide-card-desc"  id="guideCardDesc"></div>
+        </div>
+        <div class="guide-card-footer">
+            <div id="guideDots"></div>
+            <div class="guide-nav-btns">
+                <button class="guide-btn guide-btn-prev" id="guidePrevBtn">← Back</button>
+                <button class="guide-btn guide-btn-next" id="guideNextBtn">Next →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ── Interactive Page Guide ──────────────────────────────────────────
+   Spotlight tour. Activated by the "Guide" button in the hero CTA.
+──────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    /* ── Translation helper (reads preloaded JSON first, then PAGE_TRANSLATIONS fallback) ── */
+    function gT(key) {
+        var lang = localStorage.getItem('lang') || 'en';
+        if (window.__preloadedTranslations && window.__preloadedTranslations[lang] && window.__preloadedTranslations[lang][key])
+            return window.__preloadedTranslations[lang][key];
+        /* Fall back to the PAGE_TRANSLATIONS defined in the inline script above */
+        var pt = window.__PAGE_TRANSLATIONS_REF;
+        if (pt && pt[lang] && pt[lang][key]) return pt[lang][key];
+        if (pt && pt['en'] && pt['en'][key]) return pt['en'][key];
+        return key;
+    }
+
+    /* ── Step definitions — use translation keys resolved at runtime ── */
+    var RAW_STEPS = [
+        {
+            sel: '.nav, .mobile-top-nav',
+            tKey: 'guide_nav_title',
+            dKey: 'guide_nav_desc',
+            pad: 6
+        },
+        {
+            sel: '.nav-actions',
+            selMobile: '.mobile-top-nav',           /* highlight the whole mobile top bar — contains globe + dark-mode btn */
+            tKey: 'guide_lang_title',
+            dKey: 'guide_lang_desc',
+            dKeyMobile: 'guide_lang_desc_mobile',
+            pad: 4
+        },
+        {
+            sel: '.hero-cta .cta-primary',
+            tKey: 'guide_submit_title',
+            dKey: 'guide_submit_desc',
+            pad: 12
+        },
+        {
+            sel: '.stats-grid',
+            selMobile: '.stats-grid .stat-card:nth-child(2)',   /* Ongoing Repairs card — avoids full-grid highlight on 1-col mobile */
+            tKey: 'guide_stats_title',
+            dKey: 'guide_stats_desc',
+            pad: 12
+        },
+        {
+            sel: '.features-section .feature-link',
+            selMobile: '.features-section .features-grid .feature-card:nth-child(2) .feature-link',   /* "View Reports →" link in the Track Maintenance card */
+            tKey: 'guide_features_title',
+            dKey: 'guide_features_desc',
+            pad: 8
+        },
+        {
+            /* Desktop: whole activity list. Mobile: first "In Progress" badge — pinpoints an ongoing repair */
+            sel:       '.activity-list',
+            selMobile: '.status-badge.status-progress',
+            tKey: 'guide_ongoing_title',
+            dKey: 'guide_ongoing_desc',
+            dKeyMobile: 'guide_ongoing_desc_mobile',
+            pad: 8,
+            optional: true
+        },
+        {
+            /* View All Reports button — same element on both viewports */
+            sel:       '.activity-section .cta-button',
+            selMobile: '.activity-section .cta-button',
+            tKey: 'guide_activity_title',
+            dKey: 'guide_activity_desc',
+            dKeyMobile: 'guide_activity_desc_mobile',
+            pad: 6,
+            optional: true
+        },
+        {
+            /* Learn More About Us button inside the about section */
+            sel: '.about-section .cta-button',
+            tKey: 'guide_about_title',
+            dKey: 'guide_about_desc',
+            pad: 10
+        },
+        {
+            sel: '.footer',
+            selMobile: '.footer-links',    /* first Quick-Links column only — full footer is too tall on mobile */
+            tKey: 'guide_footer_title',
+            dKey: 'guide_footer_desc',
+            pad: 14
+        },
+        {
+            sel: '#chatbot-fab-btn, .chatbot-fab, .chatbot-toggle-btn, .chatbot-toggle, [class*="chatbot-fab"], [class*="chatbot-toggle"]',
+            tKey: 'guide_chatbot_title',
+            dKey: 'guide_chatbot_desc',
+            pad: 10,
+            optional: true,
+            mobileCardTop: true            /* chatbot FAB is bottom-right; flip card to top so it doesn't block it */
+        }
+    ];
+
+    /* ── DOM refs (populated on first startGuide call) ── */
+    var steps, curStep, posTimer, lastIsMobile;
+    var overlay, spotlight, card, stepNumEl, titleEl, descEl, dotsEl, prevBtn, nextBtn, closeBtn;
+
+    function initDOM() {
+        overlay    = document.getElementById('guideOverlay');
+        spotlight  = document.getElementById('guideSpotlight');
+        card       = document.getElementById('guideCard');
+        stepNumEl  = document.getElementById('guideStepNum');
+        titleEl    = document.getElementById('guideCardTitle');
+        descEl     = document.getElementById('guideCardDesc');
+        dotsEl     = document.getElementById('guideDots');
+        prevBtn    = document.getElementById('guidePrevBtn');
+        nextBtn    = document.getElementById('guideNextBtn');
+        closeBtn   = document.getElementById('guideCloseBtn');
+
+        closeBtn.addEventListener('click', closeGuide);
+
+        nextBtn.addEventListener('click', function () {
+            if (curStep < steps.length - 1) goToStep(curStep + 1);
+            else closeGuide();
+        });
+        prevBtn.addEventListener('click', function () {
+            if (curStep > 0) goToStep(curStep - 1);
+        });
+
+        /* Click transparent part of overlay → close */
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeGuide();
+        });
+
+        /* Keyboard navigation */
+        document.addEventListener('keydown', function (e) {
+            if (!overlay || overlay.style.display === 'none') return;
+            if (e.key === 'Escape') { closeGuide(); return; }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (curStep < steps.length - 1) goToStep(curStep + 1); else closeGuide();
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (curStep > 0) goToStep(curStep - 1);
+            }
+        });
+
+        /* Reposition on resize — auto-close if viewport class (mobile ↔ desktop) flips
+           to avoid mismatched element selectors and layout conflicts */
+        window.addEventListener('resize', function () {
+            if (!overlay || overlay.style.display === 'none') return;
+            var nowIsMobile = window.innerWidth < 640;
+            if (nowIsMobile !== lastIsMobile) {
+                /* Viewport class changed — close the guide to avoid stale selectors */
+                lastIsMobile = nowIsMobile;
+                closeGuide();
+                return;
+            }
+            /* Same class — re-run the full step (scroll + resolve element + position) */
+            clearTimeout(posTimer);
+            posTimer = setTimeout(function () { goToStep(curStep); }, 150);
+        });
+    }
+
+    /* ── Public entry point ── */
+    window.startGuide = function () {
+        if (!overlay) initDOM();
+
+        steps = RAW_STEPS.filter(function (s) {
+            if (s.optional) return !!getEl(s.sel);
+            return true;
+        });
+
+        curStep = 0;
+        lastIsMobile = window.innerWidth < 640;
+        overlay.style.display = 'block';
+        document.body.classList.add('guide-active');
+        document.body.style.overflow = 'hidden';
+        goToStep(0);
+    };
+
+    function closeGuide() {
+        if (!overlay) return;
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+        document.body.classList.remove('guide-active');
+        clearTimeout(posTimer);
+    }
+
+    /* ── Resolve a comma-separated selector — prefers visible elements ── */
+    function getElForStep(step) {
+        var isMobile = window.innerWidth < 640;
+        var sel = (isMobile && step.selMobile) ? step.selMobile : step.sel;
+        return getEl(sel);
+    }
+
+    function getEl(sel) {
+        var parts = sel.split(',');
+        for (var i = 0; i < parts.length; i++) {
+            var el = document.querySelector(parts[i].trim());
+            if (el && isElVisible(el)) return el;
+        }
+        for (var i = 0; i < parts.length; i++) {
+            var el = document.querySelector(parts[i].trim());
+            if (el) return el;
+        }
+        return null;
+    }
+
+    function isElVisible(el) {
+        if (!el) return false;
+        var s = window.getComputedStyle(el);
+        if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) === 0) return false;
+        if (s.position === 'fixed') return el.offsetWidth > 0 && el.offsetHeight > 0;
+        return el.offsetWidth > 0 || el.offsetHeight > 0;
+    }
+
+    function isInFixed(el) {
+        var node = el;
+        while (node && node !== document.body) {
+            if (window.getComputedStyle(node).position === 'fixed') return true;
+            node = node.parentElement;
+        }
+        return false;
+    }
+
+    /* ── Wait for smooth-scroll to fully settle, then call callback.
+          Uses the native scrollend event when available (Chrome 114+, FF 109+)
+          and falls back to a scroll-position-stopped poll otherwise.
+          A hard 900 ms cap guarantees the guide never hangs. ── */
+    function waitScrollEnd(cb) {
+        clearTimeout(posTimer);
+        var called = false;
+
+        /* done() has rAF delay baked in from the start so every code path
+           (scrollend listener, poll closure, hard-cap timeout) all go through
+           the same double-rAF before calling cb.  This ensures we measure
+           getBoundingClientRect *after* the browser has repainted the post-
+           scroll layout (URL-bar collapse/expand, CSS transition frames, etc.) */
+        function done() {
+            if (called) return;
+            called = true;
+            clearTimeout(posTimer);
+            window.removeEventListener('scrollend', done);
+            requestAnimationFrame(function () {
+                requestAnimationFrame(cb);
+            });
+        }
+
+        if ('onscrollend' in window) {
+            window.addEventListener('scrollend', done, { once: true });
+            posTimer = setTimeout(done, 900);
+        } else {
+            /* Polling fallback: fire once Y is stable for 2 consecutive 55 ms ticks */
+            var lastY  = window.scrollY;
+            var steady = 0;
+            function poll() {
+                var y = window.scrollY;
+                if (y === lastY) { if (++steady >= 2) { done(); return; } }
+                else             { steady = 0; lastY = y; }
+                posTimer = setTimeout(poll, 55);
+            }
+            posTimer = setTimeout(poll, 55);
+        }
+    }
+
+    /* ── Force-complete animate-on-scroll on an element AND all its ancestors.
+          Necessary because measuring getBoundingClientRect() on a child element
+          returns wrong coordinates if any ancestor is still mid-animation
+          (e.g. feature-card.delay-2 shifts the child .feature-link by 30 px
+          during its 0.8 s translateY transition).  The body.guide-active CSS
+          already zeroes transition durations, but we still need to add the
+          animate-in class so the element jumps to opacity:1 / translateY(0)
+          before the reflow measurement. ── */
+    function forceAnimateAncestors(el) {
+        var node = el;
+        while (node && node !== document.body) {
+            if (node.classList && node.classList.contains('animate-on-scroll')) {
+                node.classList.add('animate-in');
+            }
+            node = node.parentElement;
+        }
+        /* Synchronous layout flush — commits the classList changes so the
+           very next getBoundingClientRect() reads final post-animation coords */
+        void el.offsetHeight;
+    }
+
+    /* ── Navigate to a step ── */
+    function goToStep(idx) {
+        curStep = idx;
+        var step = steps[idx];
+        /* Always resolve via getElForStep so selMobile is honoured from the start */
+        var el   = getElForStep(step);
+        if (!el) return;
+
+        updateCard(step, idx);
+
+        var inFixed = isInFixed(el);
+        if (inFixed) {
+            clearTimeout(posTimer);
+            posTimer = setTimeout(function () { positionStep(idx); }, 25);
+            return;
+        }
+
+        /* Force any pending animate-on-scroll transitions to their final state on
+           the target element and all its ancestors before measuring the scroll
+           target — a mid-animation parent shifts the child's coordinates. */
+        forceAnimateAncestors(el);
+
+        var r0 = el.getBoundingClientRect();
+        /* Mobile: place element at 30% from top so the guide card below the
+           spotlight has clear space.  Desktop: 50% (centred). */
+        var viewFraction = (window.innerWidth < 640) ? 0.30 : 0.50;
+        var targetY  = Math.max(0, window.scrollY + r0.top - window.innerHeight * viewFraction + r0.height / 2);
+        var noScroll = Math.abs(window.scrollY - targetY) < 3;
+
+        if (noScroll) {
+            clearTimeout(posTimer);
+            /* Same double-rAF as waitScrollEnd so we always measure post-paint */
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () { positionStep(idx); });
+            });
+        } else {
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+            waitScrollEnd(function () {
+                /* On mobile the browser URL bar keeps animating for ~100 ms after
+                   the scroll position settles — wait for it before measuring */
+                if (window.innerWidth < 640) {
+                    clearTimeout(posTimer);
+                    posTimer = setTimeout(function () { positionStep(idx); }, 120);
+                } else {
+                    positionStep(idx);
+                }
+            });
+        }
+    }
+
+    function positionStep(idx) {
+        var step = steps[idx];
+        var el   = getElForStep(step);
+        if (!el) return;
+        var pad  = step.pad || 12;
+
+        /* Force-complete animate-on-scroll on the target and every ancestor so
+           the elements are at least instructed to reach their final state before
+           we start polling. */
+        forceAnimateAncestors(el);
+
+        /* ── Poll until the element's viewport position stops changing ──────
+           This is the only reliable strategy on mobile: CSS transitions,
+           delayed IntersectionObserver callbacks, and URL-bar resize all shift
+           getBoundingClientRect() for up to ~1 s after a scroll.  Rather than
+           guessing how long to wait, we sample every 30 ms and commit the
+           spotlight only once three consecutive readings agree to within 0.5 px.
+           A hard 1 400 ms cap guarantees the guide never hangs. */
+        var STABLE_TICKS = 3;
+        var TICK_MS      = 30;
+        var MAX_ELAPSED  = 1400;
+        var elapsed      = 0;
+        var stableCnt    = 0;
+        var lastTop      = null;
+        var lastLeft     = null;
+
+        clearTimeout(posTimer);
+
+        function tick() {
+            var r = el.getBoundingClientRect();
+
+            if (
+                lastTop  !== null &&
+                Math.abs(r.top  - lastTop)  < 0.5 &&
+                Math.abs(r.left - lastLeft) < 0.5
+            ) {
+                stableCnt++;
+            } else {
+                stableCnt = 0;
+            }
+            lastTop  = r.top;
+            lastLeft = r.left;
+
+            if (stableCnt >= STABLE_TICKS || elapsed >= MAX_ELAPSED) {
+                /* Settled — commit spotlight and card positions */
+                spotlight.style.top    = (r.top    - pad) + 'px';
+                spotlight.style.left   = (r.left   - pad) + 'px';
+                spotlight.style.width  = (r.width  + pad * 2) + 'px';
+                spotlight.style.height = (r.height + pad * 2) + 'px';
+                placeCard(r, pad, step);
+            } else {
+                elapsed += TICK_MS;
+                posTimer = setTimeout(tick, TICK_MS);
+            }
+        }
+
+        tick();
+    }
+
+    /* ── Position the guide card near the spotlight ── */
+    function placeCard(r, pad, step) {
+        var vw  = window.innerWidth;
+        /* Use visualViewport.height when available — it reflects the actual
+           visible area after the mobile URL bar and on-screen keyboard are
+           accounted for, preventing the card from being clipped off-screen */
+        var vh  = (window.visualViewport ? window.visualViewport.height : null) || window.innerHeight;
+        var cw  = Math.min(320, vw - 28);
+        /* Use the real rendered card height — avoids covering the target on desktop */
+        var ch  = card.offsetHeight || 200;
+        var gap = 14;
+
+        card.style.width  = cw + 'px';
+        card.style.bottom = 'auto';
+        card.style.right  = 'auto';
+
+        if (vw < 640) {
+            /* Element-relative placement on mobile:
+               Try to place the card just below or just above the spotlight,
+               exactly the same logic as desktop but constrained to mobile viewport.
+               Top clearance = 70px (mobile nav bar), bottom clearance = 14px. */
+            var MOB_TOP_CLEAR = 70;   /* height of mobile-top-nav */
+            var MOB_BOT_CLEAR = 14;
+            var spaceBelow = vh - (r.bottom + pad) - MOB_BOT_CLEAR;
+            var spaceAbove = r.top  - pad - MOB_TOP_CLEAR;
+            var mobileTop;
+
+            if (spaceBelow >= ch + gap) {
+                mobileTop = r.bottom + pad + gap;
+            } else if (spaceAbove >= ch + gap) {
+                mobileTop = r.top - pad - ch - gap;
+            } else if (spaceBelow >= spaceAbove) {
+                /* Not enough room either side — anchor to whichever edge has more room */
+                mobileTop = vh - ch - MOB_BOT_CLEAR;
+            } else {
+                mobileTop = MOB_TOP_CLEAR + 4;
+            }
+
+            /* Hard clamp so card never goes off-screen */
+            mobileTop = Math.max(MOB_TOP_CLEAR + 4, Math.min(mobileTop, vh - ch - MOB_BOT_CLEAR));
+
+            /* Use pixel left (not % + transform) so the pop-in animation's
+               transform: scale/translateY doesn't fight with translateX(-50%) */
+            card.classList.remove('guide-card-top');
+            card.style.top       = mobileTop + 'px';
+            card.style.bottom    = 'auto';
+            card.style.left      = Math.round((vw - cw) / 2) + 'px';
+            card.style.transform = 'none';
+            card.style.right     = 'auto';
+            triggerCardAnim();
+            return;
+        }
+        card.classList.remove('guide-card-top');
+        card.style.transform = 'none';
+
+        var spaceBelow = vh - (r.bottom + pad);
+        var spaceAbove = r.top - pad;
+        var top, left;
+
+        if (spaceBelow >= ch + gap) {
+            top  = r.bottom + pad + gap;
+            left = r.left + r.width / 2 - cw / 2;
+        } else if (spaceAbove >= ch + gap) {
+            top  = r.top - pad - ch - gap;
+            left = r.left + r.width / 2 - cw / 2;
+        } else {
+            top = Math.max(16, Math.min(r.top + r.height / 2 - ch / 2, vh - ch - 16));
+            if (vw - (r.right + pad) >= cw + gap) {
+                left = r.right + pad + gap;
+            } else {
+                left = r.left - pad - cw - gap;
+            }
+        }
+
+        left = Math.max(16, Math.min(left, vw - cw - 16));
+        top  = Math.max(16, Math.min(top,  vh - ch - 16));
+
+        card.style.top  = top  + 'px';
+        card.style.left = left + 'px';
+        triggerCardAnim();
+    }
+
+    function triggerCardAnim() {
+        card.style.animation = 'none';
+        void card.offsetWidth;
+        card.style.animation = 'guideCardIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    }
+
+    /* ── Update card text, dots, and button labels (all translated) ── */
+    function updateCard(step, idx) {
+        /* Step counter */
+        var stepLabel = gT('guide_step_label')
+            .replace('{n}', idx + 1)
+            .replace('{total}', steps.length);
+        stepNumEl.textContent = stepLabel;
+
+        /* Title & description (use mobile-specific desc when on narrow viewport) */
+        var isMob = window.innerWidth < 640;
+        titleEl.textContent = gT(step.tKey);
+        descEl.innerHTML    = (isMob && step.dKeyMobile) ? gT(step.dKeyMobile) : gT(step.dKey);
+
+        /* Close button title */
+        closeBtn.title = gT('guide_close');
+
+        /* Progress dots */
+        dotsEl.innerHTML = '';
+        for (var i = 0; i < steps.length; i++) {
+            var d = document.createElement('span');
+            d.className = 'guide-dot' + (i === idx ? ' active' : '');
+            d.title     = gT('guide_dot_label').replace('{n}', i + 1);
+            (function (stepIdx) {
+                d.addEventListener('click', function () { goToStep(stepIdx); });
+            })(i);
+            dotsEl.appendChild(d);
+        }
+
+        /* Nav buttons */
+        prevBtn.textContent = gT('guide_back');
+        prevBtn.disabled    = (idx === 0);
+        nextBtn.textContent = (idx === steps.length - 1) ? gT('guide_finish') : gT('guide_next');
+    }
+
+    /* ── Wire Guide button + auto-pulse after 3 s ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('guideBtn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            startGuide();
+        });
+
+        setTimeout(function () {
+            btn.classList.add('pulse-once');
+            btn.addEventListener('animationend', function () {
+                btn.classList.remove('pulse-once');
+            }, { once: true });
+        }, 3000);
+    });
+
+})();
+</script>
 
 </body>
 </html>

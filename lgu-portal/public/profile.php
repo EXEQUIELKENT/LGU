@@ -636,11 +636,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 }
 
 .default-icon {
-    font-size: 60px;
-    background: #e5e5e5;
+    background: #ede9fe;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    padding: 0;
 }
 
 
@@ -2330,8 +2331,16 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
     <div class="sidebar-top">
         <!-- Profile Button -->
         <div class="sidebar-profile-btn<?= $isProfilePage ? ' active' : '' ?>" id="profileIconBtn" data-tooltip="Profile" style="cursor: pointer;">
-            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg">
-            <span class="profile-fallback-icon" id="profileFallbackIcon">👤</span>
+            <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt="Profile" id="profileImg"
+                 onerror="this.style.display='none';var f=document.getElementById('profileFallbackIcon');if(f){f.style.display='flex';}"
+                 <?= empty($profilePictureSrc) ? 'style="display:none;"' : '' ?>>
+            <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) ? ' style="display:flex;"' : '' ?>>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                </svg>
+            </span>
         </div>
         <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
             <span class="dark-icon">🌙</span>
@@ -2487,7 +2496,13 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                 <?php else: ?>
                     <div class="profile-picture-preview default-icon" 
                         id="profilePreview"
-                        <?php if($cooldownActive && !$isSuperAdmin) echo 'style="pointer-events:none;opacity:0.58;cursor:not-allowed;"'; ?>>👤</div>
+                        <?php if($cooldownActive && !$isSuperAdmin) echo 'style="pointer-events:none;opacity:0.58;cursor:not-allowed;"'; ?>>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width:100%;height:100%;display:block;border-radius:50%;">
+                            <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                            <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                            <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                        </svg>
+                    </div>
                 <?php endif; ?>
                 <div class="profile-picture-upload">
                     <label for="profile_picture">Change Profile Picture</label>
@@ -3260,6 +3275,10 @@ function updateProfilePreview(imageSrc) {
     if (sidebarImg) {
         sidebarImg.src = imageSrc;
         sidebarImg.style.display = 'block';
+        sidebarImg.onerror = function() {
+            this.style.display = 'none';
+            if (sidebarFallback) sidebarFallback.style.display = 'flex';
+        };
         if (sidebarFallback) sidebarFallback.style.display = 'none';
     }
 }
