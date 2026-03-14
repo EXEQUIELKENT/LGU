@@ -2374,7 +2374,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Total Requests</div>
                         </div>
-                        <div class="metric-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="metric-icon">📋</div>
                     </div>
                     <div class="metric-value"><?= number_format($totalRequests) ?></div>
                     <div class="metric-trend <?= $requestsTrend >= 0 ? 'positive' : 'negative' ?>">
@@ -2388,7 +2388,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Pending Requests</div>
                         </div>
-                        <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="metric-icon">⏳</div>
                     </div>
                     <div class="metric-value"><?= number_format($pendingRequests) ?></div>
                     <div class="metric-trend">
@@ -2401,7 +2401,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Completed Tasks<?= $isEngineer ? ' (Mine)' : '' ?></div>
                         </div>
-                        <div class="metric-icon"><i class="fas fa-check"></i></div>
+                        <div class="metric-icon">✅</div>
                     </div>
                     <div class="metric-value"><?= number_format($completedTasks) ?></div>
                     <div class="metric-trend positive">
@@ -2415,7 +2415,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <div>
                             <div class="metric-title">Active Users</div>
                         </div>
-                        <div class="metric-icon"><i class="fas fa-users"></i></div>
+                        <div class="metric-icon">👥</div>
                     </div>
                     <div class="metric-value"><?= number_format($activeUsers) ?></div>
                     <div class="metric-trend">
@@ -2428,22 +2428,22 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <a href="requests.php" class="action-btn">
-                    <div class="action-icon"><i class="fas fa-file"></i></div>
+                    <div class="action-icon">📋</div>
                     <div class="action-title">View Requests</div>
                     <div class="action-subtitle">Manage pending requests</div>
                 </a>
                 <a href="sched.php" class="action-btn">
-                    <div class="action-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="action-icon">📅</div>
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
                 <a href="current_reports.php" class="action-btn">
-                    <div class="action-icon"><i class="fas fa-wrench"></i></div>
+                    <div class="action-icon">🔄</div>
                     <div class="action-title">Current Reports</div>
                     <div class="action-subtitle">In-progress repairs</div>
                 </a>
                 <a href="pending_reports.php" class="action-btn">
-                    <div class="action-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="action-icon">⏳</div>
                     <div class="action-title">Pending Reports</div>
                     <div class="action-subtitle">Awaiting approval</div>
                 </a>
@@ -2832,38 +2832,39 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </div>
                 <div class="report-type-grid">
                     <button class="report-type-btn" onclick="openReportModal('requests')">
-                        <div class="rpt-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="rpt-icon">📋</div>
                         <div class="rpt-title">Requests Report</div>
                         <div class="rpt-desc">All infrastructure repair requests by date range</div>
                     </button>
                     <button class="report-type-btn" onclick="openReportModal('schedules')">
-                        <div class="rpt-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="rpt-icon">📅</div>
                         <div class="rpt-title">Schedules Report</div>
                         <div class="rpt-desc">Maintenance tasks & infrastructure reports on the calendar</div>
                     </button>
                     <button class="report-type-btn" onclick="openReportModal('summary')">
-                        <div class="rpt-icon"><i class="fas fa-chart-pie"></i></div>
+                        <div class="rpt-icon">📈</div>
                         <div class="rpt-title">Executive Summary</div>
                         <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
                     </button>
                     <button class="report-type-btn" onclick="openReportModal('current_reports')">
-                        <div class="rpt-icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="rpt-icon">📌</div>
                         <div class="rpt-title">Current Reports</div>
                         <div class="rpt-desc">Reports assigned to engineers — awaiting or accepted</div>
                     </button>
                     <button class="report-type-btn" onclick="openReportModal('pending_reports')">
-                        <div class="rpt-icon"><i class="fas fa-hourglass-start"></i></div>
+                        <div class="rpt-icon">⏳</div>
                         <div class="rpt-title">Pending Reports</div>
                         <div class="rpt-desc">Reports that are scheduled, in progress, or pending completion</div>
                     </button>
                     <button class="report-type-btn" onclick="openReportModal('archive_reports')">
-                        <div class="rpt-icon"><i class="fas fa-archive"></i></div>
+                        <div class="rpt-icon">🗄️</div>
                         <div class="rpt-title">Archive Reports</div>
                         <div class="rpt-desc">Completed and cancelled reports</div>
                     </button>
                 </div>
             </div>
             <?php endif; ?>
+
         </div>
     </div>
 </div>
@@ -2872,7 +2873,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <div id="pwModalBackdrop">
     <div class="pw-modal">
         <div class="pw-modal-header">
-            <div class="pw-modal-icon"><i class="fas fa-lock"></i></div>
+            <div class="pw-modal-icon">🔐</div>
             <div class="pw-modal-header-text">
                 <h3>Confirm Your Identity</h3>
                 <p>Enter your account password to generate this report.</p>
@@ -2891,7 +2892,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                        onblur="if(!this.value){this.type='text';this.style.setProperty('-webkit-text-security','disc')}">
                 <button class="pw-toggle-btn" type="button"
                         id="pwToggleBtn" title="Show/hide password"
-                        tabindex="-1"><i class="fas fa-eye"></i></button>
+                        tabindex="-1">👁️</button>
             </div>
             <div class="pw-error-msg" id="pwErrorMsg">
                 <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
@@ -2902,7 +2903,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             <button class="pw-cancel-btn" id="pwCancelBtn">Cancel</button>
             <button class="pw-confirm-btn" id="pwConfirmBtn">
                 <div class="pw-spinner" id="pwSpinner"></div>
-                <span id="pwConfirmText"><i class="fas fa-unlock"></i> Verify &amp; Continue</span>
+                <span id="pwConfirmText">🔓 Verify &amp; Continue</span>
             </button>
         </div>
     </div>
@@ -3135,7 +3136,6 @@ if (statusCtx) {
     });
 }
 
-
 // ===== ACTIVE REPORTS CHART =====
 const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;
 const activeReportsAssigned  = <?= json_encode($reportAssignedData) ?>;
@@ -3217,6 +3217,10 @@ if (activeReportsCtx) {
 }
 </script>
 
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     4. HTML MODAL — Add just BEFORE the closing </body> tag.
+     ============================================================ -->
 <!-- =====================================================================
      REPORT MODAL HTML  — replace your existing #reportModalBackdrop block
      ===================================================================== -->
@@ -3235,7 +3239,7 @@ if (activeReportsCtx) {
                         <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
                         <div class="rpt-date-display" id="rptFromDisplay" tabindex="0" role="button" aria-label="Select start date">
                             <span class="rdt-text" id="rptFromText"><?= date('M d, Y', strtotime(date('Y-m-01'))) ?></span>
-                            <span class="rdt-icon"><i class="fas fa-calendar-day"></i></span>
+                            <span class="rdt-icon">📅</span>
                         </div>
                         <input type="hidden" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
                     </div>
@@ -3243,7 +3247,7 @@ if (activeReportsCtx) {
                         <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
                         <div class="rpt-date-display" id="rptToDisplay" tabindex="0" role="button" aria-label="Select end date">
                             <span class="rdt-text" id="rptToText"><?= date('M d, Y') ?></span>
-                            <span class="rdt-icon"><i class="fas fa-calendar-day"></i></span>
+                            <span class="rdt-icon">📅</span>
                         </div>
                         <input type="hidden" id="rptDateTo" value="<?= date('Y-m-d') ?>">
                     </div>
@@ -3253,16 +3257,16 @@ if (activeReportsCtx) {
                 <label>Export Format</label>
                 <div class="format-toggle">
                     <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
-                        <i class="fas fa-file-csv"></i> CSV (.csv)
+                        📊 CSV (.csv)
                     </button>
                     <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
-                        <i class="fas fa-file-pdf"></i> PDF (Print)
+                        📄 PDF (Print)
                     </button>
                 </div>
             </div>
             <!-- "Generate" now opens the password gate first -->
             <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
-                <span id="btnGenerateText">🔒 <i class="fas fa-key"></i> Verify &amp; Generate</span>
+                <span id="btnGenerateText">🔐 Verify &amp; Generate</span>
             </button>
             <p class="report-info-text">
                 You will be asked to confirm your password before the report is created.
@@ -3330,6 +3334,11 @@ if (activeReportsCtx) {
 </div>
 <?php endif; ?>
 
+<!-- ============================================================
+     EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
+     5. JAVASCRIPT — Add AFTER the existing </script> blocks,
+     before closing </body>
+     ============================================================ -->
 <!-- =====================================================================
      REPORT JS  — replace your existing report <script> block entirely
      ===================================================================== -->
@@ -3369,7 +3378,7 @@ function selectFormat(fmt) {
 function resetBtnGenerate() {
     const btn = document.getElementById('btnGenerate');
     btn.disabled = false;
-    document.getElementById('btnGenerateText').innerHTML = '<i class="fas fa-lock"></i> Verify & Generate';
+    document.getElementById('btnGenerateText').textContent = '🔐 Verify & Generate';
 }
 
 // ── Step 1: Validate date inputs, then open password gate ────────────────────
@@ -3434,11 +3443,11 @@ document.getElementById('pwToggleBtn').addEventListener('click', function () {
     if (isHidden) {
         input.type = 'text';
         input.style.removeProperty('-webkit-text-security');
-        this.innerHTML = '<i class="fas fa-eye-slash"></i>';
+        this.textContent = '🙈';
     } else {
         input.type = 'text';
         input.style.setProperty('-webkit-text-security', 'disc');
-        this.innerHTML = '<i class="fas fa-eye"></i>';
+        this.textContent = '👁️';
     }
 });
 
