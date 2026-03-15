@@ -4138,7 +4138,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <div id="taskModal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <div class="modal-header-icon">🔧</div>
+            <div class="modal-header-icon"><i class="fas fa-tools"></i></div>
             <div class="modal-header-text">
                 <span class="modal-label">Maintenance Task</span>
                 <div style="display:flex;align-items:center;gap:8px;">
@@ -5056,7 +5056,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Est. end date row (only when available)
         const endDateRow = t.estimated_end_date
             ? `<div class="modal-task-row">
-                    <div class="modal-task-row-icon">🏁</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-flag-checkered"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Est. End Date</div>
                         <div class="modal-task-row-value">${fmtDate(t.estimated_end_date)}</div>
@@ -5067,7 +5067,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Assigned Engineer row — shown to non-engineers on report-source items
         const engineerRow = (!window.IS_ENGINEER && t.source === 'report' && t.engineer_name && t.engineer_name !== '—')
             ? `<div class="modal-task-row">
-                    <div class="modal-task-row-icon">👷</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-user"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Assigned Engineer</div>
                         <div class="modal-task-row-value">${escH(t.engineer_name)}</div>
@@ -5080,7 +5080,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const budgetStr = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         const budgetRow = t.source === 'report'
             ? `<div class="modal-task-row">
-                    <div class="modal-task-row-icon">💰</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-wallet"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Budget</div>
                         <div class="modal-task-row-value">${budgetStr}</div>
@@ -5091,21 +5091,21 @@ document.addEventListener('DOMContentLoaded', function() {
         modalBody.innerHTML = `
             <div class="modal-task-item theme-${key}">
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">📝</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-file"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Task / Infrastructure</div>
                         <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">📍</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Location</div>
                         <div class="modal-task-row-value">${escH(t.location)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">📅</div>
+                    <div class="modal-task-row-icon"><i class="far fa-calendar-alt"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Start Date</div>
                         <div class="modal-task-row-value">${fmtDate(t.schedule_date)}</div>
@@ -5113,14 +5113,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 ${endDateRow}
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">🏷️</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-tags"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Category</div>
                         <div class="modal-task-row-value">${escH(category)}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">⚡</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-fire-alt"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Priority</div>
                         <div class="modal-task-row-value">
@@ -5129,7 +5129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon">🔵</div>
+                    <div class="modal-task-row-icon"><i class="fas fa-compass"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Status</div>
                         <div class="modal-task-row-value">
