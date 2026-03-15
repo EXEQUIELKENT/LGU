@@ -398,7 +398,56 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             box-shadow: 0 0 15px rgba(43, 108, 176, 0.8);
         }
 
-        .trust-icon { font-size: 36px; margin-bottom: 15px; }
+        /* === Trust & Feature icon bubble (mirrors employee.php metric-icon) === */
+        .trust-icon {
+            font-size: 28px;
+            margin-bottom: 15px;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a56db, #3b82f6);
+            box-shadow: 0 4px 14px rgba(33, 100, 243, 0.35);
+            color: #ffffff !important;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .trust-icon i { color: #ffffff !important; }
+        .trust-item:hover .trust-icon { transform: scale(1.1) rotate(5deg); }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 20px;
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a56db, #3b82f6);
+            box-shadow: 0 4px 14px rgba(33, 100, 243, 0.35);
+            color: #ffffff !important;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .feature-icon i { color: #ffffff !important; }
+        .feature-card:hover .feature-icon { transform: scale(1.1) rotate(5deg); }
+
+        /* Dark mode: keep white icon + add a glowing border for visibility */
+        [data-theme="dark"] .trust-icon,
+        [data-theme="dark"] .trust-icon i { color: #ffffff !important; }
+        [data-theme="dark"] .trust-icon {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            border: 1.5px solid rgba(96, 165, 250, 0.55);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        }
+        [data-theme="dark"] .feature-icon,
+        [data-theme="dark"] .feature-icon i { color: #ffffff !important; }
+        [data-theme="dark"] .feature-icon {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            border: 1.5px solid rgba(96, 165, 250, 0.55);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        }
 
         .trust-title {
             font-size: 1.1rem;
@@ -482,7 +531,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             box-shadow: var(--card-shadow-hover);
         }
 
-        .feature-icon { font-size: 48px; margin-bottom: 20px; }
+        /* .feature-icon dimensions/font-size defined in bubble block above */
 
         .feature-title {
             font-size: 1.5rem;

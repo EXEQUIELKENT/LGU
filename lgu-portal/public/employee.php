@@ -622,13 +622,16 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    opacity: 0.15;
+    opacity: 0.45;
     transition: opacity 0.3s ease;
 }
 
 .metric-card:hover::before {
-    opacity: 0.25;
+    opacity: 0.60;
 }
+
+[data-theme="dark"] .metric-card::before       { opacity: 0.20; }
+[data-theme="dark"] .metric-card:hover::before { opacity: 0.30; }
 
 .metric-card.green::before {
     background: var(--metric-green);
@@ -684,27 +687,51 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 .metric-card.green .metric-icon {
     background: linear-gradient(135deg, var(--metric-green), var(--metric-green-light));
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    border: 2px solid rgba(76, 175, 80, 0.6);
 }
 
 .metric-card.blue .metric-icon {
     background: linear-gradient(135deg, var(--metric-blue), var(--metric-blue-light));
     box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    border: 2px solid rgba(33, 150, 243, 0.6);
 }
 
 .metric-card.orange .metric-icon {
     background: linear-gradient(135deg, var(--metric-orange), var(--metric-orange-light));
     box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+    border: 2px solid rgba(255, 152, 0, 0.6);
 }
 
 .metric-card.red .metric-icon {
     background: linear-gradient(135deg, var(--metric-red), var(--metric-red-light));
     box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    border: 2px solid rgba(244, 67, 54, 0.6);
 }
 
 .metric-card.purple .metric-icon {
     background: linear-gradient(135deg, var(--metric-purple), var(--metric-purple-light));
     box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+    border: 2px solid rgba(156, 39, 176, 0.6);
 }
+
+/* Metric icon color + black outline on the glyph itself */
+.metric-icon i {
+    color: rgba(20, 20, 40, 0.80);
+    -webkit-text-stroke: 3px rgba(0, 0, 0, 0.90);
+    paint-order: stroke fill;
+}
+[data-theme="dark"] .metric-icon i {
+    color: #ffffff;
+    -webkit-text-stroke: 3px rgba(0, 0, 0, 0.90);
+    paint-order: stroke fill;
+}
+
+/* Dark mode: stronger border opacity for better visibility against dark bg */
+[data-theme="dark"] .metric-card.green .metric-icon  { border-color: rgba(102, 187, 106, 0.85); }
+[data-theme="dark"] .metric-card.blue .metric-icon   { border-color: rgba(66,  165, 245, 0.85); }
+[data-theme="dark"] .metric-card.orange .metric-icon { border-color: rgba(255, 167,  38, 0.85); }
+[data-theme="dark"] .metric-card.red .metric-icon    { border-color: rgba(239,  83,  80, 0.85); }
+[data-theme="dark"] .metric-card.purple .metric-icon { border-color: rgba(171,  71, 188, 0.85); }
 
 .metric-value {
     font-size: 36px;

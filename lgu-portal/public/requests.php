@@ -325,6 +325,9 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 [data-theme="dark"] .no-evidence { color: var(--text-secondary); }
 [data-theme="dark"] .request-card .btn-view { background: #3762c8; color: #fff; }
 [data-theme="dark"] .request-card .btn-view:hover { background: #2851b3; }
+/* Modal label icons: white in dark mode; blue label text stays unchanged */
+[data-theme="dark"] .detail-field-label i,
+[data-theme="dark"] .gis-field-label i { color: #ffffff; }
 
 /* search highlight */
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 600; }
@@ -557,6 +560,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 [data-theme="dark"] .detail-status-pill.unknown  { color: #bdbdbd; }
 .detail-field { margin-bottom: 14px; }
 .detail-field-label { font-size: 11px; font-weight: 700; color: #3762c8; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+.detail-field-label i { color: #1e3a8a; }
 .detail-field-value { font-size: 14px; color: var(--text-primary); line-height: 1.55; }
 .detail-divider { height: 1px; background: var(--border-color); margin: 14px 0; }
 .detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
@@ -601,6 +605,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 [data-theme="dark"] .gis-status-pill.rejected { color: #e57373; }
 .gis-field { margin-bottom: 14px; }
 .gis-field-label { font-size: 11px; font-weight: 700; color: #3762c8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.gis-field-label i { color: #1e3a8a; }
 .gis-field-value { font-size: 14px; color: var(--text-primary); line-height: 1.5; }
 .gis-divider { height: 1px; background: var(--border-color); margin: 16px 0; }
 .gis-evidence-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
