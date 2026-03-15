@@ -1346,13 +1346,13 @@ tbody td {
                 <div class="gis-filter-row-line">
                     <span class="gis-filter-label">Type:</span>
                     <button class="gis-filter-btn infra-btn active" id="infraAll"              onclick="setInfraFilter('all')">📦 All Types</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraRoads"            onclick="setInfraFilter('roads')">🛣️ Roads</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraStreetLights"     onclick="setInfraFilter('street lights')">💡 Street Lights</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraDrainage"         onclick="setInfraFilter('drainage')">🌊 Drainage</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraPublicFacilities" onclick="setInfraFilter('public facilities')">🏛️ Public Facilities</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraWaterSupply"      onclick="setInfraFilter('water supply')">🚰 Water Supply</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraElectrical"       onclick="setInfraFilter('electrical')">⚡ Electrical</button>
-                    <button class="gis-filter-btn infra-btn"        id="infraOthers"           onclick="setInfraFilter('others')">📄 Others</button>
+                    <button class="gis-filter-btn infra-btn" id="infraRoads" onclick="setInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
+                    <button class="gis-filter-btn infra-btn" id="infraStreetLights" onclick="setInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Street Lights</button>
+                    <button class="gis-filter-btn infra-btn" id="infraDrainage" onclick="setInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
+                    <button class="gis-filter-btn infra-btn" id="infraPublicFacilities" onclick="setInfraFilter('public facilities')"><i class="fas fa-building"></i> Public Facilities</button>
+                    <button class="gis-filter-btn infra-btn" id="infraWaterSupply" onclick="setInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</button>
+                    <button class="gis-filter-btn infra-btn" id="infraElectrical" onclick="setInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
+                    <button class="gis-filter-btn infra-btn" id="infraOthers" onclick="setInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
                 </div>
             </div>
         </div>
@@ -1392,12 +1392,12 @@ tbody td {
                 </div>
                 <div class="legend-row">
                     <span class="legend-section-label">Types:</span>
-                    <div class="legend-item">🛣️ Roads</div>
-                    <div class="legend-item">💡 Lights</div>
-                    <div class="legend-item">🌊 Drainage</div>
-                    <div class="legend-item">🏛️ Facilities</div>
-                    <div class="legend-item">🚰 Water</div>
-                    <div class="legend-item">⚡ Electrical</div>
+                    <div class="legend-item"><i class="fas fa-road"></i> Roads</div>
+                    <div class="legend-item"><i class="fas fa-solar-panel"></i> Lights</div>
+                    <div class="legend-item"><i class="fas fa-tint"></i> Drainage</div>
+                    <div class="legend-item"><i class="fas fa-building"></i> Facilities</div>
+                    <div class="legend-item"><i class="fas fa-water"></i> Water</div>
+                    <div class="legend-item"><i class="fas fa-bolt"></i> Electrical</div>
                 </div>
                 <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview · Click to view details</div>
             </div>
@@ -1599,18 +1599,18 @@ tbody td {
         </div>
         <div class="detail-modal-body">
             <div class="detail-status-row"><span class="detail-status-pill" id="detailStatus"></span></div>
-            <div class="detail-field"><div class="detail-field-label">📍 Location</div><div class="detail-field-value" id="detailLocation"></div></div>
-            <div class="detail-field"><div class="detail-field-label">🌍 Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
-            <div class="detail-field"><div class="detail-field-label">🔧 Issue / Damage</div><div class="detail-field-value" id="detailIssue"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="detail-field-value" id="detailLocation"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
+            <div class="detail-field"><div class="detail-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="detail-field-value" id="detailIssue"></div></div>
             <div class="detail-divider"></div>
             <div class="detail-grid-2">
-                <div class="detail-field"><div class="detail-field-label">📅 Date Submitted</div><div class="detail-field-value" id="detailDate"></div></div>
-                <div class="detail-field"><div class="detail-field-label">👤 Requester</div><div class="detail-field-value" id="detailRequester"></div></div>
-                <div class="detail-field"><div class="detail-field-label">📞 Contact</div><div class="detail-field-value" id="detailContact"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-calendar-alt"></i> Date Submitted</div><div class="detail-field-value" id="detailDate"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-user"></i> Requester</div><div class="detail-field-value" id="detailRequester"></div></div>
+                <div class="detail-field"><div class="detail-field-label"><i class="fas fa-phone"></i> Contact</div><div class="detail-field-value" id="detailContact"></div></div>
             </div>
             <div class="detail-divider"></div>
             <div class="detail-field">
-                <div class="detail-field-label">🖼️ Evidence Images</div>
+                <div class="detail-field-label"><i class="fas fa-images"></i> Evidence Images</div>
                 <div class="detail-evidence-strip" id="detailEvidenceContainer"></div>
             </div>
         </div>
@@ -1638,18 +1638,18 @@ tbody td {
         </div>
         <div class="gis-modal-body">
             <div class="gis-modal-status-row"><span class="gis-status-pill" id="modalStatusPill"></span></div>
-            <div class="gis-field"><div class="gis-field-label">📍 Location</div><div class="gis-field-value" id="modalLocation"></div></div>
-            <div class="gis-field"><div class="gis-field-label">🌍 Coordinates</div><div class="gis-field-value" id="modalCoordinates"></div></div>
-            <div class="gis-field"><div class="gis-field-label">🔧 Issue / Damage</div><div class="gis-field-value" id="modalIssue"></div></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="gis-field-value" id="modalLocation"></div></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="gis-field-value" id="modalCoordinates"></div></div>
+            <div class="gis-field"><div class="gis-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="gis-field-value" id="modalIssue"></div></div>
             <div class="gis-divider"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div class="gis-field"><div class="gis-field-label">📅 Date Submitted</div><div class="gis-field-value" id="modalDate"></div></div>
-                <div class="gis-field"><div class="gis-field-label">👤 Requester</div><div class="gis-field-value" id="modalRequester"></div></div>
-                <div class="gis-field"><div class="gis-field-label">📞 Contact</div><div class="gis-field-value" id="modalContact"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="fas fa-calendar-alt"></i> Date Submitted</div><div class="gis-field-value" id="modalDate"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="fas fa-user"></i> Requester</div><div class="gis-field-value" id="modalRequester"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="fas fa-phone"></i> Contact</div><div class="gis-field-value" id="modalContact"></div></div>
             </div>
             <div class="gis-divider"></div>
             <div class="gis-field">
-                <div class="gis-field-label">🖼️ Evidence Images</div>
+                <div class="gis-field-label"><i class="fas fa-images"></i> Evidence Images</div>
                 <div class="gis-evidence-strip" id="modalEvidence"></div>
             </div>
         </div>
@@ -1717,13 +1717,13 @@ tbody td {
             <div class="gis-fullmap-filter-line">
                 <span class="gis-filter-label">Type:</span>
                 <button class="gis-filter-btn infra-btn active" id="mInfraAll"              onclick="setModalInfraFilter('all')">📦 All</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraRoads"            onclick="setModalInfraFilter('roads')">🛣️ Roads</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraStreetLights"     onclick="setModalInfraFilter('street lights')">💡 Lights</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraDrainage"         onclick="setModalInfraFilter('drainage')">🌊 Drainage</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraPublicFacilities" onclick="setModalInfraFilter('public facilities')">🏛️ Facilities</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraWaterSupply"      onclick="setModalInfraFilter('water supply')">🚰 Water</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraElectrical"       onclick="setModalInfraFilter('electrical')">⚡ Electrical</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraOthers"           onclick="setModalInfraFilter('others')">📄 Others</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraRoads"            onclick="setModalInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraStreetLights"     onclick="setModalInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Lights</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraDrainage"         onclick="setModalInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraPublicFacilities" onclick="setModalInfraFilter('public facilities')"><i class="fas fa-building"></i> Facilities</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraWaterSupply"      onclick="setModalInfraFilter('water supply')"><i class="fas fa-water"></i> Water</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraElectrical"       onclick="setModalInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
+                <button class="gis-filter-btn infra-btn"        id="mInfraOthers"           onclick="setModalInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
             </div>
         </div>
         <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;">
@@ -1741,12 +1741,12 @@ tbody td {
                 <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
                 <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
                 <span class="legend-section-label" style="margin-left:16px;">Types:</span>
-                <div class="legend-item">🛣️ Roads</div>
-                <div class="legend-item">💡 Lights</div>
-                <div class="legend-item">🌊 Drainage</div>
-                <div class="legend-item">🏛️ Facilities</div>
-                <div class="legend-item">🚰 Water</div>
-                <div class="legend-item">⚡ Electrical</div>
+                <div class="legend-item"><i class="fas fa-road"></i> Roads</div>
+                <div class="legend-item"><i class="fas fa-lightbulb"></i> Lights</div>
+                <div class="legend-item"><i class="fas fa-tint"></i> Drainage</div>
+                <div class="legend-item"><i class="fas fa-building"></i> Facilities</div>
+                <div class="legend-item"><i class="fas fa-water"></i> Water</div>
+                <div class="legend-item"><i class="fas fa-bolt"></i> Electrical</div>
             </div>
             <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview · Click to view details</div>
         </div>
