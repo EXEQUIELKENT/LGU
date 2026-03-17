@@ -483,7 +483,7 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 
 // ===== SCHEDULE STATUS BREAKDOWN (for doughnut chart — mirrors sched.php logic) =====
 // Personalised: engineers only see their own report counts; maintenance_schedule has no engineer_id so shows for all.
-$schedStatusCounts = ['Scheduled' => 0, 'Completed' => 0, 'Delayed' => 0, 'On-Going' => 0];
+$schedStatusCounts = ['Scheduled' => 0, 'Completed' => 0, 'Delayed' => 0, 'In Progress' => 0];
 $todayChartDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
 // ── A. maintenance_schedule ──────────────────────────────────────────────────
@@ -500,7 +500,7 @@ if ($msChartRes) {
                     $msDt   = new DateTime($msRow['starting_date'], new DateTimeZone('Asia/Manila'));
                     $msDiff = (int)$todayChartDt->diff($msDt)->format('%r%a');
                     if ($msDiff < 0)       $msLabel = 'Delayed';
-                    elseif ($msDiff === 0) $msLabel = 'On-Going';
+                    elseif ($msDiff === 0) $msLabel = 'In Progress';
                 } catch (Exception $e) {}
             }
             $schedStatusCounts[$msLabel]++;
@@ -526,7 +526,7 @@ if ($rpChartRes) {
         if ($rpStatus === 'Completed') {
             $schedStatusCounts['Completed']++;
         } elseif ($rpStatus === 'In Progress' || $rpStatus === 'Pending Completion') {
-            $schedStatusCounts['On-Going']++;
+            $schedStatusCounts['In Progress']++;
         } else {
             $rpLabel = 'Scheduled';
             if (empty($rpNote) && !empty($rpEndDate)) {
@@ -616,14 +616,17 @@ $schedChartData   = array_values($schedStatusCounts);
 /* ===========================
    MAIN CONTENT LAYOUT — fluid, sidebar-aware
 =========================== */
+body {
+    overflow: hidden;
+    height: 100vh;
+}
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
     margin-right: 18px;
     padding-top: 85px;
     padding-left: 0;
     padding-right: 0;
-    min-height: 100vh;
-    height: auto;
+    height: 100vh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -1175,19 +1178,22 @@ $schedChartData   = array_values($schedStatusCounts);
     flex-shrink: 0;
 }
 
-.schedule-icon.high-priority {
-    background: linear-gradient(135deg, var(--metric-red), var(--metric-red-light));
-    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+/* Status-based icon backgrounds — match Schedule Status chart colours */
+.schedule-icon.status-scheduled {
+    background: linear-gradient(135deg, #2196f3, #64b5f6);
+    box-shadow: 0 2px 8px rgba(33,150,243,0.35);
 }
-
-.schedule-icon.medium-priority {
-    background: linear-gradient(135deg, var(--metric-orange), var(--metric-orange-light));
-    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+.schedule-icon.status-in-progress {
+    background: linear-gradient(135deg, #ff9800, #ffb74d);
+    box-shadow: 0 2px 8px rgba(255,152,0,0.35);
 }
-
-.schedule-icon.low-priority {
-    background: linear-gradient(135deg, var(--metric-blue), var(--metric-blue-light));
-    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+.schedule-icon.status-delayed {
+    background: linear-gradient(135deg, #f44336, #e57373);
+    box-shadow: 0 2px 8px rgba(244,67,54,0.35);
+}
+.schedule-icon.status-completed {
+    background: linear-gradient(135deg, #4caf50, #81c784);
+    box-shadow: 0 2px 8px rgba(76,175,80,0.35);
 }
 
 .schedule-content {
@@ -1228,19 +1234,22 @@ $schedChartData   = array_values($schedStatusCounts);
     white-space: nowrap;
 }
 
-.schedule-badge.high {
-    background: rgba(244, 67, 54, 0.15);
-    color: var(--metric-red);
+/* Status-based badge colours — match Schedule Status chart */
+.schedule-badge.status-scheduled {
+    background: rgba(33,150,243,0.15);
+    color: #2196f3;
 }
-
-.schedule-badge.medium {
-    background: rgba(255, 152, 0, 0.15);
-    color: var(--metric-orange);
+.schedule-badge.status-in-progress {
+    background: rgba(255,152,0,0.15);
+    color: #ff9800;
 }
-
-.schedule-badge.low {
-    background: rgba(33, 150, 243, 0.15);
-    color: var(--metric-blue);
+.schedule-badge.status-delayed {
+    background: rgba(244,67,54,0.15);
+    color: #f44336;
+}
+.schedule-badge.status-completed {
+    background: rgba(76,175,80,0.15);
+    color: #4caf50;
 }
 
 .no-schedules {
@@ -2082,16 +2091,15 @@ $schedChartData   = array_values($schedStatusCounts);
         margin-left: 0 !important;
         margin-right: 0 !important;
         padding-top: 90px;
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        height: auto !important;
+        min-height: calc(100vh - 64px);
+        overflow-y: visible !important;
+        overflow-x: hidden;
     }
-
-    .main-content::-webkit-scrollbar {
-        width: 0 !important;
-        background: transparent;
-        display: none !important;
+    /* Restore natural page scroll on mobile — body:overflow:hidden is desktop-only */
+    body {
+        overflow: auto !important;
+        height: auto !important;
     }
 
     .sidebar-top {
@@ -2366,6 +2374,49 @@ $schedChartData   = array_values($schedStatusCounts);
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ══════════════════════════════════════════════
+   MAIN-CONTENT SCROLLBAR — matches emp-global.css
+══════════════════════════════════════════════ */
+.main-content {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+.main-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.main-content::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+.main-content::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+[data-theme="dark"] .main-content {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .main-content::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+@media (max-width: 768px) {
+    .main-content {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -2627,7 +2678,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             </div>
 
             <!-- Charts Grid -->
-            <div class="charts-grid">
+            <?php
+            // For engineers: Schedule Status moves to the top row; Request Trends drops to the bottom row.
+            $requestTrendsCard = <<<'HTML'
                 <!-- Request Trends Chart -->
                 <div class="chart-card">
                     <div class="chart-header">
@@ -2640,8 +2693,30 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <canvas id="trendsChart"></canvas>
                     </div>
                 </div>
+HTML;
+            ?>
+            <div class="charts-grid">
+                <?php if ($isEngineer): ?>
+                <!-- Schedule Status Breakdown Doughnut (top row for engineers) -->
+                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
+                    <div class="chart-header sched-status-header">
+                        <div style="min-width:0;flex:1;">
+                            <div class="chart-title">Schedule Status (Mine)</div>
+                            <div class="chart-subtitle">Your schedule breakdown — Scheduled, In Progress, Delayed &amp; Completed</div>
+                        </div>
+                        <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="schedStatusChart"></canvas>
+                    </div>
+                </div>
+                <?php else: ?>
+                <?= $requestTrendsCard ?>
+                <?php endif; ?>
 
-                <!-- Status Breakdown Chart -->
+                <?php
+                // ── Status Breakdown card (no PHP inside — heredoc) ──
+                $statusBreakdownCard = <<<'HTML'
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
@@ -2653,11 +2728,64 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <canvas id="statusChart"></canvas>
                     </div>
                 </div>
+HTML;
+                ?>
+                <!-- Row A second slot: Upcoming Maintenance for engineers, Status Breakdown for others -->
+                <?php if ($isEngineer): ob_start(); ?>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Upcoming Maintenance (Mine)</div>
+                            <div class="chart-subtitle">Next scheduled tasks assigned to you</div>
+                        </div>
+                        <a href="sched.php" class="view-all-link">View all →</a>
+                    </div>
+                    <div class="schedule-list">
+                        <?php
+                        if (!empty($upcomingSchedules)):
+                            foreach ($upcomingSchedules as $schedule):
+                                $statusLbl  = $schedule['status_label'] ?? 'Scheduled';
+                                $statusKey  = match($statusLbl) {
+                                    'In Progress' => 'in-progress',
+                                    'Delayed'     => 'delayed',
+                                    'Completed'   => 'completed',
+                                    default       => 'scheduled',
+                                };
+                                $statusIcon = match($statusLbl) {
+                                    'Delayed'     => '⚠️',
+                                    'In Progress' => '🔄',
+                                    'Completed'   => '✅',
+                                    default       => '📅',
+                                };
+                        ?>
+                        <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
+                            <div class="schedule-icon status-<?= $statusKey ?>"><?= $statusIcon ?></div>
+                            <div class="schedule-content">
+                                <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
+                                <div class="schedule-location"><?= htmlspecialchars($schedule['location']) ?></div>
+                            </div>
+                            <div class="schedule-date-container">
+                                <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
+                                <span class="schedule-badge status-<?= $statusKey ?>"><?= htmlspecialchars($statusLbl) ?></span>
+                            </div>
+                        </div>
+                        <?php
+                            endforeach;
+                        else:
+                        ?>
+                        <div class="no-schedules">No upcoming maintenance scheduled</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php $upcomingMaintenanceCard = ob_get_clean(); echo $upcomingMaintenanceCard; ?>
+                <?php else: ?>
+                <?= $statusBreakdownCard ?>
+                <?php endif; ?>
             </div>
 
             <!-- Bottom Grid -->
             <div class="charts-grid">
-                <!-- Top Facilities -->
+                <!-- Top Facilities (always fixed in left slot) -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
@@ -2697,12 +2825,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <!-- Upcoming Maintenance Schedules — combined sched + reports, engineer-personalised -->
+                <!-- Right slot: Status Breakdown for engineers (swapped), Upcoming Maintenance for others -->
+                <?php if ($isEngineer): ?>
+                <?= $statusBreakdownCard ?>
+                <?php else: ?>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
-                            <div class="chart-title">Upcoming Maintenance<?= $isEngineer ? ' (Mine)' : '' ?></div>
-                            <div class="chart-subtitle">Next scheduled tasks<?= $isEngineer ? ' assigned to you' : ' from schedule &amp; reports' ?></div>
+                            <div class="chart-title">Upcoming Maintenance</div>
+                            <div class="chart-subtitle">Next scheduled tasks from schedule &amp; reports</div>
                         </div>
                         <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
@@ -2710,12 +2841,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <?php
                         if (!empty($upcomingSchedules)):
                             foreach ($upcomingSchedules as $schedule):
-                                $priority   = strtolower($schedule['priority'] ?? 'low');
                                 $statusLbl  = $schedule['status_label'] ?? 'Scheduled';
-                                $iconClass  = 'low-priority';
-                                if ($priority === 'high' || $priority === 'critical') $iconClass = 'high-priority';
-                                elseif ($priority === 'medium') $iconClass = 'medium-priority';
-                                $badgeClass = ($priority === 'high' || $priority === 'critical') ? 'high' : ($priority === 'medium' ? 'medium' : 'low');
+                                $statusKey  = match($statusLbl) {
+                                    'In Progress' => 'in-progress',
+                                    'Delayed'     => 'delayed',
+                                    'Completed'   => 'completed',
+                                    default       => 'scheduled',
+                                };
                                 $statusIcon = match($statusLbl) {
                                     'Delayed'     => '⚠️',
                                     'In Progress' => '🔄',
@@ -2727,19 +2859,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                                     : ($schedule['source'] === 'schedule' ? ($schedule['assigned_team'] ?: 'Unassigned') : 'Unassigned');
                         ?>
                         <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
-                            <div class="schedule-icon <?= $iconClass ?>"><?= $statusIcon ?></div>
+                            <div class="schedule-icon status-<?= $statusKey ?>"><?= $statusIcon ?></div>
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
                                 <div class="schedule-location">
                                     <?= htmlspecialchars($schedule['location']) ?>
-                                    <?php if (!$isEngineer): ?>
                                     · <em style="color:var(--text-secondary);font-size:11px;"><?= htmlspecialchars($engLabel) ?></em>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                             <div class="schedule-date-container">
                                 <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
-                                <span class="schedule-badge <?= $badgeClass ?>"><?= htmlspecialchars($statusLbl) ?></span>
+                                <span class="schedule-badge status-<?= $statusKey ?>"><?= htmlspecialchars($statusLbl) ?></span>
                             </div>
                         </div>
                         <?php
@@ -2750,9 +2880,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
 
-            <!-- Active Reports + Schedule Status Breakdown Row -->
+            <!-- Active Reports + Schedule Status / Request Trends Row -->
             <div class="charts-grid" style="margin-top:0;">
 
                 <!-- Active Reports Chart -->
@@ -2777,40 +2908,26 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div><!-- end Active Reports card -->
 
-                <!-- Schedule Status Breakdown Doughnut -->
+                <?php if ($isEngineer): ?>
+                <!-- Request Trends (bottom row for engineers) -->
+                <?= $requestTrendsCard ?>
+                <?php else: ?>
+                <!-- Schedule Status Breakdown Doughnut (bottom row for non-engineers) -->
                 <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
                     <div class="chart-header sched-status-header">
                         <div style="min-width:0;flex:1;">
-                            <div class="chart-title">Schedule Status<?= $isEngineer ? ' (Mine)' : '' ?></div>
-                            <div class="chart-subtitle">
-                                <?= $isEngineer
-                                    ? 'Your schedule breakdown — Scheduled, On-Going, Delayed &amp; Completed'
-                                    : 'Overall schedule breakdown — Scheduled, On-Going, Delayed &amp; Completed'
-                                ?>
-                            </div>
+                            <div class="chart-title">Schedule Status</div>
+                            <div class="chart-subtitle">Overall schedule breakdown — Scheduled, In Progress, Delayed &amp; Completed</div>
                         </div>
                         <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
                     </div>
                     <div class="chart-container">
                         <canvas id="schedStatusChart"></canvas>
                     </div>
-                    <!-- Summary counts — 2×2 grid so it never wraps awkwardly -->
-                    <div class="sched-status-badges">
-                        <?php
-                        $schedIconMap  = ['Scheduled'=>'📅','On-Going'=>'🔄','Delayed'=>'⚠️','Completed'=>'✅'];
-                        $schedColorMap = ['Scheduled'=>'#2196f3','On-Going'=>'#ff9800','Delayed'=>'#f44336','Completed'=>'#4caf50'];
-                        foreach ($schedStatusCounts as $lbl => $cnt):
-                        ?>
-                        <span class="sched-status-badge-item">
-                            <span style="width:10px;height:10px;border-radius:50%;background:<?= $schedColorMap[$lbl] ?>;display:inline-block;flex-shrink:0;"></span>
-                            <span><?= $schedIconMap[$lbl] ?> <?= $lbl ?>:</span>
-                            <strong style="color:var(--text-primary);"><?= $cnt ?></strong>
-                        </span>
-                        <?php endforeach; ?>
-                    </div>
                 </div><!-- end Schedule Status card -->
+                <?php endif; ?>
 
-            </div><!-- end charts-grid (Active Reports + Schedule Status) -->
+            </div><!-- end charts-grid (Active Reports + bottom pair) -->
 
             <!-- Current Reports Preview -->
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
@@ -3357,18 +3474,19 @@ if (statusCtx) {
 
 // ===== SCHEDULE STATUS BREAKDOWN CHART (links to sched.php) =====
 const schedStatusCtx = document.getElementById('schedStatusChart');
+let schedStatusChartInstance = null;
 if (schedStatusCtx) {
     const schedColourMap = {
-        'Scheduled': '#2196f3',
-        'On-Going':  '#ff9800',
-        'Delayed':   '#f44336',
-        'Completed': '#4caf50'
+        'Scheduled':   '#2196f3',
+        'In Progress': '#ff9800',
+        'Delayed':     '#f44336',
+        'Completed':   '#4caf50'
     };
     const schedBgColors = schedChartLabels.map(function(l) {
         return schedColourMap[l] || '#9e9e9e';
     });
 
-    new Chart(schedStatusCtx, {
+    schedStatusChartInstance = new Chart(schedStatusCtx, {
         type: 'doughnut',
         data: {
             labels: schedChartLabels,
@@ -3392,7 +3510,27 @@ if (schedStatusCtx) {
                         font: { size: 13, weight: '600' },
                         padding: 15,
                         usePointStyle: true,
-                        pointStyle: 'circle'
+                        pointStyle: 'circle',
+                        generateLabels: function(chart) {
+                            var data      = chart.data;
+                            var icons     = { 'Scheduled': '📅', 'In Progress': '🔄', 'Delayed': '⚠️', 'Completed': '✅' };
+                            // Read live from CSS var so dark ↔ light mode is always correct
+                            var textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#000000';
+                            return data.labels.map(function(label, i) {
+                                var count = data.datasets[0].data[i] ?? 0;
+                                var icon  = icons[label] || '';
+                                return {
+                                    text:        icon + ' ' + label + ': ' + count,
+                                    fillStyle:   data.datasets[0].backgroundColor[i],
+                                    strokeStyle: data.datasets[0].backgroundColor[i],
+                                    fontColor:   textColor,
+                                    lineWidth:   0,
+                                    pointStyle:  'circle',
+                                    hidden:      false,
+                                    index:       i
+                                };
+                            });
+                        }
                     }
                 },
                 tooltip: {
@@ -3418,6 +3556,15 @@ if (schedStatusCtx) {
         }
     });
 }
+
+// Re-render schedule status legend when dark/light theme is toggled
+// so the fontColor from generateLabels picks up the new --text-primary value.
+(function() {
+    var observer = new MutationObserver(function() {
+        if (schedStatusChartInstance) { schedStatusChartInstance.update(); }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
 
 // ===== ACTIVE REPORTS CHART =====
 const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;

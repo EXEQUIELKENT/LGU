@@ -4201,289 +4201,245 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- Custom Date Picker Overlay -->
 <style>
 /* ═══════════════════════════════════════════
-   DATE PICKER POPUP — REDESIGNED
+   DATE PICKER POPUP — profile.php design
 ═══════════════════════════════════════════ */
 #customDatePickerOverlay {
     position: fixed;
     z-index: 9999;
     display: none;
-    visibility: hidden;        /* hidden until JS finishes positioning   */
-    top: -9999px;              /* park offscreen so no flash at (0,0)    */
+    visibility: hidden;
+    top: -9999px;
     left: -9999px;
-    width: 280px;
+    width: 288px;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     background: #ffffff;
     border-radius: 18px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10);
-    border: 1px solid rgba(55,98,200,0.13);
-    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.10);
+    border: 1px solid rgba(55,98,200,.13);
     font-family: inherit;
-    /* animation is re-applied in JS after position is set */
+    scroll-behavior: smooth;
 }
+#customDatePickerOverlay::-webkit-scrollbar { width: 5px; }
+#customDatePickerOverlay::-webkit-scrollbar-track { background: transparent; }
+#customDatePickerOverlay::-webkit-scrollbar-thumb { background: rgba(55,98,200,.25); border-radius: 4px; }
 
 @keyframes dpPopIn {
-    from { opacity: 0; transform: scale(0.96); }
-    to   { opacity: 1; transform: scale(1);    }
+    from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);    }
 }
 
 /* ── Header ── */
 .dp-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px 12px;
+    padding: 14px 14px 10px;
     background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    gap: 6px;
 }
-
-.dp-month-year {
-    font-size: 14px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.02em;
-    cursor: default;
-    user-select: none;
+.dp-header-center {
+    display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
 }
-
 .dp-nav-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    border: none;
-    background: rgba(255,255,255,0.18);
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s, transform 0.12s;
-    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 8px; border: none;
+    background: rgba(255,255,255,.18); color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .12s; flex-shrink: 0;
 }
-.dp-nav-btn:hover {
-    background: rgba(255,255,255,0.32);
-    transform: scale(1.08);
-}
+.dp-nav-btn:hover  { background: rgba(255,255,255,.32); transform: scale(1.08); }
 .dp-nav-btn:active { transform: scale(0.95); }
+
+/* Clickable month / year buttons in header */
+.dp-month-btn, .dp-year-btn {
+    background: rgba(255,255,255,.15);
+    border: none; color: #fff;
+    font-size: 13.5px; font-weight: 700;
+    padding: 4px 9px; border-radius: 7px;
+    cursor: pointer; letter-spacing: .02em;
+    transition: background .15s;
+    font-family: inherit;
+}
+.dp-month-btn:hover, .dp-year-btn:hover { background: rgba(255,255,255,.3); }
+.dp-month-btn.active, .dp-year-btn.active {
+    background: rgba(255,255,255,.4);
+    box-shadow: 0 0 0 2px rgba(255,255,255,.5);
+}
+
+/* ── Year dropdown ── */
+.dp-year-dropdown {
+    display: none;
+    padding: 6px 8px;
+    background: var(--bg-secondary, #fff);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    max-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.dp-year-dropdown::-webkit-scrollbar { width: 5px; }
+.dp-year-dropdown::-webkit-scrollbar-track { background: transparent; }
+.dp-year-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.dp-year-dropdown.open { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.dp-year-opt {
+    padding: 6px 4px;
+    border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary, #1e293b);
+    font-size: 12.5px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.dp-year-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.dp-year-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+
+/* ── Month dropdown ── */
+.dp-month-dropdown {
+    display: none;
+    padding: 6px 8px;
+    background: var(--bg-secondary, #fff);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    max-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.dp-month-dropdown::-webkit-scrollbar { width: 5px; }
+.dp-month-dropdown::-webkit-scrollbar-track { background: transparent; }
+.dp-month-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.dp-month-dropdown.open { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+.dp-month-opt {
+    padding: 7px 4px;
+    border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary, #1e293b);
+    font-size: 12px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.dp-month-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.dp-month-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
 
 /* ── Weekday labels ── */
 .dp-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    padding: 10px 12px 4px;
+    padding: 8px 10px 2px;
     gap: 2px;
 }
 .dp-weekdays span {
     text-align: center;
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 10px; font-weight: 700;
     color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 2px 0;
+    text-transform: uppercase; letter-spacing: .06em; padding: 2px 0;
 }
 .dp-weekdays span:first-child,
-.dp-weekdays span:last-child {
-    color: #f87171;
-}
+.dp-weekdays span:last-child { color: #f87171; }
 
 /* ── Day grid ── */
 .dp-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    padding: 2px 12px 10px;
+    padding: 2px 10px 8px;
     gap: 3px;
 }
-
 .dp-day {
     aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     border-radius: 8px;
-    font-size: 12.5px;
-    font-weight: 500;
-    cursor: pointer;
-    color: #1e293b;
-    border: none;
+    font-size: 12.5px; font-weight: 500;
+    cursor: pointer; color: #1e293b; border: none;
     background: transparent;
-    transition: background 0.13s, color 0.13s, transform 0.1s;
-    padding: 0;
-    line-height: 1;
+    transition: background .13s, color .13s, transform .1s;
+    padding: 0; line-height: 1;
 }
-.dp-day:hover {
-    background: #eef2ff;
-    color: #3762c8;
-    transform: scale(1.12);
-}
-.dp-day:active { transform: scale(0.95); }
-
-.dp-day.dp-empty {
-    cursor: default;
-    pointer-events: none;
-}
-
-/* Weekend days */
-.dp-day.dp-weekend {
-    color: #ef4444;
-}
-.dp-day.dp-weekend:hover {
-    background: #fff0f0;
-    color: #dc2626;
-}
-
-/* Today */
+.dp-day:hover         { background: #eef2ff; color: #3762c8; transform: scale(1.12); }
+.dp-day:active        { transform: scale(0.95); }
+.dp-day.dp-empty      { cursor: default; pointer-events: none; }
+.dp-day.dp-weekend    { color: #ef4444; }
+.dp-day.dp-weekend:hover { background: #fff0f0; color: #dc2626; }
 .dp-day.dp-today {
-    background: rgba(55,98,200,0.1);
-    color: #3762c8;
-    font-weight: 700;
-    position: relative;
+    background: rgba(55,98,200,.1); color: #3762c8; font-weight: 700; position: relative;
 }
 .dp-day.dp-today::after {
-    content: '';
-    position: absolute;
-    bottom: 3px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: #3762c8;
+    content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:#3762c8;
 }
-
-/* Selected */
 .dp-day.dp-selected {
     background: linear-gradient(135deg, #3762c8, #2851b3) !important;
-    color: #ffffff !important;
-    font-weight: 700;
-    box-shadow: 0 3px 10px rgba(55,98,200,0.35);
-    transform: scale(1.05);
+    color: #fff !important; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35); transform: scale(1.05);
 }
 .dp-day.dp-selected::after { display: none; }
-
-/* Has tasks indicator */
-.dp-day.dp-has-tasks {
-    position: relative;
-}
+.dp-day.dp-has-tasks { position: relative; }
 .dp-day.dp-has-tasks::before {
-    content: '';
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #f59e0b;
+    content:''; position:absolute; top:3px; right:3px;
+    width:5px; height:5px; border-radius:50%; background:#f59e0b;
 }
-.dp-day.dp-selected.dp-has-tasks::before {
-    background: rgba(255,255,255,0.7);
-}
+.dp-day.dp-selected.dp-has-tasks::before { background: rgba(255,255,255,.7); }
 
 /* ── Footer ── */
 .dp-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 14px 12px;
-    border-top: 1px solid rgba(55,98,200,0.08);
-    gap: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 12px; border-top: 1px solid rgba(55,98,200,.08); gap: 8px;
 }
-
 .dp-today-btn {
-    flex: 1;
-    padding: 7px 0;
-    border-radius: 9px;
-    border: 1.5px solid rgba(55,98,200,0.2);
-    background: transparent;
-    color: #3762c8;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    letter-spacing: 0.03em;
+    flex: 1; padding: 7px 0; border-radius: 9px;
+    border: 1.5px solid rgba(55,98,200,.2);
+    background: transparent; color: #3762c8;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: background .15s, border-color .15s; letter-spacing: .03em; font-family: inherit;
 }
-.dp-today-btn:hover {
-    background: #eef2ff;
-    border-color: #3762c8;
-}
-
+.dp-today-btn:hover { background: #eef2ff; border-color: #3762c8; }
 .dp-close-btn {
-    flex: 1;
-    padding: 7px 0;
-    border-radius: 9px;
-    border: none;
-    background: linear-gradient(135deg, #3762c8, #2851b3);
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.12s;
-    letter-spacing: 0.03em;
+    flex: 1; padding: 7px 0; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: opacity .15s; letter-spacing: .03em; font-family: inherit;
 }
-.dp-close-btn:hover { opacity: 0.88; }
-.dp-close-btn:active { transform: scale(0.97); }
+.dp-close-btn:hover { opacity: .88; }
 
-/* Double-click hint text */
+/* Double-click hint */
 .dp-hint {
-    text-align: center;
-    font-size: 10px;
-    color: #9ca3af;
-    padding: 0 14px 8px;
-    letter-spacing: 0.03em;
+    text-align: center; font-size: 10px; color: #9ca3af;
+    padding: 0 14px 8px; letter-spacing: .03em;
 }
-.dp-hint strong {
-    color: #f59e0b;
-    font-weight: 700;
-}
+.dp-hint strong { color: #f59e0b; font-weight: 700; }
 [data-theme="dark"] .dp-hint { color: #64748b; }
 
 /* ── Dark Mode ── */
 [data-theme="dark"] #customDatePickerOverlay {
     background: #1e2235;
-    border-color: rgba(95,140,255,0.2);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+    border-color: rgba(95,140,255,.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.3);
 }
-[data-theme="dark"] .dp-day {
-    color: #e2e8f0;
+[data-theme="dark"] .dp-year-dropdown,
+[data-theme="dark"] .dp-month-dropdown {
+    background: #1e2235;
+    border-bottom-color: rgba(255,255,255,.08);
 }
-[data-theme="dark"] .dp-day:hover {
-    background: rgba(55,98,200,0.2);
-    color: #8ab4f8;
-}
-[data-theme="dark"] .dp-day.dp-weekend {
-    color: #f87171;
-}
-[data-theme="dark"] .dp-day.dp-weekend:hover {
-    background: rgba(239,68,68,0.12);
-    color: #fca5a5;
-}
-[data-theme="dark"] .dp-day.dp-today {
-    background: rgba(55,98,200,0.2);
-    color: #8ab4f8;
-}
-[data-theme="dark"] .dp-day.dp-today::after {
-    background: #8ab4f8;
-}
-[data-theme="dark"] .dp-footer {
-    border-top-color: rgba(255,255,255,0.08);
-}
-[data-theme="dark"] .dp-today-btn {
-    color: #8ab4f8;
-    border-color: rgba(95,140,255,0.3);
-}
-[data-theme="dark"] .dp-today-btn:hover {
-    background: rgba(55,98,200,0.2);
-    border-color: #5f8cff;
-}
+[data-theme="dark"] .dp-year-dropdown::-webkit-scrollbar-thumb,
+[data-theme="dark"] .dp-month-dropdown::-webkit-scrollbar-thumb { background: rgba(95,140,255,.35); }
+[data-theme="dark"] .dp-year-opt,
+[data-theme="dark"] .dp-month-opt { color: #e2e8f0; }
+[data-theme="dark"] .dp-year-opt:hover,
+[data-theme="dark"] .dp-month-opt:hover { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .dp-day { color: #e2e8f0; }
+[data-theme="dark"] .dp-day:hover { background: rgba(55,98,200,.2); color: #8ab4f8; }
+[data-theme="dark"] .dp-day.dp-weekend { color: #f87171; }
+[data-theme="dark"] .dp-day.dp-weekend:hover { background: rgba(239,68,68,.12); color: #fca5a5; }
+[data-theme="dark"] .dp-day.dp-today { background: rgba(55,98,200,.2); color: #8ab4f8; }
+[data-theme="dark"] .dp-day.dp-today::after { background: #8ab4f8; }
+[data-theme="dark"] .dp-footer { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .dp-today-btn { color: #8ab4f8; border-color: rgba(95,140,255,.3); }
+[data-theme="dark"] .dp-today-btn:hover { background: rgba(55,98,200,.2); border-color: #5f8cff; }
 [data-theme="dark"] .dp-weekdays span { color: #64748b; }
 [data-theme="dark"] .dp-weekdays span:first-child,
 [data-theme="dark"] .dp-weekdays span:last-child { color: #f87171; }
 
-/* ── Mobile — NO bottom override; JS handles positioning like desktop ── */
+/* Mobile */
 @media (max-width: 768px) {
-    #customDatePickerOverlay {
-        width: 288px;
-        border-radius: 20px;
-    }
+    #customDatePickerOverlay { width: 288px; border-radius: 20px; }
 }
 
 /* ── Logout Confirmation Modal ── */
@@ -4596,8 +4552,28 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <div id="customDatePickerOverlay">
     <div class="dp-header">
         <button class="dp-nav-btn" id="dpPrevMonth">&#8592;</button>
-        <span class="dp-month-year" id="dpMonthYear"></span>
+        <div class="dp-header-center">
+            <button class="dp-month-btn" id="dpMonthBtn" type="button"></button>
+            <button class="dp-year-btn"  id="dpYearBtn"  type="button"></button>
+        </div>
         <button class="dp-nav-btn" id="dpNextMonth">&#8594;</button>
+    </div>
+    <!-- Year chooser grid (hidden by default) -->
+    <div class="dp-year-dropdown" id="dpYearDropdown"></div>
+    <!-- Month chooser grid (hidden by default) -->
+    <div class="dp-month-dropdown" id="dpMonthDropdown">
+        <button class="dp-month-opt" data-month="0"  type="button">Jan</button>
+        <button class="dp-month-opt" data-month="1"  type="button">Feb</button>
+        <button class="dp-month-opt" data-month="2"  type="button">Mar</button>
+        <button class="dp-month-opt" data-month="3"  type="button">Apr</button>
+        <button class="dp-month-opt" data-month="4"  type="button">May</button>
+        <button class="dp-month-opt" data-month="5"  type="button">Jun</button>
+        <button class="dp-month-opt" data-month="6"  type="button">Jul</button>
+        <button class="dp-month-opt" data-month="7"  type="button">Aug</button>
+        <button class="dp-month-opt" data-month="8"  type="button">Sep</button>
+        <button class="dp-month-opt" data-month="9"  type="button">Oct</button>
+        <button class="dp-month-opt" data-month="10" type="button">Nov</button>
+        <button class="dp-month-opt" data-month="11" type="button">Dec</button>
     </div>
     <div class="dp-weekdays">
         <span>Su</span>
@@ -5817,16 +5793,22 @@ document.addEventListener('DOMContentLoaded', function() {
     //  DATE PICKER — REDESIGNED
     // ═══════════════════════════════════════════
     const overlayPicker  = document.getElementById('customDatePickerOverlay');
-    const dpMonthYear    = document.getElementById('dpMonthYear');
+    const dpMonthBtn     = document.getElementById('dpMonthBtn');
+    const dpYearBtn      = document.getElementById('dpYearBtn');
     const dpGrid         = document.getElementById('dpGrid');
     const dpPrevMonth    = document.getElementById('dpPrevMonth');
     const dpNextMonth    = document.getElementById('dpNextMonth');
     const dpTodayBtn     = document.getElementById('dpTodayBtn');
     const dpCloseBtn     = document.getElementById('dpCloseBtn');
+    const dpYearDrop     = document.getElementById('dpYearDropdown');
+    const dpMonthDrop    = document.getElementById('dpMonthDropdown');
 
-    let _dpDate      = new Date(currentDate); // month being shown in picker
-    let _dpSelected  = null;                  // currently selected date string YYYY-MM-DD
+    let _dpDate      = new Date(currentDate);
+    let _dpSelected  = null;
     let _dpOpen      = false;
+
+    const DP_MONTHS = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
 
     // Build a Set of all dates that have tasks — for dot indicators
     function getDatesWithTasks() {
@@ -5835,11 +5817,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return set;
     }
 
+    function buildDpYearGrid() {
+        dpYearDrop.innerHTML = '';
+        const endY   = new Date().getFullYear() + 5;
+        const startY = endY - 110;
+        for (let y = endY; y >= startY; y--) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'dp-year-opt' + (y === _dpDate.getFullYear() ? ' selected' : '');
+            b.textContent = y;
+            b.dataset.year = y;
+            b.addEventListener('click', function(e) {
+                e.stopPropagation();
+                _dpDate.setFullYear(+this.dataset.year);
+                renderDpGrid();
+            });
+            dpYearDrop.appendChild(b);
+        }
+        setTimeout(function() {
+            const sel = dpYearDrop.querySelector('.selected');
+            if (sel) sel.scrollIntoView({ block: 'nearest' });
+        }, 30);
+    }
+
     function renderDpGrid() {
-        if (!dpGrid || !dpMonthYear) return;
+        if (!dpGrid || !dpMonthBtn || !dpYearBtn) return;
+
+        // Close sub-dropdowns
+        dpYearDrop.classList.remove('open');
+        dpMonthDrop.classList.remove('open');
+        dpYearBtn.classList.remove('active');
+        dpMonthBtn.classList.remove('active');
+
         const year  = _dpDate.getFullYear();
         const month = _dpDate.getMonth();
-        dpMonthYear.textContent = _dpDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        dpMonthBtn.textContent = DP_MONTHS[month].slice(0, 3);
+        dpYearBtn.textContent  = year;
 
         const today       = new Date();
         const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -5849,7 +5862,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         dpGrid.innerHTML = '';
 
-        // Empty cells before first day
         for (let i = 0; i < firstDay; i++) {
             const empty = document.createElement('div');
             empty.className = 'dp-day dp-empty';
@@ -5871,7 +5883,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (dateStr === _dpSelected)     btn.classList.add('dp-selected');
             if (taskDates.has(dateStr))      btn.classList.add('dp-has-tasks');
 
-            // Single click — select the date & navigate calendar
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 _dpSelected = dateStr;
@@ -5882,7 +5893,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderDpGrid();
             });
 
-            // Double click — open task modal / chooser if tasks exist
             btn.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
                 const tasks = (window.scheduleData || []).filter(t => t.schedule_date === dateStr);
@@ -5895,14 +5905,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Tooltip hint on hover for days that have tasks
-            if (taskDates.has(dateStr)) {
-                btn.title = 'Double-click to view task(s)';
-            }
+            if (taskDates.has(dateStr)) btn.title = 'Double-click to view task(s)';
 
             dpGrid.appendChild(btn);
         }
     }
+
+    // Month button toggle
+    if (dpMonthBtn) dpMonthBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dpYearDrop.classList.remove('open'); dpYearBtn.classList.remove('active');
+        const nowOpen = dpMonthDrop.classList.toggle('open');
+        dpMonthBtn.classList.toggle('active', nowOpen);
+        Array.from(dpMonthDrop.querySelectorAll('.dp-month-opt')).forEach(function(b) {
+            b.classList.toggle('selected', +b.dataset.month === _dpDate.getMonth());
+        });
+    });
+
+    // Year button toggle
+    if (dpYearBtn) dpYearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dpMonthDrop.classList.remove('open'); dpMonthBtn.classList.remove('active');
+        const nowOpen = dpYearDrop.classList.toggle('open');
+        dpYearBtn.classList.toggle('active', nowOpen);
+        if (nowOpen) buildDpYearGrid();
+    });
+
+    // Month option clicks
+    if (dpMonthDrop) dpMonthDrop.addEventListener('click', function(e) {
+        const b = e.target.closest('.dp-month-opt');
+        if (!b) return;
+        e.stopPropagation();
+        _dpDate.setMonth(+b.dataset.month);
+        renderDpGrid();
+    });
 
     function openDatePicker(event) {
         if (!overlayPicker) return;
@@ -5910,47 +5946,33 @@ document.addEventListener('DOMContentLoaded', function() {
         _dpSelected = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
         renderDpGrid();
 
-        // ── Step 1: make picker measurable but invisible ──────────────────
-        overlayPicker.style.removeProperty('animation');  // reset animation
+        overlayPicker.style.removeProperty('animation');
         overlayPicker.style.display    = 'block';
-        overlayPicker.style.visibility = 'hidden';        // no flash while we measure
+        overlayPicker.style.visibility = 'hidden';
 
-        // ── Step 2: measure dimensions ────────────────────────────────────
         const anchorEl = event.currentTarget
             || (event.target && event.target.closest && event.target.closest('#monthLabel, #mobileMonthLabel'))
             || event.target;
         const rect    = anchorEl.getBoundingClientRect();
-        const pickerW = overlayPicker.offsetWidth  || 280;
-        const pickerH = overlayPicker.offsetHeight || 340;
+        const pickerW = overlayPicker.offsetWidth  || 288;
+        const pickerH = overlayPicker.offsetHeight || 380;
         const gap     = 8;
         const vw      = window.innerWidth;
         const vh      = window.innerHeight;
 
-        // ── Step 3: calculate position (same logic for mobile & desktop) ──
-        let top  = rect.bottom + gap;              // default: below the label
-        let left = rect.left + rect.width / 2 - pickerW / 2;  // horizontally centred
-
-        // Clamp horizontally so it never bleeds off the screen
+        let top  = rect.bottom + gap;
+        let left = rect.left + rect.width / 2 - pickerW / 2;
         left = Math.max(12, Math.min(left, vw - pickerW - 12));
-
-        // Flip above the label if it would overflow the bottom of the viewport
-        if (top + pickerH > vh - 12) {
-            top = rect.top - pickerH - gap;
-        }
-
-        // Safety clamp: never go above viewport top
+        if (top + pickerH > vh - 12) top = rect.top - pickerH - gap;
         if (top < 8) top = 8;
 
-        // ── Step 4: apply position ────────────────────────────────────────
         overlayPicker.style.position  = 'fixed';
         overlayPicker.style.top       = top  + 'px';
         overlayPicker.style.left      = left + 'px';
         overlayPicker.style.removeProperty('bottom');
         overlayPicker.style.removeProperty('transform');
-
-        // ── Step 5: reveal with animation (no stale position flash) ───────
         overlayPicker.style.visibility = 'visible';
-        void overlayPicker.offsetWidth;             // force reflow so animation restarts
+        void overlayPicker.offsetWidth;
         overlayPicker.style.animation = 'dpPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
 
         _dpOpen = true;

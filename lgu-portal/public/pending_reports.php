@@ -62,6 +62,29 @@ $conn->query("
         INDEX idx_rep_id (rep_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
+// ── Daily report log tables ───────────────────────────────────────────────────
+$conn->query("
+    CREATE TABLE IF NOT EXISTS report_daily_logs (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        rep_id      INT  NOT NULL,
+        log_date    DATE NOT NULL,
+        description TEXT,
+        updated_at  TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+        updated_by  INT DEFAULT NULL,
+        UNIQUE KEY uq_rdl (rep_id, log_date),
+        INDEX idx_rdl_rep (rep_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+$conn->query("
+    CREATE TABLE IF NOT EXISTS report_daily_images (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        rep_id      INT          NOT NULL,
+        log_date    DATE         NOT NULL,
+        img_path    VARCHAR(500) NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rdi (rep_id, log_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
 
 $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
@@ -81,6 +104,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $input  = json_decode(file_get_contents('php://input'), true) ?? [];
         $action = $input['action'] ?? '';
+    }
+
+    // ── Engineer saves a daily log entry ─────────────────────────────────────
+    if ($action === 'save_daily_log') {
+        $repId   = (int)($input['rep_id']  ?? 0);
+        $logDate = trim($input['log_date'] ?? '');
+        $desc    = trim($input['description'] ?? '');
+        if ($repId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $logDate)) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid parameters.']); exit;
+        }
+        if (!$isEngineer) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Unauthorized.']); exit;
+        }
+        $stmt = $conn->prepare(
+            "INSERT INTO report_daily_logs (rep_id, log_date, description, updated_at, updated_by)
+             VALUES (?, ?, ?, NOW(), ?)
+             ON DUPLICATE KEY UPDATE description=VALUES(description), updated_at=NOW(), updated_by=VALUES(updated_by)"
+        );
+        $stmt->bind_param('issi', $repId, $logDate, $desc, $engineerId);
+        $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
+        if ($ok) {
+            // Keep res_note updated with latest description for backward compat
+            $escDesc = $conn->real_escape_string($desc);
+            $conn->query("UPDATE request_resolutions rr JOIN reports r ON r.res_id=rr.res_id SET rr.res_note='$escDesc', rr.status='In Progress' WHERE r.rep_id=$repId");
+        }
+        $updatedAt = date('Y-m-d H:i:s');
+        while(ob_get_level()>0)ob_end_clean();
+        echo json_encode($ok ? ['success'=>true,'updated_at'=>$updatedAt] : ['success'=>false,'message'=>$err]);
+        exit;
+    }
+
+    // ── Engineer uploads a daily image ───────────────────────────────────────
+    if ($action === 'upload_daily_image') {
+        $repId   = (int)($_POST['rep_id']   ?? 0);
+        $logDate = trim($_POST['log_date']  ?? '');
+        if ($repId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $logDate)) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid parameters.']); exit;
+        }
+        if (!$isEngineer) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Unauthorized.']); exit;
+        }
+        if (empty($_FILES['image'])) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'No image received.']); exit;
+        }
+        $file    = $_FILES['image'];
+        $allowed = ['image/jpeg','image/jpg','image/png','image/gif','image/webp'];
+        if (!in_array($file['type'], $allowed)) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid file type.']); exit;
+        }
+        $uploadDir = __DIR__ . '/uploads/report_daily/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'jpg');
+        $filename = 'rd_' . $repId . '_' . str_replace('-', '', $logDate) . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Failed to save image.']); exit;
+        }
+        $relPath = 'uploads/report_daily/' . $filename;
+        $stmt = $conn->prepare("INSERT INTO report_daily_images (rep_id, log_date, img_path) VALUES (?, ?, ?)");
+        $stmt->bind_param('iss', $repId, $logDate, $relPath);
+        $ok = $stmt->execute(); $stmt->close();
+        $conn->query("UPDATE request_resolutions rr JOIN reports r ON r.res_id=rr.res_id SET rr.status='In Progress' WHERE r.rep_id=$repId AND rr.status IN ('Scheduled','Pending','')");
+        while(ob_get_level()>0)ob_end_clean();
+        echo json_encode($ok ? ['success'=>true,'img_path'=>$relPath] : ['success'=>false,'message'=>'DB error.']);
+        exit;
     }
 
     // ── Engineer saves description → status becomes In Progress ──────────────
@@ -311,6 +405,29 @@ function engProfileBtn(int $engineerId, ?string $picPath): string {
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
 
+// ── Fetch per-day logs and images for all fetched reports ────────────────────
+$allDailyLogs = [];
+if (!empty($rows)) {
+    $repIdsStr = implode(',', array_map(fn($r) => (int)$r['rep_id'], $rows));
+    $dlRes = $conn->query("SELECT rep_id, log_date, description, updated_at FROM report_daily_logs WHERE rep_id IN ($repIdsStr) ORDER BY log_date ASC");
+    if ($dlRes) {
+        while ($dl = $dlRes->fetch_assoc()) {
+            $rid = (int)$dl['rep_id'];
+            $ld  = $dl['log_date'];
+            $allDailyLogs[$rid][$ld] = ['description' => $dl['description'] ?? '', 'updated_at' => $dl['updated_at'] ?? null, 'images' => []];
+        }
+    }
+    $diRes = $conn->query("SELECT rep_id, log_date, img_path FROM report_daily_images WHERE rep_id IN ($repIdsStr) ORDER BY uploaded_at ASC");
+    if ($diRes) {
+        while ($di = $diRes->fetch_assoc()) {
+            $rid = (int)$di['rep_id'];
+            $ld  = $di['log_date'];
+            if (!isset($allDailyLogs[$rid][$ld])) $allDailyLogs[$rid][$ld] = ['description'=>'','updated_at'=>null,'images'=>[]];
+            $allDailyLogs[$rid][$ld]['images'][] = $di['img_path'];
+        }
+    }
+}
+
 $rowsJson = [];
 foreach ($rows as $row) {
     $imgs = [];
@@ -338,6 +455,7 @@ foreach ($rows as $row) {
         'images'              => $imgs,
         'progress_images'     => $progressImgs,
         'is_pending_completion' => ($row['resolution_status'] ?? '') === 'Pending Completion',
+        'daily_logs'          => $allDailyLogs[$row['rep_id']] ?? (object)[],
     ];
 }
 ?>
@@ -418,18 +536,18 @@ foreach ($rows as $row) {
     height: 36px;
     padding: 0 12px 0 34px;
     border-radius: 10px;
-    border: 1.5px solid rgba(55, 98, 200, 0.18);
-    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #94a3b8;
+    background: #fff;
     font-size: 13px;
     color: var(--text-primary);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
-    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+    box-shadow: 0 1px 5px rgba(55,98,200,0.14);
 }
 #reportSearch:focus {
     border-color: #3762c8;
-    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.20);
     background: #fff;
 }
 #reportSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
@@ -736,6 +854,30 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .pending-completion-eng { background:#fff8e1;color:#e65100;border:1.5px solid #ffcc02; }
 /* ── Report description & upload section ── */
 .rep-desc-section { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:0; }
+
+/* ── Daily log day navigator ── */
+.rep-day-nav {
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bg-primary); border:1.5px solid var(--border-color);
+    border-radius:10px; padding:8px 12px; margin-bottom:12px; gap:8px;
+}
+.rep-day-arrow {
+    background:none; border:1.5px solid var(--border-color); border-radius:7px;
+    width:30px; height:30px; cursor:pointer; color:var(--text-primary);
+    font-size:18px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    transition:all .15s; flex-shrink:0;
+}
+.rep-day-arrow:hover:not(:disabled) { border-color:#e65100; color:#e65100; background:rgba(230,81,0,.08); }
+.rep-day-arrow:disabled { opacity:.3; cursor:not-allowed; }
+.rep-day-indicator { flex:1; text-align:center; }
+.rep-day-num  { display:block; font-size:13px; font-weight:700; color:#e65100; letter-spacing:.04em; }
+.rep-day-date { display:block; font-size:11px; color:var(--text-secondary); margin-top:2px; }
+.rep-last-edited {
+    margin-top:10px; font-size:11px; color:var(--text-secondary);
+    display:flex; align-items:center; gap:5px; font-style:italic;
+    padding-top:8px; border-top:1px dashed var(--border-color);
+}
 .rep-upload-section { margin-top:14px; }
 .rep-upload-label { font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;display:flex;align-items:center;gap:6px; }
 .rep-upload-drop { border:2px dashed var(--border-color);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:transparent; }
@@ -1158,12 +1300,25 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
             </div>
             <div class="rep-divider"></div>
 
-            <!-- ── Description of report (center of modal) ── -->
+            <!-- ── Daily log day navigator + description ── -->
+            <!-- Hidden: tracks which log_date is currently viewed -->
+            <input type="hidden" id="repCurrentLogDate" value="">
+
             <div class="rep-desc-section" id="repDescSection">
+                <!-- Day nav header -->
+                <div class="rep-day-nav" id="repDayNav">
+                    <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
+                    <div class="rep-day-indicator">
+                        <span class="rep-day-num"  id="repDayNum">Day 1</span>
+                        <span class="rep-day-date" id="repDayDate"></span>
+                    </div>
+                    <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
+                </div>
+
                 <div class="rep-field-label" style="margin-bottom:8px;">&#128221; Description of your report</div>
                 <!-- Engineer view: editable textarea -->
                 <div id="repDescEditable" style="display:none;">
-                    <textarea class="rep-editable-area" id="repDescInput" placeholder="Describe what happened, the work done, observations…" rows="4"></textarea>
+                    <textarea class="rep-editable-area" id="repDescInput" placeholder="Describe the work done, observations, and progress for this day…" rows="4"></textarea>
                 </div>
                 <!-- Read-only view (admin/non-engineer, or Pending Completion) -->
                 <div id="repDescReadonly" style="display:none;">
@@ -1186,6 +1341,11 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
                 <div id="repProgressReadonlySection" style="display:none;margin-top:12px;">
                     <div class="rep-upload-label">&#128247; Report Progress Images</div>
                     <div class="rep-progress-strip" id="repProgressReadonlyStrip"></div>
+                </div>
+
+                <!-- Last edited timestamp -->
+                <div class="rep-last-edited" id="repLastEdited" style="display:none;">
+                    ✏️ Last edited: <span id="repLastEditedTime">—</span>
                 </div>
             </div>
 
@@ -1283,6 +1443,115 @@ const repModalClose= document.getElementById('repModalClose');
 let repGalleryImages = [], repProgressImages = [], repGalleryIndex = 0, repGalleryType = 'evidence';
 let currentRepData = null;
 
+// ── Daily log state ───────────────────────────────────────────────────────────
+let currentDayIndex = 0;
+let currentDayDates = []; // array of 'YYYY-MM-DD' strings from start→end
+
+/** Build an array of every calendar date from startISO to endISO inclusive */
+function buildDayDates(startISO, endISO) {
+    const dates = [];
+    if (!startISO || !endISO) return dates;
+    const start = new Date(startISO + 'T00:00:00');
+    const end   = new Date(endISO   + 'T00:00:00');
+    if (isNaN(start) || isNaN(end) || end < start) return dates;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        dates.push(`${y}-${m}-${day}`);
+    }
+    return dates;
+}
+
+/** Format 'YYYY-MM-DD' to readable 'Mon DD, YYYY' */
+function fmtDateISO(iso) {
+    if (!iso) return '—';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const p = iso.split('-');
+    if (p.length < 3) return iso;
+    return months[parseInt(p[1],10)-1] + ' ' + parseInt(p[2],10) + ', ' + p[0];
+}
+
+/** Format datetime string for "last edited" display */
+function fmtDateTime(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt.replace(' ', 'T'));
+    if (isNaN(d)) return dt;
+    return d.toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'}) +
+           ' ' + d.toLocaleTimeString('en-PH', {hour:'2-digit',minute:'2-digit'});
+}
+
+/** Render the currently visible day (currentDayIndex) inside the modal */
+function renderDayView(isPendingCompletion) {
+    if (!currentRepData || !currentDayDates.length) return;
+
+    const logDate   = currentDayDates[currentDayIndex];
+    const dayNumber = currentDayIndex + 1;
+    const logs      = currentRepData.daily_logs || {};
+    const entry     = logs[logDate] || { description: '', updated_at: null, images: [] };
+
+    // Update navigator display
+    document.getElementById('repCurrentLogDate').value = logDate;
+    document.getElementById('repDayNum').textContent   = 'Day ' + dayNumber;
+    document.getElementById('repDayDate').textContent  = fmtDateISO(logDate);
+    document.getElementById('repDayPrev').disabled     = (currentDayIndex === 0);
+    document.getElementById('repDayNext').disabled     = (currentDayIndex === currentDayDates.length - 1);
+
+    const descEditable  = document.getElementById('repDescEditable');
+    const descReadonly  = document.getElementById('repDescReadonly');
+    const descText      = document.getElementById('repDescText');
+    const descInput     = document.getElementById('repDescInput');
+    const uploadSection = document.getElementById('repUploadSection');
+    const progressRO    = document.getElementById('repProgressReadonlySection');
+    const lastEdited    = document.getElementById('repLastEdited');
+    const lastEditedTime= document.getElementById('repLastEditedTime');
+
+    if (IS_ENGINEER && !isPendingCompletion) {
+        descEditable.style.display = '';
+        descReadonly.style.display = 'none';
+        descInput.value            = entry.description || '';
+        uploadSection.style.display = '';
+        progressRO.style.display    = 'none';
+    } else {
+        descEditable.style.display = 'none';
+        descReadonly.style.display = '';
+        descText.textContent       = entry.description || '— No entry for this day yet —';
+        uploadSection.style.display = 'none';
+        progressRO.style.display    = '';
+    }
+
+    // Images for this day
+    const dayImages = entry.images || [];
+    repProgressImages = dayImages;
+
+    if (IS_ENGINEER && !isPendingCompletion) {
+        renderProgressStrip(dayImages);
+    } else {
+        renderProgressReadonly(dayImages);
+    }
+
+    // Last-edited timestamp
+    if (entry.updated_at) {
+        lastEdited.style.display    = '';
+        lastEditedTime.textContent  = fmtDateTime(entry.updated_at);
+    } else {
+        lastEdited.style.display = 'none';
+    }
+}
+
+function navigateDayPrev() {
+    if (currentDayIndex > 0) {
+        currentDayIndex--;
+        renderDayView(currentRepData?.is_pending_completion);
+    }
+}
+function navigateDayNext() {
+    if (currentDayIndex < currentDayDates.length - 1) {
+        currentDayIndex++;
+        renderDayView(currentRepData?.is_pending_completion);
+    }
+}
+
 function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
@@ -1327,37 +1596,17 @@ function openRepModal(repId) {
     const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
     document.getElementById('repModalBudget').textContent   = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
 
-    // ── Description section logic ──────────────────────────────────────────
-    const descEditable = document.getElementById('repDescEditable');
-    const descReadonly = document.getElementById('repDescReadonly');
-    const descText     = document.getElementById('repDescText');
-    const descInput    = document.getElementById('repDescInput');
-    const uploadSection= document.getElementById('repUploadSection');
-    const progressRO   = document.getElementById('repProgressReadonlySection');
+    // ── Day navigation ────────────────────────────────────────────────────────
+    currentDayDates = buildDayDates(data.starting_date, data.estimated_end_date);
+    // Default to today's date if it falls in range, otherwise day 1
+    const todayISO = new Date().toISOString().slice(0,10);
+    const todayIdx = currentDayDates.indexOf(todayISO);
+    currentDayIndex = todayIdx >= 0 ? todayIdx : 0;
 
-    // Engineer can edit description only when NOT Pending Completion
-    if (IS_ENGINEER && !isPendingCompletion) {
-        descEditable.style.display = '';
-        descReadonly.style.display = 'none';
-        descInput.value = data.res_note || '';
-        uploadSection.style.display = '';
-        progressRO.style.display    = 'none';
-    } else {
-        // Read-only for admin, or engineer viewing a pending-completion report
-        descEditable.style.display = 'none';
-        descReadonly.style.display = '';
-        descText.textContent       = data.res_note || '— No description provided yet —';
-        uploadSection.style.display = 'none';
-        progressRO.style.display    = '';
-    }
+    // Show nav only when there are days to navigate
+    document.getElementById('repDayNav').style.display = currentDayDates.length ? '' : 'none';
 
-    // Render existing progress images in upload strip (engineer) or readonly strip (admin)
-    repProgressImages = data.progress_images || [];
-    if (IS_ENGINEER && !isPendingCompletion) {
-        renderProgressStrip(repProgressImages);
-    } else {
-        renderProgressReadonly(repProgressImages);
-    }
+    renderDayView(isPendingCompletion);
 
     // Footer logic
     const footer     = document.getElementById('repModalFooter');
@@ -1465,24 +1714,30 @@ uploadInput.addEventListener('change', () => {
 
 async function uploadFiles(files) {
     if (!currentRepData || !files.length) return;
+    const logDate = document.getElementById('repCurrentLogDate').value;
+    if (!logDate) { showRepNotif('error','❌ No day selected.'); return; }
     const spinner = document.getElementById('repUploadSpinner');
     spinner.style.display = 'block';
     for (const file of files) {
         if (!file.type.startsWith('image/')) continue;
         const fd = new FormData();
-        fd.append('action',  'upload_progress_image');
-        fd.append('rep_id',  currentRepData.rep_id);
-        fd.append('image',   file);
+        fd.append('action',   'upload_daily_image');
+        fd.append('rep_id',   currentRepData.rep_id);
+        fd.append('log_date', logDate);
+        fd.append('image',    file);
         try {
             const res  = await fetch('pending_reports.php', { method:'POST', body: fd });
             const data = await res.json();
             if (data.success) {
-                repProgressImages.push(data.img_path);
-                // Update the local data store too
-                const idx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
-                if (idx > -1) ALL_REPORTS[idx].progress_images = [...repProgressImages];
+                // Update in-memory daily_logs for this date
+                const logs = currentRepData.daily_logs || {};
+                if (!logs[logDate]) logs[logDate] = {description:'',updated_at:null,images:[]};
+                logs[logDate].images.push(data.img_path);
+                currentRepData.daily_logs = logs;
+                const ridx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
+                if (ridx > -1) ALL_REPORTS[ridx].daily_logs = logs;
+                repProgressImages = logs[logDate].images;
                 renderProgressStrip(repProgressImages);
-                // Status becomes In Progress — update the modal pill and table row
                 const statusEl = document.getElementById('repModalStatus');
                 statusEl.textContent = 'In Progress'; statusEl.className = 'rep-status-pill on-going';
                 updateRowStatusPill(currentRepData.rep_id, 'In Progress', 'on-going');
@@ -1523,26 +1778,34 @@ function updateRowStatusPill(repId, statusText, cssClass) {
 async function doSaveDesc() {
     if (!currentRepData) return;
     closeSaveConfirm();
-    const desc = document.getElementById('repDescInput')?.value ?? '';
-    const btn  = document.getElementById('repSaveBtn');
+    const logDate = document.getElementById('repCurrentLogDate').value;
+    const desc    = document.getElementById('repDescInput')?.value ?? '';
+    if (!logDate) { showRepNotif('error','❌ No day selected.'); return; }
+    const btn = document.getElementById('repSaveBtn');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({action:'save_description', rep_id: currentRepData.rep_id, description: desc})
+            body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc})
         });
         const data = await res.json();
         if (data.success) {
-            // Update in-memory
-            const idx = ALL_REPORTS.findIndex(r=>r.rep_id==currentRepData.rep_id);
-            if(idx>-1){ ALL_REPORTS[idx].res_note=desc; ALL_REPORTS[idx].resolution_status='In Progress'; }
+            // Update in-memory daily_logs
+            const logs = currentRepData.daily_logs || {};
+            if (!logs[logDate]) logs[logDate] = {description:'',updated_at:null,images:[]};
+            logs[logDate].description = desc;
+            logs[logDate].updated_at  = data.updated_at || new Date().toISOString().replace('T',' ').slice(0,19);
+            currentRepData.daily_logs = logs;
+            const ridx = ALL_REPORTS.findIndex(r=>r.rep_id==currentRepData.rep_id);
+            if(ridx>-1){ ALL_REPORTS[ridx].daily_logs=logs; ALL_REPORTS[ridx].res_note=desc; ALL_REPORTS[ridx].resolution_status='In Progress'; }
             currentRepData.res_note = desc; currentRepData.resolution_status = 'In Progress';
-            // Update modal status pill
+            // Refresh last-edited display
+            document.getElementById('repLastEdited').style.display = '';
+            document.getElementById('repLastEditedTime').textContent = fmtDateTime(logs[logDate].updated_at);
             const statusEl = document.getElementById('repModalStatus');
             statusEl.textContent = 'In Progress'; statusEl.className = 'rep-status-pill on-going';
-            // Update table/card row immediately (no reload needed)
             updateRowStatusPill(currentRepData.rep_id, 'In Progress', 'on-going');
-            showRepNotif('success','✔️ Description saved. Status set to In Progress.');
+            showRepNotif('success','✔️ Day ' + (currentDayIndex+1) + ' description saved.');
         } else { showRepNotif('error','❌ ' + (data.message || 'Failed to save.')); }
     } catch(e) { showRepNotif('error','❌ Network error. Please try again.'); }
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Description';

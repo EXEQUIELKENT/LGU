@@ -1820,11 +1820,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
    The only reliable cross-browser fix is the inset box-shadow trick
    combined with a very long transition delay.                        ── */
 
-/* Light mode autofill */
+/* Light mode autofill — inputs AND textareas */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 9999px var(--bg-secondary, #fff) inset !important;
     box-shadow:         0 0 0 9999px var(--bg-secondary, #fff) inset !important;
     -webkit-text-fill-color: var(--text-primary, #000) !important;
@@ -1832,13 +1836,17 @@ input:-webkit-autofill:active {
     transition: background-color 99999s ease-in-out 0s !important;
 }
 
-/* Dark mode autofill */
+/* Dark mode autofill — inputs AND textareas */
 [data-theme="dark"] input:-webkit-autofill,
 [data-theme="dark"] input:-webkit-autofill:hover,
 [data-theme="dark"] input:-webkit-autofill:focus,
-[data-theme="dark"] input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 9999px #1a1a1a inset !important;
-    box-shadow:         0 0 0 9999px #1a1a1a inset !important;
+[data-theme="dark"] input:-webkit-autofill:active,
+[data-theme="dark"] textarea:-webkit-autofill,
+[data-theme="dark"] textarea:-webkit-autofill:hover,
+[data-theme="dark"] textarea:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 9999px rgba(26,26,26,0.95) inset !important;
+    box-shadow:         0 0 0 9999px rgba(26,26,26,0.95) inset !important;
     -webkit-text-fill-color: #ffffff !important;
     caret-color: #ffffff !important;
     transition: background-color 99999s ease-in-out 0s !important;

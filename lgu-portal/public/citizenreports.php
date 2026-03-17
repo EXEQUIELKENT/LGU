@@ -577,18 +577,18 @@ foreach ($maintenance_data as $_item) {
             height: 36px;
             padding: 0 12px 0 34px;
             border-radius: 10px;
-            border: 1.5px solid rgba(55, 98, 200, 0.18);
-            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid #94a3b8;
+            background: #fff;
             font-size: 13px;
             color: var(--text-primary);
             outline: none;
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             box-sizing: border-box;
-            box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+            box-shadow: 0 1px 5px rgba(55,98,200,0.14);
         }
         #requestSearch:focus {
             border-color: #3762c8;
-            box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+            box-shadow: 0 0 0 3px rgba(55,98,200,0.20);
             background: #fff;
         }
         #requestSearch::placeholder { color: #94a3b8; font-size: 12.5px; }

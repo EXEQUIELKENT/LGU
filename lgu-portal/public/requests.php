@@ -291,20 +291,20 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
     height: 36px;
     padding: 0 12px 0 34px;
     border-radius: 10px;
-    border: 1.5px solid rgba(55, 98, 200, 0.18);
-    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #94a3b8;
+    background: #fff;
     font-size: 13px;
     color: var(--text-primary);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
-    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+    box-shadow: 0 1px 5px rgba(55,98,200,0.14);
     flex: 1;
     min-width: 0;
 }
 #requestSearch:focus {
     border-color: #3762c8;
-    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.20);
     background: #fff;
 }
 #requestSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
@@ -423,15 +423,36 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-filter-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; flex-shrink: 0; }
 
 .gis-search-wrap { position: relative; display: flex; align-items: center; flex: 0 0 260px; width: 260px; margin-left: auto; }
-.gis-search-icon { position: absolute; left: 11px; color: var(--text-secondary); font-size: 13px; pointer-events: none; z-index: 1; opacity: .6; }
-#gisSearch {
-    width: 100%; padding: 8px 30px 8px 32px; border: 1.5px solid var(--border-color);
-    border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);
-    outline: none; transition: border-color .2s, box-shadow .2s; box-sizing: border-box;
+.gis-search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+    z-index: 1;
 }
-#gisSearch::placeholder { color: var(--text-secondary); opacity: .6; }
-#gisSearch:focus { border-color: #3762c8; box-shadow: 0 2px 8px rgba(55,98,200,.12); }
-[data-theme="dark"] #gisSearch { background: var(--bg-tertiary); }
+[data-theme="dark"] .gis-search-wrap svg { color: #64748b; }
+#gisSearch {
+    width: 100%; height: 36px; padding: 0 30px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid #94a3b8;
+    background: #fff;
+    font-size: 13px; color: var(--text-primary);
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 5px rgba(55,98,200,0.14);
+}
+#gisSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+#gisSearch:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,0.20); background: #fff; }
+[data-theme="dark"] #gisSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #gisSearch:focus { border-color: #5f8cff; box-shadow: 0 0 0 3px rgba(95,140,255,0.18); background: rgba(255,255,255,0.10); }
+[data-theme="dark"] #gisSearch::placeholder { color: #64748b; }
 .gis-search-clear {
     position: absolute; right: 8px; background: none; border: none; cursor: pointer;
     color: var(--text-secondary); font-size: 16px; line-height: 1; padding: 2px 4px;
@@ -771,11 +792,23 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-fullmap-header { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
 .gis-fullmap-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
 .gis-fullmap-search-wrap { position: relative; display: flex; align-items: center; flex: 0 0 260px; width: 260px; margin-left: auto; }
-.gis-fullmap-search-wrap .gis-search-icon { position: absolute; left: 11px; font-size: 13px; color: var(--text-secondary); pointer-events: none; z-index: 1; opacity: .6; }
-#gisModalSearch { width: 100%; padding: 8px 30px 8px 32px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary); outline: none; transition: border-color .2s, box-shadow .2s; box-sizing: border-box; }
-#gisModalSearch::placeholder { color: var(--text-secondary); opacity: .6; }
-#gisModalSearch:focus { border-color: #3762c8; box-shadow: 0 2px 8px rgba(55,98,200,.12); }
-[data-theme="dark"] #gisModalSearch { background: var(--bg-tertiary); }
+.gis-fullmap-search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+    z-index: 1;
+}
+[data-theme="dark"] .gis-fullmap-search-wrap svg { color: #64748b; }
+#gisModalSearch { width: 100%; height: 36px; padding: 0 30px 0 34px; border-radius: 10px; border: 1.5px solid #94a3b8; background: #fff; font-size: 13px; color: var(--text-primary); outline: none; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; box-sizing: border-box; box-shadow: 0 1px 5px rgba(55,98,200,0.14); }
+#gisModalSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+#gisModalSearch:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,0.20); background: #fff; }
+[data-theme="dark"] #gisModalSearch { background: rgba(255,255,255,0.07); border-color: rgba(95,140,255,0.22); color: var(--text-primary); }
+[data-theme="dark"] #gisModalSearch:focus { border-color: #5f8cff; box-shadow: 0 0 0 3px rgba(95,140,255,0.18); background: rgba(255,255,255,0.10); }
+[data-theme="dark"] #gisModalSearch::placeholder { color: #64748b; }
 .gis-fullmap-search-clear { position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 2px 4px; border-radius: 4px; display: none; align-items: center; justify-content: center; opacity: .5; transition: opacity .2s; z-index: 2; }
 .gis-fullmap-search-clear:hover { opacity: 1; }
 .gis-fullmap-search-clear.visible { display: flex; }
@@ -1387,7 +1420,7 @@ tbody td {
                     <i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map
                 </span>
                 <div class="gis-search-wrap">
-                    <i class="fas fa-search gis-search-icon"></i>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" id="gisSearch" placeholder="Search ID, infrastructure, location…" autocomplete="off">
                     <button class="gis-search-clear" id="gisSearchClear" title="Clear">&#215;</button>
                     <span class="gis-search-results-badge" id="gisResultsBadge">
@@ -1762,7 +1795,7 @@ tbody td {
         <div class="gis-fullmap-header">
             <span class="gis-fullmap-title"><i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map</span>
             <div class="gis-fullmap-search-wrap">
-                <i class="fas fa-search gis-search-icon"></i>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="gisModalSearch" placeholder="Search ID, infrastructure, location…" autocomplete="off">
                 <button class="gis-fullmap-search-clear" id="gisModalSearchClear" title="Clear">&#215;</button>
                 <span class="gis-fullmap-results-badge" id="gisModalResultsBadge">

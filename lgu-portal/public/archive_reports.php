@@ -101,6 +101,28 @@ $conn->query("
         INDEX idx_rep_id (rep_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
+$conn->query("
+    CREATE TABLE IF NOT EXISTS report_daily_logs (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        rep_id      INT  NOT NULL,
+        log_date    DATE NOT NULL,
+        description TEXT,
+        updated_at  TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+        updated_by  INT DEFAULT NULL,
+        UNIQUE KEY uq_rdl (rep_id, log_date),
+        INDEX idx_rdl_rep (rep_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+$conn->query("
+    CREATE TABLE IF NOT EXISTS report_daily_images (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        rep_id      INT          NOT NULL,
+        log_date    DATE         NOT NULL,
+        img_path    VARCHAR(500) NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rdi (rep_id, log_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
@@ -154,6 +176,29 @@ function engProfileBtn(int $engineerId, ?string $picPath): string {
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
 
+// ── Fetch per-day logs and images ────────────────────────────────────────────
+$allDailyLogs = [];
+if (!empty($rows)) {
+    $repIdsStr = implode(',', array_map(fn($r) => (int)$r['rep_id'], $rows));
+    $dlRes = $conn->query("SELECT rep_id, log_date, description, updated_at FROM report_daily_logs WHERE rep_id IN ($repIdsStr) ORDER BY log_date ASC");
+    if ($dlRes) {
+        while ($dl = $dlRes->fetch_assoc()) {
+            $rid = (int)$dl['rep_id'];
+            $ld  = $dl['log_date'];
+            $allDailyLogs[$rid][$ld] = ['description' => $dl['description'] ?? '', 'updated_at' => $dl['updated_at'] ?? null, 'images' => []];
+        }
+    }
+    $diRes = $conn->query("SELECT rep_id, log_date, img_path FROM report_daily_images WHERE rep_id IN ($repIdsStr) ORDER BY uploaded_at ASC");
+    if ($diRes) {
+        while ($di = $diRes->fetch_assoc()) {
+            $rid = (int)$di['rep_id'];
+            $ld  = $di['log_date'];
+            if (!isset($allDailyLogs[$rid][$ld])) $allDailyLogs[$rid][$ld] = ['description'=>'','updated_at'=>null,'images'=>[]];
+            $allDailyLogs[$rid][$ld]['images'][] = $di['img_path'];
+        }
+    }
+}
+
 $rowsJson = [];
 foreach ($rows as $row) {
     $imgs = [];
@@ -181,6 +226,7 @@ foreach ($rows as $row) {
         'resolution_status' => $row['resolution_status'] ?? '',
         'images'            => $imgs,
         'progress_images'   => $progressImgs,
+        'daily_logs'        => $allDailyLogs[$row['rep_id']] ?? (object)[],
     ];
 }
 ?>
@@ -261,18 +307,18 @@ foreach ($rows as $row) {
     height: 36px;
     padding: 0 12px 0 34px;
     border-radius: 10px;
-    border: 1.5px solid rgba(55, 98, 200, 0.18);
-    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #94a3b8;
+    background: #fff;
     font-size: 13px;
     color: var(--text-primary);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
-    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+    box-shadow: 0 1px 5px rgba(55,98,200,0.14);
 }
 #reportSearch:focus {
     border-color: #3762c8;
-    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.20);
     background: #fff;
 }
 #reportSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
@@ -537,6 +583,29 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-lb-counter { position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:13px;font-weight:600;pointer-events:none; }
 @media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}}
 /* ── Engineer description & progress images display in archive ── */
+/* ── Day navigator (read-only in archive) ── */
+.rep-day-nav {
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bg-primary); border:1.5px solid var(--border-color);
+    border-radius:10px; padding:8px 12px; margin-bottom:12px; gap:8px;
+}
+.rep-day-arrow {
+    background:none; border:1.5px solid var(--border-color); border-radius:7px;
+    width:30px; height:30px; cursor:pointer; color:var(--text-primary);
+    font-size:18px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    transition:all .15s; flex-shrink:0;
+}
+.rep-day-arrow:hover:not(:disabled) { border-color:#2e7d32; color:#2e7d32; background:rgba(46,125,50,.08); }
+.rep-day-arrow:disabled { opacity:.3; cursor:not-allowed; }
+.rep-day-indicator { flex:1; text-align:center; }
+.rep-day-num  { display:block; font-size:13px; font-weight:700; color:#2e7d32; letter-spacing:.04em; }
+.rep-day-date { display:block; font-size:11px; color:var(--text-secondary); margin-top:2px; }
+.rep-last-edited {
+    margin-top:10px; font-size:11px; color:var(--text-secondary);
+    display:flex; align-items:center; gap:5px; font-style:italic;
+    padding-top:8px; border-top:1px dashed var(--border-color);
+}
 .rep-eng-desc-box { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:12px;padding:14px 16px;margin-bottom:0; }
 .rep-progress-strip { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
 .rep-progress-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
@@ -938,13 +1007,26 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="rep-field"><div class="rep-field-label">&#128176; Budget</div><div class="rep-field-value" id="repModalBudget"></div></div>
             </div>
             <div class="rep-divider"></div>
-            <!-- Engineer description + progress images (from pending_reports) -->
+            <!-- Daily log day navigator (read-only in archive) -->
+            <input type="hidden" id="repCurrentLogDate" value="">
             <div class="rep-eng-desc-box" id="repEngDescBox">
+                <!-- Day nav header -->
+                <div class="rep-day-nav" id="repDayNav">
+                    <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
+                    <div class="rep-day-indicator">
+                        <span class="rep-day-num"  id="repDayNum">Day 1</span>
+                        <span class="rep-day-date" id="repDayDate"></span>
+                    </div>
+                    <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
+                </div>
                 <div class="rep-field-label" style="margin-bottom:8px;">&#128221; Description of report</div>
                 <div class="rep-field-value" id="repModalDesc" style="white-space:pre-wrap;min-height:30px;"></div>
                 <div id="repProgressImgsSection" style="margin-top:12px;display:none;">
                     <div class="rep-field-label" style="margin-bottom:8px;">&#128247; Report Progress Images</div>
                     <div class="rep-progress-strip" id="repProgressStrip"></div>
+                </div>
+                <div class="rep-last-edited" id="repLastEdited" style="display:none;">
+                    ✏️ Last edited: <span id="repLastEditedTime">—</span>
                 </div>
             </div>
             <div class="rep-divider"></div>
@@ -972,10 +1054,94 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 const repBackdrop  = document.getElementById('repModalBackdrop');
 const repModalClose= document.getElementById('repModalClose');
 let repGalleryImages = [], repProgressImages = [], repActiveLbImages = [], repGalleryIndex = 0;
+let currentArchiveData = null;
+
+// ── Day navigation state ──────────────────────────────────────────────────────
+let currentDayIndex = 0;
+let currentDayDates = [];
+
+function buildDayDates(startISO, endISO) {
+    const dates = [];
+    if (!startISO || !endISO) return dates;
+    const start = new Date(startISO + 'T00:00:00');
+    const end   = new Date(endISO   + 'T00:00:00');
+    if (isNaN(start) || isNaN(end) || end < start) return dates;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        dates.push(`${y}-${m}-${day}`);
+    }
+    return dates;
+}
+
+function fmtDateISO(iso) {
+    if (!iso) return '—';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const p = iso.split('-');
+    if (p.length < 3) return iso;
+    return months[parseInt(p[1],10)-1] + ' ' + parseInt(p[2],10) + ', ' + p[0];
+}
+
+function fmtDateTime(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt.replace(' ','T'));
+    if (isNaN(d)) return dt;
+    return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) +
+           ' ' + d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderArchiveDayView() {
+    if (!currentArchiveData || !currentDayDates.length) return;
+    const logDate   = currentDayDates[currentDayIndex];
+    const dayNumber = currentDayIndex + 1;
+    const logs      = currentArchiveData.daily_logs || {};
+    const entry     = logs[logDate] || {description:'',updated_at:null,images:[]};
+
+    document.getElementById('repCurrentLogDate').value = logDate;
+    document.getElementById('repDayNum').textContent   = 'Day ' + dayNumber;
+    document.getElementById('repDayDate').textContent  = fmtDateISO(logDate);
+    document.getElementById('repDayPrev').disabled     = (currentDayIndex === 0);
+    document.getElementById('repDayNext').disabled     = (currentDayIndex === currentDayDates.length - 1);
+
+    // Description (always read-only in archive)
+    document.getElementById('repModalDesc').textContent = entry.description || '— No entry for this day —';
+
+    // Images for this day
+    const dayImages = entry.images || [];
+    const pSection  = document.getElementById('repProgressImgsSection');
+    const pStrip    = document.getElementById('repProgressStrip');
+    if (dayImages.length) {
+        pSection.style.display = '';
+        pStrip.innerHTML = '';
+        dayImages.forEach((src, idx) => {
+            const img = document.createElement('img');
+            img.src = src; img.className = 'rep-progress-thumb'; img.alt = 'Progress';
+            img.onclick = () => { repActiveLbImages = dayImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
+            pStrip.appendChild(img);
+        });
+    } else { pSection.style.display = 'none'; }
+
+    // Last-edited
+    const lastEdited = document.getElementById('repLastEdited');
+    if (entry.updated_at) {
+        lastEdited.style.display = '';
+        document.getElementById('repLastEditedTime').textContent = fmtDateTime(entry.updated_at);
+    } else { lastEdited.style.display = 'none'; }
+}
+
+function navigateDayPrev() {
+    if (currentDayIndex > 0) { currentDayIndex--; renderArchiveDayView(); }
+}
+function navigateDayNext() {
+    if (currentDayIndex < currentDayDates.length - 1) { currentDayIndex++; renderArchiveDayView(); }
+}
 
 function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
+    currentArchiveData = data;
+
     document.getElementById('repModalId').textContent    = '#REP-' + data.rep_id + (data.req_id ? '  ·  REQ-' + String(data.req_id).padStart(3,'0') : '');
     document.getElementById('repModalInfra').textContent = data.infrastructure || '—';
     const st = data.resolution_status || 'Completed';
@@ -992,23 +1158,12 @@ function openRepModal(repId) {
     const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
     document.getElementById('repModalBudget').textContent = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
 
-    // Engineer description
-    document.getElementById('repModalDesc').textContent = data.res_note || '— No description provided —';
-
-    // Progress images
-    repProgressImages = data.progress_images || [];
-    const pSection = document.getElementById('repProgressImgsSection');
-    const pStrip   = document.getElementById('repProgressStrip');
-    if (repProgressImages.length) {
-        pSection.style.display = '';
-        pStrip.innerHTML = '';
-        repProgressImages.forEach((src, idx) => {
-            const img = document.createElement('img');
-            img.src = src; img.className = 'rep-progress-thumb'; img.alt = 'Progress';
-            img.onclick = () => { repActiveLbImages = repProgressImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
-            pStrip.appendChild(img);
-        });
-    } else { pSection.style.display = 'none'; }
+    // ── Daily log navigation ──────────────────────────────────────────────────
+    currentDayDates = buildDayDates(data.starting_date, data.estimated_end_date);
+    // Default to last day (most recent entry) for archive view
+    currentDayIndex = currentDayDates.length > 0 ? currentDayDates.length - 1 : 0;
+    document.getElementById('repDayNav').style.display = currentDayDates.length ? '' : 'none';
+    renderArchiveDayView();
 
     // Evidence images
     repGalleryImages = data.images || [];
