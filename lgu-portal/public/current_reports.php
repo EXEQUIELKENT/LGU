@@ -1273,21 +1273,13 @@ select.rep-editable-field { cursor:pointer; }
 [data-theme="dark"] .rep-status-pill.pending-admin { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
 @media(max-width:768px){.rep-detail-modal{width:95%;max-height:90vh;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-footer-inner{flex-direction:row;}}
 
-/* ── Sidebar preload: suppress transitions until state is known ── */
-.sidebar-preload-collapsed .sidebar-nav,
-.sidebar-preload-collapsed .main-content {
-    transition: none !important;
-}
+/* ── Sidebar preload: suppress transition only, state applied by width ── */
 .sidebar-preload-collapsed .sidebar-nav {
+    transition: none !important;
     width: var(--sidebar-collapsed) !important;
 }
-.sidebar-preload-collapsed .sidebar-nav .nav-text,
-.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-text,
-.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-spacer,
-.sidebar-preload-collapsed .sidebar-nav .sidebar-toggle-label {
-    display: none !important;
-}
 .sidebar-preload-collapsed .main-content {
+    transition: none !important;
     margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
 }
 </style>
