@@ -452,6 +452,9 @@ foreach ($rows as $row) {
     box-shadow: 0 6px 20px var(--shadow-color); display: flex; flex-direction: column;
     gap: 18px; width: 100%; box-sizing: border-box; border: 1px solid var(--border-color);
 }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: .6; }
+.empty-state p { font-size: 16px; font-weight: 500; }
 .table-wrapper {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
     background: var(--bg-secondary); overflow: hidden;
@@ -1112,9 +1115,11 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
         </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="report-card" style="text-align:center;padding:40px;opacity:.7;">
-            <div style="font-size:48px;margin-bottom:12px;">⏳</div>
-            <p>No pending reports at this time.</p>
+        <div class="report-card">
+            <div class="empty-state">
+                <div class="empty-icon">⏳</div>
+                <p>No pending reports at this time.</p>
+            </div>
         </div>
     <?php endif; ?>
         <div id="noMobileResult" class="report-card" style="display:none;text-align:center;opacity:.7;font-weight:600;">No matching reports</div>
