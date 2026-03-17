@@ -1272,6 +1272,24 @@ select.rep-editable-field { cursor:pointer; }
 .rep-status-pill.pending-admin { background:rgba(139,92,246,.12);color:#4c1d95;border:1px solid rgba(139,92,246,.3); }
 [data-theme="dark"] .rep-status-pill.pending-admin { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
 @media(max-width:768px){.rep-detail-modal{width:95%;max-height:90vh;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-footer-inner{flex-direction:row;}}
+
+/* ── Sidebar preload: suppress transitions until state is known ── */
+.sidebar-preload-collapsed .sidebar-nav,
+.sidebar-preload-collapsed .main-content {
+    transition: none !important;
+}
+.sidebar-preload-collapsed .sidebar-nav {
+    width: var(--sidebar-collapsed) !important;
+}
+.sidebar-preload-collapsed .sidebar-nav .nav-text,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-text,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-spacer,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-toggle-label {
+    display: none !important;
+}
+.sidebar-preload-collapsed .main-content {
+    margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1294,6 +1312,16 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 </script>
 </head>
 <body>
+<script>
+(function () {
+    try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.documentElement.classList.add('sidebar-preload-collapsed');
+        }
+    } catch (e) {}
+})();
+</script>
+
 
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">

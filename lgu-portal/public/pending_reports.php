@@ -843,6 +843,24 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .eng-det-footer { padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08)); flex-shrink: 0; display: flex; justify-content: center; }
 .eng-det-back-btn { padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: linear-gradient(135deg,#e65100,#ff6d00); color: #fff; box-shadow: 0 4px 12px rgba(230,81,0,.3); transition: all .18s ease; }
 .eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(230,81,0,.4); }
+
+/* ── Sidebar preload: suppress transitions until state is known ── */
+.sidebar-preload-collapsed .sidebar-nav,
+.sidebar-preload-collapsed .main-content {
+    transition: none !important;
+}
+.sidebar-preload-collapsed .sidebar-nav {
+    width: var(--sidebar-collapsed) !important;
+}
+.sidebar-preload-collapsed .sidebar-nav .nav-text,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-text,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-logo-spacer,
+.sidebar-preload-collapsed .sidebar-nav .sidebar-toggle-label {
+    display: none !important;
+}
+.sidebar-preload-collapsed .main-content {
+    margin-left: calc(var(--sidebar-collapsed) + 20px) !important;
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -862,6 +880,16 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 </script>
 </head>
 <body>
+<script>
+(function () {
+    try {
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.documentElement.classList.add('sidebar-preload-collapsed');
+        }
+    } catch (e) {}
+})();
+</script>
+
 
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
