@@ -481,6 +481,69 @@ usort($upcomingSchedules, function($a, $b) {
 });
 $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 
+// ===== SCHEDULE STATUS BREAKDOWN (for doughnut chart — mirrors sched.php logic) =====
+// Personalised: engineers only see their own report counts; maintenance_schedule has no engineer_id so shows for all.
+$schedStatusCounts = ['Scheduled' => 0, 'Completed' => 0, 'Delayed' => 0, 'On-Going' => 0];
+$todayChartDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
+
+// ── A. maintenance_schedule ──────────────────────────────────────────────────
+$msChartSql = "SELECT starting_date, status FROM maintenance_schedule";
+$msChartRes = $conn->query($msChartSql);
+if ($msChartRes) {
+    while ($msRow = $msChartRes->fetch_assoc()) {
+        if ($msRow['status'] === 'Completed') {
+            $schedStatusCounts['Completed']++;
+        } else {
+            $msLabel = 'Scheduled';
+            if (!empty($msRow['starting_date'])) {
+                try {
+                    $msDt   = new DateTime($msRow['starting_date'], new DateTimeZone('Asia/Manila'));
+                    $msDiff = (int)$todayChartDt->diff($msDt)->format('%r%a');
+                    if ($msDiff < 0)       $msLabel = 'Delayed';
+                    elseif ($msDiff === 0) $msLabel = 'On-Going';
+                } catch (Exception $e) {}
+            }
+            $schedStatusCounts[$msLabel]++;
+        }
+    }
+}
+
+// ── B. reports (engineer-filtered) ──────────────────────────────────────────
+$rpChartSql = "
+    SELECT r.estimated_end_date, res.status AS resolution_status, res.res_note
+    FROM reports r
+    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+    WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+      AND r.starting_date IS NOT NULL
+    {$engFilter}
+";
+$rpChartRes = $conn->query($rpChartSql);
+if ($rpChartRes) {
+    while ($rpRow = $rpChartRes->fetch_assoc()) {
+        $rpStatus  = $rpRow['resolution_status'] ?? '';
+        $rpNote    = trim($rpRow['res_note'] ?? '');
+        $rpEndDate = $rpRow['estimated_end_date'] ?? '';
+        if ($rpStatus === 'Completed') {
+            $schedStatusCounts['Completed']++;
+        } elseif ($rpStatus === 'In Progress' || $rpStatus === 'Pending Completion') {
+            $schedStatusCounts['On-Going']++;
+        } else {
+            $rpLabel = 'Scheduled';
+            if (empty($rpNote) && !empty($rpEndDate)) {
+                try {
+                    $rpEndDt = new DateTime($rpEndDate, new DateTimeZone('Asia/Manila'));
+                    if ($todayChartDt > $rpEndDt) $rpLabel = 'Delayed';
+                } catch (Exception $e) {}
+            }
+            $schedStatusCounts[$rpLabel]++;
+        }
+    }
+}
+
+// Flatten for JSON export to JS
+$schedChartLabels = array_keys($schedStatusCounts);
+$schedChartData   = array_values($schedStatusCounts);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -551,13 +614,34 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 }
 
 /* ===========================
+   MAIN CONTENT LAYOUT — fluid, sidebar-aware
+=========================== */
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 20px);
+    margin-right: 18px;
+    padding-top: 85px;
+    padding-left: 0;
+    padding-right: 0;
+    min-height: 100vh;
+    height: auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+
+/* ===========================
    DASHBOARD STYLES - ENHANCED
 =========================== */
 
 .dashboard-container {
     width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
+    box-sizing: border-box;
     padding: 0 20px 40px;
 }
 
@@ -796,6 +880,31 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
     font-size: 13px;
     color: var(--text-secondary);
     margin-top: 4px;
+}
+
+/* ── Schedule Status card badge grid ── */
+.sched-status-badges {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-top: 14px;
+    padding: 0 4px;
+}
+.sched-status-badge-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+/* Keep header row on all screen sizes for this card */
+.sched-status-header {
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
 }
 
 .chart-filters {
@@ -1703,6 +1812,13 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 }
 
 @media (min-width: 769px) and (max-width: 1200px) {
+    .main-content {
+        margin-left: calc(var(--sidebar-expanded) + 12px);
+        margin-right: 12px;
+    }
+    .main-content.expanded {
+        margin-left: calc(var(--sidebar-collapsed) + 12px);
+    }
     .desktop-top-nav {
         padding: 0 16px;
     }
@@ -1749,6 +1865,13 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
 }
 
 @media (min-width: 769px) and (max-width: 1000px) {
+    .main-content {
+        margin-left: calc(var(--sidebar-expanded) + 8px);
+        margin-right: 8px;
+    }
+    .main-content.expanded {
+        margin-left: calc(var(--sidebar-collapsed) + 8px);
+    }
     .desktop-top-nav {
         padding: 0 12px;
     }
@@ -1957,12 +2080,12 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
     .main-content,
     .main-content.expanded {
         margin-left: 0 !important;
+        margin-right: 0 !important;
         padding-top: 90px;
         height: auto;
         min-height: 100vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        margin: 0px;
     }
 
     .main-content::-webkit-scrollbar {
@@ -2109,6 +2232,33 @@ $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
     .report-type-btn { padding: 14px 10px; }
     .report-type-btn .rpt-icon { width: 42px; height: 42px; font-size: 22px; }
     .date-row { grid-template-columns: 1fr; gap: 12px; }
+
+    /* ── Schedule Status card — mobile tweaks ── */
+    .sched-status-header {
+        gap: 6px !important;
+        margin-bottom: 14px;
+    }
+    .sched-status-header .chart-title {
+        font-size: 15px;
+    }
+    .sched-status-header .chart-subtitle {
+        font-size: 11px;
+        line-height: 1.4;
+    }
+    .sched-status-header .view-all-link {
+        font-size: 12px;
+        margin-top: 2px;
+    }
+    /* Tighten badge grid on small screens */
+    .sched-status-badges {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 10px;
+        margin-top: 12px;
+    }
+    .sched-status-badge-item {
+        font-size: 11px;
+        gap: 4px;
+    }
 }
 
 /* ── Logout Confirmation Modal ── */
@@ -2602,27 +2752,65 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </div>
             </div>
 
-            <!-- Active Reports Chart -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <div>
-                        <div class="chart-title">Active Reports</div>
-                        <div class="chart-subtitle">In-progress reports by priority &amp; assignment</div>
+            <!-- Active Reports + Schedule Status Breakdown Row -->
+            <div class="charts-grid" style="margin-top:0;">
+
+                <!-- Active Reports Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Active Reports</div>
+                            <div class="chart-subtitle">In-progress reports by priority &amp; assignment</div>
+                        </div>
+                        <a href="current_reports.php" class="view-all-link">View all →</a>
                     </div>
-                    <a href="current_reports.php" class="view-all-link">View all →</a>
-                </div>
-                <div class="chart-container">
-                    <canvas id="activeReportsChart"></canvas>
-                </div>
-                <div style="display:flex;justify-content:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
-                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
-                        <span style="width:12px;height:12px;border-radius:3px;background:#4caf50;display:inline-block;"></span>Assigned
-                    </span>
-                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
-                        <span style="width:12px;height:12px;border-radius:3px;background:#ff9800;display:inline-block;"></span>Unassigned
-                    </span>
-                </div>
-            </div>
+                    <div class="chart-container">
+                        <canvas id="activeReportsChart"></canvas>
+                    </div>
+                    <div style="display:flex;justify-content:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
+                        <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                            <span style="width:12px;height:12px;border-radius:3px;background:#4caf50;display:inline-block;"></span>Assigned
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                            <span style="width:12px;height:12px;border-radius:3px;background:#ff9800;display:inline-block;"></span>Unassigned
+                        </span>
+                    </div>
+                </div><!-- end Active Reports card -->
+
+                <!-- Schedule Status Breakdown Doughnut -->
+                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
+                    <div class="chart-header sched-status-header">
+                        <div style="min-width:0;flex:1;">
+                            <div class="chart-title">Schedule Status<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                            <div class="chart-subtitle">
+                                <?= $isEngineer
+                                    ? 'Your schedule breakdown — Scheduled, On-Going, Delayed &amp; Completed'
+                                    : 'Overall schedule breakdown — Scheduled, On-Going, Delayed &amp; Completed'
+                                ?>
+                            </div>
+                        </div>
+                        <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="schedStatusChart"></canvas>
+                    </div>
+                    <!-- Summary counts — 2×2 grid so it never wraps awkwardly -->
+                    <div class="sched-status-badges">
+                        <?php
+                        $schedIconMap  = ['Scheduled'=>'📅','On-Going'=>'🔄','Delayed'=>'⚠️','Completed'=>'✅'];
+                        $schedColorMap = ['Scheduled'=>'#2196f3','On-Going'=>'#ff9800','Delayed'=>'#f44336','Completed'=>'#4caf50'];
+                        foreach ($schedStatusCounts as $lbl => $cnt):
+                        ?>
+                        <span class="sched-status-badge-item">
+                            <span style="width:10px;height:10px;border-radius:50%;background:<?= $schedColorMap[$lbl] ?>;display:inline-block;flex-shrink:0;"></span>
+                            <span><?= $schedIconMap[$lbl] ?> <?= $lbl ?>:</span>
+                            <strong style="color:var(--text-primary);"><?= $cnt ?></strong>
+                        </span>
+                        <?php endforeach; ?>
+                    </div>
+                </div><!-- end Schedule Status card -->
+
+            </div><!-- end charts-grid (Active Reports + Schedule Status) -->
 
             <!-- Current Reports Preview -->
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
@@ -2964,6 +3152,10 @@ const monthlyTrendsData = <?= json_encode($monthlyTrendsData) ?>;
 const statusLabels = <?= json_encode($statusLabels) ?>;
 const statusData = <?= json_encode($statusData) ?>;
 
+// ── Schedule Status Breakdown (sched.php mirror) ──
+const schedChartLabels = <?= json_encode($schedChartLabels) ?>;
+const schedChartData   = <?= json_encode($schedChartData) ?>;
+
 // Make charts responsive on window resize
 let resizeTimeout;
 window.addEventListener('resize', function() {
@@ -3163,6 +3355,70 @@ if (statusCtx) {
     });
 }
 
+// ===== SCHEDULE STATUS BREAKDOWN CHART (links to sched.php) =====
+const schedStatusCtx = document.getElementById('schedStatusChart');
+if (schedStatusCtx) {
+    const schedColourMap = {
+        'Scheduled': '#2196f3',
+        'On-Going':  '#ff9800',
+        'Delayed':   '#f44336',
+        'Completed': '#4caf50'
+    };
+    const schedBgColors = schedChartLabels.map(function(l) {
+        return schedColourMap[l] || '#9e9e9e';
+    });
+
+    new Chart(schedStatusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: schedChartLabels,
+            datasets: [{
+                data: schedChartData,
+                backgroundColor: schedBgColors,
+                borderWidth: 3,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim() || '#fff',
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                        font: { size: 13, weight: '600' },
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                            const pct   = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            },
+            onClick: function() { window.location.href = 'sched.php'; }
+        }
+    });
+}
+
 // ===== ACTIVE REPORTS CHART =====
 const activeReportsLabels    = <?= json_encode($reportPriorityLabels) ?>;
 const activeReportsAssigned  = <?= json_encode($reportAssignedData) ?>;
@@ -3284,7 +3540,7 @@ if (activeReportsCtx) {
                 <label>Export Format</label>
                 <div class="format-toggle">
                     <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
-                        <i class="fas fa-file-csv"></i> CSV (.csv)
+                        <i class="fas fa-file-excel"></i> Excel (.xlsx)
                     </button>
                     <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
                         <i class="fas fa-file-pdf"></i> PDF (Print)
@@ -3869,7 +4125,7 @@ document.addEventListener('keydown', function(e) {
             el.dataset.href = 'requests.php';
         } else if (text.includes('top facilities')) {
             el.dataset.href = 'requests.php';
-        } else if (text.includes('upcoming maintenance')) {
+        } else if (text.includes('upcoming maintenance') || text.includes('schedule status')) {
             el.dataset.href = 'sched.php';
         } else if (text.includes('recent activity')) {
             el.dataset.href = 'requests.php';

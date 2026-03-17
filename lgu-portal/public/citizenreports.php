@@ -534,31 +534,75 @@ foreach ($maintenance_data as $_item) {
         [data-theme="dark"] .status-progress { background: rgba(245,158,11,0.18);  color: #fdd835; }
         [data-theme="dark"] .status-delayed  { background: rgba(244,67,54,0.2);    color: #e57373; }
 
-        /* TABLE SEARCH BAR */
-        .table-search-wrapper {
+        /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
+        .search-toolbar {
+            display: flex;
+            align-items: center;
             width: 100%;
-            max-width: 100%;
+            padding: 8px 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(55, 98, 200, 0.13);
+            background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+            box-sizing: border-box;
             margin-bottom: 10px;
         }
+        [data-theme="dark"] .search-toolbar {
+            background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+            border-color: rgba(95, 140, 255, 0.18);
+        }
+
+        /* ── TABLE SEARCH BAR — sched.php list-view design (exact match) ── */
+        .table-search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 0;
+        }
+        .table-search-wrapper svg {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+        [data-theme="dark"] .table-search-wrapper svg { color: #64748b; }
         #requestSearch {
             width: 100%;
-            padding: 10px 16px;
+            height: 36px;
+            padding: 0 12px 0 34px;
             border-radius: 10px;
-            border: 1px solid #d2d6db;
-            font-size: 15px;
-            outline: none;
-            transition: border .2s ease, box-shadow .2s ease, background 0.3s ease, color 0.3s ease;
-            background: var(--card-bg);
+            border: 1.5px solid rgba(55, 98, 200, 0.18);
+            background: rgba(255, 255, 255, 0.85);
+            font-size: 13px;
             color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             box-sizing: border-box;
-        }
-        [data-theme="dark"] #requestSearch {
-            border-color: var(--border-color);
+            box-shadow: 0 1px 3px rgba(55,98,200,0.06);
         }
         #requestSearch:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+            border-color: #3762c8;
+            box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+            background: #fff;
         }
+        #requestSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+        [data-theme="dark"] #requestSearch {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(95,140,255,0.22);
+            color: var(--text-primary);
+        }
+        [data-theme="dark"] #requestSearch:focus {
+            border-color: #5f8cff;
+            box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+            background: rgba(255,255,255,0.10);
+        }
+        [data-theme="dark"] #requestSearch::placeholder { color: #64748b; }
         .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
         [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
@@ -828,10 +872,8 @@ foreach ($maintenance_data as $_item) {
             .mobile-maintenance-list::-webkit-scrollbar-thumb  { background: #9cafde; border-radius: 3px; }
 
             .table-search-wrapper {
-                order: 2;
-                margin-top: 10px;
-                margin-bottom: 18px;
-                padding: 0 10px;
+                margin-top: 0;
+                margin-bottom: 0;
                 box-sizing: border-box;
             }
             .mobile-maintenance-list .card-header {
@@ -854,8 +896,17 @@ foreach ($maintenance_data as $_item) {
             }
 
             .content-card {
-                padding: 22px 6px;
+                padding: 22px 14px;
                 border-radius: 12px;
+            }
+            /* Search toolbar + legend — consistent horizontal spacing inside card */
+            .search-toolbar {
+                width: 100%;
+                margin-bottom: 10px;
+                box-sizing: border-box;
+            }
+            .status-legend {
+                margin-bottom: 6px;
             }
         }
 
@@ -866,7 +917,7 @@ foreach ($maintenance_data as $_item) {
             .stat-card .number { font-size: 26px; }
             .card-header h2 { font-size: 1.0rem; }
             .report-card { padding: 12px; }
-            #requestSearch { font-size: 14px; padding: 9px 14px; }
+            #requestSearch { font-size: 12.5px; padding: 0 12px 0 34px; height: 36px; }
         }
 
         @media (max-width: 360px) {
@@ -1109,13 +1160,16 @@ foreach ($maintenance_data as $_item) {
         <h2 class="hide-on-mobile" data-i18n="reports_page_title">Recent Maintenance Reports</h2>
     </div>
 
+    <div class="search-toolbar">
     <div class="table-search-wrapper">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
             id="requestSearch"
             type="text"
             data-i18n-placeholder="reports_search_placeholder"
             placeholder="Search by Date, Type, Location, Budget, or Status..."
         >
+    </div>
     </div>
 
     <!-- STATUS LEGEND (clickable filter) -->

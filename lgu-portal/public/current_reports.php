@@ -25,8 +25,16 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 
 require __DIR__ . '/db.php';
 
+// ── Safe migration: add Pending Admin Approval to the status enum ────────────
+$conn->query("
+    ALTER TABLE request_resolutions
+    MODIFY COLUMN status ENUM('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion','Pending Admin Approval')
+    NOT NULL DEFAULT 'Approved'
+");
+
 $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
+$isAdmin    = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
 // AJAX/POST handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -64,11 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$su->execute()) { $e=$su->error; $su->close(); throw new Exception("DB error (report update): $e"); }
             $su->close();
 
-            // Step 2 — set status to 'Scheduled' (VALID enum value after migration)
+            // Step 2 — set status to 'Pending Admin Approval' (waits for admin to schedule)
             $stmt = $conn->prepare(
                 "UPDATE request_resolutions rr
                  JOIN   reports r ON r.res_id = rr.res_id
-                 SET    rr.status = 'Scheduled'
+                 SET    rr.status = 'Pending Admin Approval'
                  WHERE  r.rep_id  = ?
                    AND  rr.status = 'Approved'"   // safety: only move if still Approved
             );
@@ -92,15 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $chkRow = $chk->get_result()->fetch_assoc();
                 $chk->close();
                 $currentStatus = $chkRow['status'] ?? 'unknown';
-                // If it's already Scheduled that means success (idempotent)
-                if ($currentStatus === 'Scheduled') {
+                // If it's already Pending Admin Approval that means success (idempotent)
+                if ($currentStatus === 'Pending Admin Approval') {
                     while (ob_get_level() > 0) ob_end_clean();
-                    echo json_encode(['success'=>true,'message'=>'Already scheduled.']); exit;
+                    echo json_encode(['success'=>true,'message'=>'Already pending admin approval.']); exit;
                 }
                 while (ob_get_level() > 0) ob_end_clean();
                 echo json_encode([
                     'success' => false,
-                    'message' => "Could not update: report status is currently '{$currentStatus}'. Only 'Approved' reports can be scheduled."
+                    'message' => "Could not update: report status is currently '{$currentStatus}'. Only 'Approved' reports can be submitted for admin approval."
                 ]); exit;
             }
 
@@ -157,8 +165,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => true]);
         $stmt->close(); exit;
     }
+
+    // ── Admin approves engineer submission → moves to Pending Reports (Scheduled) ──
+    if ($action === 'admin_approve_report') {
+        if (!$isAdmin) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized. Admin role required.']); exit;
+        }
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId <= 0) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Invalid report ID.']); exit;
+        }
+        $stmt = $conn->prepare(
+            "UPDATE request_resolutions rr
+             JOIN   reports r ON r.res_id = rr.res_id
+             SET    rr.status = 'Scheduled'
+             WHERE  r.rep_id  = ?
+               AND  rr.status = 'Pending Admin Approval'"
+        );
+        if (!$stmt) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'DB prepare error: ' . $conn->error]); exit;
+        }
+        $stmt->bind_param("i", $repId);
+        $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
+        while (ob_get_level() > 0) ob_end_clean();
+        if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
+        if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
+        echo json_encode(['success' => true]); exit;
+    }
+
+    // ── Admin returns report to engineer → resets to Approved so engineer resubmits ──
+    if ($action === 'admin_return_report') {
+        if (!$isAdmin) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized. Admin role required.']); exit;
+        }
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId <= 0) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'Invalid report ID.']); exit;
+        }
+        $stmt = $conn->prepare(
+            "UPDATE request_resolutions rr
+             JOIN   reports r ON r.res_id = rr.res_id
+             SET    rr.status = 'Approved'
+             WHERE  r.rep_id  = ?
+               AND  rr.status = 'Pending Admin Approval'"
+        );
+        if (!$stmt) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success' => false, 'message' => 'DB prepare error: ' . $conn->error]); exit;
+        }
+        $stmt->bind_param("i", $repId);
+        $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
+        while (ob_get_level() > 0) ob_end_clean();
+        if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
+        if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
+        echo json_encode(['success' => true]); exit;
+    }
+
     while (ob_get_level() > 0) ob_end_clean();
-    echo json_encode(['success' => false]);
+    echo json_encode(['success' => false, 'message' => 'Unknown action.']);
     exit;
 }
 
@@ -223,6 +292,7 @@ $sql = "
         req.name AS requester_name, req.contact_number, req.coordinates,
         req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+        e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
         ai.priority_recommendation AS ai_priority,
         ai.ai_cost_estimation      AS ai_cost,
@@ -240,7 +310,7 @@ $sql = "
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
     LEFT JOIN request_ai_analysis  ai  ON res.req_id    = ai.req_id
     LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
-    WHERE res.status = 'Approved' {$ef}
+    WHERE res.status IN ('Approved', 'Pending Admin Approval') {$ef}
     GROUP BY r.rep_id
     ORDER BY r.rep_id DESC
 ";
@@ -248,15 +318,17 @@ $result = $conn->query($sql);
 
 function statusPill(string $status): string {
     $map = [
-        'Completed'          => 'completed',
-        'In Progress'        => 'on-going',
-        'Awaiting Engineer'  => 'pending-st',
-        'Pending Acceptance' => 'pending-accept-st',
-        'Pending'            => 'pending-st',
-        'Cancelled'          => 'cancelled-st',
+        'Completed'              => 'completed',
+        'In Progress'            => 'on-going',
+        'Awaiting Engineer'      => 'pending-st',
+        'Pending Acceptance'     => 'pending-accept-st',
+        'Pending'                => 'pending-st',
+        'Cancelled'              => 'cancelled-st',
+        'Pending Admin Approval' => 'pending-admin-st',
     ];
     $cls = $map[$status] ?? 'on-going';
-    return "<span class=\"status {$cls}\">{$status}</span>";
+    $label = $status === 'Pending Admin Approval' ? 'Pending Approval' : htmlspecialchars($status);
+    return "<span class=\"status {$cls}\">{$label}</span>";
 }
 
 function priorityBadge(?string $lvl): string {
@@ -269,6 +341,18 @@ function priorityBadge(?string $lvl): string {
     $lvl   = $lvl ?? 'Low';
     $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
     return "<span style=\"{$style}padding:3px 7px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;\">{$lvl}</span>";
+}
+
+function engProfileBtn(int $engineerId, ?string $picPath): string {
+    $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>';
+    $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/' . $picPath);
+    if ($hasPic) {
+        $src   = htmlspecialchars($picPath);
+        $inner = "<img src=\"{$src}\" alt=\"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='block';\"><span style=\"display:none;width:100%;height:100%;\">{$FALLBACK_SVG}</span>";
+    } else {
+        $inner = $FALLBACK_SVG;
+    }
+    return "<button class=\"eng-profile-btn\" onclick=\"openEngineerProfileById({$engineerId})\" title=\"View Engineer Profile\">{$inner}</button>";
 }
 
 // Helper: resolve effective priority — AI result takes precedence over the
@@ -305,6 +389,7 @@ foreach ($rows as $row) {
         'issue'             => $row['issue'] ?? '',
         'res_note'          => $row['res_note'] ?? '',
         'engineer_name'     => $row['engineer_name'] ?? '',
+        'engineer_pic'      => $row['engineer_pic'] ?? '',
         'engineer_accepted' => (bool)($row['engineer_accepted'] ?? false),
         'reporter_name'     => $row['reporter_name'] ?? '',
         'requester_name'    => $row['requester_name'] ?? '',
@@ -368,15 +453,73 @@ foreach ($rows as $row) {
     color: #fff; font-size: 11px; font-weight: 700;
     padding: 4px 12px; border-radius: 20px; letter-spacing: .04em;
 }
-.search-bar-wrapper { margin-bottom: 16px; }
-#reportSearch {
-    width: 100%; padding: 10px 16px; border-radius: 10px;
-    border: 1px solid #d2d6db; font-size: 15px; outline: none;
-    background: var(--bg-secondary); color: var(--text-primary);
-    transition: border .2s, box-shadow .2s; box-sizing: border-box;
+/* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
+.search-toolbar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    box-sizing: border-box;
+    margin-bottom: 12px;
 }
-[data-theme="dark"] #reportSearch { border-color: var(--border-color); }
-#reportSearch:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+[data-theme="dark"] .search-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+
+/* ── Search bar — sched.php list-view design (exact match) ── */
+.search-bar-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+.search-bar-wrapper svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .search-bar-wrapper svg { color: #64748b; }
+#reportSearch {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+}
+#reportSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#reportSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+[data-theme="dark"] #reportSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #reportSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #reportSearch::placeholder { color: #64748b; }
 .card {
     align-self: start; background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px; margin-top: 28px;
@@ -399,13 +542,13 @@ table colgroup col:nth-child(1)  { width: 5%;  }  /* Rep #          */
 table colgroup col:nth-child(2)  { width: 8%;  }  /* Infrastructure */
 table colgroup col:nth-child(3)  { width: 10%; }  /* Location       */
 table colgroup col:nth-child(4)  { width: 8%;  }  /* Issue / Notes  */
-table colgroup col:nth-child(5)  { width: 13%; }  /* Engineer       */
-table colgroup col:nth-child(6)  { width: 10%; }  /* Reported By    */
+table colgroup col:nth-child(5)  { width: 15%; }  /* Engineer       */
+table colgroup col:nth-child(6)  { width: 8%;  }  /* Reported By    */
 table colgroup col:nth-child(7)  { width: 7%;  }  /* Start Date     */
 table colgroup col:nth-child(8)  { width: 7%;  }  /* Est. End Date  */
 table colgroup col:nth-child(9)  { width: 7%;  }  /* Priority       */
-table colgroup col:nth-child(10) { width: 16%; }  /* Budget         */
-table colgroup col:nth-child(11) { width: 9%;  }  /* Status         */
+table colgroup col:nth-child(10) { width: 14%; }  /* Budget         */
+table colgroup col:nth-child(11) { width: 11%; }  /* Status         */
 thead { background: #ff9800; }
 thead th {
     padding: 11px 7px; font-size: 11.5px; font-weight: 600; text-align: left;
@@ -423,7 +566,7 @@ td {
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(255,152,0,.03); }
 tbody tr:hover { background: rgba(255,152,0,.09); }
-.status { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; white-space: nowrap; }
+.status { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; white-space: normal; word-break: break-word; max-width: 100%; vertical-align: middle; line-height: 1.3; }
 .completed    { background: #a5d6a7; color: #1b5e20; }
 .on-going     { background: #fff59d; color: #f57f17; }
 .pending-st   { background: #ffe0b2; color: #e65100; }
@@ -504,8 +647,9 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     flex: 1; overflow: hidden; text-overflow: ellipsis;
     font-size: 10px; font-weight: 500;
     color: var(--text-secondary); opacity: .85; min-width: 0;
+    white-space: nowrap;
 }
-.eng-combo-label.has-value { color: var(--text-primary); opacity: 1; }
+.eng-combo-label.has-value { color: var(--text-primary); opacity: 1; font-weight: 600; }
 .eng-combo-arrow {
     font-size: 9px; color: #ff9800;
     flex-shrink: 0; transition: transform .2s; line-height: 1;
@@ -682,6 +826,32 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 .eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,152,0,.4); }
 .eng-combo-no-results { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); opacity: .7; }
 .eng-combo-loading { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); }
+/* Specialization match badge shown next to engineer name */
+.eng-opt-spec-badge {
+    display: inline-block; font-size: 9px; font-weight: 700;
+    padding: 1px 6px; border-radius: 20px; margin-left: 5px;
+    background: rgba(255,152,0,.15); color: #e65100;
+    border: 1px solid rgba(255,152,0,.3); white-space: nowrap;
+    flex-shrink: 0;
+}
+/* "Show all engineers" toggle row at bottom of list */
+.eng-combo-show-all {
+    padding: 7px 10px; font-size: 10px; font-weight: 700;
+    color: #3762c8; cursor: pointer; text-align: center;
+    border-top: 1px dashed var(--border-color);
+    background: rgba(55,98,200,.04);
+    transition: background .15s;
+}
+.eng-combo-show-all:hover { background: rgba(55,98,200,.1); }
+/* Separator label between matched / unmatched sections */
+.eng-combo-section-label {
+    padding: 4px 10px; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-secondary); opacity: .7;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+[data-theme="dark"] .eng-combo-show-all { color: #93b4ff; background: rgba(55,98,200,.08); }
 
 /* ================================================================
    ENGINEER ASSIGN CONFIRM MODAL
@@ -834,6 +1004,10 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
     .eng-combobox { min-width: 0; max-width: 100%; width: 100%; }
+    /* Status pill — allow wrapping so long labels aren't clipped */
+    .status { font-size: 11px; padding: 4px 8px; max-width: 160px; white-space: normal; word-break: break-word; text-overflow: clip; line-height: 1.3; }
+    /* Larger View button in mobile cards */
+    .btn-view-rep-mobile { padding: 10px 22px !important; font-size: 14px !important; border-radius: 10px !important; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
 
@@ -977,9 +1151,38 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     background: rgba(99,102,241,.12);
     color: #4338ca;
     border: 1px solid rgba(99,102,241,.28);
-    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: normal; word-break: break-word;
 }
 [data-theme="dark"] .status.pending-accept-st { background: rgba(99,102,241,.22); color: #a5b4fc; }
+
+/* Pending Admin Approval status badge */
+.pending-admin-st {
+    background: rgba(139,92,246,.12);
+    color: #4c1d95;
+    border: 1px solid rgba(139,92,246,.28);
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: normal; word-break: break-word;
+}
+[data-theme="dark"] .status.pending-admin-st { background: rgba(139,92,246,.22); color: #c4b5fd; border-color: rgba(139,92,246,.4); }
+
+/* Admin Approve to Schedule button */
+.btn-admin-approve-rep {
+    display:inline-flex; align-items:center; gap:8px;
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    color:#fff; border:none; padding:11px 22px; border-radius:11px;
+    font-size:14px; font-weight:700; cursor:pointer; transition:all .25s;
+    box-shadow:0 4px 14px rgba(124,58,237,.35); letter-spacing:.02em;
+}
+.btn-admin-approve-rep:hover { transform:translateY(-2px); box-shadow:0 7px 20px rgba(124,58,237,.5); }
+
+/* Admin Return to Engineer button */
+.btn-admin-return-rep {
+    display:inline-flex; align-items:center; gap:8px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color:#fff; border:none; padding:11px 22px; border-radius:11px;
+    font-size:14px; font-weight:700; cursor:pointer; transition:all .25s;
+    box-shadow:0 4px 14px rgba(239,68,68,.35); letter-spacing:.02em;
+}
+.btn-admin-return-rep:hover { transform:translateY(-2px); box-shadow:0 7px 20px rgba(239,68,68,.5); }
 
 /* Accept Assignment button */
 .btn-accept-rep {
@@ -1066,6 +1269,8 @@ select.rep-editable-field { cursor:pointer; }
 .rep-budget-wrap:focus-within { border-color:#ff9800;box-shadow:0 0 0 3px rgba(255,152,0,.15); }
 .rep-peso-prefix { padding:0 8px 0 12px;font-size:14px;font-weight:700;color:#e65100;background:transparent;border:none;pointer-events:none;flex-shrink:0; }
 .rep-budget-input-inner { border:none!important;outline:none!important;box-shadow:none!important;background:transparent;padding:7px 12px 7px 0;width:100%;font-size:13px;color:var(--text-primary); }
+.rep-status-pill.pending-admin { background:rgba(139,92,246,.12);color:#4c1d95;border:1px solid rgba(139,92,246,.3); }
+[data-theme="dark"] .rep-status-pill.pending-admin { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
 @media(max-width:768px){.rep-detail-modal{width:95%;max-height:90vh;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-footer-inner{flex-direction:row;}}
 </style>
 <script>
@@ -1247,8 +1452,11 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <span class="page-badge">In Progress</span>
     </div>
 
+    <div class="search-toolbar">
     <div class="search-bar-wrapper">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reportSearch" type="text" placeholder="Search by ID, Infrastructure, Location, Engineer, Priority…">
+    </div>
     </div>
 
     <!-- Desktop Table -->
@@ -1298,9 +1506,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                         <?php if ($hasEngineer): ?>
                             <?php if ($canAssignEngineer || $isAdmin): ?>
                             <span class="eng-name-with-profile">
-                                <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
-                                </button>
+                                <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
                                 <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                             </span>
                             <?php else: ?>
@@ -1308,9 +1514,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                             <?php endif; ?>
                         <?php elseif ($canAssignEngineer): ?>
                             <!-- Desktop combobox trigger — dropdown is a body-level portal -->
-                            <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
-                                <div class="eng-combo-display">
-                                    <span class="eng-combo-label">— Assign engineer —</span>
+                            <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>">
+                                <div class="eng-combo-display" title="Assign engineer">
+                                    <span class="eng-combo-label">Assign engineer</span>
                                     <span class="eng-combo-arrow">▾</span>
                                 </div>
                             </div>
@@ -1361,9 +1567,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     <?php if ($hasEngineer): ?>
                         <?php if ($canAssignEngineer || $isAdmin): ?>
                         <span class="eng-name-with-profile">
-                            <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
-                            </button>
+                            <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                         </span>
                         <?php else: ?>
@@ -1371,9 +1575,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                         <?php endif; ?>
                     <?php elseif ($canAssignEngineer): ?>
                         <!-- Mobile combobox trigger — dropdown is a body-level portal -->
-                        <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>">
-                            <div class="eng-combo-display">
-                                <span class="eng-combo-label">— Assign engineer —</span>
+                        <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>">
+                            <div class="eng-combo-display" title="Assign engineer">
+                                <span class="eng-combo-label">Assign engineer</span>
                                 <span class="eng-combo-arrow">▾</span>
                             </div>
                         </div>
@@ -1390,7 +1594,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable"><?= effectiveBudget($row) ?></span></div>
             <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
                 <?= statusPill($rawStatus) ?>
-                <button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
+                <button class="btn-view-rep btn-view-rep-mobile" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
             </div>
         </div>
         <?php endforeach; ?>
@@ -1457,8 +1661,11 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
             <div class="rep-footer-inner">
                 <!-- Shown after acceptance -->
-                <button class="btn-save-rep"    id="repSaveBtn"    style="display:none;" onclick="confirmSave()"><i class="fas fa-save"></i> Save Changes</button>
-                <button class="btn-approve-rep" id="repApproveBtn" style="display:none;" onclick="confirmApprove()"><i class="fas fa-check-circle"></i> Approved</button>
+                <button class="btn-save-rep"         id="repSaveBtn"         style="display:none;" onclick="confirmSave()"><i class="fas fa-save"></i> Save Changes</button>
+                <button class="btn-approve-rep"      id="repApproveBtn"      style="display:none;" onclick="confirmApprove()"><i class="fas fa-paper-plane"></i> Submit for Approval</button>
+                <!-- Shown to admin when engineer has submitted -->
+                <button class="btn-admin-return-rep"  id="repAdminReturnBtn"  style="display:none;" onclick="confirmAdminReturn()"><i class="fas fa-undo-alt"></i> Return to Engineer</button>
+                <button class="btn-admin-approve-rep" id="repAdminApproveBtn" style="display:none;" onclick="confirmAdminApprove()"><i class="fas fa-calendar-check"></i> Approve to Schedule</button>
                 <!-- Shown while pending acceptance -->
                 <button class="btn-decline-rep" id="repDeclineBtn" style="display:none;" onclick="confirmDecline()"><i class="fas fa-times-circle"></i> Decline</button>
                 <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="confirmAccept()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
@@ -1520,11 +1727,37 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 <div class="rep-confirm-backdrop" id="repApproveConfirmBackdrop">
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon approve-icon"><i class="fas fa-check-circle" style="color:#ff9800;font-size:24px;"></i></div>
-        <div class="rep-confirm-title">Approve & Schedule Report?</div>
-        <div class="rep-confirm-desc">This will save the current priority &amp; budget and move the report to <strong>Pending Reports</strong> with <strong>Scheduled</strong> status.</div>
+        <div class="rep-confirm-title">Submit for Admin Approval?</div>
+        <div class="rep-confirm-desc">This will save the current priority &amp; budget and submit the report to the <strong>Admin for scheduling approval</strong>. You will not be able to edit it after submission.</div>
         <div class="rep-confirm-btns">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeApproveConfirm()">Cancel</button>
-            <button class="rep-confirm-btn rep-confirm-ok-approve" id="repApproveConfirmBtn" onclick="doApproveReport()"><i class="fas fa-check-circle"></i> Confirm Approve</button>
+            <button class="rep-confirm-btn rep-confirm-ok-approve" id="repApproveConfirmBtn" onclick="doApproveReport()"><i class="fas fa-check-circle"></i> Confirm Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Approve to Schedule Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repAdminApproveConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);"><i class="fas fa-calendar-check" style="color:#7c3aed;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Approve &amp; Schedule Report?</div>
+        <div class="rep-confirm-desc">This will approve the engineer's submission and move the report to <strong>Pending Reports</strong> with <strong>Scheduled</strong> status.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminApproveConfirm()">Cancel</button>
+            <button class="rep-confirm-btn" id="repAdminApproveConfirmBtn" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.3);" onclick="doAdminApproveReport()"><i class="fas fa-calendar-check"></i> Confirm Approve</button>
+        </div>
+    </div>
+</div>
+
+<!-- Return to Engineer Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repAdminReturnConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-undo-alt" style="color:#ef4444;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Return to Engineer?</div>
+        <div class="rep-confirm-desc">The report will be sent back to the engineer. They will need to review and <strong>re-submit for approval</strong> before it can be scheduled.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminReturnConfirm()">Cancel</button>
+            <button class="rep-confirm-btn" id="repAdminReturnConfirmBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doAdminReturnReport()"><i class="fas fa-undo-alt"></i> Confirm Return</button>
         </div>
     </div>
 </div>
@@ -1548,10 +1781,23 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 let engineersCache = null;
 let activeComboEl   = null;   // the .eng-combobox trigger currently open
 let pendingConfirm  = null;   // { repId, engineerId, engineerName }
+let activeInfrastructure = ''; // infrastructure type of the currently-open combobox
 
 const portal     = document.getElementById('engComboPortal');
 const comboSearch= document.getElementById('engComboSearch');
 const comboList  = document.getElementById('engComboList');
+
+// ── Check whether an engineer's areas_of_specialization matches the infrastructure ──
+// Returns true when there is no filter, or when at least one specialization
+// token contains (or is contained by) the infrastructure string (case-insensitive).
+function engineerMatchesInfrastructure(eng, infrastructure) {
+    if (!infrastructure || !infrastructure.trim()) return true;
+    const spec = (eng.areas_of_specialization || '').trim();
+    if (!spec) return false;
+    const infra = infrastructure.toLowerCase().trim();
+    const tokens = spec.split(/[,;]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+    return tokens.some(token => token.includes(infra) || infra.includes(token));
+}
 
 // ── Load engineers from server once ──────────────────────────────
 async function loadEngineers() {
@@ -1567,27 +1813,95 @@ async function loadEngineers() {
 }
 
 // ── Render options into the shared list ──────────────────────────
-function renderPortalList(engineers, query) {
+// infrastructure: if set, matched engineers appear first with a badge;
+// unmatched are hidden behind a "Show all engineers" toggle.
+function renderPortalList(engineers, query, infrastructure) {
     comboList.innerHTML = '';
     const q = (query || '').toLowerCase().trim();
-    const filtered = q ? engineers.filter(e => e.name.toLowerCase().includes(q)) : engineers;
-    if (filtered.length === 0) {
+    const infra = (infrastructure || '').trim();
+
+    // Split into matched vs unmatched by specialization
+    let matched   = engineers;
+    let unmatched = [];
+    if (infra) {
+        matched   = engineers.filter(e =>  engineerMatchesInfrastructure(e, infra));
+        unmatched = engineers.filter(e => !engineerMatchesInfrastructure(e, infra));
+    }
+
+    // Apply name search query on top
+    const matchedFiltered   = q ? matched.filter(e => e.name.toLowerCase().includes(q))   : matched;
+    const unmatchedFiltered = q ? unmatched.filter(e => e.name.toLowerCase().includes(q)) : unmatched;
+
+    if (matchedFiltered.length === 0 && unmatchedFiltered.length === 0) {
         comboList.innerHTML = '<div class="eng-combo-no-results">No engineers found</div>';
         return;
     }
-    filtered.forEach(eng => {
+
+    const FALLBACK_PIC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+
+    function buildOption(eng, showBadge) {
         const item = document.createElement('div');
-        item.className   = 'eng-combo-option';
-        item.dataset.id  = eng.id;
-        item.dataset.name= eng.name;
-        const imgSrc = eng.profile_picture || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
-        const avatarHtml = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
-            onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'">`;
-        item.innerHTML   = avatarHtml + escapeHtml(eng.name);
-        // Store full engineer object for details modal
-        item._engData = eng;
-        comboList.appendChild(item);
-    });
+        item.className    = 'eng-combo-option';
+        item.dataset.id   = eng.id;
+        item.dataset.name = eng.name;
+        const imgSrc      = eng.profile_picture || FALLBACK_PIC;
+        const avatarHtml  = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
+            onerror="this.src='${FALLBACK_PIC}'">`;
+        const badgeHtml   = (showBadge && infra)
+            ? `<span class="eng-opt-spec-badge">✓ ${escapeHtml(infra)}</span>`
+            : '';
+        item.innerHTML    = avatarHtml + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(eng.name)}</span>` + badgeHtml;
+        item._engData     = eng;
+        return item;
+    }
+
+    // Section label when there are matched engineers
+    if (infra && matchedFiltered.length > 0) {
+        const lbl = document.createElement('div');
+        lbl.className   = 'eng-combo-section-label';
+        lbl.textContent = `Matched — ${infra}`;
+        comboList.appendChild(lbl);
+    }
+
+    // Matched engineers (always visible)
+    if (matchedFiltered.length === 0 && infra) {
+        const empty = document.createElement('div');
+        empty.className   = 'eng-combo-no-results';
+        empty.textContent = `No engineers specializing in "${infra}"`;
+        comboList.appendChild(empty);
+    } else {
+        matchedFiltered.forEach(eng => comboList.appendChild(buildOption(eng, true)));
+    }
+
+    // Unmatched engineers — hidden behind a toggle
+    if (unmatchedFiltered.length > 0) {
+        const toggleRow = document.createElement('div');
+        toggleRow.className   = 'eng-combo-show-all';
+        toggleRow.textContent = `▸ Show all engineers (${unmatchedFiltered.length} others)`;
+
+        // Container for unmatched — starts hidden
+        const otherSection = document.createElement('div');
+        otherSection.style.display = 'none';
+
+        const otherLbl = document.createElement('div');
+        otherLbl.className   = 'eng-combo-section-label';
+        otherLbl.textContent = 'Other engineers';
+        otherSection.appendChild(otherLbl);
+        unmatchedFiltered.forEach(eng => otherSection.appendChild(buildOption(eng, false)));
+
+        toggleRow.addEventListener('mousedown', e => {
+            e.preventDefault(); e.stopPropagation();
+            const open = otherSection.style.display !== 'none';
+            otherSection.style.display = open ? 'none' : 'block';
+            toggleRow.textContent = open
+                ? `▸ Show all engineers (${unmatchedFiltered.length} others)`
+                : `▾ Hide other engineers`;
+            positionPortal(activeComboEl.querySelector('.eng-combo-display'));
+        });
+
+        comboList.appendChild(toggleRow);
+        comboList.appendChild(otherSection);
+    }
 }
 
 // ── Position portal below the trigger ────────────────────────────
@@ -1629,6 +1943,7 @@ async function openPortal(comboEl) {
     closePortal();
 
     activeComboEl = comboEl;
+    activeInfrastructure = (comboEl.dataset.infrastructure || '').trim();
     comboEl.querySelector('.eng-combo-display').classList.add('open');
 
     comboSearch.value   = '';
@@ -1640,7 +1955,7 @@ async function openPortal(comboEl) {
     comboSearch.focus();
 
     const engineers = await loadEngineers();
-    renderPortalList(engineers, '');
+    renderPortalList(engineers, '', activeInfrastructure);
     // Re-position after list is populated (height may change)
     positionPortal(comboEl.querySelector('.eng-combo-display'));
 }
@@ -1652,6 +1967,7 @@ function closePortal() {
         activeComboEl.querySelector('.eng-combo-display').classList.remove('open');
         activeComboEl = null;
     }
+    activeInfrastructure = '';
 }
 
 // ── Attach click to every trigger ────────────────────────────────
@@ -1670,7 +1986,7 @@ function initAllComboboxes() {
 // ── Live search ───────────────────────────────────────────────────
 comboSearch.addEventListener('input', async () => {
     const engineers = await loadEngineers();
-    renderPortalList(engineers, comboSearch.value);
+    renderPortalList(engineers, comboSearch.value, activeInfrastructure);
 });
 
 // ── Option click → confirmation modal ────────────────────────────
@@ -1690,8 +2006,16 @@ comboList.addEventListener('mousedown', e => {
 
 // ── Keyboard navigation inside search ────────────────────────────
 comboSearch.addEventListener('keydown', e => {
-    const items     = [...comboList.querySelectorAll('.eng-combo-option')];
-    const highlighted = comboList.querySelector('.highlighted');
+    // Only navigate options that are actually visible (not hidden inside collapsed toggle section)
+    const items = [...comboList.querySelectorAll('.eng-combo-option')].filter(el => {
+        let p = el.parentElement;
+        while (p && p !== comboList) {
+            if (p.style && p.style.display === 'none') return false;
+            p = p.parentElement;
+        }
+        return true;
+    });
+    const highlighted = comboList.querySelector('.eng-combo-option.highlighted');
     let idx = items.indexOf(highlighted);
 
     if (e.key === 'ArrowDown')  { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); }
@@ -1765,9 +2089,9 @@ engAssignBackdrop.addEventListener('click', e => {
 
 engAssignConfirmBtn.addEventListener('click', async () => {
     if (!pendingConfirm) return;
-    const { repId, engineerId, engineerName } = pendingConfirm;
+    const { repId, engineerId, engineerName, engData } = pendingConfirm;
     closeAssignModal();
-    await doAssignEngineer(repId, engineerId, engineerName);
+    await doAssignEngineer(repId, engineerId, engineerName, engData);
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -1922,7 +2246,7 @@ engDetailsBackdrop.addEventListener('click', e => {
 // ASSIGN ENGINEER — API CALL + SYNC BOTH DESKTOP & MOBILE
 // ════════════════════════════════════════════════════════════════
 
-async function doAssignEngineer(repId, engineerId, engineerName) {
+async function doAssignEngineer(repId, engineerId, engineerName, engData) {
     // Optimistic UI — show saving on all triggers for this rep
     document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
         el.textContent = 'Saving…';
@@ -1937,30 +2261,35 @@ async function doAssignEngineer(repId, engineerId, engineerName) {
         const data = await res.json();
 
         if (data.success) {
-            updateAllEngineerCells(repId, data.engineer_name || engineerName, engineerId);
+            updateAllEngineerCells(repId, data.engineer_name || engineerName, engineerId, engData);
             showAssignNotif('success', `✔️ ${data.engineer_name || engineerName} assigned to #REP-${repId}.`);
         } else {
             // Restore all triggers
             document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
-                el.textContent = '— Assign engineer —';
+                el.textContent = 'Assign engineer';
             });
             showAssignNotif('error', `❌ ${data.message}`);
         }
     } catch(e) {
         document.querySelectorAll(`.eng-combobox[data-rep-id="${repId}"] .eng-combo-label`).forEach(el => {
-            el.textContent = '— Assign engineer —';
+            el.textContent = 'Assign engineer';
         });
         showAssignNotif('error', '❌ Network error. Please try again.');
     }
 }
 
 // Replaces ALL .engineer-cell[data-rep-id] — hits desktop td AND mobile span simultaneously
-function updateAllEngineerCells(repId, engineerName, engineerId) {
+function updateAllEngineerCells(repId, engineerName, engineerId, engData) {
     const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>`;
+    const picSrc = engData && engData.profile_picture ? engData.profile_picture : '';
+    const btnInner = picSrc
+        ? `<img src="${picSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none;width:100%;height:100%;">${FALLBACK_SVG}</span>`
+        : FALLBACK_SVG;
+
     document.querySelectorAll(`.engineer-cell[data-rep-id="${repId}"]`).forEach(cell => {
         if (CAN_ASSIGN_ENGINEER && engineerId) {
             cell.innerHTML = `<span class="eng-name-with-profile">` +
-                `<button class="eng-profile-btn" onclick="openEngineerProfileById(${parseInt(engineerId)})" title="View Engineer Profile">${FALLBACK_SVG}</button>` +
+                `<button class="eng-profile-btn" onclick="openEngineerProfileById(${parseInt(engineerId)})" title="View Engineer Profile">${btnInner}</button>` +
                 `<span class="assigned-engineer-name">${escapeHtml(engineerName)}</span>` +
                 `</span>`;
         } else {
@@ -2009,9 +2338,14 @@ function openRepModal(repId) {
     const statusEl = document.getElementById('repModalStatus');
     const st = data.resolution_status || 'In Progress';
     const hasEng = data.engineer_name && data.engineer_name.trim() !== '';
-    const displaySt = !hasEng ? 'Awaiting Engineer' : (data.engineer_accepted ? st : 'Pending Acceptance');
+    let displaySt;
+    if (st === 'Pending Admin Approval') {
+        displaySt = 'Pending Approval';
+    } else {
+        displaySt = !hasEng ? 'Awaiting Engineer' : (data.engineer_accepted ? st : 'Pending Acceptance');
+    }
     statusEl.textContent = displaySt;
-    const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending'?'pending':'on-going';
+    const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending Approval'?'pending-admin':displaySt==='Pending'?'pending':'on-going';
     statusEl.className = 'rep-status-pill ' + stClass;
 
     document.getElementById('repModalLocation').textContent = data.location || '—';
@@ -2043,33 +2377,63 @@ function openRepModal(repId) {
     const budgetField   = document.getElementById('repModalBudget');
 
     if (IS_ENGINEER) {
-        const isPendingAcceptance = !data.engineer_accepted;
-        if (isPendingAcceptance) {
+        const isPendingAdminApproval = data.resolution_status === 'Pending Admin Approval';
+        const isPendingAcceptance    = !data.engineer_accepted;
+
+        if (isPendingAdminApproval) {
+            // Engineer has already submitted — read-only, waiting for admin
+            priorityField.innerHTML = priBadge(data.priority_lvl);
+            const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
+            budgetField.textContent = bdAmt;
+            document.getElementById('repSaveBtn').style.display         = 'none';
+            document.getElementById('repApproveBtn').style.display      = 'none';
+            document.getElementById('repAdminApproveBtn').style.display = 'none';
+            document.getElementById('repAdminReturnBtn').style.display  = 'none';
+            document.getElementById('repDeclineBtn').style.display      = 'none';
+            document.getElementById('repAcceptBtn').style.display       = 'none';
+        } else if (isPendingAcceptance) {
             // Read-only view — engineer must accept first
             priorityField.innerHTML = priBadge(data.priority_lvl);
             const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
             budgetField.textContent = bdAmt;
-            document.getElementById('repSaveBtn').style.display    = 'none';
-            document.getElementById('repApproveBtn').style.display = 'none';
-            document.getElementById('repDeclineBtn').style.display = 'inline-flex';
-            document.getElementById('repAcceptBtn').style.display  = 'inline-flex';
+            document.getElementById('repSaveBtn').style.display         = 'none';
+            document.getElementById('repApproveBtn').style.display      = 'none';
+            document.getElementById('repAdminApproveBtn').style.display = 'none';
+            document.getElementById('repAdminReturnBtn').style.display  = 'none';
+            document.getElementById('repDeclineBtn').style.display      = 'inline-flex';
+            document.getElementById('repAcceptBtn').style.display       = 'inline-flex';
         } else {
-            // Accepted — editable fields + save/approve buttons
+            // Accepted — editable fields + save/submit buttons
             priorityField.innerHTML = '<select class="rep-editable-field" id="repPrioritySelect">' +
                 ['Low','Medium','High','Critical'].map(v=>`<option value="${v}"${data.priority_lvl===v?' selected':''}>${v}</option>`).join('') +
                 '</select>';
             budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(data.budget_raw))}" min="0" step="0.01" placeholder="0.00"></div>`;
-            document.getElementById('repSaveBtn').style.display    = 'inline-flex';
-            document.getElementById('repApproveBtn').style.display = '';
-            document.getElementById('repDeclineBtn').style.display = 'none';
-            document.getElementById('repAcceptBtn').style.display  = 'none';
+            document.getElementById('repSaveBtn').style.display         = 'inline-flex';
+            document.getElementById('repApproveBtn').style.display      = '';
+            document.getElementById('repAdminApproveBtn').style.display = 'none';
+            document.getElementById('repAdminReturnBtn').style.display  = 'none';
+            document.getElementById('repDeclineBtn').style.display      = 'none';
+            document.getElementById('repAcceptBtn').style.display       = 'none';
         }
+    } else if (IS_ADMIN && data.resolution_status === 'Pending Admin Approval') {
+        // Admin sees reports pending their approval
+        priorityField.innerHTML = priBadge(data.priority_lvl);
+        const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
+        budgetField.textContent = bdAmt;
+        document.getElementById('repSaveBtn').style.display         = 'none';
+        document.getElementById('repApproveBtn').style.display      = 'none';
+        document.getElementById('repAdminApproveBtn').style.display = 'inline-flex';
+        document.getElementById('repAdminReturnBtn').style.display  = 'inline-flex';
+        document.getElementById('repDeclineBtn').style.display      = 'none';
+        document.getElementById('repAcceptBtn').style.display       = 'none';
     } else {
         priorityField.innerHTML = priBadge(data.priority_lvl);
         // Always show peso sign for non-engineer display
         const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
         budgetField.textContent = bdAmt;
-        document.getElementById('repSaveBtn').style.display = 'none';
+        document.getElementById('repSaveBtn').style.display         = 'none';
+        document.getElementById('repAdminApproveBtn').style.display = 'none';
+        document.getElementById('repAdminReturnBtn').style.display  = 'none';
     }
 
     // AI section — show ALL analysis fields with full descriptions
@@ -2106,7 +2470,7 @@ function openRepModal(repId) {
         });
     } else { ec.innerHTML = '<span class="rep-no-evidence">No evidence images</span>'; }
 
-    document.getElementById('repModalFooter').style.display = IS_ENGINEER ? '' : 'none';
+    document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN) ? '' : 'none';
     repBackdrop.classList.add('active');
 }
 
@@ -2118,6 +2482,8 @@ document.addEventListener('keydown', e => {
         if (document.getElementById('repImgLightbox').classList.contains('active')) { closeRepLightbox(); return; }
         if (document.getElementById('repSaveConfirmBackdrop').classList.contains('active')) { closeSaveConfirm(); return; }
         if (document.getElementById('repApproveConfirmBackdrop').classList.contains('active')) { closeApproveConfirm(); return; }
+        if (document.getElementById('repAdminApproveConfirmBackdrop').classList.contains('active')) { closeAdminApproveConfirm(); return; }
+        if (document.getElementById('repAdminReturnConfirmBackdrop').classList.contains('active'))  { closeAdminReturnConfirm();  return; }
         if (document.getElementById('repAcceptConfirmBackdrop').classList.contains('active')) { closeAcceptConfirm(); return; }
         if (document.getElementById('repDeclineConfirmBackdrop').classList.contains('active')) { closeDeclineConfirm(); return; }
         closeRepModal();
@@ -2271,21 +2637,113 @@ async function doApproveReport() {
         if (data.success) {
             const repId = currentRepData.rep_id;
             closeRepModal();
-            showRepNotif('success','✔️ Report #REP-'+repId+' scheduled and moved to Pending Reports.');
+            showRepNotif('success','✔️ Report #REP-'+repId+' submitted for Admin approval.');
             setTimeout(()=>location.reload(),1800);
         } else {
             const errMsg = data.message || 'Failed to update.';
             showRepNotif('error','❌ ' + errMsg);
-            btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Approved';
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit for Approval';
         }
     } catch(e) {
         console.error('Fetch error:', e);
         showRepNotif('error','❌ Network error — check your connection and try again.');
-        btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Approved';
+        btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit for Approval';
     }
 }
 
-// ── Image Gallery Lightbox ──
+// ── Admin: Approve to Schedule ──
+function confirmAdminApprove() {
+    if (!currentRepData || !IS_ADMIN) return;
+    document.getElementById('repAdminApproveConfirmBackdrop').classList.add('active');
+}
+function closeAdminApproveConfirm() {
+    document.getElementById('repAdminApproveConfirmBackdrop').classList.remove('active');
+}
+document.getElementById('repAdminApproveConfirmBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('repAdminApproveConfirmBackdrop')) closeAdminApproveConfirm();
+});
+
+async function doAdminApproveReport() {
+    if (!currentRepData || !IS_ADMIN) return;
+    closeAdminApproveConfirm();
+    const repId = currentRepData.rep_id;
+    const btn   = document.getElementById('repAdminApproveBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving…';
+    try {
+        const res  = await fetch('current_reports.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'admin_approve_report', rep_id: repId})
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch(pe) {
+            console.error('Non-JSON response:', text);
+            showRepNotif('error','❌ Server error — report was NOT moved.');
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-calendar-check"></i> Approve to Schedule';
+            return;
+        }
+        if (data.success) {
+            closeRepModal();
+            showRepNotif('success','✔️ Report #REP-'+repId+' approved and moved to Pending Reports.');
+            setTimeout(()=>location.reload(),1800);
+        } else {
+            showRepNotif('error','❌ ' + (data.message || 'Failed to approve.'));
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-calendar-check"></i> Approve to Schedule';
+        }
+    } catch(e) {
+        console.error('Fetch error:', e);
+        showRepNotif('error','❌ Network error — check your connection and try again.');
+        btn.disabled=false; btn.innerHTML='<i class="fas fa-calendar-check"></i> Approve to Schedule';
+    }
+}
+
+// ── Admin: Return to Engineer ──
+function confirmAdminReturn() {
+    if (!currentRepData || !IS_ADMIN) return;
+    document.getElementById('repAdminReturnConfirmBackdrop').classList.add('active');
+}
+function closeAdminReturnConfirm() {
+    document.getElementById('repAdminReturnConfirmBackdrop').classList.remove('active');
+}
+document.getElementById('repAdminReturnConfirmBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('repAdminReturnConfirmBackdrop')) closeAdminReturnConfirm();
+});
+
+async function doAdminReturnReport() {
+    if (!currentRepData || !IS_ADMIN) return;
+    closeAdminReturnConfirm();
+    const repId = currentRepData.rep_id;
+    const btn   = document.getElementById('repAdminReturnBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Returning…';
+    try {
+        const res  = await fetch('current_reports.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'admin_return_report', rep_id: repId})
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch(pe) {
+            showRepNotif('error','❌ Server error — report was NOT returned.');
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-undo-alt"></i> Return to Engineer';
+            return;
+        }
+        if (data.success) {
+            closeRepModal();
+            showRepNotif('success','↩️ Report #REP-'+repId+' returned to engineer for revision.');
+            setTimeout(()=>location.reload(),1800);
+        } else {
+            showRepNotif('error','❌ ' + (data.message || 'Failed to return.'));
+            btn.disabled=false; btn.innerHTML='<i class="fas fa-undo-alt"></i> Return to Engineer';
+        }
+    } catch(e) {
+        showRepNotif('error','❌ Network error — check your connection and try again.');
+        btn.disabled=false; btn.innerHTML='<i class="fas fa-undo-alt"></i> Return to Engineer';
+    }
+}
 let repGalleryImages = [], repGalleryIndex = 0;
 let repLbZoomed = false, repLbDragging = false;
 let repLbStartX = 0, repLbStartY = 0, repLbTX = 0, repLbTY = 0, repLbScale = 1;

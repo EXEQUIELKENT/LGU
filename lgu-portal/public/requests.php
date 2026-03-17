@@ -239,15 +239,47 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 }
 
 /* Requests view: search + toggle on same row */
+/* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
+.search-toolbar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+[data-theme="dark"] .search-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+
+/* ── Search row wrapper ── */
 .req-search-row {
     display: flex;
     align-items: center;
+    width: 100%;
     gap: 10px;
 }
-.req-search-row #requestSearch {
+.req-search-row .search-wrap {
     flex: 1;
-    width: auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
 }
+.req-search-row .search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .req-search-row .search-wrap svg { color: #64748b; }
 
 /* ═══════════════════════════════════════════════════════
    REQUESTS TABLE VIEW
@@ -255,13 +287,38 @@ const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 .page-title { font-size: 28px; color: var(--text-primary); }
 
 #requestSearch {
-    font-size: 1rem; padding: 9px 11px;
-    border: 1px solid #b1b8d0; border-radius: 8px; outline: none;
-    background: #f8faff; color: #23285c; transition: border .19s, box-shadow .19s;
-    flex: 1; min-width: 0;
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+    flex: 1;
+    min-width: 0;
 }
-#requestSearch:focus { border: 1.5px solid #3762c8; box-shadow: 0 2px 8px rgba(55,98,200,.06); }
-[data-theme="dark"] #requestSearch { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--border-color); }
+#requestSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#requestSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+[data-theme="dark"] #requestSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #requestSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #requestSearch::placeholder { color: #64748b; }
 
 table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 
@@ -896,7 +953,7 @@ tbody td {
     .status { padding: 4px 8px !important; font-size: 10px !important; white-space: nowrap !important; }
     .btn-view { padding: 5px 8px !important; font-size: 11px !important; white-space: nowrap !important; }
     .page-title { font-size: 20px !important; }
-    #requestSearch { font-size: .9rem !important; }
+    #requestSearch { font-size: 12.5px !important; padding: 0 12px 0 34px !important; height: 36px !important; }
     .gis-search-wrap { flex: 0 0 200px; width: 200px; }
     .gis-filter-btn { font-size: 11px; padding: 4px 9px; }
 }
@@ -1423,14 +1480,19 @@ tbody td {
         </button>
     </div>
 
+    <div class="search-toolbar">
     <div class="req-search-row">
-        <input id="requestSearch" type="text"
-            placeholder="Search by Request ID, Infrastructure, Location, Issue, Date, or Status…">
+        <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="requestSearch" type="text"
+                placeholder="Search by Request ID, Infrastructure, Location, Issue, Date, or Status…">
+        </div>
         <!-- Mobile: button sits beside the search input -->
         <button class="view-toggle-btn req-gis-btn-mobile" onclick="switchView('gis')" title="View GIS Map">
             <i class="fas fa-map-marked-alt"></i>
             <span class="btn-text">View GIS Map</span>
         </button>
+    </div>
     </div>
 
         <!-- DESKTOP TABLE -->

@@ -666,14 +666,15 @@ if (isset($_POST['change_password_submit'])) {
 
     if (empty($newPassword) || empty($confirmPassword)) {
         setNotification('error', 'Both password fields are required.');
+        header("Location: " . $loginUrl);
+        exit;
     } elseif ($newPassword !== $confirmPassword) {
         setNotification('error', 'Passwords do not match. Please try again.');
+        header("Location: " . $loginUrl);
+        exit;
     } elseif (!isStrongPassword($newPassword)) {
-        $_SESSION['notification'] = [
-            'type' => 'error',
-            'message' => 'Password does not meet security requirements.'
-        ];
-        header("Location: " . $_SERVER['PHP_SELF']);
+        setNotification('error', 'Password does not meet security requirements.');
+        header("Location: " . $loginUrl);
         exit;
     } elseif ($email) {
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
@@ -681,13 +682,14 @@ if (isset($_POST['change_password_submit'])) {
         $stmt->bind_param("ss", $hashedPassword, $email);
 
         if ($stmt->execute()) {
-            unset($_SESSION['show_change_password_modal'], $_SESSION['otp_verified']);
-            setNotification('success', 'Password changed successfully! Redirecting to Employee Portal...');
-            echo "<script>
-                setTimeout(function(){ window.location.href = '" . htmlspecialchars($employeeUrl) . "'; }, 1500);
-            </script>";
+            unset($_SESSION['show_change_password_modal'], $_SESSION['otp_verified'], $_SESSION['login_email']);
+            setNotification('success', 'Password changed successfully! You can now log in to the Employee Portal.');
+            header("Location: " . $employeeUrl);
+            exit;
         } else {
             setNotification('error', 'Failed to update password: ' . $conn->error);
+            header("Location: " . $loginUrl);
+            exit;
         }
         $stmt->close();
     } else {
@@ -758,6 +760,7 @@ if (isset($_POST['otp_submit'])) {
 
                 if ($isFirstLogin == 1) {
                     $_SESSION['show_change_password_modal'] = true;
+                    $_SESSION['login_email'] = $email; // ensure login_email is set before exit so change_password_submit can read it
                     setNotification('info', 'Please change your password to continue.');
                     header("Location: " . $loginUrl);
                     exit;
@@ -940,6 +943,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
                     if (($userData['is_first_login'] ?? 0) == 1) {
                         $_SESSION['show_change_password_modal'] = true;
+                        $_SESSION['login_email'] = $email; // ensure login_email is set before exit so change_password_submit can read it
                         setNotification('info', 'Please change your password to continue.');
                         header("Location: " . $loginUrl);
                         exit;

@@ -109,6 +109,7 @@ $sql = "
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
+        e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
         GROUP_CONCAT(DISTINCT ev.img_path  ORDER BY ev.uploaded_at  ASC SEPARATOR ',') AS evidence_images,
         GROUP_CONCAT(DISTINCT rpi.img_path ORDER BY rpi.uploaded_at ASC SEPARATOR ',') AS progress_images
@@ -138,6 +139,18 @@ function priorityBadge(?string $lvl): string {
     return "<span style=\"{$style}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;\">{$lvl}</span>";
 }
 
+function engProfileBtn(int $engineerId, ?string $picPath): string {
+    $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>';
+    $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/' . $picPath);
+    if ($hasPic) {
+        $src   = htmlspecialchars($picPath);
+        $inner = "<img src=\"{$src}\" alt=\"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='block';\"><span style=\"display:none;width:100%;height:100%;\">{$FALLBACK_SVG}</span>";
+    } else {
+        $inner = $FALLBACK_SVG;
+    }
+    return "<button class=\"eng-profile-btn\" onclick=\"openEngineerProfileById({$engineerId})\" title=\"View Engineer Profile\">{$inner}</button>";
+}
+
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
 
@@ -158,6 +171,7 @@ foreach ($rows as $row) {
         'res_note'          => $row['res_note'] ?? '',
         'engineer_id'       => (int)($row['engineer_id'] ?? 0),
         'engineer_name'     => $row['engineer_name'] ?? '',
+        'engineer_pic'      => $row['engineer_pic'] ?? '',
         'reporter_name'     => $row['reporter_name'] ?? '',
         'starting_date'     => $row['starting_date'] ?? '',
         'estimated_end_date'=> $row['estimated_end_date'] ?? '',
@@ -206,15 +220,73 @@ foreach ($rows as $row) {
     color: #fff; font-size: 11px; font-weight: 700;
     padding: 4px 12px; border-radius: 20px; letter-spacing: .04em;
 }
-.search-bar-wrapper { margin-bottom: 16px; }
-#reportSearch {
-    width: 100%; padding: 10px 16px; border-radius: 10px;
-    border: 1px solid #d2d6db; font-size: 15px; outline: none;
-    background: var(--bg-secondary); color: var(--text-primary);
-    transition: border .2s, box-shadow .2s; box-sizing: border-box;
+/* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
+.search-toolbar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    box-sizing: border-box;
+    margin-bottom: 12px;
 }
-[data-theme="dark"] #reportSearch { border-color: var(--border-color); }
-#reportSearch:focus { border-color: #2e7d32; box-shadow: 0 0 0 3px rgba(46,125,50,.15); }
+[data-theme="dark"] .search-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+
+/* ── Search bar — sched.php list-view design (exact match) ── */
+.search-bar-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+.search-bar-wrapper svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .search-bar-wrapper svg { color: #64748b; }
+#reportSearch {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+}
+#reportSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#reportSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+[data-theme="dark"] #reportSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #reportSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #reportSearch::placeholder { color: #64748b; }
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 .card {
@@ -234,22 +306,22 @@ thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; }
 td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 td.wrap { white-space: normal; word-break: break-word; }
+td.status-cell { white-space: normal; overflow: visible; text-overflow: clip; }
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(46,125,50,.03); }
 tbody tr:hover { background: rgba(46,125,50,.09); }
 /* ── Status & Priority pills — compact to prevent overflow ── */
 .status {
-    padding: 3px 6px;
+    padding: 3px 7px;
     border-radius: 20px;
     font-size: 10px;
     font-weight: 600;
     display: inline-block;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
     vertical-align: middle;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 .completed    { background: #a5d6a7; color: #1b5e20; }
 .on-going     { background: #fff59d; color: #f57f17; }
@@ -287,7 +359,9 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
     /* Mobile status pill — slightly larger is fine on cards */
-    .status { font-size: 11px; padding: 4px 8px; }
+    .status { font-size: 11px; padding: 4px 8px; max-width: 160px; white-space: normal; word-break: break-word; text-overflow: clip; line-height: 1.3; }
+    /* Larger View button in mobile cards */
+    .btn-view-rep-mobile { padding: 10px 22px !important; font-size: 14px !important; border-radius: 10px !important; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
 
@@ -692,8 +766,11 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         <span class="page-badge">Completed</span>
     </div>
 
+    <div class="search-toolbar">
     <div class="search-bar-wrapper">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reportSearch" type="text" placeholder="Search by ID, Infrastructure, Location, Engineer, Priority…">
+    </div>
     </div>
 
     <div class="table-wrapper">
@@ -735,9 +812,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                         <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                             <span class="eng-name-with-profile">
-                                <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
-                                </button>
+                                <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
                                 <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                             </span>
                         <?php else: ?>
@@ -750,7 +825,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     <td class="searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
                     <td class="searchable"><?= priorityBadge($row['priority_lvl']) ?></td>
                     <td class="searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></td>
-                    <td class="searchable"><?= statusPill($rawStatus) ?></td>
+                    <td class="searchable status-cell"><?= statusPill($rawStatus) ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -781,9 +856,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                     <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                         <span class="eng-name-with-profile">
-                            <button class="eng-profile-btn" onclick="openEngineerProfileById(<?= (int)$row['engineer_id'] ?>)" title="View Engineer Profile">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>
-                            </button>
+                            <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                         </span>
                     <?php else: ?>
@@ -799,7 +872,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
             <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
                 <?= statusPill($rawStatus) ?>
-                <button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
+                <button class="btn-view-rep btn-view-rep-mobile" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
             </div>
         </div>
         <?php endforeach; ?>
