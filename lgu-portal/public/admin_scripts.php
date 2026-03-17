@@ -15,6 +15,10 @@ if (sidebarCollapsed) {
     mainContent.classList.add('expanded');
     document.body.classList.add('sidebar-collapsed');
 }
+// Remove preload class so transitions are restored after initial state is applied
+requestAnimationFrame(function() {
+    document.documentElement.classList.remove('sidebar-preload-collapsed');
+});
 
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
