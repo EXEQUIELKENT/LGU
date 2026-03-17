@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 13, 2026 at 07:08 AM
+-- Generation Time: Mar 17, 2026 at 07:35 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -95,6 +95,13 @@ CREATE TABLE `engineer_profiles` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `engineer_profiles`
+--
+
+INSERT INTO `engineer_profiles` (`id`, `user_id`, `full_name`, `gender`, `date_of_birth`, `address`, `contact_number`, `engineering_discipline`, `department`, `years_of_experience`, `areas_of_specialization`, `skill_structural_design`, `skill_site_inspection`, `skill_project_planning`, `cad_software`, `created_at`, `updated_at`) VALUES
+(1, 13, 'Exequiel Kent Tarroza Bartolome', 'Male', '2003-11-20', 'Bagong Silang Caloocan City', '0921-212-1212', 'Civil', 'Engineering Office', 1, 'Roads', 1, 0, 1, 'Civil 3D', '2026-03-17 13:38:33', '2026-03-17 13:38:33');
+
 -- --------------------------------------------------------
 
 --
@@ -144,102 +151,6 @@ CREATE TABLE `login_logs` (
   `otp_resends` int(11) DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `login_logs`
---
-
-INSERT INTO `login_logs` (`log_id`, `email`, `success`, `failure_reason`, `ip_address`, `user_agent`, `otp_used`, `otp_resends`, `created_at`) VALUES
-(135, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:08:52'),
-(136, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:17:27'),
-(137, 'Villawarv@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 AVG/144.0.0.0', 1, 0, '2026-02-23 17:43:29'),
-(138, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 09:20:12'),
-(139, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 10:11:44'),
-(140, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 10:12:11'),
-(141, 'bartolomeexequielkent@gmail.com', 0, 'Invalid OTP', '175.176.24.250', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:31:41'),
-(142, 'bartolomeexequielkent@gmail.com', 1, NULL, '175.176.24.250', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-24 05:32:01'),
-(143, 'bartolomeexequielkent2003@gmail.com', 0, 'Invalid OTP', '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:44:42'),
-(144, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:44:55'),
-(145, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.18', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 05:55:19'),
-(146, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '175.176.24.3', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 06:16:00'),
-(147, 'bartolomeexequielkent@gmail.com', 1, NULL, '209.35.160.37', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 07:23:04'),
-(148, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '209.35.160.37', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 07:23:42'),
-(149, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:51:20'),
-(150, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:14'),
-(151, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:25'),
-(152, 'stephanie.saguns@gmail.com', 0, 'Incorrect password', '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 0, 0, '2026-02-24 07:52:55'),
-(153, 'villawarv@gmail.com', 1, NULL, '110.54.148.146', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', 1, 0, '2026-02-24 07:53:26'),
-(154, 'stephanie.saguns@gmail.com', 1, NULL, '2001:67c:2628:647:34:603:0:11b', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0', 1, 0, '2026-02-24 07:58:25'),
-(155, 'marycarldagondong28@gmail.com', 1, NULL, '110.54.148.146', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 1, 0, '2026-02-24 08:13:25'),
-(156, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 16:18:08'),
-(157, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-24 16:57:36'),
-(158, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 08:51:05'),
-(159, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 08:51:30'),
-(160, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:01:53'),
-(161, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:02:44'),
-(162, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:03:23'),
-(163, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:08:12'),
-(164, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:09:05'),
-(165, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:11:44'),
-(166, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:15:06'),
-(167, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:18:52'),
-(168, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:28:57'),
-(169, 'bartolomeexequielkent2003@gmail.com', 0, 'Invalid OTP', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:39:44'),
-(170, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-27 10:40:03'),
-(171, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 10:54:59'),
-(172, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:10:01'),
-(173, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:18:29'),
-(174, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:33:54'),
-(175, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 1, '2026-02-27 11:45:25'),
-(176, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:52:57'),
-(177, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 11:59:37'),
-(178, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 12:52:25'),
-(179, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:02:05'),
-(180, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:08:03'),
-(181, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:12:33'),
-(182, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:19:29'),
-(183, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 13:32:14'),
-(184, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:04:25'),
-(185, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:10:31'),
-(186, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:23:41'),
-(187, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:32:20'),
-(188, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:41:55'),
-(189, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 14:51:41'),
-(190, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:15:38'),
-(191, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:17:57'),
-(192, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:22:08'),
-(193, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:24:29'),
-(194, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:41:21'),
-(195, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:43:51'),
-(196, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:51:19'),
-(197, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 15:56:33'),
-(198, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:16:47'),
-(199, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:24:52'),
-(200, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:28:42'),
-(201, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:33:02'),
-(202, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:48:52'),
-(203, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 16:58:09'),
-(204, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:03:07'),
-(205, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:15:50'),
-(206, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 17:26:11'),
-(207, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:17:58'),
-(208, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:30:12'),
-(209, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:38:33'),
-(210, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:45:43'),
-(211, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 21:58:06'),
-(212, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:01:49'),
-(213, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:08:10'),
-(214, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:18:44'),
-(215, 'testingyarn2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:20:20'),
-(216, 'testingyarn2003@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:22:01'),
-(217, 'bartolomeexequielkent@gmail.com', 0, 'Incorrect password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:22:53'),
-(218, 'testingyarn2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 1, 0, '2026-02-27 22:23:31'),
-(219, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:41:11'),
-(220, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:41:15'),
-(221, 'bartolomeexequielkent@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:45:49'),
-(222, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 22:48:33'),
-(223, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-02-27 23:16:40'),
-(224, 'bartolomeexequielkent2003@gmail.com', 1, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 0, 0, '2026-03-01 22:04:51');
 
 -- --------------------------------------------------------
 
@@ -481,6 +392,48 @@ CREATE TABLE `reports` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `report_daily_images`
+--
+
+CREATE TABLE `report_daily_images` (
+  `id` int(11) NOT NULL,
+  `rep_id` int(11) NOT NULL,
+  `log_date` date NOT NULL,
+  `img_path` varchar(500) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `report_daily_logs`
+--
+
+CREATE TABLE `report_daily_logs` (
+  `id` int(11) NOT NULL,
+  `rep_id` int(11) NOT NULL,
+  `log_date` date NOT NULL,
+  `description` text DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `updated_by` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `report_progress_images`
+--
+
+CREATE TABLE `report_progress_images` (
+  `id` int(11) NOT NULL,
+  `rep_id` int(11) NOT NULL,
+  `img_path` varchar(500) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `requests`
 --
 
@@ -501,9 +454,9 @@ CREATE TABLE `requests` (
 --
 
 INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contact_number`, `name`, `approval_status`, `coordinates`, `created_at`) VALUES
-(114, 'Roads', 'Diliman, Ugong Norte, Quezon City, Zamboanga Street', 'Nasira  daanan sa lugar namin.', '09876456355', 'Marites Santos', 'Pending', '14.6612,121.0534', '2026-02-23 08:05:38'),
+(114, 'Roads', 'Diliman, Ugong Norte, Quezon City, Zamboanga Street', 'Nasira  daanan sa lugar namin.', '09876456355', 'Marites Santos', 'Approved', '14.6612,121.0534', '2026-02-23 08:05:38'),
 (115, 'Signage', 'Geronimo Compound, Santo Domingo (Matalahib), Quezon City, Polaris Street', 'nasira signage sa santo domingo road', '09874321334', 'Carlo Anotio', 'Pending', '14.6756,121.0312', '2026-02-23 08:09:37'),
-(116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Pending', '14.6845,121.0389', '2026-02-23 08:12:29'),
+(116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Approved', '14.6845,121.0389', '2026-02-23 08:12:29'),
 (117, 'Street Lights', 'Project 7, N.S. Amoranto (Gintong Silahis), Quezon City, Miller Avenue', 'natumba street ligts banda dito sa Project 7', '09654432171', 'Jhoven Bartolome', 'Pending', '14.6391,121.0294', '2026-02-23 08:14:48'),
 (118, 'Public Facilities', 'Pasong Tamo, Sikatuna Village, Quezon City, Kasay-Kasay Street', 'nasira  cubicle sa pasong tamo public CR', '09856345143', 'Marisol Valencia', 'Pending', '14.6767,121.0623', '2026-02-23 08:18:35'),
 (119, 'Drainage', 'Libis, Quezon City', 'nagbara sa dami ng basura', '09786543456', 'Jeffrey Las-ay', 'Pending', '14.6345,121.0612', '2026-02-23 08:21:43'),
@@ -549,9 +502,9 @@ CREATE TABLE `request_ai_analysis` (
 --
 
 INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastructure`, `detected_infrastructure`, `infrastructure_match`, `match_confidence`, `is_legitimate`, `legitimacy_score`, `legitimacy_notes`, `damage_severity`, `priority_recommendation`, `damage_description`, `confidence_score`, `anomaly_flags`, `combined_assessment`, `estimated_repair_complexity`, `requires_immediate_action`, `images_analyzed`, `analysis_status`, `ai_cost_estimation`, `analyzed_at`, `created_at`) VALUES
-(28, 114, '', 'Roads', 1, 0.596, 1, 0.546, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.496, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (9%); minivan (7%); parking meter (7%); jigsaw puzzle (6%); car mirror (3%); alp (3%)', 'Major', 1, 1, 'completed', 'P4,480,000 - P6,000,000', '2026-02-23 08:05:39', '2026-02-23 08:05:39'),
+(28, 114, '', 'Roads', 1, 0.851, 1, 0.801, 'Road structural damage detected via pixel analysis. Manual review recommended.', 9, 'Critical', 'Roads issue across 1 image. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.751, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (9%); minivan (7%); parking meter (7%); jigsaw puzzle (6%); car mirror (3%); alp (3%)', 'Major', 1, 1, 'completed', '₱4,140,000 – ₱6,000,000', '2026-03-17 13:39:15', '2026-02-23 08:05:39'),
 (29, 115, '', 'Roads', 0, 0.986, 1, 0.936, 'AI confidence: 89%. Infrastructure indicators detected.', 5, 'Medium', 'Roads issue across 1 image. Detected: street sign, stop sign. Rust/corrosion visible. Moderate damage.', 0.886, '[\"rust_detected\"]', 'street sign (68%); birdhouse (4%); flagpole, flagstaff (3%); mailbox, letter box (2%); mortarboard (1%); traffic light, traffic signal, stoplight (1%)', 'Moderate', 0, 1, 'completed', 'P50,000 - P70,000', '2026-02-23 08:09:38', '2026-02-23 08:09:38'),
-(30, 116, '', 'Roads', 1, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'stone wall (46%); patio, terrace (4%); bannister, banister, balustrade, balusters, handrail (3%); picket fence, paling (3%); cliff, drop, drop-off (2%); valley, vale (2%)', 'Major', 1, 1, 'completed', 'P3,370,000 - P6,000,000', '2026-02-23 08:12:29', '2026-02-23 08:12:29'),
+(30, 116, '', 'Roads', 1, 0.100, 0, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 3, 'Low', 'Roads issue across 1 image. Road surface irregularities detected. Minor or unclear damage.', 0.000, '[]', 'stone wall (46%); patio, terrace (4%); bannister, banister, balustrade, balusters, handrail (3%); picket fence, paling (3%); cliff, drop, drop-off (2%); valley, vale (2%)', 'Moderate', 0, 1, 'completed', '₱24,000 – ₱45,000', '2026-03-17 17:35:56', '2026-02-23 08:12:29'),
 (31, 117, '', 'Street Lights', 1, 0.225, 1, 0.175, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Street Lights issue across 1 image. Detected: pole. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.125, '[\"immediate_action_required\",\"road_structural_damage\"]', 'parking meter (20%); bubble (18%); pole (5%); syringe (4%); water bottle (3%); reel (3%)', 'Major', 1, 1, 'completed', 'P410,000 - P750,000', '2026-02-23 08:14:48', '2026-02-23 08:14:48'),
 (32, 118, '', 'Public Facilities', 1, 1.000, 1, 1.000, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Public Facilities issue across 1 image. Detected: toilet seat, toilet. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 1.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'toilet seat (59%); toilet tissue, toilet paper, bathroom tissue (13%); soap dispenser (12%); washbasin, handbasin, washbowl, lavabo, wash-hand basin (4%); switch, electric switch, electrical switch (2%); paper towel (1%)', 'Major', 1, 1, 'completed', 'P1,520,000 - P1,800,000', '2026-02-23 08:18:36', '2026-02-23 08:18:36'),
 (33, 119, '', 'Drainage', 1, 0.414, 1, 0.364, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Drainage issue across 1 image. Detected: dam. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.314, '[\"immediate_action_required\",\"road_structural_damage\"]', 'patio, terrace (23%); dam, dike, dyke (16%); pier (3%); greenhouse, nursery, glasshouse (2%); pot, flowerpot (2%); boathouse (2%)', 'Major', 1, 1, 'completed', 'P2,480,000 - P4,000,000', '2026-02-23 08:21:46', '2026-02-23 08:21:46'),
@@ -570,7 +523,7 @@ INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastruc
 CREATE TABLE `request_resolutions` (
   `res_id` int(10) UNSIGNED NOT NULL,
   `req_id` int(10) UNSIGNED NOT NULL,
-  `status` enum('Approved','Rejected','Scheduled','Completed','Cancelled') NOT NULL DEFAULT 'Approved',
+  `status` enum('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion','Pending Admin Approval') NOT NULL DEFAULT 'Approved',
   `res_note` text DEFAULT NULL,
   `resolved_by` int(10) UNSIGNED NOT NULL,
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -654,6 +607,28 @@ ALTER TABLE `reports`
   ADD KEY `fk_report_reporter` (`report_by`);
 
 --
+-- Indexes for table `report_daily_images`
+--
+ALTER TABLE `report_daily_images`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rdi` (`rep_id`,`log_date`);
+
+--
+-- Indexes for table `report_daily_logs`
+--
+ALTER TABLE `report_daily_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_rdl` (`rep_id`,`log_date`),
+  ADD KEY `idx_rdl_rep` (`rep_id`);
+
+--
+-- Indexes for table `report_progress_images`
+--
+ALTER TABLE `report_progress_images`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rep_id` (`rep_id`);
+
+--
 -- Indexes for table `requests`
 --
 ALTER TABLE `requests`
@@ -686,13 +661,13 @@ ALTER TABLE `request_resolutions`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `engineer_profiles`
 --
 ALTER TABLE `engineer_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -704,7 +679,7 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=225;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=251;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -740,7 +715,25 @@ ALTER TABLE `repair_archive`
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `report_daily_images`
+--
+ALTER TABLE `report_daily_images`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `report_daily_logs`
+--
+ALTER TABLE `report_daily_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `report_progress_images`
+--
+ALTER TABLE `report_progress_images`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `requests`
@@ -752,13 +745,13 @@ ALTER TABLE `requests`
 -- AUTO_INCREMENT for table `request_ai_analysis`
 --
 ALTER TABLE `request_ai_analysis`
-  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
 --
 ALTER TABLE `request_resolutions`
-  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables
