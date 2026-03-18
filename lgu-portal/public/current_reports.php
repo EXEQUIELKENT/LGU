@@ -31,6 +31,8 @@ $conn->query("
     MODIFY COLUMN status ENUM('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion','Pending Admin Approval')
     NOT NULL DEFAULT 'Approved'
 ");
+// ── Add admin_return_note column if it doesn't exist yet ─────────────────────
+$conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
 
 $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
@@ -218,15 +220,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => false, 'message' => 'Unauthorized. Admin role required.']); exit;
         }
-        $repId = (int)($input['rep_id'] ?? 0);
+        $repId      = (int)($input['rep_id'] ?? 0);
+        $returnNote = trim($input['return_note'] ?? '');
         if ($repId <= 0) {
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => false, 'message' => 'Invalid report ID.']); exit;
         }
+        $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN   reports r ON r.res_id = rr.res_id
-             SET    rr.status = 'Approved'
+             SET    rr.status = 'Approved', rr.admin_return_note = ?
              WHERE  r.rep_id  = ?
                AND  rr.status = 'Pending Admin Approval'"
         );
@@ -234,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => false, 'message' => 'DB prepare error: ' . $conn->error]); exit;
         }
-        $stmt->bind_param("i", $repId);
+        $stmt->bind_param("si", $returnNote, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
         while (ob_get_level() > 0) ob_end_clean();
         if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
@@ -303,7 +307,7 @@ $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at, r.engineer_id, r.engineer_accepted,
-        res.req_id, res.status AS resolution_status, res.res_note,
+        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates,
         req.created_at AS req_created_at,
@@ -404,6 +408,7 @@ foreach ($rows as $row) {
         'location'          => $row['location'] ?? '',
         'issue'             => $row['issue'] ?? '',
         'res_note'          => $row['res_note'] ?? '',
+        'admin_return_note' => $row['admin_return_note'] ?? '',
         'engineer_name'     => $row['engineer_name'] ?? '',
         'engineer_pic'      => $row['engineer_pic'] ?? '',
         'engineer_accepted' => (bool)($row['engineer_accepted'] ?? false),
@@ -1422,6 +1427,15 @@ select.rep-editable-field { cursor:pointer; }
     box-shadow: 0 3px 10px rgba(255,152,0,.4); transform: scale(1.05);
 }
 .rdp-dp-day.rdp-selected::after { display: none; }
+.rdp-dp-day.rdp-future {
+    opacity: .28;
+    pointer-events: none;
+    cursor: default;
+    color: var(--text-secondary) !important;
+    background: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
 .rdp-dp-footer {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 12px 12px; border-top: 1px solid rgba(255,152,0,.1); gap: 8px;
@@ -1460,6 +1474,49 @@ select.rep-editable-field { cursor:pointer; }
 [data-theme="dark"] .rdp-year-opt:hover, [data-theme="dark"] .rdp-month-opt:hover { background: rgba(255,152,0,.2); color: #ffb74d; }
 [data-theme="dark"] .rdp-dp-clear { color: #f87171; border-color: rgba(239,68,68,.4); }
 [data-theme="dark"] .rdp-dp-clear:hover { background: rgba(239,68,68,.1); }
+/* Admin return-reason banner shown to engineer in current_reports modal */
+.rep-admin-return-banner {
+    background: linear-gradient(135deg, rgba(239,68,68,.09), rgba(185,28,28,.05));
+    border: 1.5px solid rgba(239,68,68,.3);
+    border-left: 4px solid #ef4444;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 10px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.rep-admin-feedback-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    box-shadow: 0 3px 10px rgba(239,68,68,.4);
+    width: fit-content;
+}
+.rep-admin-feedback-text {
+    font-size: 13px;
+    color: #b91c1c;
+    font-weight: 500;
+    line-height: 1.5;
+}
+[data-theme="dark"] .rep-admin-return-banner {
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(185,28,28,.07));
+    border-color: rgba(239,68,68,.35);
+    border-left-color: #f87171;
+}
+[data-theme="dark"] .rep-admin-feedback-text { color: #fca5a5; }
+/* Textarea inside confirm modals */
+.rep-confirm-return-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:80px;margin-top:12px;transition:border-color .2s; }
+.rep-confirm-return-note:focus { outline:none;border-color:#ef4444; }
+[data-theme="dark"] .rep-confirm-return-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
 
 </style>
 <script>
@@ -1824,6 +1881,11 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         </div>
         <div class="rep-modal-body">
             <div class="rep-status-row"><span class="rep-status-pill" id="repModalStatus"></span></div>
+            <!-- Admin return reason — shown to engineer above Location/Issue when report was sent back -->
+            <div class="rep-admin-return-banner" id="repAdminReturnBanner" style="display:none;">
+                <div class="rep-admin-feedback-badge"><i class="fas fa-shield-alt"></i> Admin Feedback</div>
+                <div class="rep-admin-feedback-text" id="repAdminReturnNote"></div>
+            </div>
             <div class="rep-divider"></div>
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
@@ -1953,8 +2015,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-undo-alt" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Return to Engineer?</div>
-        <div class="rep-confirm-desc">The report will be sent back to the engineer. They will need to review and <strong>re-submit for approval</strong> before it can be scheduled.</div>
-        <div class="rep-confirm-btns">
+        <div class="rep-confirm-desc">The report will be sent back to the engineer. Add a reason so they know what to revise before re-submitting.</div>
+        <textarea class="rep-confirm-return-note" id="repReturnNoteInput" placeholder="Explain what needs to be corrected or revised…"></textarea>
+        <div class="rep-confirm-btns" style="margin-top:16px;">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminReturnConfirm()">Cancel</button>
             <button class="rep-confirm-btn" id="repAdminReturnConfirmBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doAdminReturnReport()"><i class="fas fa-undo-alt"></i> Confirm Return</button>
         </div>
@@ -2629,12 +2692,32 @@ function openRepModal(repId) {
         document.getElementById('repModalEnd').innerHTML   = rdpBuildDisplay('rdpEndDisplay',   data.estimated_end_date, 'Select end date');
         // Wire pickers after DOM update (small timeout so elements exist)
         setTimeout(function() {
+            // Use LOCAL date components — toISOString() is UTC and causes off-by-one in UTC+8
+            var _n = new Date();
+            var todayISO = _n.getFullYear() + '-' +
+                           String(_n.getMonth() + 1).padStart(2, '0') + '-' +
+                           String(_n.getDate()).padStart(2, '0');
+            // Start date: min = today; when start changes, re-init end picker with new min
             rdpInit('rdpStartOverlay', 'rdpStartDisplay', 'rdpStartHidden', 'rdpStartGrid',
                     'rdpStartMonthBtn', 'rdpStartYearBtn', 'rdpStartPrev', 'rdpStartNext',
-                    'rdpStartYearDropdown', 'rdpStartMonthDropdown', 'rdpStartClose', false);
-            rdpInit('rdpEndOverlay',   'rdpEndDisplay',   'rdpEndHidden',   'rdpEndGrid',
-                    'rdpEndMonthBtn',   'rdpEndYearBtn',   'rdpEndPrev',   'rdpEndNext',
-                    'rdpEndYearDropdown',   'rdpEndMonthDropdown',   'rdpEndClose', true);
+                    'rdpStartYearDropdown', 'rdpStartMonthDropdown', 'rdpStartClose',
+                    true, todayISO, function(newStartISO) {
+                        // Re-initialize end date picker with new minDate = chosen start date
+                        var endVal = document.getElementById('rdpEndHidden')?.value || newStartISO;
+                        document.getElementById('repModalEnd').innerHTML = rdpBuildDisplay('rdpEndDisplay', endVal, 'Select end date');
+                        setTimeout(function() {
+                            rdpInit('rdpEndOverlay', 'rdpEndDisplay', 'rdpEndHidden', 'rdpEndGrid',
+                                    'rdpEndMonthBtn', 'rdpEndYearBtn', 'rdpEndPrev', 'rdpEndNext',
+                                    'rdpEndYearDropdown', 'rdpEndMonthDropdown', 'rdpEndClose',
+                                    true, newStartISO, null);
+                        }, 20);
+                    });
+            // End date: min = existing start date value (or today if not set)
+            var startVal = document.getElementById('rdpStartHidden')?.value || todayISO;
+            rdpInit('rdpEndOverlay', 'rdpEndDisplay', 'rdpEndHidden', 'rdpEndGrid',
+                    'rdpEndMonthBtn', 'rdpEndYearBtn', 'rdpEndPrev', 'rdpEndNext',
+                    'rdpEndYearDropdown', 'rdpEndMonthDropdown', 'rdpEndClose',
+                    true, startVal, null);
         }, 30);
     } else {
         document.getElementById('repModalStart').textContent = fmtDate(data.starting_date);
@@ -2722,6 +2805,18 @@ function openRepModal(repId) {
         document.getElementById('repAdminReturnBtn').style.display  = 'none';
     }
 
+    // Admin return note — show to engineer when report was returned
+    const returnBannerEl   = document.getElementById('repAdminReturnBanner');
+    const returnNoteSpanEl = document.getElementById('repAdminReturnNote');
+    if (returnBannerEl && returnNoteSpanEl) {
+        if (IS_ENGINEER && data.admin_return_note && data.admin_return_note.trim()) {
+            returnBannerEl.style.display = '';
+            returnNoteSpanEl.textContent = data.admin_return_note;
+        } else {
+            returnBannerEl.style.display = 'none';
+        }
+    }
+
     // AI section — show ALL analysis fields with full descriptions
     const aiSec = document.getElementById('repAiSection');
     const aiDiv = document.getElementById('repAiDivider');
@@ -2760,7 +2855,15 @@ function openRepModal(repId) {
     repBackdrop.classList.add('active');
 }
 
-function closeRepModal() { repBackdrop.classList.remove('active'); currentRepData = null; }
+function closeRepModal() {
+    // Force-hide any open date pickers so stale document listeners don't block next open
+    const so = document.getElementById('rdpStartOverlay');
+    const eo = document.getElementById('rdpEndOverlay');
+    if (so) so.style.display = 'none';
+    if (eo) eo.style.display = 'none';
+    repBackdrop.classList.remove('active');
+    currentRepData = null;
+}
 repModalClose.addEventListener('click', closeRepModal);
 repBackdrop.addEventListener('click', e => { if(e.target===repBackdrop) closeRepModal(); });
 document.addEventListener('keydown', e => {
@@ -3003,6 +3106,8 @@ async function doAdminApproveReport() {
 // ── Admin: Return to Engineer ──
 function confirmAdminReturn() {
     if (!currentRepData || !IS_ADMIN) return;
+    const noteEl = document.getElementById('repReturnNoteInput');
+    if (noteEl) noteEl.value = '';
     document.getElementById('repAdminReturnConfirmBackdrop').classList.add('active');
 }
 function closeAdminReturnConfirm() {
@@ -3014,6 +3119,7 @@ document.getElementById('repAdminReturnConfirmBackdrop').addEventListener('click
 
 async function doAdminReturnReport() {
     if (!currentRepData || !IS_ADMIN) return;
+    const returnNote = document.getElementById('repReturnNoteInput')?.value?.trim() || '';
     closeAdminReturnConfirm();
     const repId = currentRepData.rep_id;
     const btn   = document.getElementById('repAdminReturnBtn');
@@ -3022,7 +3128,7 @@ async function doAdminReturnReport() {
         const res  = await fetch('current_reports.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'admin_return_report', rep_id: repId})
+            body: JSON.stringify({action: 'admin_return_report', rep_id: repId, return_note: returnNote})
         });
         const text = await res.text();
         let data;
@@ -3033,6 +3139,9 @@ async function doAdminReturnReport() {
             return;
         }
         if (data.success) {
+            // Update in-memory so engineer sees banner immediately if modal reopened
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+            if (idx > -1) ALL_REPORTS[idx].admin_return_note = returnNote;
             closeRepModal();
             showRepNotif('success','↩️ Report #REP-'+repId+' returned to engineer for revision.');
             setTimeout(()=>location.reload(),1800);
@@ -3262,12 +3371,14 @@ function rdpBuildDisplay(displayId, isoVal, placeholder) {
 
 /**
  * Wire up one report date picker.
- * allowFuture=true disables the "future dates greyed out" rule (needed for end date).
+ * allowFuture=true  — allows future dates
+ * minDateISO        — 'YYYY-MM-DD' floor; days before this are disabled
+ * onSelect          — optional callback(isoString) fired after a date is chosen
  */
 function rdpInit(overlayId, displayId, hiddenId, gridId,
                   monthBtnId, yearBtnId, prevBtnId, nextBtnId,
                   yearDropId, monthDropId, closeBtnId,
-                  allowFuture) {
+                  allowFuture, minDateISO, onSelect) {
     var overlay    = document.getElementById(overlayId);
     var displayEl  = document.getElementById(displayId);
     var hiddenEl   = document.getElementById(hiddenId);
@@ -3282,9 +3393,25 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
 
     if (!overlay || !displayEl || !hiddenEl || !grid) return;
 
+    // ── Fix: clone-replace displayEl to strip stale event listeners from
+    //   previous modal opens (prevents the picker-only-opens-once bug).
+    var fresh = displayEl.cloneNode(true);
+    displayEl.parentNode.replaceChild(fresh, displayEl);
+    displayEl = fresh;
+    hiddenEl  = document.getElementById(hiddenId);
+
     var MONTHS = ['January','February','March','April','May','June',
                   'July','August','September','October','November','December'];
     var today  = new Date();
+    // Normalise today to midnight for clean date comparisons
+    var todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // Parse minDate floor (defaults to today so past dates are blocked)
+    var minDate = todayMidnight;
+    if (minDateISO) {
+        var mp = minDateISO.split('-');
+        if (mp.length === 3) minDate = new Date(+mp[0], +mp[1]-1, +mp[2]);
+    }
 
     var savedStr = hiddenEl.value || '';
     var selDate  = null;
@@ -3305,8 +3432,8 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
         if (d) {
             hiddenEl.value = fmtISO(d);
             if (textEl) { textEl.textContent = fmtDisp(d); textEl.classList.remove('placeholder'); }
+            if (typeof onSelect === 'function') onSelect(fmtISO(d));
         }
-        // No clear path — dates can only be changed, not wiped
     }
 
     function renderGrid() {
@@ -3316,7 +3443,7 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
         yearBtn.textContent  = viewYear;
         var firstDay    = new Date(viewYear, viewMonth, 1).getDay();
         var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
-        var todayStr    = fmtISO(today);
+        var todayStr    = fmtISO(todayMidnight);
         var selStr      = selDate ? fmtISO(selDate) : '';
         grid.innerHTML  = '';
         for (var i=0; i<firstDay; i++) {
@@ -3331,7 +3458,14 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
             if (dow===0||dow===6) btn.classList.add('rdp-weekend');
             if (dateStr===todayStr) btn.classList.add('rdp-today');
             if (dateStr===selStr)   btn.classList.add('rdp-selected');
-            if (!allowFuture && dateObj>today) btn.classList.add('rdp-future');
+            // Disable dates outside allowed range — add AFTER selected so rdp-future wins
+            var isDisabled = false;
+            if (dateObj < minDate) isDisabled = true;
+            else if (!allowFuture && dateObj > todayMidnight) isDisabled = true;
+            if (isDisabled) {
+                btn.classList.add('rdp-future');
+                btn.classList.remove('rdp-selected'); // don't visually "select" a disabled date
+            }
             btn.addEventListener('click',function(e){
                 e.stopPropagation();
                 var pp=this.dataset.date.split('-');
@@ -3345,7 +3479,7 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
     function buildYearGrid() {
         yearDrop.innerHTML='';
         var endY   = today.getFullYear() + (allowFuture ? 10 : 0);
-        var startY = today.getFullYear() - 10;
+        var startY = minDate.getFullYear();
         for (var y=endY; y>=startY; y--) {
             var b=document.createElement('button'); b.type='button';
             b.className='rdp-year-opt'+(y===viewYear?' selected':'');
@@ -3381,6 +3515,7 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
     function closePicker() { overlay.style.display='none'; }
 
     displayEl.addEventListener('click',function(e){
+        e.stopPropagation(); // prevent click from reaching accumulated document listeners
         if (overlay.style.display==='block') closePicker();
         else {
             viewYear  = selDate ? selDate.getFullYear() : today.getFullYear();

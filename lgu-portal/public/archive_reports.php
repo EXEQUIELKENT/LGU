@@ -601,11 +601,85 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-day-indicator { flex:1; text-align:center; }
 .rep-day-num  { display:block; font-size:13px; font-weight:700; color:#2e7d32; letter-spacing:.04em; }
 .rep-day-date { display:block; font-size:11px; color:var(--text-secondary); margin-top:2px; }
-.rep-last-edited {
-    margin-top:10px; font-size:11px; color:var(--text-secondary);
-    display:flex; align-items:center; gap:5px; font-style:italic;
-    padding-top:8px; border-top:1px dashed var(--border-color);
+/* Redesigned clickable date button (read-only version — green theme) */
+.rep-day-date-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: linear-gradient(135deg, rgba(46,125,50,.12), rgba(76,175,80,.08));
+    border: 1.5px solid rgba(46,125,50,.35); border-radius: 20px;
+    cursor: pointer; font-size: 12px; font-weight: 600; color: #2e7d32;
+    padding: 4px 12px; font-family: inherit; letter-spacing: .02em; margin-top: 3px;
+    transition: all .18s;
 }
+.rep-day-date-btn::before { content: '📅'; font-size: 13px; }
+.rep-day-date-btn:hover {
+    background: linear-gradient(135deg, rgba(46,125,50,.22), rgba(76,175,80,.15));
+    border-color: #2e7d32;
+    box-shadow: 0 2px 8px rgba(46,125,50,.25);
+    transform: translateY(-1px);
+}
+[data-theme="dark"] .rep-day-date-btn { background: linear-gradient(135deg,rgba(46,125,50,.18),rgba(76,175,80,.12)); border-color:rgba(46,125,50,.5); color:#66bb6a; }
+[data-theme="dark"] .rep-day-date-btn:hover { background:linear-gradient(135deg,rgba(46,125,50,.28),rgba(76,175,80,.2)); box-shadow:0 2px 10px rgba(46,125,50,.35); }
+.rep-last-edited {
+    font-size:11px; color:var(--text-secondary);
+    display:flex; align-items:center; gap:5px; font-style:italic;
+    margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color);
+}
+/* Admin return-reason banner */
+.rep-admin-return-banner {
+    background: linear-gradient(135deg, rgba(239,68,68,.09), rgba(185,28,28,.05));
+    border: 1.5px solid rgba(239,68,68,.3); border-left: 4px solid #ef4444;
+    border-radius: 10px; padding: 12px 16px; margin: 10px 0 4px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.rep-admin-feedback-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 10px rgba(239,68,68,.4); width: fit-content;
+}
+.rep-admin-feedback-text { font-size: 13px; color: #b91c1c; font-weight: 500; line-height: 1.5; }
+[data-theme="dark"] .rep-admin-return-banner { background:linear-gradient(135deg,rgba(239,68,68,.13),rgba(185,28,28,.07));border-color:rgba(239,68,68,.35);border-left-color:#f87171; }
+[data-theme="dark"] .rep-admin-feedback-text { color: #fca5a5; }
+/* Day date picker overlay (green theme for archive) */
+#repDayPickerOverlay {
+    position:fixed;z-index:99999;display:none;visibility:hidden;top:-9999px;left:-9999px;
+    width:288px;max-height:80vh;overflow-y:auto;overflow-x:hidden;
+    background:#1c1c1c;border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);border:1px solid rgba(46,125,50,.3);font-family:inherit;
+}
+.rdpd-header { position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;background:linear-gradient(135deg,#2e7d32 0%,#43a047 100%);gap:6px; }
+@keyframes rdpdPopIn { from{opacity:0;transform:scale(0.94) translateY(-6px);}to{opacity:1;transform:scale(1) translateY(0);} }
+.rdpd-nav { width:28px;height:28px;border-radius:8px;border:none;background:rgba(255,255,255,.18);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .12s;flex-shrink:0; }
+.rdpd-nav:hover { background:rgba(255,255,255,.32);transform:scale(1.08); }
+.rdpd-nav:active { transform:scale(0.95); }
+.rdpd-header-center { display:flex;align-items:center;gap:4px;flex:1;justify-content:center; }
+.rdpd-month-btn,.rdpd-year-btn { background:rgba(255,255,255,.15);border:none;color:#fff;font-size:13.5px;font-weight:700;padding:4px 9px;border-radius:7px;cursor:pointer;letter-spacing:.02em;transition:background .15s;font-family:inherit; }
+.rdpd-month-btn:hover,.rdpd-year-btn:hover { background:rgba(255,255,255,.3); }
+.rdpd-month-btn.active,.rdpd-year-btn.active { background:rgba(255,255,255,.4); }
+.rdpd-year-dropdown,.rdpd-month-dropdown { display:none;padding:6px 8px;background:#1c1c1c;border-bottom:1px solid rgba(255,255,255,.08);max-height:180px;overflow-y:auto; }
+.rdpd-year-dropdown.open { display:grid;grid-template-columns:repeat(4,1fr);gap:4px; }
+.rdpd-month-dropdown.open { display:grid;grid-template-columns:repeat(3,1fr);gap:4px; }
+.rdpd-year-opt,.rdpd-month-opt { padding:6px 4px;border-radius:7px;border:none;background:transparent;color:#e2e8f0;font-size:12.5px;cursor:pointer;text-align:center;transition:background .12s;font-family:inherit; }
+.rdpd-year-opt:hover,.rdpd-month-opt:hover { background:rgba(46,125,50,.25);color:#a5d6a7; }
+.rdpd-year-opt.selected,.rdpd-month-opt.selected { background:#2e7d32;color:#fff;font-weight:700; }
+.rdpd-weekdays { display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 2px;gap:2px; }
+.rdpd-weekdays span { text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;padding:2px 0; }
+.rdpd-weekdays span:first-child,.rdpd-weekdays span:last-child { color:#f87171; }
+.rdpd-grid { display:grid;grid-template-columns:repeat(7,1fr);padding:2px 10px 8px;gap:3px; }
+.rdpd-day { aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;color:#e2e8f0;border:none;background:transparent;transition:background .13s,color .13s,transform .1s;padding:0;line-height:1; }
+.rdpd-day:hover { background:rgba(46,125,50,.2);color:#66bb6a;transform:scale(1.12); }
+.rdpd-day:active { transform:scale(0.95); }
+.rdpd-day.rdpd-empty { cursor:default;pointer-events:none; }
+.rdpd-day.rdpd-weekend { color:#f87171; }
+.rdpd-day.rdpd-today { background:rgba(46,125,50,.15);color:#4caf50;font-weight:700;position:relative; }
+.rdpd-day.rdpd-today::after { content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#4caf50; }
+.rdpd-day.rdpd-selected { background:linear-gradient(135deg,#2e7d32,#43a047)!important;color:#fff!important;font-weight:700;box-shadow:0 3px 10px rgba(46,125,50,.45);transform:scale(1.05); }
+.rdpd-day.rdpd-selected::after { display:none; }
+.rdpd-day.rdpd-out-range { opacity:.28;pointer-events:none;cursor:default; }
+.rdpd-footer { display:flex;align-items:center;justify-content:flex-end;padding:8px 12px 12px;border-top:1px solid rgba(46,125,50,.1);gap:8px; }
+.rdpd-close { flex:1;padding:7px 0;border-radius:9px;border:none;background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s;letter-spacing:.03em;font-family:inherit; }
+.rdpd-close:hover { opacity:.88; }
 .rep-eng-desc-box { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:12px;padding:14px 16px;margin-bottom:0; }
 .rep-progress-strip { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
 .rep-progress-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
@@ -994,6 +1068,11 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <button class="rep-modal-close" id="repModalClose">&#215;</button>
         </div>
         <div class="rep-modal-body">
+            <!-- Admin return reason — shown at top for all roles -->
+            <div class="rep-admin-return-banner" id="repAdminReturnBanner" style="display:none;">
+                <div class="rep-admin-feedback-badge"><i class="fas fa-shield-alt"></i> Admin Feedback</div>
+                <div class="rep-admin-feedback-text" id="repAdminReturnNote"></div>
+            </div>
             <div class="rep-status-row"><span class="rep-status-pill" id="repModalStatus"></span></div>
             <div class="rep-divider"></div>
             <div class="rep-grid-2">
@@ -1007,26 +1086,32 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="rep-field"><div class="rep-field-label">&#128176; Budget</div><div class="rep-field-value" id="repModalBudget"></div></div>
             </div>
             <div class="rep-divider"></div>
-            <!-- Daily log day navigator (read-only in archive) -->
+            <!-- Daily log day navigator — outside the box, below budget -->
             <input type="hidden" id="repCurrentLogDate" value="">
-            <div class="rep-eng-desc-box" id="repEngDescBox">
-                <!-- Day nav header -->
-                <div class="rep-day-nav" id="repDayNav">
-                    <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
-                    <div class="rep-day-indicator">
-                        <span class="rep-day-num"  id="repDayNum">Day 1</span>
-                        <span class="rep-day-date" id="repDayDate"></span>
-                    </div>
-                    <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
+            <div class="rep-day-nav" id="repDayNav" style="margin-bottom:14px;">
+                <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
+                <div class="rep-day-indicator">
+                    <span class="rep-day-num" id="repDayNum">Day 1</span>
+                    <button class="rep-day-date-btn" id="repDayDate" type="button" onclick="openDayPicker()"></button>
                 </div>
+                <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
+            </div>
+            <!-- Description section (read-only in archive) -->
+            <div class="rep-eng-desc-box" id="repEngDescBox">
                 <div class="rep-field-label" style="margin-bottom:8px;">&#128221; Description of report</div>
                 <div class="rep-field-value" id="repModalDesc" style="white-space:pre-wrap;min-height:30px;"></div>
-                <div id="repProgressImgsSection" style="margin-top:12px;display:none;">
+                <!-- Last edited for description -->
+                <div class="rep-last-edited" id="repDescLastEdited" style="display:none;margin-top:8px;">
+                    ✏️ Last edited: <span id="repDescLastEditedTime">—</span>
+                </div>
+                <!-- Progress images -->
+                <div id="repProgressImgsSection" style="margin-top:14px;display:none;">
                     <div class="rep-field-label" style="margin-bottom:8px;">&#128247; Report Progress Images</div>
                     <div class="rep-progress-strip" id="repProgressStrip"></div>
-                </div>
-                <div class="rep-last-edited" id="repLastEdited" style="display:none;">
-                    ✏️ Last edited: <span id="repLastEditedTime">—</span>
+                    <!-- Last edited for images -->
+                    <div class="rep-last-edited" id="repImgLastEdited" style="display:none;margin-top:8px;">
+                        🖼️ Last image uploaded: <span id="repImgLastEditedTime">—</span>
+                    </div>
                 </div>
             </div>
             <div class="rep-divider"></div>
@@ -1046,6 +1131,41 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 </div>
 
 <?php include 'admin_scripts.php'; ?>
+
+<!-- ── Day Date Picker Overlay (green theme for archive) ── -->
+<div id="repDayPickerOverlay">
+    <div class="rdpd-header">
+        <button class="rdpd-nav" id="rdpdPrevMonth" type="button">&#8592;</button>
+        <div class="rdpd-header-center">
+            <button class="rdpd-month-btn" id="rdpdMonthBtn" type="button"></button>
+            <button class="rdpd-year-btn"  id="rdpdYearBtn"  type="button"></button>
+        </div>
+        <button class="rdpd-nav" id="rdpdNextMonth" type="button">&#8594;</button>
+    </div>
+    <div class="rdpd-year-dropdown"  id="rdpdYearDropdown"></div>
+    <div class="rdpd-month-dropdown" id="rdpdMonthDropdown">
+        <button class="rdpd-month-opt" data-month="0"  type="button">Jan</button>
+        <button class="rdpd-month-opt" data-month="1"  type="button">Feb</button>
+        <button class="rdpd-month-opt" data-month="2"  type="button">Mar</button>
+        <button class="rdpd-month-opt" data-month="3"  type="button">Apr</button>
+        <button class="rdpd-month-opt" data-month="4"  type="button">May</button>
+        <button class="rdpd-month-opt" data-month="5"  type="button">Jun</button>
+        <button class="rdpd-month-opt" data-month="6"  type="button">Jul</button>
+        <button class="rdpd-month-opt" data-month="7"  type="button">Aug</button>
+        <button class="rdpd-month-opt" data-month="8"  type="button">Sep</button>
+        <button class="rdpd-month-opt" data-month="9"  type="button">Oct</button>
+        <button class="rdpd-month-opt" data-month="10" type="button">Nov</button>
+        <button class="rdpd-month-opt" data-month="11" type="button">Dec</button>
+    </div>
+    <div class="rdpd-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span>
+        <span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div class="rdpd-grid" id="rdpdGrid"></div>
+    <div class="rdpd-footer">
+        <button class="rdpd-close" id="rdpdClose" type="button">Done</button>
+    </div>
+</div>
 
 <script>
 
@@ -1107,6 +1227,16 @@ function renderArchiveDayView() {
     // Description (always read-only in archive)
     document.getElementById('repModalDesc').textContent = entry.description || '— No entry for this day —';
 
+    // Description last-edited
+    const descLE = document.getElementById('repDescLastEdited');
+    const descLETime = document.getElementById('repDescLastEditedTime');
+    if (descLE) {
+        if (entry.updated_at) {
+            descLE.style.display = '';
+            if (descLETime) descLETime.textContent = fmtDateTime(entry.updated_at);
+        } else { descLE.style.display = 'none'; }
+    }
+
     // Images for this day
     const dayImages = entry.images || [];
     const pSection  = document.getElementById('repProgressImgsSection');
@@ -1122,12 +1252,14 @@ function renderArchiveDayView() {
         });
     } else { pSection.style.display = 'none'; }
 
-    // Last-edited
-    const lastEdited = document.getElementById('repLastEdited');
-    if (entry.updated_at) {
-        lastEdited.style.display = '';
-        document.getElementById('repLastEditedTime').textContent = fmtDateTime(entry.updated_at);
-    } else { lastEdited.style.display = 'none'; }
+    // Image last-uploaded
+    const imgLE = document.getElementById('repImgLastEdited');
+    const imgLETime = document.getElementById('repImgLastEditedTime');
+    const imgTs = entry.img_updated_at || (dayImages.length ? entry.updated_at : null);
+    if (imgLE) {
+        imgLE.style.display = (imgTs && dayImages.length) ? '' : 'none';
+        if (imgLETime) imgLETime.textContent = (imgTs && dayImages.length) ? fmtDateTime(imgTs) : '—';
+    }
 }
 
 function navigateDayPrev() {
@@ -1158,10 +1290,24 @@ function openRepModal(repId) {
     const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
     document.getElementById('repModalBudget').textContent = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
 
+    // Admin return reason banner
+    const rnBanner = document.getElementById('repAdminReturnBanner');
+    const rnNote   = document.getElementById('repAdminReturnNote');
+    if (rnBanner && rnNote) {
+        if (data.admin_return_note && data.admin_return_note.trim()) {
+            rnBanner.style.display = ''; rnNote.textContent = data.admin_return_note;
+        } else { rnBanner.style.display = 'none'; }
+    }
+
     // ── Daily log navigation ──────────────────────────────────────────────────
     currentDayDates = buildDayDates(data.starting_date, data.estimated_end_date);
-    // Default to last day (most recent entry) for archive view
-    currentDayIndex = currentDayDates.length > 0 ? currentDayDates.length - 1 : 0;
+    // Default to last day with content, else last day
+    const logs = data.daily_logs || {};
+    let lastFilledIdx = -1;
+    currentDayDates.forEach((dt, i) => {
+        if (logs[dt] && (logs[dt].description || (logs[dt].images && logs[dt].images.length))) lastFilledIdx = i;
+    });
+    currentDayIndex = lastFilledIdx >= 0 ? lastFilledIdx : (currentDayDates.length > 0 ? currentDayDates.length - 1 : 0);
     document.getElementById('repDayNav').style.display = currentDayDates.length ? '' : 'none';
     renderArchiveDayView();
 
@@ -1180,7 +1326,10 @@ function openRepModal(repId) {
     } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
     repBackdrop.classList.add('active');
 }
-function closeRepModal(){ repBackdrop.classList.remove('active'); }
+function closeRepModal(){
+    if (typeof closeDayPicker === 'function') closeDayPicker();
+    repBackdrop.classList.remove('active');
+}
 repModalClose.addEventListener('click', closeRepModal);
 repBackdrop.addEventListener('click', e => { if(e.target===repBackdrop) closeRepModal(); });
 document.addEventListener('keydown', e => {
@@ -1454,6 +1603,123 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ── Day Date Picker (read-only navigation for archive, green theme) ───────────
+(function() {
+    var overlay   = document.getElementById('repDayPickerOverlay');
+    var grid      = document.getElementById('rdpdGrid');
+    var monthBtn  = document.getElementById('rdpdMonthBtn');
+    var yearBtn   = document.getElementById('rdpdYearBtn');
+    var prevBtn   = document.getElementById('rdpdPrevMonth');
+    var nextBtn   = document.getElementById('rdpdNextMonth');
+    var yearDrop  = document.getElementById('rdpdYearDropdown');
+    var monthDrop = document.getElementById('rdpdMonthDropdown');
+    var closeBtn  = document.getElementById('rdpdClose');
+    if (!overlay) return;
+
+    var MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+    var viewYear = new Date().getFullYear(), viewMonth = new Date().getMonth();
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtISO(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+
+    function renderGrid() {
+        yearDrop.classList.remove('open'); monthDrop.classList.remove('open');
+        yearBtn.classList.remove('active'); monthBtn.classList.remove('active');
+        monthBtn.textContent = MONTHS[viewMonth].slice(0,3);
+        yearBtn.textContent  = viewYear;
+        var firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+        var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+        var selISO = document.getElementById('repCurrentLogDate')?.value || '';
+        var today  = new Date(); var todayISO = fmtISO(new Date(today.getFullYear(),today.getMonth(),today.getDate()));
+        var startISO = currentArchiveData?.starting_date || '';
+        var endISO   = currentArchiveData?.estimated_end_date || '';
+        grid.innerHTML = '';
+        for (var i=0; i<firstDay; i++) {
+            var emp=document.createElement('div'); emp.className='rdpd-day rdpd-empty'; grid.appendChild(emp);
+        }
+        for (var dd=1; dd<=daysInMonth; dd++) {
+            var dateObj=new Date(viewYear,viewMonth,dd), dateISO=fmtISO(dateObj), dow=dateObj.getDay();
+            var btn=document.createElement('button'); btn.type='button'; btn.className='rdpd-day'; btn.textContent=dd; btn.dataset.date=dateISO;
+            if (dow===0||dow===6) btn.classList.add('rdpd-weekend');
+            if (dateISO===todayISO) btn.classList.add('rdpd-today');
+            if (dateISO===selISO)   btn.classList.add('rdpd-selected');
+            if ((startISO&&dateISO<startISO)||(endISO&&dateISO>endISO)) btn.classList.add('rdpd-out-range');
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var idx = currentDayDates.indexOf(this.dataset.date);
+                if (idx < 0) return;
+                currentDayIndex = idx; renderArchiveDayView(); closeDayPicker();
+            });
+            grid.appendChild(btn);
+        }
+    }
+
+    function buildYearGrid() {
+        yearDrop.innerHTML = '';
+        var startY = currentArchiveData?.starting_date ? parseInt(currentArchiveData.starting_date.slice(0,4)) : new Date().getFullYear()-3;
+        var endY   = currentArchiveData?.estimated_end_date ? parseInt(currentArchiveData.estimated_end_date.slice(0,4)) : new Date().getFullYear()+1;
+        for (var y=endY; y>=startY; y--) {
+            var b=document.createElement('button'); b.type='button';
+            b.className='rdpd-year-opt'+(y===viewYear?' selected':'');
+            b.textContent=y; b.dataset.year=y;
+            b.addEventListener('click', function(e){ e.stopPropagation(); viewYear=+this.dataset.year; renderGrid(); });
+            yearDrop.appendChild(b);
+        }
+        setTimeout(function(){ var s=yearDrop.querySelector('.selected'); if(s) s.scrollIntoView({block:'nearest'}); },30);
+    }
+
+    function positionOverlay(triggerEl) {
+        var rect=triggerEl.getBoundingClientRect(), vw=window.innerWidth, vh=window.innerHeight;
+        overlay.style.visibility='hidden'; overlay.style.display='block';
+        var ow=overlay.offsetWidth||288, oh=Math.min(overlay.scrollHeight||380,vh*0.8);
+        overlay.style.visibility='';
+        var top=rect.bottom+6, left=rect.left+rect.width/2-ow/2;
+        left=Math.max(8,Math.min(left,vw-ow-8));
+        if (top+oh>vh-10&&rect.top>oh+10) top=rect.top-oh-6;
+        if (top<8) top=8;
+        overlay.style.top=top+'px'; overlay.style.left=left+'px'; overlay.style.display='none';
+    }
+
+    window.openDayPicker = function() {
+        var triggerEl = document.getElementById('repDayDate');
+        if (!triggerEl || !currentArchiveData) return;
+        var selISO = document.getElementById('repCurrentLogDate')?.value || '';
+        if (selISO) { var p=selISO.split('-'); viewYear=+p[0]; viewMonth=+p[1]-1; }
+        renderGrid(); positionOverlay(triggerEl);
+        overlay.style.removeProperty('animation');
+        overlay.style.display='block'; overlay.style.visibility='visible';
+        void overlay.offsetWidth;
+        overlay.style.animation='rdpdPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    };
+    window.closeDayPicker = function() { overlay.style.display='none'; };
+
+    prevBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderGrid(); });
+    nextBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderGrid(); });
+    yearBtn.addEventListener('click', function(e){
+        e.stopPropagation(); monthDrop.classList.remove('open'); monthBtn.classList.remove('active');
+        var nowOpen=yearDrop.classList.toggle('open'); yearBtn.classList.toggle('active',nowOpen);
+        if(nowOpen) buildYearGrid();
+    });
+    monthBtn.addEventListener('click', function(e){
+        e.stopPropagation(); yearDrop.classList.remove('open'); yearBtn.classList.remove('active');
+        var nowOpen=monthDrop.classList.toggle('open'); monthBtn.classList.toggle('active',nowOpen);
+        Array.from(monthDrop.querySelectorAll('.rdpd-month-opt')).forEach(function(b){ b.classList.toggle('selected',+b.dataset.month===viewMonth); });
+    });
+    monthDrop.addEventListener('click', function(e){
+        var b=e.target.closest('.rdpd-month-opt'); if(!b) return;
+        e.stopPropagation(); viewMonth=+b.dataset.month; renderGrid();
+    });
+    closeBtn.addEventListener('click', function(e){ e.stopPropagation(); closeDayPicker(); });
+    document.addEventListener('click', function(e){
+        if (overlay.style.display==='block' && !overlay.contains(e.target)) {
+            var tb=document.getElementById('repDayDate');
+            if (!tb||!tb.contains(e.target)) closeDayPicker();
+        }
+    });
+    overlay.addEventListener('wheel', function(e){ e.stopPropagation(); },{passive:true});
+    overlay.style.display='none';
+})();
 </script>
 
 <!-- ══════════════ ENGINEER DETAILS MODAL ══════════════ -->

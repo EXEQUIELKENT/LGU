@@ -52,6 +52,8 @@ $conn->query("
     SET status = 'Approved'
     WHERE status = ''
 ");
+// ── Add admin_return_note column if it doesn't exist yet ─────────────────────
+$conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
 // Create report_progress_images table if it does not exist
 $conn->query("
     CREATE TABLE IF NOT EXISTS report_progress_images (
@@ -259,19 +261,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Admin rejects completion → back to In Progress ────────────────────────
     if ($action === 'admin_not_complete') {
-        $repId = (int)($input['rep_id'] ?? 0);
+        $repId      = (int)($input['rep_id'] ?? 0);
+        $returnNote = trim($input['return_note'] ?? '');
         if ($repId <= 0) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'Invalid report ID.']); exit; }
+        // Save the return reason to a dedicated column (auto-created if absent)
+        $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN reports r ON r.res_id = rr.res_id
-             SET rr.status = 'In Progress'
+             SET rr.status = 'In Progress', rr.admin_return_note = ?
              WHERE r.rep_id = ? AND rr.status = 'Pending Completion'"
         );
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
-        $stmt->bind_param('i', $repId);
+        $stmt->bind_param('si', $returnNote, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
+        exit;
+    }
+
+    // ── Engineer deletes a daily image ───────────────────────────────────────
+    if ($action === 'delete_daily_image') {
+        $repId   = (int)($input['rep_id']  ?? 0);
+        $imgPath = trim($input['img_path'] ?? '');
+        if ($repId <= 0 || empty($imgPath)) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Invalid parameters.']); exit;
+        }
+        if (!$isEngineer) {
+            while(ob_get_level()>0)ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Unauthorized.']); exit;
+        }
+        // Delete from DB (match rep_id + img_path so engineers can't delete other reports' images)
+        $stmt = $conn->prepare("DELETE FROM report_daily_images WHERE rep_id = ? AND img_path = ?");
+        $stmt->bind_param('is', $repId, $imgPath);
+        $ok = $stmt->execute(); $stmt->close();
+        // Delete physical file
+        if ($ok && file_exists(__DIR__ . '/' . $imgPath)) @unlink(__DIR__ . '/' . $imgPath);
+        while(ob_get_level()>0)ob_end_clean();
+        echo json_encode(['success' => $ok]);
         exit;
     }
 
@@ -334,7 +362,7 @@ $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at, r.engineer_id,
-        res.req_id, res.status AS resolution_status, res.res_note,
+        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
@@ -443,6 +471,7 @@ foreach ($rows as $row) {
         'location'            => $row['location'] ?? '',
         'issue'               => $row['issue'] ?? '',
         'res_note'            => $row['res_note'] ?? '',
+        'admin_return_note'   => $row['admin_return_note'] ?? '',
         'engineer_name'       => $row['engineer_name'] ?? '',
         'engineer_pic'        => $row['engineer_pic'] ?? '',
         'reporter_name'       => $row['reporter_name'] ?? '',
@@ -852,8 +881,130 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .pending-completion-eng { background:rgba(139,92,246,.12);color:#4c1d95;border:1.5px solid rgba(139,92,246,.35); text-align:center; display:inline-block; }
 [data-theme="dark"] .status.pending-completion-eng { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
 .pending-completion-eng { background:#fff8e1;color:#e65100;border:1.5px solid #ffcc02; }
-/* ── Report description & upload section ── */
-.rep-desc-section { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:0; }
+/* ── Delete button on progress images ── */
+.rep-progress-thumb { position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:2px solid var(--border-color);flex-shrink:0; }
+.rep-progress-thumb img { width:100%;height:100%;object-fit:cover;cursor:pointer;transition:opacity .2s; }
+.rep-progress-thumb:hover img { opacity:.85; }
+.rep-progress-del {
+    position:absolute;top:3px;right:3px;
+    width:20px;height:20px;
+    background:rgba(0,0,0,.7);color:#fff;
+    border-radius:50%;font-size:13px;line-height:20px;
+    text-align:center;cursor:pointer;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    z-index:5;transition:background .15s;border:none;padding:0;
+}
+.rep-progress-del:hover { background:#ef4444; }
+
+/* ── Day date picker overlay (orange theme matching pending) ── */
+#repDayPickerOverlay {
+    position:fixed;z-index:99999;display:none;visibility:hidden;
+    top:-9999px;left:-9999px;
+    width:288px;max-height:80vh;overflow-y:auto;overflow-x:hidden;
+    background:#1c1c1c;border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5),0 4px 16px rgba(0,0,0,.3);
+    border:1px solid rgba(255,109,0,.25);font-family:inherit;scroll-behavior:smooth;
+}
+#repDayPickerOverlay::-webkit-scrollbar { width:5px; }
+#repDayPickerOverlay::-webkit-scrollbar-track { background:transparent; }
+#repDayPickerOverlay::-webkit-scrollbar-thumb { background:rgba(255,109,0,.3);border-radius:4px; }
+.rdpd-header {
+    position:sticky;top:0;z-index:2;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 14px 10px;
+    background:linear-gradient(135deg,#e65100 0%,#ff6d00 100%);gap:6px;
+}
+@keyframes rdpdPopIn {
+    from { opacity:0;transform:scale(0.94) translateY(-6px); }
+    to   { opacity:1;transform:scale(1) translateY(0); }
+}
+.rdpd-nav {
+    width:28px;height:28px;border-radius:8px;border:none;
+    background:rgba(255,255,255,.18);color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .15s,transform .12s;flex-shrink:0;
+}
+.rdpd-nav:hover  { background:rgba(255,255,255,.32);transform:scale(1.08); }
+.rdpd-nav:active { transform:scale(0.95); }
+.rdpd-header-center { display:flex;align-items:center;gap:4px;flex:1;justify-content:center; }
+.rdpd-month-btn,.rdpd-year-btn {
+    background:rgba(255,255,255,.15);border:none;color:#fff;
+    font-size:13.5px;font-weight:700;padding:4px 9px;border-radius:7px;
+    cursor:pointer;letter-spacing:.02em;transition:background .15s;font-family:inherit;
+}
+.rdpd-month-btn:hover,.rdpd-year-btn:hover { background:rgba(255,255,255,.3); }
+.rdpd-month-btn.active,.rdpd-year-btn.active { background:rgba(255,255,255,.4);box-shadow:0 0 0 2px rgba(255,255,255,.5); }
+.rdpd-year-dropdown,.rdpd-month-dropdown {
+    display:none;padding:6px 8px;background:#1c1c1c;border-bottom:1px solid rgba(255,255,255,.08);
+    max-height:180px;overflow-y:auto;overscroll-behavior:contain;
+}
+.rdpd-year-dropdown.open { display:grid;grid-template-columns:repeat(4,1fr);gap:4px; }
+.rdpd-month-dropdown.open { display:grid;grid-template-columns:repeat(3,1fr);gap:4px; }
+.rdpd-year-opt,.rdpd-month-opt {
+    padding:6px 4px;border-radius:7px;border:none;background:transparent;color:#e2e8f0;
+    font-size:12.5px;cursor:pointer;text-align:center;transition:background .12s;font-family:inherit;
+}
+.rdpd-year-opt:hover,.rdpd-month-opt:hover { background:rgba(255,109,0,.2);color:#ffb74d; }
+.rdpd-year-opt.selected,.rdpd-month-opt.selected { background:#e65100;color:#fff;font-weight:700; }
+.rdpd-weekdays { display:grid;grid-template-columns:repeat(7,1fr);padding:8px 10px 2px;gap:2px; }
+.rdpd-weekdays span { text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;padding:2px 0; }
+.rdpd-weekdays span:first-child,.rdpd-weekdays span:last-child { color:#f87171; }
+.rdpd-grid { display:grid;grid-template-columns:repeat(7,1fr);padding:2px 10px 8px;gap:3px; }
+.rdpd-day {
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;color:#e2e8f0;
+    border:none;background:transparent;transition:background .13s,color .13s,transform .1s;padding:0;line-height:1;
+}
+.rdpd-day:hover       { background:rgba(255,109,0,.2);color:#ff6d00;transform:scale(1.12); }
+.rdpd-day:active      { transform:scale(0.95); }
+.rdpd-day.rdpd-empty  { cursor:default;pointer-events:none; }
+.rdpd-day.rdpd-weekend{ color:#f87171; }
+.rdpd-day.rdpd-weekend:hover { background:#fff0f0;color:#dc2626; }
+.rdpd-day.rdpd-today  { background:rgba(255,109,0,.15);color:#ff6d00;font-weight:700;position:relative; }
+.rdpd-day.rdpd-today::after { content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#ff6d00; }
+.rdpd-day.rdpd-selected { background:linear-gradient(135deg,#e65100,#ff6d00)!important;color:#fff!important;font-weight:700;box-shadow:0 3px 10px rgba(255,109,0,.45);transform:scale(1.05); }
+.rdpd-day.rdpd-selected::after { display:none; }
+.rdpd-day.rdpd-out-range { opacity:.28;pointer-events:none;cursor:default; }
+.rdpd-footer { display:flex;align-items:center;justify-content:flex-end;padding:8px 12px 12px;border-top:1px solid rgba(255,109,0,.1);gap:8px; }
+.rdpd-close {
+    flex:1;padding:7px 0;border-radius:9px;border:none;
+    background:linear-gradient(135deg,#e65100,#ff6d00);color:#fff;
+    font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s;letter-spacing:.03em;font-family:inherit;
+}
+.rdpd-close:hover { opacity:.88; }
+/* Make the day date span clickable */
+.rep-day-date-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: linear-gradient(135deg, rgba(230,81,0,.12), rgba(255,109,0,.08));
+    border: 1.5px solid rgba(230,81,0,.35);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #e65100;
+    padding: 4px 12px;
+    font-family: inherit;
+    letter-spacing: .02em;
+    transition: all .18s;
+    margin-top: 3px;
+}
+.rep-day-date-btn::before { content: '📅'; font-size: 13px; }
+.rep-day-date-btn:hover {
+    background: linear-gradient(135deg, rgba(230,81,0,.22), rgba(255,109,0,.15));
+    border-color: #e65100;
+    box-shadow: 0 2px 8px rgba(230,81,0,.25);
+    transform: translateY(-1px);
+}
+[data-theme="dark"] .rep-day-date-btn {
+    background: linear-gradient(135deg, rgba(230,81,0,.18), rgba(255,109,0,.12));
+    border-color: rgba(230,81,0,.5);
+    color: #ff8c42;
+}
+[data-theme="dark"] .rep-day-date-btn:hover {
+    background: linear-gradient(135deg, rgba(230,81,0,.28), rgba(255,109,0,.2));
+    box-shadow: 0 2px 10px rgba(230,81,0,.35);
+}
 
 /* ── Daily log day navigator ── */
 .rep-day-nav {
@@ -893,6 +1044,50 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 /* ── Admin review banner ── */
 .rep-admin-review-banner { background:linear-gradient(135deg,rgba(106,27,154,.08),rgba(106,27,154,.04));border:1.5px solid rgba(106,27,154,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#6a1b9a;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px; }
 [data-theme="dark"] .rep-admin-review-banner { background:rgba(106,27,154,.15);border-color:rgba(206,147,216,.3);color:#ce93d8; }
+/* Admin return-reason banner shown to engineer */
+/* Admin return reason banner — badge style matching employee.php admin-badge */
+.rep-admin-return-banner {
+    background: linear-gradient(135deg, rgba(239,68,68,.09), rgba(185,28,28,.05));
+    border: 1.5px solid rgba(239,68,68,.3);
+    border-left: 4px solid #ef4444;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 10px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.rep-admin-feedback-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    box-shadow: 0 3px 10px rgba(239,68,68,.4);
+    width: fit-content;
+}
+.rep-admin-feedback-text {
+    font-size: 13px;
+    color: #b91c1c;
+    font-weight: 500;
+    line-height: 1.5;
+}
+[data-theme="dark"] .rep-admin-return-banner {
+    background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(185,28,28,.07));
+    border-color: rgba(239,68,68,.35);
+    border-left-color: #f87171;
+}
+[data-theme="dark"] .rep-admin-feedback-text { color: #fca5a5; }
+/* Textarea inside confirm modals */
+.rep-confirm-return-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:80px;margin-top:12px;transition:border-color .2s; }
+.rep-confirm-return-note:focus { outline:none;border-color:#ef4444; }
+[data-theme="dark"] .rep-confirm-return-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
 /* ── Admin action buttons ── */
 .btn-admin-complete    { display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 4px 14px rgba(46,125,50,.3); }
 .btn-admin-complete:hover    { transform:translateY(-2px);box-shadow:0 7px 20px rgba(46,125,50,.45); }
@@ -1287,6 +1482,11 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
                 &#128203; This report has been marked as completed by the engineer and is awaiting your confirmation.
             </div>
             <div class="rep-status-row"><span class="rep-status-pill" id="repModalStatus"></span></div>
+            <!-- Admin return reason — shown to engineer above Location/Issue -->
+            <div class="rep-admin-return-banner" id="repAdminReturnBanner" style="display:none;">
+                <div class="rep-admin-feedback-badge"><i class="fas fa-shield-alt"></i> Admin Feedback</div>
+                <div class="rep-admin-feedback-text" id="repAdminReturnNote"></div>
+            </div>
             <div class="rep-divider"></div>
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
@@ -1300,21 +1500,19 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
             </div>
             <div class="rep-divider"></div>
 
-            <!-- ── Daily log day navigator + description ── -->
-            <!-- Hidden: tracks which log_date is currently viewed -->
+            <!-- ── Daily log day navigator — OUTSIDE the box, below budget ── -->
             <input type="hidden" id="repCurrentLogDate" value="">
+            <div class="rep-day-nav" id="repDayNav" style="margin-bottom:14px;">
+                <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
+                <div class="rep-day-indicator">
+                    <span class="rep-day-num"  id="repDayNum">Day 1</span>
+                    <button class="rep-day-date-btn" id="repDayDate" type="button" onclick="openDayPicker()"></button>
+                </div>
+                <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
+            </div>
+            <!-- Last edited timestamp removed from here — now sits inside each section -->
 
             <div class="rep-desc-section" id="repDescSection">
-                <!-- Day nav header -->
-                <div class="rep-day-nav" id="repDayNav">
-                    <button class="rep-day-arrow" id="repDayPrev" type="button" onclick="navigateDayPrev()">&#8249;</button>
-                    <div class="rep-day-indicator">
-                        <span class="rep-day-num"  id="repDayNum">Day 1</span>
-                        <span class="rep-day-date" id="repDayDate"></span>
-                    </div>
-                    <button class="rep-day-arrow" id="repDayNext" type="button" onclick="navigateDayNext()">&#8250;</button>
-                </div>
-
                 <div class="rep-field-label" style="margin-bottom:8px;">&#128221; Description of your report</div>
                 <!-- Engineer view: editable textarea -->
                 <div id="repDescEditable" style="display:none;">
@@ -1324,28 +1522,35 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
                 <div id="repDescReadonly" style="display:none;">
                     <div class="rep-field-value" id="repDescText" style="white-space:pre-wrap;min-height:40px;"></div>
                 </div>
+                <!-- Last edited for description -->
+                <div class="rep-last-edited" id="repDescLastEdited" style="display:none;margin-top:8px;">
+                    ✏️ Last edited: <span id="repDescLastEditedTime">—</span>
+                </div>
 
-                <!-- Upload report images (engineers only, not shown once Pending Completion) -->
+                <!-- Upload report images — entire zone is clickable -->
                 <div class="rep-upload-section" id="repUploadSection" style="display:none;">
-                    <div class="rep-upload-label">&#128247; Upload your report images</div>
-                    <div class="rep-upload-drop" id="repUploadDrop">
+                    <div class="rep-upload-label" style="margin-top:12px;">&#128247; Upload your report images</div>
+                    <div class="rep-upload-drop" id="repUploadDrop" style="cursor:pointer;" onclick="document.getElementById('repUploadInput').click()">
                         <div class="rep-upload-drop-text">Drag &amp; drop images here, or</div>
-                        <span class="rep-upload-browse" onclick="document.getElementById('repUploadInput').click()">Browse files</span>
+                        <span class="rep-upload-browse">Browse files</span>
                         <input type="file" id="repUploadInput" class="rep-upload-input" accept="image/*" multiple>
                     </div>
                     <div class="rep-upload-spinner" id="repUploadSpinner">&#128247; Uploading…</div>
                     <div class="rep-progress-strip" id="repProgressStrip"></div>
+                    <!-- Last edited for images -->
+                    <div class="rep-last-edited" id="repImgLastEdited" style="display:none;margin-top:8px;">
+                        🖼️ Last image uploaded: <span id="repImgLastEditedTime">—</span>
+                    </div>
                 </div>
 
                 <!-- Read-only progress images (admin / pending-completion engineer view) -->
                 <div id="repProgressReadonlySection" style="display:none;margin-top:12px;">
                     <div class="rep-upload-label">&#128247; Report Progress Images</div>
                     <div class="rep-progress-strip" id="repProgressReadonlyStrip"></div>
-                </div>
-
-                <!-- Last edited timestamp -->
-                <div class="rep-last-edited" id="repLastEdited" style="display:none;">
-                    ✏️ Last edited: <span id="repLastEditedTime">—</span>
+                    <!-- Last edited for images (read-only) -->
+                    <div class="rep-last-edited" id="repImgLastEdited" style="display:none;margin-top:8px;">
+                        🖼️ Last image uploaded: <span id="repImgLastEditedTime">—</span>
+                    </div>
                 </div>
             </div>
 
@@ -1416,8 +1621,9 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon not-complete-icon"><i class="fas fa-times-circle" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Mark as Not Complete?</div>
-        <div class="rep-confirm-desc">This will return the report to <strong>In Progress</strong> so the engineer can continue working on it.</div>
-        <div class="rep-confirm-btns">
+        <div class="rep-confirm-desc">This will return the report to <strong>In Progress</strong>. Add a reason so the engineer knows what to fix.</div>
+        <textarea class="rep-confirm-return-note" id="repNotCompleteNote" placeholder="Explain what needs to be corrected or completed…"></textarea>
+        <div class="rep-confirm-btns" style="margin-top:16px;">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminNotCompleteConfirm()">Cancel</button>
             <button class="rep-confirm-btn rep-confirm-ok-not-complete" onclick="doAdminNotComplete()"><i class="fas fa-times-circle"></i> Send Back</button>
         </div>
@@ -1432,6 +1638,41 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 </div>
 
 <?php include 'admin_scripts.php'; ?>
+
+<!-- ── Day Date Picker Overlay ── -->
+<div id="repDayPickerOverlay">
+    <div class="rdpd-header">
+        <button class="rdpd-nav" id="rdpdPrevMonth" type="button">&#8592;</button>
+        <div class="rdpd-header-center">
+            <button class="rdpd-month-btn" id="rdpdMonthBtn" type="button"></button>
+            <button class="rdpd-year-btn"  id="rdpdYearBtn"  type="button"></button>
+        </div>
+        <button class="rdpd-nav" id="rdpdNextMonth" type="button">&#8594;</button>
+    </div>
+    <div class="rdpd-year-dropdown"  id="rdpdYearDropdown"></div>
+    <div class="rdpd-month-dropdown" id="rdpdMonthDropdown">
+        <button class="rdpd-month-opt" data-month="0"  type="button">Jan</button>
+        <button class="rdpd-month-opt" data-month="1"  type="button">Feb</button>
+        <button class="rdpd-month-opt" data-month="2"  type="button">Mar</button>
+        <button class="rdpd-month-opt" data-month="3"  type="button">Apr</button>
+        <button class="rdpd-month-opt" data-month="4"  type="button">May</button>
+        <button class="rdpd-month-opt" data-month="5"  type="button">Jun</button>
+        <button class="rdpd-month-opt" data-month="6"  type="button">Jul</button>
+        <button class="rdpd-month-opt" data-month="7"  type="button">Aug</button>
+        <button class="rdpd-month-opt" data-month="8"  type="button">Sep</button>
+        <button class="rdpd-month-opt" data-month="9"  type="button">Oct</button>
+        <button class="rdpd-month-opt" data-month="10" type="button">Nov</button>
+        <button class="rdpd-month-opt" data-month="11" type="button">Dec</button>
+    </div>
+    <div class="rdpd-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span>
+        <span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div class="rdpd-grid" id="rdpdGrid"></div>
+    <div class="rdpd-footer">
+        <button class="rdpd-close" id="rdpdClose" type="button">Done</button>
+    </div>
+</div>
 
 <script>
 
@@ -1503,8 +1744,11 @@ function renderDayView(isPendingCompletion) {
     const descInput     = document.getElementById('repDescInput');
     const uploadSection = document.getElementById('repUploadSection');
     const progressRO    = document.getElementById('repProgressReadonlySection');
-    const lastEdited    = document.getElementById('repLastEdited');
-    const lastEditedTime= document.getElementById('repLastEditedTime');
+    // Two separate last-edited elements
+    const descLastEdited     = document.getElementById('repDescLastEdited');
+    const descLastEditedTime = document.getElementById('repDescLastEditedTime');
+    const imgLastEdited      = document.querySelectorAll('#repImgLastEdited');
+    const imgLastEditedTime  = document.querySelectorAll('#repImgLastEditedTime');
 
     if (IS_ENGINEER && !isPendingCompletion) {
         descEditable.style.display = '';
@@ -1530,13 +1774,23 @@ function renderDayView(isPendingCompletion) {
         renderProgressReadonly(dayImages);
     }
 
-    // Last-edited timestamp
-    if (entry.updated_at) {
-        lastEdited.style.display    = '';
-        lastEditedTime.textContent  = fmtDateTime(entry.updated_at);
-    } else {
-        lastEdited.style.display = 'none';
+    // Description last-edited
+    if (descLastEdited) {
+        if (entry.updated_at) {
+            descLastEdited.style.display = '';
+            if (descLastEditedTime) descLastEditedTime.textContent = fmtDateTime(entry.updated_at);
+        } else {
+            descLastEdited.style.display = 'none';
+        }
     }
+    // Image last-uploaded — use last image's upload time from entry.img_updated_at if available
+    const imgTs = entry.img_updated_at || (dayImages.length ? entry.updated_at : null);
+    imgLastEdited.forEach(el => {
+        el.style.display = (imgTs && dayImages.length) ? '' : 'none';
+    });
+    imgLastEditedTime.forEach(el => {
+        el.textContent = (imgTs && dayImages.length) ? fmtDateTime(imgTs) : '—';
+    });
 }
 
 function navigateDayPrev() {
@@ -1598,15 +1852,36 @@ function openRepModal(repId) {
 
     // ── Day navigation ────────────────────────────────────────────────────────
     currentDayDates = buildDayDates(data.starting_date, data.estimated_end_date);
-    // Default to today's date if it falls in range, otherwise day 1
-    const todayISO = new Date().toISOString().slice(0,10);
-    const todayIdx = currentDayDates.indexOf(todayISO);
-    currentDayIndex = todayIdx >= 0 ? todayIdx : 0;
+    // Engineers → default to today if in range, else day 1
+    // Admins/others → default to last day that has an entry, else last day
+    if (IS_ENGINEER && !isPendingCompletion) {
+        const todayISO = new Date().toISOString().slice(0,10);
+        const todayIdx = currentDayDates.indexOf(todayISO);
+        currentDayIndex = todayIdx >= 0 ? todayIdx : 0;
+    } else {
+        // Find last day with a non-empty description for admin view
+        const logs = data.daily_logs || {};
+        let lastFilledIdx = -1;
+        currentDayDates.forEach(function(dt, i) {
+            if (logs[dt] && (logs[dt].description || (logs[dt].images && logs[dt].images.length))) lastFilledIdx = i;
+        });
+        currentDayIndex = lastFilledIdx >= 0 ? lastFilledIdx : (currentDayDates.length > 0 ? currentDayDates.length - 1 : 0);
+    }
 
     // Show nav only when there are days to navigate
     document.getElementById('repDayNav').style.display = currentDayDates.length ? '' : 'none';
 
     renderDayView(isPendingCompletion);
+
+    // Admin return reason — show to engineer when report is back In Progress
+    const returnBanner = document.getElementById('repAdminReturnBanner');
+    const returnNote   = document.getElementById('repAdminReturnNote');
+    if (IS_ENGINEER && data.admin_return_note && data.admin_return_note.trim()) {
+        returnBanner.style.display = '';
+        returnNote.textContent = data.admin_return_note;
+    } else {
+        returnBanner.style.display = 'none';
+    }
 
     // Footer logic
     const footer     = document.getElementById('repModalFooter');
@@ -1678,7 +1953,10 @@ function renderProgressReadonly(images) {
     });
 }
 
-function closeRepModal(){ repBackdrop.classList.remove('active'); currentRepData = null; }
+function closeRepModal(){
+    if (typeof closeDayPicker === 'function') closeDayPicker();
+    repBackdrop.classList.remove('active'); currentRepData = null;
+}
 repModalClose.addEventListener('click', closeRepModal);
 repBackdrop.addEventListener('click', e => { if(e.target===repBackdrop) closeRepModal(); });
 
@@ -1707,6 +1985,8 @@ uploadDrop.addEventListener('drop', e => {
     e.preventDefault(); uploadDrop.classList.remove('drag-over');
     uploadFiles(Array.from(e.dataTransfer.files));
 });
+// Stop the hidden input's own click from bubbling up to the drop zone onclick
+uploadInput.addEventListener('click', e => e.stopPropagation());
 uploadInput.addEventListener('change', () => {
     uploadFiles(Array.from(uploadInput.files));
     uploadInput.value = '';
@@ -1733,11 +2013,16 @@ async function uploadFiles(files) {
                 const logs = currentRepData.daily_logs || {};
                 if (!logs[logDate]) logs[logDate] = {description:'',updated_at:null,images:[]};
                 logs[logDate].images.push(data.img_path);
+                const nowTS = new Date().toISOString().replace('T',' ').slice(0,19);
+                logs[logDate].img_updated_at = nowTS;
                 currentRepData.daily_logs = logs;
                 const ridx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
                 if (ridx > -1) ALL_REPORTS[ridx].daily_logs = logs;
                 repProgressImages = logs[logDate].images;
                 renderProgressStrip(repProgressImages);
+                // Update image last-edited display
+                document.querySelectorAll('#repImgLastEdited').forEach(el => el.style.display = '');
+                document.querySelectorAll('#repImgLastEditedTime').forEach(el => el.textContent = fmtDateTime(nowTS));
                 const statusEl = document.getElementById('repModalStatus');
                 statusEl.textContent = 'In Progress'; statusEl.className = 'rep-status-pill on-going';
                 updateRowStatusPill(currentRepData.rep_id, 'In Progress', 'on-going');
@@ -1800,8 +2085,8 @@ async function doSaveDesc() {
             if(ridx>-1){ ALL_REPORTS[ridx].daily_logs=logs; ALL_REPORTS[ridx].res_note=desc; ALL_REPORTS[ridx].resolution_status='In Progress'; }
             currentRepData.res_note = desc; currentRepData.resolution_status = 'In Progress';
             // Refresh last-edited display
-            document.getElementById('repLastEdited').style.display = '';
-            document.getElementById('repLastEditedTime').textContent = fmtDateTime(logs[logDate].updated_at);
+            document.getElementById('repDescLastEdited').style.display = '';
+            document.getElementById('repDescLastEditedTime').textContent = fmtDateTime(logs[logDate].updated_at);
             const statusEl = document.getElementById('repModalStatus');
             statusEl.textContent = 'In Progress'; statusEl.className = 'rep-status-pill on-going';
             updateRowStatusPill(currentRepData.rep_id, 'In Progress', 'on-going');
@@ -1824,8 +2109,32 @@ document.getElementById('repCompleteConfirmBackdrop').addEventListener('click', 
 async function doRequestComplete() {
     if (!currentRepData) return;
     closeCompleteConfirm();
-    const btn = document.getElementById('repCompleteBtn');
-    btn.disabled = true; btn.textContent = 'Submitting…';
+    const btn     = document.getElementById('repCompleteBtn');
+    const logDate = document.getElementById('repCurrentLogDate')?.value || '';
+    const desc    = document.getElementById('repDescInput')?.value?.trim() || '';
+
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    // ── Step 1: Auto-save the current day's description if there is one ──────
+    if (logDate && desc) {
+        try {
+            await fetch('pending_reports.php', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc})
+            });
+            // Update in-memory so admin sees it immediately
+            const logs = currentRepData.daily_logs || {};
+            if (!logs[logDate]) logs[logDate] = {description:'',updated_at:null,images:[]};
+            logs[logDate].description = desc;
+            logs[logDate].updated_at  = new Date().toISOString().replace('T',' ').slice(0,19);
+            currentRepData.daily_logs = logs;
+            const ridx = ALL_REPORTS.findIndex(r => r.rep_id == currentRepData.rep_id);
+            if (ridx > -1) { ALL_REPORTS[ridx].daily_logs = logs; ALL_REPORTS[ridx].res_note = desc; }
+        } catch(e) { /* non-fatal — proceed with completion anyway */ }
+    }
+
+    // ── Step 2: Submit for admin review ──────────────────────────────────────
+    btn.textContent = 'Submitting…';
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -1876,20 +2185,26 @@ async function doAdminComplete() {
 }
 
 // ── Admin: Not Complete ───────────────────────────────────────────────────────
-function confirmAdminNotComplete() { document.getElementById('repAdminNotCompleteBackdrop').classList.add('active'); }
-function closeAdminNotCompleteConfirm() { document.getElementById('repAdminNotCompleteBackdrop').classList.remove('active'); }
+function confirmAdminNotComplete() { 
+    document.getElementById('repNotCompleteNote').value = '';
+    document.getElementById('repAdminNotCompleteBackdrop').classList.add('active'); 
+}
+function closeAdminNotCompleteConfirm() { 
+    document.getElementById('repAdminNotCompleteBackdrop').classList.remove('active'); 
+}
 document.getElementById('repAdminNotCompleteBackdrop').addEventListener('click', e => {
     if (e.target === document.getElementById('repAdminNotCompleteBackdrop')) closeAdminNotCompleteConfirm();
 });
 
 async function doAdminNotComplete() {
     if (!currentRepData) return;
-    const repId = currentRepData.rep_id;
+    const repId     = currentRepData.rep_id;
+    const returnNote = document.getElementById('repNotCompleteNote')?.value?.trim() || '';
     closeAdminNotCompleteConfirm();
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({action:'admin_not_complete', rep_id: repId})
+            body: JSON.stringify({action:'admin_not_complete', rep_id: repId, return_note: returnNote})
         });
         const text = await res.text();
         let data;
@@ -1897,6 +2212,9 @@ async function doAdminNotComplete() {
             showRepNotif('error','❌ Server error. Please try again.'); return;
         }
         if (data.success) {
+            // Update in-memory
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+            if (idx > -1) { ALL_REPORTS[idx].admin_return_note = returnNote; ALL_REPORTS[idx].resolution_status = 'In Progress'; ALL_REPORTS[idx].is_pending_completion = false; }
             closeRepModal();
             showRepNotif('warning','⚠️ Report #REP-'+repId+' sent back to In Progress.');
             setTimeout(()=>location.reload(), 1800);
@@ -2173,6 +2491,211 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ══════════════════════════════════════════════════════════════
+// DAY DATE PICKER — click the date in the day nav to jump to any
+// report day; only days within starting_date → estimated_end_date
+// are selectable; all others are greyed out.
+// ══════════════════════════════════════════════════════════════
+(function() {
+    var overlay   = document.getElementById('repDayPickerOverlay');
+    var grid      = document.getElementById('rdpdGrid');
+    var monthBtn  = document.getElementById('rdpdMonthBtn');
+    var yearBtn   = document.getElementById('rdpdYearBtn');
+    var prevBtn   = document.getElementById('rdpdPrevMonth');
+    var nextBtn   = document.getElementById('rdpdNextMonth');
+    var yearDrop  = document.getElementById('rdpdYearDropdown');
+    var monthDrop = document.getElementById('rdpdMonthDropdown');
+    var closeBtn  = document.getElementById('rdpdClose');
+
+    if (!overlay) return;
+
+    var MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+    var viewYear = new Date().getFullYear();
+    var viewMonth = new Date().getMonth();
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function fmtISO(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+
+    function renderGrid() {
+        yearDrop.classList.remove('open'); monthDrop.classList.remove('open');
+        yearBtn.classList.remove('active'); monthBtn.classList.remove('active');
+        monthBtn.textContent = MONTHS[viewMonth].slice(0,3);
+        yearBtn.textContent  = viewYear;
+
+        var firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+        var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+        var selISO      = document.getElementById('repCurrentLogDate')?.value || '';
+        var today       = new Date(); var todayISO = fmtISO(new Date(today.getFullYear(),today.getMonth(),today.getDate()));
+
+        // Get allowed range from current report
+        var startISO = currentRepData?.starting_date || '';
+        var endISO   = currentRepData?.estimated_end_date || '';
+
+        grid.innerHTML = '';
+        for (var i=0; i<firstDay; i++) {
+            var emp=document.createElement('div'); emp.className='rdpd-day rdpd-empty'; grid.appendChild(emp);
+        }
+        for (var dd=1; dd<=daysInMonth; dd++) {
+            var dateObj = new Date(viewYear, viewMonth, dd);
+            var dateISO = fmtISO(dateObj);
+            var dow     = dateObj.getDay();
+            var btn     = document.createElement('button');
+            btn.type='button'; btn.className='rdpd-day'; btn.textContent=dd; btn.dataset.date=dateISO;
+            if (dow===0||dow===6) btn.classList.add('rdpd-weekend');
+            if (dateISO===todayISO) btn.classList.add('rdpd-today');
+            if (dateISO===selISO)   btn.classList.add('rdpd-selected');
+            // Grey out dates outside report date range
+            if ((startISO && dateISO < startISO) || (endISO && dateISO > endISO)) {
+                btn.classList.add('rdpd-out-range');
+            }
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var iso = this.dataset.date;
+                var idx = currentDayDates.indexOf(iso);
+                if (idx < 0) return;
+                currentDayIndex = idx;
+                renderDayView(currentRepData?.is_pending_completion);
+                closeDayPicker();
+            });
+            grid.appendChild(btn);
+        }
+    }
+
+    function buildYearGrid() {
+        yearDrop.innerHTML = '';
+        var startY = currentRepData?.starting_date ? parseInt(currentRepData.starting_date.slice(0,4)) : new Date().getFullYear() - 1;
+        var endY   = currentRepData?.estimated_end_date ? parseInt(currentRepData.estimated_end_date.slice(0,4)) : new Date().getFullYear() + 5;
+        for (var y=endY; y>=startY; y--) {
+            var b=document.createElement('button'); b.type='button';
+            b.className='rdpd-year-opt'+(y===viewYear?' selected':'');
+            b.textContent=y; b.dataset.year=y;
+            b.addEventListener('click', function(e){ e.stopPropagation(); viewYear=+this.dataset.year; renderGrid(); });
+            yearDrop.appendChild(b);
+        }
+        setTimeout(function(){ var s=yearDrop.querySelector('.selected'); if(s) s.scrollIntoView({block:'nearest'}); },30);
+    }
+
+    function positionOverlay(triggerEl) {
+        var rect = triggerEl.getBoundingClientRect();
+        var vw=window.innerWidth, vh=window.innerHeight;
+        overlay.style.visibility='hidden'; overlay.style.display='block';
+        var ow=overlay.offsetWidth||288, oh=Math.min(overlay.scrollHeight||380,vh*0.8);
+        overlay.style.visibility='';
+        var top=rect.bottom+6, left=rect.left+rect.width/2-ow/2;
+        left=Math.max(8,Math.min(left,vw-ow-8));
+        if (top+oh>vh-10&&rect.top>oh+10) top=rect.top-oh-6;
+        if (top<8) top=8;
+        overlay.style.top=top+'px'; overlay.style.left=left+'px'; overlay.style.display='none';
+    }
+
+    window.openDayPicker = function() {
+        var triggerEl = document.getElementById('repDayDate');
+        if (!triggerEl || !currentRepData) return;
+        // Set view to current selected date
+        var selISO = document.getElementById('repCurrentLogDate')?.value || '';
+        if (selISO) {
+            var p=selISO.split('-');
+            viewYear=+p[0]; viewMonth=+p[1]-1;
+        }
+        renderGrid();
+        positionOverlay(triggerEl);
+        overlay.style.removeProperty('animation');
+        overlay.style.display='block'; overlay.style.visibility='visible';
+        void overlay.offsetWidth;
+        overlay.style.animation='rdpdPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    };
+
+    window.closeDayPicker = function() { overlay.style.display='none'; };
+
+    prevBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderGrid(); });
+    nextBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderGrid(); });
+
+    yearBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        monthDrop.classList.remove('open'); monthBtn.classList.remove('active');
+        var nowOpen=yearDrop.classList.toggle('open');
+        yearBtn.classList.toggle('active',nowOpen);
+        if(nowOpen) buildYearGrid();
+    });
+    monthBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        yearDrop.classList.remove('open'); yearBtn.classList.remove('active');
+        var nowOpen=monthDrop.classList.toggle('open');
+        monthBtn.classList.toggle('active',nowOpen);
+        Array.from(monthDrop.querySelectorAll('.rdpd-month-opt')).forEach(function(b){
+            b.classList.toggle('selected',+b.dataset.month===viewMonth);
+        });
+    });
+    monthDrop.addEventListener('click', function(e){
+        var b=e.target.closest('.rdpd-month-opt'); if(!b) return;
+        e.stopPropagation(); viewMonth=+b.dataset.month; renderGrid();
+    });
+    closeBtn.addEventListener('click', function(e){ e.stopPropagation(); closeDayPicker(); });
+
+    document.addEventListener('click', function(e){
+        if (overlay.style.display==='block' && !overlay.contains(e.target)) {
+            var tb=document.getElementById('repDayDate');
+            if (!tb||!tb.contains(e.target)) closeDayPicker();
+        }
+    });
+    overlay.addEventListener('wheel',  function(e){ e.stopPropagation(); }, {passive:true});
+    overlay.addEventListener('scroll', function(e){ e.stopPropagation(); }, true);
+    overlay.style.display='none';
+})();
+
+// ══════════════════════════════════════════════════════════════
+// IMAGE DELETE — × button on uploaded progress thumbnails
+// ══════════════════════════════════════════════════════════════
+function renderProgressStrip(images) {
+    const strip = document.getElementById('repProgressStrip');
+    strip.innerHTML = '';
+    images.forEach((src, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'rep-progress-thumb';
+        const img = document.createElement('img');
+        img.src = src; img.alt = 'Progress';
+        img.onclick = () => { repGalleryType='progress'; openRepLightbox(idx, images); };
+        // Delete button
+        const del = document.createElement('button');
+        del.type='button'; del.className='rep-progress-del'; del.title='Delete image';
+        del.innerHTML='&times;';
+        del.addEventListener('click', async function(e) {
+            e.stopPropagation();
+            if (!currentRepData) return;
+            del.disabled=true; del.textContent='…';
+            try {
+                const res = await fetch('pending_reports.php', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({action:'delete_daily_image', rep_id: currentRepData.rep_id, img_path: src})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Remove from in-memory daily_logs
+                    const logDate = document.getElementById('repCurrentLogDate')?.value;
+                    const logs = currentRepData.daily_logs || {};
+                    if (logDate && logs[logDate]) {
+                        logs[logDate].images = logs[logDate].images.filter(p => p !== src);
+                        currentRepData.daily_logs = logs;
+                        const ridx = ALL_REPORTS.findIndex(r=>r.rep_id==currentRepData.rep_id);
+                        if (ridx>-1) ALL_REPORTS[ridx].daily_logs = logs;
+                        repProgressImages = logs[logDate].images;
+                        renderProgressStrip(repProgressImages);
+                    }
+                } else {
+                    showRepNotif('error','❌ Failed to delete: '+(data.message||''));
+                    del.disabled=false; del.innerHTML='&times;';
+                }
+            } catch(err) {
+                showRepNotif('error','❌ Network error.');
+                del.disabled=false; del.innerHTML='&times;';
+            }
+        });
+        wrap.appendChild(img);
+        wrap.appendChild(del);
+        strip.appendChild(wrap);
+    });
+}
 </script>
 
 <!-- ══════════════ ENGINEER DETAILS MODAL ══════════════ -->
