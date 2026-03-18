@@ -41,10 +41,43 @@ if (!$engRow) jsonOut(false, 'Engineer not found.');
 if (strcasecmp($engRow['role'], 'Engineer') !== 0) jsonOut(false, 'Selected employee is not an Engineer.');
 
 // Update the report
-$upd = $conn->prepare("UPDATE reports SET engineer_id = ? WHERE rep_id = ?");
+$upd = $conn->prepare("UPDATE reports SET engineer_id = ?, engineer_accepted = 0 WHERE rep_id = ?");
 $upd->bind_param('ii', $engineerId, $repId);
 if (!$upd->execute()) { $e = $upd->error; $upd->close(); jsonOut(false, "DB error: $e"); }
 $upd->close();
+
+// ── Notifications ─────────────────────────────────────────────────────────
+require_once __DIR__ . '/notif_helper.php';
+
+// Get report info for request_type
+$info = getRepInfo($conn, $repId);
+
+// Actor name (the person doing the assigning)
+$assignerFirst = trim($_SESSION['employee_first_name'] ?? '');
+$assignerLast  = trim($_SESSION['employee_last_name']  ?? '');
+$assignerRole  = trim($_SESSION['employee_role']        ?? '');
+$assignerName  = trim("$assignerFirst $assignerLast") ?: 'Staff';
+if ($assignerRole) $assignerName .= " ({$assignerRole})";
+
+$actorId = (int)($_SESSION['employee_id'] ?? 0);
+
+// 1. Notify the assigned engineer
+insertNotification($conn, $engineerId,
+    "You've Been Assigned to Report #REP-{$repId}",
+    "{$assignerName} assigned you to Report #{$repId}. Please review and accept or decline.",
+    "current_reports.php",
+    $info['type']
+);
+
+// 2. Notify other managers/office staff/super admins (not the actor themselves)
+notifyAssigners($conn,
+    "Engineer Assigned to Report #REP-{$repId}",
+    "{$assignerName} assigned {$engRow['full_name']} to Report #{$repId}.",
+    "current_reports.php",
+    $info['type'],
+    $actorId
+);
+// ─────────────────────────────────────────────────────────────────────────
 
 jsonOut(true, 'Engineer assigned successfully.', [
     'engineer_name' => $engRow['full_name'],

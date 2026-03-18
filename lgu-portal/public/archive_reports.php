@@ -91,6 +91,8 @@ $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 's
 
 // ─── FETCH: Completed (Archive) reports only ──────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
+// Auto-add requester email column if not present
+$conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 // Create table if not yet present (idempotent)
 $conn->query("
     CREATE TABLE IF NOT EXISTS report_progress_images (
@@ -129,7 +131,8 @@ $sql = "
         r.priority_lvl, r.budget, r.created_at, r.engineer_id,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
-        req.name AS requester_name, req.contact_number,
+        req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
+        req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
@@ -218,6 +221,11 @@ foreach ($rows as $row) {
         'engineer_name'     => $row['engineer_name'] ?? '',
         'engineer_pic'      => $row['engineer_pic'] ?? '',
         'reporter_name'     => $row['reporter_name'] ?? '',
+        'requester_name'    => $row['requester_name'] ?? '',
+        'contact_number'    => $row['contact_number'] ?? '',
+        'coordinates'       => $row['coordinates'] ?? '',
+        'req_email'         => $row['req_email']     ?? '',
+        'req_created_at'    => $row['req_created_at'] ?? '',
         'starting_date'     => $row['starting_date'] ?? '',
         'estimated_end_date'=> $row['estimated_end_date'] ?? '',
         'priority_lvl'      => $row['priority_lvl'] ?? 'Low',
@@ -384,7 +392,7 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: 0.05em; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
+    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
@@ -831,11 +839,11 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 
 <div class="notif-dropdown" id="notifDropdown">
     <div class="notif-dropdown-header">
-        <h3>Notifications</h3>
-        <button class="notif-clear-btn" id="clearNotifBtn">Clear all</button>
+        <h3><span class="notif-header-icon">🔔</span> Notifications <span class="notif-unread-count" id="notifUnreadCount" style="display:none;">0</span></h3>
+        <button class="notif-clear-btn" id="clearNotifBtn">Mark all read</button>
     </div>
     <div class="notif-dropdown-body" id="notifBody">
-        <div class="notif-empty">No new notifications</div>
+        <div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>No notifications yet</div></div>
     </div>
 </div>
 
@@ -1078,7 +1086,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128295; Issue (Original)</div><div class="rep-field-value" id="repModalIssue"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div></div>
+                <div class="rep-field" id="repEngField"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128100; Reported By</div><div class="rep-field-value" id="repModalReporter"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Start Date</div><div class="rep-field-value" id="repModalStart"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Est. End Date</div><div class="rep-field-value" id="repModalEnd"></div></div>
@@ -1086,6 +1094,15 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="rep-field"><div class="rep-field-label">&#128176; Budget</div><div class="rep-field-value" id="repModalBudget"></div></div>
             </div>
             <div class="rep-divider"></div>
+            <!-- Requester Info Section (shown when request data exists) -->
+            <div class="rep-grid-2" id="repRequesterSection">
+                <div class="rep-field" id="repRequesterField"><div class="rep-field-label">&#128101; Requester</div><div class="rep-field-value" id="repModalRequester"></div></div>
+                <div class="rep-field" id="repContactField"><div class="rep-field-label">&#128222; Contact Number</div><div class="rep-field-value" id="repModalContact"></div></div>
+                <div class="rep-field" id="repEmailField"><div class="rep-field-label">&#128140; Email</div><div class="rep-field-value" id="repModalEmail" style="font-size:12px;word-break:break-all;"></div></div>
+                <div class="rep-field" id="repCoordsField"><div class="rep-field-label">&#127759; Coordinates</div><div class="rep-field-value" id="repModalCoords" style="font-size:12px;word-break:break-all;"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128197; Date Submitted</div><div class="rep-field-value" id="repModalReqDate"></div></div>
+            </div>
+            <div class="rep-divider" id="repRequesterDivider"></div>
             <!-- Daily log day navigator — outside the box, below budget -->
             <input type="hidden" id="repCurrentLogDate" value="">
             <div class="rep-day-nav" id="repDayNav" style="margin-bottom:14px;">
@@ -1282,13 +1299,40 @@ function openRepModal(repId) {
     statusEl.className   = 'rep-status-pill ' + (st==='Completed'?'completed':'on-going');
     document.getElementById('repModalLocation').textContent  = data.location     || '—';
     document.getElementById('repModalIssue').textContent     = data.issue        || '—';
-    document.getElementById('repModalEngineer').textContent  = data.engineer_name|| '—';
+    // Hide engineer field when logged-in user is an engineer
+    const engField = document.getElementById('repEngField');
+    if (IS_ENGINEER) {
+        if (engField) engField.style.display = 'none';
+    } else {
+        if (engField) engField.style.display = '';
+        document.getElementById('repModalEngineer').textContent = data.engineer_name || '—';
+    }
     document.getElementById('repModalReporter').textContent  = data.reporter_name|| '—';
     document.getElementById('repModalStart').textContent     = fmtDate(data.starting_date);
     document.getElementById('repModalEnd').textContent       = fmtDate(data.estimated_end_date);
     document.getElementById('repModalPriority').innerHTML    = priBadge(data.priority_lvl);
     const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
     document.getElementById('repModalBudget').textContent = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // ── Requester info (from linked request) ─────────────────────────────────
+    const reqName  = data.requester_name || '';
+    const contact  = data.contact_number || '';
+    const coords   = data.coordinates    || '';
+    const reqDate  = data.req_created_at || '';
+    document.getElementById('repModalRequester').textContent = reqName  || '—';
+    document.getElementById('repModalContact').textContent   = contact  || '—';
+    document.getElementById('repModalEmail').textContent     = data.req_email || '—';
+    document.getElementById('repModalCoords').textContent    = coords   || '—';
+    document.getElementById('repModalReqDate').textContent   = reqDate  ? fmtDate(reqDate) : '—';
+    const reqSec = document.getElementById('repRequesterSection');
+    const reqDiv = document.getElementById('repRequesterDivider');
+    if (!reqName && !contact && !coords && !reqDate) {
+        if (reqSec) reqSec.style.display = 'none';
+        if (reqDiv) reqDiv.style.display = 'none';
+    } else {
+        if (reqSec) reqSec.style.display = '';
+        if (reqDiv) reqDiv.style.display = '';
+    }
 
     // Admin return reason banner
     const rnBanner = document.getElementById('repAdminReturnBanner');

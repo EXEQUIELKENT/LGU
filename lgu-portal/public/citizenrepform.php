@@ -65,6 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
     $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    $req_email = isset($_POST['req_email']) ? trim($_POST['req_email']) : '';
+    // Validate email if provided — it's optional
+    if ($req_email !== '' && !filter_var($req_email, FILTER_VALIDATE_EMAIL)) {
+        $req_email = ''; // silently clear invalid email
+    }
+    // Auto-create email column if not yet present
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 
     $coord_lat = isset($_POST['coord_lat']) ? trim($_POST['coord_lat']) : '';
     $coord_lng = isset($_POST['coord_lng']) ? trim($_POST['coord_lng']) : '';
@@ -106,10 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         else {
             $stmt = $conn->prepare(
-                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, created_at)
-                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, NOW())"
+                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, created_at)
+                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, NOW())"
             );
-            $stmt->bind_param("ssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates);
+            $stmt->bind_param("sssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates, $req_email);
 
             if ($stmt->execute()) {
                 $request_id = $conn->insert_id;
@@ -1270,6 +1277,12 @@ input[type="file"] {
                 <div class="input-group">
                     <label for="contact_number" data-i18n="form_contact_label">Contact Number *</label>
                     <input type="tel" id="contact_number" name="contact_number" data-i18n-placeholder="form_contact_placeholder" placeholder="09XX-XXX-XXXX" maxlength="13" required>
+                </div>
+
+                <div class="input-group full-width">
+                    <label for="req_email">Email Address <span style="font-size:11px;font-weight:400;color:#888;margin-left:4px;">(Optional)</span></label>
+                    <input type="email" id="req_email" name="req_email" placeholder="your@email.com" autocomplete="email">
+                    <small style="color:#888;font-size:11px;margin-top:5px;display:block;">📧 If provided, we'll send you progress updates on your report.</small>
                 </div>
 
                 <div class="input-group full-width">

@@ -54,6 +54,10 @@ $conn->query("
 ");
 // ── Add admin_return_note column if it doesn't exist yet ─────────────────────
 $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
+// ── Add highlight_days column (JSON array of ISO dates admin flags for revision) ─
+$conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_days TEXT DEFAULT NULL");
+// ── Auto-add requester email column to requests table ─────────────────────────
+$conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 // Create report_progress_images table if it does not exist
 $conn->query("
     CREATE TABLE IF NOT EXISTS report_progress_images (
@@ -110,9 +114,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Engineer saves a daily log entry ─────────────────────────────────────
     if ($action === 'save_daily_log') {
-        $repId   = (int)($input['rep_id']  ?? 0);
-        $logDate = trim($input['log_date'] ?? '');
-        $desc    = trim($input['description'] ?? '');
+        $repId    = (int)($input['rep_id']  ?? 0);
+        $logDate  = trim($input['log_date'] ?? '');
+        $desc     = trim($input['description'] ?? '');
+        $noEmail  = !empty($input['no_email']); // skip email when called from Complete button
+        $dayNum   = (int)($input['day_number'] ?? 0); // day number to show in email
         if ($repId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $logDate)) {
             while(ob_get_level()>0)ob_end_clean();
             echo json_encode(['success'=>false,'message'=>'Invalid parameters.']); exit;
@@ -129,9 +135,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('issi', $repId, $logDate, $desc, $engineerId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
         if ($ok) {
-            // Keep res_note updated with latest description for backward compat
             $escDesc = $conn->real_escape_string($desc);
             $conn->query("UPDATE request_resolutions rr JOIN reports r ON r.res_id=rr.res_id SET rr.res_note='$escDesc', rr.status='In Progress' WHERE r.rep_id=$repId");
+            // Only send email when explicitly saving (not when auto-saving before Complete)
+            if (!$noEmail) {
+                require_once __DIR__ . '/report_email.php';
+                $reqData = getRequesterEmailData($conn, $repId, $logDate);
+                if (!empty($reqData['email'])) {
+                    $imgs = getReportImageUrls($conn, $repId, $logDate);
+                    if ($dayNum > 0) $reqData['day_number'] = $dayNum;
+                    sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'saved', $reqData, $imgs);
+                }
+            }
         }
         $updatedAt = date('Y-m-d H:i:s');
         while(ob_get_level()>0)ob_end_clean();
@@ -181,8 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Engineer saves description → status becomes In Progress ──────────────
     if ($action === 'save_description') {
-        $repId = (int)($input['rep_id'] ?? 0);
-        $note  = trim($input['description'] ?? '');
+        $repId   = (int)($input['rep_id']      ?? 0);
+        $note    = trim($input['description']  ?? '');
+        $logDate = trim($input['log_date']     ?? '');
         if ($repId <= 0) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'Invalid report ID.']); exit; }
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
@@ -236,6 +252,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
         $stmt->bind_param('i', $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
+        if ($ok) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info    = getRepInfo($conn, $repId);
+            $engName = getRepEngineerName($conn, $repId);
+            notifyAdmins($conn,
+                "Report #REP-{$repId} Ready for Review",
+                "{$engName} has marked Report #{$repId} as complete and is awaiting your confirmation.",
+                "pending_reports.php",
+                $info['type'],
+                (int)($_SESSION['employee_id'] ?? 0)
+            );
+            // NOTE: Do NOT send requester email here — wait for admin to confirm
+        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
         exit;
@@ -254,6 +283,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
         $stmt->bind_param('i', $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
+        if ($ok) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $engId     = getRepEngineer($conn, $repId);
+            if ($engId > 0) {
+                insertNotification($conn, $engId,
+                    "Report #REP-{$repId} Confirmed Complete ✅",
+                    "{$actorName} confirmed your report as complete. It has been moved to Archive.",
+                    "archive_reports.php",
+                    $info['type']
+                );
+            }
+            // Send completion email to requester with ALL daily progress images
+            require_once __DIR__ . '/report_email.php';
+            $reqData = getRequesterEmailData($conn, $repId);
+            if (!empty($reqData['email'])) {
+                $imgs = getReportImageUrls($conn, $repId); // all days, no date filter
+                sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'completed', $reqData, $imgs);
+            }
+        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
         exit;
@@ -263,18 +313,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'admin_not_complete') {
         $repId      = (int)($input['rep_id'] ?? 0);
         $returnNote = trim($input['return_note'] ?? '');
+        $highlightDays = trim($input['highlight_days'] ?? '');
         if ($repId <= 0) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'Invalid report ID.']); exit; }
-        // Save the return reason to a dedicated column (auto-created if absent)
         $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
+        $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_days TEXT DEFAULT NULL");
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN reports r ON r.res_id = rr.res_id
-             SET rr.status = 'In Progress', rr.admin_return_note = ?
+             SET rr.status = 'In Progress', rr.admin_return_note = ?, rr.highlight_days = ?
              WHERE r.rep_id = ? AND rr.status = 'Pending Completion'"
         );
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
-        $stmt->bind_param('si', $returnNote, $repId);
+        $stmt->bind_param('ssi', $returnNote, $highlightDays, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
+        if ($ok) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $engId     = getRepEngineer($conn, $repId);
+            if ($engId > 0) {
+                $noteText = $returnNote ? " Reason: {$returnNote}" : '';
+                insertNotification($conn, $engId,
+                    "Report #REP-{$repId} Needs More Work",
+                    "{$actorName} marked your report as not complete.{$noteText}",
+                    "pending_reports.php",
+                    $info['type']
+                );
+            }
+        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
         exit;
@@ -362,9 +428,11 @@ $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at, r.engineer_id,
-        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note,
+        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note, res.highlight_days,
         req.infrastructure, req.location, req.issue, req.approval_status,
-        req.name AS requester_name, req.contact_number,
+        req.name AS requester_name, req.contact_number, req.coordinates,
+        req.email AS req_email,
+        req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
@@ -472,9 +540,15 @@ foreach ($rows as $row) {
         'issue'               => $row['issue'] ?? '',
         'res_note'            => $row['res_note'] ?? '',
         'admin_return_note'   => $row['admin_return_note'] ?? '',
+        'highlight_days'      => $row['highlight_days']    ?? '',
         'engineer_name'       => $row['engineer_name'] ?? '',
         'engineer_pic'        => $row['engineer_pic'] ?? '',
         'reporter_name'       => $row['reporter_name'] ?? '',
+        'requester_name'      => $row['requester_name'] ?? '',
+        'contact_number'      => $row['contact_number'] ?? '',
+        'req_email'           => $row['req_email']       ?? '',
+        'coordinates'         => $row['coordinates'] ?? '',
+        'req_created_at'      => $row['req_created_at'] ?? '',
         'starting_date'       => $row['starting_date'] ?? '',
         'estimated_end_date'  => $row['estimated_end_date'] ?? '',
         'priority_lvl'        => $row['priority_lvl'] ?? 'Low',
@@ -644,7 +718,7 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
     .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: 0.05em; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
+    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
@@ -842,7 +916,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-lb-nav.right { right:20px; }
 .rep-lb-nav.hidden { display:none; }
 .rep-lb-counter { position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:13px;font-weight:600;pointer-events:none; }
-@media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}}
+@media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}.rep-footer-inner{flex-direction:row;flex-wrap:wrap;justify-content:center;}#repEngineerFooter,#repAdminFooter{flex-direction:row;flex-wrap:wrap;justify-content:center;}}
 /* ── Modal footer & action buttons ── */
 .rep-modal-footer { padding:14px 24px;border-top:1px solid var(--border-color);background:var(--bg-secondary);border-radius:0 0 20px 20px;flex-shrink:0; }
 .rep-footer-inner { display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap; }
@@ -857,6 +931,8 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }
 .rep-confirm-backdrop.active { display:flex; }
 .rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }
+/* Only the Not Complete modal is wider (has scrollable day checkbox list) */
+#repAdminNotCompleteBackdrop .rep-confirm-modal { width:500px;max-width:94vw; }
 @keyframes repConfirmPop { from{transform:translateY(24px) scale(.93);opacity:0;} to{transform:translateY(0) scale(1);opacity:1;} }
 [data-theme="dark"] .rep-confirm-modal { background:rgba(24,24,30,.98);box-shadow:0 25px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07); }
 .rep-confirm-icon { width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px; }
@@ -1028,6 +1104,92 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     margin-top:10px; font-size:11px; color:var(--text-secondary);
     display:flex; align-items:center; gap:5px; font-style:italic;
     padding-top:8px; border-top:1px dashed var(--border-color);
+}
+/* ── Admin field / day highlight ── */
+.rep-field-highlighted {
+    border-radius: 10px;
+    box-shadow: 0 0 0 2px rgba(239,68,68,.55), 0 0 14px rgba(239,68,68,.18);
+    background: rgba(239,68,68,.05);
+    padding: 8px 10px; margin: -8px -10px; position: relative;
+}
+.rep-field-highlighted::after {
+    content: '⚑ Needs revision';
+    display: block; font-size: 10px; font-weight: 700; color: #ef4444;
+    text-transform: uppercase; letter-spacing: .05em; margin-top: 6px;
+    width: 100%; white-space: nowrap;
+}
+[data-theme="dark"] .rep-field-highlighted { box-shadow:0 0 0 2px rgba(239,68,68,.65),0 0 16px rgba(239,68,68,.22); background:rgba(239,68,68,.09); }
+.rep-day-nav.day-flagged { box-shadow:0 0 0 2px rgba(239,68,68,.55),0 0 10px rgba(239,68,68,.2); }
+.rep-day-flag-dot { display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;margin-left:5px;vertical-align:middle;box-shadow:0 0 5px rgba(239,68,68,.6);animation:flagPulse 1.6s ease-in-out infinite; }
+@keyframes flagPulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(0.75);} }
+/* Highlight checkbox panel */
+.rep-highlight-checks {
+    width:100%; text-align:left; margin-top:12px;
+    border-top:1px dashed rgba(239,68,68,.3); padding-top:12px;
+}
+.rep-highlight-checks-label { font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:block; }
+/* Select-all row */
+.rep-highlight-select-all {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px; padding-bottom:8px;
+    border-bottom:1px solid rgba(239,68,68,.2);
+}
+.rep-select-all-btn {
+    background:none; border:1.5px solid rgba(239,68,68,.5); border-radius:7px;
+    padding:3px 10px; font-size:11px; font-weight:700; color:#ef4444;
+    cursor:pointer; transition:all .15s; font-family:inherit; letter-spacing:.03em;
+}
+.rep-select-all-btn:hover { background:rgba(239,68,68,.1); border-color:#ef4444; }
+/* Scrollable day checkbox list — sidebar scrollbar style */
+.rep-highlight-checks.scrollable {
+    max-height:190px; overflow-y:auto; overflow-x:hidden;
+    scrollbar-width:thin; scrollbar-color:rgba(55,98,200,.3) transparent; padding-right:4px;
+}
+.rep-highlight-checks.scrollable::-webkit-scrollbar { width:4px; }
+.rep-highlight-checks.scrollable::-webkit-scrollbar-track { background:transparent; }
+.rep-highlight-checks.scrollable::-webkit-scrollbar-thumb { background:rgba(55,98,200,.3);border-radius:2px; }
+/* Custom toggle-style checkbox items */
+.rep-highlight-check-item {
+    display:flex; align-items:center; gap:10px;
+    padding:6px 10px; margin-bottom:6px; border-radius:8px; cursor:pointer;
+    font-size:13px; color:var(--text-primary);
+    border:1.5px solid var(--border-color);
+    background:var(--bg-secondary);
+    transition:border-color .15s,background .15s;
+}
+.rep-highlight-check-item:hover { border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.05); }
+.rep-highlight-check-item input[type="checkbox"] { display:none; }
+.rep-check-box {
+    width:18px;height:18px;border-radius:5px;flex-shrink:0;
+    border:2px solid var(--border-color);background:var(--bg-primary);
+    display:flex;align-items:center;justify-content:center;
+    transition:all .15s;font-size:11px;color:transparent;
+}
+.rep-highlight-check-item input:checked ~ .rep-check-box { background:#ef4444;border-color:#ef4444;color:#fff; }
+.rep-highlight-check-item:has(input:checked) { border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.07); }
+.rep-check-label { flex:1; }
+.rep-day-flagged-notice { display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(239,68,68,.07);border:1.5px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;color:#ef4444;font-weight:600;margin-bottom:10px; }
+[data-theme="dark"] .rep-day-flagged-notice { background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4); }
+/* ── CIMM loading overlay (matches requests.php) ── */
+#repEmailOverlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: none; justify-content: center; align-items: center;
+    z-index: 19000; opacity: 0; transition: opacity .3s ease;
+}
+#repEmailOverlay.show { display: flex; opacity: 1; }
+#repEmailOverlay .rep-email-content { text-align: center; }
+#repEmailOverlay .rep-email-spinner {
+    display: inline-block; font-size: 58px; font-weight: 800;
+    color: #6384d2; letter-spacing: 8px;
+    animation: repSpinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99,132,210,.4);
+    font-family: 'Poppins', Arial, sans-serif;
+}
+@keyframes repSpinLGU { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+#repEmailOverlay .rep-email-text {
+    margin-top: 22px; color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
 }
 .rep-upload-section { margin-top:14px; }
 .rep-upload-label { font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;display:flex;align-items:center;gap:6px; }
@@ -1240,11 +1402,11 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 
 <div class="notif-dropdown" id="notifDropdown">
     <div class="notif-dropdown-header">
-        <h3>Notifications</h3>
-        <button class="notif-clear-btn" id="clearNotifBtn">Clear all</button>
+        <h3><span class="notif-header-icon">🔔</span> Notifications <span class="notif-unread-count" id="notifUnreadCount" style="display:none;">0</span></h3>
+        <button class="notif-clear-btn" id="clearNotifBtn">Mark all read</button>
     </div>
     <div class="notif-dropdown-body" id="notifBody">
-        <div class="notif-empty">No new notifications</div>
+        <div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>No notifications yet</div></div>
     </div>
 </div>
 
@@ -1499,6 +1661,16 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
                 <div class="rep-field"><div class="rep-field-label">&#128176; Budget</div><div class="rep-field-value" id="repModalBudget"></div></div>
             </div>
             <div class="rep-divider"></div>
+            <!-- Requester Info Section (shown when request data exists) -->
+            <div class="rep-grid-2" id="repRequesterSection">
+                <div class="rep-field" id="repRequesterField"><div class="rep-field-label">&#128101; Requester</div><div class="rep-field-value" id="repModalRequester"></div></div>
+                <div class="rep-field" id="repContactField"><div class="rep-field-label">&#128222; Contact Number</div><div class="rep-field-value" id="repModalContact"></div></div>
+                <div class="rep-field" id="repEmailField"><div class="rep-field-label">&#128140; Email</div><div class="rep-field-value" id="repModalEmail" style="font-size:12px;word-break:break-all;"></div></div>
+                <div class="rep-field" id="repCoordsField"><div class="rep-field-label">&#127759; Coordinates</div><div class="rep-field-value" id="repModalCoords" style="font-size:12px;word-break:break-all;"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128197; Date Submitted</div><div class="rep-field-value" id="repModalReqDate"></div></div>
+                <div class="rep-field" id="repEmailField" style="display:none;"><div class="rep-field-label">&#128231; Email</div><div class="rep-field-value" id="repModalEmail" style="font-size:12px;word-break:break-all;"></div></div>
+            </div>
+            <div class="rep-divider" id="repRequesterDivider"></div>
 
             <!-- ── Daily log day navigator — OUTSIDE the box, below budget ── -->
             <input type="hidden" id="repCurrentLogDate" value="">
@@ -1563,12 +1735,12 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
             <div class="rep-footer-inner" id="repFooterInner">
                 <!-- Engineer footer (save + complete) -->
-                <div id="repEngineerFooter" style="display:none;width:100%;display:none;justify-content:center;gap:10px;flex-wrap:wrap;">
-                    <button class="btn-save-rep" id="repSaveBtn" onclick="confirmSaveDesc()"><i class="fas fa-save"></i> Save Description</button>
+                <div id="repEngineerFooter" style="display:none;justify-content:center;gap:10px;flex-wrap:wrap;">
+                    <button class="btn-save-rep" id="repSaveBtn" onclick="confirmSaveDesc()"><i class="fas fa-paper-plane"></i> Save &amp; Notify Requester</button>
                     <button class="btn-complete-rep" id="repCompleteBtn" onclick="confirmRequestComplete()"><i class="fas fa-check-circle"></i> Complete</button>
                 </div>
                 <!-- Admin footer (not complete + complete, shown when Pending Completion) -->
-                <div id="repAdminFooter" style="display:none;width:100%;display:none;justify-content:center;gap:10px;flex-wrap:wrap;">
+                <div id="repAdminFooter" style="display:none;justify-content:center;gap:10px;flex-wrap:wrap;">
                     <button class="btn-admin-not-complete" onclick="confirmAdminNotComplete()"><i class="fas fa-times-circle"></i> Not Complete</button>
                     <button class="btn-admin-complete"     onclick="confirmAdminComplete()"><i class="fas fa-check-circle"></i> Complete</button>
                 </div>
@@ -1581,11 +1753,11 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 <div class="rep-confirm-backdrop" id="repSaveConfirmBackdrop">
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon save-icon"><i class="fas fa-save" style="color:#3762c8;font-size:24px;"></i></div>
-        <div class="rep-confirm-title">Save Description?</div>
-        <div class="rep-confirm-desc">This will save your report description and set the status to <strong>In Progress</strong>.</div>
+        <div class="rep-confirm-title">Save &amp; Notify Requester?</div>
+        <div class="rep-confirm-desc">This will save your progress notes and send an email update to the requester (if they provided an email).</div>
         <div class="rep-confirm-btns">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeSaveConfirm()">Cancel</button>
-            <button class="rep-confirm-btn rep-confirm-ok-save" onclick="doSaveDesc()"><i class="fas fa-save"></i> Save</button>
+            <button class="rep-confirm-btn rep-confirm-ok-save" onclick="doSaveDesc()"><i class="fas fa-paper-plane"></i> Save &amp; Send</button>
         </div>
     </div>
 </div>
@@ -1621,8 +1793,15 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon not-complete-icon"><i class="fas fa-times-circle" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Mark as Not Complete?</div>
-        <div class="rep-confirm-desc">This will return the report to <strong>In Progress</strong>. Add a reason so the engineer knows what to fix.</div>
+        <div class="rep-confirm-desc">This will return the report to <strong>In Progress</strong>. Add a reason and flag the specific days that need revision.</div>
         <textarea class="rep-confirm-return-note" id="repNotCompleteNote" placeholder="Explain what needs to be corrected or completed…"></textarea>
+        <div class="rep-highlight-checks scrollable" id="repDayCheckboxes">
+            <div class="rep-highlight-select-all">
+                <span class="rep-highlight-checks-label" style="margin-bottom:0;">&#9873; Flag days that need revision</span>
+                <button type="button" class="rep-select-all-btn" id="repDaySelectAllBtn" onclick="toggleSelectAllDays(this)">Select All</button>
+            </div>
+            <!-- Day checkboxes built dynamically by confirmAdminNotComplete() -->
+        </div>
         <div class="rep-confirm-btns" style="margin-top:16px;">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminNotCompleteConfirm()">Cancel</button>
             <button class="rep-confirm-btn rep-confirm-ok-not-complete" onclick="doAdminNotComplete()"><i class="fas fa-times-circle"></i> Send Back</button>
@@ -1738,6 +1917,41 @@ function renderDayView(isPendingCompletion) {
     document.getElementById('repDayPrev').disabled     = (currentDayIndex === 0);
     document.getElementById('repDayNext').disabled     = (currentDayIndex === currentDayDates.length - 1);
 
+    // ── Highlight flagged day indicator ───────────────────────────────────────
+    const dayNav    = document.getElementById('repDayNav');
+    const dayNumEl  = document.getElementById('repDayNum');
+    let flaggedDays = [];
+    if (IS_ENGINEER && currentRepData.highlight_days) {
+        try { flaggedDays = JSON.parse(currentRepData.highlight_days); } catch(e) {}
+    }
+    const isFlagged = flaggedDays.includes(logDate);
+    dayNav.classList.toggle('day-flagged', isFlagged);
+    // Remove any existing dot then re-add if flagged
+    const existingDot = dayNumEl.querySelector('.rep-day-flag-dot');
+    if (existingDot) existingDot.remove();
+    if (isFlagged) {
+        const dot = document.createElement('span');
+        dot.className = 'rep-day-flag-dot';
+        dot.title = 'Admin flagged this day for revision';
+        dayNumEl.appendChild(dot);
+    }
+
+    // ── Flagged-day notice inside the desc section ────────────────────────────
+    let noticeEl = document.getElementById('repDayFlaggedNotice');
+    if (IS_ENGINEER && isFlagged) {
+        if (!noticeEl) {
+            noticeEl = document.createElement('div');
+            noticeEl.id = 'repDayFlaggedNotice';
+            noticeEl.className = 'rep-day-flagged-notice';
+            const descSection = document.getElementById('repDescSection');
+            if (descSection) descSection.insertBefore(noticeEl, descSection.firstChild);
+        }
+        noticeEl.innerHTML = '⚑ Admin flagged this day for revision';
+        noticeEl.style.display = '';
+    } else if (noticeEl) {
+        noticeEl.style.display = 'none';
+    }
+
     const descEditable  = document.getElementById('repDescEditable');
     const descReadonly  = document.getElementById('repDescReadonly');
     const descText      = document.getElementById('repDescText');
@@ -1850,14 +2064,56 @@ function openRepModal(repId) {
     const budgetNum = typeof data.budget_raw === 'number' ? data.budget_raw : parseFloat(data.budget_raw || 0);
     document.getElementById('repModalBudget').textContent   = '₱' + budgetNum.toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2});
 
+    // ── Requester info (from linked request) ─────────────────────────────────
+    const reqName  = data.requester_name || '';
+    const contact  = data.contact_number || '';
+    const coords   = data.coordinates    || '';
+    const reqDate  = data.req_created_at || '';
+    const reqEmail = data.req_email      || '';
+    document.getElementById('repModalRequester').textContent = reqName  || '—';
+    document.getElementById('repModalContact').textContent   = contact  || '—';
+    document.getElementById('repModalEmail').textContent     = data.req_email || '—';
+    document.getElementById('repModalCoords').textContent    = coords   || '—';
+    document.getElementById('repModalReqDate').textContent   = reqDate  ? fmtDate(reqDate) : '—';
+    // Email — plain text, shown only if present
+    const emailField = document.getElementById('repEmailField');
+    const emailVal   = document.getElementById('repModalEmail');
+    if (emailField && emailVal) {
+        if (reqEmail) {
+            emailField.style.display = '';
+            emailVal.textContent = reqEmail;
+        } else {
+            emailField.style.display = 'none';
+        }
+    }
+    const reqSec = document.getElementById('repRequesterSection');
+    const reqDiv = document.getElementById('repRequesterDivider');
+    if (!reqName && !contact && !coords && !reqDate) {
+        if (reqSec) reqSec.style.display = 'none';
+        if (reqDiv) reqDiv.style.display = 'none';
+    } else {
+        if (reqSec) reqSec.style.display = '';
+        if (reqDiv) reqDiv.style.display = '';
+    }
+
     // ── Day navigation ────────────────────────────────────────────────────────
     currentDayDates = buildDayDates(data.starting_date, data.estimated_end_date);
     // Engineers → default to today if in range, else day 1
     // Admins/others → default to last day that has an entry, else last day
     if (IS_ENGINEER && !isPendingCompletion) {
-        const todayISO = new Date().toISOString().slice(0,10);
-        const todayIdx = currentDayDates.indexOf(todayISO);
-        currentDayIndex = todayIdx >= 0 ? todayIdx : 0;
+        // Default to first flagged day if any, else today if in range, else day 1
+        let flaggedDays = [];
+        try { if (data.highlight_days) flaggedDays = JSON.parse(data.highlight_days); } catch(e) {}
+        const firstFlaggedIdx = flaggedDays.length
+            ? currentDayDates.findIndex(d => flaggedDays.includes(d))
+            : -1;
+        if (firstFlaggedIdx >= 0) {
+            currentDayIndex = firstFlaggedIdx;
+        } else {
+            const todayISO = new Date().toISOString().slice(0,10);
+            const todayIdx = currentDayDates.indexOf(todayISO);
+            currentDayIndex = todayIdx >= 0 ? todayIdx : 0;
+        }
     } else {
         // Find last day with a non-empty description for admin view
         const logs = data.daily_logs || {};
@@ -2067,15 +2323,19 @@ async function doSaveDesc() {
     const desc    = document.getElementById('repDescInput')?.value ?? '';
     if (!logDate) { showRepNotif('error','❌ No day selected.'); return; }
     const btn = document.getElementById('repSaveBtn');
-    btn.disabled = true; btn.textContent = 'Saving…';
+    const overlay = document.getElementById('repEmailOverlay');
+    const overlayText = document.getElementById('repEmailOverlayText');
+    // Show CIMM loading overlay
+    if (overlay) { overlay.classList.add('show'); }
+    if (overlayText) overlayText.textContent = 'Saving & Sending Update…';
+    btn.disabled = true;
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc})
+            body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc, day_number: currentDayIndex + 1})
         });
         const data = await res.json();
         if (data.success) {
-            // Update in-memory daily_logs
             const logs = currentRepData.daily_logs || {};
             if (!logs[logDate]) logs[logDate] = {description:'',updated_at:null,images:[]};
             logs[logDate].description = desc;
@@ -2084,16 +2344,17 @@ async function doSaveDesc() {
             const ridx = ALL_REPORTS.findIndex(r=>r.rep_id==currentRepData.rep_id);
             if(ridx>-1){ ALL_REPORTS[ridx].daily_logs=logs; ALL_REPORTS[ridx].res_note=desc; ALL_REPORTS[ridx].resolution_status='In Progress'; }
             currentRepData.res_note = desc; currentRepData.resolution_status = 'In Progress';
-            // Refresh last-edited display
             document.getElementById('repDescLastEdited').style.display = '';
             document.getElementById('repDescLastEditedTime').textContent = fmtDateTime(logs[logDate].updated_at);
             const statusEl = document.getElementById('repModalStatus');
             statusEl.textContent = 'In Progress'; statusEl.className = 'rep-status-pill on-going';
             updateRowStatusPill(currentRepData.rep_id, 'In Progress', 'on-going');
-            showRepNotif('success','✔️ Day ' + (currentDayIndex+1) + ' description saved.');
+            showRepNotif('success','✔️ Day ' + (currentDayIndex+1) + ' saved & requester notified.');
         } else { showRepNotif('error','❌ ' + (data.message || 'Failed to save.')); }
     } catch(e) { showRepNotif('error','❌ Network error. Please try again.'); }
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Description';
+    // Hide overlay and restore button
+    if (overlay) { overlay.classList.remove('show'); }
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Save &amp; Notify Requester';
 }
 
 // ── Engineer: Request Completion ──────────────────────────────────────────────
@@ -2120,7 +2381,7 @@ async function doRequestComplete() {
         try {
             await fetch('pending_reports.php', {
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc})
+                body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc, no_email: true})
             });
             // Update in-memory so admin sees it immediately
             const logs = currentRepData.daily_logs || {};
@@ -2166,6 +2427,11 @@ async function doAdminComplete() {
     if (!currentRepData) return;
     const repId = currentRepData.rep_id;
     closeAdminCompleteConfirm();
+    // Show CIMM loading overlay — email with all images may take a moment
+    const overlay = document.getElementById('repEmailOverlay');
+    const overlayText = document.getElementById('repEmailOverlayText');
+    if (overlay) { overlay.classList.add('show'); }
+    if (overlayText) overlayText.textContent = 'Confirming & Sending Completion Email…';
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -2174,19 +2440,51 @@ async function doAdminComplete() {
         const text = await res.text();
         let data;
         try { data = JSON.parse(text); } catch(pe) {
+            if (overlay) overlay.classList.remove('show');
             showRepNotif('error','❌ Server error. Please try again.'); return;
         }
+        if (overlay) overlay.classList.remove('show');
         if (data.success) {
             closeRepModal();
             showRepNotif('success','✔️ Report #REP-'+repId+' confirmed complete and moved to Archive.');
             setTimeout(()=>location.reload(), 1800);
         } else { showRepNotif('error','❌ ' + (data.message || 'Failed.')); }
-    } catch(e) { showRepNotif('error','❌ Network error.'); }
+    } catch(e) {
+        if (overlay) overlay.classList.remove('show');
+        showRepNotif('error','❌ Network error.');
+    }
 }
 
 // ── Admin: Not Complete ───────────────────────────────────────────────────────
 function confirmAdminNotComplete() { 
     document.getElementById('repNotCompleteNote').value = '';
+
+    // Reset Select All button text
+    const saBtn = document.getElementById('repDaySelectAllBtn');
+    if (saBtn) saBtn.textContent = 'Select All';
+
+    // Build day checkboxes from the report's date range using custom design
+    const container = document.getElementById('repDayCheckboxes');
+    // Preserve the select-all header row, remove only the day items
+    const existingItems = container.querySelectorAll('.rep-highlight-check-item');
+    existingItems.forEach(el => el.remove());
+
+    if (currentRepData && currentDayDates.length) {
+        currentDayDates.forEach(function(isoDate, i) {
+            const label = document.createElement('label');
+            label.className = 'rep-highlight-check-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.value = isoDate; cb.id = 'hlDay_' + isoDate;
+            const box = document.createElement('span');
+            box.className = 'rep-check-box'; box.textContent = '✓';
+            const txt = document.createElement('span');
+            txt.className = 'rep-check-label';
+            txt.textContent = 'Day ' + (i+1) + ' — ' + fmtDateISO(isoDate);
+            label.appendChild(cb); label.appendChild(box); label.appendChild(txt);
+            container.appendChild(label);
+        });
+    }
+
     document.getElementById('repAdminNotCompleteBackdrop').classList.add('active'); 
 }
 function closeAdminNotCompleteConfirm() { 
@@ -2198,13 +2496,19 @@ document.getElementById('repAdminNotCompleteBackdrop').addEventListener('click',
 
 async function doAdminNotComplete() {
     if (!currentRepData) return;
-    const repId     = currentRepData.rep_id;
+    const repId      = currentRepData.rep_id;
     const returnNote = document.getElementById('repNotCompleteNote')?.value?.trim() || '';
+    // Collect flagged days
+    const flaggedDays = [];
+    document.querySelectorAll('#repDayCheckboxes input[type="checkbox"]:checked').forEach(cb => {
+        flaggedDays.push(cb.value);
+    });
+    const highlightDays = JSON.stringify(flaggedDays);
     closeAdminNotCompleteConfirm();
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({action:'admin_not_complete', rep_id: repId, return_note: returnNote})
+            body: JSON.stringify({action:'admin_not_complete', rep_id: repId, return_note: returnNote, highlight_days: highlightDays})
         });
         const text = await res.text();
         let data;
@@ -2214,7 +2518,12 @@ async function doAdminNotComplete() {
         if (data.success) {
             // Update in-memory
             const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
-            if (idx > -1) { ALL_REPORTS[idx].admin_return_note = returnNote; ALL_REPORTS[idx].resolution_status = 'In Progress'; ALL_REPORTS[idx].is_pending_completion = false; }
+            if (idx > -1) { 
+                ALL_REPORTS[idx].admin_return_note = returnNote; 
+                ALL_REPORTS[idx].highlight_days    = highlightDays;
+                ALL_REPORTS[idx].resolution_status = 'In Progress'; 
+                ALL_REPORTS[idx].is_pending_completion = false; 
+            }
             closeRepModal();
             showRepNotif('warning','⚠️ Report #REP-'+repId+' sent back to In Progress.');
             setTimeout(()=>location.reload(), 1800);
@@ -2491,6 +2800,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ── Select All for day checkboxes (Not Complete modal) ───────────────────────
+function toggleSelectAllDays(btn) {
+    const checkboxes = document.querySelectorAll('#repDayCheckboxes input[type="checkbox"]');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => { cb.checked = !allChecked; });
+    btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+}
+
 // ══════════════════════════════════════════════════════════════
 // DAY DATE PICKER — click the date in the day nav to jump to any
 // report day; only days within starting_date → estimated_end_date
@@ -2528,9 +2845,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var selISO      = document.getElementById('repCurrentLogDate')?.value || '';
         var today       = new Date(); var todayISO = fmtISO(new Date(today.getFullYear(),today.getMonth(),today.getDate()));
 
-        // Get allowed range from current report
+        // Get allowed range and flagged days from current report
         var startISO = currentRepData?.starting_date || '';
         var endISO   = currentRepData?.estimated_end_date || '';
+        var flaggedDays = [];
+        try { if (IS_ENGINEER && currentRepData?.highlight_days) flaggedDays = JSON.parse(currentRepData.highlight_days); } catch(e) {}
 
         grid.innerHTML = '';
         for (var i=0; i<firstDay; i++) {
@@ -2541,13 +2860,21 @@ document.addEventListener('DOMContentLoaded', function() {
             var dateISO = fmtISO(dateObj);
             var dow     = dateObj.getDay();
             var btn     = document.createElement('button');
-            btn.type='button'; btn.className='rdpd-day'; btn.textContent=dd; btn.dataset.date=dateISO;
+            btn.type='button'; btn.className='rdpd-day'; btn.dataset.date=dateISO;
+            btn.textContent = dd;
             if (dow===0||dow===6) btn.classList.add('rdpd-weekend');
             if (dateISO===todayISO) btn.classList.add('rdpd-today');
             if (dateISO===selISO)   btn.classList.add('rdpd-selected');
             // Grey out dates outside report date range
             if ((startISO && dateISO < startISO) || (endISO && dateISO > endISO)) {
                 btn.classList.add('rdpd-out-range');
+            }
+            // Red dot for flagged days
+            if (flaggedDays.includes(dateISO)) {
+                var dot = document.createElement('span');
+                dot.style.cssText = 'position:absolute;bottom:2px;right:2px;width:5px;height:5px;border-radius:50%;background:#ef4444;display:block;';
+                btn.style.position = 'relative';
+                btn.appendChild(dot);
             }
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -2717,5 +3044,12 @@ function renderProgressStrip(images) {
     </div>
 </div>
 
+<!-- CIMM email sending overlay -->
+<div id="repEmailOverlay">
+    <div class="rep-email-content">
+        <div class="rep-email-spinner">CIMM</div>
+        <div class="rep-email-text" id="repEmailOverlayText">Saving &amp; Sending Update…</div>
+    </div>
+</div>
 </body>
 </html>

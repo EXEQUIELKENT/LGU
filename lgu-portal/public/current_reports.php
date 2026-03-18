@@ -33,6 +33,10 @@ $conn->query("
 ");
 // ── Add admin_return_note column if it doesn't exist yet ─────────────────────
 $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
+// ── Add highlight_fields column (JSON array of field names admin wants changed) ─
+$conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_fields TEXT DEFAULT NULL");
+// ── Auto-add requester email column to requests table ─────────────────────────
+$conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 
 $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
@@ -117,6 +121,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
+            // Notify ONLY Super Admins about scheduling approval (not managers/office staff)
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            notifySuperAdmins($conn,
+                "Report #REP-{$repId} Awaiting Schedule Approval",
+                "{$actorName} submitted Report #{$repId} for scheduling approval.",
+                "current_reports.php",
+                $info['type'],
+                (int)($_SESSION['employee_id'] ?? 0)
+            );
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => true, 'rep_id' => $repId]);
             exit;
@@ -139,6 +154,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
+        if ($affected > 0) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            notifyAssigners($conn,
+                "Engineer Accepted Report #REP-{$repId}",
+                "{$actorName} accepted the assignment for Report #{$repId}.",
+                "current_reports.php",
+                $info['type'],
+                $engineerId
+            );
+        }
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode(['success' => $affected > 0]); exit;
     }
@@ -154,6 +181,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
+        if ($affected > 0) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            notifyAssigners($conn,
+                "Engineer Declined Report #REP-{$repId}",
+                "{$actorName} declined assignment for Report #{$repId}. A new engineer needs to be assigned.",
+                "current_reports.php",
+                $info['type'],
+                $engineerId
+            );
+        }
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode(['success' => $affected > 0]); exit;
     }
@@ -208,6 +247,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->bind_param("i", $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
+        if ($ok && $aff >= 1) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $engId     = getRepEngineer($conn, $repId);
+            if ($engId > 0) {
+                insertNotification($conn, $engId,
+                    "Report #REP-{$repId} Approved & Scheduled 🎉",
+                    "{$actorName} approved your report. It has been moved to Pending Reports as Scheduled.",
+                    "pending_reports.php",
+                    $info['type']
+                );
+            }
+        }
         while (ob_get_level() > 0) ob_end_clean();
         if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
         if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
@@ -227,10 +280,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Invalid report ID.']); exit;
         }
         $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
+        $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_fields TEXT DEFAULT NULL");
+        $highlightFields = trim($input['highlight_fields'] ?? '');
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN   reports r ON r.res_id = rr.res_id
-             SET    rr.status = 'Approved', rr.admin_return_note = ?
+             SET    rr.status = 'Approved', rr.admin_return_note = ?, rr.highlight_fields = ?
              WHERE  r.rep_id  = ?
                AND  rr.status = 'Pending Admin Approval'"
         );
@@ -238,8 +293,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => false, 'message' => 'DB prepare error: ' . $conn->error]); exit;
         }
-        $stmt->bind_param("si", $returnNote, $repId);
+        $stmt->bind_param("ssi", $returnNote, $highlightFields, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
+        if ($ok && $aff >= 1) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $engId     = getRepEngineer($conn, $repId);
+            if ($engId > 0) {
+                $noteText = $returnNote ? " Reason: {$returnNote}" : '';
+                insertNotification($conn, $engId,
+                    "Report #REP-{$repId} Returned for Revision",
+                    "{$actorName} returned your report for revision.{$noteText}",
+                    "current_reports.php",
+                    $info['type']
+                );
+            }
+        }
         while (ob_get_level() > 0) ob_end_clean();
         if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
         if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
@@ -307,9 +377,9 @@ $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at, r.engineer_id, r.engineer_accepted,
-        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note,
+        res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note, res.highlight_fields,
         req.infrastructure, req.location, req.issue, req.approval_status,
-        req.name AS requester_name, req.contact_number, req.coordinates,
+        req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
         req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
@@ -409,6 +479,7 @@ foreach ($rows as $row) {
         'issue'             => $row['issue'] ?? '',
         'res_note'          => $row['res_note'] ?? '',
         'admin_return_note' => $row['admin_return_note'] ?? '',
+        'highlight_fields'  => $row['highlight_fields']  ?? '',
         'engineer_name'     => $row['engineer_name'] ?? '',
         'engineer_pic'      => $row['engineer_pic'] ?? '',
         'engineer_accepted' => (bool)($row['engineer_accepted'] ?? false),
@@ -416,6 +487,7 @@ foreach ($rows as $row) {
         'requester_name'    => $row['requester_name'] ?? '',
         'contact_number'    => $row['contact_number'] ?? '',
         'coordinates'       => $row['coordinates'] ?? '',
+        'req_email'         => $row['req_email']     ?? '',
         'req_created_at'    => $row['req_created_at'] ?? '',
         'starting_date'     => $row['starting_date'] ?? '',
         'estimated_end_date'=> $row['estimated_end_date'] ?? '',
@@ -434,6 +506,7 @@ foreach ($rows as $row) {
         'requester_name'    => $row['requester_name'] ?? '',
         'contact_number'    => $row['contact_number'] ?? '',
         'coordinates'       => $row['coordinates'] ?? '',
+        'req_email'         => $row['req_email']     ?? '',
         'images'            => $imgs,
     ];
 }
@@ -1006,7 +1079,7 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
     .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: 0.05em; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
+    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
@@ -1263,6 +1336,9 @@ select.rep-editable-field { cursor:pointer; }
 .rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }
 .rep-confirm-backdrop.active { display:flex; }
 .rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }
+/* Only these two modals are wider because they have scrollable checkbox lists */
+#repAdminReturnConfirmBackdrop .rep-confirm-modal,
+#repAdminNotCompleteBackdrop   .rep-confirm-modal { width:500px;max-width:94vw; }
 @keyframes repConfirmPop { from{transform:translateY(24px) scale(.93);opacity:0;} to{transform:translateY(0) scale(1);opacity:1;} }
 [data-theme="dark"] .rep-confirm-modal { background:rgba(24,24,30,.98);box-shadow:0 25px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07); }
 .rep-confirm-icon { width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px; }
@@ -1289,7 +1365,22 @@ select.rep-editable-field { cursor:pointer; }
 .rep-budget-wrap { display:flex;align-items:center;background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:8px;overflow:hidden; }
 .rep-budget-wrap:focus-within { border-color:#ff9800;box-shadow:0 0 0 3px rgba(255,152,0,.15); }
 .rep-peso-prefix { padding:0 8px 0 12px;font-size:14px;font-weight:700;color:#e65100;background:transparent;border:none;pointer-events:none;flex-shrink:0; }
-.rep-budget-input-inner { border:none!important;outline:none!important;box-shadow:none!important;background:transparent;padding:7px 12px 7px 0;width:100%;font-size:13px;color:var(--text-primary); }
+.rep-budget-input-inner { border:none!important;outline:none!important;box-shadow:none!important;background:transparent;padding:7px 0 7px 0;flex:1;min-width:0;font-size:13px;color:var(--text-primary); }
+/* Hide native spinners — replaced by custom buttons */
+.rep-budget-input-inner::-webkit-inner-spin-button,
+.rep-budget-input-inner::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
+.rep-budget-input-inner[type="number"] { -moz-appearance:textfield;appearance:textfield; }
+/* Custom spin buttons */
+.rep-budget-spinners { display:flex;flex-direction:column;border-left:1.5px solid var(--border-color);flex-shrink:0; }
+.rep-budget-spin-btn {
+    background:none;border:none;cursor:pointer;
+    width:26px;height:18px;display:flex;align-items:center;justify-content:center;
+    color:var(--text-secondary);font-size:9px;line-height:1;
+    transition:background .12s,color .12s;
+}
+.rep-budget-spin-btn:hover { background:rgba(255,152,0,.12);color:#e65100; }
+.rep-budget-spin-btn:active { background:rgba(255,152,0,.22); }
+.rep-budget-spin-btn:first-child { border-bottom:1px solid var(--border-color); }
 .rep-status-pill.pending-admin { background:rgba(139,92,246,.12);color:#4c1d95;border:1px solid rgba(139,92,246,.3); }
 [data-theme="dark"] .rep-status-pill.pending-admin { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
 @media(max-width:768px){.rep-detail-modal{width:95%;max-height:90vh;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-footer-inner{flex-direction:row;}}
@@ -1517,6 +1608,117 @@ select.rep-editable-field { cursor:pointer; }
 .rep-confirm-return-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:80px;margin-top:12px;transition:border-color .2s; }
 .rep-confirm-return-note:focus { outline:none;border-color:#ef4444; }
 [data-theme="dark"] .rep-confirm-return-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
+/* Admin field highlight — shown to engineer on flagged fields */
+.rep-field-highlighted {
+    border-radius: 10px;
+    border: 2px solid rgba(239,68,68,.65) !important;
+    background: rgba(239,68,68,.06);
+    padding: 8px 10px;
+    margin: -2px;
+    position: relative;
+}
+.rep-field-highlighted::after {
+    content: '⚑ Needs revision';
+    display: block; font-size: 10px; font-weight: 700; color: #ef4444;
+    text-transform: uppercase; letter-spacing: .05em; margin-top: 8px;
+    padding-top: 6px; border-top: 1px solid rgba(239,68,68,.2);
+    width: 100%;
+}
+[data-theme="dark"] .rep-field-highlighted {
+    border-color: rgba(239,68,68,.75) !important;
+    background: rgba(239,68,68,.1);
+}
+/* Field checkboxes inside return modal */
+.rep-highlight-checks {
+    width: 100%; text-align: left; margin-top: 12px;
+    border-top: 1px dashed rgba(239,68,68,.3); padding-top: 12px;
+}
+.rep-highlight-checks-label {
+    font-size: 11px; font-weight: 700; color: #ef4444;
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; display: block;
+}
+/* Select-all row */
+.rep-highlight-select-all {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px; padding-bottom:8px;
+    border-bottom:1px solid rgba(239,68,68,.2);
+}
+.rep-select-all-btn {
+    background:none; border:1.5px solid rgba(239,68,68,.5); border-radius:7px;
+    padding:3px 10px; font-size:11px; font-weight:700; color:#ef4444;
+    cursor:pointer; transition:all .15s; font-family:inherit; letter-spacing:.03em;
+}
+.rep-select-all-btn:hover { background:rgba(239,68,68,.1); border-color:#ef4444; }
+/* Custom toggle-style checkboxes */
+.rep-highlight-check-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 10px; margin-bottom: 6px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-secondary);
+    transition: border-color .15s, background .15s;
+}
+.rep-highlight-check-item:hover { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.05); }
+.rep-highlight-check-item input[type="checkbox"] { display: none; }
+.rep-check-box {
+    width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+    border: 2px solid var(--border-color); background: var(--bg-primary);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; font-size: 11px; color: transparent;
+}
+.rep-highlight-check-item input:checked ~ .rep-check-box {
+    background: #ef4444; border-color: #ef4444; color: #fff;
+}
+.rep-highlight-check-item:has(input:checked) {
+    border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.07);
+}
+.rep-check-label { flex: 1; }
+
+/* Priority combobox — matches profile.php combobox style, orange theme */
+.rep-priority-combobox { position: relative; width: 100%; }
+.rep-priority-display {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-radius: 9px;
+    border: 1.5px solid var(--border-color); background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 13px; cursor: pointer;
+    user-select: none; transition: border-color .2s, box-shadow .2s;
+    min-height: 36px; box-sizing: border-box; font-family: inherit;
+}
+.rep-priority-display:hover { border-color: #ff9800; }
+.rep-priority-display.open {
+    border-color: #ff9800; box-shadow: 0 0 0 3px rgba(255,152,0,.15);
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+}
+.rep-priority-arrow { font-size: 10px; color: var(--text-secondary); margin-left: 8px; transition: transform .2s; flex-shrink: 0; }
+.rep-priority-display.open .rep-priority-arrow { transform: rotate(180deg); }
+.rep-priority-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
+    background: var(--bg-secondary); border: 1.5px solid #ff9800;
+    border-top: none; border-bottom-left-radius: 9px; border-bottom-right-radius: 9px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); display: none; overflow: hidden;
+}
+.rep-priority-dropdown.open { display: block; }
+.rep-priority-option {
+    padding: 9px 13px; font-size: 13px; cursor: pointer;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    transition: background .12s; display: flex; align-items: center; gap: 8px;
+}
+.rep-priority-option:last-child { border-bottom: none; }
+.rep-priority-option:hover { background: rgba(255,152,0,.1); }
+.rep-priority-option.selected-opt { background: rgba(255,152,0,.14); font-weight: 600; color: #e65100; }
+[data-theme="dark"] .rep-priority-option.selected-opt { color: #ffb74d; }
+[data-theme="dark"] .rep-priority-dropdown { background: #1e1e24; }
+
+/* Scrollbar for flag-day checkbox list (sidebar style) */
+.rep-highlight-checks.scrollable {
+    max-height: 200px; overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(55,98,200,.3) transparent;
+    padding-right: 4px;
+}
+.rep-highlight-checks.scrollable::-webkit-scrollbar { width: 4px; }
+.rep-highlight-checks.scrollable::-webkit-scrollbar-track { background: transparent; }
+.rep-highlight-checks.scrollable::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 2px; }
 
 </style>
 <script>
@@ -1568,11 +1770,11 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 
 <div class="notif-dropdown" id="notifDropdown">
     <div class="notif-dropdown-header">
-        <h3>Notifications</h3>
-        <button class="notif-clear-btn" id="clearNotifBtn">Clear all</button>
+        <h3><span class="notif-header-icon">🔔</span> Notifications <span class="notif-unread-count" id="notifUnreadCount" style="display:none;">0</span></h3>
+        <button class="notif-clear-btn" id="clearNotifBtn">Mark all read</button>
     </div>
     <div class="notif-dropdown-body" id="notifBody">
-        <div class="notif-empty">No new notifications</div>
+        <div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>No notifications yet</div></div>
     </div>
 </div>
 
@@ -1900,6 +2102,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rep-grid-2" id="repRequesterSection">
                 <div class="rep-field" id="repRequesterField"><div class="rep-field-label">&#128101; Requester</div><div class="rep-field-value" id="repModalRequester"></div></div>
                 <div class="rep-field" id="repContactField"><div class="rep-field-label">&#128222; Contact Number</div><div class="rep-field-value" id="repModalContact"></div></div>
+                <div class="rep-field" id="repEmailField"><div class="rep-field-label">&#128140; Email</div><div class="rep-field-value" id="repModalEmail" style="font-size:12px;word-break:break-all;"></div></div>
                 <div class="rep-field" id="repCoordsField"><div class="rep-field-label">&#127759; Coordinates</div><div class="rep-field-value" id="repModalCoords" style="font-size:12px;word-break:break-all;"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Date Submitted</div><div class="rep-field-value" id="repModalReqDate"></div></div>
             </div>
@@ -2015,8 +2218,18 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <div class="rep-confirm-modal">
         <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-undo-alt" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Return to Engineer?</div>
-        <div class="rep-confirm-desc">The report will be sent back to the engineer. Add a reason so they know what to revise before re-submitting.</div>
+        <div class="rep-confirm-desc">The report will be sent back. Add a reason and flag the specific fields that need revision.</div>
         <textarea class="rep-confirm-return-note" id="repReturnNoteInput" placeholder="Explain what needs to be corrected or revised…"></textarea>
+        <div class="rep-highlight-checks">
+            <div class="rep-highlight-select-all">
+                <span class="rep-highlight-checks-label" style="margin-bottom:0;">&#9873; Flag fields for revision</span>
+                <button type="button" class="rep-select-all-btn" onclick="toggleSelectAllFields(this)">Select All</button>
+            </div>
+            <label class="rep-highlight-check-item"><input type="checkbox" id="hlStartDate" value="starting_date"><span class="rep-check-box">✓</span><span class="rep-check-label">📅 Start Date</span></label>
+            <label class="rep-highlight-check-item"><input type="checkbox" id="hlEndDate"   value="estimated_end_date"><span class="rep-check-box">✓</span><span class="rep-check-label">📅 Est. End Date</span></label>
+            <label class="rep-highlight-check-item"><input type="checkbox" id="hlPriority"  value="priority_lvl"><span class="rep-check-box">✓</span><span class="rep-check-label">🚦 Priority</span></label>
+            <label class="rep-highlight-check-item"><input type="checkbox" id="hlBudget"    value="budget"><span class="rep-check-box">✓</span><span class="rep-check-label">💰 Budget</span></label>
+        </div>
         <div class="rep-confirm-btns" style="margin-top:16px;">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeAdminReturnConfirm()">Cancel</button>
             <button class="rep-confirm-btn" id="repAdminReturnConfirmBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doAdminReturnReport()"><i class="fas fa-undo-alt"></i> Confirm Return</button>
@@ -2684,7 +2897,14 @@ function openRepModal(repId) {
 
     document.getElementById('repModalLocation').textContent = data.location || '—';
     document.getElementById('repModalIssue').textContent    = data.issue || '—';
-    document.getElementById('repModalEngineer').textContent = data.engineer_name || '—';
+    // Hide engineer field when the logged-in user is the engineer (they know who they are)
+    const engField = document.getElementById('repEngField');
+    if (IS_ENGINEER) {
+        if (engField) engField.style.display = 'none';
+    } else {
+        if (engField) engField.style.display = '';
+        document.getElementById('repModalEngineer').textContent = data.engineer_name || '—';
+    }
     document.getElementById('repModalReporter').textContent = data.reporter_name || '—';
     // Start / End date — editable pickers for accepted engineers, plain text otherwise
     if (IS_ENGINEER && data.engineer_accepted && data.resolution_status !== 'Pending Admin Approval') {
@@ -2730,6 +2950,7 @@ function openRepModal(repId) {
     const coords  = data.coordinates    || '';
     document.getElementById('repModalRequester').textContent = reqName || '—';
     document.getElementById('repModalContact').textContent   = contact || '—';
+    document.getElementById('repModalEmail').textContent     = data.req_email || '—';
     document.getElementById('repModalCoords').textContent    = coords  || '—';
     const reqDateEl = document.getElementById('repModalReqDate');
     if (reqDateEl) reqDateEl.textContent = data.req_created_at ? fmtDate(data.req_created_at) : '—';
@@ -2773,10 +2994,19 @@ function openRepModal(repId) {
             document.getElementById('repAcceptBtn').style.display       = 'inline-flex';
         } else {
             // Accepted — editable fields + save/submit buttons
-            priorityField.innerHTML = '<select class="rep-editable-field" id="repPrioritySelect">' +
-                ['Low','Medium','High','Critical'].map(v=>`<option value="${v}"${data.priority_lvl===v?' selected':''}>${v}</option>`).join('') +
-                '</select>';
-            budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(data.budget_raw))}" min="0" step="0.01" placeholder="0.00"></div>`;
+            priorityField.innerHTML = '<div class="rep-priority-combobox" id="repPriorityCombobox">' +
+                '<div class="rep-priority-display" id="repPriorityDisplay" onclick="togglePriorityDropdown()">' +
+                '<span id="repPriorityLabel">' + (data.priority_lvl || 'Low') + '</span>' +
+                '<span class="rep-priority-arrow">&#9660;</span>' +
+                '</div>' +
+                '<div class="rep-priority-dropdown" id="repPriorityDropdown">' +
+                ['Low','Medium','High','Critical'].map(v =>
+                    '<div class="rep-priority-option' + (data.priority_lvl===v?' selected-opt':'') + '" data-value="' + v + '" onclick="selectPriorityOption(\'' + v + '\')">' + v + '</div>'
+                ).join('') +
+                '</div>' +
+                '</div>' +
+                '<input type="hidden" id="repPrioritySelect" value="' + (data.priority_lvl || 'Low') + '">';
+            budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(Math.round(data.budget_raw)))}" min="0" step="1" placeholder="0" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><div class="rep-budget-spinners"><button type="button" class="rep-budget-spin-btn" onclick="var i=document.getElementById('repBudgetInput');i.value=Math.max(0,(parseInt(i.value||0)+1));i.dispatchEvent(new Event('input'))" tabindex="-1">▲</button><button type="button" class="rep-budget-spin-btn" onclick="var i=document.getElementById('repBudgetInput');i.value=Math.max(0,(parseInt(i.value||0)-1));i.dispatchEvent(new Event('input'))" tabindex="-1">▼</button></div></div>`;
             document.getElementById('repSaveBtn').style.display         = 'inline-flex';
             document.getElementById('repApproveBtn').style.display      = '';
             document.getElementById('repAdminApproveBtn').style.display = 'none';
@@ -2815,6 +3045,25 @@ function openRepModal(repId) {
         } else {
             returnBannerEl.style.display = 'none';
         }
+    }
+
+    // ── Highlight flagged fields for engineer ────────────────────────────────
+    // Map of field key → the rep-field div containing it
+    const fieldMap = {
+        'starting_date':     document.getElementById('repModalStart')?.closest('.rep-field'),
+        'estimated_end_date':document.getElementById('repModalEnd')?.closest('.rep-field'),
+        'priority_lvl':      document.getElementById('repModalPriority')?.closest('.rep-field'),
+        'budget':            document.getElementById('repModalBudget')?.closest('.rep-field'),
+    };
+    // Clear all highlights first
+    Object.values(fieldMap).forEach(el => { if (el) el.classList.remove('rep-field-highlighted'); });
+    // Apply highlights if engineer and fields are flagged
+    if (IS_ENGINEER && data.highlight_fields) {
+        let flagged = [];
+        try { flagged = JSON.parse(data.highlight_fields); } catch(e) {}
+        flagged.forEach(key => {
+            if (fieldMap[key]) fieldMap[key].classList.add('rep-field-highlighted');
+        });
     }
 
     // AI section — show ALL analysis fields with full descriptions
@@ -2985,7 +3234,7 @@ async function doSaveRepFields() {
     if (!currentRepData || !IS_ENGINEER) return;
     closeSaveConfirm();
     const priority    = document.getElementById('repPrioritySelect')?.value || currentRepData.priority_lvl;
-    const budget      = parseFloat(document.getElementById('repBudgetInput')?.value || 0);
+    const budget      = parseInt(document.getElementById('repBudgetInput')?.value || 0);
     const startDate   = document.getElementById('rdpStartHidden')?.value  || currentRepData.starting_date      || '';
     const endDate     = document.getElementById('rdpEndHidden')?.value    || currentRepData.estimated_end_date  || '';
     const btn = document.getElementById('repSaveBtn');
@@ -3014,7 +3263,7 @@ async function doApproveReport() {
     if (!currentRepData || !IS_ENGINEER) return;
     closeApproveConfirm();
     const priority  = document.getElementById('repPrioritySelect')?.value || currentRepData.priority_lvl;
-    const budget    = parseFloat(document.getElementById('repBudgetInput')?.value || 0);
+    const budget    = parseInt(document.getElementById('repBudgetInput')?.value || 0);
     const startDate = document.getElementById('rdpStartHidden')?.value  || currentRepData.starting_date      || '';
     const endDate   = document.getElementById('rdpEndHidden')?.value    || currentRepData.estimated_end_date  || '';
     const btn = document.getElementById('repApproveBtn');
@@ -3108,6 +3357,13 @@ function confirmAdminReturn() {
     if (!currentRepData || !IS_ADMIN) return;
     const noteEl = document.getElementById('repReturnNoteInput');
     if (noteEl) noteEl.value = '';
+    // Clear all field checkboxes and reset Select All button
+    ['hlStartDate','hlEndDate','hlPriority','hlBudget'].forEach(id => {
+        const cb = document.getElementById(id);
+        if (cb) cb.checked = false;
+    });
+    const saBtn = document.querySelector('#repAdminReturnConfirmBackdrop .rep-select-all-btn');
+    if (saBtn) saBtn.textContent = 'Select All';
     document.getElementById('repAdminReturnConfirmBackdrop').classList.add('active');
 }
 function closeAdminReturnConfirm() {
@@ -3120,6 +3376,13 @@ document.getElementById('repAdminReturnConfirmBackdrop').addEventListener('click
 async function doAdminReturnReport() {
     if (!currentRepData || !IS_ADMIN) return;
     const returnNote = document.getElementById('repReturnNoteInput')?.value?.trim() || '';
+    // Collect highlighted field names
+    const highlighted = [];
+    ['hlStartDate','hlEndDate','hlPriority','hlBudget'].forEach(id => {
+        const cb = document.getElementById(id);
+        if (cb && cb.checked) highlighted.push(cb.value);
+    });
+    const highlightFields = JSON.stringify(highlighted);
     closeAdminReturnConfirm();
     const repId = currentRepData.rep_id;
     const btn   = document.getElementById('repAdminReturnBtn');
@@ -3128,7 +3391,7 @@ async function doAdminReturnReport() {
         const res  = await fetch('current_reports.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'admin_return_report', rep_id: repId, return_note: returnNote})
+            body: JSON.stringify({action: 'admin_return_report', rep_id: repId, return_note: returnNote, highlight_fields: highlightFields})
         });
         const text = await res.text();
         let data;
@@ -3141,7 +3404,7 @@ async function doAdminReturnReport() {
         if (data.success) {
             // Update in-memory so engineer sees banner immediately if modal reopened
             const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
-            if (idx > -1) ALL_REPORTS[idx].admin_return_note = returnNote;
+            if (idx > -1) { ALL_REPORTS[idx].admin_return_note = returnNote; ALL_REPORTS[idx].highlight_fields = highlightFields; }
             closeRepModal();
             showRepNotif('success','↩️ Report #REP-'+repId+' returned to engineer for revision.');
             setTimeout(()=>location.reload(),1800);
@@ -3349,6 +3612,47 @@ document.addEventListener("DOMContentLoaded", function() {
 // ════════════════════════════════════════════════════════════════
 
 /** Build the HTML for a clickable date display trigger (no overlay wired yet) */
+// ── Select All for field checkboxes (Return to Engineer modal) ────────────────
+function toggleSelectAllFields(btn) {
+    const ids = ['hlStartDate','hlEndDate','hlPriority','hlBudget'];
+    const allChecked = ids.every(id => { const cb = document.getElementById(id); return cb && cb.checked; });
+    ids.forEach(id => { const cb = document.getElementById(id); if (cb) cb.checked = !allChecked; });
+    btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+}
+
+// ── Priority Combobox (profile.php style, orange theme) ──────────────────────
+function togglePriorityDropdown() {
+    const display = document.getElementById('repPriorityDisplay');
+    const dropdown = document.getElementById('repPriorityDropdown');
+    if (!display || !dropdown) return;
+    const isOpen = dropdown.classList.contains('open');
+    if (isOpen) {
+        dropdown.classList.remove('open'); display.classList.remove('open');
+    } else {
+        dropdown.classList.add('open'); display.classList.add('open');
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', function closePriority(e) {
+                const box = document.getElementById('repPriorityCombobox');
+                if (box && !box.contains(e.target)) {
+                    dropdown.classList.remove('open'); display.classList.remove('open');
+                    document.removeEventListener('click', closePriority);
+                }
+            });
+        }, 0);
+    }
+}
+function selectPriorityOption(value) {
+    const label   = document.getElementById('repPriorityLabel');
+    const hidden  = document.getElementById('repPrioritySelect');
+    const display = document.getElementById('repPriorityDisplay');
+    const dropdown= document.getElementById('repPriorityDropdown');
+    if (label)   label.textContent = value;
+    if (hidden)  hidden.value = value;
+    if (display) display.classList.remove('open');
+    if (dropdown){ dropdown.classList.remove('open'); dropdown.querySelectorAll('.rep-priority-option').forEach(o => o.classList.toggle('selected-opt', o.dataset.value===value)); }
+}
+
 function rdpBuildDisplay(displayId, isoVal, placeholder) {
     var MONTHS = ['January','February','March','April','May','June',
                   'July','August','September','October','November','December'];

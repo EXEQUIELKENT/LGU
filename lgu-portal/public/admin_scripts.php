@@ -550,21 +550,23 @@ startClock();
 
 // ===== NOTIFICATION SYSTEM =====
 (function() {
-    const notifBtn       = document.getElementById('notifBtn');
-    const mobileNotifBtn = document.getElementById('mobileNotifBtn');
-    const notifDropdown  = document.getElementById('notifDropdown');
-    const notifBody      = document.getElementById('notifBody');
-    const notifBadge     = document.getElementById('notifBadge');
+    const notifBtn         = document.getElementById('notifBtn');
+    const mobileNotifBtn   = document.getElementById('mobileNotifBtn');
+    const notifDropdown    = document.getElementById('notifDropdown');
+    const notifBody        = document.getElementById('notifBody');
+    const notifBadge       = document.getElementById('notifBadge');
     const mobileNotifBadge = document.getElementById('mobileNotifBadge');
-    const clearNotifBtn  = document.getElementById('clearNotifBtn');
+    const clearNotifBtn    = document.getElementById('clearNotifBtn');
     if ((!notifBtn && !mobileNotifBtn) || !notifDropdown) return;
 
-    let notifications = [];
-    let unreadCount   = 0;
+    const NOTIF_API      = 'api/notifications.php';
+    let notifications    = [];
+    let unreadCount      = 0;
     const NOTIF_SEEN_KEY = 'notif_seen_ids';
     let seenNotifIds = new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]'));
     let isFirstLoad = true;
 
+    /* ── Badge + bell ──────────────────────────────────────────── */
     function updateBadge(count) {
         if (notifBadge) {
             if (count > 0) {
@@ -588,43 +590,93 @@ startClock();
                 mobileNotifBtn?.classList.remove('has-notif');
             }
         }
-        if (notifBtn) { if (count > 0) notifBtn.classList.add('has-notif'); else notifBtn.classList.remove('has-notif'); }
+        if (notifBtn) { count > 0 ? notifBtn.classList.add('has-notif') : notifBtn.classList.remove('has-notif'); }
+        // Inline unread pill inside dropdown header
+        const cntEl = document.getElementById('notifUnreadCount');
+        if (cntEl) { if (count > 0) { cntEl.textContent = count; cntEl.style.display = ''; } else { cntEl.style.display = 'none'; } }
     }
 
+    /* ── Icon/colour map by title keywords ────────────────────── */
+    function getNotifMeta(title) {
+        const t = (title || '').toLowerCase();
+        if (t.includes('return') || t.includes('revision') || t.includes('not complete')) return { icon: '↩️', cls: 'type-return'   };
+        if (t.includes('complete') || t.includes('completed'))                             return { icon: '✅', cls: 'type-complete' };
+        if (t.includes('approved') || t.includes('scheduled'))                             return { icon: '🎉', cls: 'type-approved' };
+        if (t.includes('review')   || t.includes('submitted') || t.includes('pending'))   return { icon: '⏳', cls: 'type-review'   };
+        if (t.includes('new')      || t.includes('citizen'))                               return { icon: '📋', cls: 'type-new'      };
+        return { icon: '🔔', cls: '' };
+    }
+
+    function getPageLabel(url) {
+        if (!url) return null;
+        const u = url.toLowerCase().split('?')[0];
+        if (u.includes('pending_reports'))  return { label: 'Pending Reports',  cls: 'notif-page-pending'  };
+        if (u.includes('current_reports'))  return { label: 'Current Reports',  cls: 'notif-page-current'  };
+        if (u.includes('archive_reports'))  return { label: 'Archive Reports',  cls: 'notif-page-archive'  };
+        if (u.includes('requests'))         return { label: 'Requests',         cls: 'notif-page-requests' };
+        if (u.includes('employee'))         return { label: 'Dashboard',        cls: 'notif-page-dashboard'};
+        return null;
+    }
+
+    function escH(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    /* ── Render notifications grouped by date ──────────────────── */
     function updateNotificationUI() {
+        if (!notifBody) return;
         if (!notifications.length) {
-            notifBody.innerHTML = '<div class="notif-empty">No new notifications</div>';
+            notifBody.innerHTML = '<div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>No notifications yet</div></div>';
             return;
         }
-        const groups = {};
+
+        // Group by date string
+        const groups = {}, order = [];
         notifications.forEach(n => {
-            const type = n.request_type || 'Other';
-            if (!groups[type]) groups[type] = [];
-            groups[type].push(n);
+            const d = n.date || 'Today';
+            if (!groups[d]) { groups[d] = []; order.push(d); }
+            groups[d].push(n);
         });
-        notifBody.innerHTML = Object.keys(groups).map(type => `
-            <div class="notif-group">
-                <div class="notif-group-title">${type}</div>
-                ${groups[type].map(n => `
-                    <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n.id}">
-                        <div class="notif-item-title">${n.title}</div>
-                        <div class="notif-item-desc">${n.description}</div>
-                        <div class="notif-item-time">
-                            <span class="notif-time">${n.time}</span>
-                            <span class="notif-date">${n.date}</span>
+
+        notifBody.innerHTML = order.map(date => `
+            <div class="notif-date-group"><div class="notif-date-label">${escH(date)}</div></div>
+            ${groups[date].map(n => {
+                const m = getNotifMeta(n.title);
+                return `<div class="notif-item${n.read ? '' : ' unread'}" data-id="${escH(String(n.id))}" data-url="${escH(n.url || '')}">
+                    <div class="notif-icon-wrap ${m.cls}">${m.icon}</div>
+                    <div class="notif-content">
+                        <div class="notif-item-title">${escH(n.title)}</div>
+                        <div class="notif-item-desc">${escH(n.description)}</div>
+                        <div class="notif-item-meta">
+                            <span class="notif-time-label">${escH(n.time)}</span>
+                            ${(function(){ const p = getPageLabel(n.url); return p ? `<span class="notif-page-pill ${p.cls}"><i class="fas fa-external-link-alt" style="font-size:8px;margin-right:3px;"></i>${p.label}</span>` : ''; })()}
                         </div>
                     </div>
-                `).join('')}
-            </div>
+                    ${n.read ? '' : '<div class="notif-unread-dot"></div>'}
+                </div>`;
+            }).join('')}
         `).join('');
+
+        // Click: mark read then navigate
         notifBody.querySelectorAll('.notif-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const notif = notifications.find(n => n.id == item.dataset.id);
-                if (notif?.url) window.location.href = notif.url;
+            item.addEventListener('click', async () => {
+                const id  = parseInt(item.dataset.id);
+                const url = item.dataset.url;
+                // Instant visual feedback
+                item.classList.remove('unread');
+                const dot = item.querySelector('.notif-unread-dot');
+                if (dot) dot.remove();
+                // Persist mark-read
+                try {
+                    await fetch(NOTIF_API, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'mark_read', id })
+                    });
+                } catch(e) {}
+                if (url) window.location.href = url;
             });
         });
     }
 
+    /* ── Sound ─────────────────────────────────────────────────── */
     let notifAudioCtx = null, notifAudioReady = false;
 
     function initNotifAudioContext() {
@@ -649,15 +701,18 @@ startClock();
             if (!AudioCtx || !notifAudioCtx || notifAudioCtx.state === 'suspended') return;
             const o = notifAudioCtx.createOscillator();
             const g = notifAudioCtx.createGain();
-            o.type = "triangle"; o.frequency.value = 880; g.gain.value = 0.18;
+            o.type = 'triangle'; o.frequency.value = 880; g.gain.value = 0.18;
             o.connect(g).connect(notifAudioCtx.destination);
             o.start(); o.stop(notifAudioCtx.currentTime + 0.17);
         } catch (e) {}
     }
 
+    /* ── Fetch ──────────────────────────────────────────────────── */
     async function fetchNotifications() {
         try {
-            const res = await fetch('api/notifications.php');
+            const res = await fetch(NOTIF_API);
+            // 403 = not logged in yet — silent, not a real error
+            if (res.status === 403) return;
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
 
@@ -685,15 +740,16 @@ startClock();
             isFirstLoad = false;
             updateBadge(unreadCount);
             updateNotificationUI();
-        } catch (err) { console.error('Error fetching notifications:', err); }
+        } catch (err) { /* silent — notification errors shouldn't disrupt the page */ }
     }
 
+    /* ── Mark all read (Clear button) ──────────────────────────── */
     if (clearNotifBtn) {
-        clearNotifBtn.addEventListener('click', async () => {
+        clearNotifBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             try {
-                await fetch('api/notifications.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                await fetch(NOTIF_API, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'clear_all' })
                 });
                 seenNotifIds.clear();
@@ -703,7 +759,12 @@ startClock();
         });
     }
 
-    function toggleDropdown(e) { e.stopPropagation(); notifDropdown.classList.toggle('show'); }
+    /* ── Toggle dropdown (refresh on open) ─────────────────────── */
+    function toggleDropdown(e) {
+        e.stopPropagation();
+        notifDropdown.classList.toggle('show');
+        if (notifDropdown.classList.contains('show')) fetchNotifications();
+    }
     if (notifBtn)       notifBtn.addEventListener('click', toggleDropdown);
     if (mobileNotifBtn) mobileNotifBtn.addEventListener('click', toggleDropdown);
 

@@ -2468,11 +2468,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <!-- Notification Dropdown -->
 <div class="notif-dropdown" id="notifDropdown">
     <div class="notif-dropdown-header">
-        <h3>Notifications</h3>
-        <button class="notif-clear-btn" id="clearNotifBtn">Clear all</button>
+        <h3><span class="notif-header-icon">🔔</span> Notifications <span class="notif-unread-count" id="notifUnreadCount" style="display:none;">0</span></h3>
+        <button class="notif-clear-btn" id="clearNotifBtn">Mark all read</button>
     </div>
     <div class="notif-dropdown-body" id="notifBody">
-        <div class="notif-empty">No new notifications</div>
+        <div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>No notifications yet</div></div>
     </div>
 </div>
 

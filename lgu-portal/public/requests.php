@@ -100,10 +100,11 @@ function showNotification() {
 
 // ── DB Queries ───────────────────────────────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 4096");
+$conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 
 $sql = "SELECT
     r.req_id, r.infrastructure, r.location, r.issue, r.approval_status,
-    r.created_at, r.name, r.contact_number, r.coordinates,
+    r.created_at, r.name, r.contact_number, r.coordinates, r.email,
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
 LEFT JOIN evidence_images e ON e.req_id = r.req_id
@@ -1746,6 +1747,7 @@ tbody td {
                 <div class="gis-field"><div class="gis-field-label"><i class="fas fa-calendar-alt"></i> Date Submitted</div><div class="gis-field-value" id="modalDate"></div></div>
                 <div class="gis-field"><div class="gis-field-label"><i class="fas fa-user"></i> Requester</div><div class="gis-field-value" id="modalRequester"></div></div>
                 <div class="gis-field"><div class="gis-field-label"><i class="fas fa-phone"></i> Contact</div><div class="gis-field-value" id="modalContact"></div></div>
+                <div class="gis-field"><div class="gis-field-label"><i class="fas fa-envelope"></i> Email</div><div class="gis-field-value" id="modalEmail" style="font-size:13px;word-break:break-all;"></div></div>
             </div>
             <div class="gis-divider"></div>
             <div class="gis-field">
@@ -2148,6 +2150,7 @@ function openGisDetailModal(reqId) {
     document.getElementById('modalDate').textContent        = formatDate(req.created_at);
     document.getElementById('modalRequester').textContent   = req.requester_name || 'Anonymous';
     document.getElementById('modalContact').textContent     = req.contact_number || '—';
+    document.getElementById('modalEmail').textContent       = req.email || '—';
 
     const evidenceWrap = document.getElementById('modalEvidence');
     evidenceWrap.innerHTML = '';
