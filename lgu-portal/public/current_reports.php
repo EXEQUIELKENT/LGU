@@ -37,6 +37,11 @@ $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_ret
 $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_fields TEXT DEFAULT NULL");
 // ── Auto-add requester email column to requests table ─────────────────────────
 $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
+// ── Add decline_reason column so engineers can explain why they decline ────────
+$conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_reason TEXT DEFAULT NULL");
+// ── Add decline_reviewed column so managers/office staff can record verdict ───
+$conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_reviewed TINYINT(1) DEFAULT NULL COMMENT '1=valid,0=invalid'");
+$conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_review_note TEXT DEFAULT NULL");
 
 $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
@@ -171,13 +176,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'decline_assignment') {
-        $repId = (int)($input['rep_id'] ?? 0);
+        $repId        = (int)($input['rep_id'] ?? 0);
+        $declineReason = trim($input['decline_reason'] ?? '');
         if ($repId <= 0 || !$isEngineer) {
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success'=>false,'message'=>'Invalid request.']); exit;
         }
-        $stmt = $conn->prepare("UPDATE reports SET engineer_id = NULL, engineer_accepted = 0 WHERE rep_id = ? AND engineer_id = ?");
-        $stmt->bind_param("ii", $repId, $engineerId);
+        // Store the reason but keep assignment in place — manager must review first
+        $stmt = $conn->prepare("UPDATE reports SET decline_reason = ?, decline_reviewed = NULL, decline_review_note = NULL WHERE rep_id = ? AND engineer_id = ?");
+        $stmt->bind_param("sii", $declineReason, $repId, $engineerId);
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
@@ -185,13 +192,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/notif_helper.php';
             $info      = getRepInfo($conn, $repId);
             $actorName = getActorName();
+            $reasonText = $declineReason ? " Reason: \"{$declineReason}\"" : ' No reason provided.';
             notifyAssigners($conn,
                 "Engineer Declined Report #REP-{$repId}",
-                "{$actorName} declined assignment for Report #{$repId}. A new engineer needs to be assigned.",
-                "current_reports.php",
+                "{$actorName} declined assignment for Report #{$repId}.{$reasonText} Please review their reason.",
+                buildRepUrl('current_reports.php', $repId),
                 $info['type'],
                 $engineerId
             );
+        }
+        while (ob_get_level() > 0) ob_end_clean();
+        echo json_encode(['success' => $affected > 0]); exit;
+    }
+
+    // ── Manager/Office Staff: mark decline reason VALID → remove engineer ───────
+    if ($action === 'approve_decline') {
+        $canReview = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['manager','office staff','super admin','admin']);
+        $repId     = (int)($input['rep_id'] ?? 0);
+        $reviewNote= trim($input['review_note'] ?? '');
+        if ($repId <= 0 || !$canReview) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Unauthorized.']); exit;
+        }
+        // Get engineer id before clearing
+        $eRow = $conn->query("SELECT engineer_id, decline_reason FROM reports WHERE rep_id = $repId LIMIT 1")->fetch_assoc();
+        $engId = (int)($eRow['engineer_id'] ?? 0);
+        $declReason = $eRow['decline_reason'] ?? '';
+        // Remove engineer — valid decline
+        $stmt = $conn->prepare("UPDATE reports SET engineer_id = NULL, engineer_accepted = 0, decline_reason = NULL, decline_reviewed = 1, decline_review_note = ? WHERE rep_id = ?");
+        $stmt->bind_param("si", $reviewNote, $repId);
+        $stmt->execute();
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+        if ($affected > 0) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $noteText  = $reviewNote ? " Note: \"{$reviewNote}\"" : '';
+            // Notify the engineer that their decline was accepted
+            if ($engId > 0) {
+                insertNotification($conn, $engId,
+                    "Decline Accepted — Report #REP-{$repId}",
+                    "{$actorName} reviewed your decline reason and accepted it. You are unassigned from Report #{$repId}.{$noteText}",
+                    buildRepUrl('current_reports.php', $repId),
+                    $info['type']
+                );
+            }
+        }
+        while (ob_get_level() > 0) ob_end_clean();
+        echo json_encode(['success' => $affected > 0]); exit;
+    }
+
+    // ── Manager/Office Staff: mark decline reason INVALID → engineer must continue ─
+    if ($action === 'reject_decline') {
+        $canReview = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['manager','office staff','super admin','admin']);
+        $repId     = (int)($input['rep_id'] ?? 0);
+        $reviewNote= trim($input['review_note'] ?? '');
+        if ($repId <= 0 || !$canReview) {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'Unauthorized.']); exit;
+        }
+        // Note is required when rejecting — enforce server-side as the final guard
+        if ($reviewNote === '') {
+            while (ob_get_level() > 0) ob_end_clean();
+            echo json_encode(['success'=>false,'message'=>'A note is required when rejecting a decline. Please explain why to the engineer.']); exit;
+        }
+        // Get engineer id before updating
+        $eRow  = $conn->query("SELECT engineer_id FROM reports WHERE rep_id = $repId LIMIT 1")->fetch_assoc();
+        $engId = (int)($eRow['engineer_id'] ?? 0);
+        // Keep engineer, force re-acceptance, clear decline
+        $stmt = $conn->prepare("UPDATE reports SET decline_reason = NULL, decline_reviewed = 0, decline_review_note = ?, engineer_accepted = 0 WHERE rep_id = ?");
+        $stmt->bind_param("si", $reviewNote, $repId);
+        $stmt->execute();
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+        if ($affected > 0) {
+            require_once __DIR__ . '/notif_helper.php';
+            $info      = getRepInfo($conn, $repId);
+            $actorName = getActorName();
+            $noteText  = $reviewNote ? " Manager's note: \"{$reviewNote}\"" : '';
+            // Notify the engineer that they must still do the job
+            if ($engId > 0) {
+                insertNotification($conn, $engId,
+                    "Decline Rejected — You Must Complete Report #REP-{$repId}",
+                    "{$actorName} reviewed your decline and found it invalid. You are still assigned to Report #{$repId}.{$noteText}",
+                    buildRepUrl('current_reports.php', $repId),
+                    $info['type']
+                );
+            }
         }
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode(['success' => $affected > 0]); exit;
@@ -377,6 +465,7 @@ $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
         r.priority_lvl, r.budget, r.created_at, r.engineer_id, r.engineer_accepted,
+        r.decline_reason, r.decline_reviewed, r.decline_review_note,
         res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note, res.highlight_fields,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
@@ -483,6 +572,9 @@ foreach ($rows as $row) {
         'engineer_name'     => $row['engineer_name'] ?? '',
         'engineer_pic'      => $row['engineer_pic'] ?? '',
         'engineer_accepted' => (bool)($row['engineer_accepted'] ?? false),
+        'decline_reason'      => $row['decline_reason']      ?? '',
+        'decline_reviewed'    => isset($row['decline_reviewed']) ? (int)$row['decline_reviewed'] : null,
+        'decline_review_note' => $row['decline_review_note'] ?? '',
         'reporter_name'     => $row['reporter_name'] ?? '',
         'requester_name'    => $row['requester_name'] ?? '',
         'contact_number'    => $row['contact_number'] ?? '',
@@ -703,6 +795,45 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 }
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
+
+.search-toolbar { display: flex; align-items: center; gap: 10px; }
+.sort-dropdown-wrap { position: relative; flex-shrink: 0; }
+.sort-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 13px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all .22s ease; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    white-space: nowrap; font-family: inherit;
+}
+.sort-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.40); }
+.sort-btn i { font-size: 12px; }
+.sort-chevron { font-size: 10px !important; transition: transform .2s; }
+.sort-dropdown-wrap.open .sort-chevron { transform: rotate(180deg); }
+.sort-btn-label { display: inline; }
+@media (max-width: 520px) { .sort-btn-label { display: none; } }
+.sort-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999; min-width: 190px; overflow: hidden; animation: sortDropIn .18s ease;
+}
+.sort-dropdown-wrap.open .sort-dropdown { display: block; }
+@keyframes sortDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.sort-option {
+    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
+    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
+}
+.sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.sort-option i { width: 14px; text-align: center; font-size: 12px; }
+.sort-dropdown-divider { height:1px; background: var(--border-color,rgba(0,0,0,.08)); margin: 3px 0; }
+[data-theme="dark"] .sort-dropdown { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+[data-theme="dark"] .sort-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 
 /* ================================================================
    ENGINEER COMBOBOX TRIGGER — portal dropdown lives in <body>
@@ -1608,6 +1739,66 @@ select.rep-editable-field { cursor:pointer; }
 .rep-confirm-return-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:80px;margin-top:12px;transition:border-color .2s; }
 .rep-confirm-return-note:focus { outline:none;border-color:#ef4444; }
 [data-theme="dark"] .rep-confirm-return-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
+
+/* ── Decline reason textarea — orange focus to distinguish from red return note ── */
+.rep-confirm-decline-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:90px;margin-top:12px;transition:border-color .2s; }
+.rep-confirm-decline-note:focus { outline:none;border-color:#f97316; }
+[data-theme="dark"] .rep-confirm-decline-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
+
+/* ── Manager review textarea — same look, blue focus ── */
+.rep-confirm-review-note { width:100%;box-sizing:border-box;border:1.5px solid var(--border-color);border-radius:9px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text-primary);background:var(--bg-secondary);resize:vertical;min-height:72px;margin-top:10px;transition:border-color .2s; }
+.rep-confirm-review-note:focus { outline:none;border-color:#3762c8; }
+[data-theme="dark"] .rep-confirm-review-note { background:rgba(26,26,26,.95);color:#fff;border-color:rgba(255,255,255,.15); }
+
+@keyframes noteShake {
+    0%,100% { transform: translateX(0); }
+    15%     { transform: translateX(-6px); }
+    35%     { transform: translateX(6px); }
+    55%     { transform: translateX(-4px); }
+    75%     { transform: translateX(4px); }
+    90%     { transform: translateX(-2px); }
+}
+
+/* ── Pending decline review banner shown inside the report modal ── */
+.rep-decline-banner {
+    display:flex; align-items:flex-start; gap:11px;
+    padding:13px 15px; border-radius:12px; margin-bottom:10px;
+    background:rgba(249,115,22,.10); border:1.5px solid rgba(249,115,22,.28);
+    font-size:13px; line-height:1.5;
+}
+.rep-decline-banner .rdb-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.rep-decline-banner .rdb-body { flex:1; min-width:0; }
+.rep-decline-banner .rdb-title { font-weight:700; color:#c2410c; margin-bottom:3px; }
+.rep-decline-banner .rdb-reason { color:var(--text-secondary); font-size:12.5px; }
+.rep-decline-banner .rdb-review-note {
+    margin-top: 8px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    background: rgba(239,68,68,.07);
+    border: 1px solid rgba(239,68,68,.18);
+    color: var(--text-primary);
+}
+[data-theme="dark"] .rep-decline-banner .rdb-review-note {
+    background: rgba(239,68,68,.13);
+    border-color: rgba(239,68,68,.28);
+}
+[data-theme="dark"] .rep-decline-banner { background:rgba(249,115,22,.13); border-color:rgba(249,115,22,.35); }
+[data-theme="dark"] .rep-decline-banner .rdb-title { color:#fb923c; }
+
+/* manager action buttons inside decline banner */
+.rep-decline-banner .rdb-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.btn-decline-valid   { padding:6px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(34,197,94,.3);transition:all .18s ease;font-family:inherit; }
+.btn-decline-valid:hover   { transform:translateY(-1px);box-shadow:0 4px 12px rgba(34,197,94,.4); }
+.btn-decline-invalid { padding:6px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.3);transition:all .18s ease;font-family:inherit; }
+.btn-decline-invalid:hover { transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,68,68,.4); }
+
+/* verdict badge shown after review */
+.rdb-verdict-valid   { display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,.12);color:#15803d;border:1px solid rgba(34,197,94,.25); }
+.rdb-verdict-invalid { display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(239,68,68,.10);color:#b91c1c;border:1px solid rgba(239,68,68,.22); }
+[data-theme="dark"] .rdb-verdict-valid   { background:rgba(34,197,94,.18);color:#4ade80; }
+[data-theme="dark"] .rdb-verdict-invalid { background:rgba(239,68,68,.18);color:#f87171; }
 /* Admin field highlight — shown to engineer on flagged fields */
 .rep-field-highlighted {
     border-radius: 10px;
@@ -1915,6 +2106,23 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="reportSearch" type="text" placeholder="Search by ID, Infrastructure, Location, Engineer, Priority…">
     </div>
+    <div class="sort-dropdown-wrap" id="repSortWrap">
+        <button class="sort-btn" id="repSortBtn" title="Sort reports">
+            <i class="fas fa-sort"></i>
+            <span class="sort-btn-label">Sort</span>
+            <i class="fas fa-chevron-down sort-chevron"></i>
+        </button>
+        <div class="sort-dropdown" id="repSortDropdown">
+            <div class="sort-option active" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Newest)</div>
+            <div class="sort-option" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Oldest)</div>
+            <div class="sort-dropdown-divider"></div>
+            <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
+            <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
+            <div class="sort-dropdown-divider"></div>
+            <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Infrastructure A → Z</div>
+            <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Infrastructure Z → A</div>
+        </div>
+    </div>
     </div>
 
     <!-- Desktop Table -->
@@ -1953,7 +2161,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     $engAccepted   = !empty($row['engineer_accepted']);
                     $displayStatus = !$hasEngineer ? 'Awaiting Engineer' : ($engAccepted ? 'In Progress' : 'Pending Acceptance');
                 ?>
-                <tr>
+                <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
@@ -2013,7 +2221,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             $engAccepted   = !empty($row['engineer_accepted']);
             $displayStatus = !$hasEngineer ? 'Awaiting Engineer' : ($engAccepted ? 'In Progress' : 'Pending Acceptance');
         ?>
-        <div class="report-card">
+        <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
             <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
@@ -2133,6 +2341,8 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <!-- Shown while pending acceptance -->
                 <button class="btn-decline-rep" id="repDeclineBtn" style="display:none;" onclick="confirmDecline()"><i class="fas fa-times-circle"></i> Decline</button>
                 <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="confirmAccept()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
+                <!-- Shown to manager/office staff when engineer has a pending decline -->
+                <button class="btn-admin-return-rep" id="repReviewDeclineBtn" style="display:none;background:linear-gradient(135deg,#f97316,#ea580c);border-color:#f97316;" onclick="openReviewDeclineModal()"><i class="fas fa-clipboard-check"></i> Review Decline</button>
             </div>
         </div>
     </div>
@@ -2161,15 +2371,34 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     </div>
 </div>
 
-<!-- Decline Assignment Confirmation Modal -->
+<!-- Decline Assignment Modal — engineer enters a reason -->
 <div class="rep-confirm-backdrop" id="repDeclineConfirmBackdrop">
-    <div class="rep-confirm-modal">
-        <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-times-circle" style="color:#ef4444;font-size:24px;"></i></div>
+    <div class="rep-confirm-modal" style="width:420px;max-width:94vw;">
+        <div class="rep-confirm-icon" style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);"><i class="fas fa-times-circle" style="color:#f97316;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Decline Assignment?</div>
-        <div class="rep-confirm-desc">You will be unassigned from this report. The report will return to <strong>Awaiting Engineer</strong> status and someone else may be assigned.</div>
-        <div class="rep-confirm-btns">
+        <div class="rep-confirm-desc">Please provide a reason for declining. The Manager / Office Staff will review your reason before a decision is made.</div>
+        <textarea class="rep-confirm-decline-note" id="repDeclineReasonInput" placeholder="e.g. Outside my area of specialization, schedule conflict, health concern…"></textarea>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;text-align:left;width:100%;">⚠️ If your reason is found invalid, you will still be required to complete this report.</div>
+        <div class="rep-confirm-btns" style="margin-top:16px;">
             <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeDeclineConfirm()">Cancel</button>
-            <button class="rep-confirm-btn" id="repDeclineConfirmBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doDeclineAssignment()"><i class="fas fa-times-circle"></i> Confirm Decline</button>
+            <button class="rep-confirm-btn" id="repDeclineConfirmBtn" style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;box-shadow:0 4px 12px rgba(249,115,22,.35);" onclick="doDeclineAssignment()"><i class="fas fa-times-circle"></i> Submit Decline</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manager / Office Staff: Review Decline Modal -->
+<div class="rep-confirm-backdrop" id="repReviewDeclineBackdrop">
+    <div class="rep-confirm-modal" style="width:460px;max-width:94vw;">
+        <div class="rep-confirm-icon" style="background:rgba(55,98,200,.1);border:1px solid rgba(55,98,200,.22);"><i class="fas fa-clipboard-check" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Review Engineer's Decline</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;text-align:left;width:100%;font-weight:600;">Engineer's Reason:</div>
+        <div id="reviewDeclineReasonText" style="background:rgba(249,115,22,.07);border:1.5px solid rgba(249,115,22,.2);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--text-primary);line-height:1.5;width:100%;box-sizing:border-box;margin-bottom:12px;text-align:left;"></div>
+        <textarea class="rep-confirm-review-note" id="repReviewDeclineNoteInput" placeholder="Required: explain why this decline is invalid and what the engineer must do…" style="border-color:rgba(239,68,68,.35);"></textarea>
+        <div id="repReviewDeclineNoteError" style="display:none;color:#ef4444;font-size:12px;margin-top:5px;text-align:left;width:100%;">⚠️ A note is required when rejecting a decline. Please explain the reason to the engineer.</div>
+        <div class="rep-confirm-btns" style="margin-top:16px;gap:8px;">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeReviewDeclineModal()">Cancel</button>
+            <button class="rep-confirm-btn" id="repDeclineInvalidBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.3);" onclick="doRejectDecline()"><i class="fas fa-user-slash"></i> Invalid — Keep Assigned</button>
+            <button class="rep-confirm-btn" id="repDeclineValidBtn"   style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 12px rgba(34,197,94,.3);"  onclick="doApproveDecline()"><i class="fas fa-user-check"></i> Valid — Unassign</button>
         </div>
     </div>
 </div>
@@ -2968,30 +3197,45 @@ function openRepModal(repId) {
 
     if (IS_ENGINEER) {
         const isPendingAdminApproval = data.resolution_status === 'Pending Admin Approval';
-        const isPendingAcceptance    = !data.engineer_accepted;
+        const hasPendingDecline      = !!data.decline_reason;   // engineer submitted a decline reason, awaiting review
+        const isPendingAcceptance    = !data.engineer_accepted && !hasPendingDecline;
 
         if (isPendingAdminApproval) {
             // Engineer has already submitted — read-only, waiting for admin
             priorityField.innerHTML = priBadge(data.priority_lvl);
             const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
             budgetField.textContent = bdAmt;
-            document.getElementById('repSaveBtn').style.display         = 'none';
-            document.getElementById('repApproveBtn').style.display      = 'none';
-            document.getElementById('repAdminApproveBtn').style.display = 'none';
-            document.getElementById('repAdminReturnBtn').style.display  = 'none';
-            document.getElementById('repDeclineBtn').style.display      = 'none';
-            document.getElementById('repAcceptBtn').style.display       = 'none';
+            document.getElementById('repSaveBtn').style.display            = 'none';
+            document.getElementById('repApproveBtn').style.display         = 'none';
+            document.getElementById('repAdminApproveBtn').style.display    = 'none';
+            document.getElementById('repAdminReturnBtn').style.display     = 'none';
+            document.getElementById('repDeclineBtn').style.display         = 'none';
+            document.getElementById('repAcceptBtn').style.display          = 'none';
+            document.getElementById('repReviewDeclineBtn').style.display   = 'none';
+        } else if (hasPendingDecline) {
+            // Engineer declined — waiting for manager review; show read-only, no action buttons
+            priorityField.innerHTML = priBadge(data.priority_lvl);
+            const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
+            budgetField.textContent = bdAmt;
+            document.getElementById('repSaveBtn').style.display            = 'none';
+            document.getElementById('repApproveBtn').style.display         = 'none';
+            document.getElementById('repAdminApproveBtn').style.display    = 'none';
+            document.getElementById('repAdminReturnBtn').style.display     = 'none';
+            document.getElementById('repDeclineBtn').style.display         = 'none';
+            document.getElementById('repAcceptBtn').style.display          = 'none';
+            document.getElementById('repReviewDeclineBtn').style.display   = 'none';
         } else if (isPendingAcceptance) {
             // Read-only view — engineer must accept first
             priorityField.innerHTML = priBadge(data.priority_lvl);
             const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
             budgetField.textContent = bdAmt;
-            document.getElementById('repSaveBtn').style.display         = 'none';
-            document.getElementById('repApproveBtn').style.display      = 'none';
-            document.getElementById('repAdminApproveBtn').style.display = 'none';
-            document.getElementById('repAdminReturnBtn').style.display  = 'none';
-            document.getElementById('repDeclineBtn').style.display      = 'inline-flex';
-            document.getElementById('repAcceptBtn').style.display       = 'inline-flex';
+            document.getElementById('repSaveBtn').style.display            = 'none';
+            document.getElementById('repApproveBtn').style.display         = 'none';
+            document.getElementById('repAdminApproveBtn').style.display    = 'none';
+            document.getElementById('repAdminReturnBtn').style.display     = 'none';
+            document.getElementById('repDeclineBtn').style.display         = 'inline-flex';
+            document.getElementById('repAcceptBtn').style.display          = 'inline-flex';
+            document.getElementById('repReviewDeclineBtn').style.display   = 'none';
         } else {
             // Accepted — editable fields + save/submit buttons
             priorityField.innerHTML = '<div class="rep-priority-combobox" id="repPriorityCombobox">' +
@@ -3007,32 +3251,125 @@ function openRepModal(repId) {
                 '</div>' +
                 '<input type="hidden" id="repPrioritySelect" value="' + (data.priority_lvl || 'Low') + '">';
             budgetField.innerHTML = `<div class="rep-budget-wrap"><span class="rep-peso-prefix">₱</span><input type="number" class="rep-budget-input-inner rep-editable-field" id="repBudgetInput" value="${escH(String(Math.round(data.budget_raw)))}" min="0" step="1" placeholder="0" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><div class="rep-budget-spinners"><button type="button" class="rep-budget-spin-btn" onclick="var i=document.getElementById('repBudgetInput');i.value=Math.max(0,(parseInt(i.value||0)+1));i.dispatchEvent(new Event('input'))" tabindex="-1">▲</button><button type="button" class="rep-budget-spin-btn" onclick="var i=document.getElementById('repBudgetInput');i.value=Math.max(0,(parseInt(i.value||0)-1));i.dispatchEvent(new Event('input'))" tabindex="-1">▼</button></div></div>`;
-            document.getElementById('repSaveBtn').style.display         = 'inline-flex';
-            document.getElementById('repApproveBtn').style.display      = '';
-            document.getElementById('repAdminApproveBtn').style.display = 'none';
-            document.getElementById('repAdminReturnBtn').style.display  = 'none';
-            document.getElementById('repDeclineBtn').style.display      = 'none';
-            document.getElementById('repAcceptBtn').style.display       = 'none';
+            document.getElementById('repSaveBtn').style.display            = 'inline-flex';
+            document.getElementById('repApproveBtn').style.display         = '';
+            document.getElementById('repAdminApproveBtn').style.display    = 'none';
+            document.getElementById('repAdminReturnBtn').style.display     = 'none';
+            document.getElementById('repDeclineBtn').style.display         = 'none';
+            document.getElementById('repAcceptBtn').style.display          = 'none';
+            document.getElementById('repReviewDeclineBtn').style.display   = 'none';
         }
     } else if (IS_ADMIN && data.resolution_status === 'Pending Admin Approval') {
         // Admin sees reports pending their approval
         priorityField.innerHTML = priBadge(data.priority_lvl);
         const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
         budgetField.textContent = bdAmt;
-        document.getElementById('repSaveBtn').style.display         = 'none';
-        document.getElementById('repApproveBtn').style.display      = 'none';
-        document.getElementById('repAdminApproveBtn').style.display = 'inline-flex';
-        document.getElementById('repAdminReturnBtn').style.display  = 'inline-flex';
-        document.getElementById('repDeclineBtn').style.display      = 'none';
-        document.getElementById('repAcceptBtn').style.display       = 'none';
+        document.getElementById('repSaveBtn').style.display            = 'none';
+        document.getElementById('repApproveBtn').style.display         = 'none';
+        document.getElementById('repAdminApproveBtn').style.display    = 'inline-flex';
+        document.getElementById('repAdminReturnBtn').style.display     = 'inline-flex';
+        document.getElementById('repDeclineBtn').style.display         = 'none';
+        document.getElementById('repAcceptBtn').style.display          = 'none';
+        document.getElementById('repReviewDeclineBtn').style.display   = 'none';
     } else {
         priorityField.innerHTML = priBadge(data.priority_lvl);
         // Always show peso sign for non-engineer display
         const bdAmt = data.budget_raw ? '₱' + Number(data.budget_raw).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : (data.budget_display || '₱0.00');
         budgetField.textContent = bdAmt;
-        document.getElementById('repSaveBtn').style.display         = 'none';
-        document.getElementById('repAdminApproveBtn').style.display = 'none';
-        document.getElementById('repAdminReturnBtn').style.display  = 'none';
+        document.getElementById('repSaveBtn').style.display            = 'none';
+        document.getElementById('repAdminApproveBtn').style.display    = 'none';
+        document.getElementById('repAdminReturnBtn').style.display     = 'none';
+        document.getElementById('repReviewDeclineBtn').style.display   = 'none';
+
+        // Manager / Office Staff: show "Review Decline" button if engineer has a pending decline reason
+        if (CAN_ASSIGN_ENGINEER && data.decline_reason) {
+            document.getElementById('repReviewDeclineBtn').style.display = 'inline-flex';
+        }
+    }
+
+    // ── Decline reason banner — visible when there is a pending, rejected, or accepted decline ──
+    {
+        let existingDeclineBanner = document.getElementById('repDeclineBanner');
+        if (existingDeclineBanner) existingDeclineBanner.remove();
+
+        // Show banner if: (a) there is a pending decline reason, OR
+        //                (b) decline was reviewed (reviewed=0 invalid, reviewed=1 valid)
+        const hasPendingDecline  = !!data.decline_reason;
+        const hasReviewedDecline = data.decline_reviewed === 0 || data.decline_reviewed === 1;
+
+        if (hasPendingDecline || hasReviewedDecline) {
+            const declineBanner = document.createElement('div');
+            declineBanner.id = 'repDeclineBanner';
+            declineBanner.className = 'rep-decline-banner';
+
+            // Banner colour/icon changes based on verdict
+            if (data.decline_reviewed === 0) {
+                // Rejected — use red tint to grab engineer's attention
+                declineBanner.style.background = 'rgba(239,68,68,.10)';
+                declineBanner.style.borderColor = 'rgba(239,68,68,.30)';
+            } else if (data.decline_reviewed === null && hasPendingDecline) {
+                // Still pending review — keep orange
+                declineBanner.style.background = 'rgba(249,115,22,.10)';
+                declineBanner.style.borderColor = 'rgba(249,115,22,.28)';
+            }
+
+            // Build verdict badge
+            let verdictHtml = '';
+            if (data.decline_reviewed === 1) {
+                verdictHtml = `<span class="rdb-verdict-valid">✅ Decline Accepted — Engineer Unassigned</span>`;
+            } else if (data.decline_reviewed === 0) {
+                verdictHtml = `<span class="rdb-verdict-invalid">❌ Decline Rejected — You Must Proceed</span>`;
+            }
+
+            // Manager's note — shown to everyone; critical for engineer on rejection
+            let reviewNoteHtml = '';
+            if (data.decline_review_note && data.decline_review_note.trim()) {
+                const noteLabel = data.decline_reviewed === 0
+                    ? `<strong style="color:inherit;">Manager's note:</strong>`
+                    : `Manager's note:`;
+                reviewNoteHtml = `<div class="rdb-review-note">${noteLabel} "${escH(data.decline_review_note)}"</div>`;
+            }
+
+            // Manager action buttons — only when unreviewed
+            let actionsHtml = '';
+            if (CAN_ASSIGN_ENGINEER && data.decline_reviewed === null && hasPendingDecline) {
+                actionsHtml = `
+                    <div class="rdb-actions">
+                        <button class="btn-decline-valid"   onclick="doApproveDecline()"><i class="fas fa-user-check"></i> Valid — Unassign Engineer</button>
+                        <button class="btn-decline-invalid" onclick="openReviewDeclineModal()"><i class="fas fa-clipboard-check"></i> Review &amp; Decide</button>
+                    </div>`;
+            }
+
+            // Title + icon differ by state
+            let bannerIcon  = '⚠️';
+            let bannerTitle = 'Engineer Requested to Decline';
+            if (data.decline_reviewed === 0) {
+                bannerIcon  = '🚫';
+                bannerTitle = 'Your Decline Was Rejected — Assignment Still Active';
+            } else if (data.decline_reviewed === 1) {
+                bannerIcon  = '✅';
+                bannerTitle = 'Decline Accepted';
+            }
+
+            // Only show the reason quote when it's still present (pending declines)
+            const reasonHtml = hasPendingDecline
+                ? `<div class="rdb-reason">"${escH(data.decline_reason)}"</div>`
+                : '';
+
+            declineBanner.innerHTML = `
+                <div class="rdb-icon">${bannerIcon}</div>
+                <div class="rdb-body">
+                    <div class="rdb-title">${bannerTitle}</div>
+                    ${reasonHtml}
+                    ${verdictHtml ? '<div style="margin-top:6px;">' + verdictHtml + '</div>' : ''}
+                    ${reviewNoteHtml}
+                    ${actionsHtml}
+                </div>`;
+
+            // Insert at the top of the modal body
+            const modalBody = document.querySelector('#repDetailModal .rep-modal-body');
+            if (modalBody) modalBody.insertBefore(declineBanner, modalBody.firstChild);
+        }
     }
 
     // Admin return note — show to engineer when report was returned
@@ -3100,7 +3437,7 @@ function openRepModal(repId) {
         });
     } else { ec.innerHTML = '<span class="rep-no-evidence">No evidence images</span>'; }
 
-    document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN) ? '' : 'none';
+    document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN || CAN_ASSIGN_ENGINEER) ? '' : 'none';
     repBackdrop.classList.add('active');
 }
 
@@ -3163,6 +3500,8 @@ document.getElementById('repAcceptConfirmBackdrop').addEventListener('click', e 
 
 function confirmDecline() {
     if (!currentRepData || !IS_ENGINEER) return;
+    const ta = document.getElementById('repDeclineReasonInput');
+    if (ta) ta.value = '';
     document.getElementById('repDeclineConfirmBackdrop').classList.add('active');
 }
 function closeDeclineConfirm() { document.getElementById('repDeclineConfirmBackdrop').classList.remove('active'); }
@@ -3209,24 +3548,122 @@ async function doAcceptAssignment() {
 
 async function doDeclineAssignment() {
     if (!currentRepData || !IS_ENGINEER) return;
+    const reason = (document.getElementById('repDeclineReasonInput')?.value || '').trim();
+    if (!reason) {
+        document.getElementById('repDeclineReasonInput')?.focus();
+        showRepNotif('warning', '⚠️ Please enter a reason for declining before submitting.');
+        return;
+    }
     closeDeclineConfirm();
     const repId = currentRepData.rep_id;
     const btn = document.getElementById('repDeclineBtn');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Declining…';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
     try {
-        const res  = await fetch('current_reports.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'decline_assignment',rep_id:repId})});
+        const res  = await fetch('current_reports.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'decline_assignment', rep_id:repId, decline_reason:reason})});
         const data = await res.json();
         if (data.success) {
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+            if (idx > -1) { ALL_REPORTS[idx].decline_reason = reason; ALL_REPORTS[idx].decline_reviewed = null; }
             closeRepModal();
-            showRepNotif('success','ℹ️ You have declined the assignment. The report is back to Awaiting Engineer.');
+            showRepNotif('info', 'ℹ️ Decline submitted. The Manager / Office Staff will review your reason.');
             setTimeout(() => location.reload(), 1800);
         } else {
-            showRepNotif('error','❌ ' + (data.message || 'Failed to decline.'));
+            showRepNotif('error', '❌ ' + (data.message || 'Failed to submit decline.'));
             btn.disabled = false; btn.innerHTML = '<i class="fas fa-times-circle"></i> Decline';
         }
     } catch(e) {
-        showRepNotif('error','❌ Network error.');
+        showRepNotif('error', '❌ Network error.');
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-times-circle"></i> Decline';
+    }
+}
+
+// ── Manager / Office Staff: Review Decline Modal ──────────────────────────
+function openReviewDeclineModal() {
+    if (!currentRepData || !CAN_ASSIGN_ENGINEER) return;
+    const reasonEl = document.getElementById('reviewDeclineReasonText');
+    if (reasonEl) reasonEl.textContent = currentRepData.decline_reason || '(no reason provided)';
+    const noteEl = document.getElementById('repReviewDeclineNoteInput');
+    if (noteEl) { noteEl.value = ''; noteEl.style.borderColor = 'rgba(239,68,68,.35)'; noteEl.style.boxShadow = ''; }
+    const errEl = document.getElementById('repReviewDeclineNoteError');
+    if (errEl) errEl.style.display = 'none';
+    document.getElementById('repReviewDeclineBackdrop').classList.add('active');
+}
+function closeReviewDeclineModal() { document.getElementById('repReviewDeclineBackdrop').classList.remove('active'); }
+document.getElementById('repReviewDeclineBackdrop').addEventListener('click', e => {
+    if (e.target === document.getElementById('repReviewDeclineBackdrop')) closeReviewDeclineModal();
+});
+
+async function doApproveDecline() {
+    if (!currentRepData || !CAN_ASSIGN_ENGINEER) return;
+    closeReviewDeclineModal();
+    const repId      = currentRepData.rep_id;
+    const reviewNote = (document.getElementById('repReviewDeclineNoteInput')?.value || '').trim();
+    const btnReview  = document.getElementById('repReviewDeclineBtn');
+    if (btnReview) { btnReview.disabled = true; btnReview.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…'; }
+    try {
+        const res  = await fetch('current_reports.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'approve_decline', rep_id:repId, review_note:reviewNote})});
+        const data = await res.json();
+        if (data.success) {
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+            if (idx > -1) { ALL_REPORTS[idx].decline_reviewed = 1; ALL_REPORTS[idx].engineer_id = null; ALL_REPORTS[idx].decline_reason = null; }
+            closeRepModal();
+            showRepNotif('success', '✅ Decline accepted. Engineer unassigned from Report #REP-' + repId + '.');
+            setTimeout(() => location.reload(), 1800);
+        } else {
+            showRepNotif('error', '❌ ' + (data.message || 'Failed to process.'));
+            if (btnReview) { btnReview.disabled = false; btnReview.innerHTML = '<i class="fas fa-clipboard-check"></i> Review Decline'; }
+        }
+    } catch(e) {
+        showRepNotif('error', '❌ Network error.');
+        if (btnReview) { btnReview.disabled = false; btnReview.innerHTML = '<i class="fas fa-clipboard-check"></i> Review Decline'; }
+    }
+}
+
+async function doRejectDecline() {
+    if (!currentRepData || !CAN_ASSIGN_ENGINEER) return;
+    const noteInput  = document.getElementById('repReviewDeclineNoteInput');
+    const errEl      = document.getElementById('repReviewDeclineNoteError');
+    const reviewNote = (noteInput?.value || '').trim();
+
+    // Note is REQUIRED — block submission and keep modal open
+    if (!reviewNote) {
+        if (noteInput) {
+            noteInput.style.borderColor = '#ef4444';
+            noteInput.style.boxShadow   = '0 0 0 3px rgba(239,68,68,.25)';
+            // Shake animation
+            noteInput.style.animation = 'none';
+            noteInput.offsetHeight; // reflow
+            noteInput.style.animation = 'noteShake 0.35s ease';
+            noteInput.focus();
+        }
+        if (errEl) errEl.style.display = '';
+        return; // modal stays open
+    }
+
+    // Clear error state
+    if (noteInput) { noteInput.style.borderColor = 'rgba(239,68,68,.35)'; noteInput.style.boxShadow = ''; noteInput.style.animation = ''; }
+    if (errEl) errEl.style.display = 'none';
+
+    closeReviewDeclineModal();
+    const repId     = currentRepData.rep_id;
+    const btnReview = document.getElementById('repReviewDeclineBtn');
+    if (btnReview) { btnReview.disabled = true; btnReview.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…'; }
+    try {
+        const res  = await fetch('current_reports.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'reject_decline', rep_id:repId, review_note:reviewNote})});
+        const data = await res.json();
+        if (data.success) {
+            const idx = ALL_REPORTS.findIndex(r => r.rep_id == repId);
+            if (idx > -1) { ALL_REPORTS[idx].decline_reviewed = 0; ALL_REPORTS[idx].decline_reason = null; ALL_REPORTS[idx].engineer_accepted = false; ALL_REPORTS[idx].decline_review_note = reviewNote; }
+            closeRepModal();
+            showRepNotif('warning', '⚠️ Decline rejected. Engineer is still assigned to Report #REP-' + repId + ' and must proceed.');
+            setTimeout(() => location.reload(), 1800);
+        } else {
+            showRepNotif('error', '❌ ' + (data.message || 'Failed to process.'));
+            if (btnReview) { btnReview.disabled = false; btnReview.innerHTML = '<i class="fas fa-clipboard-check"></i> Review Decline'; }
+        }
+    } catch(e) {
+        showRepNotif('error', '❌ Network error.');
+        if (btnReview) { btnReview.disabled = false; btnReview.innerHTML = '<i class="fas fa-clipboard-check"></i> Review Decline'; }
     }
 }
 
@@ -3870,6 +4307,60 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
 
     overlay.style.display='none';
 }
+
+// ═══════════════════════════════════════════════════════
+//  SORT — Current Reports Table
+// ═══════════════════════════════════════════════════════
+(function initReportSort() {
+    const wrap     = document.getElementById('repSortWrap');
+    const btn      = document.getElementById('repSortBtn');
+    const dropdown = document.getElementById('repSortDropdown');
+    if (!wrap || !btn || !dropdown) return;
+
+    btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
+
+    dropdown.querySelectorAll('.sort-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            wrap.classList.remove('open');
+            applySort(opt.dataset.sort);
+        });
+    });
+
+    function applySort(mode) {
+        const tbody = document.querySelector('#reportsTable tbody');
+        if (tbody) {
+            const noRow = document.getElementById('noDesktopResult');
+            const rows  = Array.from(tbody.querySelectorAll('tr[data-rep-id]'));
+            rows.sort((a, b) => compare(a, b, mode));
+            rows.forEach(r => tbody.appendChild(r));
+            if (noRow) tbody.appendChild(noRow);
+        }
+        const mList = document.querySelector('.mobile-report-list');
+        if (mList) {
+            const noCard = document.getElementById('noMobileResult');
+            const cards  = Array.from(mList.querySelectorAll('.report-card[data-rep-id]'));
+            cards.sort((a, b) => compare(a, b, mode));
+            cards.forEach(c => mList.appendChild(c));
+            if (noCard) mList.appendChild(noCard);
+        }
+    }
+
+    function compare(a, b, mode) {
+        if (mode === 'date-desc') return new Date(b.dataset.date||0) - new Date(a.dataset.date||0);
+        if (mode === 'date-asc')  return new Date(a.dataset.date||0) - new Date(b.dataset.date||0);
+        const aid = parseInt(a.dataset.repId||0), bid = parseInt(b.dataset.repId||0);
+        if (mode === 'id-asc')    return aid - bid;
+        if (mode === 'id-desc')   return bid - aid;
+        const at = (a.dataset.infra||'').toLowerCase(), bt = (b.dataset.infra||'').toLowerCase();
+        if (mode === 'alpha-asc')  return at.localeCompare(bt);
+        if (mode === 'alpha-desc') return bt.localeCompare(at);
+        return 0;
+    }
+})();
+
 </script>
 </body>
 </html>

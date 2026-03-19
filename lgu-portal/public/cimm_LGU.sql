@@ -473,19 +473,19 @@ CREATE TABLE `requests` (
 --
 
 INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contact_number`, `name`, `approval_status`, `coordinates`, `created_at`, `email`) VALUES
-(114, 'Roads', 'Diliman, Ugong Norte, Quezon City, Zamboanga Street', 'Nasira  daanan sa lugar namin.', '09876456355', 'Marites Santos', 'Approved', '14.6612,121.0534', '2026-02-23 08:05:38', NULL),
+(114, 'Roads', 'Diliman, Ugong Norte, Quezon City, Zamboanga Street', 'Nasira  daanan sa lugar namin.', '09876456355', 'Marites Santos', 'Pending', '14.6612,121.0534', '2026-02-23 08:05:38', NULL),
 (115, 'Signage', 'Geronimo Compound, Santo Domingo (Matalahib), Quezon City, Polaris Street', 'nasira signage sa santo domingo road', '09874321334', 'Carlo Anotio', 'Pending', '14.6756,121.0312', '2026-02-23 08:09:37', NULL),
-(116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Approved', '14.6845,121.0389', '2026-02-23 08:12:29', NULL),
-(117, 'Street Lights', 'Project 7, N.S. Amoranto (Gintong Silahis), Quezon City, Miller Avenue', 'natumba street ligts banda dito sa Project 7', '09654432171', 'Jhoven Bartolome', 'Approved', '14.6391,121.0294', '2026-02-23 08:14:48', NULL),
-(118, 'Public Facilities', 'Pasong Tamo, Sikatuna Village, Quezon City, Kasay-Kasay Street', 'nasira  cubicle sa pasong tamo public CR', '09856345143', 'Marisol Valencia', 'Approved', '14.6767,121.0623', '2026-02-23 08:18:35', NULL),
+(116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Pending', '14.6845,121.0389', '2026-02-23 08:12:29', NULL),
+(117, 'Street Lights', 'Project 7, N.S. Amoranto (Gintong Silahis), Quezon City, Miller Avenue', 'natumba street ligts banda dito sa Project 7', '09654432171', 'Jhoven Bartolome', 'Pending', '14.6391,121.0294', '2026-02-23 08:14:48', NULL),
+(118, 'Public Facilities', 'Pasong Tamo, Sikatuna Village, Quezon City, Kasay-Kasay Street', 'nasira  cubicle sa pasong tamo public CR', '09856345143', 'Marisol Valencia', 'Pending', '14.6767,121.0623', '2026-02-23 08:18:35', NULL),
 (119, 'Drainage', 'Libis, Quezon City', 'nagbara sa dami ng basura', '09786543456', 'Jeffrey Las-ay', 'Pending', '14.6345,121.0612', '2026-02-23 08:21:43', NULL),
 (120, 'Electrical', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'Bumagsak wiring dito sa project 8 santo domango', '09765432111', 'Marycarl Mallari', 'Pending', '14.6467,121.0334', '2026-02-23 08:26:51', NULL),
 (121, 'Waiting Shed', 'Pansol, Krus Na Ligas, Quezon City, Montalban Street', 'bumagsak  yung bubong ng waiting shed sa panson', '09785634522', 'Jasmin Padilla', 'Pending', '14.6543,121.0721', '2026-02-23 08:31:42', NULL),
 (123, 'traffic light', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'nasira traffic light', '09123456785', 'Hannah Roxas', 'Pending', '14.6467,121.0330', '2026-02-23 09:07:47', NULL),
-(124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Approved', '14.6845,121.0395', '2026-02-23 09:16:42', NULL),
+(124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Pending', '14.6845,121.0395', '2026-02-23 09:16:42', NULL),
 (125, 'Traffic light', 'Santo Domingo (Matalahib), Quezon City', 'The Traffic light in the Santo domingo is broken.', '09009356577', 'Kent Bartolome', 'Pending', '14.6756,121.0309', '2026-02-23 09:39:54', NULL),
-(126, 'Roads', 'Oriole Street, Veterans Area 2, Brgy. Payatas, Quezon City', 'Sira talaga dito', '09212212121', 'Kent', 'Approved', '14.707149905394584,121.10462951241061', '2026-03-18 14:29:03', 'bartolomeexequielkent@gmail.com'),
-(127, 'Roads', 'Zodiac Street, Bagbag, Brgy. Capri, Quezon City', 'Roads destroyed', '09212212121', 'Kent', 'Approved', '14.696191183297495,121.04077148018405', '2026-03-18 15:03:08', 'bartolomeexequielkent@gmail.com');
+(126, 'Roads', 'Oriole Street, Veterans Area 2, Brgy. Payatas, Quezon City', 'Sira talaga dito', '09212212121', 'Kent', 'Pending', '14.707149905394584,121.10462951241061', '2026-03-18 14:29:03', 'bartolomeexequielkent@gmail.com'),
+(127, 'Roads', 'Zodiac Street, Bagbag, Brgy. Capri, Quezon City', 'Roads destroyed', '09212212121', 'Kent', 'Pending', '14.696191183297495,121.04077148018405', '2026-03-18 15:03:08', 'bartolomeexequielkent@gmail.com');
 
 -- --------------------------------------------------------
 

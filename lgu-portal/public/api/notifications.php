@@ -135,15 +135,29 @@ $result = $stmt->get_result();
 
 $notifications = [];
 while ($row = $result->fetch_assoc()) {
+    // ── URL normalisation ────────────────────────────────────────────────────
+    // Legacy: "employee.php?request_id=114" → "requests.php?highlight=114"
+    if (!empty($row['url']) && preg_match('/employee\.php\?request_id=(\d+)/i', $row['url'], $m)) {
+        $row['url'] = 'requests.php?highlight=' . $m[1];
+    }
+    // Legacy bare report pages without highlight param → extract rep_id from title
+    // e.g. title "Report #REP-9 Submitted for Approval", url "current_reports.php"
+    if (!empty($row['url']) && !str_contains($row['url'], 'highlight') &&
+        preg_match('/(?:current_reports|pending_reports|archive_reports)\.php$/i', $row['url']) &&
+        preg_match('/#REP-?(\d+)/i', $row['title'] ?? '', $rm)) {
+        $row['url'] .= '?highlight_rep=' . $rm[1];
+    }
+    // ── End URL normalisation ────────────────────────────────────────────────
+
     $notifications[] = [
-        'id' => $row['id'],
-        'title' => $row['title'],
-        'description' => $row['description'],
-        'url' => $row['url'],
+        'id'           => $row['id'],
+        'title'        => $row['title'],
+        'description'  => $row['description'],
+        'url'          => $row['url'],
         'request_type' => $row['request_type'],
-        'read' => (bool)$row['is_read'],
-        'time' => $row['time'],
-        'date' => $row['date']
+        'read'         => (bool)$row['is_read'],
+        'time'         => $row['time'],
+        'date'         => $row['date'],
     ];
 }
 

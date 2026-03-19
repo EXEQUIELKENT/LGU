@@ -2891,6 +2891,47 @@ usort($schedules, function($a, $b) {
 /* -- End: ListView Search Styles -- */
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
+
+/* ═══════════════════════════════════════════════════════
+   SORT DROPDOWN
+═══════════════════════════════════════════════════════ */
+.sort-dropdown-wrap { position: relative; flex-shrink: 0; }
+.sort-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 13px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all .22s ease; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    white-space: nowrap; font-family: inherit;
+}
+.sort-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.40); }
+.sort-btn i { font-size: 12px; }
+.sort-chevron { font-size: 10px !important; transition: transform .2s; }
+.sort-dropdown-wrap.open .sort-chevron { transform: rotate(180deg); }
+.sort-btn-label { display: inline; }
+@media (max-width: 520px) { .sort-btn-label { display: none; } }
+.sort-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999; min-width: 190px; overflow: hidden; animation: sortDropIn .18s ease;
+}
+.sort-dropdown-wrap.open .sort-dropdown { display: block; }
+@keyframes sortDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.sort-option {
+    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
+    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
+}
+.sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.sort-option i { width: 14px; text-align: center; font-size: 12px; }
+.sort-dropdown-divider { height:1px; background: var(--border-color,rgba(0,0,0,.08)); margin: 3px 0; }
+[data-theme="dark"] .sort-dropdown { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+[data-theme="dark"] .sort-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 .sched-location, .sched-date { display: inline; }
 /* =========================
    MOBILE VIEW ONLY
@@ -3989,6 +4030,24 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input id="scheduleSearch" type="text"
                            placeholder="Search by task, location, category, status, or date...">
+                </div>
+                <!-- Sort dropdown -->
+                <div class="sort-dropdown-wrap" id="schedSortWrap">
+                    <button class="sort-btn" id="schedSortBtn" title="Sort schedules">
+                        <i class="fas fa-sort"></i>
+                        <span class="sort-btn-label">Sort</span>
+                        <i class="fas fa-chevron-down sort-chevron"></i>
+                    </button>
+                    <div class="sort-dropdown" id="schedSortDropdown">
+                        <div class="sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
+                        <div class="sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
+                        <div class="sort-dropdown-divider"></div>
+                        <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
+                        <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
+                        <div class="sort-dropdown-divider"></div>
+                        <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
+                        <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
+                    </div>
                 </div>
                 <button id="toCalendarBtn" class="view-switch-btn" title="Switch to Calendar View">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -6037,6 +6096,53 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileMonthLabel.style.cursor = 'pointer';
         mobileMonthLabel.addEventListener('click', openDatePicker);
     }
+
+    // ═══════════════════════════════════════════════════════
+    //  SORT — Schedule List View
+    // ═══════════════════════════════════════════════════════
+    (function initSchedSort() {
+        const wrap     = document.getElementById('schedSortWrap');
+        const btn      = document.getElementById('schedSortBtn');
+        const dropdown = document.getElementById('schedSortDropdown');
+        const holder   = document.getElementById('scheduleListHolder');
+        if (!wrap || !btn || !dropdown || !holder) return;
+
+        btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
+        document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
+
+        dropdown.querySelectorAll('.sort-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                wrap.classList.remove('open');
+                applySchedSort(opt.dataset.sort);
+            });
+        });
+
+        function applySchedSort(mode) {
+            const noMsg = document.getElementById('noResultMsg');
+            const items = Array.from(holder.querySelectorAll('.schedule-item'));
+            items.sort((a, b) => {
+                // data-date format: "human label|yyyy-mm-dd"
+                const dateA = (a.dataset.date || '').split('|')[1] || '';
+                const dateB = (b.dataset.date || '').split('|')[1] || '';
+                if (mode === 'date-asc')  return dateA.localeCompare(dateB);
+                if (mode === 'date-desc') return dateB.localeCompare(dateA);
+                const idA = parseInt(a.dataset.repId || 0);
+                const idB = parseInt(b.dataset.repId || 0);
+                if (mode === 'id-asc')    return idA - idB;
+                if (mode === 'id-desc')   return idB - idA;
+                const tA = (a.dataset.task || '').toLowerCase();
+                const tB = (b.dataset.task || '').toLowerCase();
+                if (mode === 'alpha-asc')  return tA.localeCompare(tB);
+                if (mode === 'alpha-desc') return tB.localeCompare(tA);
+                return 0;
+            });
+            items.forEach(item => holder.appendChild(item));
+            if (noMsg) holder.appendChild(noMsg);
+        }
+    })();
+
 }); // --- END DOMContentLoaded ---
 </script>
 </body>

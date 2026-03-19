@@ -592,6 +592,49 @@ foreach ($maintenance_data as $_item) {
             background: #fff;
         }
         #requestSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
+
+/* ═══════════════════════════════════════════════════════
+   SORT DROPDOWN
+═══════════════════════════════════════════════════════ */
+.search-toolbar { display: flex; align-items: center; gap: 10px; }
+.table-search-wrapper { flex: 1; min-width: 0; }
+.sort-dropdown-wrap { position: relative; flex-shrink: 0; }
+.sort-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 13px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all .22s ease; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    white-space: nowrap; font-family: inherit;
+}
+.sort-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.40); }
+.sort-btn i { font-size: 12px; }
+.sort-chevron { font-size: 10px !important; transition: transform .2s; }
+.sort-dropdown-wrap.open .sort-chevron { transform: rotate(180deg); }
+.sort-btn-label { display: inline; }
+@media (max-width: 520px) { .sort-btn-label { display: none; } }
+.sort-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999; min-width: 190px; overflow: hidden; animation: sortDropIn .18s ease;
+}
+.sort-dropdown-wrap.open .sort-dropdown { display: block; }
+@keyframes sortDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.sort-option {
+    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
+    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
+}
+.sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.sort-option i { width: 14px; text-align: center; font-size: 12px; }
+.sort-dropdown-divider { height:1px; background: var(--border-color,rgba(0,0,0,.08)); margin: 3px 0; }
+[data-theme="dark"] .sort-dropdown { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+[data-theme="dark"] .sort-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
         [data-theme="dark"] #requestSearch {
             background: rgba(255,255,255,0.07);
             border-color: rgba(95,140,255,0.22);
@@ -1170,6 +1213,23 @@ foreach ($maintenance_data as $_item) {
             placeholder="Search by Date, Type, Location, Budget, or Status..."
         >
     </div>
+    <div class="sort-dropdown-wrap" id="schedSortWrap">
+        <button class="sort-btn" id="schedSortBtn" title="Sort records">
+            <i class="fas fa-sort"></i>
+            <span class="sort-btn-label">Sort</span>
+            <i class="fas fa-chevron-down sort-chevron"></i>
+        </button>
+        <div class="sort-dropdown" id="schedSortDropdown">
+            <div class="sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
+            <div class="sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
+            <div class="sort-dropdown-divider"></div>
+            <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
+            <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
+            <div class="sort-dropdown-divider"></div>
+            <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Type A → Z</div>
+            <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Type Z → A</div>
+        </div>
+    </div>
     </div>
 
     <!-- STATUS LEGEND (clickable filter) -->
@@ -1241,7 +1301,10 @@ foreach ($maintenance_data as $_item) {
                         $task_escaped     = htmlspecialchars($item['task']);
                         $location_escaped = htmlspecialchars($item['location']);
                 ?>
-                <tr data-status="<?php echo $status_filter_key; ?>">
+                <tr data-status="<?php echo $status_filter_key; ?>"
+                    data-date="<?php echo !empty($item['starting_date']) ? htmlspecialchars($item['starting_date']) : ''; ?>"
+                    data-id-label="<?php echo htmlspecialchars($item['id_label']); ?>"
+                    data-type="<?php echo htmlspecialchars(strtolower($item['task'])); ?>">
                     <td class="searchable"><?php echo htmlspecialchars($item['id_label']); ?></td>
                     <td class="searchable"><?php echo $date; ?></td>
                     <td class="searchable" title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
@@ -1289,7 +1352,10 @@ foreach ($maintenance_data as $_item) {
                     $status_filter_key = 'delayed';
                 }
             ?>
-                <div class="report-card" data-status="<?= $status_filter_key ?>"><?php // data-status for legend filter ?>
+                <div class="report-card" data-status="<?= $status_filter_key ?>"
+                 data-date="<?= !empty($item['starting_date']) ? htmlspecialchars($item['starting_date']) : '' ?>"
+                 data-id-label="<?= htmlspecialchars($item['id_label']) ?>"
+                 data-type="<?= htmlspecialchars(strtolower($item['task'])) ?>"><?php // data-status for legend filter ?>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_schedule_id">Schedule ID:</span>
                         <span class="value searchable"><?= htmlspecialchars($item['id_label']) ?></span>
@@ -1949,7 +2015,68 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 <?php include 'citizen_global.php'; ?>
-<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
+<script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';
+// ═══════════════════════════════════════════════════════
+//  SORT — Citizen Reports / Schedule Table
+// ═══════════════════════════════════════════════════════
+(function initCitizenSort() {
+    const wrap     = document.getElementById('schedSortWrap');
+    const btn      = document.getElementById('schedSortBtn');
+    const dropdown = document.getElementById('schedSortDropdown');
+    if (!wrap || !btn || !dropdown) return;
+
+    btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
+
+    dropdown.querySelectorAll('.sort-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            wrap.classList.remove('open');
+            applySort(opt.dataset.sort);
+        });
+    });
+
+    function parseIdNum(idLabel) {
+        // e.g. "REP-007" -> 7, "SCHED-003" -> 3
+        const m = (idLabel || '').match(/\d+/);
+        return m ? parseInt(m[0], 10) : 0;
+    }
+
+    function applySort(mode) {
+        // Desktop tbody rows
+        const tbody = document.querySelector('table tbody');
+        if (tbody) {
+            const noRow = document.getElementById('noRequestResult');
+            const rows  = Array.from(tbody.querySelectorAll('tr[data-date]'));
+            rows.sort((a, b) => compare(a, b, mode));
+            rows.forEach(r => tbody.appendChild(r));
+            if (noRow) tbody.appendChild(noRow);
+        }
+        // Mobile cards
+        const mList = document.querySelector('.mobile-maintenance-list');
+        if (mList) {
+            const cards = Array.from(mList.querySelectorAll('[data-date]'));
+            cards.sort((a, b) => compare(a, b, mode));
+            cards.forEach(c => mList.appendChild(c));
+        }
+    }
+
+    function compare(a, b, mode) {
+        const da = a.dataset.date || '', db = b.dataset.date || '';
+        if (mode === 'date-asc')  return da.localeCompare(db);
+        if (mode === 'date-desc') return db.localeCompare(da);
+        const ia = parseIdNum(a.dataset.idLabel), ib = parseIdNum(b.dataset.idLabel);
+        if (mode === 'id-asc')    return ia - ib;
+        if (mode === 'id-desc')   return ib - ia;
+        const ta = (a.dataset.type||'').toLowerCase(), tb = (b.dataset.type||'').toLowerCase();
+        if (mode === 'alpha-asc')  return ta.localeCompare(tb);
+        if (mode === 'alpha-desc') return tb.localeCompare(ta);
+        return 0;
+    }
+})();
+
+</script>
 <?php include 'chatbot-widget.php'; ?>
 
 </body>

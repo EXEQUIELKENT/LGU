@@ -39,6 +39,17 @@ while (true) {
     while ($row = $res->fetch_assoc()) {
         $lastId = $row['id'];
 
+        // ── URL normalisation (same rules as notifications.php) ──────────────
+        if (!empty($row['url']) && preg_match('/employee\.php\?request_id=(\d+)/i', $row['url'], $m)) {
+            $row['url'] = 'requests.php?highlight=' . $m[1];
+        }
+        if (!empty($row['url']) && !str_contains($row['url'], 'highlight') &&
+            preg_match('/(?:current_reports|pending_reports|archive_reports)\.php$/i', $row['url']) &&
+            preg_match('/#REP-?(\d+)/i', $row['title'] ?? '', $rm)) {
+            $row['url'] .= '?highlight_rep=' . $rm[1];
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         echo "event: notification\n";
         echo "data: " . json_encode($row) . "\n\n";
 

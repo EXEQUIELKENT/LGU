@@ -782,3 +782,96 @@ startClock();
     }, 150);
 })();
 </script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT
+   Reads ?highlight={req_id} or ?highlight_rep={rep_id} from the URL,
+   scrolls to the matching row/card, applies a glow animation, and shows
+   a brief "You were directed here" banner above the element.
+   Works on: requests.php, pending_reports.php, current_reports.php,
+             archive_reports.php  (any page using data-req-id / data-rep-id).
+═══════════════════════════════════════════════════════════════════════ */
+(function initNotifHighlight() {
+    const params    = new URLSearchParams(window.location.search);
+    const reqId     = params.get('highlight');        // requests.php?highlight=5
+    const repId     = params.get('highlight_rep');    // *_reports.php?highlight_rep=8
+
+    if (!reqId && !repId) return;
+
+    /* Remove the highlight param from the address bar silently */
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight');
+    cleanUrl.searchParams.delete('highlight_rep');
+    history.replaceState(null, '', cleanUrl);
+
+    function applyHighlight(targetId, dataAttr) {
+        const selector = '[' + dataAttr + '="' + targetId + '"]';
+
+        /* If we're on requests.php and the GIS view is showing, switch
+           to the table/list view first so the row is actually in the DOM. */
+        if (typeof switchView === 'function') {
+            switchView('requests');
+        }
+
+        /* Short delay so any view-switch animation can settle */
+        setTimeout(function () {
+            const elements = document.querySelectorAll(selector);
+            if (!elements.length) return;
+
+            const primary = elements[0];   // first match (desktop row or mobile card)
+
+            /* Scroll smoothly into view */
+            primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            /* Apply glow highlight to all matching elements
+               (both the desktop <tr> and mobile card share the same data attr) */
+            elements.forEach(function (el) {
+                el.classList.add('notif-highlight');
+                /* Auto-remove after animation finishes (5 s) */
+                setTimeout(function () {
+                    el.classList.remove('notif-highlight');
+                    el.style.outline = '';
+                }, 5500);
+            });
+
+            /* Insert a dismissable "You were directed here" banner
+               just above the first visible element */
+            insertHighlightBanner(primary);
+
+        }, 700);
+    }
+
+    function insertHighlightBanner(el) {
+        /* Don't double-insert */
+        if (document.getElementById('notifHighlightBanner')) return;
+
+        const banner = document.createElement('div');
+        banner.id = 'notifHighlightBanner';
+        banner.className = 'notif-highlight-banner';
+        banner.innerHTML =
+            '<span style="font-size:16px;">🔔</span>' +
+            '<span>You were directed here from a notification — this item is highlighted below.</span>';
+
+        /* Insert before the element's closest table/list ancestor,
+           or directly before the element if no wrapper is found */
+        const anchor =
+            el.closest('.table-card, .table-wrapper, .mobile-report-list, #requestsView') ||
+            el.parentElement;
+
+        if (anchor && anchor.parentElement) {
+            anchor.parentElement.insertBefore(banner, anchor);
+        } else {
+            el.parentElement.insertBefore(banner, el);
+        }
+
+        /* Remove banner after 5 s (matching its CSS fade-out) */
+        setTimeout(function () {
+            if (banner.parentElement) banner.parentElement.removeChild(banner);
+        }, 5200);
+    }
+
+    if (reqId) applyHighlight(reqId, 'data-req-id');
+    if (repId) applyHighlight(repId, 'data-rep-id');
+})();
+</script>

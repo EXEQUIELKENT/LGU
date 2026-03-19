@@ -2,7 +2,47 @@
 /**
  * notif_helper.php — Shared notification helpers for all report pages.
  * Place in the same directory as pending_reports.php, current_reports.php, etc.
+ *
+ * URL CONVENTIONS (use these helpers so the highlight feature works):
+ *   Request notifications  → buildReqUrl($reqId)       e.g. "requests.php?highlight=5"
+ *   Report  notifications  → buildRepUrl($page, $repId) e.g. "pending_reports.php?highlight_rep=8"
  */
+
+/**
+ * Build a notification URL that deep-links to requests.php and highlights
+ * the specific request row/card identified by $reqId.
+ */
+function buildReqUrl(int $reqId): string {
+    return 'requests.php?highlight=' . $reqId;
+}
+
+/**
+ * Build a notification URL that deep-links to a report page and highlights
+ * the specific report row/card identified by $repId.
+ *
+ * @param string $page  e.g. 'pending_reports.php', 'current_reports.php', 'archive_reports.php'
+ * @param int    $repId The rep_id of the report to highlight.
+ */
+function buildRepUrl(string $page, int $repId): string {
+    return $page . '?highlight_rep=' . $repId;
+}
+
+/**
+ * Convenience: resolve the correct report page for a given rep_id based on its status.
+ * Returns 'pending_reports.php', 'current_reports.php', or 'archive_reports.php'.
+ */
+function resolveRepPage(mysqli $conn, int $repId): string {
+    $stmt = $conn->prepare("SELECT resolution_status FROM request_resolutions WHERE res_id = (SELECT res_id FROM reports WHERE rep_id = ? LIMIT 1) LIMIT 1");
+    if (!$stmt) return 'current_reports.php';
+    $stmt->bind_param("i", $repId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $status = strtolower(trim($row['resolution_status'] ?? ''));
+    if ($status === 'completed' || $status === 'archived') return 'archive_reports.php';
+    if ($status === 'pending' || $status === 'awaiting engineer' || $status === '') return 'pending_reports.php';
+    return 'current_reports.php';
+}
 
 /**
  * Insert one notification row for a single employee.
