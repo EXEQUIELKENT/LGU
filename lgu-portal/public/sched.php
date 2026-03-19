@@ -3896,6 +3896,24 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input id="mobileScheduleSearch" type="text" placeholder="Search schedules...">
             </div>
+            <!-- Mobile sort dropdown -->
+            <div class="sort-dropdown-wrap" id="mobSchedSortWrap">
+                <button class="sort-btn" id="mobSchedSortBtn" title="Sort schedules">
+                    <i class="fas fa-sort"></i>
+                    <span class="sort-btn-label">Sort</span>
+                    <i class="fas fa-chevron-down sort-chevron"></i>
+                </button>
+                <div class="sort-dropdown" id="mobSchedSortDropdown">
+                    <div class="sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
+                    <div class="sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
+                    <div class="sort-dropdown-divider"></div>
+                    <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
+                    <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
+                    <div class="sort-dropdown-divider"></div>
+                    <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
+                    <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
+                </div>
+            </div>
             <button id="mobileToCalendarBtn" class="mob-icon-btn" title="Switch to Calendar View">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </button>
@@ -6090,23 +6108,8 @@ document.addEventListener('DOMContentLoaded', function() {
     //  SORT — Schedule List View
     // ═══════════════════════════════════════════════════════
     (function initSchedSort() {
-        const wrap     = document.getElementById('schedSortWrap');
-        const btn      = document.getElementById('schedSortBtn');
-        const dropdown = document.getElementById('schedSortDropdown');
-        const holder   = document.getElementById('scheduleListHolder');
-        if (!wrap || !btn || !dropdown || !holder) return;
-
-        btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
-        document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
-
-        dropdown.querySelectorAll('.sort-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
-                opt.classList.add('active');
-                wrap.classList.remove('open');
-                applySchedSort(opt.dataset.sort);
-            });
-        });
+        const holder = document.getElementById('scheduleListHolder');
+        if (!holder) return;
 
         function applySchedSort(mode) {
             const noMsg = document.getElementById('noResultMsg');
@@ -6130,6 +6133,41 @@ document.addEventListener('DOMContentLoaded', function() {
             items.forEach(item => holder.appendChild(item));
             if (noMsg) holder.appendChild(noMsg);
         }
+
+        function wireSort(wrapId, btnId, dropdownId, siblingDropdownId) {
+            const wrap     = document.getElementById(wrapId);
+            const btn      = document.getElementById(btnId);
+            const dropdown = document.getElementById(dropdownId);
+            if (!wrap || !btn || !dropdown) return;
+
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                // Close sibling dropdown if open
+                const sibling = document.getElementById(siblingDropdownId);
+                if (sibling) sibling.closest('.sort-dropdown-wrap')?.classList.remove('open');
+                wrap.classList.toggle('open');
+            });
+            document.addEventListener('click', e => {
+                if (!wrap.contains(e.target)) wrap.classList.remove('open');
+            });
+
+            dropdown.querySelectorAll('.sort-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    // Sync active state across both dropdowns
+                    ['schedSortDropdown', 'mobSchedSortDropdown'].forEach(id => {
+                        const d = document.getElementById(id);
+                        if (d) d.querySelectorAll('.sort-option').forEach(o => {
+                            o.classList.toggle('active', o.dataset.sort === opt.dataset.sort);
+                        });
+                    });
+                    wrap.classList.remove('open');
+                    applySchedSort(opt.dataset.sort);
+                });
+            });
+        }
+
+        wireSort('schedSortWrap',    'schedSortBtn',    'schedSortDropdown',    'mobSchedSortDropdown');
+        wireSort('mobSchedSortWrap', 'mobSchedSortBtn', 'mobSchedSortDropdown', 'schedSortDropdown');
     })();
 
 }); // --- END DOMContentLoaded ---

@@ -855,7 +855,7 @@ body {
     background: var(--card-bg);
     backdrop-filter: blur(12px);
     border-radius: 16px;
-    padding: 24px;
+    padding: 24px 24px 12px;
     box-shadow: 0 4px 16px var(--shadow-color);
     border: 1px solid var(--border-color);
 }
