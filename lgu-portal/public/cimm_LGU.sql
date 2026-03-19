@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 18, 2026 at 04:08 PM
+-- Generation Time: Mar 19, 2026 at 07:00 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -33,7 +33,7 @@ CREATE TABLE `employees` (
   `last_name` varchar(50) NOT NULL,
   `profile_picture` varchar(255) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
-  `role` enum('Manager','Engineer','Office Staff','Super Admin') NOT NULL,
+  `role` enum('Manager','Engineer','Office Staff','Admin','Super Admin') NOT NULL,
   `password` varchar(255) NOT NULL,
   `is_first_login` tinyint(1) NOT NULL DEFAULT 1,
   `email_verified` tinyint(1) NOT NULL DEFAULT 0,
@@ -67,7 +67,8 @@ INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`
 (14, 'Warv', 'Villa', NULL, 'villawarv@gmail.com', 'Super Admin', '$2y$10$5VxEbVQGo6bZLhJ4TGSKVutVoH6/uzXnEm.FmlKovuZHQVbdUbUhS', 0, 1, NULL, NULL, '2026-02-03 09:33:18', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (15, 'Exequiel', 'Bartolome', NULL, 'bartolomeexequielkent2003@gmail.com', 'Super Admin', '$2y$10$NnT5QBl0A66tRTJoYAgvc.NggVXq6jyym0g.WOUKkY4ddT4Zhl76S', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (16, 'Marycarl', 'Dagondong', NULL, 'marycarldagondong28@gmail.com', 'Super Admin', '$2y$10$nxvAvmwcwXVD.08n0fT.7eoyDHUCArLsH4IYgWXm/OM6xqT79vvcK', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
-(22, 'Michael', 'De santa', NULL, 'michaelgtav63@gmail.com', 'Engineer', '$2y$10$/IR22g.R4zU0vuFwbiWALu5J5B7XwD4vWIdqCNdaHn4fmPNqOjvLS', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
+(22, 'Michael', 'De santa', NULL, 'michaelgtav63@gmail.com', 'Engineer', '$2y$10$/IR22g.R4zU0vuFwbiWALu5J5B7XwD4vWIdqCNdaHn4fmPNqOjvLS', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
+(24, 'Kent', 'Tarroza', NULL, 'assassinscreedunity2026@gmail.com', 'Admin', '$2y$10$6RvnKcuRMRgKogdzHiit1ug0pI8drAPCdZa9yzhZDyFWEoaXElj9.', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -100,7 +101,8 @@ CREATE TABLE `engineer_profiles` (
 --
 
 INSERT INTO `engineer_profiles` (`id`, `user_id`, `full_name`, `gender`, `date_of_birth`, `address`, `contact_number`, `engineering_discipline`, `department`, `years_of_experience`, `areas_of_specialization`, `skill_structural_design`, `skill_site_inspection`, `skill_project_planning`, `cad_software`, `created_at`, `updated_at`) VALUES
-(1, 13, 'Exequiel Kent Tarroza Bartolome', 'Male', '2003-11-20', 'Bagong Silang Caloocan City', '0921-212-1212', 'Civil', 'Engineering Office', 1, 'Roads', 1, 0, 1, 'Civil 3D', '2026-03-17 13:38:33', '2026-03-17 13:38:33');
+(1, 13, 'Exequiel Kent Tarroza Bartolome', 'Male', '2003-11-20', 'Bagong Silang Caloocan City', '0921-212-1212', 'Civil', 'Engineering Office', 1, 'Roads', 1, 0, 1, 'Civil 3D', '2026-03-17 13:38:33', '2026-03-17 13:38:33'),
+(2, 22, 'Micheal De Santa', 'Male', '1984-10-22', 'Quezon City', '0921-212-2212', 'Civil', 'Infrastructure Unit', 1, 'Street Lights,Drainage,Public Facilities', 0, 0, 1, 'AutoCAD', '2026-03-19 17:59:59', '2026-03-19 17:59:59');
 
 -- --------------------------------------------------------
 
@@ -132,9 +134,7 @@ INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VA
 (122, 124, 'uploads/evidence/evidence_124_699c1afaa3eb5.jpg', '2026-02-23 09:16:42'),
 (123, 125, 'uploads/evidence/evidence_125_699c206a510e9.jpg', '2026-02-23 09:39:54'),
 (124, 125, 'uploads/evidence/evidence_125_699c206a60fb8.jpg', '2026-02-23 09:39:54'),
-(125, 125, 'uploads/evidence/evidence_125_699c206a65524.jpg', '2026-02-23 09:39:54'),
-(126, 126, 'uploads/evidence/evidence_126_69bab6afb7af3.jpg', '2026-03-18 14:29:03'),
-(127, 127, 'uploads/evidence/evidence_127_69babeacf3a81.jpg', '2026-03-18 15:03:08');
+(125, 125, 'uploads/evidence/evidence_125_699c206a65524.jpg', '2026-02-23 09:39:54');
 
 -- --------------------------------------------------------
 
@@ -319,23 +319,7 @@ INSERT INTO `notifications` (`id`, `employee_id`, `title`, `description`, `url`,
 (570, 11, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
 (571, 13, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 1, '2026-02-23 09:39:54'),
 (572, 14, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
-(573, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54'),
-(574, 1, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 1, '2026-03-18 13:08:45'),
-(575, 2, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 0, '2026-03-18 13:08:45'),
-(576, 3, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 0, '2026-03-18 13:08:45'),
-(577, 8, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 0, '2026-03-18 13:08:45'),
-(578, 14, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 0, '2026-03-18 13:08:45'),
-(579, 15, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 1, '2026-03-18 13:08:45'),
-(580, 16, 'Report #REP-9 Submitted for Approval', 'An engineer has submitted Report #9 for scheduling approval.', 'current_reports.php', 'Public Facilities', 0, '2026-03-18 13:08:45'),
-(581, 13, 'Report #REP-9 Returned for Revision', 'Admin returned your report for revision. Reason: Explain more', 'current_reports.php', 'Public Facilities', 1, '2026-03-18 13:09:38'),
-(582, 13, 'Report #REP-8 Needs More Work', 'Admin marked your report as not complete.', 'pending_reports.php', 'Street Lights', 1, '2026-03-18 13:23:00'),
-(583, 1, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 1, '2026-03-18 13:23:31'),
-(584, 2, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 0, '2026-03-18 13:23:31'),
-(585, 3, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 0, '2026-03-18 13:23:31'),
-(586, 8, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 0, '2026-03-18 13:23:31'),
-(587, 14, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 0, '2026-03-18 13:23:31'),
-(588, 15, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 1, '2026-03-18 13:23:31'),
-(589, 16, 'Report #REP-8 Needs Review', 'An engineer has submitted Report #8 as complete. Please review and confirm.', 'pending_reports.php', 'Street Lights', 0, '2026-03-18 13:23:31');
+(573, 15, 'New Citizen Request', 'A new request has been submitted and requires your review.', 'employee.php?request_id=125', 'Traffic light', 0, '2026-02-23 09:39:54');
 
 -- --------------------------------------------------------
 
@@ -363,7 +347,7 @@ CREATE TABLE `pending_registrations` (
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
-  `role` enum('Manager','Engineer','Office Staff','Super Admin') NOT NULL,
+  `role` enum('Manager','Engineer','Office Staff','Admin','Super Admin') NOT NULL,
   `password` varchar(255) NOT NULL,
   `verification_token` varchar(64) NOT NULL,
   `verification_token_expires` datetime NOT NULL,
@@ -404,7 +388,10 @@ CREATE TABLE `reports` (
   `priority_lvl` varchar(50) DEFAULT NULL,
   `budget` decimal(15,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `engineer_accepted` tinyint(1) NOT NULL DEFAULT 0
+  `engineer_accepted` tinyint(1) NOT NULL DEFAULT 0,
+  `decline_reason` text DEFAULT NULL,
+  `decline_reviewed` tinyint(1) DEFAULT NULL COMMENT '1=valid,0=invalid',
+  `decline_review_note` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -483,9 +470,7 @@ INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contac
 (121, 'Waiting Shed', 'Pansol, Krus Na Ligas, Quezon City, Montalban Street', 'bumagsak  yung bubong ng waiting shed sa panson', '09785634522', 'Jasmin Padilla', 'Pending', '14.6543,121.0721', '2026-02-23 08:31:42', NULL),
 (123, 'traffic light', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'nasira traffic light', '09123456785', 'Hannah Roxas', 'Pending', '14.6467,121.0330', '2026-02-23 09:07:47', NULL),
 (124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Pending', '14.6845,121.0395', '2026-02-23 09:16:42', NULL),
-(125, 'Traffic light', 'Santo Domingo (Matalahib), Quezon City', 'The Traffic light in the Santo domingo is broken.', '09009356577', 'Kent Bartolome', 'Pending', '14.6756,121.0309', '2026-02-23 09:39:54', NULL),
-(126, 'Roads', 'Oriole Street, Veterans Area 2, Brgy. Payatas, Quezon City', 'Sira talaga dito', '09212212121', 'Kent', 'Pending', '14.707149905394584,121.10462951241061', '2026-03-18 14:29:03', 'bartolomeexequielkent@gmail.com'),
-(127, 'Roads', 'Zodiac Street, Bagbag, Brgy. Capri, Quezon City', 'Roads destroyed', '09212212121', 'Kent', 'Pending', '14.696191183297495,121.04077148018405', '2026-03-18 15:03:08', 'bartolomeexequielkent@gmail.com');
+(125, 'Traffic light', 'Santo Domingo (Matalahib), Quezon City', 'The Traffic light in the Santo domingo is broken.', '09009356577', 'Kent Bartolome', 'Pending', '14.6756,121.0309', '2026-02-23 09:39:54', NULL);
 
 -- --------------------------------------------------------
 
@@ -518,25 +503,6 @@ CREATE TABLE `request_ai_analysis` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `request_ai_analysis`
---
-
-INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastructure`, `detected_infrastructure`, `infrastructure_match`, `match_confidence`, `is_legitimate`, `legitimacy_score`, `legitimacy_notes`, `damage_severity`, `priority_recommendation`, `damage_description`, `confidence_score`, `anomaly_flags`, `combined_assessment`, `estimated_repair_complexity`, `requires_immediate_action`, `images_analyzed`, `analysis_status`, `ai_cost_estimation`, `analyzed_at`, `created_at`) VALUES
-(28, 114, '', 'Roads', 1, 0.851, 1, 0.801, 'Road structural damage detected via pixel analysis. Manual review recommended.', 9, 'Critical', 'Roads issue across 1 image. Detected: traffic light, car. Road structural damage detected (cracks/heaving). Severe — immediate action required.', 0.751, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (9%); minivan (7%); parking meter (7%); jigsaw puzzle (6%); car mirror (3%); alp (3%)', 'Major', 1, 1, 'completed', '₱4,140,000 – ₱6,000,000', '2026-03-17 13:39:15', '2026-02-23 08:05:39'),
-(29, 115, '', 'Roads', 0, 0.986, 1, 0.936, 'AI confidence: 89%. Infrastructure indicators detected.', 5, 'Medium', 'Roads issue across 1 image. Detected: street sign, stop sign. Rust/corrosion visible. Moderate damage.', 0.886, '[\"rust_detected\"]', 'street sign (68%); birdhouse (4%); flagpole, flagstaff (3%); mailbox, letter box (2%); mortarboard (1%); traffic light, traffic signal, stoplight (1%)', 'Moderate', 0, 1, 'completed', 'P50,000 - P70,000', '2026-02-23 08:09:38', '2026-02-23 08:09:38'),
-(30, 116, '', 'Roads', 1, 0.100, 0, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 3, 'Low', 'Roads issue across 1 image. Road surface irregularities detected. Minor or unclear damage.', 0.000, '[]', 'stone wall (46%); patio, terrace (4%); bannister, banister, balustrade, balusters, handrail (3%); picket fence, paling (3%); cliff, drop, drop-off (2%); valley, vale (2%)', 'Moderate', 0, 1, 'completed', '₱24,000 – ₱45,000', '2026-03-17 17:35:56', '2026-02-23 08:12:29'),
-(31, 117, '', 'Street Lights', 1, 0.226, 1, 0.176, 'AI confidence: 13%. Infrastructure indicators detected.', 5, 'Medium', 'Street Lights issue across 1 image. Detected: pole. Moderate damage.', 0.126, '[]', 'parking meter (20%); bubble (18%); pole (5%); syringe (4%); water bottle (3%); reel (3%)', 'Moderate', 0, 1, 'completed', '₱8,000 – ₱15,000', '2026-03-18 01:53:02', '2026-02-23 08:14:48'),
-(32, 118, '', 'Public Facilities', 1, 1.000, 1, 1.000, 'Road structural damage detected via pixel analysis. Manual review recommended.', 4, 'Medium', 'Public Facilities issue across 1 image. Detected: toilet seat, toilet. Road surface irregularities detected. Moderate damage.', 1.000, '[]', 'toilet seat (59%); toilet tissue, toilet paper, bathroom tissue (12%); soap dispenser (12%); washbasin, handbasin, washbowl, lavabo, wash-hand basin (4%); switch, electric switch, electrical switch (2%); paper towel (1%)', 'Moderate', 0, 1, 'completed', '₱18,000 – ₱27,000', '2026-03-18 07:22:08', '2026-02-23 08:18:36'),
-(33, 119, '', 'Drainage', 1, 0.414, 1, 0.364, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Drainage issue across 1 image. Detected: dam. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.314, '[\"immediate_action_required\",\"road_structural_damage\"]', 'patio, terrace (23%); dam, dike, dyke (16%); pier (3%); greenhouse, nursery, glasshouse (2%); pot, flowerpot (2%); boathouse (2%)', 'Major', 1, 1, 'completed', 'P2,480,000 - P4,000,000', '2026-02-23 08:21:46', '2026-02-23 08:21:46'),
-(34, 120, '', 'Roads', 0, 0.303, 1, 0.253, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: cable, car. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.203, '[\"immediate_action_required\",\"road_structural_damage\"]', 'sports car, sport car (22%); jinrikisha, ricksha, rickshaw (7%); cab, hack, taxi, taxicab (4%); convertible (3%); chain (3%); parking meter (2%)', 'Major', 1, 1, 'completed', 'P3,590,000 - P6,000,000', '2026-02-23 08:26:52', '2026-02-23 08:26:52'),
-(35, 121, '', 'Roads', 0, 0.100, 1, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.000, '[\"immediate_action_required\",\"road_structural_damage\"]', 'solar dish, solar collector, solar furnace (35%); bullet train, bullet (4%); cab, hack, taxi, taxicab (2%); drilling platform, offshore rig (2%); bobsled, bobsleigh, bob (2%); dock, dockage, docking facility (2%)', 'Major', 1, 1, 'completed', 'P3,370,000 - P6,000,000', '2026-02-23 08:31:43', '2026-02-23 08:31:43'),
-(37, 123, '', 'Roads', 0, 0.772, 1, 0.722, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 1 image. Detected: traffic light. Road structural damage detected (cracks/heaving). Burn/char marks detected. Severe - immediate action required.', 0.672, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (84%); horizontal bar, high bar (4%); pole (2%); parallel bars, bars (1%); spotlight, spot (1%); bow (0%)', 'Major', 1, 1, 'completed', 'P5,260,000 - P6,000,000', '2026-02-23 09:07:48', '2026-02-23 09:07:48'),
-(38, 124, '', 'Roads', 1, 0.100, 0, 0.050, 'Road structural damage detected via pixel analysis. Manual review recommended.', 3, 'Low', 'Roads issue across 1 image. Road surface irregularities detected. Minor or unclear damage.', 0.000, '[]', 'vault (6%); monastery (5%); umbrella (3%); trimaran (3%); hammer (2%); sundial (2%)', 'Moderate', 0, 1, 'completed', '₱22,000 – ₱42,000', '2026-03-18 01:09:15', '2026-02-23 09:16:44'),
-(39, 125, '', 'Roads', 0, 0.731, 1, 0.681, 'Road structural damage detected via pixel analysis. Manual review recommended.', 10, 'Critical', 'Roads issue across 3 images. Detected: traffic light. Road structural damage detected (cracks/heaving). Severe - immediate action required.', 0.631, '[\"immediate_action_required\",\"road_structural_damage\"]', 'traffic light, traffic signal, stoplight (94%); traffic light, traffic signal, stoplight (85%); traffic light, traffic signal, stoplight (57%); horizontal bar, high bar (4%); crane (3%); street sign (3%)', 'Major', 1, 3, 'completed', 'P4,650,000 - P6,000,000', '2026-02-23 09:39:55', '2026-02-23 09:39:55'),
-(45, 126, '', 'Roads', 1, 0.318, 1, 0.268, 'Road structural damage detected via pixel analysis. Manual review recommended.', 6, 'High', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Burn/char marks detected. Significant damage.', 0.218, '[\"road_structural_damage\"]', 'American alligator, Alligator mississipiensis (6%); radio telescope, radio reflector (3%); beacon, lighthouse, beacon light, pharos (3%); solar dish, solar collector, solar furnace (2%); lumbermill, sawmill (2%); alp (2%)', 'Complex', 0, 1, 'completed', '₱350,000 – ₱660,000', '2026-03-18 14:29:52', '2026-03-18 14:29:52'),
-(46, 127, '', 'Roads', 1, 0.318, 1, 0.268, 'Road structural damage detected via pixel analysis. Manual review recommended.', 6, 'High', 'Roads issue across 1 image. Road structural damage detected (cracks/heaving). Burn/char marks detected. Significant damage.', 0.218, '[\"road_structural_damage\"]', 'American alligator, Alligator mississipiensis (6%); radio telescope, radio reflector (3%); beacon, lighthouse, beacon light, pharos (3%); solar dish, solar collector, solar furnace (2%); lumbermill, sawmill (2%); alp (2%)', 'Complex', 0, 1, 'completed', '₱350,000 – ₱660,000', '2026-03-18 15:03:46', '2026-03-18 15:03:46');
-
 -- --------------------------------------------------------
 
 --
@@ -546,7 +512,7 @@ INSERT INTO `request_ai_analysis` (`analysis_id`, `req_id`, `declared_infrastruc
 CREATE TABLE `request_resolutions` (
   `res_id` int(10) UNSIGNED NOT NULL,
   `req_id` int(10) UNSIGNED NOT NULL,
-  `status` enum('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion','Pending Admin Approval') NOT NULL DEFAULT 'Approved',
+  `status` enum('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion') NOT NULL DEFAULT 'Approved',
   `res_note` text DEFAULT NULL,
   `resolved_by` int(10) UNSIGNED NOT NULL,
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -687,13 +653,13 @@ ALTER TABLE `request_resolutions`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `engineer_profiles`
 --
 ALTER TABLE `engineer_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `evidence_images`
@@ -705,7 +671,7 @@ ALTER TABLE `evidence_images`
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=348;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=354;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -729,7 +695,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `pending_registrations`
 --
 ALTER TABLE `pending_registrations`
-  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `penreg_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `repair_archive`

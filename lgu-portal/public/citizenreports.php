@@ -1214,20 +1214,20 @@ foreach ($maintenance_data as $_item) {
         >
     </div>
     <div class="sort-dropdown-wrap" id="schedSortWrap">
-        <button class="sort-btn" id="schedSortBtn" title="Sort records">
+        <button class="sort-btn" id="schedSortBtn" data-i18n-title="sort_btn_title" title="Sort records">
             <i class="fas fa-sort"></i>
-            <span class="sort-btn-label">Sort</span>
+            <span class="sort-btn-label" data-i18n="sort_btn_label">Sort</span>
             <i class="fas fa-chevron-down sort-chevron"></i>
         </button>
         <div class="sort-dropdown" id="schedSortDropdown">
-            <div class="sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
-            <div class="sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
+            <div class="sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> <span data-i18n="sort_date_asc">Date (Earliest)</span></div>
+            <div class="sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> <span data-i18n="sort_date_desc">Date (Latest)</span></div>
             <div class="sort-dropdown-divider"></div>
-            <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
-            <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
+            <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> <span data-i18n="sort_id_asc">ID (Ascending)</span></div>
+            <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> <span data-i18n="sort_id_desc">ID (Descending)</span></div>
             <div class="sort-dropdown-divider"></div>
-            <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Type A → Z</div>
-            <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Type Z → A</div>
+            <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> <span data-i18n="sort_alpha_asc">Type A → Z</span></div>
+            <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> <span data-i18n="sort_alpha_desc">Type Z → A</span></div>
         </div>
     </div>
     </div>
@@ -1830,6 +1830,15 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_stat_title_ongoing:          'Filter: On-Going',
             reports_stat_title_delayed:          'Filter: Delayed',
             reports_stat_title_completed:        'Filter: Completed',
+            /* ── sort ── */
+            sort_btn_label:                      'Sort',
+            sort_btn_title:                      'Sort records',
+            sort_date_asc:                       'Date (Earliest)',
+            sort_date_desc:                      'Date (Latest)',
+            sort_id_asc:                         'ID (Ascending)',
+            sort_id_desc:                        'ID (Descending)',
+            sort_alpha_asc:                      'Type A → Z',
+            sort_alpha_desc:                     'Type Z → A',
             /* ── main card ── */
             reports_page_title:                  'Recent Maintenance Reports',
             reports_search_placeholder:          'Search by Date, Type, Location, Budget, or Status...',
@@ -1905,6 +1914,15 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_stat_title_ongoing:          'I-filter: Isinasagawa',
             reports_stat_title_delayed:          'I-filter: Naantala',
             reports_stat_title_completed:        'I-filter: Natapos',
+            /* ── sort ── */
+            sort_btn_label:                      'Ayusin',
+            sort_btn_title:                      'Ayusin ang mga rekord',
+            sort_date_asc:                       'Petsa (Pinaka-maaga)',
+            sort_date_desc:                      'Petsa (Pinaka-bago)',
+            sort_id_asc:                         'ID (Pataas)',
+            sort_id_desc:                        'ID (Pababa)',
+            sort_alpha_asc:                      'Uri A → Z',
+            sort_alpha_desc:                     'Uri Z → A',
             /* ── main card ── */
             reports_page_title:                  'Kamakailang Ulat ng Pagpapanatili',
             reports_search_placeholder:          'Maghanap ayon sa Petsa, Uri, Lokasyon, Badyet, o Katayuan...',

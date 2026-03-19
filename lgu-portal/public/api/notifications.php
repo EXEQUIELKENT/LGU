@@ -158,8 +158,85 @@ while ($row = $result->fetch_assoc()) {
         'read'         => (bool)$row['is_read'],
         'time'         => $row['time'],
         'date'         => $row['date'],
+        // relocation fields populated below
+        'relocated'       => false,
+        'relocated_label' => null,
     ];
 }
+
+/* =====================================================
+   RELOCATED DETECTION
+   For notifications that link to a report page with
+   highlight_rep=N, check if the report's current status
+   still matches that destination. If not, mark as
+   relocated and update the URL to the correct page.
+
+   Status → page mapping (must match each page's SQL):
+     archive_reports.php  ← Completed | Cancelled
+     current_reports.php  ← Approved  | Pending Admin Approval
+     pending_reports.php  ← everything else (Scheduled, Pending,
+                             In Progress, Pending Completion, '')
+===================================================== */
+$repIdsToCheck = [];
+foreach ($notifications as $n) {
+    if (!empty($n['url']) && preg_match('/highlight_rep=(\d+)/i', $n['url'], $m)) {
+        $repIdsToCheck[(int)$m[1]] = true;
+    }
+}
+
+$currentStatusMap = [];
+if (!empty($repIdsToCheck)) {
+    $ids = implode(',', array_map('intval', array_keys($repIdsToCheck)));
+    $res = $conn->query(
+        "SELECT r.rep_id, rr.status
+         FROM   reports r
+         LEFT JOIN request_resolutions rr ON r.res_id = rr.res_id
+         WHERE  r.rep_id IN ($ids)"
+    );
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $currentStatusMap[(int)$row['rep_id']] = strtolower(trim($row['status'] ?? ''));
+        }
+        $res->free();
+    }
+}
+
+$pageLabels = [
+    'pending_reports.php' => 'Pending Reports',
+    'current_reports.php' => 'Current Reports',
+    'archive_reports.php' => 'Archive Reports',
+];
+
+foreach ($notifications as &$n) {
+    if (empty($n['url'])) continue;
+    if (!preg_match('/highlight_rep=(\d+)/i', $n['url'], $m)) continue;
+
+    $repId  = (int)$m[1];
+    $status = $currentStatusMap[$repId] ?? null;
+    if ($status === null) continue; // report deleted or not found
+
+    // Determine the correct page from the report's CURRENT status
+    if ($status === 'completed' || $status === 'cancelled') {
+        $correctPage = 'archive_reports.php';
+    } elseif ($status === 'approved' || $status === 'pending admin approval') {
+        $correctPage = 'current_reports.php';
+    } else {
+        // scheduled, pending, in progress, pending completion, ''
+        $correctPage = 'pending_reports.php';
+    }
+
+    // Extract just the filename from the stored URL
+    $urlPath  = parse_url($n['url'], PHP_URL_PATH) ?? '';
+    $urlBase  = strtolower(basename($urlPath));
+
+    if ($urlBase && $urlBase !== $correctPage) {
+        $n['relocated']       = true;
+        $n['relocated_label'] = $pageLabels[$correctPage] ?? $correctPage;
+        // Rewrite URL so the click lands on the right page
+        $n['url'] = $correctPage . '?highlight_rep=' . $repId;
+    }
+}
+unset($n);
 
 /* =====================================================
    UNREAD COUNT PER REQUEST TYPE (per employee)

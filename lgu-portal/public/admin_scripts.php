@@ -783,6 +783,119 @@ startClock();
 })();
 </script>
 
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT — row/card glow + banner styles
+═══════════════════════════════════════════════════════════════════════ */
+
+/* Glow animation keyframes */
+@keyframes notifHighlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(55, 98, 200, 0); background-color: rgba(55, 98, 200, 0); }
+    15%  { box-shadow: 0 0 0 6px rgba(55, 98, 200, 0.35); background-color: rgba(55, 98, 200, 0.13); }
+    50%  { box-shadow: 0 0 0 4px rgba(55, 98, 200, 0.20); background-color: rgba(55, 98, 200, 0.08); }
+    80%  { box-shadow: 0 0 0 3px rgba(55, 98, 200, 0.10); background-color: rgba(55, 98, 200, 0.04); }
+    100% { box-shadow: 0 0 0 0 rgba(55, 98, 200, 0); background-color: rgba(55, 98, 200, 0); }
+}
+
+/* Applied to <tr> and mobile cards */
+.notif-highlight {
+    animation: notifHighlightPulse 5s ease forwards;
+    outline: 2.5px solid #3762c8 !important;
+    outline-offset: -2px;
+    border-radius: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Dark mode variant */
+[data-theme="dark"] .notif-highlight {
+    animation: none;
+    outline: 2.5px solid #5f8cff !important;
+    box-shadow: 0 0 0 4px rgba(95, 140, 255, 0.25), inset 0 0 0 9999px rgba(95, 140, 255, 0.09) !important;
+    transition: box-shadow 0.4s ease, outline 0.4s ease;
+}
+
+/* Banner that appears above the table/list */
+.notif-highlight-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #eef2ff 0%, #dce6f8 100%);
+    border: 1.5px solid #3762c8;
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1e3a8a;
+    box-shadow: 0 3px 12px rgba(55, 98, 200, 0.18);
+    animation: notifBannerFadeOut 0.5s ease 4.7s forwards;
+}
+
+[data-theme="dark"] .notif-highlight-banner {
+    background: linear-gradient(135deg, rgba(55,98,200,0.18) 0%, rgba(30,58,138,0.25) 100%);
+    border-color: #5f8cff;
+    color: #a5c0ff;
+    box-shadow: 0 3px 12px rgba(95, 140, 255, 0.22);
+}
+
+@keyframes notifBannerFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+}
+
+/* ── Relocated badge — amber pill on notification items ── */
+.notif-relocated-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    background: linear-gradient(135deg, rgba(245,158,11,.18), rgba(234,88,12,.13));
+    color: #b45309;
+    border: 1px solid rgba(245,158,11,.4);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+[data-theme="dark"] .notif-relocated-badge {
+    background: linear-gradient(135deg, rgba(245,158,11,.25), rgba(234,88,12,.18));
+    color: #fbbf24;
+    border-color: rgba(251,191,36,.5);
+}
+/* Left accent on notification items that are relocated */
+.notif-item.is-relocated {
+    border-left: 3px solid rgba(245,158,11,.6) !important;
+}
+[data-theme="dark"] .notif-item.is-relocated {
+    border-left-color: rgba(251,191,36,.6) !important;
+}
+
+/* ── On-page relocated banner — item was not found here ── */
+.notif-relocated-page-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(245,158,11,.13), rgba(234,88,12,.08));
+    border: 1.5px solid rgba(245,158,11,.40);
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #92400e;
+}
+[data-theme="dark"] .notif-relocated-page-banner {
+    background: linear-gradient(135deg, rgba(245,158,11,.18), rgba(234,88,12,.12));
+    border-color: rgba(251,191,36,.45);
+    border-left-color: #fbbf24;
+    color: #fde68a;
+}
+.notif-relocated-page-banner a { color: inherit; }
+</style>
+
 <script>
 /* ═══════════════════════════════════════════════════════════════════════
    NOTIFICATION HIGHLIGHT
@@ -793,9 +906,9 @@ startClock();
              archive_reports.php  (any page using data-req-id / data-rep-id).
 ═══════════════════════════════════════════════════════════════════════ */
 (function initNotifHighlight() {
-    const params    = new URLSearchParams(window.location.search);
-    const reqId     = params.get('highlight');        // requests.php?highlight=5
-    const repId     = params.get('highlight_rep');    // *_reports.php?highlight_rep=8
+    const params = new URLSearchParams(window.location.search);
+    const reqId  = params.get('highlight');        // requests.php?highlight=5
+    const repId  = params.get('highlight_rep');    // *_reports.php?highlight_rep=8
 
     if (!reqId && !repId) return;
 
@@ -805,73 +918,178 @@ startClock();
     cleanUrl.searchParams.delete('highlight_rep');
     history.replaceState(null, '', cleanUrl);
 
-    function applyHighlight(targetId, dataAttr) {
+    function doHighlight(targetId, dataAttr) {
         const selector = '[' + dataAttr + '="' + targetId + '"]';
 
-        /* If we're on requests.php and the GIS view is showing, switch
-           to the table/list view first so the row is actually in the DOM. */
-        if (typeof switchView === 'function') {
-            switchView('requests');
+        /* Step 1 — If on requests.php, force the table view to be visible.
+           switchView() is defined after this script is included so we wait
+           for DOMContentLoaded to be sure it exists, then call it and also
+           overwrite localStorage so the view-restore IIFE can't race back
+           to GIS view. */
+        function ensureTableView() {
+            if (typeof switchView === 'function') {
+                try { localStorage.setItem('activeView', 'requests'); } catch(e) {}
+                switchView('requests');
+            }
         }
 
-        /* Short delay so any view-switch animation can settle */
-        setTimeout(function () {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', ensureTableView);
+        } else {
+            ensureTableView();
+        }
+
+        /* Step 2 — After view animation settles, scroll + highlight */
+        function runHighlight() {
             const elements = document.querySelectorAll(selector);
-            if (!elements.length) return;
 
-            const primary = elements[0];   // first match (desktop row or mobile card)
+            /* ── Not found: item has been relocated to another page ── */
+            if (!elements.length) {
+                showRelocatedBanner(dataAttr, targetId);
+                return;
+            }
 
-            /* Scroll smoothly into view */
+            /* Pick the element that is actually visible in the current layout.
+               On mobile the <tr> is hidden (table display:none), so offsetParent
+               is null — prefer the .request-card instead. */
+            function isVisible(el) { return el && el.offsetParent !== null; }
+            const primary = Array.from(elements).find(isVisible) || elements[0];
+
+            /* Scroll smoothly to center the visible element in the viewport */
             primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-            /* Apply glow highlight to all matching elements
-               (both the desktop <tr> and mobile card share the same data attr) */
+            /* Apply glow highlight to ALL matching elements
+               (desktop <tr> AND mobile card both share the same data-attr) */
             elements.forEach(function (el) {
                 el.classList.add('notif-highlight');
-                /* Auto-remove after animation finishes (5 s) */
                 setTimeout(function () {
                     el.classList.remove('notif-highlight');
                     el.style.outline = '';
+                    el.style.boxShadow = '';
                 }, 5500);
             });
 
-            /* Insert a dismissable "You were directed here" banner
-               just above the first visible element */
+            /* Insert the "You were directed here" banner */
             insertHighlightBanner(primary);
+        }
 
-        }, 700);
+        /* Give the view-switch 400 ms to render, then scroll */
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                setTimeout(runHighlight, 500);
+            });
+        } else {
+            setTimeout(runHighlight, 500);
+        }
     }
 
     function insertHighlightBanner(el) {
-        /* Don't double-insert */
         if (document.getElementById('notifHighlightBanner')) return;
 
         const banner = document.createElement('div');
         banner.id = 'notifHighlightBanner';
         banner.className = 'notif-highlight-banner';
         banner.innerHTML =
-            '<span style="font-size:16px;">🔔</span>' +
-            '<span>You were directed here from a notification — this item is highlighted below.</span>';
+            '<span style="font-size:16px;flex-shrink:0;">🔔</span>' +
+            '<span>You were directed here from a notification — this item is highlighted.</span>';
 
-        /* Insert before the element's closest table/list ancestor,
-           or directly before the element if no wrapper is found */
-        const anchor =
-            el.closest('.table-card, .table-wrapper, .mobile-report-list, #requestsView') ||
-            el.parentElement;
+        /* ── Find the right insertion point ────────────────────────────────
+           Query from document root so we always land INSIDE the card/section
+           container, never before it.
 
-        if (anchor && anchor.parentElement) {
-            anchor.parentElement.insertBefore(banner, anchor);
-        } else {
+           Strategy (in priority order):
+           1. Desktop report pages: insert before .table-wrapper  (inside .card)
+           2. Mobile report pages : insert before .mobile-report-list (inside .card)
+           3. Desktop requests    : insert before <table> inside .table-card
+           4. Mobile requests     : insert before .mobile-request-list (inside .table-card)
+           5. Last resort         : el's direct parent
+        ────────────────────────────────────────────────────────────────── */
+        const isMobile   = window.matchMedia('(max-width: 768px)').matches;
+        const tableWrap  = document.querySelector('.table-wrapper');          // report pages
+        const mobileList = document.querySelector('.mobile-report-list, .mobile-request-list');
+        const tableCard  = document.querySelector('.table-card');             // requests.php
+        const plainTable = tableCard ? tableCard.querySelector('table') : null;
+
+        let target = null;
+
+        if (!isMobile && tableWrap) {
+            target = tableWrap;                    // before .table-wrapper inside .card
+        } else if (isMobile && mobileList) {
+            target = mobileList;                   // before mobile list inside .card/.table-card
+        } else if (!isMobile && plainTable) {
+            target = plainTable;                   // before <table> inside .table-card
+        } else if (tableWrap) {
+            target = tableWrap;                    // fallback: hidden table-wrapper
+        } else if (mobileList) {
+            target = mobileList;
+        }
+
+        if (target && target.parentElement) {
+            target.parentElement.insertBefore(banner, target);
+        } else if (el.tagName === 'TR') {
+            /* Last-resort for <tr>: insert before the <table>, inside its parent */
+            const tbl = el.closest('table');
+            if (tbl && tbl.parentElement) tbl.parentElement.insertBefore(banner, tbl);
+        } else if (el.parentElement) {
             el.parentElement.insertBefore(banner, el);
         }
 
-        /* Remove banner after 5 s (matching its CSS fade-out) */
         setTimeout(function () {
             if (banner.parentElement) banner.parentElement.removeChild(banner);
         }, 5200);
     }
 
-    if (reqId) applyHighlight(reqId, 'data-req-id');
-    if (repId) applyHighlight(repId, 'data-rep-id');
+    if (reqId) doHighlight(reqId, 'data-req-id');
+    if (repId) doHighlight(repId, 'data-rep-id');
+
+    /* ── Show amber "relocated" banner when the item isn't on this page ── */
+    function showRelocatedBanner(dataAttr, targetId) {
+        if (document.getElementById('notifRelocatedBanner')) return;
+
+        const param = dataAttr === 'data-req-id' ? 'highlight' : 'highlight_rep';
+        const pageMap = {
+            'pending_reports.php': 'Pending Reports',
+            'current_reports.php': 'Current Reports',
+            'archive_reports.php': 'Archive Reports',
+            'requests.php':        'Requests',
+        };
+        const currentPage = window.location.pathname.split('/').pop();
+        const links = Object.entries(pageMap)
+            .filter(function(e) { return e[0] !== currentPage; })
+            .map(function(e) {
+                return '<a href="' + e[0] + '?' + param + '=' + encodeURIComponent(targetId) + '" ' +
+                       'style="color:inherit;font-weight:700;text-decoration:underline;margin-left:6px;">' +
+                       e[1] + '</a>';
+            });
+
+        const banner = document.createElement('div');
+        banner.id = 'notifRelocatedBanner';
+        banner.className = 'notif-relocated-page-banner';
+        banner.innerHTML =
+            '<span style="font-size:15px;flex-shrink:0;">📦</span>' +
+            '<span><strong>Item not found here.</strong> It may have moved to: ' + links.join('') + '</span>' +
+            '<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;color:inherit;margin-left:auto;flex-shrink:0;">&times;</button>';
+
+        /* Same safe insertion: inside the section container, before the table/list */
+        const isMobile   = window.matchMedia('(max-width: 768px)').matches;
+        const tableWrap  = document.querySelector('.table-wrapper');
+        const mobileList = document.querySelector('.mobile-report-list, .mobile-request-list');
+        const tableCard  = document.querySelector('.table-card');
+        const plainTable = tableCard ? tableCard.querySelector('table') : null;
+
+        let target = null;
+        if (!isMobile && tableWrap)      target = tableWrap;
+        else if (isMobile && mobileList) target = mobileList;
+        else if (!isMobile && plainTable) target = plainTable;
+        else if (tableWrap)              target = tableWrap;
+        else if (mobileList)             target = mobileList;
+
+        if (target && target.parentElement) {
+            target.parentElement.insertBefore(banner, target);
+        } else {
+            const main = document.querySelector('.main-content') || document.body;
+            main.insertBefore(banner, main.firstChild);
+        }
+    }
 })();
 </script>

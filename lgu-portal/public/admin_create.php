@@ -150,7 +150,8 @@ function getDisplayName() {
     $firstName = $_SESSION['employee_first_name'] ?? '';
     $role = $_SESSION['employee_role'] ?? '';
     $name = trim($firstName) ?: 'User';
-    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) return 'Admin - ' . $name;
+    if (strcasecmp($role, 'Super Admin') === 0) return 'Super Admin - ' . $name;
+    if (strcasecmp($role, 'Admin') === 0)       return 'Admin - ' . $name;
     return $role ? $role . ' - ' . $name : $name;
 }
 
@@ -1372,6 +1373,29 @@ input:-webkit-autofill:focus {
     color: var(--text-secondary);
     opacity: .7;
 }
+
+/* ── CIMM Loading Overlay ── */
+#loadingOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); display: none;
+    justify-content: center; align-items: center; z-index: 10000;
+    opacity: 0; transition: opacity 0.3s ease;
+}
+#loadingOverlay.show { display: flex; opacity: 1; }
+#loadingOverlay .loading-content { text-align: center; }
+#loadingOverlay .lgu-spinner {
+    display: inline-block; font-size: 64px; font-weight: 800;
+    color: #6384d2; letter-spacing: 8px;
+    animation: spinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99,132,210,0.4);
+    font-family: 'Poppins', Arial, sans-serif;
+}
+@keyframes spinLGU { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
+#loadingOverlay .loading-text {
+    margin-top: 20px; color: #fff; font-size: 16px; font-weight: 500;
+    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1826,9 +1850,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     proceedBtn.addEventListener('click', function() {
         backdrop.classList.remove('show');
-        // Actually submit the form
+        // Show loading overlay then actually submit the form
         proceedBtn.disabled = true;
         proceedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        showOverlay('Creating Account');
         form.submit();
     });
 }());
@@ -1942,6 +1967,38 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
     document.addEventListener('DOMContentLoaded', function() { combos.forEach(initCombo); });
 }());
+</script>
+
+<!-- ── CIMM Loading Overlay ── -->
+<div id="loadingOverlay">
+    <div class="loading-content">
+        <div class="lgu-spinner">CIMM</div>
+        <div class="loading-text" id="loadingText">Creating Account</div>
+    </div>
+</div>
+
+<script>
+/* ── Overlay helpers ── */
+let _overlayDotsInterval = null;
+function showOverlay(msg) {
+    const overlay = document.getElementById('loadingOverlay');
+    const text    = document.getElementById('loadingText');
+    if (text) {
+        const base = (msg || 'Processing').replace(/\.+$/, '');
+        if (_overlayDotsInterval) clearInterval(_overlayDotsInterval);
+        let d = 0;
+        _overlayDotsInterval = setInterval(() => { d = (d + 1) % 4; text.textContent = base + '.'.repeat(d); }, 400);
+    }
+    if (overlay) { overlay.style.display = 'flex'; requestAnimationFrame(() => overlay.classList.add('show')); }
+}
+function hideOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (!overlay) return;
+    if (_overlayDotsInterval) { clearInterval(_overlayDotsInterval); _overlayDotsInterval = null; }
+    overlay.classList.remove('show');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+
 </script>
 
 </body>

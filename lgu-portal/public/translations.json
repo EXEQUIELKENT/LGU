@@ -351,7 +351,15 @@
     "reports_stat_title_scheduled": "Filter: Scheduled",
     "reports_stat_title_ongoing": "Filter: On-Going",
     "reports_stat_title_delayed": "Filter: Delayed",
-    "reports_stat_title_completed": "Filter: Completed"
+    "reports_stat_title_completed": "Filter: Completed",
+    "sort_btn_label": "Sort",
+    "sort_btn_title": "Sort records",
+    "sort_date_asc": "Date (Earliest)",
+    "sort_date_desc": "Date (Latest)",
+    "sort_id_asc": "ID (Ascending)",
+    "sort_id_desc": "ID (Descending)",
+    "sort_alpha_asc": "Type A → Z",
+    "sort_alpha_desc": "Type Z → A"
   },
   "tl": {
     "site_title": "InfraGovServices",
@@ -705,6 +713,14 @@
     "reports_stat_title_scheduled": "I-filter: Nakaplanong",
     "reports_stat_title_ongoing": "I-filter: Isinasagawa",
     "reports_stat_title_delayed": "I-filter: Naantala",
-    "reports_stat_title_completed": "I-filter: Natapos"
+    "reports_stat_title_completed": "I-filter: Natapos",
+    "sort_btn_label": "Ayusin",
+    "sort_btn_title": "Ayusin ang mga rekord",
+    "sort_date_asc": "Petsa (Pinaka-maaga)",
+    "sort_date_desc": "Petsa (Pinaka-bago)",
+    "sort_id_asc": "ID (Pataas)",
+    "sort_id_desc": "ID (Pababa)",
+    "sort_alpha_asc": "Uri A → Z",
+    "sort_alpha_desc": "Uri Z → A"
   }
 }

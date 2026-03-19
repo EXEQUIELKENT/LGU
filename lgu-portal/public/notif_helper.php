@@ -65,13 +65,13 @@ function insertNotification(mysqli $conn, int $employeeId, string $title, string
 function getAdminIds(mysqli $conn): array {
     $result = $conn->query(
         "SELECT user_id FROM employees
-         WHERE role IN ('Super Admin','Manager','Office Staff')
+         WHERE role IN ('Super Admin','Admin','Manager','Office Staff')
            AND (account_locked IS NULL OR account_locked = 0)"
     );
     if (!$result) {
         $result = $conn->query(
             "SELECT user_id FROM employees
-             WHERE role IN ('Super Admin','Manager','Office Staff')"
+             WHERE role IN ('Super Admin','Admin','Manager','Office Staff')"
         );
     }
     $ids = [];
@@ -89,11 +89,11 @@ function getAdminIds(mysqli $conn): array {
 function getSuperAdminIds(mysqli $conn): array {
     $result = $conn->query(
         "SELECT user_id FROM employees
-         WHERE role = 'Super Admin'
+         WHERE role IN ('Super Admin','Admin')
            AND (account_locked IS NULL OR account_locked = 0)"
     );
     if (!$result) {
-        $result = $conn->query("SELECT user_id FROM employees WHERE role = 'Super Admin'");
+        $result = $conn->query("SELECT user_id FROM employees WHERE role IN ('Super Admin','Admin')");
     }
     $ids = [];
     if ($result) {
@@ -110,12 +110,12 @@ function getSuperAdminIds(mysqli $conn): array {
 function getAssignerIds(mysqli $conn): array {
     $result = $conn->query(
         "SELECT user_id FROM employees
-         WHERE role IN ('Super Admin','Manager','Office Staff')
+         WHERE role IN ('Super Admin','Admin','Manager','Office Staff')
            AND (account_locked IS NULL OR account_locked = 0)"
     );
     if (!$result) {
         $result = $conn->query(
-            "SELECT user_id FROM employees WHERE role IN ('Super Admin','Manager','Office Staff')"
+            "SELECT user_id FROM employees WHERE role IN ('Super Admin','Admin','Manager','Office Staff')"
         );
     }
     $ids = [];

@@ -99,23 +99,12 @@ function showNotification() {
 
 // Improved: Format display name as "Role - Name" if applicable
 function getDisplayName() {
-    // Fallbacks
-    $firstName = isset($_SESSION['employee_first_name']) ? $_SESSION['employee_first_name'] : '';
-    $role = isset($_SESSION['employee_role']) ? $_SESSION['employee_role'] : '';
-    // Try to use full name if available
-    $name = trim($firstName);
-    if (!$name) $name = 'User';
-
-    // Determine formatting based on role (you can modify roles as needed)
-    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) {
-        return 'Admin - ' . $name;
-    } elseif ($role) {
-        // Show role for any other roles, e.g., "Employee - John Doe"
-        return $role . ' - ' . $name;
-    } else {
-        // No role: show plain name
-        return $name;
-    }
+    $firstName = $_SESSION['employee_first_name'] ?? '';
+    $role = $_SESSION['employee_role'] ?? '';
+    $name = trim($firstName) ?: 'User';
+    if (strcasecmp($role, 'Super Admin') === 0) return 'Super Admin - ' . $name;
+    if (strcasecmp($role, 'Admin') === 0)       return 'Admin - ' . $name;
+    return $role ? $role . ' - ' . $name : $name;
 }
 $displayName = getDisplayName();
 

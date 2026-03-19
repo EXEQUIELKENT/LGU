@@ -448,7 +448,8 @@ function getDisplayName() {
     $firstName = $_SESSION['employee_first_name'] ?? '';
     $role      = $_SESSION['employee_role'] ?? '';
     $name      = trim($firstName) ?: 'User';
-    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0) return 'Admin - ' . $name;
+    if (strcasecmp($role, 'Super Admin') === 0) return 'Super Admin - ' . $name;
+    if (strcasecmp($role, 'Admin') === 0) return 'Admin - ' . $name;
     elseif ($role) return $role . ' - ' . $name;
     return $name;
 }
@@ -795,6 +796,82 @@ tbody tr:hover { background: rgba(255,152,0,.09); }
 }
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
+
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION ROW HIGHLIGHT
+   Injected per-page so it works regardless of emp-global.css version
+═══════════════════════════════════════════════════════ */
+/* Banner above the table */
+.notif-highlight-banner {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    background: linear-gradient(135deg, rgba(55,98,200,.13), rgba(55,98,200,.07));
+    border: 1.5px solid rgba(55,98,200,.30);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #3762c8;
+    margin-bottom: 12px;
+    animation: bannerFadeIn .35s ease, bannerFadeOut .5s ease 4.5s forwards;
+    pointer-events: none;
+}
+[data-theme="dark"] .notif-highlight-banner {
+    background: linear-gradient(135deg, rgba(95,140,255,.16), rgba(95,140,255,.08));
+    border-color: rgba(95,140,255,.35);
+    color: #8fb4ff;
+}
+@keyframes bannerFadeIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+@keyframes bannerFadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
+
+/* Desktop <tr> highlight — uses inset box-shadow (works with border-collapse:separate) */
+tr.notif-highlight > td {
+    animation: trCellHighlight 5s ease-out forwards;
+    position: relative;
+}
+tr.notif-highlight > td:first-child {
+    border-left: 3px solid #3762c8 !important;
+}
+@keyframes trCellHighlight {
+    0%   { background: rgba(55,98,200,.18); box-shadow: inset 0 1px 0 rgba(55,98,200,.5), inset 0 -1px 0 rgba(55,98,200,.5); }
+    25%  { background: rgba(55,98,200,.13); box-shadow: inset 0 1px 0 rgba(55,98,200,.35), inset 0 -1px 0 rgba(55,98,200,.35); }
+    60%  { background: rgba(55,98,200,.07); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td {
+    animation: trCellHighlightDark 5s ease-out forwards;
+}
+@keyframes trCellHighlightDark {
+    0%   { background: rgba(95,140,255,.22); box-shadow: inset 0 1px 0 rgba(95,140,255,.55), inset 0 -1px 0 rgba(95,140,255,.55); }
+    25%  { background: rgba(95,140,255,.15); box-shadow: inset 0 1px 0 rgba(95,140,255,.35), inset 0 -1px 0 rgba(95,140,255,.35); }
+    60%  { background: rgba(95,140,255,.08); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td:first-child {
+    border-left-color: #5f8cff !important;
+}
+
+/* Mobile card highlight */
+.report-card.notif-highlight {
+    animation: cardHighlight 5s ease-out forwards;
+    outline: 2px solid rgba(55,98,200,.5);
+    outline-offset: -2px;
+}
+@keyframes cardHighlight {
+    0%   { box-shadow: 0 0 0 4px rgba(55,98,200,.45); background: rgba(55,98,200,.10); }
+    30%  { box-shadow: 0 0 0 3px rgba(55,98,200,.30); background: rgba(55,98,200,.07); }
+    100% { box-shadow: none; background: transparent; }
+}
+[data-theme="dark"] .report-card.notif-highlight {
+    animation: cardHighlightDark 5s ease-out forwards;
+    outline-color: rgba(95,140,255,.6);
+}
+@keyframes cardHighlightDark {
+    0%   { box-shadow: 0 0 0 4px rgba(95,140,255,.50); background: rgba(95,140,255,.13); }
+    30%  { box-shadow: 0 0 0 3px rgba(95,140,255,.30); background: rgba(95,140,255,.08); }
+    100% { box-shadow: none; background: transparent; }
+}
 
 .search-toolbar { display: flex; align-items: center; gap: 10px; }
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -2467,6 +2544,97 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 </div>
 
 <?php include 'admin_scripts.php'; ?>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT — injected per-page
+   Reads ?highlight_rep={rep_id} from the URL, scrolls to the
+   matching <tr> or .report-card, applies a visible highlight,
+   and shows a brief banner above the table.
+═══════════════════════════════════════════════════════ */
+(function initNotifHighlight() {
+    const params = new URLSearchParams(window.location.search);
+    const repId  = params.get('highlight_rep');
+    if (!repId) return;
+
+    // Clean URL immediately
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight_rep');
+    history.replaceState(null, '', cleanUrl);
+
+    // Wait for DOM to settle
+    setTimeout(function () {
+        var tr   = document.querySelector('tr[data-rep-id="' + repId + '"]');
+        var card = document.querySelector('.report-card[data-rep-id="' + repId + '"]');
+
+        if (!tr && !card) return; // rep_id not on this page
+
+        var isMobile = window.matchMedia('(max-width: 768px)').matches;
+        var primary  = isMobile ? (card || tr) : (tr || card);
+
+        primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // ── Desktop <tr> highlight ──────────────────────────────────────────
+        if (tr && !isMobile) {
+            tr.classList.add('notif-highlight');
+            setTimeout(function () {
+                tr.classList.remove('notif-highlight');
+                tr.querySelectorAll('td').forEach(function (td) { td.style.borderLeft = ''; });
+            }, 5500);
+        }
+
+        // ── Mobile card highlight ───────────────────────────────────────────
+        // Inject a <style> into <head> with the card's exact data-rep-id selector
+        // and !important on every property — this beats all existing CSS rules
+        // including media-query overrides and dark-mode variable declarations.
+        if (card && isMobile) {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            var styleEl = document.createElement('style');
+            styleEl.id  = 'notifCardHighlightStyle';
+            if (isDark) {
+                styleEl.textContent =
+                    '.report-card[data-rep-id="' + repId + '"] {' +
+                    '  outline: 3px solid #7aabff !important;' +
+                    '  outline-offset: 0px !important;' +
+                    '  box-shadow: 0 0 0 4px rgba(95,140,255,0.55), 0 6px 20px rgba(0,0,0,0.5) !important;' +
+                    '  background: rgba(95,140,255,0.22) !important;' +
+                    '  border-color: #5f8cff !important;' +
+                    '}';
+            } else {
+                styleEl.textContent =
+                    '.report-card[data-rep-id="' + repId + '"] {' +
+                    '  outline: 3px solid #3762c8 !important;' +
+                    '  outline-offset: 0px !important;' +
+                    '  box-shadow: 0 0 0 4px rgba(55,98,200,0.45), 0 6px 20px rgba(55,98,200,0.25) !important;' +
+                    '  background: rgba(55,98,200,0.13) !important;' +
+                    '  border-color: #3762c8 !important;' +
+                    '}';
+            }
+            document.head.appendChild(styleEl);
+            setTimeout(function () {
+                var s = document.getElementById('notifCardHighlightStyle');
+                if (s) s.parentNode.removeChild(s);
+            }, 5500);
+        }
+
+        // ── Banner ──────────────────────────────────────────────────────────
+        if (document.getElementById('notifHighlightBanner')) return;
+        var banner = document.createElement('div');
+        banner.id        = 'notifHighlightBanner';
+        banner.className = 'notif-highlight-banner';
+        banner.innerHTML = '<span style="font-size:16px;flex-shrink:0;">🔔</span>' +
+                           '<span>You were directed here from a notification — this item is highlighted below.</span>';
+        var container = primary.closest('.mobile-report-list, .table-wrapper, .table-card');
+        if (container) {
+            container.insertBefore(banner, container.firstChild);
+        } else if (primary.parentElement) {
+            primary.parentElement.insertBefore(banner, primary);
+        }
+        setTimeout(function () { if (banner.parentElement) banner.parentElement.removeChild(banner); }, 5200);
+
+    }, 500);
+})();
+</script>
 
 <!-- ═══════════════════════════════════════════
      REPORT DATE PICKERS — Start Date & End Date

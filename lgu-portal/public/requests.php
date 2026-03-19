@@ -60,8 +60,8 @@ function getDisplayName() {
     $firstName = $_SESSION['employee_first_name'] ?? '';
     $role      = $_SESSION['employee_role'] ?? '';
     $name      = trim($firstName) ?: 'User';
-    if (strcasecmp($role, 'Super Admin') === 0 || strcasecmp($role, 'Admin') === 0)
-        return 'Admin - ' . $name;
+    if (strcasecmp($role, 'Super Admin') === 0) return 'Super Admin - ' . $name;
+    if (strcasecmp($role, 'Admin') === 0)       return 'Admin - ' . $name;
     elseif ($role)
         return $role . ' - ' . $name;
     return $name;
