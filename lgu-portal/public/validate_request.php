@@ -134,6 +134,58 @@ $upd->bind_param('i', $reqId);
 $upd->execute();
 $upd->close();
 
+// ── Notify ALL employees about the validated request ─────────────────────────
+require_once __DIR__ . '/notif_helper.php';
+
+$actorLabel    = getActorName();
+
+$notifReqInfo = $conn->query(
+    "SELECT req.infrastructure, req.location, req.name
+     FROM requests req WHERE req.req_id = $reqId LIMIT 1"
+)->fetch_assoc();
+$notifInfra    = $notifReqInfo['infrastructure'] ?? 'Infrastructure';
+$notifLocation = $notifReqInfo['location']       ?? '';
+$notifName     = $notifReqInfo['name']           ?? 'Citizen';
+$notifReqLabel = '#REQ-' . str_pad($reqId, 3, '0', STR_PAD_LEFT);
+$notifRepLabel = '#REP-' . str_pad($repId, 3, '0', STR_PAD_LEFT);
+$notifTitle    = "Request {$notifReqLabel} Approved ✅";
+$notifDesc     = "{$actorLabel} approved {$notifInfra} at {$notifLocation} (by {$notifName}). Report {$notifRepLabel} created." . ($engineerName ? " Assigned to {$engineerName}." : ' Engineer to be assigned.');
+$notifUrl      = buildRepUrl('pending_reports.php', $repId);
+$allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
+if ($allEmployees) {
+    while ($empRow = $allEmployees->fetch_assoc()) {
+        $uid = (int)$empRow['user_id'];
+        if ($uid === $reportBy) continue; // skip the actor
+        insertNotification($conn, $uid, $notifTitle, $notifDesc, $notifUrl, $notifInfra);
+    }
+    $allEmployees->free();
+}
+
+// ── Notifications: Email to requester ────────────────────────────────────────
+$emailSent = false;
+
+$reqInfo = $conn->query(
+    "SELECT name, email, contact_number, infrastructure, location, issue FROM requests WHERE req_id = $reqId LIMIT 1"
+)->fetch_assoc();
+
+if ($reqInfo) {
+    $reqEmail   = trim($reqInfo['email']          ?? '');
+    $reqName    = $reqInfo['name']                ?? 'Citizen';
+    $reqData    = [
+        'infrastructure' => $reqInfo['infrastructure'] ?? '',
+        'location'       => $reqInfo['location']       ?? '',
+        'issue'          => $reqInfo['issue']           ?? '',
+        'engineer_name'  => $engineerName               ?? 'To be assigned',
+    ];
+
+    require_once __DIR__ . '/report_email.php';
+
+    // Email
+    if (!empty($reqEmail) && filter_var($reqEmail, FILTER_VALIDATE_EMAIL)) {
+        $emailSent = sendValidationEmail($reqEmail, $reqName, $reqId, $repId, $reqData);
+    }
+}
+
 jsonOut(true, 'Request validated successfully.', [
     'rep_id'        => $repId,
     'res_id'        => $resId,
@@ -143,4 +195,5 @@ jsonOut(true, 'Request validated successfully.', [
     'budget'        => $budget,
     'starting_date' => $startDate,
     'est_end_date'  => $endDate,
+    'email_sent'    => $emailSent,
 ]);

@@ -160,6 +160,32 @@ function notifySuperAdmins(mysqli $conn, string $title, string $description, str
 }
 
 /**
+ * Notify ONLY Admin and Super Admin roles — excludes Manager and Office Staff.
+ * Used when only admins have authorization to act (e.g. approving report completion).
+ * $excludeId — skip the actor.
+ */
+function notifyAdminsOnly(mysqli $conn, string $title, string $description, string $url, string $requestType = 'Report', int $excludeId = 0): void {
+    $result = $conn->query(
+        "SELECT user_id FROM employees
+         WHERE role IN ('Admin','Super Admin')
+           AND (account_locked IS NULL OR account_locked = 0)"
+    );
+    if (!$result) {
+        $result = $conn->query(
+            "SELECT user_id FROM employees WHERE role IN ('Admin','Super Admin')"
+        );
+    }
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $uid = (int)$row['user_id'];
+            if ($uid === $excludeId) continue;
+            insertNotification($conn, $uid, $title, $description, $url, $requestType);
+        }
+        $result->free();
+    }
+}
+
+/**
  * Notify all manager/office staff/super admin who can assign engineers.
  * Used when an engineer accepts or declines a report assignment.
  */

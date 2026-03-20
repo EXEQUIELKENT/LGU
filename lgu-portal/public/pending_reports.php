@@ -146,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($dayNum > 0) $reqData['day_number'] = $dayNum;
                     sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'saved', $reqData, $imgs);
                 }
+
             }
         }
         $updatedAt = date('Y-m-d H:i:s');
@@ -256,7 +257,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/notif_helper.php';
             $info    = getRepInfo($conn, $repId);
             $engName = getRepEngineerName($conn, $repId);
-            notifyAdmins($conn,
+            // Notify ONLY Admin and Super Admin — Managers and Office Staff do not have
+            // authorization to approve completion, so they should not receive this notification.
+            notifyAdminsOnly($conn,
                 "Report #REP-{$repId} Ready for Review",
                 "{$engName} has marked Report #{$repId} as complete and is awaiting your confirmation.",
                 "pending_reports.php",
@@ -303,6 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imgs = getReportImageUrls($conn, $repId); // all days, no date filter
                 sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'completed', $reqData, $imgs);
             }
+
         }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
@@ -1930,7 +1934,7 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
         <div class="rep-confirm-icon not-complete-icon"><i class="fas fa-times-circle" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Mark as Not Complete?</div>
         <div class="rep-confirm-desc">This will return the report to <strong>In Progress</strong>. Add a reason and flag the specific days that need revision.</div>
-        <textarea class="rep-confirm-return-note" id="repNotCompleteNote" placeholder="Explain what needs to be corrected or completed…"></textarea>
+        <textarea class="rep-confirm-return-note" id="repNotCompleteNote" placeholder="Explain what needs to be corrected or completed… (required)" oninput="this.style.borderColor=''"></textarea>
         <div class="rep-highlight-checks scrollable" id="repDayCheckboxes">
             <div class="rep-highlight-select-all">
                 <span class="rep-highlight-checks-label" style="margin-bottom:0;">&#9873; Flag days that need revision</span>
@@ -2550,12 +2554,8 @@ async function doSaveDesc() {
     const desc    = document.getElementById('repDescInput')?.value ?? '';
     if (!logDate) { showRepNotif('error','❌ No day selected.'); return; }
     const btn = document.getElementById('repSaveBtn');
-    const overlay = document.getElementById('repEmailOverlay');
-    const overlayText = document.getElementById('repEmailOverlayText');
-    // Show CIMM loading overlay
-    if (overlay) { overlay.classList.add('show'); }
-    if (overlayText) overlayText.textContent = 'Saving & Sending Update…';
     btn.disabled = true;
+    showRepOverlay('Saving & Sending Update');
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -2579,12 +2579,40 @@ async function doSaveDesc() {
             showRepNotif('success','✔️ Day ' + (currentDayIndex+1) + ' saved & requester notified.');
         } else { showRepNotif('error','❌ ' + (data.message || 'Failed to save.')); }
     } catch(e) { showRepNotif('error','❌ Network error. Please try again.'); }
-    // Hide overlay and restore button
-    if (overlay) { overlay.classList.remove('show'); }
+    hideRepOverlay();
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Save &amp; Notify Requester';
 }
 
 // ── Engineer: Request Completion ──────────────────────────────────────────────
+let _repOverlayDotsInterval = null;
+function showRepOverlay(msg) {
+    const overlay = document.getElementById('repEmailOverlay');
+    const text    = document.getElementById('repEmailOverlayText');
+    if (text) {
+        const base = msg || 'Processing';
+        let d = 0;
+        text.textContent = base;
+        if (_repOverlayDotsInterval) clearInterval(_repOverlayDotsInterval);
+        _repOverlayDotsInterval = setInterval(() => { d = (d + 1) % 4; text.textContent = base + '.'.repeat(d); }, 400);
+    }
+    if (overlay) { overlay.style.display = 'flex'; requestAnimationFrame(() => overlay.classList.add('show')); }
+}
+function hideRepOverlay() {
+    const overlay = document.getElementById('repEmailOverlay');
+    if (!overlay) return;
+    if (_repOverlayDotsInterval) { clearInterval(_repOverlayDotsInterval); _repOverlayDotsInterval = null; }
+    overlay.classList.remove('show');
+    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+}
+function updateRepOverlayText(msg) {
+    const text = document.getElementById('repEmailOverlayText');
+    if (!text) return;
+    if (_repOverlayDotsInterval) clearInterval(_repOverlayDotsInterval);
+    const base = msg; let d = 0;
+    text.textContent = base;
+    _repOverlayDotsInterval = setInterval(() => { d = (d + 1) % 4; text.textContent = base + '.'.repeat(d); }, 400);
+}
+
 function confirmRequestComplete() {
     if (!currentRepData) return;
     document.getElementById('repCompleteConfirmBackdrop').classList.add('active');
@@ -2601,7 +2629,8 @@ async function doRequestComplete() {
     const logDate = document.getElementById('repCurrentLogDate')?.value || '';
     const desc    = document.getElementById('repDescInput')?.value?.trim() || '';
 
-    btn.disabled = true; btn.textContent = 'Saving…';
+    btn.disabled = true;
+    showRepOverlay('Saving progress');
 
     // ── Step 1: Auto-save the current day's description if there is one ──────
     if (logDate && desc) {
@@ -2622,13 +2651,14 @@ async function doRequestComplete() {
     }
 
     // ── Step 2: Submit for admin review ──────────────────────────────────────
-    btn.textContent = 'Submitting…';
+    updateRepOverlayText('Submitting for review');
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'request_completion', rep_id: currentRepData.rep_id})
         });
         const data = await res.json();
+        hideRepOverlay();
         if (data.success) {
             closeRepModal();
             showRepNotif('success','✔️ Report submitted for admin review.');
@@ -2638,6 +2668,7 @@ async function doRequestComplete() {
             btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Complete';
         }
     } catch(e) {
+        hideRepOverlay();
         showRepNotif('error','❌ Network error. Please try again.');
         btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Complete';
     }
@@ -2654,11 +2685,7 @@ async function doAdminComplete() {
     if (!currentRepData) return;
     const repId = currentRepData.rep_id;
     closeAdminCompleteConfirm();
-    // Show CIMM loading overlay — email with all images may take a moment
-    const overlay = document.getElementById('repEmailOverlay');
-    const overlayText = document.getElementById('repEmailOverlayText');
-    if (overlay) { overlay.classList.add('show'); }
-    if (overlayText) overlayText.textContent = 'Confirming & Sending Completion Email…';
+    showRepOverlay('Confirming & Sending Completion Email');
     try {
         const res  = await fetch('pending_reports.php', {
             method:'POST', headers:{'Content-Type':'application/json'},
@@ -2667,17 +2694,17 @@ async function doAdminComplete() {
         const text = await res.text();
         let data;
         try { data = JSON.parse(text); } catch(pe) {
-            if (overlay) overlay.classList.remove('show');
+            hideRepOverlay();
             showRepNotif('error','❌ Server error. Please try again.'); return;
         }
-        if (overlay) overlay.classList.remove('show');
+        hideRepOverlay();
         if (data.success) {
             closeRepModal();
             showRepNotif('success','✔️ Report #REP-'+repId+' confirmed complete and moved to Archive.');
             setTimeout(()=>location.reload(), 1800);
         } else { showRepNotif('error','❌ ' + (data.message || 'Failed.')); }
     } catch(e) {
-        if (overlay) overlay.classList.remove('show');
+        hideRepOverlay();
         showRepNotif('error','❌ Network error.');
     }
 }
@@ -2730,6 +2757,19 @@ async function doAdminNotComplete() {
     document.querySelectorAll('#repDayCheckboxes input[type="checkbox"]:checked').forEach(cb => {
         flaggedDays.push(cb.value);
     });
+
+    // Validation: require explanation and at least one flagged day
+    if (!returnNote) {
+        const noteEl = document.getElementById('repNotCompleteNote');
+        if (noteEl) { noteEl.style.borderColor = '#ef4444'; noteEl.focus(); }
+        showRepNotif('error', '❌ Please explain what needs to be corrected or completed.');
+        return;
+    }
+    if (flaggedDays.length === 0) {
+        showRepNotif('error', '❌ Please flag at least one day that needs revision.');
+        return;
+    }
+
     const highlightDays = JSON.stringify(flaggedDays);
     closeAdminNotCompleteConfirm();
     try {

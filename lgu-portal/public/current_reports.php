@@ -2525,7 +2525,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <div class="rep-confirm-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><i class="fas fa-undo-alt" style="color:#ef4444;font-size:24px;"></i></div>
         <div class="rep-confirm-title">Return to Engineer?</div>
         <div class="rep-confirm-desc">The report will be sent back. Add a reason and flag the specific fields that need revision.</div>
-        <textarea class="rep-confirm-return-note" id="repReturnNoteInput" placeholder="Explain what needs to be corrected or revised…"></textarea>
+        <textarea class="rep-confirm-return-note" id="repReturnNoteInput" placeholder="Explain what needs to be corrected or revised… (required)" oninput="this.style.borderColor=''"></textarea>
         <div class="rep-highlight-checks">
             <div class="rep-highlight-select-all">
                 <span class="rep-highlight-checks-label" style="margin-bottom:0;">&#9873; Flag fields for revision</span>
@@ -3987,6 +3987,19 @@ async function doAdminReturnReport() {
         const cb = document.getElementById(id);
         if (cb && cb.checked) highlighted.push(cb.value);
     });
+
+    // Validation: require explanation and at least one flagged field
+    if (!returnNote) {
+        const noteEl = document.getElementById('repReturnNoteInput');
+        if (noteEl) { noteEl.style.borderColor = '#ef4444'; noteEl.focus(); }
+        showRepNotif('error', '❌ Please explain what needs to be corrected or revised.');
+        return;
+    }
+    if (highlighted.length === 0) {
+        showRepNotif('error', '❌ Please flag at least one field that needs revision.');
+        return;
+    }
+
     const highlightFields = JSON.stringify(highlighted);
     closeAdminReturnConfirm();
     const repId = currentRepData.rep_id;

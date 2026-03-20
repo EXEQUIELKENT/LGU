@@ -225,7 +225,7 @@ function getReportImageUrls(mysqli $conn, int $repId, string $logDate = ''): arr
  */
 function getRequesterEmailData(mysqli $conn, int $repId, string $logDate = ''): array {
     $stmt = $conn->prepare("
-        SELECT req.email, req.name,
+        SELECT req.email, req.name, req.contact_number,
                req.infrastructure, req.location, req.issue,
                CONCAT(e.first_name,' ',e.last_name) AS engineer_name
         FROM reports r
@@ -258,4 +258,221 @@ function getRequesterEmailData(mysqli $conn, int $repId, string $logDate = ''): 
     }
     $row['description'] = $desc;
     return $row;
+}
+
+/**
+ * Send a rejection notification email to the requester.
+ *
+ * @param string $toEmail
+ * @param string $requesterName
+ * @param int    $reqId
+ * @param string $reason        Admin's rejection reason (may be empty)
+ * @param array  $requestData   Keys: infrastructure, location, issue
+ */
+function sendRejectionEmail(
+    string $toEmail,
+    string $requesterName,
+    int    $reqId,
+    string $reason,
+    array  $requestData
+): bool {
+    if (empty($toEmail)) return false;
+
+    $infra    = htmlspecialchars($requestData['infrastructure'] ?? 'Report');
+    $location = htmlspecialchars($requestData['location']      ?? '—');
+    $issue    = htmlspecialchars($requestData['issue']         ?? '—');
+    $name     = htmlspecialchars(trim($requesterName) ?: 'Citizen');
+    $reqLabel = '#REQ-' . str_pad($reqId, 3, '0', STR_PAD_LEFT);
+
+    $reasonSection = '';
+    if (!empty($reason)) {
+        $reasonSection = '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:14px 18px;border-radius:6px;margin:18px 0;">
+            <p style="color:#b91c1c;font-size:13px;font-weight:700;margin:0 0 6px;">📋 Reason for Rejection:</p>
+            <p style="color:#7f1d1d;font-size:13px;line-height:1.6;margin:0;">' . htmlspecialchars($reason) . '</p>
+        </div>';
+    } else {
+        $reasonSection = '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:14px 18px;border-radius:6px;margin:18px 0;">
+            <p style="color:#b91c1c;font-size:13px;font-weight:700;margin:0;">❌ Your request did not meet the requirements for LGU action.</p>
+            <p style="color:#7f1d1d;font-size:13px;margin:6px 0 0;">Please contact your local LGU office for further assistance.</p>
+        </div>';
+    }
+
+    $mail = new PHPMailer(true);
+    try {
+        $mail->SMTPDebug  = 0;
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'lguportalph@gmail.com';
+        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->SMTPSecure = 'tls';
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'quoted-printable';
+        $mail->Timeout    = 30;
+        $mail->SMTPOptions = ['ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+            'crypto_method'     => STREAM_CRYPTO_METHOD_TLS_CLIENT,
+        ]];
+        $mail->SMTPAutoTLS   = true;
+        $mail->SMTPKeepAlive = false;
+
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->addAddress($toEmail, $name);
+        $mail->isHTML(true);
+        $mail->Subject = "Your Request {$reqLabel} Has Been Rejected — LGU Portal";
+
+        $mail->Body = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:36px 32px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.1);border-top:4px solid #ef4444;">
+    <h1 style="color:#27417b;margin:0 0 4px;font-size:26px;text-align:center;">LGU Portal</h1>
+    <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 24px;">City Infrastructure Management &amp; Monitoring</p>
+    <h2 style="color:#ef4444;margin:0 0 6px;font-size:17px;font-weight:700;text-align:center;">Request Rejected ❌</h2>
+    <p style="color:#374151;font-size:14px;text-align:center;margin:0 0 20px;">Request <strong style="color:#27417b">' . $reqLabel . '</strong></p>
+    <p style="color:#374151;font-size:14px;margin:0 0 16px;">Hello <strong>' . $name . '</strong>,</p>
+    <p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 16px;">We regret to inform you that your infrastructure request has been reviewed and <strong style="color:#ef4444">rejected</strong> by the LGU.</p>
+    ' . $reasonSection . '
+    <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin:20px 0;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Request Details</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr><td style="color:#64748b;padding:5px 0;width:40%;">Request ID</td><td style="color:#1e293b;font-weight:600;">' . $reqLabel . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Infrastructure</td><td style="color:#1e293b;">' . $infra . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Location</td><td style="color:#1e293b;">' . $location . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Issue</td><td style="color:#1e293b;">' . $issue . '</td></tr>
+        </table>
+    </div>
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">If you believe this decision is incorrect, you may visit your local LGU office or submit a new request with additional supporting information.</p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">This is an automated message. Please do not reply to this email.</p>
+    <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px;">&copy; ' . date('Y') . ' LGU Portal &mdash; City Infrastructure Management &amp; Monitoring</p>
+</div>
+</body></html>';
+
+        $mail->AltBody = "LGU Portal — Request Rejected\n\nHello {$name},\n\n"
+            . "Your request {$reqLabel} ({$infra} at {$location}) has been REJECTED.\n"
+            . ($reason ? "\nReason: {$reason}\n" : "\nPlease contact your LGU office for more information.\n")
+            . "\n© " . date('Y') . " LGU Portal";
+
+        $mail->send();
+        return true;
+    } catch (\Exception $e) {
+        error_log('Rejection email error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+
+/**
+ * Send an approval/validation notification email to the requester.
+ *
+ * @param string $toEmail
+ * @param string $requesterName
+ * @param int    $reqId
+ * @param int    $repId
+ * @param array  $requestData   Keys: infrastructure, location, issue, engineer_name (optional)
+ */
+function sendValidationEmail(
+    string $toEmail,
+    string $requesterName,
+    int    $reqId,
+    int    $repId,
+    array  $requestData
+): bool {
+    if (empty($toEmail)) return false;
+
+    $infra    = htmlspecialchars($requestData['infrastructure'] ?? 'Report');
+    $location = htmlspecialchars($requestData['location']      ?? '—');
+    $issue    = htmlspecialchars($requestData['issue']         ?? '—');
+    $engineer = htmlspecialchars($requestData['engineer_name'] ?? 'To be assigned');
+    $name     = htmlspecialchars(trim($requesterName) ?: 'Citizen');
+    $reqLabel = '#REQ-' . str_pad($reqId, 3, '0', STR_PAD_LEFT);
+    $repLabel = '#REP-' . str_pad($repId, 3, '0', STR_PAD_LEFT);
+
+    $mail = new PHPMailer(true);
+    try {
+        $mail->SMTPDebug  = 0;
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'lguportalph@gmail.com';
+        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->SMTPSecure = 'tls';
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'quoted-printable';
+        $mail->Timeout    = 30;
+        $mail->SMTPOptions = ['ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+            'crypto_method'     => STREAM_CRYPTO_METHOD_TLS_CLIENT,
+        ]];
+        $mail->SMTPAutoTLS   = true;
+        $mail->SMTPKeepAlive = false;
+
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->addAddress($toEmail, $name);
+        $mail->isHTML(true);
+        $mail->Subject = "Your Request {$reqLabel} Has Been Approved — LGU Portal";
+
+        $mail->Body = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:36px 32px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.1);border-top:4px solid #16a34a;">
+    <h1 style="color:#27417b;margin:0 0 4px;font-size:26px;text-align:center;">LGU Portal</h1>
+    <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 24px;">City Infrastructure Management &amp; Monitoring</p>
+    <h2 style="color:#16a34a;margin:0 0 6px;font-size:17px;font-weight:700;text-align:center;">Request Approved ✅</h2>
+    <p style="color:#374151;font-size:14px;text-align:center;margin:0 0 20px;">
+        Request <strong style="color:#27417b">' . $reqLabel . '</strong>
+        &rarr; Report <strong style="color:#27417b">' . $repLabel . '</strong>
+    </p>
+    <p style="color:#374151;font-size:14px;margin:0 0 16px;">Hello <strong>' . $name . '</strong>,</p>
+    <p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 16px;">
+        Great news! Your infrastructure request has been <strong style="color:#16a34a">approved</strong>
+        by the LGU and a repair report has been created.
+    </p>
+    <div style="background:#dcfce7;border-left:4px solid #16a34a;padding:14px 18px;border-radius:6px;margin:18px 0;">
+        <p style="color:#15803d;font-size:14px;font-weight:700;margin:0;">✅ Your request is now being processed.</p>
+        <p style="color:#166534;font-size:13px;margin:6px 0 0;">
+            An engineer has been assigned and work will begin shortly.
+            You will receive progress updates as repairs are carried out.
+        </p>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin:20px 0;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Details</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr><td style="color:#64748b;padding:5px 0;width:40%;">Request ID</td><td style="color:#1e293b;font-weight:600;">' . $reqLabel . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Report ID</td><td style="color:#1e293b;font-weight:600;">' . $repLabel . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Infrastructure</td><td style="color:#1e293b;">' . $infra . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Location</td><td style="color:#1e293b;">' . $location . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Issue</td><td style="color:#1e293b;">' . $issue . '</td></tr>
+            <tr><td style="color:#64748b;padding:5px 0;">Assigned Engineer</td><td style="color:#1e293b;">' . $engineer . '</td></tr>
+        </table>
+    </div>
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">
+        If you have any concerns, please contact your local LGU office.
+    </p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">
+        This is an automated message. Please do not reply to this email.
+    </p>
+    <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px;">
+        &copy; ' . date('Y') . ' LGU Portal &mdash; City Infrastructure Management &amp; Monitoring
+    </p>
+</div>
+</body></html>';
+
+        $mail->AltBody = "LGU Portal — Request Approved\n\nHello {$name},\n\n"
+            . "Your request {$reqLabel} has been APPROVED. Report {$repLabel} has been created.\n\n"
+            . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
+            . "\nYou will receive progress updates as work proceeds.\n"
+            . "\n© " . date('Y') . " LGU Portal";
+
+        $mail->send();
+        return true;
+    } catch (\Exception $e) {
+        error_log('Validation email error: ' . $e->getMessage());
+        return false;
+    }
 }

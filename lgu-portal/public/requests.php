@@ -152,8 +152,10 @@ function format_datetime_ampm($datetime) {
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <title>Requests &amp; GIS Map</title>
 <script>
-const SERVER_TIME      = <?= $serverTimestamp ?> * 1000;
+const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
+const USER_ROLE         = '<?= htmlspecialchars($userRole, ENT_QUOTES) ?>';
+const USER_DISPLAY_NAME = '<?= htmlspecialchars($displayName, ENT_QUOTES) ?>';
 (function () {
     try {
         let t = localStorage.getItem('theme');
@@ -446,25 +448,232 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-header-left h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0 0 3px; }
 .gis-header-left p  { font-size: 13px; color: var(--text-secondary); margin: 0; }
 
-/* Toolbar */
-.gis-toolbar-card {
-    background: var(--bg-secondary); border: 1px solid var(--border-color);
-    border-radius: 14px; box-shadow: 0 4px 18px var(--shadow-color); position: relative; z-index: 100; overflow: visible;
-    width: 100%; box-sizing: border-box;   /* ← ADD THIS */
+/* ── Unified toolbar + map card ── */
+.gis-combined-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px var(--shadow-color);
+    width: 100%; box-sizing: border-box;
+    display: flex; flex-direction: column;
+    overflow: visible; /* toolbar dropdowns escape above */
+    position: relative; z-index: 100;
 }
+/* The toolbar strip inside the combined card */
+.gis-combined-card .gis-map-toolbar {
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 18px 18px 0 0;
+}
+/* Map section — clip the actual map but not the toolbar */
+.gis-map-inner {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0; /* toolbar and legend handle the rounding */
+}
+/* Map card background kept for legacy selectors */
+.gis-map-card { background: var(--bg-secondary); border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 4px 18px var(--shadow-color); overflow: hidden; width: 100%; box-sizing: border-box; }
 .gis-map-toolbar {
     display: flex; align-items: center; padding: 11px 18px;
-    flex-wrap: nowrap; gap: 10px; border-bottom: 1px solid var(--border-color); min-height: 52px;
+    flex-wrap: wrap; gap: 8px; min-height: 52px;
 }
 .gis-map-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
-.gis-filter-row { display: flex; flex-direction: column; padding: 9px 18px; gap: 6px; }
-.gis-filter-row-line {
-    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
-    overflow-x: auto; scrollbar-width: none;
-}
-.gis-filter-row-line::-webkit-scrollbar { display: none; }
-.gis-filter-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; flex-shrink: 0; }
+.gis-filter-row { display: none; } /* replaced by dropdowns */
+.gis-filter-row-line { display: none; }
+.gis-filter-label { display: none; }
 
+/* ── GIS Filter Dropdowns ── */
+.gis-dd-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.gis-dd-wrap { position: relative; flex-shrink: 0; }
+.gis-dd-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 34px; padding: 0 11px;
+    background: var(--bg-secondary); border: 1.5px solid var(--border-color);
+    color: var(--text-primary); border-radius: 10px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all .18s ease; white-space: nowrap; font-family: inherit;
+    box-shadow: 0 1px 4px var(--shadow-color);
+}
+.gis-dd-btn:hover { border-color: #3762c8; color: #3762c8; background: rgba(55,98,200,.06); }
+.gis-dd-btn.has-filter { background: #3762c8; border-color: #3762c8; color: #fff; }
+.gis-dd-btn.has-filter.infra  { background: #7c3aed; border-color: #7c3aed; }
+.gis-dd-btn.has-filter.period { background: #0891b2; border-color: #0891b2; }
+.gis-dd-chevron { font-size: 9px !important; transition: transform .18s; }
+.gis-dd-wrap.open .gis-dd-chevron { transform: rotate(180deg); }
+.gis-dd-menu {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    background: var(--bg-secondary); border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999; min-width: 200px; overflow: hidden;
+    animation: gisDropIn .18s ease;
+}
+.gis-dd-wrap.open .gis-dd-menu { display: block; }
+@keyframes gisDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:none} }
+.gis-dd-item {
+    display: flex; align-items: center; gap: 9px; padding: 9px 14px;
+    font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; transition: background .13s,color .13s; border-left: 3px solid transparent;
+    white-space: nowrap;
+}
+.gis-dd-item:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.gis-dd-item.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.gis-dd-item.infra-item.active { background: rgba(124,58,237,.10); color: #7c3aed; border-left-color: #7c3aed; }
+.gis-dd-item.period-item.active { background: rgba(8,145,178,.10); color: #0891b2; border-left-color: #0891b2; }
+.gis-dd-divider { height: 1px; background: var(--border-color); margin: 3px 0; }
+.gis-dd-item i { width: 14px; text-align: center; font-size: 11px; }
+/* Period picker row (month/day inputs) */
+.gis-dd-picker { padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+.gis-dd-picker label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.gis-dd-picker input {
+    width: 100%; padding: 5px 8px; border: 1.5px solid var(--border-color);
+    border-radius: 7px; font-size: 12px; color: var(--text-primary);
+    background: var(--bg-primary); font-family: inherit; outline: none;
+    transition: border-color .15s;
+}
+.gis-dd-picker input:focus { border-color: #0891b2; }
+[data-theme="dark"] .gis-dd-menu { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+[data-theme="dark"] .gis-dd-item { color: var(--text-secondary); }
+[data-theme="dark"] .gis-dd-item:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .gis-dd-item.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
+[data-theme="dark"] .gis-dd-picker input { background: rgba(255,255,255,.07); }
+
+/* ── GIS Custom Date Picker Overlay ── */
+.gis-dp-overlay {
+    position: fixed; z-index: 99999;
+    background: var(--bg-secondary); border: 1.5px solid rgba(55,98,200,.22);
+    border-radius: 14px; box-shadow: 0 10px 32px rgba(0,0,0,.22);
+    padding: 10px 12px 12px; min-width: 230px;
+    animation: gisDropIn .18s ease;
+    display: none;
+}
+[data-theme="dark"] .gis-dp-overlay {
+    background: rgba(24,24,32,.98);
+    border-color: rgba(95,140,255,.3);
+    box-shadow: 0 10px 36px rgba(0,0,0,.55);
+}
+/* Header nav row */
+.gis-dp-nav-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; gap: 4px;
+}
+.gis-dp-nav-btn {
+    background: rgba(55,98,200,.08); border: 1.5px solid rgba(55,98,200,.18);
+    color: #3762c8; border-radius: 7px; width: 28px; height: 28px;
+    font-size: 15px; font-weight: 700; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: background .15s, color .15s;
+    flex-shrink: 0; padding: 0; line-height: 1;
+}
+.gis-dp-nav-btn:hover { background: #3762c8; color: #fff; }
+[data-theme="dark"] .gis-dp-nav-btn { background: rgba(95,140,255,.12); border-color: rgba(95,140,255,.28); color: #8ab4f8; }
+[data-theme="dark"] .gis-dp-nav-btn:hover { background: #5f8cff; color: #fff; }
+.gis-dp-nav-center {
+    display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
+}
+.gis-dp-month-lbl, .gis-dp-year-lbl {
+    background: none; border: none; color: var(--text-primary); font-size: 13px;
+    font-weight: 700; cursor: pointer; padding: 3px 7px; border-radius: 6px;
+    transition: background .15s; font-family: inherit;
+}
+.gis-dp-month-lbl:hover, .gis-dp-year-lbl:hover { background: rgba(55,98,200,.10); color: #3762c8; }
+[data-theme="dark"] .gis-dp-month-lbl:hover,
+[data-theme="dark"] .gis-dp-year-lbl:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+
+/* Month grid for month-picker mode */
+.gis-dp-month-grid {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; margin-bottom: 6px;
+}
+.gis-dp-mo {
+    background: none; border: 1.5px solid transparent; color: var(--text-secondary);
+    font-size: 12px; font-weight: 500; padding: 6px 2px; border-radius: 7px;
+    cursor: pointer; transition: all .13s; text-align: center; font-family: inherit;
+}
+.gis-dp-mo:hover { background: rgba(55,98,200,.09); color: #3762c8; border-color: rgba(55,98,200,.2); }
+.gis-dp-mo.selected { background: #3762c8; color: #fff; font-weight: 700; border-color: #3762c8; }
+[data-theme="dark"] .gis-dp-mo { color: #e2e8f0; }
+[data-theme="dark"] .gis-dp-mo:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+[data-theme="dark"] .gis-dp-mo.selected { background: #5f8cff; border-color: #5f8cff; }
+
+/* Year sub-grid */
+.gis-dp-year-grid {
+    display: none; grid-template-columns: repeat(4,1fr); gap: 3px;
+    max-height: 140px; overflow-y: auto; margin-bottom: 6px;
+    scrollbar-width: thin;
+}
+.gis-dp-year-grid.open { display: grid; }
+.gis-dp-yr {
+    background: none; border: 1.5px solid transparent; color: var(--text-secondary);
+    font-size: 11.5px; padding: 4px 2px; border-radius: 6px; cursor: pointer;
+    transition: all .13s; text-align: center; font-family: inherit;
+}
+.gis-dp-yr:hover { background: rgba(55,98,200,.09); color: #3762c8; }
+.gis-dp-yr.selected { background: #3762c8; color: #fff; font-weight: 700; }
+[data-theme="dark"] .gis-dp-yr { color: #e2e8f0; }
+[data-theme="dark"] .gis-dp-yr:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+[data-theme="dark"] .gis-dp-yr.selected { background: #5f8cff; }
+
+/* Weekday headers for day-picker */
+.gis-dp-weekdays {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    margin-bottom: 4px;
+}
+.gis-dp-weekdays span {
+    text-align: center; font-size: 10px; font-weight: 700;
+    color: var(--text-secondary); padding: 2px 0;
+}
+.gis-dp-weekdays span:first-child,
+.gis-dp-weekdays span:last-child { color: #f87171; }
+
+/* Day grid */
+.gis-dp-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 6px; }
+.gis-dp-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-weight: 500; border-radius: 6px; cursor: pointer;
+    border: none; background: none; color: var(--text-secondary); transition: all .13s;
+    font-family: inherit; padding: 0;
+}
+.gis-dp-day:hover { background: rgba(55,98,200,.10); color: #3762c8; transform: scale(1.1); }
+.gis-dp-day.dp-empty { cursor: default; pointer-events: none; }
+.gis-dp-day.dp-weekend { color: #ef4444; }
+.gis-dp-day.dp-today { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; }
+.gis-dp-day.dp-selected { background: #3762c8; color: #fff !important; font-weight: 700; transform: none; }
+[data-theme="dark"] .gis-dp-day { color: #e2e8f0; }
+[data-theme="dark"] .gis-dp-day.dp-weekend { color: #f87171; }
+[data-theme="dark"] .gis-dp-day:hover { background: rgba(95,140,255,.16); color: #8ab4f8; }
+[data-theme="dark"] .gis-dp-day.dp-today { background: rgba(95,140,255,.18); color: #8ab4f8; }
+[data-theme="dark"] .gis-dp-day.dp-selected { background: #5f8cff; color: #fff !important; }
+
+/* Footer */
+.gis-dp-footer {
+    display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 4px;
+    border-top: 1px solid var(--border-color); padding-top: 8px;
+}
+.gis-dp-clear-btn, .gis-dp-done-btn {
+    padding: 5px 13px; border-radius: 7px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s; font-family: inherit; border: 1.5px solid;
+}
+.gis-dp-clear-btn {
+    background: none; border-color: var(--border-color); color: var(--text-secondary);
+}
+.gis-dp-clear-btn:hover { background: #fde8e8; border-color: #ef4444; color: #ef4444; }
+.gis-dp-done-btn {
+    background: linear-gradient(135deg,#3762c8,#2851b3); border-color: #3762c8; color: #fff;
+}
+.gis-dp-done-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); }
+
+/* Trigger button for custom pickers */
+.gis-dp-trigger-btn {
+    width: 100%; padding: 5px 9px; border: 1.5px solid var(--border-color);
+    border-radius: 7px; font-size: 12px; color: var(--text-secondary);
+    background: var(--bg-primary); font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; transition: border-color .15s, color .15s;
+    outline: none; text-align: left;
+}
+.gis-dp-trigger-btn:hover { border-color: #0891b2; color: #0891b2; background: rgba(8,145,178,.05); }
+.gis-dp-trigger-btn.active { border-color: #0891b2; color: #0891b2; background: rgba(8,145,178,.07); }
+.gis-dp-trigger-btn i { flex-shrink: 0; color: #0891b2; }
+[data-theme="dark"] .gis-dp-trigger-btn { background: rgba(255,255,255,.06); border-color: rgba(95,140,255,.22); color: #94a3b8; }
+[data-theme="dark"] .gis-dp-trigger-btn:hover { border-color: #0891b2; color: #22d3ee; background: rgba(8,145,178,.08); }
+[data-theme="dark"] .gis-dp-trigger-btn.active { border-color: #0891b2; color: #22d3ee; }
+[data-theme="dark"] .gis-dp-trigger-btn i { color: #22d3ee; }
 .gis-search-wrap { position: relative; display: flex; align-items: center; flex: 0 0 260px; width: 260px; margin-left: auto; }
 .gis-search-wrap svg {
     position: absolute;
@@ -528,6 +737,8 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-filter-btn.status-rejected.active { background: #f44336; border-color: #f44336; color: #fff; }
 .gis-filter-btn.infra-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
 .gis-filter-btn.infra-btn:hover  { border-color: #7c3aed; color: #7c3aed; background: rgba(124,58,237,.06); }
+.gis-filter-btn.date-btn.active  { background: #0891b2; border-color: #0891b2; color: #fff; }
+.gis-filter-btn.date-btn:hover   { border-color: #0891b2; color: #0891b2; background: rgba(8,145,178,.06); }
 .gis-layer-btn {
     padding: 6px 13px; border-radius: 8px; border: 1.5px solid #3762c8;
     background: rgba(55,98,200,.08); color: #3762c8; font-size: 12px; font-weight: 600;
@@ -536,7 +747,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-layer-btn:hover { background: #3762c8; color: #fff; }
 
 /* Map card */
-.gis-map-card { background: var(--bg-secondary); border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 4px 18px var(--shadow-color); overflow: hidden; width: 100%; box-sizing: border-box;   /* ← ADD THIS */ }
+/* #gisMap height adjusted below */
 #gisNoResultsOverlay {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
     background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px;
@@ -547,10 +758,25 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 #gisNoResultsOverlay .no-results-icon { font-size: 32px; margin-bottom: 8px; }
 #gisNoResultsOverlay .no-results-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
 #gisNoResultsOverlay .no-results-sub  { font-size: 12px; color: var(--text-secondary); }
-#gisMap { width: 100%; height: calc(100vh - 320px); min-height: 500px; }
+/* Modal no-results — explicit text colours for both modes */
+#gisModalNoResults .no-results-icon { font-size: 32px; margin-bottom: 8px; }
+#gisModalNoResults .no-results-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+#gisModalNoResults .no-results-sub  { font-size: 12px; color: var(--text-secondary); }
+/* Dark mode fixes for both overlays */
+[data-theme="dark"] #gisNoResultsOverlay,
+[data-theme="dark"] #gisModalNoResults {
+    background: rgba(22,22,28,.97);
+    border-color: rgba(95,140,255,.25);
+    box-shadow: 0 8px 32px rgba(0,0,0,.55);
+}
+[data-theme="dark"] #gisNoResultsOverlay .no-results-text,
+[data-theme="dark"] #gisModalNoResults .no-results-text { color: #e2e8f0; }
+[data-theme="dark"] #gisNoResultsOverlay .no-results-sub,
+[data-theme="dark"] #gisModalNoResults .no-results-sub  { color: #94a3b8; }
+#gisMap { width: 100%; height: calc(100vh - 380px); min-height: 460px; }
 
 /* Legend */
-.gis-legend { display: flex; flex-direction: column; gap: 6px; padding: 10px 22px 12px; border-top: 1px solid var(--border-color); }
+.gis-legend { display: flex; flex-direction: column; gap: 6px; padding: 10px 22px 12px; border-top: 1px solid var(--border-color); border-radius: 0 0 18px 18px; background: var(--bg-secondary); }
 .legend-row { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
 .legend-section-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
@@ -825,12 +1051,125 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 .alert-modal .alert-btn.confirm-reject:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4); }
 
+/* ── Required Reject Reason Field ─────────────────────────────────────── */
+.reject-reason-field {
+    width: 100%;
+    margin-bottom: 14px;
+    text-align: left;
+}
+.reject-reason-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary, #374151);
+    margin-bottom: 7px;
+    letter-spacing: .01em;
+}
+[data-theme="dark"] .reject-reason-label { color: #e2e8f0; }
+.reject-reason-required-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ef4444;
+    background: rgba(239,68,68,.10);
+    border: 1px solid rgba(239,68,68,.28);
+    padding: 2px 7px;
+    border-radius: 5px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.reject-reason-required-badge::before { content: '★'; font-size: 8px; }
+[data-theme="dark"] .reject-reason-required-badge {
+    background: rgba(239,68,68,.18);
+    border-color: rgba(239,68,68,.38);
+    color: #fc8181;
+}
+.reject-reason-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 13px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 88px;
+    max-height: 180px;
+    font-family: inherit;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    display: block;
+}
+.reject-reason-textarea:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+}
+.reject-reason-textarea.input-error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.15) !important;
+    animation: shakeField .35s cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes shakeField {
+    0%,100% { transform: translateX(0); }
+    20%  { transform: translateX(-5px); }
+    40%  { transform: translateX(5px);  }
+    60%  { transform: translateX(-3px); }
+    80%  { transform: translateX(3px);  }
+}
+[data-theme="dark"] .reject-reason-textarea {
+    background: rgba(255,255,255,.06);
+    border-color: rgba(255,255,255,.12);
+    color: #e2e8f0;
+}
+.reject-reason-error-msg {
+    display: none;
+    color: #ef4444;
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(239,68,68,.07);
+    border: 1px solid rgba(239,68,68,.2);
+    border-radius: 7px;
+    line-height: 1.4;
+}
+.reject-reason-error-msg.visible { display: block; }
+[data-theme="dark"] .reject-reason-error-msg {
+    background: rgba(239,68,68,.13);
+    border-color: rgba(239,68,68,.28);
+    color: #fc8181;
+}
+/* ── Validate confirm — role pill ─────────────────────────────────────── */
+.validate-role-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(71,176,102,.11);
+    color: #166534;
+    border: 1px solid rgba(71,176,102,.28);
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: -6px;
+    margin-bottom: 14px;
+    letter-spacing: .01em;
+}
+[data-theme="dark"] .validate-role-pill { background: rgba(71,176,102,.18); color: #86efac; border-color: rgba(71,176,102,.35); }
+
 /* ═══════════════════════════════════════════════════════
    FULLSCREEN MAP MODAL
 ═══════════════════════════════════════════════════════ */
-.gis-fullmap-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 7500; padding: 20px; box-sizing: border-box; }
+.gis-fullmap-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 7500; padding: 20px; box-sizing: border-box; transition: padding 0.3s ease; }
 .gis-fullmap-backdrop.active { display: flex; }
-.gis-fullmap-modal { background: var(--bg-secondary); border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 20px 60px rgba(0,0,0,.4); width: 100%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; animation: gisFullMapIn .28s cubic-bezier(.34,1.56,.64,1); }
+.gis-fullmap-backdrop.gis-map-expanded { padding: 0; }
+.gis-fullmap-modal { background: var(--bg-secondary); border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 20px 60px rgba(0,0,0,.4); width: 100%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; animation: gisFullMapIn .28s cubic-bezier(.34,1.56,.64,1); transition: max-width 0.3s ease, height 0.3s ease, border-radius 0.3s ease; }
+.gis-fullmap-modal.gis-map-expanded { max-width: 100vw; height: 100vh; border-radius: 0; }
 @keyframes gisFullMapIn { from { opacity:0; transform: scale(.94) translateY(-16px); } to { opacity:1; transform: scale(1) translateY(0); } }
 .gis-fullmap-header { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
 .gis-fullmap-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
@@ -860,6 +1199,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-fullmap-results-badge.no-results { background: #fde8e8; border-color: #f44336; color: #f44336; }
 .gis-fullmap-close { background: none; border: none; font-size: 24px; color: var(--text-secondary); cursor: pointer; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0; margin-left: 4px; }
 .gis-fullmap-close:hover { background: rgba(244,67,54,.1); color: #f44336; }
+
 #gisModalMap { flex: 1; min-height: 0; width: 100%; height: 100%; display: block; }
 #gisModalNoResults { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px 32px; text-align: center; box-shadow: 0 8px 32px var(--shadow-color); z-index: 1000; display: none; pointer-events: none; }
 #gisModalNoResults.visible { display: block; }
@@ -1046,7 +1386,7 @@ tbody td {
         box-sizing: border-box;
     }
     #gisView .gis-header-card,
-    #gisView .gis-toolbar-card,
+    #gisView .gis-combined-card,
     #gisView .gis-map-card {
         width: 100%;
         max-width: 100%;
@@ -1054,7 +1394,7 @@ tbody td {
     }
     .gis-page { width: 100%; box-sizing: border-box; }
     .gis-header-card,
-    .gis-toolbar-card,
+    .gis-combined-card,
     .gis-map-card { width: 100%; box-sizing: border-box; }
     body { overflow: hidden !important; height: 100vh !important; }
     .mobile-no-requests { display: none !important; }
@@ -1142,12 +1482,17 @@ tbody td {
     .gis-page > * { }  /* already inherits main-content padding */
     .gis-header-card { flex-direction: row; align-items: flex-start; }
     .gis-header-left { flex: 1; min-width: 0; }
-    .gis-map-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+    .gis-map-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
     .gis-map-title { display: none; }
-    .gis-search-wrap { flex: 1 1 auto !important; width: auto !important; margin-left: 0 !important; order: 1; }
-    .gis-layer-btn { flex-shrink: 0; order: 2; }
-    .gis-filter-row-line { flex-wrap: wrap; overflow-x: visible; }
-    .gis-filter-row { padding: 8px 12px; }
+    /* Row 1: search + satellite side by side */
+    .gis-search-wrap { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; margin-left: 0 !important; order: 1; }
+    .gis-layer-btn { flex-shrink: 0; order: 2; padding: 5px 10px; font-size: 11px; }
+    /* Row 2: filter dropdowns full-width */
+    .gis-dd-group { order: 3; flex: 0 0 100%; width: 100%; flex-wrap: wrap; gap: 5px; }
+    .gis-dd-btn { font-size: 11px; height: 30px; padding: 0 9px; }
+    /* Dropdown max-height + scroll on mobile */
+    .gis-dd-menu { min-width: 160px; max-height: min(280px, 48vh); overflow-y: auto; }
+    #gisPeriodMenu, #mPeriodMenu { min-width: 210px; max-height: min(380px, 62vh); right: 0; left: auto; }
     #gisMap { height: 500px; min-height: 500px; }
     .gis-legend { padding: 8px 12px; gap: 8px; }
     .legend-section-label { font-size: 10px; }
@@ -1156,16 +1501,30 @@ tbody td {
     .legend-hint { font-size: 10px; }
     /* Make GIS cards match the table-card's visual width on mobile */
     .gis-header-card,
-    .gis-toolbar-card,
-    .gis-map-card { 
+    .gis-combined-card { 
         border-radius: 14px; 
     }
 
-    /* Fullscreen map modal */
+    /* Fullscreen map modal — mobile full rework */
     .gis-fullmap-backdrop { padding: 0; }
     .gis-fullmap-modal { border-radius: 0; height: 100vh; max-width: 100%; }
-    .gis-fullmap-search-wrap { flex: 1 1 auto; width: auto; }
     .gis-fullmap-title { display: none; }
+    /* Header becomes two rows on mobile */
+    .gis-fullmap-header {
+        flex-wrap: wrap !important;
+        padding: 8px 10px !important;
+        gap: 6px !important;
+        align-items: center !important;
+    }
+    /* Row 1: search flex-grow, then satellite btn, then close btn */
+    .gis-fullmap-search-wrap { order: 1; flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }
+    #gisFullMapBackdrop .gis-layer-btn { order: 2; flex-shrink: 0; font-size: 11px; padding: 5px 9px; margin-left: 0; }
+    .gis-fullmap-close { order: 3; flex-shrink: 0; }
+    /* Row 2: filter dropdown group full width */
+    #gisFullMapBackdrop .gis-dd-group { order: 4; flex: 0 0 100%; width: 100%; flex-wrap: wrap; gap: 5px; }
+    #gisFullMapBackdrop .gis-dd-btn { font-size: 11px; height: 30px; padding: 0 9px; }
+    /* Period menu open upward on mobile to avoid clipping */
+    #mPeriodMenu { bottom: calc(100% + 6px) !important; top: auto !important; left: auto !important; right: 0 !important; max-height: min(380px, 60vh); overflow-y: auto; }
 
     /* Image modal */
     .swipe-indicator.show { opacity: 1; }
@@ -1320,6 +1679,86 @@ tbody td {
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ═══════════════════════════════════════════════════
+   LEAFLET ZOOM CONTROL — REDESIGNED
+   ═══════════════════════════════════════════════════ */
+.leaflet-bar,
+.leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    color: #2b6cb0 !important;
+    background: rgba(255,255,255,.92) !important;
+    border: none !important;
+    border-bottom: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background .15s ease, color .15s ease, transform .12s ease !important;
+    text-decoration: none !important;
+    position: relative !important;
+}
+.leaflet-control-zoom-in {
+    border-radius: 14px 14px 0 0 !important;
+}
+.leaflet-control-zoom-out {
+    border-radius: 0 0 14px 14px !important;
+    border-top: 1px solid rgba(43,108,176,.12) !important;
+}
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+    background: #2b6cb0 !important;
+    color: #fff !important;
+    transform: none !important;
+}
+.leaflet-control-zoom-in:active,
+.leaflet-control-zoom-out:active {
+    background: #245a96 !important;
+    color: #fff !important;
+    transform: scale(.94) !important;
+}
+/* Dark mode */
+[data-theme="dark"] .leaflet-control-zoom-in,
+[data-theme="dark"] .leaflet-control-zoom-out {
+    background: rgba(26,26,26,.88) !important;
+    color: #8ab4f8 !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-out {
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-in:hover,
+[data-theme="dark"] .leaflet-control-zoom-out:hover {
+    background: #3762c8 !important;
+    color: #fff !important;
+}
+[data-theme="dark"] .leaflet-bar,
+[data-theme="dark"] .leaflet-control-zoom {
+    box-shadow: 0 4px 20px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3) !important;
+}
+/* Disabled state */
+.leaflet-control-zoom-in.leaflet-disabled,
+.leaflet-control-zoom-out.leaflet-disabled {
+    color: #b0b8c9 !important;
+    cursor: not-allowed !important;
+    background: rgba(255,255,255,.6) !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-in.leaflet-disabled,
+[data-theme="dark"] .leaflet-control-zoom-out.leaflet-disabled {
+    color: rgba(255,255,255,.2) !important;
+    background: rgba(26,26,26,.5) !important;
+}
 </style>
 <div id="loadingOverlay">
     <div class="loading-content">
@@ -1456,8 +1895,8 @@ tbody td {
             </button>
         </div>
 
-        <!-- Toolbar -->
-        <div class="gis-toolbar-card">
+        <!-- Toolbar + Map — unified card -->
+        <div class="gis-combined-card">
             <div class="gis-map-toolbar">
                 <span class="gis-map-title">
                     <i class="fas fa-layer-group" style="margin-right:6px;color:#3762c8;"></i>Interactive Request Map
@@ -1471,33 +1910,109 @@ tbody td {
                         Showing&nbsp;<strong id="gisResultsCount">0</strong>&nbsp;of&nbsp;<strong id="gisTotalCount">0</strong>&nbsp;request(s)
                     </span>
                 </div>
+
+                <!-- ── Filter Dropdowns ── -->
+                <div class="gis-dd-group">
+                    <!-- Status -->
+                    <div class="gis-dd-wrap" id="gisStatusWrap">
+                        <button class="gis-dd-btn" id="gisStatusBtn">
+                            <i class="fas fa-circle-half-stroke"></i>
+                            <span id="gisStatusLabel">All Status</span>
+                            <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                        </button>
+                        <div class="gis-dd-menu" id="gisStatusMenu">
+                            <div class="gis-dd-item active" data-val="all"      onclick="setStatusFilter('all')"><i class="fas fa-folder"></i> All</div>
+                            <div class="gis-dd-item"        data-val="Pending"  onclick="setStatusFilter('Pending')"><i class="fas fa-hourglass-half" style="color:#ff9800"></i> Pending</div>
+                            <div class="gis-dd-item"        data-val="Approved" onclick="setStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Approved</div>
+                            <div class="gis-dd-item"        data-val="Rejected" onclick="setStatusFilter('Rejected')"><i class="fas fa-times-circle" style="color:#f44336"></i> Rejected</div>
+                        </div>
+                    </div>
+                    <!-- Type -->
+                    <div class="gis-dd-wrap" id="gisTypeWrap">
+                        <button class="gis-dd-btn infra" id="gisTypeBtn">
+                            <i class="fas fa-layer-group"></i>
+                            <span id="gisTypeLabel">All Types</span>
+                            <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                        </button>
+                        <div class="gis-dd-menu" id="gisTypeMenu">
+                            <div class="gis-dd-item infra-item active" data-val="all"               onclick="setInfraFilter('all')"><i class="fas fa-box"></i> All Types</div>
+                            <div class="gis-dd-divider"></div>
+                            <div class="gis-dd-item infra-item" data-val="roads"             onclick="setInfraFilter('roads')"><i class="fas fa-road"></i> Roads</div>
+                            <div class="gis-dd-item infra-item" data-val="street lights"     onclick="setInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Street Lights</div>
+                            <div class="gis-dd-item infra-item" data-val="drainage"          onclick="setInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</div>
+                            <div class="gis-dd-item infra-item" data-val="public facilities" onclick="setInfraFilter('public facilities')"><i class="fas fa-building"></i> Public Facilities</div>
+                            <div class="gis-dd-item infra-item" data-val="water supply"      onclick="setInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</div>
+                            <div class="gis-dd-item infra-item" data-val="electrical"        onclick="setInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</div>
+                            <div class="gis-dd-item infra-item" data-val="others"            onclick="setInfraFilter('others')"><i class="fas fa-file"></i> Others</div>
+                        </div>
+                    </div>
+                    <!-- Period -->
+                    <div class="gis-dd-wrap" id="gisPeriodWrap">
+                        <button class="gis-dd-btn period" id="gisPeriodBtn">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span id="gisPeriodLabel">All Time</span>
+                            <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                        </button>
+                        <div class="gis-dd-menu" id="gisPeriodMenu" style="min-width:220px;">
+                            <div class="gis-dd-item period-item active" data-val="all"       onclick="setDateFilter('all')"><i class="fas fa-infinity"></i> All Time</div>
+                            <div class="gis-dd-divider"></div>
+                            <div class="gis-dd-item period-item" data-val="today"            onclick="setDateFilter('today')"><i class="fas fa-sun"></i> Today</div>
+                            <div class="gis-dd-item period-item" data-val="yesterday"        onclick="setDateFilter('yesterday')"><i class="fas fa-history"></i> Yesterday</div>
+                            <div class="gis-dd-item period-item" data-val="week"             onclick="setDateFilter('week')"><i class="fas fa-calendar-week"></i> This Week</div>
+                            <div class="gis-dd-item period-item" data-val="month"            onclick="setDateFilter('month')"><i class="fas fa-calendar-day"></i> This Month</div>
+                            <div class="gis-dd-item period-item" data-val="year"             onclick="setDateFilter('year')"><i class="fas fa-calendar-alt"></i> This Year</div>
+                            <div class="gis-dd-item period-item" data-val="lastyear"         onclick="setDateFilter('lastyear')"><i class="fas fa-undo"></i> Last Year</div>
+                            <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-picker">
+                                <label><i class="fas fa-calendar"></i> Specific Month</label>
+                                <button type="button" class="gis-dp-trigger-btn" id="gisPickMonthBtn" data-mode="month" data-target="gisPickMonth">
+                                    <i class="fas fa-calendar"></i>
+                                    <span id="gisPickMonthLabel">Click to select month</span>
+                                </button>
+                                <input type="hidden" id="gisPickMonth">
+                            </div>
+                            <div class="gis-dd-picker">
+                                <label><i class="fas fa-calendar-check"></i> Specific Day</label>
+                                <button type="button" class="gis-dp-trigger-btn" id="gisPickDayBtn" data-mode="day" data-target="gisPickDay">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <span id="gisPickDayLabel">Click to select date</span>
+                                </button>
+                                <input type="hidden" id="gisPickDay">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <button class="gis-layer-btn" id="layerBtn" onclick="toggleLayer()">🛰️ Satellite</button>
             </div>
-            <div class="gis-filter-row">
+            <div class="gis-filter-row"><!-- legacy filter rows kept hidden for JS compat -->
                 <div class="gis-filter-row-line">
-                    <span class="gis-filter-label">Status:</span>
-                    <button class="gis-filter-btn status-all active"   id="filterAll"      onclick="setStatusFilter('all')">📁 All</button>
-                    <button class="gis-filter-btn status-pending"      id="filterPending"  onclick="setStatusFilter('Pending')">⏳ Pending</button>
-                    <button class="gis-filter-btn status-approved"     id="filterApproved" onclick="setStatusFilter('Approved')">✅ Approved</button>
-                    <button class="gis-filter-btn status-rejected"     id="filterRejected" onclick="setStatusFilter('Rejected')">❌ Rejected</button>
+                    <button class="gis-filter-btn status-all active"   id="filterAll"      onclick="setStatusFilter('all')"></button>
+                    <button class="gis-filter-btn status-pending"      id="filterPending"  onclick="setStatusFilter('Pending')"></button>
+                    <button class="gis-filter-btn status-approved"     id="filterApproved" onclick="setStatusFilter('Approved')"></button>
+                    <button class="gis-filter-btn status-rejected"     id="filterRejected" onclick="setStatusFilter('Rejected')"></button>
                 </div>
                 <div class="gis-filter-row-line">
-                    <span class="gis-filter-label">Type:</span>
-                    <button class="gis-filter-btn infra-btn active" id="infraAll"              onclick="setInfraFilter('all')">📦 All Types</button>
-                    <button class="gis-filter-btn infra-btn" id="infraRoads" onclick="setInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
-                    <button class="gis-filter-btn infra-btn" id="infraStreetLights" onclick="setInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Street Lights</button>
-                    <button class="gis-filter-btn infra-btn" id="infraDrainage" onclick="setInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
-                    <button class="gis-filter-btn infra-btn" id="infraPublicFacilities" onclick="setInfraFilter('public facilities')"><i class="fas fa-building"></i> Public Facilities</button>
-                    <button class="gis-filter-btn infra-btn" id="infraWaterSupply" onclick="setInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</button>
-                    <button class="gis-filter-btn infra-btn" id="infraElectrical" onclick="setInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
-                    <button class="gis-filter-btn infra-btn" id="infraOthers" onclick="setInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
+                    <button class="gis-filter-btn infra-btn active" id="infraAll"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraRoads"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraStreetLights"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraDrainage"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraPublicFacilities"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraWaterSupply"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraElectrical"></button>
+                    <button class="gis-filter-btn infra-btn" id="infraOthers"></button>
                 </div>
-            </div>
-        </div>
+                <div class="gis-filter-row-line">
+                    <button class="gis-filter-btn date-btn active" id="dateAll"></button>
+                    <button class="gis-filter-btn date-btn" id="dateThisWeek"></button>
+                    <button class="gis-filter-btn date-btn" id="dateThisMonth"></button>
+                    <button class="gis-filter-btn date-btn" id="dateThisYear"></button>
+                    <button class="gis-filter-btn date-btn" id="dateLastYear"></button>
+                </div>
+            </div><!-- /.gis-filter-row legacy -->
 
-        <!-- Map -->
-        <div class="gis-map-card">
-            <div style="position:relative;">
+            <!-- Map section inside combined card -->
+            <div class="gis-map-inner">
                 <div id="mapLoadingOverlay">
                     <div class="map-spinner"></div>
                     <div class="map-loading-text">Loading request locations…</div>
@@ -1520,7 +2035,8 @@ tbody td {
                         <line x1="3" y1="21" x2="10" y2="14"></line>
                     </svg>
                 </button>
-            </div>
+            </div><!-- /.gis-map-inner -->
+
             <div class="gis-legend">
                 <div class="legend-row">
                     <span class="legend-section-label">Status:</span>
@@ -1538,8 +2054,8 @@ tbody td {
                     <div class="legend-item"><i class="fas fa-bolt"></i> Electrical</div>
                 </div>
                 <div class="legend-hint"><i class="fas fa-info-circle"></i> Hover pin for preview · Click to view details</div>
-            </div>
-        </div>
+            </div><!-- /.gis-legend -->
+        </div><!-- /.gis-combined-card -->
 
     </div>
     </div><!-- #gisView -->
@@ -1627,7 +2143,8 @@ tbody td {
                     data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
                     data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
                     data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
-                    data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>">
+                    data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
+                    data-email="<?= htmlspecialchars($row['email'] ?? '') ?>">
                     <td class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location']) ?></td>
@@ -1830,7 +2347,8 @@ tbody td {
     <div id="validateConfirmModal" class="alert-modal">
         <div class="icon-wrap success-icon"><span class="icon">✓</span></div>
         <div class="alert-title">Validate this request?</div>
-        <div class="alert-desc">This will approve the request and create a report. An engineer can be assigned from Current Reports.</div>
+        <div class="validate-role-pill" id="validateRolePill"><i class="fas fa-user-shield" style="font-size:10px;"></i><span id="validateRoleLabel"></span></div>
+        <div class="alert-desc" style="margin-top:0;">This will approve the request and create a report. An engineer can be assigned from Current Reports.</div>
         <div class="alert-btns">
             <button class="alert-btn cancel"  id="validateCancelBtn">Cancel</button>
             <button class="alert-btn confirm" id="validateConfirmBtn">Confirm</button>
@@ -1840,13 +2358,29 @@ tbody td {
 
 <!-- REJECT CONFIRMATION MODAL -->
 <div id="rejectConfirmBackdrop" class="modal-backdrop">
-    <div id="rejectConfirmModal" class="alert-modal">
+    <div id="rejectConfirmModal" class="alert-modal" style="max-width:420px;width:94vw;">
         <div class="icon-wrap reject-icon"><span class="icon">✕</span></div>
         <div class="alert-title">Reject this request?</div>
-        <div class="alert-desc">This will mark the request as <strong>Rejected</strong>. It will remain visible on the GIS map with a rejected status.</div>
+        <!-- Description changes based on whether requester has an email -->
+        <div class="alert-desc" id="rejectModalDesc" style="margin-bottom:16px;">A rejection reason is <strong>required</strong> and will be sent to the requester via email.</div>
+        <!-- Reason field — hidden when no email on file -->
+        <div class="reject-reason-field" id="rejectReasonField">
+            <label class="reject-reason-label">
+                <i class="fas fa-comment-alt" style="font-size:11px;color:#ef4444;"></i>
+                Rejection Reason
+                <span class="reject-reason-required-badge">Required</span>
+            </label>
+            <textarea id="rejectReasonInput"
+                class="reject-reason-textarea"
+                placeholder="e.g. Location is under DPWH jurisdiction, not LGU…"
+            ></textarea>
+            <div id="rejectReasonErrorMsg" class="reject-reason-error-msg">
+                ⚠️ Please provide a reason before rejecting. The requester needs to know why their request was not approved.
+            </div>
+        </div>
         <div class="alert-btns">
             <button class="alert-btn cancel"         id="rejectCancelBtn">Cancel</button>
-            <button class="alert-btn confirm-reject" id="rejectConfirmBtn">Reject</button>
+            <button class="alert-btn confirm-reject" id="rejectConfirmBtn"><i class="fas fa-times-circle" style="margin-right:5px;"></i>Reject &amp; Notify</button>
         </div>
     </div>
 </div>
@@ -1865,28 +2399,89 @@ tbody td {
                     Showing&nbsp;<strong id="gisModalResultsCount">0</strong>&nbsp;of&nbsp;<strong id="gisModalTotalCount">0</strong>
                 </span>
             </div>
+            <!-- Modal Filter Dropdowns -->
+            <div class="gis-dd-group">
+                <div class="gis-dd-wrap" id="mStatusWrap">
+                    <button class="gis-dd-btn" id="mStatusBtn">
+                        <i class="fas fa-circle-half-stroke"></i>
+                        <span id="mStatusLabel">All Status</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="mStatusMenu">
+                        <div class="gis-dd-item active" data-val="all"      onclick="setModalStatusFilter('all')"><i class="fas fa-folder"></i> All</div>
+                        <div class="gis-dd-item"        data-val="Pending"  onclick="setModalStatusFilter('Pending')"><i class="fas fa-hourglass-half" style="color:#ff9800"></i> Pending</div>
+                        <div class="gis-dd-item"        data-val="Approved" onclick="setModalStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Approved</div>
+                        <div class="gis-dd-item"        data-val="Rejected" onclick="setModalStatusFilter('Rejected')"><i class="fas fa-times-circle" style="color:#f44336"></i> Rejected</div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="mTypeWrap">
+                    <button class="gis-dd-btn infra" id="mTypeBtn">
+                        <i class="fas fa-layer-group"></i>
+                        <span id="mTypeLabel">All Types</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="mTypeMenu">
+                        <div class="gis-dd-item infra-item active" data-val="all"               onclick="setModalInfraFilter('all')"><i class="fas fa-box"></i> All Types</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item infra-item" data-val="roads"             onclick="setModalInfraFilter('roads')"><i class="fas fa-road"></i> Roads</div>
+                        <div class="gis-dd-item infra-item" data-val="street lights"     onclick="setModalInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Street Lights</div>
+                        <div class="gis-dd-item infra-item" data-val="drainage"          onclick="setModalInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</div>
+                        <div class="gis-dd-item infra-item" data-val="public facilities" onclick="setModalInfraFilter('public facilities')"><i class="fas fa-building"></i> Public Facilities</div>
+                        <div class="gis-dd-item infra-item" data-val="water supply"      onclick="setModalInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</div>
+                        <div class="gis-dd-item infra-item" data-val="electrical"        onclick="setModalInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</div>
+                        <div class="gis-dd-item infra-item" data-val="others"            onclick="setModalInfraFilter('others')"><i class="fas fa-file"></i> Others</div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="mPeriodWrap">
+                    <button class="gis-dd-btn period" id="mPeriodBtn">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span id="mPeriodLabel">All Time</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="mPeriodMenu" style="min-width:220px;">
+                        <div class="gis-dd-item period-item active" data-val="all"      onclick="setModalDateFilter('all')"><i class="fas fa-infinity"></i> All Time</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item period-item" data-val="today"           onclick="setModalDateFilter('today')"><i class="fas fa-sun"></i> Today</div>
+                        <div class="gis-dd-item period-item" data-val="yesterday"       onclick="setModalDateFilter('yesterday')"><i class="fas fa-history"></i> Yesterday</div>
+                        <div class="gis-dd-item period-item" data-val="week"            onclick="setModalDateFilter('week')"><i class="fas fa-calendar-week"></i> This Week</div>
+                        <div class="gis-dd-item period-item" data-val="month"           onclick="setModalDateFilter('month')"><i class="fas fa-calendar-day"></i> This Month</div>
+                        <div class="gis-dd-item period-item" data-val="year"            onclick="setModalDateFilter('year')"><i class="fas fa-calendar-alt"></i> This Year</div>
+                        <div class="gis-dd-item period-item" data-val="lastyear"        onclick="setModalDateFilter('lastyear')"><i class="fas fa-undo"></i> Last Year</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-picker">
+                            <label><i class="fas fa-calendar"></i> Specific Month</label>
+                            <button type="button" class="gis-dp-trigger-btn" id="mPickMonthBtn" data-mode="month" data-target="mPickMonth">
+                                <i class="fas fa-calendar"></i>
+                                <span id="mPickMonthLabel">Click to select month</span>
+                            </button>
+                            <input type="hidden" id="mPickMonth">
+                        </div>
+                        <div class="gis-dd-picker">
+                            <label><i class="fas fa-calendar-check"></i> Specific Day</label>
+                            <button type="button" class="gis-dp-trigger-btn" id="mPickDayBtn" data-mode="day" data-target="mPickDay">
+                                <i class="fas fa-calendar-check"></i>
+                                <span id="mPickDayLabel">Click to select date</span>
+                            </button>
+                            <input type="hidden" id="mPickDay">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- keep hidden legacy buttons for JS compat -->
+            <div style="display:none">
+                <button id="mFilterAll"></button><button id="mFilterPending"></button>
+                <button id="mFilterApproved"></button><button id="mFilterRejected"></button>
+                <button id="mInfraAll" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraRoads" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraStreetLights" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraDrainage" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraPublicFacilities" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraWaterSupply" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraElectrical" class="gis-filter-btn infra-btn"></button>
+                <button id="mInfraOthers" class="gis-filter-btn infra-btn"></button>
+            </div>
             <button class="gis-layer-btn" id="modalLayerBtn" onclick="toggleModalLayer()">🛰️ Satellite</button>
             <button class="gis-fullmap-close" title="Close" onclick="closeGisMapModal()">&#215;</button>
-        </div>
-        <div class="gis-fullmap-filters">
-            <div class="gis-fullmap-filter-line">
-                <span class="gis-filter-label">Status:</span>
-                <button class="gis-filter-btn status-all active" id="mFilterAll"      onclick="setModalStatusFilter('all')">📁 All</button>
-                <button class="gis-filter-btn status-pending"    id="mFilterPending"  onclick="setModalStatusFilter('Pending')">⏳ Pending</button>
-                <button class="gis-filter-btn status-approved"   id="mFilterApproved" onclick="setModalStatusFilter('Approved')">✅ Approved</button>
-                <button class="gis-filter-btn status-rejected"   id="mFilterRejected" onclick="setModalStatusFilter('Rejected')">❌ Rejected</button>
-            </div>
-            <div class="gis-fullmap-filter-line">
-                <span class="gis-filter-label">Type:</span>
-                <button class="gis-filter-btn infra-btn active" id="mInfraAll"              onclick="setModalInfraFilter('all')">📦 All</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraRoads"            onclick="setModalInfraFilter('roads')"><i class="fas fa-road"></i> Roads</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraStreetLights"     onclick="setModalInfraFilter('street lights')"><i class="fas fa-lightbulb"></i> Lights</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraDrainage"         onclick="setModalInfraFilter('drainage')"><i class="fas fa-tint"></i> Drainage</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraPublicFacilities" onclick="setModalInfraFilter('public facilities')"><i class="fas fa-building"></i> Facilities</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraWaterSupply"      onclick="setModalInfraFilter('water supply')"><i class="fas fa-water"></i> Water</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraElectrical"       onclick="setModalInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</button>
-                <button class="gis-filter-btn infra-btn"        id="mInfraOthers"           onclick="setModalInfraFilter('others')"><i class="fas fa-file"></i> Others</button>
-            </div>
         </div>
         <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;">
             <div id="gisModalNoResults">
@@ -2110,7 +2705,8 @@ function openRequestDetail(button) {
     let evidence = [];
     try { evidence = JSON.parse(row.dataset.evidence); } catch(e) {}
 
-    currentRequestData = { reqId, infrastructure, location, issue, date, status, evidence };
+    currentRequestData = { reqId, infrastructure, location, issue, date, status, evidence,
+                           contact: row.dataset.contact || '', email: row.dataset.email || '' };
     const sc = detailStatusClass(status);
 
     document.getElementById('detailModalBand').className = `detail-modal-band ${sc}`;
@@ -2158,10 +2754,12 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
 
 // Wire Requests view validate/reject buttons
 document.getElementById('reqValidateBtn').addEventListener('click', () => {
+    const lbl = document.getElementById('validateRoleLabel');
+    if (lbl) lbl.textContent = 'Validating as ' + (USER_DISPLAY_NAME || USER_ROLE || 'Staff');
     document.getElementById('validateConfirmBackdrop').classList.add('active');
 });
 document.getElementById('reqRejectBtn').addEventListener('click', () => {
-    document.getElementById('rejectConfirmBackdrop').classList.add('active');
+    openRejectModal();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -2185,7 +2783,9 @@ function openGisDetailModal(reqId) {
         issue:          req.issue,
         date:           formatDate(req.created_at),
         status:         req.approval_status || 'Unknown',
-        evidence:       req.images || []
+        evidence:       req.images || [],
+        contact:        req.contact_number || '',
+        email:          req.email || ''
     };
 
     document.getElementById('modalHeaderBand').className = `gis-modal-header-band ${sc}`;
@@ -2241,11 +2841,44 @@ document.getElementById('gisModalBackdrop').addEventListener('click', e => {
 
 // Wire GIS view validate/reject buttons
 document.getElementById('gisValidateBtn').addEventListener('click', () => {
+    const lbl = document.getElementById('validateRoleLabel');
+    if (lbl) lbl.textContent = 'Validating as ' + (USER_DISPLAY_NAME || USER_ROLE || 'Staff');
     document.getElementById('validateConfirmBackdrop').classList.add('active');
 });
 document.getElementById('gisRejectBtn').addEventListener('click', () => {
-    document.getElementById('rejectConfirmBackdrop').classList.add('active');
+    openRejectModal();
 });
+
+// ── Shared: configure and open the reject modal based on whether requester has email ──
+function openRejectModal() {
+    if (!currentRequestData) return;
+    const hasEmail = !!(currentRequestData.email && currentRequestData.email.trim());
+
+    const descEl       = document.getElementById('rejectModalDesc');
+    const fieldEl      = document.getElementById('rejectReasonField');
+    const confirmBtn   = document.getElementById('rejectConfirmBtn');
+    const errorMsgEl   = document.getElementById('rejectReasonErrorMsg');
+    const textareaEl   = document.getElementById('rejectReasonInput');
+
+    // Reset error state
+    errorMsgEl?.classList.remove('visible');
+    textareaEl?.classList.remove('input-error');
+    if (textareaEl) textareaEl.value = '';
+
+    if (hasEmail) {
+        // Has email — show reason field, full description, "Reject & Notify" button
+        descEl.innerHTML  = 'A rejection reason is <strong>required</strong> and will be sent to the requester via email and/or SMS.';
+        fieldEl.style.display = '';
+        confirmBtn.innerHTML  = '<i class="fas fa-times-circle" style="margin-right:5px;"></i>Reject &amp; Notify';
+    } else {
+        // No email — hide reason field, warn about no notification
+        descEl.innerHTML  = '⚠️ This request has <strong>no email on file</strong>. The requester will <strong>not be notified</strong>. Do you still want to reject it?';
+        fieldEl.style.display = 'none';
+        confirmBtn.innerHTML  = '<i class="fas fa-times-circle" style="margin-right:5px;"></i>Reject';
+    }
+
+    document.getElementById('rejectConfirmBackdrop').classList.add('active');
+}
 
 // ═══════════════════════════════════════════════════════
 //  VALIDATE / REJECT CONFIRM LOGIC (shared)
@@ -2362,51 +2995,87 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
     }
 });
 
-document.getElementById('rejectCancelBtn').addEventListener('click', () => {
+
+
+function closeRejectModal() {
     document.getElementById('rejectConfirmBackdrop').classList.remove('active');
-});
+    const textareaEl = document.getElementById('rejectReasonInput');
+    if (textareaEl) { textareaEl.value = ''; textareaEl.classList.remove('input-error'); }
+    document.getElementById('rejectReasonErrorMsg')?.classList.remove('visible');
+}
+document.getElementById('rejectCancelBtn').addEventListener('click', closeRejectModal);
 document.getElementById('rejectConfirmBackdrop').addEventListener('click', e => {
-    if (e.target === document.getElementById('rejectConfirmBackdrop'))
-        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
+    if (e.target === document.getElementById('rejectConfirmBackdrop')) closeRejectModal();
 });
 
 document.getElementById('rejectConfirmBtn').addEventListener('click', async () => {
     if (!currentRequestData) return;
-    const confirmBtn = document.getElementById('rejectConfirmBtn');
-    const cancelBtn  = document.getElementById('rejectCancelBtn');
-    confirmBtn.disabled = true; confirmBtn.textContent = 'Rejecting…'; cancelBtn.disabled = true;
+    const hasEmail    = !!(currentRequestData.email && currentRequestData.email.trim());
+    const reason      = (document.getElementById('rejectReasonInput')?.value || '').trim();
+    const confirmBtn  = document.getElementById('rejectConfirmBtn');
+    const cancelBtn   = document.getElementById('rejectCancelBtn');
+    const errorMsg    = document.getElementById('rejectReasonErrorMsg');
+    const textareaEl  = document.getElementById('rejectReasonInput');
+
+    // ── Enforce required reason only when requester has email ────────────────
+    if (hasEmail && !reason) {
+        textareaEl.classList.add('input-error');
+        errorMsg.classList.add('visible');
+        textareaEl.focus();
+        textareaEl.addEventListener('animationend', () => textareaEl.classList.remove('input-error'), { once: true });
+        return;
+    }
+    if (errorMsg)   errorMsg.classList.remove('visible');
+    if (textareaEl) textareaEl.classList.remove('input-error');
+
+    // ── Close modal and show full loading overlay (same as validate) ─────────
+    closeRejectModal();
+    document.getElementById('requestDetailBackdrop').classList.remove('active');
+    closeGisDetailModal();
+    showOverlay('Rejecting request');
 
     try {
         const response = await fetch('reject_request.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
-            body: JSON.stringify({ req_id: parseInt(currentRequestData.reqId, 10) })
+            body: JSON.stringify({
+                req_id:  parseInt(currentRequestData.reqId, 10),
+                reason:  reason,
+                email:   currentRequestData.email   || '',
+                contact: currentRequestData.contact || ''
+            })
         });
         let data;
         try { data = await response.json(); } catch(pe) {
-            document.getElementById('rejectConfirmBackdrop').classList.remove('active');
-            document.getElementById('requestDetailBackdrop').classList.remove('active');
-            closeGisDetailModal();
             showInlineNotif('error', '❌ Server returned an unexpected response.'); return;
         }
-        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
-        document.getElementById('requestDetailBackdrop').classList.remove('active');
-        closeGisDetailModal();
 
         if (data.success) {
             const reqId = currentRequestData.reqId;
             updateRowStatus(reqId, 'Rejected', 'rejected');
             updateGisMarker(reqId, 'Rejected');
-            showInlineNotif('error',
-                `❌ Request #REQ-${String(reqId).padStart(3,'0')} has been rejected.`
-            );
+            if (hasEmail) {
+                const notifParts = ['❌ Request #REQ-' + String(reqId).padStart(3,'0') + ' has been rejected.'];
+                if (data.email_sent) notifParts.push('📧 Rejection email sent.');
+                if (data.sms_sent)   notifParts.push('📱 SMS notification sent.');
+                showInlineNotif('error', notifParts.join(' '));
+            } else {
+                showInlineNotif('error', '❌ Request #REQ-' + String(reqId).padStart(3,'0') + ' has been rejected. No email on file — requester was not notified.');
+            }
         } else {
             showInlineNotif('error', `❌ ${data.message}`);
         }
     } catch(err) {
-        document.getElementById('rejectConfirmBackdrop').classList.remove('active');
         showInlineNotif('error', '❌ Network error. Please try again.');
     } finally {
-        confirmBtn.disabled = false; confirmBtn.textContent = 'Reject'; cancelBtn.disabled = false;
+        hideOverlay();
+    }
+});
+
+// Clear error in real-time as user types (only relevant when email field is shown)
+document.getElementById('rejectReasonInput').addEventListener('input', function() {
+    if (this.value.trim()) {
+        document.getElementById('rejectReasonErrorMsg')?.classList.remove('visible');
+        this.classList.remove('input-error');
     }
 });
 
@@ -2511,7 +3180,7 @@ let savedGisBounds = null;
 let map, satelliteLayer, streetLayer;
 let currentLayer = 'street';
 let markersMap   = {};
-let activeStatus = 'all', activeInfra = 'all', activeSearch = '';
+let activeStatus = 'all', activeInfra = 'all', activeSearch = '', activeDateFilter = 'all';
 
 const QC_CENTER = [14.6760, 121.0437];
 const QC_BOUNDS = [[14.5890, 120.9600], [14.7900, 121.1300]];
@@ -2601,7 +3270,7 @@ function placeAllMarkers() {
             .on('mouseout',  function() { this.closePopup(); })
             .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
         marker.addTo(map);
-        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req) };
+        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req), createdAt: req.created_at || '' };
     });
     const latlngs = Object.values(markersMap).map(m => m.marker.getLatLng());
     if (latlngs.length > 0) {
@@ -2611,15 +3280,114 @@ function placeAllMarkers() {
     }
 }
 
+function getDateFilterRange(filter) {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth(), d = now.getDate(), dow = now.getDay();
+    if (filter === 'today')     { const s=new Date(y,m,d); s.setHours(0,0,0,0); const e=new Date(y,m,d+1); e.setHours(0,0,0,0); return {from:s,to:e}; }
+    if (filter === 'yesterday') { const s=new Date(y,m,d-1); s.setHours(0,0,0,0); const e=new Date(y,m,d); e.setHours(0,0,0,0); return {from:s,to:e}; }
+    if (filter === 'week')      { const s=new Date(y,m,d-dow); s.setHours(0,0,0,0); return {from:s,to:null}; }
+    if (filter === 'month')     { return {from:new Date(y,m,1),to:null}; }
+    if (filter === 'year')      { return {from:new Date(y,0,1),to:null}; }
+    if (filter === 'lastyear')  { return {from:new Date(y-1,0,1),to:new Date(y,0,1)}; }
+    if (filter && filter.startsWith('specificMonth:')) {
+        const parts = filter.split(':')[1].split('-');
+        return {from:new Date(+parts[0],+parts[1]-1,1), to:new Date(+parts[0],+parts[1],1)};
+    }
+    if (filter && filter.startsWith('specificDay:')) {
+        const parts = filter.split(':')[1].split('-');
+        const s=new Date(+parts[0],+parts[1]-1,+parts[2]); s.setHours(0,0,0,0);
+        const e=new Date(s); e.setDate(e.getDate()+1);
+        return {from:s,to:e};
+    }
+    return null;
+}
+
+function _periodLabel(filter) {
+    const labels = {all:'All Time',today:'Today',yesterday:'Yesterday',week:'This Week',month:'This Month',year:'This Year',lastyear:'Last Year'};
+    if (labels[filter]) return labels[filter];
+    if (filter && filter.startsWith('specificMonth:')) return filter.split(':')[1];
+    if (filter && filter.startsWith('specificDay:'))   return filter.split(':')[1];
+    return 'All Time';
+}
+
+// ── Dropdown open/close helpers ──────────────────────────────────────────────
+function _initGisDd(wrapId) {
+    const wrap = document.getElementById(wrapId);
+    if (!wrap) return;
+    const btn = wrap.querySelector('.gis-dd-btn');
+    btn.addEventListener('click', e => { e.stopPropagation(); _closeAllGisDd(wrapId); wrap.classList.toggle('open'); });
+}
+function _closeAllGisDd(except) {
+    ['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => {
+        if (id !== except) { const w=document.getElementById(id); if(w) w.classList.remove('open'); }
+    });
+}
+document.addEventListener('click', () => _closeAllGisDd(null));
+['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => {
+    const w = document.getElementById(id);
+    if (w) w.addEventListener('click', e => e.stopPropagation());
+});
+['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => _initGisDd(id));
+
+function setDateFilter(filter) {
+    activeDateFilter = filter;
+    const lbl = document.getElementById('gisPeriodLabel');
+    if (lbl) lbl.textContent = _periodLabel(filter);
+    const btn = document.getElementById('gisPeriodBtn');
+    if (btn) { btn.classList.toggle('has-filter period', filter !== 'all'); btn.classList.toggle('period', true); }
+    document.querySelectorAll('#gisPeriodMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === filter));
+    const w = document.getElementById('gisPeriodWrap'); if(w) w.classList.remove('open');
+    // Reset custom picker labels when a preset is chosen
+    if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
+    if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
+    applyVisibility();
+}
+
+function setStatusFilter(filter) {
+    activeStatus = filter;
+    const statusLabels = {all:'All Status', Pending:'Pending', Approved:'Approved', Rejected:'Rejected'};
+    const lbl = document.getElementById('gisStatusLabel');
+    if (lbl) lbl.textContent = statusLabels[filter] || 'All Status';
+    const btn = document.getElementById('gisStatusBtn');
+    if (btn) btn.classList.toggle('has-filter', filter !== 'all');
+    document.querySelectorAll('#gisStatusMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === filter));
+    const w = document.getElementById('gisStatusWrap'); if(w) w.classList.remove('open');
+    // keep legacy hidden buttons in sync
+    document.querySelectorAll('.gis-filter-btn[id^="filter"]').forEach(b => b.classList.remove('active'));
+    const legMap={all:'filterAll',Pending:'filterPending',Approved:'filterApproved',Rejected:'filterRejected'};
+    const el=document.getElementById(legMap[filter]); if(el) el.classList.add('active');
+    applyVisibility();
+}
+
+function setInfraFilter(infra) {
+    activeInfra = infra;
+    const infraLabels = {all:'All Types',roads:'Roads','street lights':'Street Lights',drainage:'Drainage','public facilities':'Public Facilities','water supply':'Water Supply',electrical:'Electrical',others:'Others'};
+    const lbl = document.getElementById('gisTypeLabel');
+    if (lbl) lbl.textContent = infraLabels[infra] || 'All Types';
+    const btn = document.getElementById('gisTypeBtn');
+    if (btn) { btn.classList.toggle('has-filter', infra !== 'all'); btn.classList.toggle('infra', true); }
+    document.querySelectorAll('#gisTypeMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === infra));
+    const w = document.getElementById('gisTypeWrap'); if(w) w.classList.remove('open');
+    applyVisibility();
+}
+
 function applyVisibility() {
     const keyword   = activeSearch.toLowerCase().trim();
     const noResults = document.getElementById('gisNoResultsOverlay');
     const badge     = document.getElementById('gisResultsBadge');
     const countEl   = document.getElementById('gisResultsCount');
+    const dateRange = getDateFilterRange(activeDateFilter);
     let visible = 0;
-    Object.values(markersMap).forEach(({marker, status, infraType, searchText}) => {
+    Object.values(markersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
+        let dateOk = true;
+        if (dateRange && createdAt) {
+            const dt = new Date(createdAt.replace(' ','T'));
+            if (dateRange.from && dt < dateRange.from) dateOk = false;
+            if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
+        }
         const show = (activeStatus === 'all' || status === activeStatus) &&
                      (activeInfra  === 'all' || infraType === activeInfra) &&
+                     dateOk &&
                      (!keyword || searchText.includes(keyword));
         if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
         else       { if (map.hasLayer(marker)) map.removeLayer(marker); }
@@ -2629,25 +3397,11 @@ function applyVisibility() {
         countEl.textContent = visible;
         const totalEl = document.getElementById('gisTotalCount'); if (totalEl) totalEl.textContent = Object.keys(markersMap).length;
     } else { badge.classList.remove('visible'); }
-    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || keyword;
+    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDateFilter !== 'all' || keyword;
     if (anyFilter && visible === 0 && Object.keys(markersMap).length > 0) noResults.classList.add('visible');
     else noResults.classList.remove('visible');
 }
 
-function setStatusFilter(filter) {
-    activeStatus = filter;
-    document.querySelectorAll('.gis-filter-btn[id^="filter"]').forEach(b => b.classList.remove('active'));
-    const map_id = {all:'filterAll',Pending:'filterPending',Approved:'filterApproved',Rejected:'filterRejected'};
-    const el = document.getElementById(map_id[filter]); if (el) el.classList.add('active');
-    applyVisibility();
-}
-function setInfraFilter(infra) {
-    activeInfra = infra;
-    document.querySelectorAll('.gis-filter-btn.infra-btn:not([id^="mInfra"])').forEach(b => b.classList.remove('active'));
-    const map_id = {all:'infraAll',roads:'infraRoads','street lights':'infraStreetLights',drainage:'infraDrainage','public facilities':'infraPublicFacilities','water supply':'infraWaterSupply',electrical:'infraElectrical',others:'infraOthers'};
-    const el = document.getElementById(map_id[infra]); if (el) el.classList.add('active');
-    applyVisibility();
-}
 function toggleLayer() {
     const btn = document.getElementById('layerBtn');
     if (currentLayer === 'street') { map.removeLayer(streetLayer); map.addLayer(satelliteLayer); currentLayer = 'satellite'; if (btn) btn.innerHTML = '🗺️ Street'; }
@@ -2726,27 +3480,41 @@ function initMap() {
 //  FULLSCREEN MAP MODAL
 // ═══════════════════════════════════════════════════════
 let modalMap = null, modalMarkersMap = {};
-let modalActiveStatus = 'all', modalActiveInfra = 'all', modalActiveSearch = '';
+let modalActiveStatus = 'all', modalActiveInfra = 'all', modalActiveSearch = '', modalActiveDateFilter = 'all';
 let modalCurrentLayer = 'street', modalSatelliteLayer, modalStreetLayer;
 
 function openGisMapModal() {
     const backdrop = document.getElementById('gisFullMapBackdrop');
+    const modal    = backdrop.querySelector('.gis-fullmap-modal');
+    // Open directly in fullscreen — no intermediate size, no transition needed on open
+    modal.style.transition = 'none';
+    backdrop.classList.add('gis-map-expanded');
+    modal.classList.add('gis-map-expanded');
     backdrop.classList.add('active');
-    modalActiveStatus = activeStatus; modalActiveInfra = activeInfra; modalActiveSearch = activeSearch;
+    // Re-enable transition after paint so subsequent close animation works
+    requestAnimationFrame(() => { requestAnimationFrame(() => { modal.style.transition = ''; }); });
+    modalActiveStatus = activeStatus; modalActiveInfra = activeInfra;
+    modalActiveSearch = activeSearch; modalActiveDateFilter = activeDateFilter;
     syncModalFilterButtons();
     const modalInput = document.getElementById('gisModalSearch');
     if (modalInput) { modalInput.value = activeSearch; document.getElementById('gisModalSearchClear').classList.toggle('visible', activeSearch.length > 0); }
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         if (!modalMap) { initModalMap(); }
         else {
-            modalMap.invalidateSize(); placeModalMarkers(); applyModalVisibility();
+            modalMap.invalidateSize(false); placeModalMarkers(); applyModalVisibility();
             const latlngs = Object.values(modalMarkersMap).filter(m => modalMap.hasLayer(m.marker)).map(m => m.marker.getLatLng());
             if (latlngs.length > 0) modalMap.fitBounds(L.latLngBounds(latlngs).pad(0.12), {maxZoom:16});
         }
-    }, 300);
+    });
 }
-function closeGisMapModal() { document.getElementById('gisFullMapBackdrop').classList.remove('active'); }
+function closeGisMapModal() {
+    const backdrop = document.getElementById('gisFullMapBackdrop');
+    backdrop.classList.remove('active');
+    backdrop.classList.remove('gis-map-expanded');
+    backdrop.querySelector('.gis-fullmap-modal').classList.remove('gis-map-expanded');
+}
 document.getElementById('gisFullMapBackdrop').addEventListener('click', function(e) { if (e.target === this) closeGisMapModal(); });
+
 
 function initModalMap() {
     modalMap = L.map('gisModalMap', { center: QC_CENTER, zoom: 13, maxBounds: QC_BOUNDS, maxBoundsViscosity: 0.8, scrollWheelZoom: true, touchZoom: true, doubleClickZoom: true });
@@ -2770,39 +3538,67 @@ function placeModalMarkers() {
             .on('mouseout',  function() { this.closePopup(); })
             .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
         marker.addTo(modalMap);
-        modalMarkersMap[req.req_id] = { marker, status: req.approval_status||'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req) };
+        modalMarkersMap[req.req_id] = { marker, status: req.approval_status||'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req), createdAt: req.created_at||'' };
     });
 }
 function applyModalVisibility() {
-    const keyword = modalActiveSearch.toLowerCase().trim();
-    const noRes   = document.getElementById('gisModalNoResults');
-    const badge   = document.getElementById('gisModalResultsBadge');
-    const countEl = document.getElementById('gisModalResultsCount');
-    const totalEl = document.getElementById('gisModalTotalCount');
+    const keyword   = modalActiveSearch.toLowerCase().trim();
+    const noRes     = document.getElementById('gisModalNoResults');
+    const badge     = document.getElementById('gisModalResultsBadge');
+    const countEl   = document.getElementById('gisModalResultsCount');
+    const totalEl   = document.getElementById('gisModalTotalCount');
+    const dateRange = getDateFilterRange(modalActiveDateFilter);
     let visible = 0;
-    Object.values(modalMarkersMap).forEach(({marker, status, infraType, searchText}) => {
-        const show = (modalActiveStatus === 'all' || status === modalActiveStatus) && (modalActiveInfra === 'all' || infraType === modalActiveInfra) && (!keyword || searchText.includes(keyword));
+    Object.values(modalMarkersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
+        let dateOk = true;
+        if (dateRange && createdAt) {
+            const dt = new Date(createdAt.replace(' ','T'));
+            if (dateRange.from && dt < dateRange.from) dateOk = false;
+            if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
+        }
+        const show = (modalActiveStatus === 'all' || status === modalActiveStatus) &&
+                     (modalActiveInfra  === 'all' || infraType === modalActiveInfra) &&
+                     dateOk && (!keyword || searchText.includes(keyword));
         if (show) { if (!modalMap.hasLayer(marker)) marker.addTo(modalMap); visible++; }
         else       { if (modalMap.hasLayer(marker)) modalMap.removeLayer(marker); }
     });
     if (keyword) { badge.classList.add('visible'); badge.classList.toggle('no-results', visible===0); countEl.textContent=visible; if (totalEl) totalEl.textContent=Object.keys(modalMarkersMap).length; }
     else badge.classList.remove('visible');
-    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || keyword;
+    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || modalActiveDateFilter !== 'all' || keyword;
     if (anyFilter && visible===0 && Object.keys(modalMarkersMap).length>0) noRes.classList.add('visible');
     else noRes.classList.remove('visible');
 }
 function setModalStatusFilter(filter) {
     modalActiveStatus = filter;
-    document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b => b.classList.remove('active'));
+    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Approved',Rejected:'Rejected'};
+    const lbl=document.getElementById('mStatusLabel'); if(lbl) lbl.textContent = statusLabels[filter]||'All Status';
+    const btn=document.getElementById('mStatusBtn'); if(btn) btn.classList.toggle('has-filter', filter!=='all');
+    document.querySelectorAll('#mStatusMenu .gis-dd-item').forEach(i=>i.classList.toggle('active', i.dataset.val===filter));
+    const w=document.getElementById('mStatusWrap'); if(w) w.classList.remove('open');
+    // legacy hidden buttons
+    document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b=>b.classList.remove('active'));
     const m={all:'mFilterAll',Pending:'mFilterPending',Approved:'mFilterApproved',Rejected:'mFilterRejected'};
-    const el=document.getElementById(m[filter]); if (el) el.classList.add('active');
+    const el=document.getElementById(m[filter]); if(el) el.classList.add('active');
     applyModalVisibility();
 }
 function setModalInfraFilter(infra) {
     modalActiveInfra = infra;
-    document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn.infra-btn').forEach(b => b.classList.remove('active'));
-    const m={all:'mInfraAll',roads:'mInfraRoads','street lights':'mInfraStreetLights',drainage:'mInfraDrainage','public facilities':'mInfraPublicFacilities','water supply':'mInfraWaterSupply',electrical:'mInfraElectrical',others:'mInfraOthers'};
-    const el=document.getElementById(m[infra]); if (el) el.classList.add('active');
+    const infraLabels={all:'All Types',roads:'Roads','street lights':'Street Lights',drainage:'Drainage','public facilities':'Public Facilities','water supply':'Water Supply',electrical:'Electrical',others:'Others'};
+    const lbl=document.getElementById('mTypeLabel'); if(lbl) lbl.textContent=infraLabels[infra]||'All Types';
+    const btn=document.getElementById('mTypeBtn'); if(btn) { btn.classList.toggle('has-filter',infra!=='all'); btn.classList.add('infra'); }
+    document.querySelectorAll('#mTypeMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===infra));
+    const w=document.getElementById('mTypeWrap'); if(w) w.classList.remove('open');
+    applyModalVisibility();
+}
+function setModalDateFilter(filter) {
+    modalActiveDateFilter = filter;
+    const lbl=document.getElementById('mPeriodLabel'); if(lbl) lbl.textContent=_periodLabel(filter);
+    const btn=document.getElementById('mPeriodBtn'); if(btn) { btn.classList.toggle('has-filter',filter!=='all'); btn.classList.add('period'); }
+    document.querySelectorAll('#mPeriodMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===filter));
+    const w=document.getElementById('mPeriodWrap'); if(w) w.classList.remove('open');
+    // Reset custom picker labels when a preset is chosen
+    if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('mPickMonth'); }
+    if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('mPickDay'); }
     applyModalVisibility();
 }
 function toggleModalLayer() {
@@ -2811,12 +3607,20 @@ function toggleModalLayer() {
     else { modalMap.removeLayer(modalSatelliteLayer); modalMap.addLayer(modalStreetLayer); modalCurrentLayer='street'; if (btn) btn.innerHTML='🛰️ Satellite'; }
 }
 function syncModalFilterButtons() {
-    document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b => b.classList.remove('active'));
-    const sm={all:'mFilterAll',Pending:'mFilterPending',Approved:'mFilterApproved',Rejected:'mFilterRejected'};
-    const sel=document.getElementById(sm[modalActiveStatus]); if (sel) sel.classList.add('active');
-    document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn.infra-btn').forEach(b => b.classList.remove('active'));
-    const im={all:'mInfraAll',roads:'mInfraRoads','street lights':'mInfraStreetLights',drainage:'mInfraDrainage','public facilities':'mInfraPublicFacilities','water supply':'mInfraWaterSupply',electrical:'mInfraElectrical',others:'mInfraOthers'};
-    const iel=document.getElementById(im[modalActiveInfra]); if (iel) iel.classList.add('active');
+    // Sync status dropdown
+    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Approved',Rejected:'Rejected'};
+    const sLbl=document.getElementById('mStatusLabel'); if(sLbl) sLbl.textContent=statusLabels[modalActiveStatus]||'All Status';
+    const sBtn=document.getElementById('mStatusBtn'); if(sBtn) sBtn.classList.toggle('has-filter',modalActiveStatus!=='all');
+    document.querySelectorAll('#mStatusMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveStatus));
+    // Sync type dropdown
+    const infraLabels={all:'All Types',roads:'Roads','street lights':'Street Lights',drainage:'Drainage','public facilities':'Public Facilities','water supply':'Water Supply',electrical:'Electrical',others:'Others'};
+    const tLbl=document.getElementById('mTypeLabel'); if(tLbl) tLbl.textContent=infraLabels[modalActiveInfra]||'All Types';
+    const tBtn=document.getElementById('mTypeBtn'); if(tBtn) { tBtn.classList.toggle('has-filter',modalActiveInfra!=='all'); tBtn.classList.add('infra'); }
+    document.querySelectorAll('#mTypeMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveInfra));
+    // Sync period dropdown
+    const pLbl=document.getElementById('mPeriodLabel'); if(pLbl) pLbl.textContent=_periodLabel(modalActiveDateFilter);
+    const pBtn=document.getElementById('mPeriodBtn'); if(pBtn) { pBtn.classList.toggle('has-filter',modalActiveDateFilter!=='all'); pBtn.classList.add('period'); }
+    document.querySelectorAll('#mPeriodMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveDateFilter));
 }
 (function() {
     const input    = document.getElementById('gisModalSearch');
@@ -2905,6 +3709,303 @@ function initRequestSort() {
         }
     }
 }
+
+// ═══════════════════════════════════════════════════════
+//  GIS CUSTOM DATE PICKER (replaces native month/date inputs)
+// ═══════════════════════════════════════════════════════
+(function() {
+    // Build the shared overlay element once
+    var overlay = document.createElement('div');
+    overlay.className = 'gis-dp-overlay';
+    overlay.id = 'gisDpOverlay';
+    overlay.innerHTML = [
+        '<div class="gis-dp-nav-row">',
+          '<button class="gis-dp-nav-btn" id="gisDpPrev" type="button">&#8592;</button>',
+          '<div class="gis-dp-nav-center">',
+            '<button class="gis-dp-month-lbl" id="gisDpMonthLbl" type="button"></button>',
+            '<button class="gis-dp-year-lbl"  id="gisDpYearLbl"  type="button"></button>',
+          '</div>',
+          '<button class="gis-dp-nav-btn" id="gisDpNext" type="button">&#8594;</button>',
+        '</div>',
+        '<div class="gis-dp-year-grid"   id="gisDpYearGrid"></div>',
+        '<div class="gis-dp-month-grid"  id="gisDpMonthGrid"></div>',
+        '<div class="gis-dp-weekdays" id="gisDpWeekdays">',
+          '<span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>',
+        '</div>',
+        '<div class="gis-dp-day-grid"    id="gisDpDayGrid"></div>',
+        '<div class="gis-dp-footer">',
+          '<button class="gis-dp-clear-btn" id="gisDpClear" type="button">Clear</button>',
+          '<button class="gis-dp-done-btn"  id="gisDpDone"  type="button">Done</button>',
+        '</div>'
+    ].join('');
+    document.body.appendChild(overlay);
+
+    var MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // State
+    var mode         = 'day';  // 'day' | 'month'
+    var viewYear     = new Date().getFullYear();
+    var viewMonth    = new Date().getMonth();
+    var selYear      = null;
+    var selMonth     = null;
+    var selDay       = null;
+    var activeTrigger = null;  // the button that opened the picker
+    var activeHidden  = null;  // the hidden input to write into
+    var activeLabelEl = null;  // the <span> label inside trigger btn
+    var activeCallback = null; // function to call with selected value
+
+    // DOM refs
+    var prevBtn   = document.getElementById('gisDpPrev');
+    var nextBtn   = document.getElementById('gisDpNext');
+    var monthLbl  = document.getElementById('gisDpMonthLbl');
+    var yearLbl   = document.getElementById('gisDpYearLbl');
+    var yearGrid  = document.getElementById('gisDpYearGrid');
+    var monthGrid = document.getElementById('gisDpMonthGrid');
+    var weekdays  = document.getElementById('gisDpWeekdays');
+    var dayGrid   = document.getElementById('gisDpDayGrid');
+    var clearBtn  = document.getElementById('gisDpClear');
+    var doneBtn   = document.getElementById('gisDpDone');
+
+    function pad2(n){ return String(n).padStart(2,'0'); }
+
+    function renderYearGrid() {
+        yearGrid.innerHTML = '';
+        var now = new Date();
+        for (var y = now.getFullYear(); y >= 1900; y--) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'gis-dp-yr'; b.textContent = y; b.dataset.y = y;
+            if (y === viewYear) b.classList.add('selected');
+            b.addEventListener('click', function(e){ e.stopPropagation(); viewYear = +this.dataset.y; yearGrid.classList.remove('open'); yearLbl.classList.remove('active'); render(); });
+            yearGrid.appendChild(b);
+        }
+        // Scroll selected into view
+        setTimeout(function(){ var s = yearGrid.querySelector('.selected'); if(s) s.scrollIntoView({block:'nearest'}); }, 20);
+    }
+
+    function renderMonthGridPicker() {
+        // Month-picker mode: show all 12 months as tiles (no day grid)
+        monthGrid.innerHTML = '';
+        for (var m = 0; m < 12; m++) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'gis-dp-mo'; b.textContent = MONTHS_SHORT[m]; b.dataset.m = m;
+            if (selYear === viewYear && m === selMonth) b.classList.add('selected');
+            b.addEventListener('click', (function(mo){ return function(e){
+                e.stopPropagation();
+                selMonth = mo; selYear = viewYear;
+                var val = viewYear + '-' + pad2(mo+1);
+                applySelection(val, MONTHS_LONG[mo] + ' ' + viewYear, 'specificMonth:' + val);
+                render();
+            }; })(m));
+            monthGrid.appendChild(b);
+        }
+    }
+
+    function renderDayGrid() {
+        dayGrid.innerHTML = '';
+        var today    = new Date();
+        var todayStr = today.getFullYear()+'-'+pad2(today.getMonth()+1)+'-'+pad2(today.getDate());
+        var selStr   = (selYear && selMonth !== null && selDay) ? selYear+'-'+pad2(selMonth+1)+'-'+pad2(selDay) : '';
+
+        var firstDow    = new Date(viewYear, viewMonth, 1).getDay();
+        var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+        for (var i = 0; i < firstDow; i++) {
+            var emp = document.createElement('button'); emp.type = 'button';
+            emp.className = 'gis-dp-day dp-empty'; dayGrid.appendChild(emp);
+        }
+        for (var d = 1; d <= daysInMonth; d++) {
+            var dateStr = viewYear+'-'+pad2(viewMonth+1)+'-'+pad2(d);
+            var dow = new Date(viewYear, viewMonth, d).getDay();
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'gis-dp-day'; b.textContent = d; b.dataset.date = dateStr;
+            if (dow === 0 || dow === 6) b.classList.add('dp-weekend');
+            if (dateStr === todayStr)   b.classList.add('dp-today');
+            if (dateStr === selStr)     b.classList.add('dp-selected');
+            b.addEventListener('click', function(e){
+                e.stopPropagation();
+                var p = this.dataset.date.split('-');
+                selYear = +p[0]; selMonth = +p[1]-1; selDay = +p[2];
+                var val = this.dataset.date;
+                var lbl = MONTHS_LONG[selMonth] + ' ' + selDay + ', ' + selYear;
+                applySelection(val, lbl, 'specificDay:' + val);
+                render();
+            });
+            dayGrid.appendChild(b);
+        }
+    }
+
+    function render() {
+        // Update header
+        monthLbl.textContent = MONTHS_LONG[viewMonth].slice(0,3);
+        yearLbl.textContent  = viewYear;
+
+        if (mode === 'month') {
+            weekdays.style.display = 'none';
+            dayGrid.style.display  = 'none';
+            monthGrid.style.display = '';
+            prevBtn.style.visibility = 'hidden';
+            nextBtn.style.visibility = 'hidden';
+            renderMonthGridPicker();
+        } else {
+            weekdays.style.display = '';
+            dayGrid.style.display  = '';
+            monthGrid.style.display = 'none';
+            prevBtn.style.visibility = '';
+            nextBtn.style.visibility = '';
+            renderDayGrid();
+        }
+    }
+
+    function positionOverlay(triggerBtn) {
+        var rect = triggerBtn.getBoundingClientRect();
+        var vw = window.innerWidth, vh = window.innerHeight;
+        overlay.style.display = 'block';
+        var ow = overlay.offsetWidth  || 240;
+        var oh = overlay.offsetHeight || 320;
+        overlay.style.display = 'none';
+
+        var top  = rect.bottom + 6;
+        var left = rect.left;
+        // Keep within viewport
+        if (left + ow > vw - 8) left = vw - ow - 8;
+        if (left < 8) left = 8;
+        if (top + oh > vh - 8) {
+            if (rect.top > oh + 6) top = rect.top - oh - 6;
+            else top = Math.max(8, vh - oh - 8);
+        }
+        overlay.style.top  = top  + 'px';
+        overlay.style.left = left + 'px';
+    }
+
+    function openPicker(triggerBtn, hiddenInput, labelEl, pickerMode, cb) {
+        activeTrigger  = triggerBtn;
+        activeHidden   = hiddenInput;
+        activeLabelEl  = labelEl;
+        activeCallback = cb;
+        mode = pickerMode;
+
+        // Parse existing value
+        var existing = hiddenInput ? hiddenInput.value : '';
+        if (existing && mode === 'month') {
+            var p = existing.split('-');
+            if (p.length >= 2) { selYear = +p[0]; selMonth = +p[1]-1; viewYear = selYear; viewMonth = selMonth; }
+        } else if (existing && mode === 'day') {
+            var p2 = existing.split('-');
+            if (p2.length === 3) { selYear = +p2[0]; selMonth = +p2[1]-1; selDay = +p2[2]; viewYear = selYear; viewMonth = selMonth; }
+        } else {
+            selYear = null; selMonth = null; selDay = null;
+            viewYear = new Date().getFullYear(); viewMonth = new Date().getMonth();
+        }
+
+        // Build year grid once
+        renderYearGrid();
+        yearGrid.classList.remove('open');
+        yearLbl.classList.remove('active');
+
+        render();
+        positionOverlay(triggerBtn);
+        overlay.style.removeProperty('animation');
+        overlay.style.display = 'block';
+        void overlay.offsetWidth;
+        overlay.style.animation = 'gisDropIn .18s ease forwards';
+    }
+
+    function closePicker() {
+        overlay.style.display = 'none';
+        if (activeTrigger) activeTrigger.classList.remove('active');
+        activeTrigger = null;
+    }
+
+    function applySelection(rawVal, displayLabel, filterVal) {
+        if (activeHidden)   activeHidden.value = rawVal;
+        if (activeLabelEl)  { activeLabelEl.textContent = displayLabel; }
+        if (activeTrigger)  activeTrigger.classList.add('active');
+        if (activeCallback) activeCallback(filterVal);
+        closePicker();
+    }
+
+    // Nav buttons (day mode only)
+    prevBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
+    nextBtn.addEventListener('click', function(e){ e.stopPropagation(); viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
+
+    // Year label toggle
+    yearLbl.addEventListener('click', function(e){
+        e.stopPropagation();
+        var open = yearGrid.classList.toggle('open');
+        yearLbl.classList.toggle('active', open);
+    });
+
+    // Month label toggle (day mode only — opens month grid briefly)
+    monthLbl.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (mode === 'month') return;
+        // Temporarily show months to jump month quickly
+        monthGrid.style.display = monthGrid.style.display === '' ? 'none' : '';
+        // Quick-pick month from month grid
+        monthGrid.querySelectorAll('.gis-dp-mo').forEach(function(b, mi){
+            b.onclick = function(e2){ e2.stopPropagation(); viewMonth = mi; monthGrid.style.display = 'none'; render(); };
+        });
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (activeHidden)   activeHidden.value = '';
+        if (activeLabelEl)  { activeLabelEl.textContent = (mode === 'month') ? 'Click to select month' : 'Click to select date'; }
+        if (activeTrigger)  activeTrigger.classList.remove('active');
+        if (activeCallback) activeCallback('all');
+        selYear = null; selMonth = null; selDay = null;
+        render();
+        closePicker();
+    });
+
+    // Done button
+    doneBtn.addEventListener('click', function(e){ e.stopPropagation(); closePicker(); });
+
+    // Close on outside click
+    document.addEventListener('click', function(e){
+        if (overlay.style.display !== 'none' && !overlay.contains(e.target)) closePicker();
+    });
+    // Stop propagation inside overlay to prevent .gis-dd-wrap from closing
+    overlay.addEventListener('click', function(e){ e.stopPropagation(); });
+
+    // ── Wire trigger buttons ──
+    function wireTrigger(btnId, hiddenId, labelId, pickerMode, filterFn) {
+        var btn     = document.getElementById(btnId);
+        var hidden  = document.getElementById(hiddenId);
+        var labelEl = document.getElementById(labelId);
+        if (!btn || !hidden || !labelEl) return;
+        btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            if (overlay.style.display !== 'none' && activeTrigger === btn) { closePicker(); return; }
+            openPicker(btn, hidden, labelEl, pickerMode, filterFn);
+        });
+    }
+
+    // Main GIS toolbar pickers
+    wireTrigger('gisPickMonthBtn', 'gisPickMonth', 'gisPickMonthLabel', 'month',
+        function(v){ if(v==='all') setDateFilter('all'); else setDateFilter(v); });
+    wireTrigger('gisPickDayBtn',   'gisPickDay',   'gisPickDayLabel',   'day',
+        function(v){ if(v==='all') setDateFilter('all'); else setDateFilter(v); });
+
+    // Fullmap modal pickers
+    wireTrigger('mPickMonthBtn', 'mPickMonth', 'mPickMonthLabel', 'month',
+        function(v){ if(v==='all') setModalDateFilter('all'); else setModalDateFilter(v); });
+    wireTrigger('mPickDayBtn',   'mPickDay',   'mPickDayLabel',   'day',
+        function(v){ if(v==='all') setModalDateFilter('all'); else setModalDateFilter(v); });
+
+    // Expose reset function so setDateFilter('all') can clear labels
+    window._gisDpReset = function(targetHiddenId) {
+        var btn, lbl, def;
+        if (targetHiddenId === 'gisPickMonth') { btn = document.getElementById('gisPickMonthBtn'); lbl = document.getElementById('gisPickMonthLabel'); def = 'Click to select month'; }
+        else if (targetHiddenId === 'gisPickDay') { btn = document.getElementById('gisPickDayBtn'); lbl = document.getElementById('gisPickDayLabel'); def = 'Click to select date'; }
+        else if (targetHiddenId === 'mPickMonth') { btn = document.getElementById('mPickMonthBtn'); lbl = document.getElementById('mPickMonthLabel'); def = 'Click to select month'; }
+        else if (targetHiddenId === 'mPickDay')   { btn = document.getElementById('mPickDayBtn');   lbl = document.getElementById('mPickDayLabel');   def = 'Click to select date'; }
+        if (btn) { btn.classList.remove('active'); var h = document.getElementById(targetHiddenId); if(h) h.value=''; }
+        if (lbl) lbl.textContent = def;
+    };
+})();
 </script>
 </body>
 </html>

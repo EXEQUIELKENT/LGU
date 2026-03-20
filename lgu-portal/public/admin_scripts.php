@@ -620,6 +620,13 @@ startClock();
 
     function escH(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+    const NOTIF_DESC_LIMIT = 80; // kept for reference but no longer truncates
+
+    function buildDescHtml(desc, notifId) {
+        if (!desc) return '';
+        return `<div class="notif-item-desc">${escH(String(desc))}</div>`;
+    }
+
     /* ── Render notifications grouped by date ──────────────────── */
     function updateNotificationUI() {
         if (!notifBody) return;
@@ -644,7 +651,7 @@ startClock();
                     <div class="notif-icon-wrap ${m.cls}">${m.icon}</div>
                     <div class="notif-content">
                         <div class="notif-item-title">${escH(n.title)}</div>
-                        <div class="notif-item-desc">${escH(n.description)}</div>
+                        ${buildDescHtml(n.description, n.id)}
                         <div class="notif-item-meta">
                             <span class="notif-time-label">${escH(n.time)}</span>
                             ${(function(){ const p = getPageLabel(n.url); return p ? `<span class="notif-page-pill ${p.cls}"><i class="fas fa-external-link-alt" style="font-size:8px;margin-right:3px;"></i>${p.label}</span>` : ''; })()}

@@ -827,16 +827,38 @@ input[type="file"] {
 #mapModalBackdrop {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.45);
-    display: none; align-items: center; justify-content: center;
+    /* Use visibility+opacity instead of display:none so Leaflet can measure
+       the map container during eager init on DOMContentLoaded */
+    display: flex; align-items: center; justify-content: center;
     z-index: 6000;
+    visibility: hidden; opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
 }
-#mapModalBackdrop.show { display: flex; }
+#mapModalBackdrop.show {
+    visibility: visible; opacity: 1; pointer-events: auto;
+}
+/* Hide chatbot FAB while map modal is open so it doesn't overlap */
+.chatbot-fab-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.7) !important;
+    transition: opacity 0.18s ease, transform 0.18s ease !important;
+}
 #mapModal {
     background: var(--modal-bg);
-    width: 90%; max-width: 600px; max-height: 85vh;
+    width: 90%; max-width: 600px;
+    height: auto; max-height: 85vh;
     border-radius: 16px; overflow: hidden;
     box-shadow: 0 20px 40px rgba(0,0,0,.3);
     display: flex; flex-direction: column;
+    transition: height 0.3s ease, max-height 0.3s ease, max-width 0.3s ease, width 0.3s ease, border-radius 0.3s ease;
+}
+#mapModal.map-expanded {
+    height: 96vh;
+    max-height: 96vh;
+    max-width: 98vw;
+    width: 98vw;
+    border-radius: 10px;
 }
 .map-header {
     padding: 14px 18px; font-weight: 600;
@@ -878,13 +900,13 @@ input[type="file"] {
 #map-wrapper {
     position: relative; margin: 10px 12px 12px;
     border-radius: 12px; flex: 1; min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
 }
 #map {
-    width: 100%; height: 100%; min-height: 300px;
+    width: 100%; flex: 1; min-height: 300px;
     border-radius: 12px; touch-action: none;
-    transition: min-height 0.35s ease; display: block;
+    display: block;
 }
-#map.map-tall { min-height: 520px !important; }
 
 #mapExpandBtn {
     position: absolute; top: 10px; right: 10px; z-index: 1000;
@@ -906,18 +928,17 @@ input[type="file"] {
 @media (max-width: 768px) {
     #map-wrapper { margin: 8px 10px 10px; border-radius: 10px; }
     #map { min-height: 250px; border-radius: 10px; }
-    #map.map-tall { min-height: 420px !important; }
     #mapExpandBtn { top: 8px; right: 8px; width: 34px; height: 34px; }
+    #mapModal.map-expanded { height: 98vh; max-height: 98vh; max-width: 100vw; width: 100vw; border-radius: 0; }
 }
 @media (max-width: 480px) {
     #map-wrapper { margin: 6px 8px 8px; border-radius: 8px; }
     #map { min-height: 200px; border-radius: 8px; }
-    #map.map-tall { min-height: 360px !important; }
+    #mapModal.map-expanded { height: 100dvh; max-height: 100dvh; max-width: 100vw; width: 100vw; border-radius: 0; }
 }
 @media (min-width: 769px) and (max-height: 800px) {
     #map-wrapper { margin: 6px 10px 8px; }
     #map { min-height: 220px; }
-    #map.map-tall { min-height: 400px !important; }
 }
 
 #barangaySelect {
@@ -957,14 +978,18 @@ input[type="file"] {
 #mapLayerToggle:hover { background: #245a96; }
 
 .map-actions {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: center; align-items: center;
     padding: 12px 16px; border-top: 1px solid var(--border-color);
     gap: 12px; flex-shrink: 0;
 }
 .map-actions button {
-    flex: 1; padding: 12px 22px; border-radius: 10px;
+    flex: 0 1 200px; min-width: 120px; max-width: 240px;
+    padding: 11px 22px; border-radius: 10px;
     font-weight: 600; cursor: pointer; border: none;
     transition: all .2s ease; font-size: 15px;
+}
+@media (max-width: 480px) {
+    .map-actions button { flex: 1; max-width: none; }
 }
 .map-actions .btn-cancel { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 .map-actions .btn-cancel:hover { background: #e5e7eb; }
@@ -1299,6 +1324,86 @@ input[type="file"] {
     font-size: 13px;
     color: var(--text-secondary);
     opacity: .7;
+}
+
+/* ═══════════════════════════════════════════════════
+   LEAFLET ZOOM CONTROL — REDESIGNED
+   ═══════════════════════════════════════════════════ */
+.leaflet-bar,
+.leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    color: #2b6cb0 !important;
+    background: rgba(255,255,255,.92) !important;
+    border: none !important;
+    border-bottom: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background .15s ease, color .15s ease, transform .12s ease !important;
+    text-decoration: none !important;
+    position: relative !important;
+}
+.leaflet-control-zoom-in {
+    border-radius: 14px 14px 0 0 !important;
+}
+.leaflet-control-zoom-out {
+    border-radius: 0 0 14px 14px !important;
+    border-top: 1px solid rgba(43,108,176,.12) !important;
+}
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+    background: #2b6cb0 !important;
+    color: #fff !important;
+    transform: none !important;
+}
+.leaflet-control-zoom-in:active,
+.leaflet-control-zoom-out:active {
+    background: #245a96 !important;
+    color: #fff !important;
+    transform: scale(.94) !important;
+}
+/* Dark mode */
+[data-theme="dark"] .leaflet-control-zoom-in,
+[data-theme="dark"] .leaflet-control-zoom-out {
+    background: rgba(26,26,26,.88) !important;
+    color: #8ab4f8 !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-out {
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-in:hover,
+[data-theme="dark"] .leaflet-control-zoom-out:hover {
+    background: #3762c8 !important;
+    color: #fff !important;
+}
+[data-theme="dark"] .leaflet-bar,
+[data-theme="dark"] .leaflet-control-zoom {
+    box-shadow: 0 4px 20px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3) !important;
+}
+/* Disabled state */
+.leaflet-control-zoom-in.leaflet-disabled,
+.leaflet-control-zoom-out.leaflet-disabled {
+    color: #b0b8c9 !important;
+    cursor: not-allowed !important;
+    background: rgba(255,255,255,.6) !important;
+}
+[data-theme="dark"] .leaflet-control-zoom-in.leaflet-disabled,
+[data-theme="dark"] .leaflet-control-zoom-out.leaflet-disabled {
+    color: rgba(255,255,255,.2) !important;
+    background: rgba(26,26,26,.5) !important;
 }
 </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -2674,48 +2779,46 @@ input[type="file"] {
         layerToggle.innerHTML = currentMapLayer === 'satellite' ? t.street : t.satellite;
     }
 
+    function _setChatbotFabHidden(hide) {
+        // Targets common chatbot FAB patterns — works across different widget implementations
+        const selectors = [
+            '.chatbot-fab', '#chatbotFab', '#chatbot-fab',
+            '[id*="chatbot-btn"]', '[class*="chatbot-toggle"]',
+            '[id*="chat-widget-btn"]', '.chat-widget-fab'
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.classList.toggle('chatbot-fab-hidden', hide);
+            });
+        });
+    }
+
     function openMapModal() {
         syncMapLayerToggleButton();
         document.getElementById('mapModalBackdrop').classList.add('show');
+        _setChatbotFabHidden(true);
         manualAddressInput.value = ''; locationSource = null;
         barangaySelect.value = ''; districtInfo.style.display = 'none';
         lastUpdatePosition = null;
         // Reset non-LGU toast state on each modal open
         _nonLguActive = false;
 
-        const now = Date.now();
         if (addressCache && addressCache.size > 50) addressCache.clear();
 
-        setTimeout(() => {
+        // Map is eagerly initialised on DOMContentLoaded so it is always ready
+        // here. One rAF tick lets the browser paint the modal before we call
+        // invalidateSize so Leaflet gets the real pixel dimensions.
+        requestAnimationFrame(() => {
             if (!map) {
-                // First open — initialise map, then once the container has its
-                // correct pixel dimensions, load the road overlay.
+                // Fallback: init now if eager init somehow didn't fire
                 initializeMap();
-                // A second short tick lets Leaflet finish its own setup before
-                // invalidateSize + road drawing.
-                setTimeout(() => {
-                    map.invalidateSize(false);
-                    loadNonLguOverlays();
-                }, 60);
-            } else {
-                // Re-open — fix any size drift, then redraw from prefetch result.
-                map.invalidateSize(false);
-                if (nonLguRoadLayer) {
-                    nonLguRoadLayer.clearLayers();
-                    _dpwhRoadSegments = [];
-                    if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-                        _dpwhDrawSegments(_dpwhPrefetchResult);
-                        _dpwhLoaded = true;
-                    } else {
-                        // Prefetch still in-flight or failed — let loadNonLguOverlays wait for it.
-                        loadNonLguOverlays();
-                    }
-                }
-                if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
-                updateLocationLabelsVisibility();
-                syncMapLayerToggleButton();
+                loadNonLguOverlays();
             }
-        }, 200);
+            map.invalidateSize(false);
+            if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+            updateLocationLabelsVisibility();
+            syncMapLayerToggleButton();
+        });
     }
     if (labelToggleBtn) {
         labelToggleBtn.addEventListener('click', () => {
@@ -2819,9 +2922,9 @@ input[type="file"] {
         });
         addLocationLabels(); updateLocationLabelsVisibility(); updateLabelToggleButton();
         syncMapLayerToggleButton();
-        // NOTE: loadNonLguOverlays() is NOT called here.
-        // It is called by openMapModal() AFTER map.invalidateSize() so that
-        // road polylines are projected against the correct container dimensions.
+        // Eagerly load DPWH overlays — polyline lat/lng coords don't require a
+        // correctly-sized container, so we can draw them immediately.
+        loadNonLguOverlays();
     }
 
     // ── Location Update Handler ──────────────────────────────────────────
@@ -3027,7 +3130,11 @@ input[type="file"] {
         }
         return inside;
     }
-    function closeMapModal() { document.getElementById('mapModalBackdrop').classList.remove('show'); if (currentBoundaryLayer) map.removeLayer(currentBoundaryLayer); }
+    function closeMapModal() {
+        document.getElementById('mapModalBackdrop').classList.remove('show');
+        if (currentBoundaryLayer) map.removeLayer(currentBoundaryLayer);
+        _setChatbotFabHidden(false);
+    }
     function saveLocation() {
         let finalValue = manualAddressInput.value.trim();
         if (!finalValue) { showJsNotification('warning', 'Please select or enter a location.'); return; }
@@ -3412,26 +3519,32 @@ out geom;`;
             return;
         }
 
-        // ── 2. Prefetch still in-flight — wait for it, then draw ────────────
+        // ── 2. Prefetch still in-flight — attach .then() so it draws the
+        //    moment data arrives without blocking the map open.
         if (_dpwhPrefetchPromise) {
-            try { await _dpwhPrefetchPromise; } catch(e) {}
-            if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-                drawSegs(_dpwhPrefetchResult);
-                return;
-            }
+            _dpwhPrefetchPromise.then(() => {
+                if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
+                    // Clear any previous (empty) layer state and draw
+                    nonLguRoadLayer.clearLayers();
+                    _dpwhRoadSegments = [];
+                    drawSegs(_dpwhPrefetchResult);
+                }
+            }).catch(() => {});
+            return;
         }
 
         // ── 3. Last resort: direct fetch (prefetch failed / unavailable) ─────
-        try {
-            const live = await _dpwhFetchOverpass();
+        _dpwhFetchOverpass().then(live => {
             if (live && live.length > 0) {
                 _dpwhSaveToCache(live);
                 _dpwhPrefetchResult = live;
+                nonLguRoadLayer.clearLayers();
+                _dpwhRoadSegments = [];
                 drawSegs(live);
             }
-        } catch(err) {
+        }).catch(err => {
             console.warn('[DPWH] Overpass unavailable:', err);
-        }
+        });
         _dpwhLoaded = true;
     }
 
@@ -3478,11 +3591,17 @@ out geom;`;
 
     // ── Check if latlng is within any DPWH road buffer ───────────────────
     function isNonLguArea(latlng) {
-        if (!_dpwhLoaded || !_dpwhRoadSegments.length) return { isNonLgu: false };
+        // Use drawn segments if ready; fall back to the prefetch result so that
+        // DPWH detection works immediately even before visual drawing completes.
+        let segments = _dpwhRoadSegments;
+        if (!segments.length && _dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
+            segments = _dpwhPrefetchResult;
+        }
+        if (!segments.length) return { isNonLgu: false };
         const lat = typeof latlng.lat === 'function' ? latlng.lat() : latlng.lat;
         const lng = typeof latlng.lng === 'function' ? latlng.lng() : latlng.lng;
         const cosLat = Math.cos(lat * Math.PI / 180);
-        for (const road of _dpwhRoadSegments) {
+        for (const road of segments) {
             const c = road.coords;
             const displayName = DPWH_DISPLAY_NAMES[road.name] || road.name + ' (DPWH)';
             for (let i = 0; i < c.length - 1; i++) {
@@ -3531,6 +3650,20 @@ out geom;`;
             const latEl = document.getElementById('coord_lat'), lngEl = document.getElementById('coord_lng');
             if (latEl) latEl.value = savedLat; if (lngEl) lngEl.value = savedLng;
         }
+
+        // ── Eager map + DPWH overlay initialisation ──────────────────────────
+        // Because the backdrop is now visibility:hidden (not display:none), the
+        // map container already has real pixel dimensions on load. We init the
+        // map and draw DPWH segments here so they are ready the instant the user
+        // taps the location field — no delay, no flash.
+        if (!map) {
+            initializeMap();
+            // One rAF so Leaflet has committed its tile grid before we force a
+            // size recalc — prevents a hairline misalignment on first open.
+            requestAnimationFrame(() => {
+                if (map) map.invalidateSize(false);
+            });
+        }
     });
     </script>
 
@@ -3567,23 +3700,31 @@ out geom;`;
     // ── Map expand/collapse toggle ───────────────────────────────────────
     (function () {
         const expandBtn = document.getElementById('mapExpandBtn');
-        const mapDiv    = document.getElementById('map');
-        if (!expandBtn || !mapDiv) return;
+        const modalEl   = document.getElementById('mapModal');
+        if (!expandBtn || !modalEl) return;
         let expanded = false;
         const ICON_EXPAND   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
         const ICON_COLLAPSE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="10" y1="14" x2="3" y2="21"></line><line x1="21" y1="3" x2="14" y2="10"></line></svg>`;
         expandBtn.addEventListener('click', () => {
             expanded = !expanded;
-            mapDiv.classList.toggle('map-tall', expanded);
+            // Toggle expansion on the modal container — the #map inside grows
+            // automatically via flex:1 on #map-wrapper → #map.
+            modalEl.classList.toggle('map-expanded', expanded);
             expandBtn.innerHTML = expanded ? ICON_COLLAPSE : ICON_EXPAND;
             expandBtn.title = expanded
-            ? getTranslation('map_collapse_title')
-            : getTranslation('map_expand_title');
-            setTimeout(() => { if (map) map.invalidateSize({ animate: true }); }, 360);
+                ? getTranslation('map_collapse_title')
+                : getTranslation('map_expand_title');
+            // Let the CSS transition finish before telling Leaflet the new size.
+            setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 320);
         });
         const origClose = window.closeMapModal;
         window.closeMapModal = function () {
-            if (expanded) { expanded = false; mapDiv.classList.remove('map-tall'); expandBtn.innerHTML = ICON_EXPAND; expandBtn.title = 'Expand map'; }
+            if (expanded) {
+                expanded = false;
+                modalEl.classList.remove('map-expanded');
+                expandBtn.innerHTML = ICON_EXPAND;
+                expandBtn.title = getTranslation('map_expand_title') || 'Expand map';
+            }
             if (origClose) origClose();
         };
     })();
