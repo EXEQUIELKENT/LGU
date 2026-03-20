@@ -1068,45 +1068,82 @@ body {
 .action-btn {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 20px;
+    padding: 32px 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
     color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
 }
 
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #1a56db, #3b82f6);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.action-btn:hover::before { transform: scaleX(1); }
+
 .action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--shadow-color);
+    transform: translateY(-8px);
+    box-shadow: 0 16px 40px rgba(55, 98, 200, 0.22);
     border-color: #3762c8;
 }
 
 .action-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    background: rgba(55, 98, 200, 0.1);
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #1a56db, #3b82f6);
+    box-shadow: 0 4px 14px rgba(33, 100, 243, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 26px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    flex-shrink: 0;
+}
+
+.action-icon i {
+    color: #ffffff !important;
+    font-size: 26px;
+}
+
+.action-btn:hover .action-icon {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 8px 22px rgba(33, 100, 243, 0.50);
+}
+
+[data-theme="dark"] .action-icon {
+    background: linear-gradient(135deg, #1e40af, #2563eb);
+    border: 1.5px solid rgba(96, 165, 250, 0.55);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
 }
 
 .action-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     text-align: center;
+    color: var(--text-primary);
 }
 
 .action-subtitle {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-secondary);
     text-align: center;
+    line-height: 1.45;
 }
 
 /* Upcoming Schedules Section */
@@ -1930,10 +1967,13 @@ body {
     }
 
     .action-icon {
-        width: 44px;
-        height: 44px;
-        font-size: 22px;
+        width: 52px;
+        height: 52px;
+        font-size: 20px;
+        border-radius: 14px;
     }
+
+    .action-icon i { font-size: 20px; }
 
     .action-title {
         font-size: 13px;

@@ -57,9 +57,7 @@ function assignEmployeeId($infrastructure, $location) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $infrastructure = isset($_POST['infrastructure_other']) && trim($_POST['infrastructure_other']) !== ''
-        ? trim($_POST['infrastructure_other'])
-        : (isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '');
+    $infrastructure = isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '';
 
     $location = isset($_POST['location']) ? trim($_POST['location']) : '';
     $issue = isset($_POST['issue']) ? trim($_POST['issue']) : '';
@@ -81,20 +79,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pure_number = preg_replace('/\D/', '', $contact_number);
 
     if (empty($consent_agree)) {
-        $error_message = 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.';
+        setNotification('error', 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.');
+        header("Location: citizenrepform.php");
+        exit;
     }
     elseif (!isset($_FILES['evidence']) ||
             !isset($_FILES['evidence']['name']) ||
             !is_array($_FILES['evidence']['name']) ||
             count($_FILES['evidence']['name']) === 0 ||
             (count($_FILES['evidence']['name']) === 1 && empty($_FILES['evidence']['name'][0]))) {
-        $error_message = 'At least one evidence image is required. Please upload or capture an image before submitting.';
+        setNotification('error', 'At least one evidence image is required. Please upload or capture an image before submitting.');
+        header("Location: citizenrepform.php");
+        exit;
     }
     elseif (!preg_match('/^09\d{9}$/', $pure_number)) {
-        $error_message = 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.';
+        setNotification('error', 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.');
+        header("Location: citizenrepform.php");
+        exit;
     }
     elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
-        $error_message = 'Infrastructure, Location, Issue, and Contact Number are required.';
+        setNotification('error', 'Infrastructure, Location, Issue, and Contact Number are required.');
+        header("Location: citizenrepform.php");
+        exit;
     }
     else {
         $check_stmt = $conn->prepare(
@@ -512,24 +518,55 @@ body {
 }
 
 input[type="file"] {
-    padding: 12px;
-    border-radius: 10px;
-    border: 2px dashed var(--input-border);
-    background: var(--input-bg);
-    cursor: pointer;
-    font-size: 15px;
-    margin-top: 2px;
-    color: var(--text-primary);
+    display: none;
 }
 .evidence-upload-wrapper {
     position: relative;
     display: flex;
     align-items: center;
+    flex-direction: column;
+    gap: 0;
 }
-.evidence-upload-wrapper input[type="file"] {
+/* ── Custom file input — fully translatable ── */
+.custom-file-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 2px dashed var(--input-border);
+    background: var(--input-bg);
+    cursor: pointer;
+    box-sizing: border-box;
+    width: 100%;
+    transition: border-color .2s;
+}
+.custom-file-wrapper:hover { border-color: var(--input-focus-border); }
+.custom-file-btn {
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1.5px solid var(--input-border);
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background .15s, border-color .15s;
+}
+.custom-file-btn:hover { background: var(--bg-tertiary); border-color: var(--input-focus-border); }
+.custom-file-text {
+    font-size: 14px;
+    color: var(--input-placeholder);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     flex: 1;
-    padding-right: 55px;
 }
+.custom-file-text.has-files { color: var(--text-primary); font-weight: 500; }
+
 
 .consent-row {
     grid-column: 1 / -1;
@@ -1135,6 +1172,134 @@ input[type="file"] {
     .report-card h2 { font-size: 24px; }
     .report-card { padding: 12px 3vw !important; }
 }
+
+/* ═══════════════════════════════════════════
+   INFRASTRUCTURE COMBOBOX (matches profile.php gender dropdown)
+═══════════════════════════════════════════ */
+.prof-combobox {
+    position: relative;
+    width: 100%;
+}
+.prof-combobox-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    border-radius: 11px;
+    border: 1.5px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.prof-combobox-display:hover { border-color: var(--input-focus-border); }
+.prof-combobox-display.open {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.prof-combobox-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--input-placeholder);
+    opacity: .75;
+    transition: color .15s;
+    font-size: 15px;
+}
+.prof-combobox-label.selected {
+    color: var(--text-primary);
+    opacity: 1;
+    font-weight: 500;
+}
+.prof-combobox-arrow {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+    transition: transform .2s;
+    flex-shrink: 0;
+}
+.prof-combobox-display.open .prof-combobox-arrow { transform: rotate(180deg); }
+.prof-combobox-dropdown {
+    position: fixed;
+    background: var(--input-bg);
+    border: 1.5px solid var(--input-focus-border);
+    border-radius: 11px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    z-index: 99999;
+    overflow: hidden;
+    display: none;
+}
+.prof-combobox-dropdown.open { display: block; }
+[data-theme="dark"] .prof-combobox-dropdown {
+    background: rgba(40,40,40,0.98);
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.prof-combobox-search {
+    width: 100%;
+    padding: 9px 13px;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.prof-combobox-search::placeholder { color: var(--input-placeholder); opacity: .6; }
+[data-theme="dark"] .prof-combobox-search { background: rgba(40,40,40,0.98); }
+.prof-combobox-list {
+    max-height: 220px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.prof-combobox-list::-webkit-scrollbar { width: 5px; }
+.prof-combobox-list::-webkit-scrollbar-track { background: transparent; }
+.prof-combobox-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.prof-combobox-option {
+    padding: 10px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background .12s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.prof-combobox-option i {
+    width: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #3762c8;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .prof-combobox-option i { color: #7aa3f5; }
+.prof-combobox-option.selected-opt i { color: var(--input-focus-border); }
+.prof-combobox-option:last-child { border-bottom: none; }
+.prof-combobox-option:hover,
+.prof-combobox-option.highlighted { background: rgba(43,108,176,.08); }
+.prof-combobox-option.selected-opt {
+    background: rgba(43,108,176,.13);
+    font-weight: 600;
+    color: var(--input-focus-border);
+}
+[data-theme="dark"] .prof-combobox-option.selected-opt { color: #4a8fd8; }
+.prof-combobox-no-results {
+    padding: 13px 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    opacity: .7;
+}
 </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -1236,12 +1401,7 @@ input[type="file"] {
     <div class="form-wrapper">
         <div class="report-card">
             <h2 data-i18n="form_title">Maintenance Request</h2>
-            <?php
-            if ($error_message) {
-                setNotification('error', $error_message);
-                $error_message = '';
-            }
-            ?>
+
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <?php if (!empty($_SESSION['last_req_id'])): ?>
                 <input type="hidden" id="latestReqId" value="<?= (int)$_SESSION['last_req_id'] ?>">
@@ -1249,18 +1409,25 @@ input[type="file"] {
                 <?php endif; ?>
 
                 <div class="input-group">
-                    <label for="infrastructureSelect" data-i18n="form_infrastructure_label">Infrastructure Type *</label>
-                    <select id="infrastructureSelect" name="infrastructure">
-                        <option value="" data-i18n="form_infrastructure_placeholder">Select infrastructure</option>
-                        <option value="Roads" data-i18n="form_infrastructure_roads">Roads</option>
-                        <option value="Street Lights" data-i18n="form_infrastructure_lights">Street Lights</option>
-                        <option value="Drainage" data-i18n="form_infrastructure_drainage">Drainage</option>
-                        <option value="Public Facilities" data-i18n="form_infrastructure_facilities">Public Facilities</option>
-                        <option value="Water Supply" data-i18n="form_infrastructure_water">Water Supply</option>
-                        <option value="Electrical" data-i18n="form_infrastructure_electrical">Electrical</option>
-                        <option value="Other" data-i18n="form_infrastructure_other">Other</option>
-                    </select>
-                    <input type="text" id="infrastructureOther" name="infrastructure_other" data-i18n-placeholder="form_infrastructure_specify" placeholder="Specify infrastructure" style="display:none;" autocomplete="off">
+                    <label data-i18n="form_infrastructure_label">Infrastructure Type *</label>
+                    <input type="hidden" id="cbInfraVal" name="infrastructure">
+                    <div class="prof-combobox" id="cbInfra">
+                        <div class="prof-combobox-display" id="cbInfraDisplay">
+                            <span class="prof-combobox-label" id="cbInfraLabel" data-i18n="form_infra_placeholder">— Select infrastructure —</span>
+                            <span class="prof-combobox-arrow">▾</span>
+                        </div>
+                        <div class="prof-combobox-dropdown" id="cbInfraDropdown">
+                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">
+                            <div class="prof-combobox-list">
+                                <div class="prof-combobox-option" data-value="Roads"><i class="fas fa-road"></i> Roads</div>
+                                <div class="prof-combobox-option" data-value="Street Lights"><i class="fas fa-lightbulb"></i> Street Lights</div>
+                                <div class="prof-combobox-option" data-value="Drainage"><i class="fas fa-water"></i> Drainage</div>
+                                <div class="prof-combobox-option" data-value="Public Facilities"><i class="fas fa-landmark"></i> Public Facilities</div>
+                                <div class="prof-combobox-option" data-value="Water Supply"><i class="fas fa-faucet"></i> Water Supply</div>
+                                <div class="prof-combobox-option" data-value="Electrical"><i class="fas fa-bolt"></i> Electrical</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="input-group" style="position:relative;">
@@ -1293,9 +1460,16 @@ input[type="file"] {
                 <div class="input-group full-width">
                     <label for="evidence" data-i18n="form_evidence_label">Evidence - Upload Images (up to 4 images accepted)</label>
                     <div class="evidence-upload-wrapper">
-                        <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple>
+                        <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple style="display:none;">
                         <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;">
-                        <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
+                        <div class="custom-file-wrapper" id="customFileWrapper" onclick="document.getElementById('evidence').click()">
+                            <button type="button" class="custom-file-btn" id="customFileBtn"
+                                data-i18n="form_file_choose"
+                                onclick="event.stopPropagation();document.getElementById('evidence').click()">Choose File(s)</button>
+                            <span class="custom-file-text" id="customFileText"
+                                data-i18n-id="form_file_none">No file chosen</span>
+                        </div>
+                        <button type="button" id="cameraBtn" title="Capture using camera" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);">📷</button>
                     </div>
                     <small id="cameraHelperText" data-i18n="form_camera_helper">Tap 📷 to capture</small>
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
@@ -1410,6 +1584,11 @@ input[type="file"] {
                 map_barangay_placeholder: 'Select Barangay (Quezon City)',
                 map_expand_title: 'Expand map',
                 map_collapse_title: 'Collapse map',
+                alert_select_infrastructure: 'Please select an infrastructure type.',
+                alert_describe_issue: 'Please describe the issue or damage.',
+                form_infra_placeholder: '— Select infrastructure —',
+                form_file_choose: 'Choose File(s)',
+                form_file_none: 'No file chosen',
             },
             tl: {
                 alert_consent_required: 'Dapat kang sumang-ayon sa Mga Tuntunin at Kondisyon at Patakaran sa Privacy bago magsumite ng iyong kahilingan.',
@@ -1429,6 +1608,11 @@ input[type="file"] {
                 map_barangay_placeholder: 'Pumili ng Barangay (Lungsod Quezon)',
                 map_expand_title: 'Palawakin ang mapa',
                 map_collapse_title: 'Bawasan ang mapa',
+                alert_select_infrastructure: 'Mangyaring pumili ng uri ng imprastraktura.',
+                alert_describe_issue: 'Mangyaring ilarawan ang isyu o pinsala.',
+                form_infra_placeholder: '— Pumili ng imprastraktura —',
+                form_file_choose: 'Pumili ng File',
+                form_file_none: 'Walang napiling file',
             }
         };
         return (fallbacks[currentLang] && fallbacks[currentLang][key])
@@ -1438,35 +1622,131 @@ input[type="file"] {
     </script>
 
     <script>
-    const infraSelect = document.getElementById('infrastructureSelect');
-    const infraOther  = document.getElementById('infrastructureOther');
-    function syncInfrastructureUI() {
-        const otherVal = infraOther.value.trim();
-        if (otherVal !== '') {
-            infraSelect.style.display = 'none';
-            infraOther.style.display  = 'block';
-            infraSelect.value = 'Other';
-        } else {
-            infraOther.style.display  = 'none';
-            infraSelect.style.display = 'block';
-            if (infraSelect.value === 'Other') infraSelect.value = '';
+    // ── Infrastructure combobox engine ─────────────────────────────────
+    (function () {
+        var displayEl  = document.getElementById('cbInfraDisplay');
+        var dropdownEl = document.getElementById('cbInfraDropdown');
+        var hiddenEl   = document.getElementById('cbInfraVal');
+        var labelEl    = document.getElementById('cbInfraLabel');
+        if (!displayEl || !dropdownEl) return;
+
+        var searchEl   = dropdownEl.querySelector('.prof-combobox-search');
+        var listEl     = dropdownEl.querySelector('.prof-combobox-list');
+        var allOptions = Array.from(listEl.querySelectorAll('.prof-combobox-option'));
+        var isOpen     = false;
+        var highlighted = -1;
+
+        function positionDropdown() {
+            var rect = displayEl.getBoundingClientRect();
+            var vh = window.innerHeight;
+            dropdownEl.style.width = rect.width + 'px';
+            dropdownEl.style.visibility = 'hidden';
+            dropdownEl.style.display = 'block';
+            var dh = dropdownEl.offsetHeight || 260;
+            dropdownEl.style.display = '';
+            dropdownEl.style.visibility = '';
+            var top = rect.bottom + 4;
+            if (top + dh > vh - 12 && rect.top > dh + 12) top = rect.top - dh - 4;
+            var left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
+            dropdownEl.style.top  = top  + 'px';
+            dropdownEl.style.left = left + 'px';
         }
-    }
-    infraSelect.addEventListener('change', () => {
-        if (infraSelect.value === 'Other') {
-            infraSelect.style.display = 'none';
-            infraOther.style.display  = 'block';
-            infraOther.value = '';
-            infraOther.focus();
-        } else {
-            infraOther.value = '';
-            syncInfrastructureUI();
+
+        function getVisible() {
+            return allOptions.filter(function(o) { return o.style.display !== 'none'; });
         }
-    });
-    infraOther.addEventListener('input', () => {
-        if (infraOther.value.trim() === '') syncInfrastructureUI();
-    });
-    document.addEventListener('DOMContentLoaded', () => { syncInfrastructureUI(); });
+
+        function openDropdown() {
+            isOpen = true;
+            positionDropdown();
+            displayEl.classList.add('open');
+            dropdownEl.classList.add('open');
+            if (searchEl) { searchEl.value = ''; filterOptions(''); }
+            setTimeout(function() {
+                if (searchEl) searchEl.focus();
+                var sel = listEl.querySelector('.selected-opt');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            }, 30);
+        }
+
+        function closeDropdown() {
+            isOpen = false;
+            displayEl.classList.remove('open');
+            dropdownEl.classList.remove('open');
+            if (searchEl) { searchEl.value = ''; filterOptions(''); }
+            highlighted = -1;
+            // Sync placeholder language if nothing is selected
+            if (!hiddenEl.value && labelEl) {
+                labelEl.textContent = getTranslation('form_infra_placeholder');
+            }
+        }
+
+        function selectOption(value, text) {
+            hiddenEl.value = value;
+            labelEl.textContent = text.trim();
+            labelEl.classList.toggle('selected', !!value);
+            allOptions.forEach(function(o) {
+                o.classList.toggle('selected-opt', o.dataset.value === value);
+            });
+            localStorage.setItem('infrastructure', value);
+            closeDropdown();
+        }
+
+        function filterOptions(q) {
+            var ql = q.toLowerCase().trim();
+            var visible = 0;
+            allOptions.forEach(function(o) {
+                var match = !ql || o.textContent.toLowerCase().includes(ql);
+                o.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+            var noRes = listEl.querySelector('.prof-combobox-no-results');
+            if (!visible) {
+                if (!noRes) {
+                    var d = document.createElement('div');
+                    d.className = 'prof-combobox-no-results';
+                    d.textContent = 'No results found';
+                    listEl.appendChild(d);
+                }
+            } else if (noRes) { noRes.remove(); }
+            highlighted = -1;
+        }
+
+        displayEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            isOpen ? closeDropdown() : openDropdown();
+        });
+        if (searchEl) searchEl.addEventListener('input', function() { filterOptions(searchEl.value); });
+        listEl.addEventListener('mousedown', function(e) {
+            var opt = e.target.closest('.prof-combobox-option');
+            if (!opt) return;
+            e.preventDefault();
+            selectOption(opt.dataset.value, opt.textContent);
+        });
+        if (searchEl) {
+            searchEl.addEventListener('keydown', function(e) {
+                var vis = getVisible();
+                if (e.key === 'ArrowDown')    { e.preventDefault(); highlighted = Math.min(highlighted + 1, vis.length - 1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); highlighted = Math.max(highlighted - 1, 0); }
+                else if (e.key === 'Enter')   { e.preventDefault(); if (highlighted >= 0 && vis[highlighted]) selectOption(vis[highlighted].dataset.value, vis[highlighted].textContent); return; }
+                else if (e.key === 'Escape')  { closeDropdown(); return; }
+                vis.forEach(function(o, i) { o.classList.toggle('highlighted', i === highlighted); });
+                if (vis[highlighted]) vis[highlighted].scrollIntoView({ block: 'nearest' });
+            });
+        }
+        window.addEventListener('resize', function() { if (isOpen) positionDropdown(); });
+        document.addEventListener('scroll', function() { if (isOpen) positionDropdown(); }, true);
+        document.addEventListener('click', function(e) {
+            if (!document.getElementById('cbInfra')?.contains(e.target)) closeDropdown();
+        });
+
+        // Restore draft
+        var saved = localStorage.getItem('infrastructure');
+        if (saved) {
+            var opt = allOptions.find(function(o) { return o.dataset.value === saved; });
+            if (opt) selectOption(saved, opt.textContent);
+        }
+    })();
     </script>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1538,6 +1818,19 @@ input[type="file"] {
         evidenceInput.style.pointerEvents = full ? 'none' : 'auto';
         evidenceInput.style.opacity       = full ? '0.5' : '1';
         if (cameraBtn) { cameraBtn.disabled = full; cameraBtn.style.opacity = full ? '0.5' : '1'; }
+        // Update custom file text
+        const customText = document.getElementById('customFileText');
+        const customWrapper = document.getElementById('customFileWrapper');
+        if (customText) {
+            if (selectedFiles.length === 0) {
+                customText.textContent = getTranslation('form_file_none');
+                customText.classList.remove('has-files');
+            } else {
+                customText.textContent = selectedFiles.length + ' file' + (selectedFiles.length > 1 ? 's' : '') + ' selected';
+                customText.classList.add('has-files');
+            }
+        }
+        if (customWrapper) { customWrapper.style.pointerEvents = full ? 'none' : ''; customWrapper.style.opacity = full ? '0.5' : ''; }
     }
     function mergeAndPreviewFiles(e) {
         let incoming = Array.from(e.target.files || []);
@@ -1634,22 +1927,62 @@ input[type="file"] {
         form.addEventListener('submit', e => {
             if (realSubmit) return;
             e.preventDefault();
+            // ── 1. Infrastructure (first field — required before anything else) ──
+            const infraHidden = document.getElementById('cbInfraVal');
+            const infraLabel  = document.getElementById('cbInfraLabel');
+            const infraVal    = (infraHidden?.value || '').trim();
+            const infraSelected = infraLabel?.classList.contains('selected');
+            if (!infraVal || !infraSelected) {
+                // Flash the combobox display border red
+                const disp = document.getElementById('cbInfraDisplay');
+                if (disp) {
+                    disp.style.borderColor = '#ef4444';
+                    disp.style.boxShadow   = '0 0 0 3px rgba(239,68,68,.2)';
+                    setTimeout(() => { disp.style.borderColor = ''; disp.style.boxShadow = ''; }, 2000);
+                }
+                showJsNotification('error', getTranslation('alert_select_infrastructure'));
+                disp?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+
+            // ── 2. Consent ────────────────────────────────────────────────────
             const consentCheckbox = document.getElementById('consent_agree');
             if (!consentCheckbox || !consentCheckbox.checked) {
                 showJsNotification('warning', getTranslation('alert_consent_required'));
                 return false;
             }
+
+            // ── 3. Evidence images ────────────────────────────────────────────
             if (!selectedFiles || selectedFiles.length === 0) {
                 showJsNotification('error', getTranslation('alert_image_required'));
-                document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('customFileWrapper')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return false;
             }
+
+            // ── 4. Contact number ─────────────────────────────────────────────
             const val = phoneInput ? phoneInput.value.replace(/\D/g,'') : '';
             if (!/^09\d{9}$/.test(val)) {
                 showJsNotification('error', getTranslation('alert_contact_invalid'));
                 if (phoneInput) phoneInput.focus();
                 return false;
             }
+
+            // ── 5. Location ───────────────────────────────────────────────────
+            const locationVal = (document.getElementById('locationInput')?.value || '').trim();
+            if (!locationVal) {
+                showJsNotification('error', getTranslation('alert_select_location'));
+                document.getElementById('locationInput')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+
+            // ── 6. Issue description ──────────────────────────────────────────
+            const issueVal = (document.getElementById('issue')?.value || '').trim();
+            if (!issueVal) {
+                showJsNotification('error', getTranslation('alert_describe_issue'));
+                document.getElementById('issue')?.focus();
+                return false;
+            }
+
             showSubmitModal();
         });
     }
@@ -1692,7 +2025,6 @@ input[type="file"] {
                 }
             }
             input.addEventListener('input', () => {
-                if (input.name === 'infrastructure_other' && input.value.trim() === '') { localStorage.removeItem('infrastructure_other'); return; }
                 localStorage.setItem(input.name, input.value);
             });
         });
@@ -2366,18 +2698,16 @@ input[type="file"] {
                     loadNonLguOverlays();
                 }, 60);
             } else {
-                // Re-open — fix any size drift, then redraw roads so polyline
-                // coordinates are projected against the now-correct dimensions.
+                // Re-open — fix any size drift, then redraw from prefetch result.
                 map.invalidateSize(false);
                 if (nonLguRoadLayer) {
                     nonLguRoadLayer.clearLayers();
                     _dpwhRoadSegments = [];
-                    const cached = _dpwhLoadFromCache();
-                    if (cached && cached.length > 0) {
-                        _dpwhDrawSegments(cached);
+                    if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
+                        _dpwhDrawSegments(_dpwhPrefetchResult);
+                        _dpwhLoaded = true;
                     } else {
-                        // No cache yet — run the full loader (static fallback
-                        // draws instantly; live fetch swaps in when ready).
+                        // Prefetch still in-flight or failed — let loadNonLguOverlays wait for it.
                         loadNonLguOverlays();
                     }
                 }
@@ -2755,6 +3085,11 @@ input[type="file"] {
     let _dpwhRoadSegments = [];
     let _dpwhLoaded = false;
 
+    // ── Background prefetch — started immediately on page load ───────────
+    // Stores the Promise while in-flight, the resolved segment array when done.
+    let _dpwhPrefetchPromise = null;
+    let _dpwhPrefetchResult  = null; // null = not started/done, [] = done (empty), [...] = ready
+
     // ── DPWH / nationally-maintained road names (OSM canonical) ──────────
     // NOTE: Katipunan Avenue removed — it is LGU-managed within QC.
     const DPWH_ROAD_NAMES = [
@@ -3050,331 +3385,80 @@ out geom;`;
         if (!map) return;
         nonLguRoadLayer = L.layerGroup().addTo(map);
 
-        // ── 1. Try cache — instant, pixel-perfect from previous fetch ────────
-        const cached = _dpwhLoadFromCache();
-        if (cached && cached.length > 0) {
+        function drawSegs(segs) {
             _dpwhRoadSegments = [];
-            _dpwhDrawSegments(cached);
+            _dpwhDrawSegments(segs);
             _dpwhLoaded = true;
+        }
 
-            // Silently refresh cache in background (no visual disruption)
+        // ── 1. Prefetch result already ready (cache hit or fetch completed) ──
+        if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
+            drawSegs(_dpwhPrefetchResult);
+
+            // Silently refresh cache in background after 8 s
             setTimeout(async () => {
                 try {
                     const fresh = await _dpwhFetchOverpass();
-                    if (fresh.length > 0) {
+                    if (fresh && fresh.length > 0) {
                         _dpwhSaveToCache(fresh);
-                        // Swap visuals only if meaningfully different
-                        if (Math.abs(fresh.length - cached.length) > 2) {
+                        if (Math.abs(fresh.length - _dpwhPrefetchResult.length) > 2) {
+                            _dpwhPrefetchResult = fresh;
                             nonLguRoadLayer.clearLayers();
-                            _dpwhRoadSegments = [];
-                            _dpwhDrawSegments(fresh);
+                            drawSegs(fresh);
                         }
                     }
-                } catch(e) { /* keep cached */ }
+                } catch(e) { /* keep current */ }
             }, 8000);
             return;
         }
 
-        // ── 2. No cache — show static immediately so roads are visible ───────
-        _loadStaticFallback(); // draws instantly, _dpwhLoaded = true set inside
+        // ── 2. Prefetch still in-flight — wait for it, then draw ────────────
+        if (_dpwhPrefetchPromise) {
+            try { await _dpwhPrefetchPromise; } catch(e) {}
+            if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
+                drawSegs(_dpwhPrefetchResult);
+                return;
+            }
+        }
 
-        // ── 3. Fetch accurate OSM data in background, swap when ready ────────
+        // ── 3. Last resort: direct fetch (prefetch failed / unavailable) ─────
         try {
             const live = await _dpwhFetchOverpass();
-            if (live.length > 0) {
-                nonLguRoadLayer.clearLayers();
-                _dpwhRoadSegments = [];
-                _dpwhDrawSegments(live);
+            if (live && live.length > 0) {
                 _dpwhSaveToCache(live);
+                _dpwhPrefetchResult = live;
+                drawSegs(live);
             }
         } catch(err) {
-            console.warn('[DPWH] Overpass failed, keeping static data:', err);
+            console.warn('[DPWH] Overpass unavailable:', err);
         }
-    }
-
-    function _loadStaticFallback() {
-        _dpwhRoadSegments = [];
-        const STATIC = [
-            // ── Commonwealth Avenue ──
-            { name: "Commonwealth Avenue", coords: [
-                [14.6520,121.0580],[14.6580,121.0572],[14.6640,121.0565],[14.6700,121.0558],
-                [14.6760,121.0550],[14.6820,121.0543],[14.6880,121.0535],[14.6940,121.0528],
-                [14.7000,121.0520],[14.7060,121.0513],[14.7120,121.0505],[14.7180,121.0498],
-                [14.7240,121.0490],[14.7300,121.0483]
-            ]},
-            // ── EDSA ──
-            { name: "EDSA", coords: [
-                [14.6190,121.0330],[14.6250,121.0355],[14.6310,121.0375],[14.6370,121.0395],
-                [14.6430,121.0415],[14.6490,121.0435],[14.6550,121.0455],[14.6610,121.0470],
-                [14.6670,121.0488],[14.6730,121.0505],[14.6790,121.0520],[14.6850,121.0535]
-            ]},
-            // ── Quezon Avenue ──
-            { name: "Quezon Avenue", coords: [
-                [14.6520,121.0580],[14.6480,121.0540],[14.6440,121.0500],[14.6400,121.0465],
-                [14.6360,121.0430],[14.6320,121.0395],[14.6280,121.0360],[14.6240,121.0330],
-                [14.6200,121.0300],[14.6165,121.0270]
-            ]},
-            // ── Aurora Boulevard ──
-            { name: "Aurora Boulevard", coords: [
-                [14.6190,121.0330],[14.6195,121.0400],[14.6200,121.0470],[14.6205,121.0540],
-                [14.6210,121.0610],[14.6215,121.0680],[14.6220,121.0750],[14.6225,121.0820],
-                [14.6230,121.0890],[14.6235,121.0960]
-            ]},
-            // ── C-5 Road ──
-            { name: "C-5 Road", coords: [
-                [14.6110,121.0600],[14.6200,121.0640],[14.6300,121.0680],[14.6400,121.0710],
-                [14.6500,121.0730],[14.6600,121.0760],[14.6700,121.0810],[14.6800,121.0855],
-                [14.6900,121.0900],[14.7000,121.0945]
-            ]},
-            // ── Mindanao Avenue ──
-            { name: "Mindanao Avenue", coords: [
-                [14.6730,121.0505],[14.6760,121.0460],[14.6790,121.0415],[14.6820,121.0370],
-                [14.6850,121.0325],[14.6880,121.0280],[14.6910,121.0235],[14.6940,121.0190]
-            ]},
-            // ── Visayas Avenue ──
-            { name: "Visayas Avenue", coords: [
-                [14.6730,121.0505],[14.6735,121.0530],[14.6738,121.0555],[14.6740,121.0580],
-                [14.6738,121.0605],[14.6735,121.0630],[14.6730,121.0655]
-            ]},
-            // ── North Avenue ──
-            { name: "North Avenue", coords: [
-                [14.6570,121.0440],[14.6572,121.0480],[14.6574,121.0520],[14.6576,121.0560],
-                [14.6578,121.0600],[14.6580,121.0640],[14.6582,121.0680]
-            ]},
-            // ── East Avenue ──
-            { name: "East Avenue", coords: [
-                [14.6420,121.0600],[14.6460,121.0605],[14.6500,121.0610],[14.6540,121.0615],
-                [14.6580,121.0620],[14.6620,121.0625],[14.6660,121.0628]
-            ]},
-            // ── España Boulevard ──
-            { name: "España Boulevard", coords: [
-                [14.6050,121.0000],[14.6055,121.0060],[14.6060,121.0120],[14.6065,121.0180],
-                [14.6070,121.0240],[14.6075,121.0300],[14.6080,121.0360],[14.6085,121.0420]
-            ]},
-            // ── Congressional Avenue ──
-            { name: "Congressional Avenue", coords: [
-                [14.6730,121.0505],[14.6710,121.0450],[14.6695,121.0395],[14.6680,121.0340],
-                [14.6665,121.0285],[14.6650,121.0230],[14.6635,121.0175]
-            ]},
-            // ── Congressional Avenue Extension ──
-            { name: "Congressional Avenue Extension", coords: [
-                [14.6635,121.0175],[14.6680,121.0145],[14.6725,121.0115],[14.6770,121.0088],
-                [14.6815,121.0065],[14.6860,121.0045],[14.6905,121.0028],[14.6950,121.0015]
-            ]},
-            // ── Elliptical Road ──
-            { name: "Elliptical Road", coords: [
-                [14.6510,121.0490],[14.6525,121.0520],[14.6545,121.0545],[14.6570,121.0560],
-                [14.6595,121.0558],[14.6615,121.0543],[14.6628,121.0520],[14.6628,121.0493],
-                [14.6615,121.0468],[14.6595,121.0453],[14.6570,121.0448],[14.6545,121.0453],
-                [14.6525,121.0468],[14.6510,121.0490]
-            ]},
-            // ── Quirino Highway ──
-            { name: "Quirino Highway", coords: [
-                [14.6940,121.0190],[14.7000,121.0170],[14.7060,121.0150],[14.7120,121.0130],
-                [14.7180,121.0110],[14.7240,121.0090],[14.7300,121.0070]
-            ]},
-            // ── Regalado Avenue ──
-            { name: "Regalado Avenue", coords: [
-                [14.7156,121.0455],[14.7168,121.0488],[14.7180,121.0520],[14.7192,121.0552],
-                [14.7204,121.0585],[14.7216,121.0617],[14.7228,121.0650],[14.7240,121.0682]
-            ]},
-            { name: "Regalado Highway", coords: [
-                [14.7156,121.0455],[14.7168,121.0488],[14.7180,121.0520],[14.7192,121.0552],
-                [14.7204,121.0585],[14.7216,121.0617],[14.7228,121.0650],[14.7240,121.0682]
-            ]},
-            // ── Tandang Sora Avenue ──
-            { name: "Tandang Sora Avenue", coords: [
-                [14.6940,121.0528],[14.6945,121.0570],[14.6950,121.0610],[14.6955,121.0650],
-                [14.6960,121.0690],[14.6965,121.0730],[14.6970,121.0770]
-            ]},
-            // ── Luzon Avenue ──
-            { name: "Luzon Avenue", coords: [
-                [14.6948,121.0198],[14.6965,121.0228],[14.6982,121.0258],[14.6999,121.0288],
-                [14.7016,121.0318],[14.7033,121.0348],[14.7050,121.0378],[14.7067,121.0408]
-            ]},
-            // ── Timog Avenue ──
-            { name: "Timog Avenue", coords: [
-                [14.6360,121.0265],[14.6358,121.0300],[14.6356,121.0335],[14.6354,121.0370],
-                [14.6352,121.0405],[14.6350,121.0440],[14.6348,121.0475],[14.6346,121.0510]
-            ]},
-            // ── West Avenue ──
-            { name: "West Avenue", coords: [
-                [14.6265,121.0230],[14.6310,121.0240],[14.6355,121.0250],[14.6400,121.0258],
-                [14.6445,121.0265],[14.6490,121.0272],[14.6535,121.0278],[14.6580,121.0284],
-                [14.6625,121.0290],[14.6670,121.0296]
-            ]},
-            // ── Skyway ──
-            { name: "Skyway", coords: [
-                [14.6700,121.0050],[14.6650,121.0080],[14.6600,121.0110],[14.6550,121.0140],
-                [14.6500,121.0165],[14.6450,121.0188],[14.6400,121.0210]
-            ]},
-            // ── Andres Bonifacio Avenue ──
-            { name: "Andres Bonifacio Avenue", coords: [
-                [14.7350,121.0100],[14.7320,121.0130],[14.7290,121.0165],[14.7260,121.0200],
-                [14.7230,121.0235],[14.7200,121.0268],[14.7170,121.0300],[14.7140,121.0330]
-            ]},
-            // ── E. Rodriguez Jr. Avenue ──
-            { name: "E. Rodriguez Jr. Avenue", coords: [
-                [14.5980,121.0760],[14.6020,121.0780],[14.6060,121.0800],[14.6100,121.0820],
-                [14.6140,121.0840],[14.6180,121.0860],[14.6220,121.0875],[14.6260,121.0890]
-            ]},
-            // ── Marcos Highway ──
-            { name: "Marcos Highway", coords: [
-                [14.6260,121.0890],[14.6300,121.0935],[14.6340,121.0980],[14.6380,121.1020],
-                [14.6420,121.1055],[14.6460,121.1085],[14.6500,121.1110],[14.6540,121.1130]
-            ]},
-            // ── Batasan Road ──
-            { name: "Batasan Road", coords: [
-                [14.6883,121.1089],[14.6910,121.1060],[14.6935,121.1030],[14.6960,121.1000],
-                [14.6985,121.0975],[14.7010,121.0952],[14.7035,121.0930]
-            ]},
-            // ── San Mateo Road ──
-            { name: "San Mateo Road", coords: [
-                [14.6450,121.0950],[14.6480,121.0990],[14.6510,121.1025],[14.6540,121.1060],
-                [14.6570,121.1090],[14.6600,121.1115],[14.6630,121.1135],[14.6660,121.1150]
-            ]},
-            // ── Payatas Road ──
-            { name: "Payatas Road", coords: [
-                [14.7138,121.1034],[14.7120,121.1010],[14.7100,121.0988],[14.7080,121.0968],
-                [14.7060,121.0950],[14.7040,121.0932],[14.7020,121.0915]
-            ]},
-            // ── B. Soliven Street ──
-            { name: "B. Soliven Street", coords: [
-                [14.7200,121.0500],[14.7210,121.0535],[14.7220,121.0568],[14.7228,121.0600],
-                [14.7235,121.0630],[14.7240,121.0660]
-            ]},
-            // ── General Luis Street ──
-            { name: "General Luis Street", coords: [
-                [14.7267,121.0512],[14.7280,121.0470],[14.7292,121.0428],[14.7302,121.0385],
-                [14.7310,121.0342],[14.7316,121.0300],[14.7320,121.0258],[14.7322,121.0215]
-            ]},
-            // ── Colonel Bonny Serrano Avenue ──
-            { name: "Colonel Bonny Serrano Avenue", coords: [
-                [14.6318,121.0232],[14.6320,121.0275],[14.6322,121.0318],
-                [14.6324,121.0361],[14.6326,121.0404],[14.6328,121.0447],
-                [14.6330,121.0490],[14.6332,121.0533],[14.6334,121.0576],
-                [14.6336,121.0619],[14.6338,121.0662],[14.6340,121.0705],
-                [14.6342,121.0748],[14.6344,121.0768]
-            ]},
-            { name: "Col. Bonny Serrano Avenue", coords: [
-                [14.6318,121.0232],[14.6320,121.0275],[14.6322,121.0318],
-                [14.6324,121.0361],[14.6326,121.0404],[14.6328,121.0447],
-                [14.6330,121.0490],[14.6332,121.0533],[14.6334,121.0576],
-                [14.6336,121.0619],[14.6338,121.0662],[14.6340,121.0705],
-                [14.6342,121.0748],[14.6344,121.0768]
-            ]},
-            // ── Ortigas Avenue ──
-            { name: "Ortigas Avenue", coords: [
-                [14.6112,121.0360],[14.6115,121.0410],[14.6118,121.0460],
-                [14.6121,121.0510],[14.6124,121.0560],[14.6127,121.0610],
-                [14.6130,121.0660],[14.6133,121.0710],[14.6136,121.0760],
-                [14.6139,121.0810],[14.6142,121.0860],[14.6145,121.0910],
-                [14.6148,121.0960],[14.6151,121.1010]
-            ]},
-            // ── N. Domingo Street ──
-            { name: "N. Domingo Street", coords: [
-                [14.6055,121.0430],[14.6078,121.0437],[14.6101,121.0443],
-                [14.6124,121.0448],[14.6147,121.0453],[14.6170,121.0457],
-                [14.6193,121.0461],[14.6216,121.0464],[14.6239,121.0467],
-                [14.6262,121.0470]
-            ]},
-            // ── Doña Hemady Avenue ──
-            { name: "Doña Hemady Avenue", coords: [
-                [14.6038,121.0482],[14.6065,121.0484],[14.6092,121.0486],
-                [14.6120,121.0488],[14.6148,121.0490],[14.6176,121.0491],
-                [14.6204,121.0493],[14.6232,121.0495],[14.6260,121.0497],
-                [14.6288,121.0499],[14.6316,121.0501]
-            ]},
-            { name: "Dona Hemady Avenue", coords: [
-                [14.6038,121.0482],[14.6065,121.0484],[14.6092,121.0486],
-                [14.6120,121.0488],[14.6148,121.0490],[14.6176,121.0491],
-                [14.6204,121.0493],[14.6232,121.0495],[14.6260,121.0497],
-                [14.6288,121.0499],[14.6316,121.0501]
-            ]},
-
-            // ══ NEW BATCH ══
-
-            // ── 1. Gilmore Avenue
-            //    N-S avenue in New Manila / Project 4 area of QC.
-            //    Runs from Aurora Blvd northward toward E. Rodriguez Sr.
-            //    Parallel to and between N. Domingo and Hemady. ──
-            { name: "Gilmore Avenue", coords: [
-                [14.6038,121.0458],[14.6065,121.0460],[14.6092,121.0461],
-                [14.6120,121.0463],[14.6148,121.0464],[14.6176,121.0465],
-                [14.6204,121.0467],[14.6232,121.0468],[14.6260,121.0470],
-                [14.6288,121.0471],[14.6316,121.0472]
-            ]},
-
-                        // ── Sarmiento Street ──
-            //    Runs through Novaliches Proper (Brgy. Santa Monica),
-            //    near Quirino Highway and General Luis Street.
-            { name: "Sarmiento Street", coords: [
-                [14.7188,121.0418],[14.7193,121.0421],[14.7198,121.0423],
-                [14.7203,121.0426],[14.7208,121.0428],[14.7213,121.0431],
-                [14.7218,121.0433],[14.7223,121.0436],[14.7228,121.0438]
-            ]},
-
-                        // ── Buenamar Street ──
-            //    Runs N-S through Novaliches Proper, Quezon City,
-            //    near Quirino Highway. Only the primary road section.
-            { name: "Buenamar Street", coords: [
-                [14.7175,121.0378],[14.7183,121.0381],[14.7191,121.0383],
-                [14.7199,121.0385],[14.7207,121.0387],[14.7215,121.0389],
-                [14.7223,121.0390],[14.7231,121.0391],[14.7239,121.0392]
-            ]},
-
-                        // ── Magsaysay Boulevard ──
-            //    Runs E-W through Sta. Mesa / Project 4 corridor,
-            //    entering QC from the Manila border at the western end.
-            { name: "Magsaysay Boulevard", coords: [
-                [14.6052,121.0050],[14.6058,121.0100],[14.6063,121.0150],
-                [14.6068,121.0200],[14.6073,121.0250],[14.6078,121.0300],
-                [14.6083,121.0350],[14.6088,121.0400],[14.6093,121.0450],
-                [14.6098,121.0500],[14.6103,121.0550],[14.6108,121.0600]
-            ]},
-
-            // ── 2. Senator Jose O. Vera Street
-            //    Runs through the New Manila / Project 4 corridor of QC,
-            //    roughly E-W connecting the main N-S avenues. ──
-            { name: "Senator Jose O. Vera Street", coords: [
-                [14.6155,121.0390],[14.6157,121.0420],[14.6159,121.0450],
-                [14.6161,121.0480],[14.6163,121.0510],[14.6165,121.0540],
-                [14.6167,121.0570],[14.6169,121.0600],[14.6171,121.0630],
-                [14.6173,121.0660],[14.6175,121.0690]
-            ]},
-            { name: "Sen. Jose O. Vera Street", coords: [
-                [14.6155,121.0390],[14.6157,121.0420],[14.6159,121.0450],
-                [14.6161,121.0480],[14.6163,121.0510],[14.6165,121.0540],
-                [14.6167,121.0570],[14.6169,121.0600],[14.6171,121.0630],
-                [14.6173,121.0660],[14.6175,121.0690]
-            ]},
-
-            // ── 3. Doña Hemady Street
-            //    Distinct short street in New Manila (different from
-            //    Doña Hemady Avenue). Runs N-S near Gilmore / N. Domingo. ──
-            { name: "Doña Hemady Street", coords: [
-                [14.6040,121.0475],[14.6065,121.0476],[14.6090,121.0477],
-                [14.6115,121.0478],[14.6140,121.0479],[14.6165,121.0480],
-                [14.6190,121.0481],[14.6215,121.0482],[14.6240,121.0483]
-            ]},
-            { name: "Dona Hemady Street", coords: [
-                [14.6040,121.0475],[14.6065,121.0476],[14.6090,121.0477],
-                [14.6115,121.0478],[14.6140,121.0479],[14.6165,121.0480],
-                [14.6190,121.0481],[14.6215,121.0482],[14.6240,121.0483]
-            ]},
-            { name: "Katipunan Avenue", coords: [
-                [14.6138,121.0782],[14.6175,121.0778],[14.6215,121.0774],
-                [14.6255,121.0770],[14.6295,121.0766],[14.6335,121.0762],
-                [14.6375,121.0758],[14.6415,121.0754],[14.6455,121.0750],
-                [14.6495,121.0746],[14.6535,121.0742],[14.6575,121.0738]
-            ]}
-        ];
-
-        STATIC.forEach(road => {
-            _processAndDrawRoad(road.name, road.coords);
-        });
         _dpwhLoaded = true;
     }
+
+
+
+    // ── Background prefetch — fires as soon as page JS runs ─────────────
+    // Kicks off the Overpass fetch (or reads cache) BEFORE the map modal is
+    // opened, so data is ready instantly when the user first taps the field.
+    function _startDpwhPrefetch() {
+        const cached = _dpwhLoadFromCache();
+        if (cached && cached.length > 0) {
+            _dpwhPrefetchResult = cached; // cache hit — no network needed
+            return;
+        }
+        // No cache — start fetching in background immediately
+        _dpwhPrefetchPromise = _dpwhFetchOverpass()
+            .then(segs => {
+                if (segs && segs.length > 0) {
+                    _dpwhSaveToCache(segs);
+                    _dpwhPrefetchResult = segs;
+                } else {
+                    _dpwhPrefetchResult = [];
+                }
+            })
+            .catch(() => { _dpwhPrefetchResult = []; });
+    }
+    _startDpwhPrefetch(); // run immediately on script evaluation
 
     // ── Point-to-segment distance (metres) ───────────────────────────────
     function _ptSegDist(px, py, ax, ay, bx, by, cosLat) {
@@ -3458,9 +3542,13 @@ out geom;`;
         if (form) form.reset();
         var previewDiv = document.getElementById('image-preview'); if (previewDiv) previewDiv.innerHTML = '';
         var cameraInput = document.getElementById('evidence-camera'); if (cameraInput) cameraInput.value = '';
-        var infraSelect = document.getElementById('infrastructureSelect'), infraOther = document.getElementById('infrastructureOther');
-        if (infraOther) infraOther.style.display = 'none';
-        if (infraSelect) { infraSelect.style.display = 'block'; infraSelect.value = ''; }
+        var cbInfraVal   = document.getElementById('cbInfraVal');
+        var cbInfraLabel = document.getElementById('cbInfraLabel');
+        if (cbInfraVal)   cbInfraVal.value = '';
+        if (cbInfraLabel) { cbInfraLabel.textContent = (typeof getTranslation === 'function' ? getTranslation('form_infra_placeholder') : '— Select infrastructure —'); cbInfraLabel.classList.remove('selected'); }
+        document.querySelectorAll('#cbInfraDropdown .prof-combobox-option').forEach(function(o) { o.classList.remove('selected-opt'); });
+        var customFileText = document.getElementById('customFileText');
+        if (customFileText) { customFileText.textContent = (typeof getTranslation === 'function' ? getTranslation('form_file_none') : 'No file chosen'); customFileText.classList.remove('has-files'); }
         if (typeof selectedFiles !== 'undefined') selectedFiles.length = 0;
         var locationInput = document.getElementById('locationInput'); if (locationInput) locationInput.value = '';
         var manualInput = document.getElementById('manualAddressInput'); if (manualInput) manualInput.value = '';
