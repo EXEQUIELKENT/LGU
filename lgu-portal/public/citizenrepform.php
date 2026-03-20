@@ -3399,18 +3399,6 @@ input[type="file"] {
 
     // ═══════════════════════════════════════════════════════════════════════
 
-    function _buildOverpassQuery() {
-        const bbox = "14.575,120.990,14.755,121.130";
-        const nameFilters = DPWH_ROAD_NAMES
-            .map(n => `way["name"="${n}"]["highway"~"^(${DPWH_HIGHWAY_TYPES})$"](${bbox});`)
-            .join('\n        ');
-        return `[out:json][timeout:30];
-(
-        ${nameFilters}
-);
-out geom;`;
-    }
-
     function _drawRoadWay(coords) {
         if (!coords || coords.length < 2) return;
         L.polyline(coords, {
@@ -3440,23 +3428,36 @@ out geom;`;
         }
     }
 
-    const DPWH_CACHE_KEY  = 'cimms_dpwh_v3';
-    const DPWH_CACHE_TTL  = 7 * 24 * 60 * 60 * 1000; // 7 days
+    // ── Cache keys & TTL ────────────────────────────────────────────────────
+    const DPWH_CACHE_KEY = 'cimms_dpwh_v4';
+    const DPWH_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    // ── Layer 1: in-memory session cache (survives page-to-page within tab,
+    //    costs zero parse time, works in private/incognito mode) ────────────
+    // Stored on window so it survives PHP redirects in the same tab.
+    if (!window._dpwhSessionCache) window._dpwhSessionCache = null;
 
     function _dpwhLoadFromCache() {
+        // 1. In-memory first — zero cost
+        if (window._dpwhSessionCache && window._dpwhSessionCache.length > 0) {
+            return window._dpwhSessionCache;
+        }
+        // 2. localStorage fallback
         try {
             const raw = localStorage.getItem(DPWH_CACHE_KEY);
             if (!raw) return null;
             const { ts, segs } = JSON.parse(raw);
-            if (Date.now() - ts > DPWH_CACHE_TTL) return null;
-            return segs; // [{ name, coords }]
+            if (Date.now() - ts > DPWH_CACHE_TTL) { localStorage.removeItem(DPWH_CACHE_KEY); return null; }
+            window._dpwhSessionCache = segs; // warm in-memory cache
+            return segs;
         } catch(e) { return null; }
     }
 
     function _dpwhSaveToCache(segs) {
+        window._dpwhSessionCache = segs; // always warm memory
         try {
             localStorage.setItem(DPWH_CACHE_KEY, JSON.stringify({ ts: Date.now(), segs }));
-        } catch(e) {}
+        } catch(e) { /* quota exceeded — memory cache still works */ }
     }
 
     function _dpwhDrawSegments(segs) {
@@ -3466,29 +3467,67 @@ out geom;`;
         });
     }
 
-    async function _dpwhFetchOverpass() {
-        const query = _buildOverpassQuery();
-        const res = await fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'data=' + encodeURIComponent(query)
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+    // ── Parse raw Overpass elements into clipped segments ────────────────
+    function _dpwhParseElements(elements) {
         const segs = [], drawn = new Set();
-        (data.elements || []).forEach(way => {
+        (elements || []).forEach(way => {
             if (!way.geometry || !way.tags?.name || drawn.has(way.id)) return;
+            // Client-side name filter — only keep known DPWH roads
+            const name = way.tags.name;
+            if (!DPWH_ROAD_NAMES.some(n => name.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(name.toLowerCase()))) return;
             drawn.add(way.id);
             const raw = way.geometry.map(n => [n.lat, n.lon]);
             if (raw.length < 2) return;
             _clipToQCBoundary(raw).forEach(chunk => {
-                segs.push({ name: way.tags.name, coords: chunk });
+                segs.push({ name, coords: chunk });
             });
         });
         return segs;
     }
 
-    async function loadNonLguOverlays() {
+    // ── Fetch from PHP proxy (same-server, fast) with Overpass fallback ──
+    async function _dpwhFetchRoads() {
+        // Try local PHP proxy first — served from same server after first call
+        const proxyUrl = 'dpwh_roads.php';
+        let data = null;
+        try {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 8000); // 8s timeout
+            const res = await fetch(proxyUrl, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (res.ok) {
+                data = await res.json();
+            }
+        } catch(e) { /* proxy unavailable — fall through to direct Overpass */ }
+
+        // Fallback: direct Overpass with single optimised query (52x smaller)
+        if (!data || data.error) {
+            const q = '[out:json][timeout:25];'
+                    + 'way["highway"~"^(motorway|trunk|primary|motorway_link|trunk_link|primary_link)$"]'
+                    + '(14.575,120.990,14.755,121.130);'
+                    + 'out geom;';
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 28000);
+            try {
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(q),
+                    signal: ctrl.signal
+                });
+                clearTimeout(tid);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                data = await res.json();
+            } catch(e) {
+                clearTimeout(tid);
+                throw e;
+            }
+        }
+
+        return _dpwhParseElements(data.elements);
+    }
+
+    function loadNonLguOverlays() {
         if (!map) return;
         nonLguRoadLayer = L.layerGroup().addTo(map);
 
@@ -3498,33 +3537,16 @@ out geom;`;
             _dpwhLoaded = true;
         }
 
-        // ── 1. Prefetch result already ready (cache hit or fetch completed) ──
+        // ── Case 1: data already in memory — draw synchronously, zero delay ──
         if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
             drawSegs(_dpwhPrefetchResult);
-
-            // Silently refresh cache in background after 8 s
-            setTimeout(async () => {
-                try {
-                    const fresh = await _dpwhFetchOverpass();
-                    if (fresh && fresh.length > 0) {
-                        _dpwhSaveToCache(fresh);
-                        if (Math.abs(fresh.length - _dpwhPrefetchResult.length) > 2) {
-                            _dpwhPrefetchResult = fresh;
-                            nonLguRoadLayer.clearLayers();
-                            drawSegs(fresh);
-                        }
-                    }
-                } catch(e) { /* keep current */ }
-            }, 8000);
             return;
         }
 
-        // ── 2. Prefetch still in-flight — attach .then() so it draws the
-        //    moment data arrives without blocking the map open.
+        // ── Case 2: prefetch in-flight — draw the moment it lands ────────────
         if (_dpwhPrefetchPromise) {
             _dpwhPrefetchPromise.then(() => {
                 if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-                    // Clear any previous (empty) layer state and draw
                     nonLguRoadLayer.clearLayers();
                     _dpwhRoadSegments = [];
                     drawSegs(_dpwhPrefetchResult);
@@ -3533,34 +3555,30 @@ out geom;`;
             return;
         }
 
-        // ── 3. Last resort: direct fetch (prefetch failed / unavailable) ─────
-        _dpwhFetchOverpass().then(live => {
-            if (live && live.length > 0) {
-                _dpwhSaveToCache(live);
-                _dpwhPrefetchResult = live;
+        // ── Case 3: nothing started (shouldn't happen) — fetch now ───────────
+        _dpwhFetchRoads().then(segs => {
+            if (segs && segs.length > 0) {
+                _dpwhSaveToCache(segs);
+                _dpwhPrefetchResult = segs;
                 nonLguRoadLayer.clearLayers();
                 _dpwhRoadSegments = [];
-                drawSegs(live);
+                drawSegs(segs);
             }
-        }).catch(err => {
-            console.warn('[DPWH] Overpass unavailable:', err);
-        });
+        }).catch(err => console.warn('[DPWH] Roads unavailable:', err));
         _dpwhLoaded = true;
     }
 
-
-
-    // ── Background prefetch — fires as soon as page JS runs ─────────────
-    // Kicks off the Overpass fetch (or reads cache) BEFORE the map modal is
-    // opened, so data is ready instantly when the user first taps the field.
+    // ── Background prefetch — fires immediately on script evaluation ─────
+    // Cache hierarchy: memory → localStorage → PHP proxy → Overpass
     function _startDpwhPrefetch() {
+        // Check all cache layers synchronously first
         const cached = _dpwhLoadFromCache();
         if (cached && cached.length > 0) {
-            _dpwhPrefetchResult = cached; // cache hit — no network needed
-            return;
+            _dpwhPrefetchResult = cached;
+            return; // instant — no network
         }
-        // No cache — start fetching in background immediately
-        _dpwhPrefetchPromise = _dpwhFetchOverpass()
+        // Nothing cached — fetch in background so it's ready before modal opens
+        _dpwhPrefetchPromise = _dpwhFetchRoads()
             .then(segs => {
                 if (segs && segs.length > 0) {
                     _dpwhSaveToCache(segs);
@@ -3571,7 +3589,7 @@ out geom;`;
             })
             .catch(() => { _dpwhPrefetchResult = []; });
     }
-    _startDpwhPrefetch(); // run immediately on script evaluation
+    _startDpwhPrefetch(); // runs immediately on script evaluation
 
     // ── Point-to-segment distance (metres) ───────────────────────────────
     function _ptSegDist(px, py, ax, ay, bx, by, cosLat) {
@@ -3687,9 +3705,9 @@ out geom;`;
         var manualInput = document.getElementById('manualAddressInput'); if (manualInput) manualInput.value = '';
         var barangaySelect = document.getElementById('barangaySelect'); if (barangaySelect) barangaySelect.value = '';
         // Preserve DPWH road cache across form submissions
-        const _dpwhCacheBackup = localStorage.getItem('cimms_dpwh_v3');
+        const _dpwhCacheBackup = localStorage.getItem('cimms_dpwh_v4');
         localStorage.clear();
-        if (_dpwhCacheBackup) localStorage.setItem('cimms_dpwh_v3', _dpwhCacheBackup);
+        if (_dpwhCacheBackup) localStorage.setItem('cimms_dpwh_v4', _dpwhCacheBackup);
         var coordLat = document.getElementById('coord_lat'), coordLng = document.getElementById('coord_lng');
         if (coordLat) coordLat.value = ''; if (coordLng) coordLng.value = '';
     });
