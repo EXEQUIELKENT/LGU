@@ -5314,13 +5314,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 ${endDateRow}
                 <div class="modal-task-row">
-                    <div class="modal-task-row-icon"><i class="fas fa-tags"></i></div>
-                    <div class="modal-task-row-content">
-                        <div class="modal-task-row-label">Category</div>
-                        <div class="modal-task-row-value">${escH(category)}</div>
-                    </div>
-                </div>
-                <div class="modal-task-row">
                     <div class="modal-task-row-icon"><i class="fas fa-fire-alt"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Priority</div>
