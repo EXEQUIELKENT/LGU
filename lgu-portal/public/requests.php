@@ -1170,6 +1170,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-fullmap-backdrop.gis-map-expanded { padding: 0; }
 .gis-fullmap-modal { background: var(--bg-secondary); border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 20px 60px rgba(0,0,0,.4); width: 100%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; animation: gisFullMapIn .28s cubic-bezier(.34,1.56,.64,1); transition: max-width 0.3s ease, height 0.3s ease, border-radius 0.3s ease; }
 .gis-fullmap-modal.gis-map-expanded { max-width: 100vw; height: 100vh; border-radius: 0; }
+@media (max-width: 768px) { .gis-fullmap-modal.gis-map-expanded { height: 100dvh; } }
 @keyframes gisFullMapIn { from { opacity:0; transform: scale(.94) translateY(-16px); } to { opacity:1; transform: scale(1) translateY(0); } }
 .gis-fullmap-header { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
 .gis-fullmap-title { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
@@ -1507,7 +1508,10 @@ tbody td {
 
     /* Fullscreen map modal — mobile full rework */
     .gis-fullmap-backdrop { padding: 0; }
-    .gis-fullmap-modal { border-radius: 0; height: 100vh; max-width: 100%; }
+    /* 100dvh excludes browser chrome (address bar, toolbar) so the header is never hidden.
+       env(safe-area-inset-top) adds padding on notched/Dynamic Island devices. */
+    .gis-fullmap-modal { border-radius: 0; height: 100dvh; max-width: 100%; }
+    .gis-fullmap-header { padding-top: max(8px, env(safe-area-inset-top)) !important; }
     .gis-fullmap-title { display: none; }
     /* Header becomes two rows on mobile */
     .gis-fullmap-header {

@@ -829,7 +829,7 @@ input[type="file"] {
     background: rgba(0,0,0,.45);
     /* Use visibility+opacity instead of display:none so Leaflet can measure
        the map container during eager init on DOMContentLoaded */
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: stretch; justify-content: stretch;
     z-index: 6000;
     visibility: hidden; opacity: 0; pointer-events: none;
     transition: opacity 0.18s ease, visibility 0.18s ease;
@@ -846,19 +846,11 @@ input[type="file"] {
 }
 #mapModal {
     background: var(--modal-bg);
-    width: 90%; max-width: 600px;
-    height: auto; max-height: 85vh;
-    border-radius: 16px; overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0,0,0,.3);
+    width: 100%; height: 100%;
+    border-radius: 0; overflow: hidden;
+    box-shadow: none;
     display: flex; flex-direction: column;
-    transition: height 0.3s ease, max-height 0.3s ease, max-width 0.3s ease, width 0.3s ease, border-radius 0.3s ease;
-}
-#mapModal.map-expanded {
-    height: 96vh;
-    max-height: 96vh;
-    max-width: 98vw;
-    width: 98vw;
-    border-radius: 10px;
+    flex: 1;
 }
 .map-header {
     padding: 14px 18px; font-weight: 600;
@@ -885,6 +877,67 @@ input[type="file"] {
     display: flex; flex-direction: column; gap: 8px;
     padding: 10px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
 }
+/* Row containing barangay combobox + address search side by side */
+.map-address-row {
+    display: flex; gap: 8px; align-items: flex-start;
+}
+.map-address-row .barangay-combobox { flex: 1; min-width: 0; }
+.map-search-wrap {
+    position: relative; flex: 1; min-width: 0;
+}
+#mapSearchInput {
+    width: 100%; box-sizing: border-box;
+    padding: 10px 34px 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--input-border);
+    font-size: 14px; background: var(--input-bg); color: var(--text-primary);
+    transition: border-color .2s, box-shadow .2s;
+}
+#mapSearchInput::placeholder { color: var(--input-placeholder); opacity: 0.7; }
+#mapSearchInput:focus {
+    outline: none; border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+#mapSearchClearBtn {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-secondary); font-size: 15px; line-height: 1;
+    padding: 2px 4px; border-radius: 4px; display: none;
+    transition: color .15s;
+}
+#mapSearchClearBtn:hover { color: var(--text-primary); }
+#mapSearchClearBtn.visible { display: block; }
+/* Autocomplete dropdown */
+#mapSearchDropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--bg-secondary); border: 1.5px solid var(--input-border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    max-height: 200px; overflow-y: auto; z-index: 1100;
+    display: none;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+#mapSearchDropdown::-webkit-scrollbar { width: 5px; }
+#mapSearchDropdown::-webkit-scrollbar-track { background: transparent; }
+#mapSearchDropdown::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+#mapSearchDropdown.open { display: block; }
+.map-search-item {
+    padding: 9px 13px; font-size: 13px; cursor: pointer;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: flex-start; gap: 8px;
+    transition: background .12s;
+}
+.map-search-item:last-child { border-bottom: none; }
+.map-search-item:hover, .map-search-item.active { background: rgba(43,108,176,.09); }
+.map-search-item-icon { flex-shrink: 0; margin-top: 1px; opacity: .6; font-size: 14px; }
+.map-search-item-text { flex: 1; min-width: 0; }
+.map-search-item-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-search-item-addr { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-search-spinner { display: none; padding: 10px 14px; font-size: 12px; color: var(--text-secondary); }
+.map-search-spinner.visible { display: block; }
+[data-theme="dark"] #mapSearchDropdown { box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+[data-theme="dark"] .map-search-item:hover,
+[data-theme="dark"] .map-search-item.active { background: rgba(74,143,216,.12); }
 .map-address-input select#barangaySelect,
 .map-address-input input { width: 100%; margin-right: 0; flex: none; }
 .map-address-input input {
@@ -895,6 +948,11 @@ input[type="file"] {
 .map-address-input input:focus {
     outline: none; border-color: var(--input-focus-border);
     box-shadow: 0 0 0 3px var(--input-focus-shadow);
+}
+/* Mobile: stack the row vertically */
+@media (max-width: 480px) {
+    .map-address-row { flex-direction: column; }
+    .map-search-wrap { width: 100%; }
 }
 
 #map-wrapper {
@@ -908,33 +966,17 @@ input[type="file"] {
     display: block;
 }
 
-#mapExpandBtn {
-    position: absolute; top: 10px; right: 10px; z-index: 1000;
-    background: rgba(255, 255, 255, 0.92); color: #2b6cb0;
-    border: 1px solid #c7d1f3; width: 32px; height: 32px;
-    border-radius: 7px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
-    transition: background 0.2s, transform 0.15s;
-    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-}
-#mapExpandBtn:hover { background: #fff; transform: scale(1.1); }
-[data-theme="dark"] #mapExpandBtn {
-    background: rgba(30, 30, 30, 0.88); color: #8ab4f8;
-    border-color: rgba(74, 143, 216, 0.4);
-}
-[data-theme="dark"] #mapExpandBtn:hover { background: rgba(45, 45, 45, 0.95); }
-
+/* Map modal — always fills the full backdrop (no gaps on any device) */
+/* Safe-area inset so header clears notch/Dynamic Island on iOS */
 @media (max-width: 768px) {
     #map-wrapper { margin: 8px 10px 10px; border-radius: 10px; }
     #map { min-height: 250px; border-radius: 10px; }
-    #mapExpandBtn { top: 8px; right: 8px; width: 34px; height: 34px; }
-    #mapModal.map-expanded { height: 98vh; max-height: 98vh; max-width: 100vw; width: 100vw; border-radius: 0; }
+    .map-header { padding-top: max(14px, env(safe-area-inset-top)) !important; }
 }
 @media (max-width: 480px) {
     #map-wrapper { margin: 6px 8px 8px; border-radius: 8px; }
     #map { min-height: 200px; border-radius: 8px; }
-    #mapModal.map-expanded { height: 100dvh; max-height: 100dvh; max-width: 100vw; width: 100vw; border-radius: 0; }
+    .map-header { padding-top: max(14px, env(safe-area-inset-top)) !important; }
 }
 @media (min-width: 769px) and (max-height: 800px) {
     #map-wrapper { margin: 6px 10px 8px; }
@@ -1076,7 +1118,7 @@ input[type="file"] {
 @media (max-width: 768px) { .leaflet-container .leaflet-interactive { stroke-width: 5 !important; } }
 
 @media (max-width: 768px) {
-    #mapModal { width: 95%; max-width: none; max-height: 90vh; }
+
     .map-header { padding: 12px 16px; }
     .map-header h3 { font-size: 16px; }
     #gpsBtn { left: 16px; padding: 6px 10px; font-size: 16px; }
@@ -1179,7 +1221,7 @@ input[type="file"] {
     background-size: 20px 20px;
 }
 @media (min-width: 769px) and (max-height: 800px) {
-    #mapModal { max-height: 92vh; }
+
     #map { min-height: 220px; }
     .map-header { padding: 10px 14px; }
     .map-header h3 { font-size: 14px; }
@@ -1518,18 +1560,18 @@ input[type="file"] {
                     <input type="hidden" id="cbInfraVal" name="infrastructure">
                     <div class="prof-combobox" id="cbInfra">
                         <div class="prof-combobox-display" id="cbInfraDisplay">
-                            <span class="prof-combobox-label" id="cbInfraLabel" data-i18n="form_infra_placeholder">— Select infrastructure —</span>
+                            <span class="prof-combobox-label" id="cbInfraLabel">— Select infrastructure —</span>
                             <span class="prof-combobox-arrow">▾</span>
                         </div>
                         <div class="prof-combobox-dropdown" id="cbInfraDropdown">
-                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">
+                            <input class="prof-combobox-search" id="cbInfraSearchInput" type="text" data-i18n-placeholder="infra_search_placeholder" placeholder="🔍 Search…" autocomplete="off">
                             <div class="prof-combobox-list">
-                                <div class="prof-combobox-option" data-value="Roads"><i class="fas fa-road"></i> Roads</div>
-                                <div class="prof-combobox-option" data-value="Street Lights"><i class="fas fa-lightbulb"></i> Street Lights</div>
-                                <div class="prof-combobox-option" data-value="Drainage"><i class="fas fa-water"></i> Drainage</div>
-                                <div class="prof-combobox-option" data-value="Public Facilities"><i class="fas fa-landmark"></i> Public Facilities</div>
-                                <div class="prof-combobox-option" data-value="Water Supply"><i class="fas fa-faucet"></i> Water Supply</div>
-                                <div class="prof-combobox-option" data-value="Electrical"><i class="fas fa-bolt"></i> Electrical</div>
+                                <div class="prof-combobox-option" data-value="Roads" data-i18n-label="infra_roads"><i class="fas fa-road"></i> Roads</div>
+                                <div class="prof-combobox-option" data-value="Street Lights" data-i18n-label="infra_street_lights"><i class="fas fa-lightbulb"></i> Street Lights</div>
+                                <div class="prof-combobox-option" data-value="Drainage" data-i18n-label="infra_drainage"><i class="fas fa-water"></i> Drainage</div>
+                                <div class="prof-combobox-option" data-value="Public Facilities" data-i18n-label="infra_public_facilities"><i class="fas fa-landmark"></i> Public Facilities</div>
+                                <div class="prof-combobox-option" data-value="Water Supply" data-i18n-label="infra_water_supply"><i class="fas fa-faucet"></i> Water Supply</div>
+                                <div class="prof-combobox-option" data-value="Electrical" data-i18n-label="infra_electrical"><i class="fas fa-bolt"></i> Electrical</div>
                             </div>
                         </div>
                     </div>
@@ -1615,15 +1657,27 @@ input[type="file"] {
             <div id="districtInfo"></div>
 
             <div class="map-address-input">
-                <select id="barangaySelect" style="display:none;"></select>
-                <div class="barangay-combobox" id="barangayCombobox">
-                    <div class="combobox-display" id="comboboxDisplay">
-                        <span id="comboboxLabel" data-i18n="map_barangay_placeholder">Select Barangay (Quezon City)</span>
-                        <span class="combobox-arrow" id="comboboxArrow">▾</span>
+                <div class="map-address-row">
+                    <select id="barangaySelect" style="display:none;"></select>
+                    <div class="barangay-combobox" id="barangayCombobox">
+                        <div class="combobox-display" id="comboboxDisplay">
+                            <span id="comboboxLabel" data-i18n="map_barangay_placeholder">Select Barangay (Quezon City)</span>
+                            <span class="combobox-arrow" id="comboboxArrow">▾</span>
+                        </div>
+                        <div class="combobox-dropdown" id="comboboxDropdown" style="display:none;">
+                            <input type="text" id="comboboxSearch" data-i18n-placeholder="map_combobox_search_placeholder" placeholder="🔍 Search barangay or district..." autocomplete="off">
+                            <div class="combobox-list" id="comboboxList"></div>
+                        </div>
                     </div>
-                    <div class="combobox-dropdown" id="comboboxDropdown" style="display:none;">
-                        <input type="text" id="comboboxSearch" data-i18n-placeholder="map_combobox_search_placeholder" placeholder="🔍 Search barangay or district..." autocomplete="off">
-                        <div class="combobox-list" id="comboboxList"></div>
+                    <div class="map-search-wrap">
+                        <input type="text" id="mapSearchInput"
+                            data-i18n-placeholder="map_search_placeholder"
+                            placeholder="🔍 Search address or place…"
+                            autocomplete="off">
+                        <button type="button" id="mapSearchClearBtn" title="Clear search">✕</button>
+                        <div id="mapSearchDropdown">
+                            <div class="map-search-spinner" id="mapSearchSpinner">Searching…</div>
+                        </div>
                     </div>
                 </div>
                 <input type="text" id="manualAddressInput" data-i18n-placeholder="map_address_placeholder" placeholder="Type or auto-detect address">
@@ -1631,14 +1685,7 @@ input[type="file"] {
 
             <div id="map-wrapper">
                 <div id="map"></div>
-                <button type="button" id="mapExpandBtn" data-i18n-title="map_expand_title" title="Expand map">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="15 3 21 3 21 9"></polyline>
-                        <polyline points="9 21 3 21 3 15"></polyline>
-                        <line x1="21" y1="3" x2="14" y2="10"></line>
-                        <line x1="3" y1="21" x2="10" y2="14"></line>
-                    </svg>
-                </button>
+
             </div>
 
             <div class="map-actions">
@@ -1689,11 +1736,27 @@ input[type="file"] {
                 map_barangay_placeholder: 'Select Barangay (Quezon City)',
                 map_expand_title: 'Expand map',
                 map_collapse_title: 'Collapse map',
+                map_search_placeholder: '🔍 Search address or place…',
+                map_search_spinner: 'Searching…',
+                map_search_no_results: 'No results found.',
+                map_search_error: 'Search unavailable. Try again.',
+                map_search_outside_qc: 'Result is outside Quezon City. Pan the map manually.',
+                map_search_coords_found: 'Jump to coordinates',
+                map_search_coords_outside: '⚠️ Coordinates are outside Quezon City.',
+                map_search_coords_invalid: '⚠️ Invalid coordinates. Use format: 14.6760, 121.0437',
                 alert_select_infrastructure: 'Please select an infrastructure type.',
                 alert_describe_issue: 'Please describe the issue or damage.',
                 form_infra_placeholder: '— Select infrastructure —',
                 form_file_choose: 'Choose File(s)',
                 form_file_none: 'No file chosen',
+                infra_roads:             'Roads',
+                infra_street_lights:     'Street Lights',
+                infra_drainage:          'Kanal',
+                infra_public_facilities: 'Public Facilities',
+                infra_water_supply:      'Water Supply',    
+                infra_electrical:        'Electrical',
+                infra_search_placeholder: '🔍 Search…',
+                infra_no_results:         'No results found',
             },
             tl: {
                 alert_consent_required: 'Dapat kang sumang-ayon sa Mga Tuntunin at Kondisyon at Patakaran sa Privacy bago magsumite ng iyong kahilingan.',
@@ -1713,11 +1776,27 @@ input[type="file"] {
                 map_barangay_placeholder: 'Pumili ng Barangay (Lungsod Quezon)',
                 map_expand_title: 'Palawakin ang mapa',
                 map_collapse_title: 'Bawasan ang mapa',
+                map_search_placeholder: '🔍 Maghanap ng address o lugar…',
+                map_search_spinner: 'Naghahanap…',
+                map_search_no_results: 'Walang nahanap na resulta.',
+                map_search_error: 'Hindi available ang paghahanap. Subukan ulit.',
+                map_search_outside_qc: 'Ang resulta ay nasa labas ng Lungsod Quezon. I-pan ang mapa nang manu-mano.',
+                map_search_coords_found: 'Pumunta sa mga coordinate',
+                map_search_coords_outside: '⚠️ Ang mga coordinate ay nasa labas ng Lungsod Quezon.',
+                map_search_coords_invalid: '⚠️ Di-wastong mga coordinate. Gamitin ang format: 14.6760, 121.0437',
                 alert_select_infrastructure: 'Mangyaring pumili ng uri ng imprastraktura.',
                 alert_describe_issue: 'Mangyaring ilarawan ang isyu o pinsala.',
                 form_infra_placeholder: '— Pumili ng imprastraktura —',
                 form_file_choose: 'Pumili ng File',
                 form_file_none: 'Walang napiling file',
+                infra_roads:             'Kalsada',
+                infra_street_lights:     'Ilaw sa Kalye',
+                infra_drainage:          'Drainage',
+                infra_public_facilities: 'Pampublikong Pasilidad',
+                infra_water_supply:      'Suplay ng Tubig',
+                infra_electrical:        'Elektrikal',
+                infra_search_placeholder: '🔍 Maghanap…',
+                infra_no_results:         'Walang nahanap',
             }
         };
         return (fallbacks[currentLang] && fallbacks[currentLang][key])
@@ -1787,13 +1866,37 @@ input[type="file"] {
         }
 
         function selectOption(value, text) {
+            // hiddenEl always stores the English value (e.g. "Roads") — this is
+            // what gets submitted to the database regardless of display language.
             hiddenEl.value = value;
-            labelEl.textContent = text.trim();
+            // Display the translated label if available, otherwise use the raw text
+            var opt = allOptions.find(function(o) { return o.dataset.value === value; });
+            var displayText = text.trim();
+            if (opt && opt.dataset.i18nLabel) {
+                var translated = getTranslation(opt.dataset.i18nLabel);
+                if (translated && translated !== opt.dataset.i18nLabel) {
+                    // Preserve the icon (first child) + translated text
+                    var icon = opt.querySelector('i');
+                    displayText = (icon ? icon.outerHTML + ' ' : '') + translated;
+                }
+            }
+            labelEl.innerHTML = displayText;
             labelEl.classList.toggle('selected', !!value);
             allOptions.forEach(function(o) {
                 o.classList.toggle('selected-opt', o.dataset.value === value);
             });
             localStorage.setItem('infrastructure', value);
+            // Re-fetch address with updated mode if the map modal is open
+            // and a pin location is already set.
+            // Use window-scoped names — the map code is in a later script block
+            // and these vars don't exist yet when this IIFE is evaluated.
+            try {
+                if (window.selectedLatLng && document.getElementById('mapModalBackdrop').classList.contains('show')) {
+                    if (window.addressCache) window.addressCache.clear();
+                    const _nb = typeof findNearestBarangay === 'function' ? findNearestBarangay(window.selectedLatLng) : null;
+                    if (_nb && typeof fetchDetailedAddress === 'function') fetchDetailedAddress(window.selectedLatLng, _nb.name);
+                }
+            } catch(e) { /* map not initialised yet — safe to ignore */ }
             closeDropdown();
         }
 
@@ -1810,7 +1913,7 @@ input[type="file"] {
                 if (!noRes) {
                     var d = document.createElement('div');
                     d.className = 'prof-combobox-no-results';
-                    d.textContent = 'No results found';
+                    d.textContent = (typeof getTranslation === 'function') ? getTranslation('infra_no_results') : 'No results found';
                     listEl.appendChild(d);
                 }
             } else if (noRes) { noRes.remove(); }
@@ -1845,12 +1948,80 @@ input[type="file"] {
             if (!document.getElementById('cbInfra')?.contains(e.target)) closeDropdown();
         });
 
+        // ── Translate option labels and search input on language change ──────
+        function applyInfraOptionTranslations() {
+            // 1. Update each option's visible text (keep icon, replace text node)
+            allOptions.forEach(function(o) {
+                var key = o.dataset.i18nLabel;
+                if (!key) return;
+                var translated = getTranslation(key);
+                if (!translated || translated === key) return;
+                var icon = o.querySelector('i');
+                if (icon) {
+                    var textNode = null;
+                    for (var i = 0; i < o.childNodes.length; i++) {
+                        if (o.childNodes[i].nodeType === 3) { textNode = o.childNodes[i]; break; }
+                    }
+                    if (textNode) textNode.nodeValue = ' ' + translated;
+                    else o.appendChild(document.createTextNode(' ' + translated));
+                } else {
+                    o.textContent = translated;
+                }
+            });
+
+            // 2. Update search input placeholder
+            var si = document.getElementById('cbInfraSearchInput');
+            if (si) si.placeholder = getTranslation('infra_search_placeholder');
+
+            // 3. Update selected label — rebuild from data-value (never from textContent)
+            var currentVal = hiddenEl.value;
+            if (currentVal) {
+                var selOpt = allOptions.find(function(o) { return o.dataset.value === currentVal; });
+                if (selOpt) {
+                    var key = selOpt.dataset.i18nLabel;
+                    var translated = key ? getTranslation(key) : null;
+                    var icon = selOpt.querySelector('i');
+                    if (translated && translated !== key) {
+                        labelEl.innerHTML = (icon ? icon.outerHTML + ' ' : '') + translated;
+                    }
+                    // else keep as-is
+                }
+            } else {
+                labelEl.textContent = getTranslation('form_infra_placeholder');
+            }
+        }
+        // ── Multi-strategy translation trigger ─────────────────────────────
+        // Listen on both document and window in case citizen_global.php uses either
+        document.addEventListener('langChanged', applyInfraOptionTranslations);
+        window.addEventListener('langChanged', applyInfraOptionTranslations);
+
+        // Direct hook on translate buttons — guaranteed fallback regardless of event name
+        function _hookTranslateBtns() {
+            document.querySelectorAll('#translateBtn, #mobileTranslateBtn, .translate-btn').forEach(function(btn) {
+                if (btn._infraHooked) return;
+                btn._infraHooked = true;
+                btn.addEventListener('click', function() {
+                    // Small delay so localStorage.lang is written before we read it
+                    setTimeout(applyInfraOptionTranslations, 60);
+                });
+            });
+        }
+        _hookTranslateBtns();
+        document.addEventListener('DOMContentLoaded', function() {
+            _hookTranslateBtns();
+            applyInfraOptionTranslations();
+        });
+
         // Restore draft
         var saved = localStorage.getItem('infrastructure');
         if (saved) {
             var opt = allOptions.find(function(o) { return o.dataset.value === saved; });
             if (opt) selectOption(saved, opt.textContent);
         }
+        // Set placeholder immediately (data-i18n removed — we manage it manually)
+        if (!hiddenEl.value) labelEl.textContent = getTranslation('form_infra_placeholder');
+        // Apply on page load (handles pre-set lang=tl)
+        applyInfraOptionTranslations();
     })();
     </script>
 
@@ -2658,7 +2829,7 @@ input[type="file"] {
 
     // ── MAP VARIABLES ────────────────────────────────────────────────────
     let map, marker, currentBoundaryLayer;
-    let selectedLatLng = null;
+    window.selectedLatLng = null; let selectedLatLng = window.selectedLatLng = null;
     let accuracyCircle = null;
     let locationSource = null;
     let currentMapLayer = 'satellite';
@@ -2795,6 +2966,9 @@ input[type="file"] {
 
     function openMapModal() {
         syncMapLayerToggleButton();
+        // Sync translated placeholder every time the modal opens
+        const _msi = document.getElementById('mapSearchInput');
+        if (_msi) _msi.placeholder = getTranslation('map_search_placeholder');
         document.getElementById('mapModalBackdrop').classList.add('show');
         _setChatbotFabHidden(true);
         manualAddressInput.value = ''; locationSource = null;
@@ -2908,10 +3082,10 @@ input[type="file"] {
         L.polygon(QC_BOUNDARY_LEAFLET, { color: '#2b6cb0', weight: 4, fillColor: '#3b82f6', fillOpacity: 0.08, dashArray: '12, 8', interactive: false, className: 'qc-boundary-layer', smoothFactor: 2.5 }).addTo(map);
         marker = L.marker(map.getCenter(), { draggable: true }).addTo(map);
         selectedLatLng = marker.getLatLng();
-        marker.on('dragend', () => { selectedLatLng = marker.getLatLng(); locationSource = 'map'; handleMapLocationUpdate(); });
+        marker.on('dragend', () => { selectedLatLng = window.selectedLatLng = marker.getLatLng(); locationSource = 'map'; handleMapLocationUpdate(); });
         map.on('click', e => {
             if (!isWithinQC(e.latlng)) { showJsNotification('warning', getTranslation('alert_location_outside_qc')); return; }
-            marker.setLatLng(e.latlng); selectedLatLng = e.latlng; locationSource = 'map'; handleMapLocationUpdate();
+            marker.setLatLng(e.latlng); selectedLatLng = window.selectedLatLng = e.latlng; locationSource = 'map'; handleMapLocationUpdate();
         });
         let isPanning = false, panStartPosition = null;
         map.on('movestart', () => { isPanning = true; if (marker) panStartPosition = marker.getLatLng(); });
@@ -2992,30 +3166,56 @@ input[type="file"] {
     // ── Address Fetching ─────────────────────────────────────────────────
     let fetchAddressTimeout = null, lastFetchTime = 0, abortController = null;
     const FETCH_DELAY = 300;
-    const addressCache = new Map();
+    const addressCache = new Map(); window.addressCache = addressCache;
     function getCacheKey(latlng) { return `${Math.round(latlng.lat*1000)/1000},${Math.round(latlng.lng*1000)/1000}`; }
     function fetchDetailedAddress(latlng, barangayName) {
-        const cacheKey = getCacheKey(latlng);
+        // Cache key includes the infra mode so switching infrastructure type
+        // re-fetches with the correct priority for the same coordinates.
+        const mode = getAddressMode();
+        const cacheKey = getCacheKey(latlng) + ':' + mode;
         if (addressCache.has(cacheKey)) { manualAddressInput.value = addressCache.get(cacheKey); manualAddressInput.classList.remove('loading'); return; }
         if (fetchAddressTimeout) clearTimeout(fetchAddressTimeout);
         if (abortController) abortController.abort();
         const now = Date.now(), delay = Math.max(0, FETCH_DELAY - (now - lastFetchTime));
-        fetchAddressTimeout = setTimeout(() => { lastFetchTime = Date.now(); performAddressFetch(latlng, barangayName, cacheKey); }, delay);
+        fetchAddressTimeout = setTimeout(() => { lastFetchTime = Date.now(); performAddressFetch(latlng, barangayName, cacheKey, mode); }, delay);
     }
-    function performAddressFetch(latlng, barangayName, cacheKey) {
+    function performAddressFetch(latlng, barangayName, cacheKey, mode) {
+        mode = mode || getAddressMode();
         manualAddressInput.classList.add('loading');
         manualAddressInput.value = getTranslation('map_fetching_address');
         setSaveLocationBtnState(true);   // ← disable while fetching
         abortController = new AbortController();
         const signal = abortController.signal;
-        Promise.all([fetchNominatimAddress(latlng, signal), fetchNearbyLandmarks(latlng.lat, latlng.lng, 150).catch(() => [])])
+        // ── Known facility shortcut (facility mode only) ───────────────────
+        // If the pin is within the facility's radius, use the known name
+        // immediately — no need to wait for Nominatim or Overpass.
+        if (mode === 'facility') {
+            const facilityName = matchKnownFacility(latlng.lat, latlng.lng);
+            if (facilityName) {
+                const addr = `${facilityName}, Brgy. ${toTitleCase(barangayName)}, Quezon City`;
+                manualAddressInput.value = addr;
+                manualAddressInput.classList.remove('loading');
+                addressCache.set(cacheKey, addr);
+                setSaveLocationBtnState(false);
+                if (abortController) { abortController.abort(); abortController = null; }
+                return;
+            }
+        }
+
+        Promise.all([fetchNominatimAddress(latlng, signal, mode), fetchNearbyLandmarks(latlng.lat, latlng.lng, 150, mode).catch(() => [])])
             .then(([nominatimData, landmarks]) => {
                 let fullAddress;
                 if (!nominatimData) { fullAddress = buildFallbackAddress(barangayName, landmarks); }
                 else {
-                    const addressParts = processAddressDataEnhanced(nominatimData, barangayName);
+                    const addressParts = processAddressDataEnhanced(nominatimData, barangayName, mode);
                     if (!addressParts) { setSaveLocationBtnState(false); return; }
-                    fullAddress = formatAddressEnhanced(addressParts, barangayName, landmarks);
+                    // After Nominatim resolves, still check known facility — it may not be
+                    // in OSM or may have a different name there.
+                    if (mode === 'facility') {
+                        const fName = matchKnownFacility(latlng.lat, latlng.lng);
+                        if (fName) addressParts.poi = fName;
+                    }
+                    fullAddress = formatAddressEnhanced(addressParts, barangayName, landmarks, mode);
                 }
                 manualAddressInput.value = fullAddress; manualAddressInput.classList.remove('loading'); addressCache.set(cacheKey, fullAddress);
                 setSaveLocationBtnState(false);  // ← re-enable once address is ready
@@ -3027,10 +3227,19 @@ input[type="file"] {
                 setSaveLocationBtnState(false);  // ← re-enable on error too
             });
     }
-    async function fetchNominatimAddress(latlng, signal) {
-        for (const zoom of [18, 17, 16]) {
+    async function fetchNominatimAddress(latlng, signal, mode) {
+        // Road mode   → start at zoom 18 (street-level), skip 19 (too granular)
+        // Facility    → start at zoom 19 (building-level)
+        // Auto        → try 19 first so named structures are captured when available
+        const zooms = (mode === 'road') ? [18, 17, 16] : [19, 18, 17, 16];
+        for (const zoom of zooms) {
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&countrycodes=ph&zoom=${zoom}&addressdetails=1&extratags=1`, { signal });
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json` +
+                    `&lat=${latlng.lat}&lon=${latlng.lng}&countrycodes=ph` +
+                    `&zoom=${zoom}&addressdetails=1&extratags=1&namedetails=1`,
+                    { signal }
+                );
                 if (!res.ok) continue;
                 const data = await res.json();
                 if (data && data.address) return data;
@@ -3038,16 +3247,31 @@ input[type="file"] {
         }
         return null;
     }
-    async function fetchNearbyLandmarks(lat, lng, radius) {
+    async function fetchNearbyLandmarks(lat, lng, radius, mode) {
         radius = 100;
         const MAX_NEAR_DISTANCE = 80;
-        const q = `[out:json][timeout:10];(node["name"]["amenity"~"^(fuel|school|university|hospital|clinic|pharmacy|bank|atm|restaurant|fast_food|cafe|bar|pub|convenience|supermarket|place_of_worship|police|fire_station|hotel|cinema|gym|park|playground|post_office|kindergarten|library|marketplace|college)$"](around:${radius},${lat},${lng});node["name"]["shop"~"^(supermarket|convenience|grocery|bakery|pharmacy|hardware|clothes|electronics|department_store|mall|variety_store|laundry|butcher|florist|bookstore|optician|pet|stationery|sports)$"](around:${radius},${lat},${lng});node["name"]["tourism"~"^(hotel|motel|hostel|guest_house|attraction|viewpoint)$"](around:${radius},${lat},${lng});way["name"]["amenity"~"^(fuel|school|university|hospital|place_of_worship|police|fire_station|bank|cinema|gym|marketplace|college|library)$"](around:${radius},${lat},${lng}););out center;`.trim();
+        const q = `[out:json][timeout:10];(
+node["name"]["amenity"~"^(fuel|school|university|hospital|clinic|pharmacy|bank|atm|restaurant|fast_food|cafe|bar|pub|convenience|supermarket|place_of_worship|police|fire_station|hotel|cinema|gym|park|playground|post_office|kindergarten|library|marketplace|college|community_centre|social_facility|childcare|events_venue)$"](around:${radius},${lat},${lng});
+node["name"]["shop"~"^(supermarket|convenience|grocery|bakery|pharmacy|hardware|clothes|electronics|department_store|mall|variety_store|laundry|butcher|florist|bookstore|optician|pet|stationery|sports|furniture|toys|jewelry|cosmetics|mobile_phone|car|tyres|bicycle)$"](around:${radius},${lat},${lng});
+node["name"]["tourism"~"^(hotel|motel|hostel|guest_house|attraction|viewpoint|museum|gallery|theme_park)$"](around:${radius},${lat},${lng});
+node["name"]["leisure"~"^(sports_centre|fitness_centre|stadium|swimming_pool|park|garden|playground|golf_course)$"](around:${radius},${lat},${lng});
+way["name"]["amenity"~"^(fuel|school|university|hospital|place_of_worship|police|fire_station|bank|cinema|gym|marketplace|college|library|community_centre|events_venue)$"](around:${radius},${lat},${lng});
+way["name"]["shop"~"^(mall|department_store|supermarket|electronics)$"](around:${radius},${lat},${lng});
+way["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|university|school|hospital|hotel|warehouse|office)$"](around:${radius},${lat},${lng});
+way["name"]["landuse"~"^(commercial|retail|industrial|institutional)$"](around:${radius},${lat},${lng});
+relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|university|school|hospital)$"](around:${radius},${lat},${lng});
+);out center;`.trim().replace(/\n/g,' ');
         try {
             const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
             if (!res.ok) return [];
             const data = await res.json();
             if (!data.elements || !data.elements.length) return [];
-            const PRIORITY = ['fuel','supermarket','mall','department_store','bank','atm','hospital','clinic','pharmacy','school','university','college','kindergarten','hotel','motel','hostel','guest_house','cinema','place_of_worship','park','stadium','sports_centre','fitness_centre','gym','police','fire_station','post_office','library','fast_food','restaurant','cafe','bar','convenience','grocery','bakery','hardware','playground','garden','residential','commercial'];
+            // Reorder PRIORITY so the most relevant type for the chosen infrastructure
+            // category floats to the top of the nearby-landmark list.
+            const PRIORITY_FACILITY = ['school','university','college','hospital','clinic','place_of_worship','police','fire_station','library','post_office','community_centre','marketplace','bank','atm','cinema','stadium','sports_centre','fitness_centre','gym','hotel','motel','hostel','mall','supermarket','department_store','fuel','fast_food','restaurant','cafe','bar','convenience','grocery','playground','park'];
+            const PRIORITY_ROAD     = ['fuel','bank','atm','supermarket','mall','department_store','fast_food','restaurant','cafe','convenience','school','university','hospital','cinema','post_office','library','place_of_worship','park','playground'];
+            const PRIORITY_AUTO     = ['fuel','supermarket','mall','department_store','bank','atm','hospital','clinic','pharmacy','school','university','college','kindergarten','hotel','motel','hostel','guest_house','cinema','place_of_worship','park','stadium','sports_centre','fitness_centre','gym','police','fire_station','post_office','library','fast_food','restaurant','cafe','bar','convenience','grocery','bakery','hardware','playground','garden','residential','commercial'];
+            const PRIORITY = mode === 'facility' ? PRIORITY_FACILITY : mode === 'road' ? PRIORITY_ROAD : PRIORITY_AUTO;
             const cosLat = Math.cos(lat * Math.PI / 180);
             const scored = data.elements.filter(el => el.tags && el.tags.name && el.tags.name.trim()).map(el => {
                 const elLat = el.lat ?? el.center?.lat, elLng = el.lon ?? el.center?.lon;
@@ -3068,7 +3292,41 @@ input[type="file"] {
         return landmarks && landmarks.length ? `${base} (Near ${landmarks.join(' & ')})` : base;
     }
     function toTitleCase(str) { if (!str) return ''; return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
-    function processAddressDataEnhanced(data, barangayName) {
+    // ── Infrastructure-aware address mode ───────────────────────────────
+    // Returns 'road'     → Roads, Drainage, Street Lights, Electrical
+    //         'facility' → Public Facilities, Water Supply
+    //         'auto'     → nothing selected yet
+    // ── Known QC Facilities — exact name shown when pin is near one ────────
+    // Used when infrastructure type is "Public Facilities"
+    const KNOWN_QC_FACILITIES = [
+        { name: 'Cassanova Multi-Purpose Building', lat: 14.69679995, lng: 121.07769286, radius: 1 },
+        { name: 'Bernardo Court',                   lat: 14.64406945, lng: 121.04843732, radius: 20 },
+        { name: 'Pael Multipurpose Building',        lat: 14.65472125, lng: 121.06631024, radius: 20 },
+        { name: 'Sanville Covered Court & Multipurpose Building', lat: 14.67100400, lng: 121.04766600, radius: 25 },
+    ];
+
+    function matchKnownFacility(lat, lng) {
+        const cosLat = Math.cos(lat * Math.PI / 180);
+        for (const f of KNOWN_QC_FACILITIES) {
+            const dy = (lat - f.lat) * 111320;
+            const dx = (lng - f.lng) * 111320 * cosLat;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= f.radius) return f.name;
+        }
+        return null;
+    }
+
+    function getAddressMode() {
+        const val = (document.getElementById('cbInfraVal')?.value || '').toLowerCase().trim();
+        if (!val) return 'auto';
+        const roadTypes     = ['roads','drainage','street lights','electrical','signage','traffic light'];
+        const facilityTypes = ['public facilities','water supply','waiting shed'];
+        if (roadTypes.some(t => val.includes(t)))     return 'road';
+        if (facilityTypes.some(t => val.includes(t))) return 'facility';
+        return 'auto'; // e.g. "others" — neutral
+    }
+
+    function processAddressDataEnhanced(data, barangayName, mode) {
         const a = data.address;
         if (!a.city || !a.city.toLowerCase().includes('quezon')) {
             showJsNotification('error', 'alert_location_qc_only');
@@ -3079,10 +3337,41 @@ input[type="file"] {
         if (a.house_number) result.houseNumber = a.house_number.trim();
         const roadPriority = ['road','street','pedestrian','footway','path','residential','tertiary','secondary','primary','trunk','motorway','highway','cycleway','avenue','boulevard','lane','alley'];
         for (const f of roadPriority) { if (a[f]) { result.street = toTitleCase(a[f]); break; } }
+
+        // ── Named structure / POI detection ──────────────────────────────
+        // Priority order:
+        //  1. data.name       — the feature's own name (works for way/relation too)
+        //  2. data.namedetails.name — same, from namedetails block
+        //  3. first part of display_name — works for all types
+        //  4. address.amenity / address.building — Nominatim address tags
         let poiName = null;
-        if (data.type && !['way','relation'].includes(data.type)) { const fp = (data.display_name||'').split(',')[0].trim(); if (fp && !/^\d+$/.test(fp)) poiName = toTitleCase(fp); }
+        const featureName = (data.name || '').trim()
+            || (data.namedetails?.name || '').trim();
+        if (featureName && !/^\d+$/.test(featureName)) {
+            poiName = toTitleCase(featureName);
+        }
+        if (!poiName) {
+            // First segment of display_name is usually the feature name for any type
+            const fp = (data.display_name || '').split(',')[0].trim();
+            if (fp && !/^\d+$/.test(fp)) poiName = toTitleCase(fp);
+        }
         if (!poiName && a.amenity) poiName = toTitleCase(a.amenity);
-        if (poiName) { const pl = poiName.toLowerCase(), sl = (result.street||'').toLowerCase(), bl = barangayName.toLowerCase(); if (pl !== sl && pl !== bl) result.poi = poiName; }
+        if (!poiName && a.building && a.building !== 'yes') poiName = toTitleCase(a.building);
+
+        if (poiName) {
+            const pl = poiName.toLowerCase(), sl = (result.street||'').toLowerCase(), bl = barangayName.toLowerCase();
+            const isGenericRoadWord = /^(road|street|avenue|highway|blvd|boulevard|alley|lane|drive|ext|extension)$/i.test(pl);
+            const isMeaningful = pl !== sl && pl !== bl && !isGenericRoadWord;
+            if (isMeaningful) {
+                // Road mode: only keep POI if there's no street name yet (pin is truly on a named
+                // feature without an underlying road address — e.g. a bridge, overpass, junction).
+                // Facility mode / auto: always keep.
+                if (mode !== 'road' || !result.street) {
+                    result.poi = poiName;
+                }
+            }
+        }
+
         const subKeys = ['neighbourhood','suburb','quarter','hamlet'];
         for (const k of subKeys) {
             if (a[k]) {
@@ -3092,30 +3381,51 @@ input[type="file"] {
         }
         return result;
     }
-    function formatAddressEnhanced(addressParts, barangayName, landmarks) {
+    function formatAddressEnhanced(addressParts, barangayName, landmarks, mode) {
         landmarks = landmarks || [];
         const parts = [], used = new Set();
         const push = (val) => { if (!val) return; const n = val.trim().toLowerCase(); if (!n || used.has(n)) return; used.add(n); parts.push(val.trim()); };
         const { houseNumber, street, subdivision, poi } = addressParts;
-        if (street) push(houseNumber ? `${houseNumber} ${street}` : street);
-        else if (houseNumber) push(houseNumber);
+
+        // ── Mode-aware leading field ──────────────────────────────────────
+        // Road mode:     street/house first, POI appended if present
+        // Facility/auto: POI (building name) first, street after
+        if (mode === 'road') {
+            if (street) push(houseNumber ? `${houseNumber} ${street}` : street);
+            else if (houseNumber) push(houseNumber);
+            if (poi) push(poi); // named junction, bridge, etc. after street
+        } else {
+            if (poi) push(poi); // mall/building/facility leads
+            if (street) push(houseNumber ? `${houseNumber} ${street}` : street);
+            else if (houseNumber) push(houseNumber);
+        }
         if (subdivision) push(subdivision);
         push(`Brgy. ${toTitleCase(barangayName)}`); push('Quezon City');
+
+        // ── Nearby landmarks (from Overpass) appended only when pin is
+        //    NOT already on a named structure ───────────────────────────────
         const nearCandidates = [], nearSeen = new Set();
         const addNear = (name) => {
             if (!name) return; const key = name.trim().toLowerCase();
             if (nearSeen.has(key)) return;
+            if (poi && poi.toLowerCase() === key) return; // already leading
             if (street && street.toLowerCase().includes(key)) return;
             if (barangayName.toLowerCase().includes(key)) return;
             nearSeen.add(key); nearCandidates.push(toTitleCase(name.trim()));
         };
-        if (poi) addNear(poi); landmarks.forEach(lm => addNear(lm));
+        // Only add landmark "Near X" when there is no leading POI name
+        if (!poi) { landmarks.forEach(lm => addNear(lm)); }
         if (nearCandidates.length > 0) {
             const nearStr = nearCandidates.slice(0,2).join(' & ');
             const hasStreetInfo = !!(street || houseNumber || subdivision);
             if (hasStreetInfo) parts.push(`(Near ${nearStr})`); else parts.splice(0, 0, `Near ${nearStr}`);
         }
-        if (parts.length <= 2) { const nearStr = nearCandidates.slice(0,2).join(' & '); return nearStr ? `Brgy. ${toTitleCase(barangayName)}, Quezon City (Near ${nearStr})` : `Brgy. ${toTitleCase(barangayName)}, Quezon City`; }
+        if (parts.length <= 2) {
+            const nearStr = nearCandidates.slice(0,2).join(' & ');
+            if (poi && mode !== 'road') return `${poi}, Brgy. ${toTitleCase(barangayName)}, Quezon City`;
+            if (poi && mode === 'road') return `Brgy. ${toTitleCase(barangayName)}, Quezon City (${poi})`;
+            return nearStr ? `Brgy. ${toTitleCase(barangayName)}, Quezon City (Near ${nearStr})` : `Brgy. ${toTitleCase(barangayName)}, Quezon City`;
+        }
         return parts.join(', ');
     }
 
@@ -3589,6 +3899,287 @@ input[type="file"] {
             })
             .catch(() => { _dpwhPrefetchResult = []; });
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  MAP LOCATION SEARCH — real-time address search via Nominatim
+    //  Searches within Quezon City bounds, pans map, and populates the
+    //  address field. Debounced to avoid hammering the API.
+    // ══════════════════════════════════════════════════════════════════
+    (function initMapSearch() {
+        const searchInput   = document.getElementById('mapSearchInput');
+        const clearBtn      = document.getElementById('mapSearchClearBtn');
+        const dropdown      = document.getElementById('mapSearchDropdown');
+        const spinner       = document.getElementById('mapSearchSpinner');
+        if (!searchInput || !dropdown) return;
+
+        let _searchTimer  = null;
+        let _searchCtrl   = null;
+        let _activeIdx    = -1;
+        let _results      = [];
+
+        // QC bounding box for Nominatim viewbox
+        const QC_VIEWBOX = '120.990,14.575,121.130,14.755'; // minLng,minLat,maxLng,maxLat
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showDropdown() { dropdown.classList.add('open'); }
+        function hideDropdown() { dropdown.classList.remove('open'); _activeIdx = -1; }
+
+        function updateClearBtn() {
+            clearBtn.classList.toggle('visible', searchInput.value.length > 0);
+        }
+
+        function setActive(idx) {
+            const items = dropdown.querySelectorAll('.map-search-item');
+            items.forEach((el, i) => el.classList.toggle('active', i === idx));
+            _activeIdx = idx;
+        }
+
+        function renderResults(results) {
+            _results = results;
+            // Remove old items (keep spinner)
+            dropdown.querySelectorAll('.map-search-item').forEach(el => el.remove());
+
+            if (!results.length) {
+                const noEl = document.createElement('div');
+                noEl.className = 'map-search-item';
+                noEl.style.cssText = 'cursor:default;color:var(--text-secondary);font-size:12px;';
+                noEl.textContent = getTranslation('map_search_no_results');
+                dropdown.appendChild(noEl);
+                showDropdown();
+                return;
+            }
+
+            results.forEach((r, i) => {
+                const el = document.createElement('div');
+                el.className = 'map-search-item';
+                const name = r.namedetails?.name || r.name || r.display_name.split(',')[0];
+                const addr = r.display_name;
+                el.innerHTML = `
+                    <span class="map-search-item-icon">📍</span>
+                    <div class="map-search-item-text">
+                        <div class="map-search-item-name">${escHtml(name)}</div>
+                        <div class="map-search-item-addr">${escHtml(addr)}</div>
+                    </div>`;
+                el.addEventListener('mousedown', e => { e.preventDefault(); selectResult(r); });
+                el.addEventListener('mouseover', () => setActive(i));
+                dropdown.appendChild(el);
+            });
+            showDropdown();
+        }
+
+        function selectResult(r) {
+            const lat = parseFloat(r.lat);
+            const lng = parseFloat(r.lon);
+            const latlng = L.latLng(lat, lng);
+
+            // Pan map to result and move marker
+            if (map) {
+                map.setView(latlng, 17);
+                if (marker) marker.setLatLng(latlng);
+                selectedLatLng = latlng;
+                locationSource = 'map';
+            }
+
+            // Populate the address field with the display name
+            const manualEl = document.getElementById('manualAddressInput');
+            if (manualEl) manualEl.value = r.display_name;
+
+            // Update barangay selector based on nearest
+            const nearest = findNearestBarangay(latlng);
+            if (nearest) {
+                barangaySelect.value = nearest.name;
+                updateDistrictInfo(nearest.district);
+            }
+
+            // Check DPWH zone and trigger full address fetch
+            checkNonLguZone(latlng);
+            handleMapLocationUpdate();
+
+            // Clear and close search
+            searchInput.value = '';
+            updateClearBtn();
+            hideDropdown();
+        }
+
+        // ── Coordinate pattern detection ────────────────────────────────
+        // Matches:  14.6760, 121.0437   /   14.6760 121.0437
+        //           14.6760,121.0437    /   14° 40' 33" N, 121° 2' 37" E  (DMS approx)
+        //           (14.6760, 121.0437) /   14.6760;121.0437
+        const COORD_RE = /^\s*\(?\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?\s*$/;
+
+        function tryParseCoords(q) {
+            const m = q.match(COORD_RE);
+            if (!m) return null;
+            const a = parseFloat(m[1]), b = parseFloat(m[2]);
+            if (isNaN(a) || isNaN(b)) return null;
+            // Determine which is lat and which is lng by range
+            // Philippines lat ~4–21, lng ~116–128
+            let lat, lng;
+            if (a >= 4 && a <= 21 && b >= 116 && b <= 128) { lat = a; lng = b; }
+            else if (b >= 4 && b <= 21 && a >= 116 && a <= 128) { lat = b; lng = a; }
+            else return null; // values don't look like PH coordinates
+            return { lat, lng };
+        }
+
+        function showCoordResult(lat, lng) {
+            const latlng = L.latLng(lat, lng);
+            const insideQC = isWithinQC(latlng);
+
+            // Clear previous items
+            dropdown.querySelectorAll('.map-search-item').forEach(el => el.remove());
+            spinner.classList.remove('visible');
+
+            const el = document.createElement('div');
+            el.className = 'map-search-item';
+
+            if (!insideQC) {
+                el.style.cssText = 'cursor:default;';
+                el.innerHTML = `<span class="map-search-item-icon">⚠️</span>
+                    <div class="map-search-item-text">
+                        <div class="map-search-item-name">${escHtml(getTranslation('map_search_coords_outside'))}</div>
+                        <div class="map-search-item-addr">${lat.toFixed(7)}, ${lng.toFixed(7)}</div>
+                    </div>`;
+            } else {
+                el.innerHTML = `<span class="map-search-item-icon">🎯</span>
+                    <div class="map-search-item-text">
+                        <div class="map-search-item-name">${escHtml(getTranslation('map_search_coords_found'))}</div>
+                        <div class="map-search-item-addr">${lat.toFixed(7)}, ${lng.toFixed(7)}</div>
+                    </div>`;
+                el.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    // Jump map to coordinates immediately
+                    map.setView(latlng, 17);
+                    if (marker) marker.setLatLng(latlng);
+                    selectedLatLng = latlng;
+                    locationSource = 'map';
+
+                    // Update barangay + DPWH check + address fetch
+                    const nearest = findNearestBarangay(latlng);
+                    if (nearest) {
+                        barangaySelect.value = nearest.name;
+                        updateDistrictInfo(nearest.district);
+                    }
+                    checkNonLguZone(latlng);
+                    handleMapLocationUpdate();
+
+                    // Populate address field with raw coordinates as placeholder
+                    const manualEl = document.getElementById('manualAddressInput');
+                    if (manualEl && !manualEl.value) manualEl.value = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
+
+                    searchInput.value = '';
+                    updateClearBtn();
+                    hideDropdown();
+                });
+            }
+
+            dropdown.appendChild(el);
+            showDropdown();
+        }
+
+        async function doSearch(query) {
+            if (!query || query.trim().length < 2) { hideDropdown(); return; }
+
+            // ── Coordinate shortcut — skip Nominatim entirely ──────────
+            const coords = tryParseCoords(query);
+            if (coords) {
+                showCoordResult(coords.lat, coords.lng);
+                return;
+            }
+
+            // Abort previous
+            if (_searchCtrl) _searchCtrl.abort();
+            _searchCtrl = new AbortController();
+
+            spinner.textContent = getTranslation('map_search_spinner');
+            spinner.classList.add('visible');
+            dropdown.querySelectorAll('.map-search-item').forEach(el => el.remove());
+            showDropdown();
+
+            try {
+                const url = `https://nominatim.openstreetmap.org/search`
+                    + `?format=json&q=${encodeURIComponent(query + ', Quezon City')}`
+                    + `&countrycodes=ph`
+                    + `&viewbox=${QC_VIEWBOX}&bounded=0`
+                    + `&limit=6&addressdetails=1&namedetails=1&accept-language=en`;
+
+                const res = await fetch(url, {
+                    signal: _searchCtrl.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+
+                spinner.classList.remove('visible');
+                renderResults(data || []);
+            } catch(e) {
+                spinner.classList.remove('visible');
+                if (e.name === 'AbortError') return; // cancelled — do nothing
+                dropdown.querySelectorAll('.map-search-item').forEach(el => el.remove());
+                const errEl = document.createElement('div');
+                errEl.className = 'map-search-item';
+                errEl.style.cssText = 'cursor:default;color:var(--text-secondary);font-size:12px;';
+                errEl.textContent = getTranslation('map_search_error');
+                dropdown.appendChild(errEl);
+                showDropdown();
+            }
+        }
+
+        // Debounced input handler — fires 380ms after user stops typing
+        searchInput.addEventListener('input', () => {
+            updateClearBtn();
+            clearTimeout(_searchTimer);
+            const q = searchInput.value.trim();
+            if (!q) { hideDropdown(); spinner.classList.remove('visible'); return; }
+            spinner.textContent = getTranslation('map_search_spinner');
+            spinner.classList.add('visible');
+            dropdown.querySelectorAll('.map-search-item').forEach(el => el.remove());
+            showDropdown();
+            _searchTimer = setTimeout(() => doSearch(q), 380);
+        });
+
+        // Keyboard navigation
+        searchInput.addEventListener('keydown', e => {
+            const items = dropdown.querySelectorAll('.map-search-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActive(Math.min(_activeIdx + 1, items.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActive(Math.max(_activeIdx - 1, 0));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (_activeIdx >= 0 && _results[_activeIdx]) selectResult(_results[_activeIdx]);
+            } else if (e.key === 'Escape') {
+                hideDropdown();
+                searchInput.blur();
+            }
+        });
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            updateClearBtn();
+            hideDropdown();
+            searchInput.focus();
+        });
+
+        // Close dropdown on outside click
+        document.addEventListener('mousedown', e => {
+            if (!dropdown.contains(e.target) && e.target !== searchInput) {
+                hideDropdown();
+            }
+        });
+
+        // Update placeholder when language changes
+        document.addEventListener('langChanged', () => {
+            searchInput.placeholder = getTranslation('map_search_placeholder');
+            spinner.textContent     = getTranslation('map_search_spinner');
+        });
+    })();
+
     _startDpwhPrefetch(); // runs immediately on script evaluation
 
     // ── Point-to-segment distance (metres) ───────────────────────────────
@@ -3714,39 +4305,7 @@ input[type="file"] {
     <?php endif; ?>
     </script>
 
-    <script>
-    // ── Map expand/collapse toggle ───────────────────────────────────────
-    (function () {
-        const expandBtn = document.getElementById('mapExpandBtn');
-        const modalEl   = document.getElementById('mapModal');
-        if (!expandBtn || !modalEl) return;
-        let expanded = false;
-        const ICON_EXPAND   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>`;
-        const ICON_COLLAPSE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="10" y1="14" x2="3" y2="21"></line><line x1="21" y1="3" x2="14" y2="10"></line></svg>`;
-        expandBtn.addEventListener('click', () => {
-            expanded = !expanded;
-            // Toggle expansion on the modal container — the #map inside grows
-            // automatically via flex:1 on #map-wrapper → #map.
-            modalEl.classList.toggle('map-expanded', expanded);
-            expandBtn.innerHTML = expanded ? ICON_COLLAPSE : ICON_EXPAND;
-            expandBtn.title = expanded
-                ? getTranslation('map_collapse_title')
-                : getTranslation('map_expand_title');
-            // Let the CSS transition finish before telling Leaflet the new size.
-            setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 320);
-        });
-        const origClose = window.closeMapModal;
-        window.closeMapModal = function () {
-            if (expanded) {
-                expanded = false;
-                modalEl.classList.remove('map-expanded');
-                expandBtn.innerHTML = ICON_EXPAND;
-                expandBtn.title = getTranslation('map_expand_title') || 'Expand map';
-            }
-            if (origClose) origClose();
-        };
-    })();
-    </script>
+
 
 
 

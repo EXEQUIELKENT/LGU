@@ -2301,6 +2301,14 @@ body {
         font-size: 11px;
         gap: 4px;
     }
+
+    /* ── Quick-action icons — smaller on phones ── */
+    .action-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+    }
+    .action-icon i { font-size: 18px; }
 }
 
 /* ── Logout Confirmation Modal ── */

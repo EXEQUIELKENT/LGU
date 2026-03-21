@@ -253,23 +253,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
         $stmt->bind_param('i', $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
-        if ($ok) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info    = getRepInfo($conn, $repId);
-            $engName = getRepEngineerName($conn, $repId);
-            // Notify ONLY Admin and Super Admin — Managers and Office Staff do not have
-            // authorization to approve completion, so they should not receive this notification.
-            notifyAdminsOnly($conn,
-                "Report #REP-{$repId} Ready for Review",
-                "{$engName} has marked Report #{$repId} as complete and is awaiting your confirmation.",
-                "pending_reports.php",
-                $info['type'],
-                (int)($_SESSION['employee_id'] ?? 0)
-            );
-            // NOTE: Do NOT send requester email here — wait for admin to confirm
-        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($ok) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info    = getRepInfo($conn, $repId);
+                // getRepEngineerName may not exist — fall back to inline query
+                if (function_exists('getRepEngineerName')) {
+                    $engName = getRepEngineerName($conn, $repId);
+                } else {
+                    $eRow = $conn->query("SELECT CONCAT(e.first_name,' ',e.last_name) AS ename FROM reports r LEFT JOIN employees e ON r.engineer_id=e.user_id WHERE r.rep_id={$repId} LIMIT 1");
+                    $engName = $eRow ? ($eRow->fetch_assoc()['ename'] ?? 'Engineer') : 'Engineer';
+                }
+                notifyAdminsOnly($conn,
+                    "Report #REP-{$repId} Ready for Review",
+                    "{$engName} has marked Report #{$repId} as complete and is awaiting your confirmation.",
+                    "pending_reports.php",
+                    $info['type'] ?? '',
+                    (int)($_SESSION['employee_id'] ?? 0)
+                );
+            } catch (Throwable $e) { error_log('[request_completion] Notif error: ' . $e->getMessage()); }
+        }
         exit;
     }
 
@@ -286,30 +292,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
         $stmt->bind_param('i', $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
-        if ($ok) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $engId     = getRepEngineer($conn, $repId);
-            if ($engId > 0) {
-                insertNotification($conn, $engId,
-                    "Report #REP-{$repId} Confirmed Complete ✅",
-                    "{$actorName} confirmed your report as complete. It has been moved to Archive.",
-                    "archive_reports.php",
-                    $info['type']
-                );
-            }
-            // Send completion email to requester with ALL daily progress images
-            require_once __DIR__ . '/report_email.php';
-            $reqData = getRequesterEmailData($conn, $repId);
-            if (!empty($reqData['email'])) {
-                $imgs = getReportImageUrls($conn, $repId); // all days, no date filter
-                sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'completed', $reqData, $imgs);
-            }
-
-        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($ok) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
+                $engId = 0;
+                if (function_exists('getRepEngineer')) {
+                    $engId = (int)getRepEngineer($conn, $repId);
+                } else {
+                    $eRow = $conn->query("SELECT engineer_id FROM reports WHERE rep_id={$repId} LIMIT 1");
+                    if ($eRow) { $r = $eRow->fetch_assoc(); $engId = (int)($r['engineer_id'] ?? 0); }
+                }
+                if ($engId > 0) {
+                    insertNotification($conn, $engId,
+                        "Report #REP-{$repId} Confirmed Complete ✅",
+                        "{$actorName} confirmed your report as complete. It has been moved to Archive.",
+                        "archive_reports.php",
+                        $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $e) { error_log('[admin_complete] Notif error: ' . $e->getMessage()); }
+            // Send completion email — separate try so a mail failure never breaks the response
+            try {
+                require_once __DIR__ . '/report_email.php';
+                $reqData = getRequesterEmailData($conn, $repId);
+                if (!empty($reqData['email'])) {
+                    $imgs = getReportImageUrls($conn, $repId);
+                    sendReportUpdateEmail($reqData['email'], $reqData['name'] ?? '', $repId, 'completed', $reqData, $imgs);
+                }
+            } catch (Throwable $e) { error_log('[admin_complete] Email error: ' . $e->getMessage()); }
+        }
         exit;
     }
 
@@ -330,23 +346,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
         $stmt->bind_param('ssi', $returnNote, $highlightDays, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
-        if ($ok) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $engId     = getRepEngineer($conn, $repId);
-            if ($engId > 0) {
-                $noteText = $returnNote ? " Reason: {$returnNote}" : '';
-                insertNotification($conn, $engId,
-                    "Report #REP-{$repId} Needs More Work",
-                    "{$actorName} marked your report as not complete.{$noteText}",
-                    "pending_reports.php",
-                    $info['type']
-                );
-            }
-        }
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($ok) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
+                $engId = 0;
+                if (function_exists('getRepEngineer')) {
+                    $engId = (int)getRepEngineer($conn, $repId);
+                } else {
+                    $eRow = $conn->query("SELECT engineer_id FROM reports WHERE rep_id={$repId} LIMIT 1");
+                    if ($eRow) { $r = $eRow->fetch_assoc(); $engId = (int)($r['engineer_id'] ?? 0); }
+                }
+                if ($engId > 0) {
+                    $noteText = $returnNote ? " Reason: {$returnNote}" : '';
+                    insertNotification($conn, $engId,
+                        "Report #REP-{$repId} Needs More Work",
+                        "{$actorName} marked your report as not complete.{$noteText}",
+                        "pending_reports.php",
+                        $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $e) { error_log('[admin_not_complete] Notif error: ' . $e->getMessage()); }
+        }
         exit;
     }
 

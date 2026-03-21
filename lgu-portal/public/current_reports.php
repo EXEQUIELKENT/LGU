@@ -126,19 +126,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $conn->commit();
-            // Notify ONLY Super Admins about scheduling approval (not managers/office staff)
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            notifySuperAdmins($conn,
-                "Report #REP-{$repId} Awaiting Schedule Approval",
-                "{$actorName} submitted Report #{$repId} for scheduling approval.",
-                "current_reports.php",
-                $info['type'],
-                (int)($_SESSION['employee_id'] ?? 0)
-            );
             while (ob_get_level() > 0) ob_end_clean();
             echo json_encode(['success' => true, 'rep_id' => $repId]);
+            if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+            // Notify after flushing response — any error here never affects the client
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
+                notifySuperAdmins($conn,
+                    "Report #REP-{$repId} Awaiting Schedule Approval",
+                    "{$actorName} submitted Report #{$repId} for scheduling approval.",
+                    "current_reports.php",
+                    $info['type'] ?? '',
+                    (int)($_SESSION['employee_id'] ?? 0)
+                );
+            } catch (Throwable $notifErr) {
+                error_log('[approve_report] Notif error: ' . $notifErr->getMessage());
+            }
             exit;
         } catch (Exception $ex) {
             $conn->rollback();
@@ -160,16 +165,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $affected = $stmt->affected_rows;
         $stmt->close();
         if ($affected > 0) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            notifyAssigners($conn,
-                "Engineer Accepted Report #REP-{$repId}",
-                "{$actorName} accepted the assignment for Report #{$repId}.",
-                "current_reports.php",
-                $info['type'],
-                $engineerId
-            );
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
+                notifyAssigners($conn,
+                    "Engineer Accepted Report #REP-{$repId}",
+                    "{$actorName} accepted the assignment for Report #{$repId}.",
+                    "current_reports.php",
+                    $info['type'] ?? '',
+                    $engineerId
+                );
+            } catch (Throwable $notifErr) {
+                error_log('[accept_assignment] Notification error: ' . $notifErr->getMessage());
+            }
         }
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode(['success' => $affected > 0]); exit;
@@ -188,21 +197,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
-        if ($affected > 0) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $reasonText = $declineReason ? " Reason: \"{$declineReason}\"" : ' No reason provided.';
-            notifyAssigners($conn,
-                "Engineer Declined Report #REP-{$repId}",
-                "{$actorName} declined assignment for Report #{$repId}.{$reasonText} Please review their reason.",
-                buildRepUrl('current_reports.php', $repId),
-                $info['type'],
-                $engineerId
-            );
-        }
         while (ob_get_level() > 0) ob_end_clean();
-        echo json_encode(['success' => $affected > 0]); exit;
+        echo json_encode(['success' => $affected > 0]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($affected > 0) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info       = getRepInfo($conn, $repId);
+                $actorName  = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
+                $reasonText = $declineReason ? " Reason: \"{$declineReason}\"" : ' No reason provided.';
+                $notifUrl   = function_exists('buildRepUrl') ? buildRepUrl('current_reports.php', $repId) : 'current_reports.php';
+                notifyAssigners($conn,
+                    "Engineer Declined Report #REP-{$repId}",
+                    "{$actorName} declined assignment for Report #{$repId}.{$reasonText} Please review their reason.",
+                    $notifUrl, $info['type'] ?? '', $engineerId
+                );
+            } catch (Throwable $e) { error_log('[decline_assignment] Notif error: ' . $e->getMessage()); }
+        }
+        exit;
     }
 
     // ── Manager/Office Staff: mark decline reason VALID → remove engineer ───────
@@ -224,23 +236,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
-        if ($affected > 0) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $noteText  = $reviewNote ? " Note: \"{$reviewNote}\"" : '';
-            // Notify the engineer that their decline was accepted
-            if ($engId > 0) {
-                insertNotification($conn, $engId,
-                    "Decline Accepted — Report #REP-{$repId}",
-                    "{$actorName} reviewed your decline reason and accepted it. You are unassigned from Report #{$repId}.{$noteText}",
-                    buildRepUrl('current_reports.php', $repId),
-                    $info['type']
-                );
-            }
-        }
         while (ob_get_level() > 0) ob_end_clean();
-        echo json_encode(['success' => $affected > 0]); exit;
+        echo json_encode(['success' => $affected > 0]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($affected > 0) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
+                $noteText  = $reviewNote ? " Note: \"{$reviewNote}\"" : '';
+                if ($engId > 0) {
+                    $notifUrl = function_exists('buildRepUrl') ? buildRepUrl('current_reports.php', $repId) : 'current_reports.php';
+                    insertNotification($conn, $engId,
+                        "Decline Accepted — Report #REP-{$repId}",
+                        "{$actorName} reviewed your decline reason and accepted it. You are unassigned from Report #{$repId}.{$noteText}",
+                        $notifUrl, $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $e) { error_log('[approve_decline] Notif error: ' . $e->getMessage()); }
+        }
+        exit;
     }
 
     // ── Manager/Office Staff: mark decline reason INVALID → engineer must continue ─
@@ -266,23 +281,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
-        if ($affected > 0) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $noteText  = $reviewNote ? " Manager's note: \"{$reviewNote}\"" : '';
-            // Notify the engineer that they must still do the job
-            if ($engId > 0) {
-                insertNotification($conn, $engId,
-                    "Decline Rejected — You Must Complete Report #REP-{$repId}",
-                    "{$actorName} reviewed your decline and found it invalid. You are still assigned to Report #{$repId}.{$noteText}",
-                    buildRepUrl('current_reports.php', $repId),
-                    $info['type']
-                );
-            }
-        }
         while (ob_get_level() > 0) ob_end_clean();
-        echo json_encode(['success' => $affected > 0]); exit;
+        echo json_encode(['success' => $affected > 0]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($affected > 0) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
+                $noteText  = $reviewNote ? " Manager's note: \"{$reviewNote}\"" : '';
+                if ($engId > 0) {
+                    $notifUrl = function_exists('buildRepUrl') ? buildRepUrl('current_reports.php', $repId) : 'current_reports.php';
+                    insertNotification($conn, $engId,
+                        "Decline Rejected — You Must Complete Report #REP-{$repId}",
+                        "{$actorName} reviewed your decline and found it invalid. You are still assigned to Report #{$repId}.{$noteText}",
+                        $notifUrl, $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $e) { error_log('[reject_decline] Notif error: ' . $e->getMessage()); }
+        }
+        exit;
     }
 
     if ($action === 'update_report') {
@@ -335,24 +353,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->bind_param("i", $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
-        if ($ok && $aff >= 1) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $engId     = getRepEngineer($conn, $repId);
-            if ($engId > 0) {
-                insertNotification($conn, $engId,
-                    "Report #REP-{$repId} Approved & Scheduled 🎉",
-                    "{$actorName} approved your report. It has been moved to Pending Reports as Scheduled.",
-                    "pending_reports.php",
-                    $info['type']
-                );
-            }
-        }
         while (ob_get_level() > 0) ob_end_clean();
         if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
         if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
-        echo json_encode(['success' => true]); exit;
+        echo json_encode(['success' => true]);
+        // Flush JSON to client immediately before running notifications
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        // Send notification — wrapped so any error here never corrupts the JSON response
+        if ($ok && $aff >= 1) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $actorName = getActorName();
+                // Inline engineer lookup so we never depend on a potentially missing helper function
+                $engId = 0;
+                if (function_exists('getRepEngineer')) {
+                    $engId = (int)getRepEngineer($conn, $repId);
+                } else {
+                    $eRow = $conn->query("SELECT engineer_id FROM reports WHERE rep_id = {$repId} LIMIT 1");
+                    if ($eRow) { $eRow = $eRow->fetch_assoc(); $engId = (int)($eRow['engineer_id'] ?? 0); }
+                }
+                if ($engId > 0) {
+                    $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
+                    insertNotification($conn, $engId,
+                        "Report #REP-{$repId} Approved & Scheduled 🎉",
+                        "{$actorName} approved your report. It has been moved to Pending Reports as Scheduled.",
+                        "pending_reports.php",
+                        $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $notifErr) {
+                error_log('[admin_approve_report] Notification error: ' . $notifErr->getMessage());
+            }
+        }
+        exit;
     }
 
     // ── Admin returns report to engineer → resets to Approved so engineer resubmits ──
@@ -383,25 +417,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->bind_param("ssi", $returnNote, $highlightFields, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $aff = $stmt->affected_rows; $stmt->close();
-        if ($ok && $aff >= 1) {
-            require_once __DIR__ . '/notif_helper.php';
-            $info      = getRepInfo($conn, $repId);
-            $actorName = getActorName();
-            $engId     = getRepEngineer($conn, $repId);
-            if ($engId > 0) {
-                $noteText = $returnNote ? " Reason: {$returnNote}" : '';
-                insertNotification($conn, $engId,
-                    "Report #REP-{$repId} Returned for Revision",
-                    "{$actorName} returned your report for revision.{$noteText}",
-                    "current_reports.php",
-                    $info['type']
-                );
-            }
-        }
         while (ob_get_level() > 0) ob_end_clean();
         if (!$ok)    { echo json_encode(['success' => false, 'message' => $err]); exit; }
         if ($aff < 1){ echo json_encode(['success' => false, 'message' => 'Report is not in Pending Admin Approval state.']); exit; }
-        echo json_encode(['success' => true]); exit;
+        echo json_encode(['success' => true]);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        if ($ok && $aff >= 1) {
+            try {
+                require_once __DIR__ . '/notif_helper.php';
+                $info      = getRepInfo($conn, $repId);
+                $engId = 0;
+                if (function_exists('getRepEngineer')) {
+                    $engId = (int)getRepEngineer($conn, $repId);
+                } else {
+                    $eRow = $conn->query("SELECT engineer_id FROM reports WHERE rep_id = {$repId} LIMIT 1");
+                    if ($eRow) { $eRow = $eRow->fetch_assoc(); $engId = (int)($eRow['engineer_id'] ?? 0); }
+                }
+                if ($engId > 0) {
+                    $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
+                    $noteText  = $returnNote ? " Reason: {$returnNote}" : '';
+                    insertNotification($conn, $engId,
+                        "Report #REP-{$repId} Returned for Revision",
+                        "{$actorName} returned your report for revision.{$noteText}",
+                        "current_reports.php",
+                        $info['type'] ?? ''
+                    );
+                }
+            } catch (Throwable $notifErr) {
+                error_log('[admin_return_report] Notification error: ' . $notifErr->getMessage());
+            }
+        }
+        exit;
     }
 
     while (ob_get_level() > 0) ob_end_clean();

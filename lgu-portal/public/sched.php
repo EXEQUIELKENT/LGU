@@ -47,6 +47,67 @@ if (
 
 require __DIR__ . '/db.php';
 
+// ══════════════════════════════════════════════════════════════════
+//  CULIAT FACILITIES — proximity & keyword matching
+//  Returns the facility name if a schedule's location/coordinates
+//  fall within FACILITY_RADIUS_M metres of a known facility.
+// ══════════════════════════════════════════════════════════════════
+define('FACILITY_RADIUS_M', 200); // metres — adjust as needed
+
+const CULIAT_FACILITIES = [
+    [
+        'name'        => 'Cassanova Multi-Purpose Building',
+        'lat'         => 14.69679995,
+        'lng'         => 121.07769286,
+        'keywords'    => ['cassanova', 'cassanova multi', 'cassanova bldg'],
+    ],
+    [
+        'name'        => 'Bernardo Court',
+        'lat'         => 14.64406945,
+        'lng'         => 121.04843732,
+        'keywords'    => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo'],
+    ],
+    [
+        'name'        => 'Pael Multipurpose Building',
+        'lat'         => 14.65472125,
+        'lng'         => 121.06631024,
+        'keywords'    => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road'],
+    ],
+    [
+        'name'        => 'Sanville Covered Court & Multipurpose Building',
+        'lat'         => 14.67100400,
+        'lng'         => 121.04766600,
+        'keywords'    => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle'],
+    ],
+];
+
+/**
+ * Returns facility name if coords are within radius, or if location text
+ * contains a keyword for that facility. Returns '' if no match.
+ */
+function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): string {
+    $locLower = strtolower($locationText);
+
+    foreach (CULIAT_FACILITIES as $facility) {
+        // 1. Coordinate proximity check
+        if ($lat !== null && $lng !== null) {
+            $dLat = deg2rad($facility['lat'] - $lat);
+            $dLng = deg2rad($facility['lng'] - $lng);
+            $a    = sin($dLat/2)**2 + cos(deg2rad($lat)) * cos(deg2rad($facility['lat'])) * sin($dLng/2)**2;
+            $dist = 6371000 * 2 * asin(sqrt($a)); // metres
+            if ($dist <= FACILITY_RADIUS_M) return $facility['name'];
+        }
+
+        // 2. Keyword match on location text
+        foreach ($facility['keywords'] as $kw) {
+            if (str_contains($locLower, $kw)) return $facility['name'];
+        }
+    }
+    return '';
+}
+
+
+
 // Get user profile picture
 function getProfilePicture($employeeId, $conn) {
     if (!$employeeId) return 'profile.png';
@@ -193,6 +254,8 @@ if ($result && $result->num_rows > 0) {
         $row['engineer_name'] = '';
         $row['budget_raw']    = 0;
         $row['budget_display']= '';
+        // Facility matching for maintenance_schedule rows (no coordinates — keyword only)
+        $row['facility_name'] = getMatchingFacility($row['location'] ?? '', null, null);
         $row['rep_id']        = 0;
 
         $schedules[] = $row;
@@ -212,7 +275,7 @@ $reportSql = "
         r.rep_id, r.starting_date, r.estimated_end_date, r.priority_lvl,
         r.engineer_id, r.budget,
         res.status AS resolution_status, res.res_note,
-        req.infrastructure, req.location,
+        req.infrastructure, req.location, req.coordinates,
         CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
@@ -253,10 +316,22 @@ if ($reportResult && $reportResult->num_rows > 0) {
         $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
         $priority = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
 
+        // Resolve coordinates for facility matching
+        $rLat = null; $rLng = null;
+        if (!empty($rRow['coordinates'])) {
+            $coordParts = explode(',', $rRow['coordinates']);
+            if (count($coordParts) === 2) {
+                $rLat = (float)trim($coordParts[0]);
+                $rLng = (float)trim($coordParts[1]);
+            }
+        }
+        $rFacility = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
+
         $schedules[] = [
             'id'              => 0,
             'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'        => $rRow['location'] ?? '—',
+            'facility_name'   => $rFacility,
             'schedule_date'   => !empty($startDate) ? date('Y-m-d', strtotime($startDate)) : '',
             'estimated_end_date' => $endDate,
             'starting_date'   => $startDate,
@@ -1060,6 +1135,45 @@ usort($schedules, function($a, $b) {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.schedule-item-facility {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: #1d4ed8;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+.schedule-item-facility svg { opacity: 0.75; flex-shrink: 0; }
+.facility-tag {
+    background: rgba(29,78,216,.08);
+    border: 1px solid rgba(29,78,216,.18);
+    border-radius: 5px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+[data-theme="dark"] .schedule-item-facility { color: #93c5fd; }
+[data-theme="dark"] .facility-tag { background: rgba(147,197,253,.1); border-color: rgba(147,197,253,.22); }
+
+.cal-facility-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: rgba(29,78,216,.08);
+    border: 1px solid rgba(29,78,216,.18);
+    border-radius: 5px;
+    padding: 1px 7px;
+}
+[data-theme="dark"] .cal-facility-tag { color: #93c5fd; background: rgba(147,197,253,.1); border-color: rgba(147,197,253,.22); }
 
 .schedule-item-location {
     font-size: 12px;
@@ -4127,6 +4241,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
                             <span class="searchable sched-location"><?= htmlspecialchars($row['location']) ?></span>
                         </div>
+                        <?php if (!empty($row['facility_name'])): ?>
+                        <div class="schedule-item-facility">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <span class="facility-tag searchable"><?= htmlspecialchars($row['facility_name']) ?></span>
+                        </div>
+                        <?php endif; ?>
                         <div class="schedule-item-badges">
                             <?php if (!empty($row['category']) && $row['category'] !== 'Infrastructure Report'): ?>
                                 <span class="badge badge-category searchable"><?= htmlspecialchars($row['category']) ?></span>
@@ -5588,12 +5708,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     events.forEach(e => {
                         const key = getStatusKey(e.status_label || '');
                         const repTag = e.rep_id ? ` · REP-${e.rep_id}` : '';
+                        const facilityTag = e.facility_name ? `<span class="cal-facility-tag">🏢 ${escH(e.facility_name)}</span>` : '';
                         html += `
                             <div class="cal-task-row">
                                 <span class="cal-task-dot ${key}"></span>
                                 <div class="cal-task-info">
                                     <div class="cal-task-name" title="${escH(e.task)}">${escH(e.task)}</div>
                                     <div class="cal-task-meta">📍 ${escH(e.location || '—')} · ${escH(e.status_label || 'Scheduled')}${escH(repTag)}</div>
+                                    ${facilityTag}
                                 </div>
                             </div>`;
                     });

@@ -7,6 +7,36 @@
 
 require_once __DIR__ . '/../db.php';
 
+// ══════════════════════════════════════════════════════════════════
+//  CULIAT FACILITIES — proximity & keyword matching
+// ══════════════════════════════════════════════════════════════════
+define('FACILITY_RADIUS_M', 200);
+
+const CULIAT_FACILITIES = [
+    ['name' => 'Cassanova Multi-Purpose Building',                 'lat' => 14.69679995, 'lng' => 121.07769286, 'keywords' => ['cassanova', 'cassanova multi', 'cassanova bldg']],
+    ['name' => 'Bernardo Court',                                   'lat' => 14.64406945, 'lng' => 121.04843732, 'keywords' => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo']],
+    ['name' => 'Pael Multipurpose Building',                       'lat' => 14.65472125, 'lng' => 121.06631024, 'keywords' => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road']],
+    ['name' => 'Sanville Covered Court & Multipurpose Building',   'lat' => 14.67100400, 'lng' => 121.04766600, 'keywords' => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle']],
+];
+
+function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): string {
+    $locLower = strtolower($locationText);
+    foreach (CULIAT_FACILITIES as $facility) {
+        if ($lat !== null && $lng !== null) {
+            $dLat = deg2rad($facility['lat'] - $lat);
+            $dLng = deg2rad($facility['lng'] - $lng);
+            $a    = sin($dLat/2)**2 + cos(deg2rad($lat)) * cos(deg2rad($facility['lat'])) * sin($dLng/2)**2;
+            if (6371000 * 2 * asin(sqrt($a)) <= FACILITY_RADIUS_M) return $facility['name'];
+        }
+        foreach ($facility['keywords'] as $kw) {
+            if (str_contains($locLower, $kw)) return $facility['name'];
+        }
+    }
+    return '';
+}
+
+
+
 // --- CORS & Content Headers ---
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: https://cprf.infragovservices.com');
@@ -114,6 +144,7 @@ while ($row = $result->fetch_assoc()) {
         'rep_id'                     => null,
         'task'                       => $row['task'],
         'location'                   => $row['location'],
+        'facility_name'              => getMatchingFacility($row['location'] ?? '', null, null),
         'category'                   => $row['category'],
         'priority'                   => $priorityLabel,
         'status'                     => $statusLabel,
@@ -141,6 +172,7 @@ $stmt2 = $conn->prepare("
         res.res_note,
         req.infrastructure,
         req.location,
+        req.coordinates,
         CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
@@ -191,12 +223,20 @@ if ($result2) {
         $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
         $priority    = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
 
+        // Parse coordinates for facility matching
+        $rLat = null; $rLng = null;
+        if (!empty($rRow['coordinates'])) {
+            $cp = explode(',', $rRow['coordinates']);
+            if (count($cp) === 2) { $rLat = (float)trim($cp[0]); $rLng = (float)trim($cp[1]); }
+        }
+
         $data[] = [
             'source'                    => 'report',
             'sched_id'                  => null,
             'rep_id'                    => (int)$rRow['rep_id'],
             'task'                      => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'                  => $rRow['location'] ?? '',
+            'facility_name'             => getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng),
             'category'                  => 'Infrastructure Report',
             'priority'                  => $priority,
             'status'                    => $statusLabel,
