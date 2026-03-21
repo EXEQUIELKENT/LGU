@@ -68,6 +68,22 @@ $data = [];
 // ══════════════════════════════════════════════════════════════════
 //  SOURCE 1 — maintenance_schedule table (Culiat locations only)
 // ══════════════════════════════════════════════════════════════════
+// Location filter covers Culiat barangay + all known facility keywords/addresses
+$locationFilters = [
+    '%Culiat%',
+    '%Cassanova%',
+    '%Nagkaisang Nayon%',
+    '%Bernardo Court%',
+    '%Sitio Mabilog%',
+    '%Pael%',
+    '%Cebu Rd%',
+    '%Cebu Road%',
+    '%Sanville%',
+    '%Cenacle%',
+];
+$placeholders = implode(',', array_fill(0, count($locationFilters), '?'));
+$types        = str_repeat('s', count($locationFilters));
+
 $stmt = $conn->prepare("
     SELECT
         sched_id,
@@ -82,7 +98,7 @@ $stmt = $conn->prepare("
         estimated_completion_date,
         created_at
     FROM maintenance_schedule
-    WHERE location LIKE ?
+    WHERE " . implode(' OR ', array_fill(0, count($locationFilters), 'location LIKE ?')) . "
     ORDER BY starting_date ASC
 ");
 
@@ -92,8 +108,7 @@ if (!$stmt) {
     exit;
 }
 
-$culiatFilter = '%Culiat%';
-$stmt->bind_param('s', $culiatFilter);
+$stmt->bind_param($types, ...$locationFilters);
 $stmt->execute();
 $result = $stmt->get_result();
 $stmt->close();
@@ -160,6 +175,7 @@ while ($row = $result->fetch_assoc()) {
 // ══════════════════════════════════════════════════════════════════
 //  SOURCE 2 — report-based schedules (requests with Culiat location)
 // ══════════════════════════════════════════════════════════════════
+$s2Where  = implode(' OR ', array_fill(0, count($locationFilters), 'req.location LIKE ?'));
 $stmt2 = $conn->prepare("
     SELECT
         r.rep_id,
@@ -180,7 +196,7 @@ $stmt2 = $conn->prepare("
     LEFT JOIN employees            e   ON r.engineer_id = e.user_id
     WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion')
       AND r.starting_date IS NOT NULL
-      AND req.location LIKE ?
+      AND ({$s2Where})
     ORDER BY r.starting_date ASC
 ");
 
@@ -190,7 +206,7 @@ if (!$stmt2) {
     exit;
 }
 
-$stmt2->bind_param('s', $culiatFilter);
+$stmt2->bind_param($types, ...$locationFilters);
 $stmt2->execute();
 $result2 = $stmt2->get_result();
 $stmt2->close();
