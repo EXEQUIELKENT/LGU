@@ -85,6 +85,25 @@ const CULIAT_FACILITIES = [
  * Returns facility name if coords are within radius, or if location text
  * contains a keyword for that facility. Returns '' if no match.
  */
+
+/**
+ * Returns true if this schedule record is exposed via the CPRF API integration.
+ * Mirrors the location filter used in maintenance-schedules.php.
+ */
+function isSharedWithCPRF(string $location): bool {
+    $loc = strtolower($location);
+    $patterns = [
+        'culiat', 'cassanova', 'nagkaisang nayon',
+        'bernardo court', 'sitio mabilog',
+        'pael', 'cebu rd', 'cebu road',
+        'sanville', 'cenacle',
+    ];
+    foreach ($patterns as $p) {
+        if (str_contains($loc, $p)) return true;
+    }
+    return false;
+}
+
 function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): string {
     $locLower = strtolower($locationText);
 
@@ -256,6 +275,7 @@ if ($result && $result->num_rows > 0) {
         $row['budget_display']= '';
         // Facility matching for maintenance_schedule rows (no coordinates — keyword only)
         $row['facility_name'] = getMatchingFacility($row['location'] ?? '', null, null);
+        $row['is_shared']     = isSharedWithCPRF($row['location'] ?? '');
         $row['rep_id']        = 0;
 
         $schedules[] = $row;
@@ -326,12 +346,14 @@ if ($reportResult && $reportResult->num_rows > 0) {
             }
         }
         $rFacility = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
+        $rShared   = isSharedWithCPRF($rRow['location'] ?? '');
 
         $schedules[] = [
             'id'              => 0,
             'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'        => $rRow['location'] ?? '—',
             'facility_name'   => $rFacility,
+            'is_shared'       => $rShared,
             'schedule_date'   => !empty($startDate) ? date('Y-m-d', strtotime($startDate)) : '',
             'estimated_end_date' => $endDate,
             'starting_date'   => $startDate,
@@ -1159,6 +1181,19 @@ usort($schedules, function($a, $b) {
 }
 [data-theme="dark"] .schedule-item-facility { color: #93c5fd; }
 [data-theme="dark"] .facility-tag { background: rgba(147,197,253,.1); border-color: rgba(147,197,253,.22); }
+
+.badge-shared-cprf {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(99,102,241,.1); color: #4f46e5;
+    border: 1px solid rgba(99,102,241,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .badge-shared-cprf {
+    background: rgba(129,140,248,.12); color: #a5b4fc;
+    border-color: rgba(129,140,248,.28);
+}
 
 .cal-facility-tag {
     display: inline-flex;
@@ -4259,6 +4294,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                     💰 <?= htmlspecialchars($row['budget_display']) ?>
                                 </span>
                             <?php endif; ?>
+                            <?php if (!empty($row['is_shared'])): ?>
+                                <span class="badge badge-shared-cprf" title="This schedule is shared with the CPRF integration">
+                                    🔗 CPRF
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <!-- Dates shown only on desktop (below badges) -->
                         <div class="schedule-item-dates-desktop">
@@ -5709,6 +5749,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const key = getStatusKey(e.status_label || '');
                         const repTag = e.rep_id ? ` · REP-${e.rep_id}` : '';
                         const facilityTag = e.facility_name ? `<span class="cal-facility-tag">🏢 ${escH(e.facility_name)}</span>` : '';
+                        const sharedTag   = e.is_shared ? `<span class="badge-shared-cprf" style="margin-top:3px;display:inline-flex;">🔗 Shared with CPRF</span>` : '';
                         html += `
                             <div class="cal-task-row">
                                 <span class="cal-task-dot ${key}"></span>
@@ -5716,6 +5757,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="cal-task-name" title="${escH(e.task)}">${escH(e.task)}</div>
                                     <div class="cal-task-meta">📍 ${escH(e.location || '—')} · ${escH(e.status_label || 'Scheduled')}${escH(repTag)}</div>
                                     ${facilityTag}
+                                    ${sharedTag}
                                 </div>
                             </div>`;
                     });
