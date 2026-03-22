@@ -1005,11 +1005,19 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 }
 .emc-section-label:first-child { margin-top: 2px; }
 
-.emc-grid {
+.emc-grid-wrap {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
 }
+.emc-grid-wrap .emc-section-label {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+.emc-grid-wrap .emc-section-label:first-child { margin-top: 0; }
+/* legacy compatibility */
+.emc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .emc-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 
 .emc-card {
@@ -1034,12 +1042,13 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .emc-card::before {
     content: '';
     position: absolute;
-    top: -14px; right: -14px;
-    width: 80px; height: 80px;
+    top: 4px; right: 6px;
+    width: 64px; height: 64px;
     border-radius: 50%;
-    opacity: .35;
+    opacity: .45;
     transition: opacity .3s ease;
     pointer-events: none;
+    z-index: 0;
 }
 .emc-card:hover::before { opacity: .55; }
 [data-theme="dark"] .emc-card::before       { opacity: .18; }
@@ -1060,6 +1069,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
+    position: relative; z-index: 1;
 }
 .emc-title {
     font-size: 11px;
@@ -1069,6 +1079,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     letter-spacing: .5px;
     line-height: 1.3;
     flex: 1;
+    position: relative; z-index: 1;
 }
 .emc-icon {
     width: 40px; height: 40px;
@@ -1077,6 +1088,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     font-size: 17px;
     flex-shrink: 0;
     transition: transform .25s ease;
+    position: relative; z-index: 1;
 }
 .emc-card:hover .emc-icon { transform: scale(1.08) rotate(4deg); }
 .emc-icon i {
@@ -1116,6 +1128,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     color: var(--text-primary, #1a1a2e);
     line-height: 1;
     letter-spacing: -1px;
+    position: relative; z-index: 1;
 }
 [data-theme="dark"] .emc-value { color: var(--text-primary, #fff); }
 
@@ -1126,6 +1139,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     display: flex;
     align-items: center;
     gap: 5px;
+    position: relative; z-index: 1;
 }
 .emc-sub-icon { font-size: 12px; }
 
@@ -1133,6 +1147,29 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .emc-sub.warning  { color: var(--emc-orange, #ff9800); }
 .emc-sub.danger   { color: var(--emc-red, #f44336); }
 .emc-sub.neutral  { color: var(--text-secondary, #64748b); }
+/* ── emc metrics responsive — 2-col flat flow on mobile ── */
+@media (max-width: 560px) {
+    .eng-det-body .emc-grid-wrap {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px;
+    }
+    .eng-det-body .emc-grid-wrap .emc-section-label {
+        grid-column: 1 / -1;
+        margin-top: 6px;
+    }
+    .eng-det-body .emc-card {
+        padding: 11px 12px 10px;
+    }
+    .eng-det-body .emc-card::before {
+        width: 52px; height: 52px;
+        top: 3px; right: 4px;
+        opacity: .35;
+    }
+    .eng-det-body .emc-value { font-size: 26px; }
+    .eng-det-body .emc-icon  { width: 34px; height: 34px; font-size: 14px; border-radius: 9px; }
+    .eng-det-body .emc-title { font-size: 10px; }
+    .eng-det-body .emc-sub   { font-size: 10px; }
+}
 [data-theme="dark"] .rep-eng-metric-pill.m-completed { background:rgba(34,197,94,.18);  color:#4ade80; }
 [data-theme="dark"] .rep-eng-metric-pill.m-ongoing   { background:rgba(245,158,11,.18); color:#fbbf24; }
 [data-theme="dark"] .rep-eng-metric-pill.m-scheduled { background:rgba(99,102,241,.18); color:#a5b4fc; }
@@ -2406,26 +2443,22 @@ function renderEngMetricsFull(m, containerId) {
     const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
     const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
 
+    /* Single flat grid — section labels span full width via CSS grid-column:1/-1
+       All cards flow naturally: desktop 3-col, mobile 2-col, no blank gaps */
     el.innerHTML = `
-        <div class="emc-section-label">Report Activity</div>
-        <div class="emc-grid">
-            ${card('green',  'fas fa-check-circle',   m.completed,        'Completed',       '↗', 'Finished reports',       completedSub)}
-            ${card('orange', 'fas fa-spinner',         m.ongoing,          'Ongoing',         '●', 'Currently in progress',  'neutral')}
-            ${card('red',    'fas fa-clock',            m.delayed,          'Delayed',         '↘', 'Past due date',          delayedSub)}
-        </div>
-        <div class="emc-grid" style="margin-top:10px;">
-            ${card('indigo', 'fas fa-calendar-check', m.scheduled,        'Scheduled',       '▸', 'Pending reports queue',  'neutral')}
-            ${card('teal',   'fas fa-clipboard-list', m.current_assigned, 'Curr. Assigned',  '▸', 'In current reports',     'neutral')}
-            ${card('blue',   'far fa-calendar-alt',   m.pending_assigned, 'Pend. Assigned',  '▸', 'In pending reports',     'neutral')}
-        </div>
-        <div class="emc-section-label" style="margin-top:14px;">Behaviour</div>
-        <div class="emc-grid ${m.pending_completion > 0 ? '' : 'cols-2'}">
-            ${card('amber',  'fas fa-times-circle',    m.declined_count,   'Times Declined',           '↻', 'Engineer declined',      declinedSub)}
-            ${card('purple', 'fas fa-undo-alt',         retCurrent,         'Returned (Approval)',      '↩', 'Admin sent back to revise', retCurSub)}
+        <div class="emc-grid-wrap">
+            <div class="emc-section-label">Report Activity</div>
+            ${card('green',  'fas fa-check-circle',    m.completed,        'Completed',              '↗', 'Finished reports',          completedSub)}
+            ${card('orange', 'fas fa-spinner',          m.ongoing,          'Ongoing',                '●', 'Currently in progress',     'neutral')}
+            ${card('red',    'fas fa-clock',             m.delayed,          'Delayed',                '↘', 'Past due date',             delayedSub)}
+            ${card('indigo', 'fas fa-calendar-check',   m.scheduled,        'Scheduled',              '▸', 'Pending reports queue',     'neutral')}
+            ${card('teal',   'fas fa-clipboard-list',   m.current_assigned, 'Curr. Assigned',         '▸', 'In current reports',        'neutral')}
+            ${card('blue',   'far fa-calendar-alt',     m.pending_assigned, 'Pend. Assigned',         '▸', 'In pending reports',        'neutral')}
+            <div class="emc-section-label">Behaviour</div>
+            ${card('amber',  'fas fa-times-circle',     m.declined_count,   'Times Declined',         '↻', 'Engineer declined',         declinedSub)}
+            ${card('purple', 'fas fa-undo-alt',          retCurrent,         'Returned (Approval)',    '↩', 'Admin sent back to revise', retCurSub)}
+            ${card('purple', 'fas fa-ban',               retPending,         'Returned (Not Done)',    '↩', 'Admin marked incomplete',   retPenSub)}
             ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
-        </div>
-        <div class="emc-grid cols-2" style="margin-top:10px;">
-            ${card('purple', 'fas fa-ban',             retPending,         'Returned (Not Done)',      '↩', 'Admin marked incomplete',   retPenSub)}
         </div>`;
 }
 

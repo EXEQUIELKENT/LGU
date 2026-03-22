@@ -3979,9 +3979,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                  <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
             <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
-                    <circle cx="50" cy="36" r="20" fill="#2563eb"/>
-                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/>
+                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
                 </svg>
             </span>
         </div>
@@ -4827,12 +4827,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 }
 .emc-section-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary,#64748b);opacity:.65;margin:14px 0 8px}
 .emc-section-label:first-child{margin-top:2px}
-.emc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.emc-grid-wrap{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.emc-grid-wrap .emc-section-label{grid-column:1/-1;margin-top:10px;margin-bottom:0}.emc-grid-wrap .emc-section-label:first-child{margin-top:0}.emc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .emc-grid.cols-2{grid-template-columns:repeat(2,1fr)}
 .emc-card{background:var(--emc-card-bg,#fff);border-radius:16px;padding:16px 18px 14px;box-shadow:0 4px 16px var(--shadow-color,rgba(0,0,0,.15));border:1px solid var(--border-color,rgba(0,0,0,.08));position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column;gap:6px}
 .emc-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px var(--shadow-color,rgba(0,0,0,.2))}
-.emc-card::before{content:'';position:absolute;top:-14px;right:-14px;width:80px;height:80px;border-radius:50%;opacity:.35;transition:opacity .3s;pointer-events:none}
-.emc-card:hover::before{opacity:.55}
+.emc-card::before{content:'';position:absolute;top:4px;right:6px;width:64px;height:64px;border-radius:50%;opacity:.45;transition:opacity .3s;pointer-events:none;z-index:0}
+.emc-card:hover::before{opacity:.60}
 [data-theme="dark"] .emc-card::before{opacity:.18}
 [data-theme="dark"] .emc-card:hover::before{opacity:.28}
 .emc-card.emc-green::before{background:var(--emc-green)}
@@ -4843,9 +4843,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 .emc-card.emc-purple::before{background:var(--emc-purple)}
 .emc-card.emc-amber::before{background:var(--emc-amber)}
 .emc-card.emc-indigo::before{background:var(--emc-indigo)}
-.emc-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.emc-title{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:.5px;line-height:1.3;flex:1}
-.emc-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:transform .25s}
+.emc-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;position:relative;z-index:1}
+.emc-title{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:.5px;line-height:1.3;flex:1;position:relative;z-index:1}
+.emc-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:transform .25s;position:relative;z-index:1}
 .emc-card:hover .emc-icon{transform:scale(1.08) rotate(4deg)}
 .emc-icon i{color:rgba(20,20,40,.80);-webkit-text-stroke:2px rgba(0,0,0,.75);paint-order:stroke fill}
 [data-theme="dark"] .emc-icon i{color:#fff;-webkit-text-stroke:2px rgba(0,0,0,.75);paint-order:stroke fill}
@@ -4865,13 +4865,49 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 [data-theme="dark"] .emc-card.emc-purple .emc-icon{border-color:rgba(186,104,200,.85)}
 [data-theme="dark"] .emc-card.emc-amber  .emc-icon{border-color:rgba(255,167,38,.85)}
 [data-theme="dark"] .emc-card.emc-indigo .emc-icon{border-color:rgba(121,134,203,.85)}
-.emc-value{font-size:32px;font-weight:700;color:var(--text-primary,#1a1a2e);line-height:1;letter-spacing:-1px}
-.emc-sub{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);display:flex;align-items:center;gap:5px}
+.emc-value{font-size:32px;font-weight:700;color:var(--text-primary,#1a1a2e);line-height:1;letter-spacing:-1px;position:relative;z-index:1}
+.emc-sub{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);display:flex;align-items:center;gap:5px;position:relative;z-index:1}
 .emc-sub-icon{font-size:12px}
 .emc-sub.positive{color:var(--emc-green,#4caf50)}
 .emc-sub.warning{color:var(--emc-orange,#ff9800)}
 .emc-sub.danger{color:var(--emc-red,#f44336)}
 .emc-sub.neutral{color:var(--text-secondary,#64748b)}
+@media(max-width:560px){
+.eng-det-body .emc-grid-wrap{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+.eng-det-body .emc-grid-wrap .emc-section-label{grid-column:1/-1;margin-top:6px}
+.eng-det-body .emc-card{padding:11px 12px 10px}
+.eng-det-body .emc-card::before{width:52px;height:52px;top:3px;right:4px;opacity:.35}
+.eng-det-body .emc-value{font-size:26px}
+.eng-det-body .emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
+.eng-det-body .emc-title{font-size:10px}
+.eng-det-body .emc-sub{font-size:10px}
+}
+
+.eng-det-body .emc-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px;margin-top:0!important}
+.eng-det-body .emc-grid.cols-2{grid-template-columns:repeat(2,1fr)!important}
+.eng-det-body .emc-section-label{margin:8px 0 6px}
+.eng-det-body .emc-card{padding:11px 12px 10px}
+.eng-det-body .emc-value{font-size:26px}
+.eng-det-body .emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
+.eng-det-body .emc-title{font-size:10px}
+.eng-det-body .emc-sub{font-size:10px}
+}
+.eng-det-body .emc-grid[style]{margin-top:0!important}
+.eng-det-body .emc-card{padding:11px 12px 10px}
+.eng-det-body .emc-value{font-size:26px}
+.eng-det-body .emc-title{font-size:10px}
+.eng-det-body .emc-sub{font-size:10px}
+.eng-det-body .emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
+.eng-det-body .emc-section-label{margin:8px 0 6px}
+}
+@media(max-width:520px){
+.emc-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px}
+.emc-card{padding:11px 12px 10px}
+.emc-value{font-size:26px}
+.emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
+.emc-title{font-size:9.5px}
+.emc-sub{font-size:10px}
+}
 
 /* ── Shared eng-det-* classes for engineer profile modal ── */
 .eng-det-section-title {
@@ -6619,55 +6655,33 @@ function renderEngMetricsFull(m, containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
     if (!m) {
-        el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:8px 0;display:flex;align-items:center;gap:6px;">' +
-                       '<span style="font-size:16px;">⚠️</span> Could not load metrics.</div>';
+        el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:8px 0;display:flex;align-items:center;gap:6px;"><span style="font-size:16px;">⚠️</span> Could not load metrics.</div>';
         return;
     }
-
     const retCurrent = m.admin_returned_current ?? m.admin_rejected ?? 0;
     const retPending = m.admin_returned_pending ?? 0;
-
     function card(color, icon, value, title, subIcon, subText, subClass) {
-        return `<div class="emc-card emc-${color}">
-            <div class="emc-header">
-                <div class="emc-title">${title}</div>
-                <div class="emc-icon"><i class="${icon}"></i></div>
-            </div>
-            <div class="emc-value">${value}</div>
-            <div class="emc-sub ${subClass}">
-                <span class="emc-sub-icon">${subIcon}</span>
-                <span>${subText}</span>
-            </div>
-        </div>`;
+        return `<div class="emc-card emc-${color}"><div class="emc-header"><div class="emc-title">${title}</div><div class="emc-icon"><i class="${icon}"></i></div></div><div class="emc-value">${value}</div><div class="emc-sub ${subClass}"><span class="emc-sub-icon">${subIcon}</span><span>${subText}</span></div></div>`;
     }
-
     const completedSub = m.completed > 0 ? 'positive' : 'neutral';
     const delayedSub   = m.delayed   > 0 ? 'danger'   : 'neutral';
     const declinedSub  = m.declined_count > 0 ? 'warning' : 'neutral';
     const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
     const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
-
-    el.innerHTML = `
+    el.innerHTML = `<div class="emc-grid-wrap">
         <div class="emc-section-label">Report Activity</div>
-        <div class="emc-grid">
-            ${card('green',  'fas fa-check-circle',   m.completed,        'Completed',       '↗', 'Finished reports',       completedSub)}
-            ${card('orange', 'fas fa-spinner',         m.ongoing,          'Ongoing',         '●', 'Currently in progress',  'neutral')}
-            ${card('red',    'fas fa-clock',            m.delayed,          'Delayed',         '↘', 'Past due date',          delayedSub)}
-        </div>
-        <div class="emc-grid" style="margin-top:10px;">
-            ${card('indigo', 'fas fa-calendar-check', m.scheduled,        'Scheduled',       '▸', 'Pending reports queue',  'neutral')}
-            ${card('teal',   'fas fa-clipboard-list', m.current_assigned, 'Curr. Assigned',  '▸', 'In current reports',     'neutral')}
-            ${card('blue',   'far fa-calendar-alt',   m.pending_assigned, 'Pend. Assigned',  '▸', 'In pending reports',     'neutral')}
-        </div>
-        <div class="emc-section-label" style="margin-top:14px;">Behaviour</div>
-        <div class="emc-grid ${m.pending_completion > 0 ? '' : 'cols-2'}">
-            ${card('amber',  'fas fa-times-circle',    m.declined_count,   'Times Declined',           '↻', 'Engineer declined',      declinedSub)}
-            ${card('purple', 'fas fa-undo-alt',         retCurrent,         'Returned (Approval)',      '↩', 'Admin sent back to revise', retCurSub)}
-            ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
-        </div>
-        <div class="emc-grid cols-2" style="margin-top:10px;">
-            ${card('purple', 'fas fa-ban',             retPending,         'Returned (Not Done)',      '↩', 'Admin marked incomplete',   retPenSub)}
-        </div>`;
+        ${card('green','fas fa-check-circle',m.completed,'Completed','↗','Finished reports',completedSub)}
+        ${card('orange','fas fa-spinner',m.ongoing,'Ongoing','●','Currently in progress','neutral')}
+        ${card('red','fas fa-clock',m.delayed,'Delayed','↘','Past due date',delayedSub)}
+        ${card('indigo','fas fa-calendar-check',m.scheduled,'Scheduled','▸','Pending reports queue','neutral')}
+        ${card('teal','fas fa-clipboard-list',m.current_assigned,'Curr. Assigned','▸','In current reports','neutral')}
+        ${card('blue','far fa-calendar-alt',m.pending_assigned,'Pend. Assigned','▸','In pending reports','neutral')}
+        <div class="emc-section-label">Behaviour</div>
+        ${card('amber','fas fa-times-circle',m.declined_count,'Times Declined','↻','Engineer declined',declinedSub)}
+        ${card('purple','fas fa-undo-alt',retCurrent,'Returned (Approval)','↩','Admin sent back to revise',retCurSub)}
+        ${card('purple','fas fa-ban',retPending,'Returned (Not Done)','↩','Admin marked incomplete',retPenSub)}
+        ${m.pending_completion > 0 ? card('teal','fas fa-hourglass-half',m.pending_completion,'Pend. Completion','⏳','Awaiting admin review','neutral') : ''}
+    </div>`;
 }
 let _schedEngCache = null;
 
