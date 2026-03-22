@@ -1505,9 +1505,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                  <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
             <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
-                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
-                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                    <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#2563eb"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/>
                 </svg>
             </span>
         </div>

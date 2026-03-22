@@ -296,7 +296,8 @@ $reportSql = "
         r.engineer_id, r.budget,
         res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.coordinates,
-        CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+        CONCAT(e.first_name, ' ', e.last_name) AS engineer_name,
+        e.profile_picture AS engineer_pic
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
     LEFT JOIN requests             req ON res.req_id = req.req_id
@@ -363,6 +364,8 @@ if ($reportResult && $reportResult->num_rows > 0) {
             'category'        => 'Infrastructure Report',
             'assigned_team'   => '',
             'engineer_name'   => trim($rRow['engineer_name'] ?? '') ?: '—',
+            'engineer_id'     => (int)($rRow['engineer_id'] ?? 0),
+            'engineer_pic'    => $rRow['engineer_pic'] ?? '',
             'budget_raw'      => (float)($rRow['budget'] ?? 0),
             'budget_display'  => '₱' . number_format((float)($rRow['budget'] ?? 0), 2),
             'rep_id'          => (int)$rRow['rep_id'],
@@ -3976,9 +3979,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                  <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
             <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
-                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
-                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                    <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#2563eb"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/>
                 </svg>
             </span>
         </div>
@@ -4359,6 +4362,27 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
+
+<!-- ══════════════════════════════════════════════
+     SCHED ENGINEER DETAILS MODAL
+══════════════════════════════════════════════ -->
+<div id="schedEngDetailsBackdrop">
+    <div id="schedEngDetailsModal">
+        <div class="sched-eng-det-band"></div>
+        <div class="sched-eng-det-header">
+            <div id="schedEngDetAvatarWrap" class="sched-eng-det-avatar-wrap"></div>
+            <div style="flex:1;min-width:0;">
+                <div class="eng-det-name" id="schedEngDetName"></div>
+                <div class="eng-det-discipline" style="color:#43a047;" id="schedEngDetDiscipline"></div>
+            </div>
+            <button class="sched-eng-det-close" id="schedEngDetClose">&#215;</button>
+        </div>
+        <div class="sched-eng-det-body" id="schedEngDetBody"></div>
+        <div class="sched-eng-det-footer">
+            <button class="sched-eng-det-close-btn" id="schedEngDetCloseBtn">Close</button>
+        </div>
+    </div>
+</div>
 <!-- Task Detail Modal -->
 <div id="taskModal" class="modal hidden">
     <div class="modal-content">
@@ -4772,6 +4796,246 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ══════════════════════════════════════════════
+   SCHED — Engineer profile button + details modal
+══════════════════════════════════════════════ */
+
+
+/* emc-* metric card styles — mirrors employee.php (injected for engineer profile modal) */
+:root {
+    --emc-card-bg:#ffffff;
+    --emc-green:#4caf50;--emc-green-l:#81c784;
+    --emc-blue:#2196f3;--emc-blue-l:#64b5f6;
+    --emc-orange:#ff9800;--emc-orange-l:#ffb74d;
+    --emc-teal:#009688;--emc-teal-l:#4db6ac;
+    --emc-red:#f44336;--emc-red-l:#e57373;
+    --emc-purple:#9c27b0;--emc-purple-l:#ba68c8;
+    --emc-amber:#ff6f00;--emc-amber-l:#ffa000;
+    --emc-indigo:#3f51b5;--emc-indigo-l:#7986cb;
+}
+[data-theme="dark"] {
+    --emc-card-bg:rgba(30,30,30,0.95);
+    --emc-green:#66bb6a;--emc-green-l:#81c784;
+    --emc-blue:#42a5f5;--emc-blue-l:#64b5f6;
+    --emc-orange:#ffa726;--emc-orange-l:#ffb74d;
+    --emc-teal:#26a69a;--emc-teal-l:#4db6ac;
+    --emc-red:#ef5350;--emc-red-l:#e57373;
+    --emc-purple:#ab47bc;--emc-purple-l:#ba68c8;
+    --emc-amber:#ffa000;--emc-amber-l:#ffb300;
+    --emc-indigo:#5c6bc0;--emc-indigo-l:#7986cb;
+}
+.emc-section-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary,#64748b);opacity:.65;margin:14px 0 8px}
+.emc-section-label:first-child{margin-top:2px}
+.emc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.emc-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.emc-card{background:var(--emc-card-bg,#fff);border-radius:16px;padding:16px 18px 14px;box-shadow:0 4px 16px var(--shadow-color,rgba(0,0,0,.15));border:1px solid var(--border-color,rgba(0,0,0,.08));position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column;gap:6px}
+.emc-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px var(--shadow-color,rgba(0,0,0,.2))}
+.emc-card::before{content:'';position:absolute;top:-14px;right:-14px;width:80px;height:80px;border-radius:50%;opacity:.35;transition:opacity .3s;pointer-events:none}
+.emc-card:hover::before{opacity:.55}
+[data-theme="dark"] .emc-card::before{opacity:.18}
+[data-theme="dark"] .emc-card:hover::before{opacity:.28}
+.emc-card.emc-green::before{background:var(--emc-green)}
+.emc-card.emc-blue::before{background:var(--emc-blue)}
+.emc-card.emc-orange::before{background:var(--emc-orange)}
+.emc-card.emc-teal::before{background:var(--emc-teal)}
+.emc-card.emc-red::before{background:var(--emc-red)}
+.emc-card.emc-purple::before{background:var(--emc-purple)}
+.emc-card.emc-amber::before{background:var(--emc-amber)}
+.emc-card.emc-indigo::before{background:var(--emc-indigo)}
+.emc-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.emc-title{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:.5px;line-height:1.3;flex:1}
+.emc-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:transform .25s}
+.emc-card:hover .emc-icon{transform:scale(1.08) rotate(4deg)}
+.emc-icon i{color:rgba(20,20,40,.80);-webkit-text-stroke:2px rgba(0,0,0,.75);paint-order:stroke fill}
+[data-theme="dark"] .emc-icon i{color:#fff;-webkit-text-stroke:2px rgba(0,0,0,.75);paint-order:stroke fill}
+.emc-card.emc-green  .emc-icon{background:linear-gradient(135deg,var(--emc-green),var(--emc-green-l));box-shadow:0 3px 10px rgba(76,175,80,.35);border:2px solid rgba(76,175,80,.55)}
+.emc-card.emc-blue   .emc-icon{background:linear-gradient(135deg,var(--emc-blue),var(--emc-blue-l));box-shadow:0 3px 10px rgba(33,150,243,.35);border:2px solid rgba(33,150,243,.55)}
+.emc-card.emc-orange .emc-icon{background:linear-gradient(135deg,var(--emc-orange),var(--emc-orange-l));box-shadow:0 3px 10px rgba(255,152,0,.35);border:2px solid rgba(255,152,0,.55)}
+.emc-card.emc-teal   .emc-icon{background:linear-gradient(135deg,var(--emc-teal),var(--emc-teal-l));box-shadow:0 3px 10px rgba(0,150,136,.35);border:2px solid rgba(0,150,136,.55)}
+.emc-card.emc-red    .emc-icon{background:linear-gradient(135deg,var(--emc-red),var(--emc-red-l));box-shadow:0 3px 10px rgba(244,67,54,.35);border:2px solid rgba(244,67,54,.55)}
+.emc-card.emc-purple .emc-icon{background:linear-gradient(135deg,var(--emc-purple),var(--emc-purple-l));box-shadow:0 3px 10px rgba(156,39,176,.35);border:2px solid rgba(156,39,176,.55)}
+.emc-card.emc-amber  .emc-icon{background:linear-gradient(135deg,var(--emc-amber),var(--emc-amber-l));box-shadow:0 3px 10px rgba(255,111,0,.35);border:2px solid rgba(255,111,0,.55)}
+.emc-card.emc-indigo .emc-icon{background:linear-gradient(135deg,var(--emc-indigo),var(--emc-indigo-l));box-shadow:0 3px 10px rgba(63,81,181,.35);border:2px solid rgba(63,81,181,.55)}
+[data-theme="dark"] .emc-card.emc-green  .emc-icon{border-color:rgba(102,187,106,.85)}
+[data-theme="dark"] .emc-card.emc-blue   .emc-icon{border-color:rgba(66,165,245,.85)}
+[data-theme="dark"] .emc-card.emc-orange .emc-icon{border-color:rgba(255,167,38,.85)}
+[data-theme="dark"] .emc-card.emc-teal   .emc-icon{border-color:rgba(77,182,172,.85)}
+[data-theme="dark"] .emc-card.emc-red    .emc-icon{border-color:rgba(239,83,80,.85)}
+[data-theme="dark"] .emc-card.emc-purple .emc-icon{border-color:rgba(186,104,200,.85)}
+[data-theme="dark"] .emc-card.emc-amber  .emc-icon{border-color:rgba(255,167,38,.85)}
+[data-theme="dark"] .emc-card.emc-indigo .emc-icon{border-color:rgba(121,134,203,.85)}
+.emc-value{font-size:32px;font-weight:700;color:var(--text-primary,#1a1a2e);line-height:1;letter-spacing:-1px}
+.emc-sub{font-size:11px;font-weight:600;color:var(--text-secondary,#64748b);display:flex;align-items:center;gap:5px}
+.emc-sub-icon{font-size:12px}
+.emc-sub.positive{color:var(--emc-green,#4caf50)}
+.emc-sub.warning{color:var(--emc-orange,#ff9800)}
+.emc-sub.danger{color:var(--emc-red,#f44336)}
+.emc-sub.neutral{color:var(--text-secondary,#64748b)}
+
+/* ── Shared eng-det-* classes for engineer profile modal ── */
+.eng-det-section-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    color: #1b5e20; text-transform: uppercase; margin: 18px 0 12px;
+}
+.eng-det-section-title:first-child { margin-top: 4px; }
+.eng-det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+.eng-det-field-label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; color: var(--text-secondary, #64748b);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px;
+}
+.eng-det-field-value {
+    font-size: 13.5px; color: var(--text-primary, #1a1a2e); line-height: 1.55;
+    word-break: break-word;
+}
+[data-theme="dark"] .eng-det-field-value { color: #e2e8f0; }
+.eng-det-field-single { margin-top: 14px; }
+.eng-det-skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.eng-det-skill-badge {
+    padding: 5px 13px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    background: rgba(46,125,50,.12); color: #1b5e20; border: 1px solid rgba(46,125,50,.3);
+}
+.eng-det-divider { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 16px 0 0; }
+.eng-det-name {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-theme="dark"] .eng-det-name { color: #e2e8f0; }
+.eng-det-discipline {
+    font-size: 12px; color: #43a047; font-weight: 600;
+    margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Metrics classes (minimal subset for sched.php) */
+.eng-metrics-wrap { display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+.eng-metrics-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.eng-metrics-row.cols-2 { grid-template-columns:repeat(2,1fr); }
+.eng-metric-tile {
+    position:relative; background:var(--bg-secondary,rgba(0,0,0,.04));
+    border:1px solid var(--border-color,rgba(0,0,0,.08)); border-radius:12px;
+    padding:10px 12px 10px 14px; overflow:hidden; display:flex; flex-direction:column; gap:3px;
+}
+.eng-metric-tile::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:12px 0 0 12px; }
+.eng-metric-tile.mt-completed::before{background:#22c55e} .eng-metric-tile.mt-ongoing::before{background:#f59e0b}
+.eng-metric-tile.mt-scheduled::before{background:#6366f1} .eng-metric-tile.mt-delayed::before{background:#ef4444}
+.eng-metric-tile.mt-declined::before{background:#f97316}  .eng-metric-tile.mt-rejected::before{background:#8b5cf6}
+.eng-metric-tile.mt-rejected2::before{background:#a855f7} .eng-metric-tile.mt-current::before{background:#ff9800}
+.eng-metric-tile.mt-pending::before{background:#14b8a6}   .eng-metric-tile.mt-completion::before{background:#64748b}
+.eng-metric-num { font-size:20px; font-weight:800; line-height:1; letter-spacing:-0.5px; }
+.eng-metric-tile.mt-completed .eng-metric-num{color:#16a34a} .eng-metric-tile.mt-ongoing .eng-metric-num{color:#d97706}
+.eng-metric-tile.mt-scheduled .eng-metric-num{color:#4f46e5} .eng-metric-tile.mt-delayed .eng-metric-num{color:#dc2626}
+.eng-metric-tile.mt-declined  .eng-metric-num{color:#ea580c} .eng-metric-tile.mt-rejected .eng-metric-num{color:#7c3aed}
+.eng-metric-tile.mt-rejected2 .eng-metric-num{color:#7c3aed} .eng-metric-tile.mt-current .eng-metric-num{color:#e65100}
+.eng-metric-tile.mt-pending   .eng-metric-num{color:#0d9488} .eng-metric-tile.mt-completion .eng-metric-num{color:#475569}
+[data-theme="dark"] .eng-metric-tile.mt-completed .eng-metric-num{color:#4ade80}
+[data-theme="dark"] .eng-metric-tile.mt-ongoing   .eng-metric-num{color:#fbbf24}
+[data-theme="dark"] .eng-metric-tile.mt-scheduled .eng-metric-num{color:#a5b4fc}
+[data-theme="dark"] .eng-metric-tile.mt-delayed   .eng-metric-num{color:#f87171}
+[data-theme="dark"] .eng-metric-tile.mt-declined  .eng-metric-num{color:#fb923c}
+[data-theme="dark"] .eng-metric-tile.mt-rejected  .eng-metric-num{color:#c4b5fd}
+[data-theme="dark"] .eng-metric-tile.mt-rejected2 .eng-metric-num{color:#d8b4fe}
+[data-theme="dark"] .eng-metric-tile.mt-current   .eng-metric-num{color:#ffb74d}
+[data-theme="dark"] .eng-metric-tile.mt-pending   .eng-metric-num{color:#5eead4}
+[data-theme="dark"] .eng-metric-tile.mt-completion .eng-metric-num{color:#94a3b8}
+.eng-metric-lbl { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--text-secondary,#64748b); line-height:1; }
+.eng-metrics-divider-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--text-secondary,#94a3b8); opacity:.6; margin:6px 0 0; }
+.eng-metrics-loading { font-size:12px; color:var(--text-secondary); opacity:.65; padding:6px 0; display:flex; align-items:center; gap:6px; }
+
+.sched-eng-profile-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid rgba(46,125,50,.45);
+    background: rgba(255,255,255,.92);
+    cursor: pointer; padding: 0; overflow: hidden; flex-shrink: 0;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    outline: none; vertical-align: middle;
+}
+.sched-eng-profile-btn:hover {
+    border-color: #2e7d32;
+    box-shadow: 0 2px 10px rgba(46,125,50,.35);
+    transform: scale(1.12);
+}
+.sched-eng-profile-btn img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 50%; display: block;
+}
+.sched-eng-profile-btn svg { width: 100%; height: 100%; display: block; }
+[data-theme="dark"] .sched-eng-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(46,125,50,.4);
+}
+
+/* Engineer Details Modal — sched.php version */
+#schedEngDetailsBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9000;
+}
+#schedEngDetailsBackdrop.show { display: flex; }
+#schedEngDetailsModal {
+    background: var(--bg-primary, #fff);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.22), 0 0 0 1px rgba(0,0,0,.05);
+    width: 420px; max-width: 94vw; max-height: 88vh;
+    display: flex; flex-direction: column;
+    animation: schedEngDetailsPop .28s cubic-bezier(.34,1.56,.64,1) forwards;
+    overflow: hidden;
+}
+@media (min-width: 769px) {
+    #schedEngDetailsModal { width: 620px; }
+    #schedEngDetailsModal .eng-det-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+@keyframes schedEngDetailsPop {
+    from { transform: translateY(22px) scale(.93); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+[data-theme="dark"] #schedEngDetailsModal {
+    background: rgba(24,24,30,.98);
+    box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08);
+}
+.sched-eng-det-band { height: 6px; width: 100%; background: linear-gradient(90deg,#2e7d32,#43a047); flex-shrink: 0; }
+.sched-eng-det-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 22px 12px; flex-shrink: 0;
+}
+.sched-eng-det-avatar-wrap {
+    width: 62px; height: 62px; border-radius: 50%;
+    flex-shrink: 0; overflow: hidden;
+    border: 2.5px solid #2e7d32;
+    box-shadow: 0 4px 12px rgba(46,125,50,.25);
+}
+.sched-eng-det-avatar-wrap img {
+    width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%;
+}
+.sched-eng-det-close {
+    background: none; border: none; font-size: 24px;
+    color: var(--text-secondary, #64748b); cursor: pointer;
+    width: 34px; height: 34px; display: flex; align-items: center;
+    justify-content: center; border-radius: 8px; transition: all .2s; flex-shrink: 0;
+}
+.sched-eng-det-close:hover { background: rgba(46,125,50,.1); color: #2e7d32; }
+.sched-eng-det-body {
+    padding: 4px 22px 20px; overflow-y: auto; flex: 1;
+    scrollbar-width: thin; scrollbar-color: #43a047 rgba(0,0,0,.07);
+}
+.sched-eng-det-body::-webkit-scrollbar { width: 5px; }
+.sched-eng-det-body::-webkit-scrollbar-thumb { background: #43a047; border-radius: 3px; }
+.sched-eng-det-footer {
+    padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08));
+    flex-shrink: 0; display: flex; justify-content: center;
+}
+.sched-eng-det-close-btn {
+    padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    background: linear-gradient(135deg,#2e7d32,#1b5e20);
+    color: #fff; box-shadow: 0 4px 12px rgba(46,125,50,.3);
+    transition: all .18s ease;
+}
+.sched-eng-det-close-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(46,125,50,.4); }
+
 </style>
 
 <div id="customDatePickerOverlay">
@@ -5271,7 +5535,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-task-row-icon"><i class="fas fa-user"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Assigned Engineer</div>
-                        <div class="modal-task-row-value">${escH(t.engineer_name)}</div>
+                        <div class="modal-task-row-value" style="display:flex;align-items:center;gap:8px;">
+                            ${t.engineer_id ? `<button class="sched-eng-profile-btn" onclick="schedOpenEngineerProfile(${t.engineer_id})" title="View Engineer Profile">${buildSchedAvatar(t.engineer_pic)}</button>` : ''}
+                            <span>${escH(t.engineer_name)}</span>
+                        </div>
                     </div>
                </div>`
             : '';
@@ -6328,6 +6595,261 @@ document.addEventListener('DOMContentLoaded', function() {
     })();
 
 }); // --- END DOMContentLoaded ---
+</script>
+<script>
+
+// ════════════════════════════════════════════════════════════════
+// SCHED — Engineer Profile Button + Details Modal
+// ════════════════════════════════════════════════════════════════
+
+const SCHED_FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>';
+
+function buildSchedAvatar(picPath) {
+    if (picPath && picPath !== 'profile.png') {
+        return `<img src="${picPath}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                <span style="display:none;width:100%;height:100%;">${SCHED_FALLBACK_SVG}</span>`;
+    }
+    return SCHED_FALLBACK_SVG;
+}
+
+
+// renderEngMetricsFull — used by sched.php engineer profile modal
+function renderEngMetricsFull(m, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!m) {
+        el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:8px 0;display:flex;align-items:center;gap:6px;">' +
+                       '<span style="font-size:16px;">⚠️</span> Could not load metrics.</div>';
+        return;
+    }
+
+    const retCurrent = m.admin_returned_current ?? m.admin_rejected ?? 0;
+    const retPending = m.admin_returned_pending ?? 0;
+
+    function card(color, icon, value, title, subIcon, subText, subClass) {
+        return `<div class="emc-card emc-${color}">
+            <div class="emc-header">
+                <div class="emc-title">${title}</div>
+                <div class="emc-icon"><i class="${icon}"></i></div>
+            </div>
+            <div class="emc-value">${value}</div>
+            <div class="emc-sub ${subClass}">
+                <span class="emc-sub-icon">${subIcon}</span>
+                <span>${subText}</span>
+            </div>
+        </div>`;
+    }
+
+    const completedSub = m.completed > 0 ? 'positive' : 'neutral';
+    const delayedSub   = m.delayed   > 0 ? 'danger'   : 'neutral';
+    const declinedSub  = m.declined_count > 0 ? 'warning' : 'neutral';
+    const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
+    const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
+
+    el.innerHTML = `
+        <div class="emc-section-label">Report Activity</div>
+        <div class="emc-grid">
+            ${card('green',  'fas fa-check-circle',   m.completed,        'Completed',       '↗', 'Finished reports',       completedSub)}
+            ${card('orange', 'fas fa-spinner',         m.ongoing,          'Ongoing',         '●', 'Currently in progress',  'neutral')}
+            ${card('red',    'fas fa-clock',            m.delayed,          'Delayed',         '↘', 'Past due date',          delayedSub)}
+        </div>
+        <div class="emc-grid" style="margin-top:10px;">
+            ${card('indigo', 'fas fa-calendar-check', m.scheduled,        'Scheduled',       '▸', 'Pending reports queue',  'neutral')}
+            ${card('teal',   'fas fa-clipboard-list', m.current_assigned, 'Curr. Assigned',  '▸', 'In current reports',     'neutral')}
+            ${card('blue',   'far fa-calendar-alt',   m.pending_assigned, 'Pend. Assigned',  '▸', 'In pending reports',     'neutral')}
+        </div>
+        <div class="emc-section-label" style="margin-top:14px;">Behaviour</div>
+        <div class="emc-grid ${m.pending_completion > 0 ? '' : 'cols-2'}">
+            ${card('amber',  'fas fa-times-circle',    m.declined_count,   'Times Declined',           '↻', 'Engineer declined',      declinedSub)}
+            ${card('purple', 'fas fa-undo-alt',         retCurrent,         'Returned (Approval)',      '↩', 'Admin sent back to revise', retCurSub)}
+            ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
+        </div>
+        <div class="emc-grid cols-2" style="margin-top:10px;">
+            ${card('purple', 'fas fa-ban',             retPending,         'Returned (Not Done)',      '↩', 'Admin marked incomplete',   retPenSub)}
+        </div>`;
+}
+let _schedEngCache = null;
+
+async function _schedLoadEngineers() {
+    if (_schedEngCache !== null) return _schedEngCache;
+    try {
+        const res  = await fetch('get_engineers.php');
+        const data = await res.json();
+        _schedEngCache = (data.success && data.engineers.length) ? data.engineers : [];
+    } catch(e) { _schedEngCache = []; }
+    return _schedEngCache;
+}
+
+async function schedOpenEngineerProfile(engineerId) {
+    if (!engineerId) return;
+    let eng = null;
+    const engineers = await _schedLoadEngineers();
+    eng = engineers.find(e => e.id == engineerId);
+    if (!eng) {
+        try {
+            const res  = await fetch('get_engineers.php?id=' + encodeURIComponent(engineerId));
+            const data = await res.json();
+            if (data.success && data.engineers && data.engineers.length) {
+                eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
+            }
+        } catch(e) {}
+    }
+    if (!eng) return;
+    _schedPopulateEngModal(eng);
+    document.getElementById('schedEngDetailsBackdrop').classList.add('show');
+}
+
+function _schedPopulateEngModal(eng) {
+    const wrap = document.getElementById('schedEngDetAvatarWrap');
+    if (wrap) {
+        const img = document.createElement('img');
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
+        img.alt = '';
+        const fallback = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>');
+        img.onerror = function() { this.src = fallback; };
+        img.src = eng.profile_picture || fallback;
+        wrap.innerHTML = '';
+        wrap.appendChild(img);
+    }
+    const nameEl = document.getElementById('schedEngDetName');
+    const discEl = document.getElementById('schedEngDetDiscipline');
+    if (nameEl) nameEl.textContent = eng.name || '—';
+    if (discEl) discEl.textContent = eng.engineering_discipline || 'Engineer';
+
+    const fv = (v) => v ? _schedEscH(String(v)) : '<span style="opacity:.5;">—</span>';
+    let html = '';
+
+    html += `<div class="eng-det-section-title">👤 Personal Information</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label">Full Name</div>
+                 <div class="eng-det-field-value">${fv(eng.full_name || eng.name)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label">Gender</div>
+                 <div class="eng-det-field-value">${fv(eng.gender)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label">Date of Birth</div>
+                 <div class="eng-det-field-value">${fv(eng.date_of_birth)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label">Contact Number</div>
+                 <div class="eng-det-field-value">${fv(eng.contact_number)}</div>
+               </div>
+               <div style="grid-column:1/-1">
+                 <div class="eng-det-field-label">Email Address</div>
+                 <div class="eng-det-field-value">${fv(eng.email)}</div>
+               </div>
+             </div>
+             <div class="eng-det-field-single">
+               <div class="eng-det-field-label">Address</div>
+               <div class="eng-det-field-value">${fv(eng.address)}</div>
+             </div>`;
+
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">🏗️ Professional Details</div>
+             <div class="eng-det-grid">
+               <div>
+                 <div class="eng-det-field-label">Engineering Discipline</div>
+                 <div class="eng-det-field-value">${fv(eng.engineering_discipline)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label">Department</div>
+                 <div class="eng-det-field-value">${fv(eng.department)}</div>
+               </div>
+               <div>
+                 <div class="eng-det-field-label">Years of Experience</div>
+                 <div class="eng-det-field-value">${eng.years_of_experience != null && eng.years_of_experience !== '' ? _schedEscH(String(eng.years_of_experience)) + ' yr(s)' : '<span style="opacity:.5;">—</span>'}</div>
+               </div>
+             </div>`;
+
+    if (eng.areas_of_specialization) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label">Areas of Specialization</div>
+                   <div class="eng-det-field-value">${fv(eng.areas_of_specialization)}</div>
+                 </div>`;
+    }
+
+    const skills = [];
+    if (eng.skill_structural_design) skills.push('Structural Design');
+    if (eng.skill_site_inspection)   skills.push('Site Inspection');
+    if (eng.skill_project_planning)  skills.push('Project Planning');
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">🛠️ Skills & Tools</div>`;
+    if (skills.length) {
+        html += '<div class="eng-det-skills">' + skills.map(s => `<span class="eng-det-skill-badge" style="background:rgba(46,125,50,.12);color:#1b5e20;border-color:rgba(46,125,50,.3);">${s}</span>`).join('') + '</div>';
+    } else {
+        html += '<div class="eng-det-field-value" style="opacity:.5;">No skills listed</div>';
+    }
+    if (eng.cad_software) {
+        html += `<div class="eng-det-field-single">
+                   <div class="eng-det-field-label">CAD Software</div>
+                   <div class="eng-det-field-value">${fv(eng.cad_software)}</div>
+                 </div>`;
+    }
+
+    // Metrics section
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">📊 Performance Metrics</div>
+             <div id="schedEngDetMetrics"><div class="eng-metrics-loading"><span style="font-size:16px;">⏳</span> Loading metrics…</div></div>`;
+
+    document.getElementById('schedEngDetBody').innerHTML = html;
+
+    // Async load metrics
+    if (eng.id) {
+        _schedFetchMetrics(eng.id).then(m => {
+            if (typeof renderEngMetricsFull === 'function') {
+                renderEngMetricsFull(m, 'schedEngDetMetrics');
+            } else {
+                // Fallback inline renderer if the function isn't available
+                const el = document.getElementById('schedEngDetMetrics');
+                if (el && m) {
+                    el.innerHTML = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
+                        ✅ Completed: <b>${m.completed}</b> &nbsp;
+                        🔄 Ongoing: <b>${m.ongoing}</b> &nbsp;
+                        📅 Scheduled: <b>${m.scheduled}</b> &nbsp;
+                        ⏰ Delayed: <b>${m.delayed}</b><br>
+                        📋 Current Assigned: <b>${m.current_assigned}</b> &nbsp;
+                        🗓️ Pending Assigned: <b>${m.pending_assigned}</b><br>
+                        🚫 Declined: <b>${m.declined_count}</b> &nbsp;
+                        ↩️ Approval Returns: <b>${m.admin_returned_current ?? m.admin_rejected ?? 0}</b> &nbsp;
+                        ↩️ Not-Done Returns: <b>${m.admin_returned_pending ?? 0}</b>
+                    </div>`;
+                }
+            }
+        });
+    }
+}
+
+async function _schedFetchMetrics(engineerId) {
+    try {
+        const res  = await fetch('get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
+        const data = await res.json();
+        return data.success ? data.metrics : null;
+    } catch(e) { return null; }
+}
+
+function _schedEscH(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Wire close buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const backdrop = document.getElementById('schedEngDetailsBackdrop');
+    const closeX   = document.getElementById('schedEngDetClose');
+    const closeBtn = document.getElementById('schedEngDetCloseBtn');
+    function closeSchedEngModal() {
+        if (backdrop) backdrop.classList.remove('show');
+    }
+    if (closeX)   closeX.addEventListener('click',   closeSchedEngModal);
+    if (closeBtn) closeBtn.addEventListener('click',  closeSchedEngModal);
+    if (backdrop) backdrop.addEventListener('click', function(e) {
+        if (e.target === backdrop) closeSchedEngModal();
+    });
+});
+
 </script>
 </body>
 

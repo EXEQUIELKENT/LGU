@@ -15,19 +15,28 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
     jsonOut(false, 'Unauthorized');
 }
 
-// Office staff, manager, and admins can fetch this list
-$userRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$allowed  = ['office staff', 'manager', 'admin', 'super admin'];
-if (!in_array($userRole, $allowed)) {
+// Office staff, manager, and admins can fetch the full list.
+// Engineers may only fetch their own profile (must pass ?id= matching their session).
+$userRole   = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$sessionId  = (int)($_SESSION['employee_id'] ?? 0);
+$isEngineer = $userRole === 'engineer';
+$allowed    = ['office staff', 'manager', 'admin', 'super admin'];
+
+$singleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($isEngineer) {
+    // Engineers can only request their own record, and must specify their own ID
+    if ($singleId <= 0 || $singleId !== $sessionId) {
+        jsonOut(false, 'Permission denied. Engineers may only view their own profile.');
+    }
+} elseif (!in_array($userRole, $allowed)) {
     jsonOut(false, 'Permission denied.');
 }
 
 require __DIR__ . '/db.php';
 
-// Optional single-engineer lookup — used by the profile button fallback
-// when the caller (e.g. admin) couldn't find the engineer in the bulk cache.
-$singleId   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$idClause   = $singleId > 0 ? ' AND e.user_id = ?' : '';
+// Optional single-engineer lookup
+$idClause = $singleId > 0 ? ' AND e.user_id = ?' : '';
 
 // INNER JOIN with engineer_profiles — engineers without a profile record are excluded entirely
 $stmt = $conn->prepare(

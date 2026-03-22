@@ -570,7 +570,7 @@ function priorityBadge(?string $lvl): string {
 }
 
 function engProfileBtn(int $engineerId, ?string $picPath): string {
-    $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>';
+    $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>';
     $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/' . $picPath);
     if ($hasPic) {
         $src   = htmlspecialchars($picPath);
@@ -680,6 +680,60 @@ foreach ($rows as $row) {
 }
 .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px); }
 .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+/* ── Engineer self-profile button in page header ── */
+.eng-self-profile-wrap {
+    margin-left: auto;
+    display: none; /* shown via JS when IS_ENGINEER */
+    align-items: center;
+    gap: 10px;
+}
+.eng-self-profile-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px 7px 8px;
+    border-radius: 24px;
+    border: 1.5px solid rgba(55,98,200,.38);
+    background: rgba(55,98,200,.07);
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .15s, box-shadow .2s;
+    outline: none;
+    font-size: 13px; font-weight: 700;
+    color: #3762c8;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.eng-self-profile-btn:hover {
+    background: rgba(55,98,200,.14);
+    border-color: #2851b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(55,98,200,.25);
+}
+.eng-self-profile-btn:active { transform: translateY(0); }
+.eng-self-profile-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
+    border: 1.5px solid rgba(55,98,200,.45);
+    background: rgba(55,98,200,.1);
+    display: flex; align-items: center; justify-content: center;
+}
+.eng-self-profile-avatar img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
+}
+.eng-self-profile-avatar svg { width: 100%; height: 100%; display: block; }
+[data-theme="dark"] .eng-self-profile-btn {
+    background: rgba(55,98,200,.12);
+    border-color: rgba(55,98,200,.35);
+    color: #3762c8;
+}
+[data-theme="dark"] .eng-self-profile-btn:hover {
+    background: rgba(55,98,200,.2);
+    border-color: #3762c8;
+}
+@media (max-width: 768px) {
+    .eng-self-profile-btn .eng-self-profile-label { display: none; }
+    .eng-self-profile-btn { padding: 6px; border-radius: 50%; width: 36px; height: 36px; justify-content: center; }
+    .eng-self-profile-avatar { width: 24px; height: 24px; border: none; background: none; }
+}
+
 .page-title { font-size: 28px; color: var(--text-primary); margin: 0; }
 .page-badge {
     background: linear-gradient(135deg, #ff9800, #ffb74d);
@@ -2034,12 +2088,190 @@ select.rep-editable-field { cursor:pointer; }
 .rep-highlight-checks.scrollable::-webkit-scrollbar-track { background: transparent; }
 .rep-highlight-checks.scrollable::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 2px; }
 
+
+/* ══════════════════════════════════════════════════════
+   ENGINEER PERFORMANCE METRICS — employee.php card style
+══════════════════════════════════════════════════════ */
+:root {
+    --emc-card-bg:     #ffffff;
+    --emc-green:       #4caf50; --emc-green-l:  #81c784;
+    --emc-blue:        #2196f3; --emc-blue-l:   #64b5f6;
+    --emc-orange:      #ff9800; --emc-orange-l: #ffb74d;
+    --emc-teal:        #009688; --emc-teal-l:   #4db6ac;
+    --emc-red:         #f44336; --emc-red-l:    #e57373;
+    --emc-purple:      #9c27b0; --emc-purple-l: #ba68c8;
+    --emc-amber:       #ff6f00; --emc-amber-l:  #ffa000;
+    --emc-indigo:      #3f51b5; --emc-indigo-l: #7986cb;
+}
+[data-theme="dark"] {
+    --emc-card-bg:     rgba(30,30,30,0.95);
+    --emc-green:       #66bb6a; --emc-green-l:  #81c784;
+    --emc-blue:        #42a5f5; --emc-blue-l:   #64b5f6;
+    --emc-orange:      #ffa726; --emc-orange-l: #ffb74d;
+    --emc-teal:        #26a69a; --emc-teal-l:   #4db6ac;
+    --emc-red:         #ef5350; --emc-red-l:    #e57373;
+    --emc-purple:      #ab47bc; --emc-purple-l: #ba68c8;
+    --emc-amber:       #ffa000; --emc-amber-l:  #ffb300;
+    --emc-indigo:      #5c6bc0; --emc-indigo-l: #7986cb;
+}
+
+.emc-section-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--text-secondary, #64748b);
+    opacity: .65;
+    margin: 14px 0 8px;
+}
+.emc-section-label:first-child { margin-top: 2px; }
+
+.emc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.emc-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+.emc-card {
+    background: var(--emc-card-bg, #fff);
+    border-radius: 16px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 4px 16px var(--shadow-color, rgba(0,0,0,.15));
+    border: 1px solid var(--border-color, rgba(0,0,0,.08));
+    position: relative;
+    overflow: hidden;
+    transition: transform .25s ease, box-shadow .25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.emc-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px var(--shadow-color, rgba(0,0,0,.2));
+}
+
+/* Decorative corner circle (employee.php ::before) */
+.emc-card::before {
+    content: '';
+    position: absolute;
+    top: -14px; right: -14px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    opacity: .35;
+    transition: opacity .3s ease;
+    pointer-events: none;
+}
+.emc-card:hover::before { opacity: .55; }
+[data-theme="dark"] .emc-card::before       { opacity: .18; }
+[data-theme="dark"] .emc-card:hover::before { opacity: .28; }
+
+/* Color-keyed ::before blobs */
+.emc-card.emc-green::before  { background: var(--emc-green); }
+.emc-card.emc-blue::before   { background: var(--emc-blue); }
+.emc-card.emc-orange::before { background: var(--emc-orange); }
+.emc-card.emc-teal::before   { background: var(--emc-teal); }
+.emc-card.emc-red::before    { background: var(--emc-red); }
+.emc-card.emc-purple::before { background: var(--emc-purple); }
+.emc-card.emc-amber::before  { background: var(--emc-amber); }
+.emc-card.emc-indigo::before { background: var(--emc-indigo); }
+
+.emc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+.emc-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary, #64748b);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    line-height: 1.3;
+    flex: 1;
+}
+.emc-icon {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+    transition: transform .25s ease;
+}
+.emc-card:hover .emc-icon { transform: scale(1.08) rotate(4deg); }
+.emc-icon i {
+    color: rgba(20,20,40,.80);
+    -webkit-text-stroke: 2px rgba(0,0,0,.75);
+    paint-order: stroke fill;
+}
+[data-theme="dark"] .emc-icon i {
+    color: #fff;
+    -webkit-text-stroke: 2px rgba(0,0,0,.75);
+    paint-order: stroke fill;
+}
+
+/* Icon color variants */
+.emc-card.emc-green  .emc-icon { background: linear-gradient(135deg, var(--emc-green), var(--emc-green-l)); box-shadow: 0 3px 10px rgba(76,175,80,.35); border: 2px solid rgba(76,175,80,.55); }
+.emc-card.emc-blue   .emc-icon { background: linear-gradient(135deg, var(--emc-blue),  var(--emc-blue-l));  box-shadow: 0 3px 10px rgba(33,150,243,.35); border: 2px solid rgba(33,150,243,.55); }
+.emc-card.emc-orange .emc-icon { background: linear-gradient(135deg, var(--emc-orange),var(--emc-orange-l));box-shadow: 0 3px 10px rgba(255,152,0,.35);  border: 2px solid rgba(255,152,0,.55); }
+.emc-card.emc-teal   .emc-icon { background: linear-gradient(135deg, var(--emc-teal),  var(--emc-teal-l));  box-shadow: 0 3px 10px rgba(0,150,136,.35);  border: 2px solid rgba(0,150,136,.55); }
+.emc-card.emc-red    .emc-icon { background: linear-gradient(135deg, var(--emc-red),   var(--emc-red-l));   box-shadow: 0 3px 10px rgba(244,67,54,.35);  border: 2px solid rgba(244,67,54,.55); }
+.emc-card.emc-purple .emc-icon { background: linear-gradient(135deg, var(--emc-purple),var(--emc-purple-l));box-shadow: 0 3px 10px rgba(156,39,176,.35); border: 2px solid rgba(156,39,176,.55); }
+.emc-card.emc-amber  .emc-icon { background: linear-gradient(135deg, var(--emc-amber), var(--emc-amber-l)); box-shadow: 0 3px 10px rgba(255,111,0,.35);  border: 2px solid rgba(255,111,0,.55); }
+.emc-card.emc-indigo .emc-icon { background: linear-gradient(135deg, var(--emc-indigo),var(--emc-indigo-l));box-shadow: 0 3px 10px rgba(63,81,181,.35);  border: 2px solid rgba(63,81,181,.55); }
+
+/* Dark mode stronger icon borders */
+[data-theme="dark"] .emc-card.emc-green  .emc-icon { border-color: rgba(102,187,106,.85); }
+[data-theme="dark"] .emc-card.emc-blue   .emc-icon { border-color: rgba(66,165,245,.85); }
+[data-theme="dark"] .emc-card.emc-orange .emc-icon { border-color: rgba(255,167,38,.85); }
+[data-theme="dark"] .emc-card.emc-teal   .emc-icon { border-color: rgba(77,182,172,.85); }
+[data-theme="dark"] .emc-card.emc-red    .emc-icon { border-color: rgba(239,83,80,.85); }
+[data-theme="dark"] .emc-card.emc-purple .emc-icon { border-color: rgba(186,104,200,.85); }
+[data-theme="dark"] .emc-card.emc-amber  .emc-icon { border-color: rgba(255,167,38,.85); }
+[data-theme="dark"] .emc-card.emc-indigo .emc-icon { border-color: rgba(121,134,203,.85); }
+
+.emc-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    line-height: 1;
+    letter-spacing: -1px;
+}
+[data-theme="dark"] .emc-value { color: var(--text-primary, #fff); }
+
+.emc-sub {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary, #64748b);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.emc-sub-icon { font-size: 12px; }
+
+.emc-sub.positive { color: var(--emc-green, #4caf50); }
+.emc-sub.warning  { color: var(--emc-orange, #ff9800); }
+.emc-sub.danger   { color: var(--emc-red, #f44336); }
+.emc-sub.neutral  { color: var(--text-secondary, #64748b); }
+[data-theme="dark"] .rep-eng-metric-pill.m-completed { background:rgba(34,197,94,.18);  color:#4ade80; }
+[data-theme="dark"] .rep-eng-metric-pill.m-ongoing   { background:rgba(245,158,11,.18); color:#fbbf24; }
+[data-theme="dark"] .rep-eng-metric-pill.m-scheduled { background:rgba(99,102,241,.18); color:#a5b4fc; }
+[data-theme="dark"] .rep-eng-metric-pill.m-delayed   { background:rgba(239,68,68,.18);  color:#f87171; }
+[data-theme="dark"] .rep-eng-metric-pill.m-declined  { background:rgba(249,115,22,.18); color:#fb923c; }
+[data-theme="dark"] .rep-eng-metric-pill.m-rejected  { background:rgba(139,92,246,.18); color:#c4b5fd; }
+
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
 const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const IS_ENGINEER  = <?= $isEngineer ? 'true' : 'false' ?>;
+// ── Engineer self-profile button ─────────────────────────────────────────────
+const SELF_ENG_ID  = <?= $isEngineer ? (int)$_SESSION['employee_id'] : 0 ?>;
+const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
+const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
+
 const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 const CAN_ASSIGN_ENGINEER = <?= $canAssignEngineer ? 'true' : 'false' ?>;
 // Clear any stale notification from a previous session
@@ -2115,9 +2347,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                  <?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? 'style="display:none;"' : '' ?>>
             <span class="profile-fallback-icon" id="profileFallbackIcon"<?= empty($profilePictureSrc) || $profilePictureSrc === 'profile.png' ? ' style="display:flex;"' : '' ?>>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="50" fill="#ede9fe"/>
-                    <circle cx="50" cy="36" r="20" fill="#5b4fcf"/>
-                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/>
+                    <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
+                    <circle cx="50" cy="36" r="20" fill="#2563eb"/>
+                    <ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/>
                 </svg>
             </span>
         </div>
@@ -2180,7 +2412,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 <div id="engAssignBackdrop">
     <div id="engAssignModal">
         <div class="eng-modal-icon" id="engModalAvatar">
-            <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">
+            <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">
         </div>
         <h3>Confirm Assignment</h3>
         <p id="engAssignDesc">Assign <strong id="engAssignName"></strong> to <strong id="engAssignRep"></strong>?</p>
@@ -2222,6 +2454,24 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <div class="page-header">
         <h2 class="page-title">Current Reports</h2>
         <span class="page-badge">In Progress</span>
+<?php if ($isEngineer): ?>
+    <div class="eng-self-profile-wrap" id="engSelfProfileWrap">
+        <button class="eng-self-profile-btn" id="engSelfProfileBtn" title="View My Profile">
+            <span class="eng-self-profile-avatar" id="engSelfAvatar">
+                <?php
+                $hasPic = !empty($profilePictureSrc) && $profilePictureSrc !== 'profile.png' && file_exists(__DIR__ . '/' . $profilePictureSrc);
+                if ($hasPic): ?>
+                    <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt=""
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#e8f0fe"/><circle cx="50" cy="36" r="20" fill="#3762c8"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#3762c8"/></svg>
+                <?php else: ?>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f0fe"/><circle cx="50" cy="36" r="20" fill="#3762c8"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#3762c8"/></svg>
+                <?php endif; ?>
+            </span>
+            <span class="eng-self-profile-label">My Profile</span>
+        </button>
+    </div>
+<?php endif; ?>
     </div>
 
     <div class="search-toolbar">
@@ -2423,7 +2673,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128295; Issue</div><div class="rep-field-value" id="repModalIssue"></div></div>
-                <div class="rep-field" id="repEngField"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div></div>
+                <div class="rep-field" id="repEngField"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div><div id="repEngMetricsPills"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128100; Reported By</div><div class="rep-field-value" id="repModalReporter"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Start Date</div><div class="rep-field-value" id="repModalStart"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Est. End Date</div><div class="rep-field-value" id="repModalEnd"></div></div>
@@ -2827,7 +3077,7 @@ function renderPortalList(engineers, query, infrastructure) {
         return;
     }
 
-    const FALLBACK_PIC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+    const FALLBACK_PIC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E';
 
     function buildOption(eng, showBadge) {
         const item = document.createElement('div');
@@ -3057,8 +3307,8 @@ function showAssignConfirm(repId, engineerId, engineerName, engData) {
         const imgEl = avatarEl.querySelector('img') || document.createElement('img');
         imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
         imgEl.alt = '';
-        imgEl.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'; };
-        imgEl.src = picSrc || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        imgEl.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E'; };
+        imgEl.src = picSrc || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E';
         avatarEl.innerHTML = '';
         avatarEl.appendChild(imgEl);
     }
@@ -3093,22 +3343,49 @@ const engDetBackBtn      = document.getElementById('engDetBackBtn');
 
 // ── Direct profile view (from inline profile button) ─────────────
 async function openEngineerProfileById(engineerId) {
-    if (!CAN_ASSIGN_ENGINEER && !IS_ADMIN) return;
+    if (!CAN_ASSIGN_ENGINEER && !IS_ADMIN && !(IS_ENGINEER && engineerId == SELF_ENG_ID)) return;
     let eng = null;
-    // Try bulk list first (works for roles that get_engineers.php allows)
-    const engineers = await loadEngineers();
-    eng = engineers.find(e => e.id == engineerId);
-    // Fallback: fetch a single engineer by ID — works for admin even if
-    // get_engineers.php restricts the bulk list by role
-    if (!eng) {
+
+    // For engineers viewing their OWN profile, fetch directly by ID first
+    // (get_engineers.php bulk list may be restricted to manager/admin roles)
+    if (IS_ENGINEER && engineerId == SELF_ENG_ID) {
         try {
             const res  = await fetch('get_engineers.php?id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             if (data.success && data.engineers && data.engineers.length) {
                 eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
             }
-        } catch(e) { /* silent — modal stays closed if fetch fails */ }
+        } catch(e) {}
+        // If API restricted or failed, build a minimal object from session vars
+        if (!eng) {
+            eng = {
+                id:                    engineerId,
+                name:                  SELF_ENG_NAME,
+                full_name:             SELF_ENG_NAME,
+                profile_picture:       SELF_ENG_PIC,
+                engineering_discipline:'Engineer',
+                gender: '', date_of_birth: '', contact_number: '',
+                email: '', address: '', department: '',
+                years_of_experience: null, areas_of_specialization: '',
+                skill_structural_design: 0, skill_site_inspection: 0,
+                skill_project_planning: 0, cad_software: '',
+            };
+        }
+    } else {
+        // Non-engineer: try bulk list then individual fetch
+        const engineers = await loadEngineers();
+        eng = engineers.find(e => e.id == engineerId);
+        if (!eng) {
+            try {
+                const res  = await fetch('get_engineers.php?id=' + encodeURIComponent(engineerId));
+                const data = await res.json();
+                if (data.success && data.engineers && data.engineers.length) {
+                    eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
+                }
+            } catch(e) {}
+        }
     }
+
     if (!eng) return;
     _populateEngDetailsModal(eng);
     // Back button just closes — no assignment modal underneath
@@ -3127,7 +3404,7 @@ function showEngineerDetailsModal() {
 }
 
 // ── Shared body builder ───────────────────────────────────────────
-function _populateEngDetailsModal(eng) {
+async function _populateEngDetailsModal(eng) {
     // Avatar
     const detWrap = document.getElementById('engDetAvatarWrap');
     if (detWrap) {
@@ -3135,8 +3412,8 @@ function _populateEngDetailsModal(eng) {
         const dImg = document.createElement('img');
         dImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
         dImg.alt = '';
-        dImg.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E'; };
-        dImg.src = detPic || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23ffffff%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%235b4fcf%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%235b4fcf%22/%3E%3C/svg%3E';
+        dImg.onerror = function() { this.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E'; };
+        dImg.src = detPic || 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E';
         detWrap.innerHTML = '';
         detWrap.appendChild(dImg);
     }
@@ -3219,7 +3496,18 @@ function _populateEngDetailsModal(eng) {
                  </div>`;
     }
 
+    // ── Metrics section placeholder ────────────────────────────────────────
+    html += `<div class="eng-det-divider"></div>
+             <div class="eng-det-section-title">&#128202; Performance Metrics</div>
+             <div id="engDetMetricsContainer"><div class="eng-metrics-loading"><span style="font-size:16px;">⏳</span> Loading metrics…</div></div>`;
+
     document.getElementById('engDetBody').innerHTML = html;
+
+    // ── Async fetch metrics and render ─────────────────────────────────────
+    if (eng.id) {
+        const metrics = await fetchEngineerMetrics(eng.id);
+        renderEngMetricsFull(metrics, 'engDetMetricsContainer');
+    }
 }
 
 function closeEngineerDetailsModal() {
@@ -3270,7 +3558,7 @@ async function doAssignEngineer(repId, engineerId, engineerName, engData) {
 
 // Replaces ALL .engineer-cell[data-rep-id] — hits desktop td AND mobile span simultaneously
 function updateAllEngineerCells(repId, engineerName, engineerId, engData) {
-    const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#ede9fe"/><circle cx="50" cy="36" r="20" fill="#5b4fcf"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#5b4fcf"/></svg>`;
+    const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>`;
     const picSrc = engData && engData.profile_picture ? engData.profile_picture : '';
     const btnInner = picSrc
         ? `<img src="${picSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none;width:100%;height:100%;">${FALLBACK_SVG}</span>`
@@ -3347,6 +3635,12 @@ function openRepModal(repId) {
     } else {
         if (engField) engField.style.display = '';
         document.getElementById('repModalEngineer').textContent = data.engineer_name || '—';
+    }
+    // ── Engineer metrics pills (view-details modal) ──────────────────────────
+    const repEngMetricsEl = document.getElementById('repEngMetricsPills');
+    if (repEngMetricsEl) repEngMetricsEl.innerHTML = '<span class="eng-metrics-loading" style="font-size:11px;">Loading…</span>';
+    if (!IS_ENGINEER && data.engineer_id) {
+        fetchEngineerMetrics(data.engineer_id).then(m => renderEngMetricsPills(m, 'repEngMetricsPills'));
     }
     document.getElementById('repModalReporter').textContent = data.reporter_name || '—';
     // Start / End date — editable pickers for accepted engineers, plain text otherwise
@@ -4587,6 +4881,105 @@ function rdpInit(overlayId, displayId, hiddenId, gridId,
         return 0;
     }
 })();
+
+
+// ════════════════════════════════════════════════════════════════
+// ENGINEER METRICS — fetch + render helpers (shared across pages)
+// ════════════════════════════════════════════════════════════════
+
+async function fetchEngineerMetrics(engineerId) {
+    try {
+        const res  = await fetch('get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
+        const data = await res.json();
+        return data.success ? data.metrics : null;
+    } catch(e) { return null; }
+}
+
+function renderEngMetricsFull(m, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!m) {
+        el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:8px 0;display:flex;align-items:center;gap:6px;">' +
+                       '<span style="font-size:16px;">⚠️</span> Could not load metrics.</div>';
+        return;
+    }
+
+    const retCurrent = m.admin_returned_current ?? m.admin_rejected ?? 0;
+    const retPending = m.admin_returned_pending ?? 0;
+
+    function card(color, icon, value, title, subIcon, subText, subClass) {
+        return `<div class="emc-card emc-${color}">
+            <div class="emc-header">
+                <div class="emc-title">${title}</div>
+                <div class="emc-icon"><i class="${icon}"></i></div>
+            </div>
+            <div class="emc-value">${value}</div>
+            <div class="emc-sub ${subClass}">
+                <span class="emc-sub-icon">${subIcon}</span>
+                <span>${subText}</span>
+            </div>
+        </div>`;
+    }
+
+    const completedSub = m.completed > 0 ? 'positive' : 'neutral';
+    const delayedSub   = m.delayed   > 0 ? 'danger'   : 'neutral';
+    const declinedSub  = m.declined_count > 0 ? 'warning' : 'neutral';
+    const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
+    const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
+
+    el.innerHTML = `
+        <div class="emc-section-label">Report Activity</div>
+        <div class="emc-grid">
+            ${card('green',  'fas fa-check-circle',   m.completed,        'Completed',       '↗', 'Finished reports',       completedSub)}
+            ${card('orange', 'fas fa-spinner',         m.ongoing,          'Ongoing',         '●', 'Currently in progress',  'neutral')}
+            ${card('red',    'fas fa-clock',            m.delayed,          'Delayed',         '↘', 'Past due date',          delayedSub)}
+        </div>
+        <div class="emc-grid" style="margin-top:10px;">
+            ${card('indigo', 'fas fa-calendar-check', m.scheduled,        'Scheduled',       '▸', 'Pending reports queue',  'neutral')}
+            ${card('teal',   'fas fa-clipboard-list', m.current_assigned, 'Curr. Assigned',  '▸', 'In current reports',     'neutral')}
+            ${card('blue',   'far fa-calendar-alt',   m.pending_assigned, 'Pend. Assigned',  '▸', 'In pending reports',     'neutral')}
+        </div>
+        <div class="emc-section-label" style="margin-top:14px;">Behaviour</div>
+        <div class="emc-grid ${m.pending_completion > 0 ? '' : 'cols-2'}">
+            ${card('amber',  'fas fa-times-circle',    m.declined_count,   'Times Declined',           '↻', 'Engineer declined',      declinedSub)}
+            ${card('purple', 'fas fa-undo-alt',         retCurrent,         'Returned (Approval)',      '↩', 'Admin sent back to revise', retCurSub)}
+            ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
+        </div>
+        <div class="emc-grid cols-2" style="margin-top:10px;">
+            ${card('purple', 'fas fa-ban',             retPending,         'Returned (Not Done)',      '↩', 'Admin marked incomplete',   retPenSub)}
+        </div>`;
+}
+
+function renderEngMetricsPills(m, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el || !m) return;
+    const retCurrent = m.admin_returned_current ?? m.admin_rejected ?? 0;
+    const retPending = m.admin_returned_pending ?? 0;
+    el.innerHTML = `
+        <div class="rep-eng-metrics-strip">
+            <span class="rep-eng-metric-pill m-completed">✓ ${m.completed} completed</span>
+            <span class="rep-eng-metric-pill m-ongoing">● ${m.ongoing} ongoing</span>
+            <span class="rep-eng-metric-pill m-scheduled">▸ ${m.scheduled} scheduled</span>
+            ${m.delayed > 0 ? `<span class="rep-eng-metric-pill m-delayed">⚠ ${m.delayed} delayed</span>` : ''}
+            ${m.declined_count > 0 ? `<span class="rep-eng-metric-pill m-declined">✕ ${m.declined_count} declined</span>` : ''}
+            ${retCurrent > 0 ? `<span class="rep-eng-metric-pill m-rejected">↩ ${retCurrent} approval returns</span>` : ''}
+            ${retPending > 0 ? `<span class="rep-eng-metric-pill m-rejected2">↩ ${retPending} not-done returns</span>` : ''}
+        </div>`;
+}
+
+
+// Wire engineer self-profile button — must run after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const wrap = document.getElementById('engSelfProfileWrap');
+    const btn  = document.getElementById('engSelfProfileBtn');
+    if (!wrap || !btn) return;
+    if (IS_ENGINEER && SELF_ENG_ID > 0) {
+        wrap.style.display = 'flex';
+        btn.addEventListener('click', function() {
+            openEngineerProfileById(SELF_ENG_ID);
+        });
+    }
+});
 
 </script>
 </body>
