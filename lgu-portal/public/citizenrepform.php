@@ -3299,7 +3299,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
     // ── Known QC Facilities — exact name shown when pin is near one ────────
     // Used when infrastructure type is "Public Facilities"
     const KNOWN_QC_FACILITIES = [
-        { name: 'Cassanova Multi-Purpose Building', lat: 14.69679995, lng: 121.07769286, radius: 1 },
+        { name: 'Cassanova Multi-Purpose Building', lat: 14.69679995, lng: 121.07769286, radius: 20 },
         { name: 'Bernardo Court',                   lat: 14.64406945, lng: 121.04843732, radius: 20 },
         { name: 'Pael Multipurpose Building',        lat: 14.65472125, lng: 121.06631024, radius: 20 },
         { name: 'Sanville Covered Court & Multipurpose Building', lat: 14.67100400, lng: 121.04766600, radius: 25 },

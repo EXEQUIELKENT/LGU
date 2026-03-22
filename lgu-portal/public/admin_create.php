@@ -374,6 +374,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
                                             </div>
                                         </div>
                                 
+                                        <!-- ── LOGIN LINK ── -->
+                                        <div style="background:linear-gradient(135deg,#f0fff4,#e6f9ee);
+                                                    border:2px solid #6fcf97;
+                                                    border-radius:14px;
+                                                    padding:22px 24px;
+                                                    margin:0 0 28px 0;
+                                                    text-align:center;">
+                                            <div style="font-size:12px;font-weight:700;color:#219653;
+                                                        text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">
+                                                🔗 &nbsp;Your Portal Login Link
+                                            </div>
+                                            <div style="font-size:13px;color:#333;line-height:1.6;margin-bottom:14px;">
+                                                <strong>Important:</strong> This is the link you will use to log in to the portal.<br>
+                                                <span style="color:#555;">Please save or bookmark it — you will need it every time you sign in.</span>
+                                            </div>
+                                            <a href="https://cimm.infragovservices.com/lgu-portal/public/citizencimm.php?staff=infrastructure_staff_2026_qr8p"
+                                               style="display:inline-block;background:linear-gradient(135deg,#27ae60,#2ecc71);
+                                                      color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;
+                                                      font-size:14px;font-weight:700;
+                                                      box-shadow:0 4px 14px rgba(39,174,96,0.4);letter-spacing:0.02em;
+                                                      margin-bottom:12px;">
+                                                🌐&nbsp; Go to Login Page
+                                            </a>
+                                            <div style="font-size:11.5px;color:#888;margin-top:8px;word-break:break-all;">
+                                                <a href="https://cimm.infragovservices.com/lgu-portal/public/citizencimm.php?staff=infrastructure_staff_2026_qr8p"
+                                                   style="color:#219653;">https://cimm.infragovservices.com/lgu-portal/public/citizencimm.php?staff=infrastructure_staff_2026_qr8p</a>
+                                            </div>
+                                        </div>
+
                                         <!-- Divider -->
                                         <div style="border-top:1px solid #eee;margin:0 0 22px 0;"></div>
                                 
@@ -408,6 +437,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
                                     "This link expires in 24 hours.\n\n" .
                                     "Temporary password: " . htmlspecialchars($tempPassword) . "\n" .
                                     "You will be asked to change this on first login.\n\n" .
+                                    "--------------------------------------------\n" .
+                                    "IMPORTANT — YOUR PORTAL LOGIN LINK\n" .
+                                    "--------------------------------------------\n" .
+                                    "Use the link below every time you log in to the portal.\n" .
+                                    "Please save or bookmark it — you will need it to access your account.\n\n" .
+                                    "https://cimm.infragovservices.com/lgu-portal/public/citizencimm.php?staff=infrastructure_staff_2026_qr8p\n\n" .
                                     "© " . date('Y') . " LGU Portal";
 
                                 if (!$mail->validateAddress($emailNormalized)) {

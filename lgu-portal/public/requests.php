@@ -105,12 +105,39 @@ $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) D
 $sql = "SELECT
     r.req_id, r.infrastructure, r.location, r.issue, r.approval_status,
     r.created_at, r.name, r.contact_number, r.coordinates, r.email,
+    res.res_id, res.status AS resolution_status,
+    rp.rep_id,
+    rp.engineer_id,
+    rp.engineer_accepted,
+    CONCAT(eng.first_name, ' ', eng.last_name) AS engineer_name,
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
-LEFT JOIN evidence_images e ON e.req_id = r.req_id
+LEFT JOIN evidence_images e        ON e.req_id      = r.req_id
+LEFT JOIN request_resolutions res  ON res.req_id    = r.req_id
+LEFT JOIN reports rp               ON rp.res_id     = res.res_id
+LEFT JOIN employees eng            ON eng.user_id   = rp.engineer_id
 GROUP BY r.req_id
 ORDER BY r.created_at DESC";
 $result = $conn->query($sql);
+
+// ── Compute the live report workflow status from joined columns ───────────────
+function computeReportStatus(array $row): string {
+    $resSt      = $row['resolution_status'] ?? '';
+    $engId      = (int)($row['engineer_id']      ?? 0);
+    $engAccepted= (bool)($row['engineer_accepted'] ?? false);
+    if (!$resSt) return '';                                          // no report created yet
+    if ($resSt === 'Pending Admin Approval') return 'Pending Approval';
+    if ($resSt === 'Completed')   return 'Completed';
+    if ($resSt === 'Cancelled')   return 'Cancelled';
+    if ($resSt === 'Scheduled')   return 'Scheduled';
+    if ($resSt === 'Pending Completion') return 'Pending Completion';
+    if (in_array($resSt, ['Approved', 'In Progress'])) {
+        if (!$engId)      return 'Awaiting Engineer';
+        if (!$engAccepted) return 'Pending Acceptance';
+        return 'In Progress';
+    }
+    return $resSt;
+}
 
 // Build JS-safe array for GIS map
 $requests     = [];
@@ -124,6 +151,9 @@ if ($result && $result->num_rows > 0) {
         $entry                  = $row;
         $entry['images']        = $images;
         $entry['requester_name']= $row['name'] ?? '';
+        $entry['report_status'] = computeReportStatus($row);
+        $entry['rep_id']        = $row['rep_id'] ? (int)$row['rep_id'] : null;
+        $entry['engineer_name'] = (trim($row['engineer_name'] ?? '') !== '') ? $row['engineer_name'] : '';
         unset($entry['evidence_images']);
         $status = $row['approval_status'] ?? 'Pending';
         if (isset($statusCounts[$status])) $statusCounts[$status]++;
@@ -1144,7 +1174,80 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     border-color: rgba(239,68,68,.28);
     color: #fc8181;
 }
-/* ── Validate confirm — role pill ─────────────────────────────────────── */
+/* ── Report Status Tracker — shown in both view modals when a report exists ── */
+.report-status-section {
+    margin: 0 0 14px 0;
+    padding: 13px 16px;
+    background: linear-gradient(135deg, rgba(55,98,200,.05), rgba(55,98,200,.02));
+    border: 1.5px solid rgba(55,98,200,.14);
+    border-radius: 12px;
+}
+[data-theme="dark"] .report-status-section {
+    background: linear-gradient(135deg, rgba(95,140,255,.08), rgba(95,140,255,.04));
+    border-color: rgba(95,140,255,.2);
+}
+.report-status-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.report-status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.report-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    flex-shrink: 0;
+}
+.report-status-pill.rsp-none         { background:#f1f5f9;  color:#64748b;  border:1px solid #cbd5e1; }
+.report-status-pill.rsp-awaiting     { background:#fff7ed;  color:#9a3412;  border:1px solid #fdba74; }
+.report-status-pill.rsp-pending-acc  { background:#fef3c7;  color:#92400e;  border:1px solid #fcd34d; }
+.report-status-pill.rsp-pending-appr { background:#ede9fe;  color:#4c1d95;  border:1px solid #c4b5fd; }
+.report-status-pill.rsp-in-progress  { background:#dbeafe;  color:#1e40af;  border:1px solid #93c5fd; }
+.report-status-pill.rsp-scheduled    { background:#e0f2fe;  color:#0c4a6e;  border:1px solid #7dd3fc; }
+.report-status-pill.rsp-pending-comp { background:#fef9c3;  color:#713f12;  border:1px solid #fde047; }
+.report-status-pill.rsp-completed    { background:#dcfce7;  color:#14532d;  border:1px solid #86efac; }
+.report-status-pill.rsp-cancelled    { background:#fee2e2;  color:#7f1d1d;  border:1px solid #fca5a5; }
+[data-theme="dark"] .report-status-pill.rsp-none         { background:rgba(100,116,139,.18); color:#94a3b8; border-color:rgba(100,116,139,.3); }
+[data-theme="dark"] .report-status-pill.rsp-awaiting     { background:rgba(251,146,60,.12);  color:#fb923c; border-color:rgba(251,146,60,.3); }
+[data-theme="dark"] .report-status-pill.rsp-pending-acc  { background:rgba(252,211,77,.12);  color:#fbbf24; border-color:rgba(252,211,77,.3); }
+[data-theme="dark"] .report-status-pill.rsp-pending-appr { background:rgba(167,139,250,.14); color:#a78bfa; border-color:rgba(167,139,250,.3); }
+[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(96,165,250,.12);  color:#60a5fa; border-color:rgba(96,165,250,.3); }
+[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(56,189,248,.12);  color:#38bdf8; border-color:rgba(56,189,248,.3); }
+[data-theme="dark"] .report-status-pill.rsp-pending-comp { background:rgba(250,204,21,.12);  color:#facc15; border-color:rgba(250,204,21,.3); }
+[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(74,222,128,.12);  color:#4ade80; border-color:rgba(74,222,128,.3); }
+[data-theme="dark"] .report-status-pill.rsp-cancelled    { background:rgba(248,113,113,.12); color:#f87171; border-color:rgba(248,113,113,.3); }
+.report-status-rep-link {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    opacity: .75;
+}
+.report-status-eng {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-basis: 100%;
+    margin-top: 2px;
+}
+
+/* ─── Validate confirm — role pill ─────────────────────────────────────── */
 .validate-role-pill {
     display: inline-flex;
     align-items: center;
@@ -2148,7 +2251,10 @@ tbody td {
                     data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
                     data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
                     data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
-                    data-email="<?= htmlspecialchars($row['email'] ?? '') ?>">
+                    data-email="<?= htmlspecialchars($row['email'] ?? '') ?>"
+                    data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
+                    data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
+                    data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
                     <td class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location']) ?></td>
@@ -2209,7 +2315,10 @@ tbody td {
             data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
             data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
             data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
-            data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>">
+            data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
+            data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
+            data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
+            data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
             <div><strong>Request ID:</strong> <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
             <div><strong>Infrastructure:</strong> <span class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
             <div><strong>Location:</strong> <span class="searchable"><?= htmlspecialchars($row['location']) ?></span></div>
@@ -2281,6 +2390,17 @@ tbody td {
         </div>
         <div class="detail-modal-body">
             <div class="detail-status-row"><span class="detail-status-pill" id="detailStatus"></span></div>
+            <!-- Live Report Status (visible when a report has been created for this request) -->
+            <div class="report-status-section" id="detailReportStatusSection" style="display:none;">
+                <div class="report-status-label"><i class="fas fa-clipboard-list" style="font-size:10px;"></i> Report Status</div>
+                <div class="report-status-row">
+                    <span class="report-status-pill" id="detailReportStatusPill"></span>
+                    <span class="report-status-rep-link" id="detailRepIdBadge"></span>
+                </div>
+                <div class="report-status-eng" id="detailReportEngineer" style="display:none;">
+                    <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="detailReportEngineerName"></span>
+                </div>
+            </div>
             <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="detail-field-value" id="detailLocation"></div></div>
             <div class="detail-field"><div class="detail-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
             <div class="detail-field"><div class="detail-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="detail-field-value" id="detailIssue"></div></div>
@@ -2320,6 +2440,17 @@ tbody td {
         </div>
         <div class="gis-modal-body">
             <div class="gis-modal-status-row"><span class="gis-status-pill" id="modalStatusPill"></span></div>
+            <!-- Live Report Status -->
+            <div class="report-status-section" id="gisReportStatusSection" style="display:none;">
+                <div class="report-status-label"><i class="fas fa-clipboard-list" style="font-size:10px;"></i> Report Status</div>
+                <div class="report-status-row">
+                    <span class="report-status-pill" id="gisReportStatusPill"></span>
+                    <span class="report-status-rep-link" id="gisRepIdBadge"></span>
+                </div>
+                <div class="report-status-eng" id="gisReportEngineer" style="display:none;">
+                    <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="gisReportEngineerName"></span>
+                </div>
+            </div>
             <div class="gis-field"><div class="gis-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="gis-field-value" id="modalLocation"></div></div>
             <div class="gis-field"><div class="gis-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="gis-field-value" id="modalCoordinates"></div></div>
             <div class="gis-field"><div class="gis-field-label"><i class="fas fa-wrench"></i> Issue / Damage</div><div class="gis-field-value" id="modalIssue"></div></div>
@@ -2694,6 +2825,58 @@ function detailStatusClass(status) {
 }
 const STATUS_ICON = { pending:'⏳', approved:'✅', rejected:'❌', unknown:'❔' };
 
+// ── Maps a live report_status string to a CSS modifier class ─────────────────
+function reportStatusClass(rs) {
+    if (!rs) return 'rsp-none';
+    const map = {
+        'Awaiting Engineer':  'rsp-awaiting',
+        'Pending Acceptance': 'rsp-pending-acc',
+        'Pending Approval':   'rsp-pending-appr',
+        'In Progress':        'rsp-in-progress',
+        'Scheduled':          'rsp-scheduled',
+        'Pending Completion': 'rsp-pending-comp',
+        'Completed':          'rsp-completed',
+        'Cancelled':          'rsp-cancelled',
+    };
+    return map[rs] || 'rsp-none';
+}
+
+const REPORT_STATUS_ICON = {
+    'Awaiting Engineer':  '⏳',
+    'Pending Acceptance': '🔔',
+    'Pending Approval':   '📋',
+    'In Progress':        '🔧',
+    'Scheduled':          '📅',
+    'Pending Completion': '🕐',
+    'Completed':          '✅',
+    'Cancelled':          '🚫',
+};
+
+// ── Fills/hides the Report Status section in a modal ─────────────────────────
+// pillId, sectionId, repBadgeId, engWrapId, engNameId are element IDs
+function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId, repBadgeId, engWrapId, engNameId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    if (!reportStatus) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    const pill = document.getElementById(pillId);
+    if (pill) {
+        const icon = REPORT_STATUS_ICON[reportStatus] || '📄';
+        pill.textContent = icon + ' ' + reportStatus;
+        pill.className   = 'report-status-pill ' + reportStatusClass(reportStatus);
+    }
+    const badge = document.getElementById(repBadgeId);
+    if (badge) badge.textContent = repId ? '#REP-' + String(repId) : '';
+    const engWrap = document.getElementById(engWrapId);
+    const engName = document.getElementById(engNameId);
+    if (engWrap && engineerName && engineerName.trim()) {
+        engName.textContent  = engineerName;
+        engWrap.style.display = '';
+    } else if (engWrap) {
+        engWrap.style.display = 'none';
+    }
+}
+
 function openRequestDetail(button) {
     const row = button.closest('tr.request-row') || button.closest('.request-card');
     if (!row) return;
@@ -2706,6 +2889,9 @@ function openRequestDetail(button) {
     const status        = row.dataset.status;
     const requester     = row.dataset.requester || '—';
     const contact       = row.dataset.contact   || '—';
+    const reportStatus  = row.dataset.reportStatus || '';
+    const repId         = row.dataset.repId        || '';
+    const engineerName  = row.dataset.engineerName || '';
     let evidence = [];
     try { evidence = JSON.parse(row.dataset.evidence); } catch(e) {}
 
@@ -2727,6 +2913,11 @@ function openRequestDetail(button) {
     document.getElementById('detailDate').textContent        = date          || '—';
     document.getElementById('detailRequester').textContent   = requester;
     document.getElementById('detailContact').textContent     = contact;
+
+    // Live report lifecycle status
+    applyReportStatus(reportStatus, repId, engineerName,
+        'detailReportStatusPill', 'detailReportStatusSection',
+        'detailRepIdBadge', 'detailReportEngineer', 'detailReportEngineerName');
 
     const strip = document.getElementById('detailEvidenceContainer');
     strip.innerHTML = '';
@@ -2789,7 +2980,10 @@ function openGisDetailModal(reqId) {
         status:         req.approval_status || 'Unknown',
         evidence:       req.images || [],
         contact:        req.contact_number || '',
-        email:          req.email || ''
+        email:          req.email || '',
+        reportStatus:   req.report_status  || '',
+        repId:          req.rep_id         || '',
+        engineerName:   req.engineer_name  || ''
     };
 
     document.getElementById('modalHeaderBand').className = `gis-modal-header-band ${sc}`;
@@ -2815,6 +3009,11 @@ function openGisDetailModal(reqId) {
     document.getElementById('modalRequester').textContent   = req.requester_name || 'Anonymous';
     document.getElementById('modalContact').textContent     = req.contact_number || '—';
     document.getElementById('modalEmail').textContent       = req.email || '—';
+
+    // Live report lifecycle status
+    applyReportStatus(req.report_status || '', req.rep_id || '', req.engineer_name || '',
+        'gisReportStatusPill', 'gisReportStatusSection',
+        'gisRepIdBadge', 'gisReportEngineer', 'gisReportEngineerName');
 
     const evidenceWrap = document.getElementById('modalEvidence');
     evidenceWrap.innerHTML = '';
