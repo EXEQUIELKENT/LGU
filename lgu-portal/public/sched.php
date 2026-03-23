@@ -2757,6 +2757,13 @@ usort($schedules, function($a, $b) {
     box-shadow: 0 1px 4px rgba(55,98,200,0.10);
     box-sizing: border-box;
     padding: 0;
+    line-height: 1;
+}
+.mob-icon-btn i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 .mob-icon-btn:hover {
     background: #3762c8;
@@ -3033,6 +3040,19 @@ usort($schedules, function($a, $b) {
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
+/* Capsule card search highlight — yellow matching list view */
+.cap-search-highlight {
+    background: #fff176;
+    color: #000;
+    padding: 1px 3px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+[data-theme="dark"] .cap-search-highlight {
+    background: #f9a825;
+    color: #000;
+}
+
 /* ═══════════════════════════════════════════════════════
    VIEW SWITCHER DROPDOWN (replaces toggle buttons)
 ═══════════════════════════════════════════════════════ */
@@ -3176,43 +3196,21 @@ usort($schedules, function($a, $b) {
 #capsuleView { padding: 0; }
 #capsuleView.hidden { display: none; }
 
-/* Toolbar — exact mirror of .list-view-toolbar */
-.capsule-toolbar {
-    padding: 8px 10px;
-    border-radius: 14px;
-    border: 1px solid rgba(55, 98, 200, 0.13);
-    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
-    box-sizing: border-box;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* capsule sort — reuses .sort-dropdown-wrap/.sort-btn/.sort-dropdown CSS exactly */
+/* cap-sort-option shares sort-option visual but has its own class for JS targeting */
+.cap-sort-option {
+    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
+    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
 }
-[data-theme="dark"] .capsule-toolbar {
-    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
-    border-color: rgba(95, 140, 255, 0.18);
-}
+.cap-sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.cap-sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.cap-sort-option i { width: 14px; text-align: center; font-size: 12px; }
+[data-theme="dark"] .cap-sort-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .cap-sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .cap-sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 
-/* Search wrap — exact mirror of .list-view-toolbar .search-wrap */
-.capsule-toolbar .cap-search-wrap {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-}
-.capsule-toolbar .cap-search-wrap svg {
-    position: absolute;
-    left: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-    pointer-events: none;
-    flex-shrink: 0;
-}
-[data-theme="dark"] .capsule-toolbar .cap-search-wrap svg { color: #64748b; }
-
-/* Search input — exact mirror of #scheduleSearch */
+/* capsuleSearch reuses #scheduleSearch styles — only needs same width rule */
 #capsuleSearch {
     width: 100%;
     height: 36px;
@@ -3233,10 +3231,7 @@ usort($schedules, function($a, $b) {
     box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
     background: #fff;
 }
-#capsuleSearch::placeholder {
-    color: #94a3b8;
-    font-size: 12.5px;
-}
+#capsuleSearch::placeholder { color: #94a3b8; font-size: 12.5px; }
 [data-theme="dark"] #capsuleSearch {
     background: rgba(255,255,255,0.07);
     border-color: rgba(95,140,255,0.22);
@@ -3248,44 +3243,6 @@ usort($schedules, function($a, $b) {
     background: rgba(255,255,255,0.10);
 }
 [data-theme="dark"] #capsuleSearch::placeholder { color: #64748b; }
-
-/* Sort button for capsule — reuses .sort-btn/.sort-dropdown appearance */
-.cap-sort-wrap { position: relative; flex-shrink: 0; }
-.cap-sort-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    height: 36px; padding: 0 13px;
-    background: linear-gradient(135deg, #3762c8, #2851b3);
-    color: #fff; border: none; border-radius: 10px;
-    font-size: 12.5px; font-weight: 700; cursor: pointer;
-    transition: all .22s ease; box-shadow: 0 2px 8px rgba(55,98,200,.30);
-    white-space: nowrap; font-family: inherit;
-}
-.cap-sort-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.40); }
-.cap-sort-btn i { font-size: 12px; }
-.cap-sort-chevron { font-size: 10px !important; transition: transform .2s; }
-.cap-sort-wrap.open .cap-sort-chevron { transform: rotate(180deg); }
-.cap-sort-label { display: inline; }
-@media (max-width: 520px) { .cap-sort-label { display: none; } }
-.cap-sort-dropdown {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0;
-    background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
-    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
-    z-index: 9999; min-width: 200px; overflow: hidden; animation: sortDropIn .18s ease;
-}
-.cap-sort-wrap.open .cap-sort-dropdown { display: block; }
-.cap-sort-option {
-    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
-    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
-    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
-}
-.cap-sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
-.cap-sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
-.cap-sort-option i { width: 14px; text-align: center; font-size: 12px; }
-.cap-sort-divider { height: 1px; background: var(--border-color,rgba(0,0,0,.08)); margin: 3px 0; }
-[data-theme="dark"] .cap-sort-dropdown { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
-[data-theme="dark"] .cap-sort-option { color: var(--text-secondary,#ccc); }
-[data-theme="dark"] .cap-sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
-[data-theme="dark"] .cap-sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 .capsule-board {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -3307,6 +3264,7 @@ usort($schedules, function($a, $b) {
     justify-content: space-between;
     transition: transform .2s ease, box-shadow .2s ease;
     box-shadow: 0 6px 24px rgba(0,0,0,.22);
+    background: #1565c0; /* fallback — overridden per-status below */
 }
 .capsule-card:hover {
     transform: translateY(-5px) scale(1.01);
@@ -3314,17 +3272,22 @@ usort($schedules, function($a, $b) {
 }
 
 /* Status-based gradients */
+/* Scheduled → blue  (#1565c0 legend) */
 .capsule-card.cap-scheduled  {
-    background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #1565c0 100%);
+    background: linear-gradient(135deg, #1565c0 0%, #1976d2 50%, #42a5f5 100%) !important;
 }
-.capsule-card.cap-inprogress {
-    background: linear-gradient(135deg, #bf360c 0%, #d84315 40%, #f4511e 100%);
+/* In Progress → amber (#f59e0b legend) */
+.capsule-card.cap-inprogress,
+.capsule-card.cap-ongoing {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%) !important;
 }
+/* Delayed → red (#c62828 legend) */
 .capsule-card.cap-delayed {
-    background: linear-gradient(135deg, #7b1fa2 0%, #8e24aa 40%, #ab47bc 100%);
+    background: linear-gradient(135deg, #c62828 0%, #d32f2f 50%, #ef5350 100%) !important;
 }
+/* Completed → green (#2e7d32 legend) */
 .capsule-card.cap-completed {
-    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 40%, #388e3c 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #388e3c 50%, #66bb6a 100%) !important;
 }
 
 /* Watermark number — large translucent in bottom-right */
@@ -3480,6 +3443,42 @@ usort($schedules, function($a, $b) {
     letter-spacing: 0.04em;
     backdrop-filter: blur(4px);
     text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+/* Facility badge — on-card (white on gradient) */
+.cap-facility-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* CPRF shared badge — on-card */
+.cap-cprf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(99,102,241,.45);
+    border: 1px solid rgba(200,202,255,.55);
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
 }
 
 /* Hidden states */
@@ -4544,11 +4543,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <div class="sort-dropdown-divider"></div>
                     <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
                     <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
+                    <div class="sort-dropdown-divider"></div>
+                    <div class="sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
                 </div>
             </div>
             <div class="mob-view-switcher-wrap" id="mobListViewSwitcherWrap">
                 <button class="mob-icon-btn" id="mobListViewSwitcherBtn" title="Switch View">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="7" height="7" rx="1"/><rect x="9" y="3" width="7" height="7" rx="1"/><rect x="1" y="13" width="7" height="7" rx="1"/><rect x="9" y="13" width="7" height="7" rx="1"/></svg>
+                    <i class="fas fa-list mob-view-icon" style="font-size:14px;line-height:1;"></i>
                 </button>
                 <div class="mob-view-switcher-dropdown" id="mobListViewSwitcherDropdown">
                     <div class="mob-view-switcher-option active" data-view="list"><i class="fas fa-list"></i> List View</div>
@@ -4573,7 +4574,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="mob-cal-right">
                 <div class="mob-view-switcher-wrap" id="mobCalViewSwitcherWrap">
                     <button class="mob-icon-btn" id="mobCalViewSwitcherBtn" title="Switch View">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="7" height="7" rx="1"/><rect x="9" y="3" width="7" height="7" rx="1"/><rect x="1" y="13" width="7" height="7" rx="1"/><rect x="9" y="13" width="7" height="7" rx="1"/></svg>
+                        <i class="fas fa-calendar-alt mob-view-icon" style="font-size:14px;line-height:1;"></i>
                     </button>
                     <div class="mob-view-switcher-dropdown" id="mobCalViewSwitcherDropdown">
                         <div class="mob-view-switcher-option" data-view="list"><i class="fas fa-list"></i> List View</div>
@@ -4708,6 +4709,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sort-dropdown-divider"></div>
                         <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
                         <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
+                        <div class="sort-dropdown-divider"></div>
+                        <div class="sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
                     </div>
                 </div>
                 <div class="view-switcher-wrap" id="listViewSwitcherWrap">
@@ -4779,6 +4782,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     data-rep-id="<?= (int)($row['rep_id'] ?? 0) ?>"
                     data-budget="<?= $row['source'] === 'report' ? htmlspecialchars(strtolower($row['budget_display'] ?? '')) : '' ?>"
                     data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>"
+                    data-shared="<?= !empty($row['is_shared']) ? 'cprf' : '' ?>"
                     style="cursor:pointer;">
 
                     <div class="schedule-item-accent <?= $accentClass ?>"></div>
@@ -4808,7 +4812,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                 </span>
                             <?php endif; ?>
                             <?php if (!empty($row['is_shared'])): ?>
-                                <span class="badge badge-shared-cprf" title="This schedule is shared with the CPRF integration">
+                                <span class="badge badge-shared-cprf searchable" title="This schedule is shared with the CPRF integration">
                                     🔗 CPRF
                                 </span>
                             <?php endif; ?>
@@ -4871,29 +4875,31 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
         <!-- CAPSULE VIEW -->
         <div id="capsuleView" class="hidden">
-            <div class="capsule-toolbar">
-                <div class="cap-search-wrap">
+            <div class="list-view-toolbar">
+                <div class="search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input id="capsuleSearch" type="text" placeholder="Search by task, location, category, status, or date...">
                 </div>
-                <!-- Sort dropdown -->
-                <div class="cap-sort-wrap" id="capSortWrap">
-                    <button class="cap-sort-btn" id="capSortBtn" title="Sort schedules">
+                <!-- Sort dropdown — same structure as list view -->
+                <div class="sort-dropdown-wrap" id="capSortWrap">
+                    <button class="sort-btn" id="capSortBtn" title="Sort schedules">
                         <i class="fas fa-sort"></i>
-                        <span class="cap-sort-label">Sort</span>
-                        <i class="fas fa-chevron-down cap-sort-chevron"></i>
+                        <span class="sort-btn-label">Sort</span>
+                        <i class="fas fa-chevron-down sort-chevron"></i>
                     </button>
-                    <div class="cap-sort-dropdown" id="capSortDropdown">
+                    <div class="sort-dropdown" id="capSortDropdown">
                         <div class="cap-sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
                         <div class="cap-sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
-                        <div class="cap-sort-divider"></div>
+                        <div class="sort-dropdown-divider"></div>
                         <div class="cap-sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
                         <div class="cap-sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
-                        <div class="cap-sort-divider"></div>
+                        <div class="sort-dropdown-divider"></div>
                         <div class="cap-sort-option" data-sort="status"><i class="fas fa-layer-group"></i> By Status</div>
+                        <div class="sort-dropdown-divider"></div>
+                        <div class="cap-sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
                     </div>
                 </div>
-                <!-- View switcher -->
+                <!-- View switcher — same structure as list view -->
                 <div class="view-switcher-wrap" id="capsuleViewSwitcherWrap">
                     <button class="view-switcher-btn" id="capsuleViewSwitcherBtn" title="Switch View">
                         <i class="fas fa-th-large"></i>
@@ -6752,23 +6758,26 @@ document.addEventListener('DOMContentLoaded', function() {
             scheduleListHolder.querySelectorAll('.searchable[data-original]').forEach(el => resetEl(el));
 
             items.forEach(item => {
-                const task = item.getAttribute('data-task') || '';
-                const loc  = item.getAttribute('data-location') || '';
-                const date = item.getAttribute('data-date') || '';
-                const cat  = item.getAttribute('data-category') || '';
-                const stat = item.getAttribute('data-status') || '';
-                const prio = item.getAttribute('data-priority') || '';
-                const rep  = item.getAttribute('data-rep') || '';
+                const task   = item.getAttribute('data-task') || '';
+                const loc    = item.getAttribute('data-location') || '';
+                const date   = item.getAttribute('data-date') || '';
+                const cat    = item.getAttribute('data-category') || '';
+                const stat   = item.getAttribute('data-status') || '';
+                const prio   = item.getAttribute('data-priority') || '';
+                const rep    = item.getAttribute('data-rep') || '';
                 const budget = item.getAttribute('data-budget') || '';
+                const shared = item.getAttribute('data-shared') || '';
 
                 // Legend filter check
                 const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
 
-                // Search check — if no search text, only legend filter applies
+                // Search check — includes CPRF/shared
                 const searchOk = !searchVal.length || (
-                    task.includes(sl) || loc.includes(sl) || date.includes(sl) ||
-                    cat.includes(sl)  || stat.includes(sl) || prio.includes(sl) ||
-                    rep.includes(sl)  || budget.includes(sl)
+                    task.includes(sl)   || loc.includes(sl)    || date.includes(sl)  ||
+                    cat.includes(sl)    || stat.includes(sl)   || prio.includes(sl)  ||
+                    rep.includes(sl)    || budget.includes(sl) || shared.includes(sl) ||
+                    'cprf'.includes(sl) || 'shared'.includes(sl)
+                        && shared === 'cprf'
                 );
 
                 const show = legendOk && searchOk;
@@ -6795,49 +6804,73 @@ document.addEventListener('DOMContentLoaded', function() {
     let _capsuleLegendFilter = null;
     let _capsuleSortMode = 'date-asc';
 
-    // Wire capsule sort dropdown
+    // Wire capsule sort dropdown — event delegation matching #capSortWrap (uses sort-dropdown-wrap class)
     document.addEventListener('click', function(e) {
-        // Toggle sort wrap
-        const sortBtn = e.target.closest('#capSortBtn');
-        if (sortBtn) {
-            const wrap = document.getElementById('capSortWrap');
-            if (wrap) {
-                const isOpen = wrap.classList.contains('open');
-                wrap.classList.toggle('open', !isOpen);
-                // Close other dropdowns
-                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
-            }
+        const capSortWrap = document.getElementById('capSortWrap');
+        if (!capSortWrap) return;
+
+        if (e.target.closest('#capSortBtn')) {
+            const isOpen = capSortWrap.classList.contains('open');
+            document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+            capSortWrap.classList.toggle('open', !isOpen);
             return;
         }
-        // Sort option clicked
-        const sortOpt = e.target.closest('.cap-sort-option');
-        if (sortOpt) {
-            const sort = sortOpt.getAttribute('data-sort');
+
+        const opt = e.target.closest('.cap-sort-option');
+        if (opt) {
+            const sort = opt.getAttribute('data-sort');
             if (sort) {
                 _capsuleSortMode = sort;
-                document.querySelectorAll('.cap-sort-option').forEach(o => o.classList.toggle('active', o.getAttribute('data-sort') === sort));
-                const wrap = document.getElementById('capSortWrap');
-                if (wrap) wrap.classList.remove('open');
+                document.querySelectorAll('.cap-sort-option').forEach(o =>
+                    o.classList.toggle('active', o.getAttribute('data-sort') === sort)
+                );
+                capSortWrap.classList.remove('open');
                 renderCapsuleView();
             }
             return;
         }
-        // Close capsule sort when clicking outside
-        const wrap = document.getElementById('capSortWrap');
-        if (wrap && !e.target.closest('#capSortWrap')) wrap.classList.remove('open');
+
+        if (!e.target.closest('#capSortWrap')) {
+            capSortWrap.classList.remove('open');
+        }
     });
 
-    // Category → icon emoji
-    function _capIcon(category, source) {
-        if (source === 'report') return '📄';
+    // Task/infrastructure → icon (FA class + emoji fallback)
+    function _capIcon(task, category, source) {
+        const t = (task     || '').toLowerCase();
         const c = (category || '').toLowerCase();
-        if (c.includes('hvac') || c.includes('cooling')) return '❄️';
-        if (c.includes('power') || c.includes('electric')) return '⚡';
-        if (c.includes('road') || c.includes('pavement')) return '🛣️';
-        if (c.includes('safety') || c.includes('fire')) return '🔥';
-        if (c.includes('water') || c.includes('plumbing')) return '💧';
-        if (c.includes('structural')) return '🏗️';
-        return '🔧';
+
+        // Infrastructure-specific first
+        if (t.includes('road') || t.includes('street') || t.includes('pavement') || t.includes('asphalt'))
+            return '<i class="fas fa-road" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('bridge'))
+            return '<i class="fas fa-archway" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('drainage') || t.includes('canal') || t.includes('flood'))
+            return '<i class="fas fa-water" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('aircon') || t.includes('hvac') || t.includes('cooling') || c.includes('hvac'))
+            return '<i class="fas fa-snowflake" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('generator') || t.includes('power') || t.includes('electric') || t.includes('wiring') || c.includes('electrical'))
+            return '<i class="fas fa-bolt" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('water') || t.includes('plumbing') || t.includes('pipe') || t.includes('pump'))
+            return '<i class="fas fa-faucet" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('fire') || t.includes('extinguisher') || c.includes('safety'))
+            return '<i class="fas fa-fire-extinguisher" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('building') || t.includes('roof') || t.includes('wall') || t.includes('ceiling') || t.includes('floor') || t.includes('concrete'))
+            return '<i class="fas fa-building" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('park') || t.includes('garden') || t.includes('tree') || t.includes('landscape'))
+            return '<i class="fas fa-tree" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('court') || t.includes('facility') || t.includes('gym') || t.includes('sports'))
+            return '<i class="fas fa-futbol" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('light') || t.includes('lamp') || t.includes('streetlight'))
+            return '<i class="fas fa-lightbulb" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('fence') || t.includes('gate') || t.includes('wall'))
+            return '<i class="fas fa-border-all" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (t.includes('waiting') || t.includes('shed') || t.includes('shelter'))
+            return '<i class="fas fa-home" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        if (source === 'report')
+            return '<i class="fas fa-file-alt" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        // Generic fallback
+        return '<i class="fas fa-tools" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
     }
 
     // Status → short badge label
@@ -6856,19 +6889,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!board) return;
         board.innerHTML = '';
 
+        // Sort / Filter
         let data = (window.scheduleData || []).slice();
+        const isCprfFilter = (_capsuleSortMode === 'cprf');
+
+        if (!isCprfFilter) {
+            data.sort(function(a, b) {
+                if (_capsuleSortMode === 'date-asc')   return (a.schedule_date || '') < (b.schedule_date || '') ? -1 : 1;
+                if (_capsuleSortMode === 'date-desc')  return (a.schedule_date || '') > (b.schedule_date || '') ? -1 : 1;
+                if (_capsuleSortMode === 'alpha-asc')  return (a.task || '').localeCompare(b.task || '');
+                if (_capsuleSortMode === 'alpha-desc') return (b.task || '').localeCompare(a.task || '');
+                if (_capsuleSortMode === 'status')     return (STATUS_ORDER[getStatusKey(a.status_label)] ?? 4) - (STATUS_ORDER[getStatusKey(b.status_label)] ?? 4);
+                return 0;
+            });
+        }
+
         const searchQ = (document.getElementById('capsuleSearch') || {}).value || '';
         const sl = searchQ.trim().toLowerCase();
-
-        // Sort
-        data.sort(function(a, b) {
-            if (_capsuleSortMode === 'date-asc')   return (a.schedule_date || '') < (b.schedule_date || '') ? -1 : 1;
-            if (_capsuleSortMode === 'date-desc')  return (a.schedule_date || '') > (b.schedule_date || '') ? -1 : 1;
-            if (_capsuleSortMode === 'alpha-asc')  return (a.task || '').localeCompare(b.task || '');
-            if (_capsuleSortMode === 'alpha-desc') return (b.task || '').localeCompare(a.task || '');
-            if (_capsuleSortMode === 'status')     return (STATUS_ORDER[getStatusKey(a.status_label)] ?? 4) - (STATUS_ORDER[getStatusKey(b.status_label)] ?? 4);
-            return 0;
-        });
 
         let cardIndex = 0;
         let visibleCount = 0;
@@ -6876,12 +6913,21 @@ document.addEventListener('DOMContentLoaded', function() {
         data.forEach(function(t) {
             const key = getStatusKey(t.status_label || '');
 
+            // CPRF filter: only show shared items
+            if (isCprfFilter && !t.is_shared) return;
+
             // Legend filter
             if (_capsuleLegendFilter && key !== _capsuleLegendFilter) return;
 
-            // Search filter
+            // Search filter — includes CPRF/shared
             if (sl) {
-                const hay = [t.task, t.location, t.category, t.schedule_date, t.status_label, t.rep_id ? 'rep-' + t.rep_id : '']
+                // Map status_label → display badge label so "done","sched","in prog","delayed" all match
+                const badgeAlias = CAP_BADGE_LABELS[key] || '';
+                const hay = [t.task, t.location, t.category, t.schedule_date, t.status_label,
+                             badgeAlias,
+                             t.rep_id ? 'rep-' + t.rep_id : '',
+                             t.is_shared ? 'cprf shared' : '',
+                             t.facility_name || '']
                     .map(v => (v || '').toLowerCase()).join(' ');
                 if (!hay.includes(sl)) return;
             }
@@ -6900,14 +6946,18 @@ document.addEventListener('DOMContentLoaded', function() {
             card.setAttribute('data-cap-source',   t.source || 'schedule');
             card.setAttribute('data-cap-key',      key);
 
-            const icon      = _capIcon(t.category, t.source);
+            const icon      = _capIcon(t.task, t.category, t.source);
             const badgeLabel = CAP_BADGE_LABELS[key] || 'SCHED';
             const dateStr   = t.schedule_date    ? fmtDate(t.schedule_date)    : '—';
             const endStr    = t.estimated_end_date ? ' → ' + fmtDate(t.estimated_end_date) : '';
             const locStr    = t.location || '—';
-            const repTag    = t.rep_id  ? `<span class="capsule-rep-badge">REP-${escH(String(t.rep_id))}</span>` : '';
+            const repTag    = t.rep_id  ? `<span class="capsule-rep-badge cap-hl-rep">REP-${escH(String(t.rep_id))}</span>` : '';
             const catTag    = (t.category && t.category !== 'Infrastructure Report' && t.category !== 'General Maintenance')
                             ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
+            const facilityTag = t.facility_name
+                            ? `<span class="cap-facility-badge">🏢 ${escH(t.facility_name)}</span>` : '';
+            const cprfTag   = t.is_shared
+                            ? `<span class="cap-cprf-badge">🔗 CPRF</span>` : '';
             const numStr    = String(cardIndex).padStart(2, '0');
 
             card.innerHTML = `
@@ -6916,15 +6966,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="capsule-card-icon">${icon}</div>
                     <div class="capsule-card-top-right">
                         ${repTag}
-                        <div class="capsule-card-badge">${badgeLabel}</div>
+                        <div class="capsule-card-badge cap-hl-status">${badgeLabel}</div>
                     </div>
                 </div>
                 <div class="capsule-card-body">
-                    <div class="capsule-card-title">${escH(t.task || 'Untitled Task')}</div>
+                    <div class="capsule-card-title cap-hl-task">${escH(t.task || 'Untitled Task')}</div>
                     <div class="capsule-card-desc">
-                        📍 ${escH(locStr)}<br>
+                        📍 <span class="cap-hl-loc">${escH(locStr)}</span><br>
                         🗓️ ${escH(dateStr + endStr)}
                     </div>
+                    ${facilityTag || cprfTag ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">${facilityTag}${cprfTag}</div>` : ''}
                 </div>
                 <div class="capsule-card-bottom">
                     <button class="capsule-card-btn">
@@ -6934,6 +6985,39 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${catTag}
                     </div>
                 </div>`;
+
+            // Apply search highlight — only task, location, REP badge, and status badge
+            if (sl) {
+                const CAP_HL_SELECTORS = [
+                    '.cap-hl-task', '.cap-hl-loc', '.cap-hl-rep', '.cap-hl-status'
+                ];
+                CAP_HL_SELECTORS.forEach(function(sel) {
+                    const el = card.querySelector(sel);
+                    if (!el || !el.textContent.trim()) return;
+                    const regex = new RegExp('(' + sl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+                    const textNodes = [];
+                    let tn;
+                    while ((tn = walker.nextNode())) textNodes.push(tn);
+                    textNodes.forEach(function(tn) {
+                        if (!tn.nodeValue.trim()) return;
+                        const parts = tn.nodeValue.split(regex);
+                        if (parts.length < 2) return;
+                        const frag = document.createDocumentFragment();
+                        parts.forEach(function(part, i) {
+                            if (i % 2 === 1) {
+                                const mark = document.createElement('span');
+                                mark.className = 'cap-search-highlight';
+                                mark.textContent = part;
+                                frag.appendChild(mark);
+                            } else {
+                                frag.appendChild(document.createTextNode(part));
+                            }
+                        });
+                        tn.parentNode.replaceChild(frag, tn);
+                    });
+                });
+            }
 
             card.addEventListener('click', function() {
                 const schedData = window.scheduleData || [];
@@ -6999,7 +7083,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── View Switching ────────────────────────────────────────────────────────
     const capsuleView = document.getElementById('capsuleView');
-    let currentView = 'calendar'; // 'calendar' | 'list' | 'capsule'
+
+    // Restore saved view (default: calendar)
+    const _SCHED_VIEW_KEY = 'cimm_sched_view';
+    let currentView = localStorage.getItem(_SCHED_VIEW_KEY) || 'calendar';
 
     const VIEW_ICONS = { list: 'fa-list', calendar: 'fa-calendar-alt', capsule: 'fa-th-large' };
     const VIEW_LABELS = { list: 'List', calendar: 'Calendar', capsule: 'Capsule' };
@@ -7007,6 +7094,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function switchToView(view) {
         currentView = view;
         showingCalendar = (view === 'calendar');
+
+        // Persist preference
+        try { localStorage.setItem(_SCHED_VIEW_KEY, view); } catch(e) {}
 
         // Toggle main panels
         if (calendarView)  calendarView.classList.toggle('hidden', view !== 'calendar');
@@ -7024,14 +7114,19 @@ document.addEventListener('DOMContentLoaded', function() {
             opt.classList.toggle('active', opt.getAttribute('data-view') === view);
         });
 
-        // Update view-switcher button labels & icons
+        // Update desktop view-switcher button labels & icons
         const ICON = VIEW_ICONS[view] || 'fa-list';
         const LABEL = VIEW_LABELS[view] || 'View';
         document.querySelectorAll('.view-switcher-btn').forEach(function(btn) {
-            const iEl = btn.querySelector('i:first-child');
+            const iEl = btn.querySelector('i:not(.view-switcher-chevron)');
             const lEl = btn.querySelector('.view-switcher-label');
             if (iEl) { iEl.className = 'fas ' + ICON; }
             if (lEl) lEl.textContent = LABEL;
+        });
+
+        // Update mobile icon buttons (mobListViewSwitcherBtn + mobCalViewSwitcherBtn)
+        document.querySelectorAll('.mob-view-icon').forEach(function(iEl) {
+            iEl.className = 'fas ' + ICON + ' mob-view-icon';
         });
 
         // Close all view-switcher dropdowns
@@ -7040,38 +7135,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Wire all view-switcher dropdowns (desktop + mobile)
+    // ── View-switcher dropdown: single event-delegation handler (no stopPropagation needed) ──
     document.addEventListener('click', function(e) {
-        // Toggle dropdown open/close
-        const btn = e.target.closest('.view-switcher-btn, #mobListViewSwitcherBtn, #mobCalViewSwitcherBtn');
+        // 1. Button click → toggle its own dropdown
+        const btn = e.target.closest('.view-switcher-btn');
         if (btn) {
-            const wrap = btn.closest('.view-switcher-wrap, .mob-view-switcher-wrap');
+            const wrap = btn.closest('.view-switcher-wrap');
             if (wrap) {
                 const isOpen = wrap.classList.contains('open');
-                // Close all first
-                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+                // close all first
+                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap, .cap-sort-wrap').forEach(w => w.classList.remove('open'));
                 if (!isOpen) wrap.classList.add('open');
                 return;
             }
         }
 
-        // Option clicked
+        // 2. Mobile icon-btn → toggle its mob-view-switcher-wrap
+        const mobBtn = e.target.closest('.mob-view-switcher-wrap > .mob-icon-btn');
+        if (mobBtn) {
+            const wrap = mobBtn.closest('.mob-view-switcher-wrap');
+            if (wrap) {
+                const isOpen = wrap.classList.contains('open');
+                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap, .cap-sort-wrap').forEach(w => w.classList.remove('open'));
+                if (!isOpen) wrap.classList.add('open');
+                return;
+            }
+        }
+
+        // 3. Option clicked inside a view-switcher dropdown
         const opt = e.target.closest('.view-switcher-option, .mob-view-switcher-option');
         if (opt) {
             const view = opt.getAttribute('data-view');
             if (view) switchToView(view);
+            document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
             return;
         }
 
-        // Click outside — close all
-        document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
-    }, true);
+        // 4. Click anywhere else → close all
+        if (!e.target.closest('.view-switcher-wrap, .mob-view-switcher-wrap')) {
+            document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+        }
+    });
 
     function updateMobileControls() {
         if (!mobileListControls || !mobileCalendarControls) return;
 
-        // CSS handles desktop vs mobile visibility via @media (max-width: 768px).
-        // JS only toggles which mobile toolbar is active (list / capsule vs calendar).
         if (currentView === 'calendar') {
             mobileCalendarControls.classList.add('mob-active');
             mobileListControls.classList.remove('mob-active');
@@ -7081,6 +7189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const text   = mlt ? mlt.textContent : (monthLabel ? monthLabel.textContent : '');
             if (mobMlt) mobMlt.textContent = text;
         } else {
+            // list OR capsule — both use the mobile list toolbar
             mobileListControls.classList.add('mob-active');
             mobileCalendarControls.classList.remove('mob-active');
         }
@@ -7113,10 +7222,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (mobileScheduleSearch && scheduleSearch) {
         mobileScheduleSearch.addEventListener('input', e => {
-            scheduleSearch.value = e.target.value;
-            scheduleSearch.dispatchEvent(new Event('input'));
+            if (currentView === 'capsule') {
+                // Feed mobile search into capsule search input and re-render
+                const capSearch = document.getElementById('capsuleSearch');
+                if (capSearch) {
+                    capSearch.value = e.target.value;
+                    renderCapsuleView();
+                }
+            } else {
+                scheduleSearch.value = e.target.value;
+                scheduleSearch.dispatchEvent(new Event('input'));
+            }
         });
     }
+
+    // Sync mobile sort → capsule sort when in capsule view
+    // The wireSort IIFE runs below and handles list sort. Here we intercept for capsule.
+    document.addEventListener('click', function(e) {
+        if (currentView !== 'capsule') return;
+        const opt = e.target.closest('#mobSchedSortDropdown .sort-option');
+        if (!opt) return;
+        const sort = opt.getAttribute('data-sort');
+        if (!sort) return;
+        // Map list-sort modes to capsule sort modes (id-asc/desc don't exist → skip)
+        const capSortMap = {
+            'date-asc':   'date-asc',
+            'date-desc':  'date-desc',
+            'alpha-asc':  'alpha-asc',
+            'alpha-desc': 'alpha-desc',
+            'cprf':       'cprf',
+        };
+        if (capSortMap[sort]) {
+            _capsuleSortMode = capSortMap[sort];
+            // Sync active state in capsule sort dropdown too
+            document.querySelectorAll('.cap-sort-option').forEach(o =>
+                o.classList.toggle('active', o.getAttribute('data-sort') === _capsuleSortMode)
+            );
+            renderCapsuleView();
+        }
+    });
 
     updateMobileControls();
 
@@ -7395,6 +7539,32 @@ document.addEventListener('DOMContentLoaded', function() {
         function applySchedSort(mode) {
             const noMsg = document.getElementById('noResultMsg');
             const items = Array.from(holder.querySelectorAll('.schedule-item'));
+
+            // CPRF mode = FILTER: show only shared items, hide the rest
+            if (mode === 'cprf') {
+                let shownCount = 0;
+                items.forEach(item => {
+                    const isShared = (item.dataset.shared || '') === 'cprf';
+                    item.classList.toggle('filter-hidden', !isShared);
+                    if (isShared) shownCount++;
+                });
+                if (noMsg) {
+                    noMsg.style.display = shownCount === 0 ? '' : 'none';
+                    if (shownCount === 0) noMsg.textContent = 'No CPRF-shared schedules found.';
+                }
+                return;
+            }
+
+            // All other modes: restore any cprf-hidden items first
+            items.forEach(item => {
+                // Only remove filter-hidden if it was set by a previous cprf filter
+                // (legend filter and search filter manage their own hidden states separately)
+                const stat = item.getAttribute('data-status') || '';
+                const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
+                if (legendOk) item.classList.remove('filter-hidden');
+            });
+
+            // Then sort
             items.sort((a, b) => {
                 // data-date format: "human label|yyyy-mm-dd"
                 const dateA = (a.dataset.date || '').split('|')[1] || '';
@@ -7412,7 +7582,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return 0;
             });
             items.forEach(item => holder.appendChild(item));
-            if (noMsg) holder.appendChild(noMsg);
+            if (noMsg) {
+                noMsg.textContent = 'No matching data or result.';
+                holder.appendChild(noMsg);
+            }
         }
 
         function wireSort(wrapId, btnId, dropdownId, siblingDropdownId) {
@@ -7450,6 +7623,9 @@ document.addEventListener('DOMContentLoaded', function() {
         wireSort('schedSortWrap',    'schedSortBtn',    'schedSortDropdown',    'mobSchedSortDropdown');
         wireSort('mobSchedSortWrap', 'mobSchedSortBtn', 'mobSchedSortDropdown', 'schedSortDropdown');
     })();
+
+    // Restore saved view — must be LAST so all functions and wireViewSwitcher are ready
+    switchToView(currentView);
 
 }); // --- END DOMContentLoaded ---
 </script>
