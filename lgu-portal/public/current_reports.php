@@ -691,28 +691,28 @@ foreach ($rows as $row) {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 7px 14px 7px 8px;
     border-radius: 24px;
-    border: 1.5px solid rgba(255,152,0,.38);
-    background: rgba(255,152,0,.07);
+    border: 1.5px solid rgba(37,99,235,.38);
+    background: rgba(37,99,235,.07);
     cursor: pointer;
     transition: background .2s, border-color .2s, transform .15s, box-shadow .2s;
     outline: none;
     font-size: 13px; font-weight: 700;
-    color: #ff9800;
+    color: #2563eb;
     white-space: nowrap;
     font-family: inherit;
 }
 .eng-self-profile-btn:hover {
-    background: rgba(255,152,0,.14);
-    border-color: #ff9800;
+    background: rgba(37,99,235,.14);
+    border-color: #2563eb;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(255,152,0,.25);
+    box-shadow: 0 4px 14px rgba(37,99,235,.25);
 }
 .eng-self-profile-btn:active { transform: translateY(0); }
 .eng-self-profile-avatar {
     width: 28px; height: 28px; border-radius: 50%;
     overflow: hidden; flex-shrink: 0;
-    border: 1.5px solid rgba(255,152,0,.45);
-    background: rgba(255,152,0,.1);
+    border: 1.5px solid rgba(37,99,235,.45);
+    background: rgba(37,99,235,.1);
     display: flex; align-items: center; justify-content: center;
 }
 .eng-self-profile-avatar img {
@@ -720,13 +720,13 @@ foreach ($rows as $row) {
 }
 .eng-self-profile-avatar svg { width: 100%; height: 100%; display: block; }
 [data-theme="dark"] .eng-self-profile-btn {
-    background: rgba(255,152,0,.12);
-    border-color: rgba(255,152,0,.35);
-    color: #ff9800;
+    background: rgba(37,99,235,.12);
+    border-color: rgba(37,99,235,.35);
+    color: #60a5fa;
 }
 [data-theme="dark"] .eng-self-profile-btn:hover {
-    background: rgba(255,152,0,.2);
-    border-color: #ff9800;
+    background: rgba(37,99,235,.2);
+    border-color: #60a5fa;
 }
 @media (max-width: 768px) {
     .eng-self-profile-btn .eng-self-profile-label { display: none; }
@@ -1090,9 +1090,19 @@ tr.notif-highlight > td:first-child {
 [data-theme="dark"] #engComboSearch { background: var(--bg-primary); }
 #engComboList {
     max-height: 180px; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
 }
-#engComboList::-webkit-scrollbar { width: 4px; }
-#engComboList::-webkit-scrollbar-thumb { background: rgba(255,152,0,.4); border-radius: 4px; }
+#engComboList::-webkit-scrollbar { width: 8px; height: 8px; }
+#engComboList::-webkit-scrollbar-track { background: rgba(0,0,0,0.07); border-radius: 4px; }
+#engComboList::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 4px; }
+#engComboList::-webkit-scrollbar-thumb:hover { background: #7a94c9; }
+[data-theme="dark"] #engComboList {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] #engComboList::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+[data-theme="dark"] #engComboList::-webkit-scrollbar-thumb { background: #5f8cff; }
+[data-theme="dark"] #engComboList::-webkit-scrollbar-thumb:hover { background: #4a7aef; }
 .eng-combo-option {
     padding: 7px 10px; font-size: 11px; cursor: pointer;
     color: var(--text-primary); border-bottom: 1px solid var(--border-color);
@@ -2500,9 +2510,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 if ($hasPic): ?>
                     <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt=""
                          onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#e0f2fe"/><circle cx="50" cy="36" r="20" fill="#2563eb"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/></svg>
                 <?php else: ?>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e0f2fe"/><circle cx="50" cy="36" r="20" fill="#2563eb"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/></svg>
                 <?php endif; ?>
             </span>
             <span class="eng-self-profile-label">My Profile</span>

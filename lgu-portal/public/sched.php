@@ -1,6 +1,40 @@
 <?php
 session_start();
 
+// ── Inline AJAX: get_report_evidence ─────────────────────────────────────────
+if (isset($_GET['action']) && $_GET['action'] === 'get_evidence') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
+        echo json_encode(['success' => false, 'error' => 'Unauthorized']); exit;
+    }
+    require __DIR__ . '/db.php';
+    $repId = (int)($_GET['rep_id'] ?? 0);
+    if ($repId <= 0) { echo json_encode(['success' => false, 'error' => 'Invalid rep_id']); exit; }
+    $stmt = $conn->prepare("
+        SELECT
+            GROUP_CONCAT(DISTINCT ei.img_path  ORDER BY ei.uploaded_at  ASC SEPARATOR ',') AS evidence_images,
+            GROUP_CONCAT(DISTINCT rpi.img_path ORDER BY rpi.uploaded_at ASC SEPARATOR ',') AS progress_images
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id   = res.res_id
+        LEFT JOIN evidence_images     ei  ON res.req_id = ei.req_id
+        LEFT JOIN report_progress_images rpi ON r.rep_id = rpi.rep_id
+        WHERE r.rep_id = ?
+        GROUP BY r.rep_id
+    ");
+    if (!$stmt) { echo json_encode(['success' => false, 'error' => $conn->error]); exit; }
+    $stmt->bind_param('i', $repId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    echo json_encode([
+        'success'  => true,
+        'evidence' => $row && $row['evidence_images'] ? array_values(array_filter(explode(',', $row['evidence_images']))) : [],
+        'progress' => $row && $row['progress_images'] ? array_values(array_filter(explode(',', $row['progress_images']))) : [],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+// ── End inline AJAX ───────────────────────────────────────────────────────────
+
 // --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
@@ -1975,9 +2009,16 @@ usort($schedules, function($a, $b) {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(55,98,200,0.35) transparent;
 }
-.modal-body::-webkit-scrollbar { display: none; }
+.modal-body::-webkit-scrollbar { width: 6px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; border-radius: 99px; }
+.modal-body::-webkit-scrollbar-thumb { background: rgba(55,98,200,0.35); border-radius: 99px; }
+.modal-body::-webkit-scrollbar-thumb:hover { background: rgba(55,98,200,0.60); }
+[data-theme="dark"] .modal-body { scrollbar-color: rgba(95,140,255,0.35) transparent; }
+[data-theme="dark"] .modal-body::-webkit-scrollbar-thumb { background: rgba(95,140,255,0.35); }
+[data-theme="dark"] .modal-body::-webkit-scrollbar-thumb:hover { background: rgba(95,140,255,0.60); }
 
 /* ── Task Detail Card (inside taskModal) ── */
 .modal-task-item {
@@ -2930,43 +2971,56 @@ usort($schedules, function($a, $b) {
 .legend-item:has(.legend-weekend)   { border-color: rgba(220,38,38,0.22); }
 
 /* ── Clickable filter legend pills ── */
-.legend-item[data-filter] {
+.legend-item[data-filter],
+.legend-item[data-cap-filter] {
     cursor: pointer;
     user-select: none;
     transition: box-shadow 0.15s, border-color 0.15s, background 0.15s, transform 0.12s, opacity 0.15s;
 }
-.legend-item[data-filter]:hover {
+.legend-item[data-filter]:hover,
+.legend-item[data-cap-filter]:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(0,0,0,0.10);
 }
-.legend-item[data-filter]:active { transform: scale(0.96); }
+.legend-item[data-filter]:active,
+.legend-item[data-cap-filter]:active { transform: scale(0.96); }
 
 /* Active (selected) state */
-.legend-item[data-filter].legend-active {
+.legend-item[data-filter].legend-active,
+.legend-item[data-cap-filter].legend-active {
     box-shadow: 0 2px 10px rgba(0,0,0,0.13);
     font-weight: 700;
 }
-.legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13); border-color: #1565c0; color: #1565c0; }
-.legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
-.legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
-.legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
+.legend-item[data-filter="upcoming"].legend-active,
+.legend-item[data-cap-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13); border-color: #1565c0; color: #1565c0; }
+.legend-item[data-filter="ongoing"].legend-active,
+.legend-item[data-cap-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
+.legend-item[data-filter="delayed"].legend-active,
+.legend-item[data-cap-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
+.legend-item[data-filter="completed"].legend-active,
+.legend-item[data-cap-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
 
 /* Dimmed state when another filter is active */
-.legend-item[data-filter].legend-dimmed {
+.legend-item[data-filter].legend-dimmed,
+.legend-item[data-cap-filter].legend-dimmed {
     opacity: 0.42;
 }
 
-[data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
-[data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
-[data-theme="dark"] .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
-[data-theme="dark"] .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
+[data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active,
+[data-theme="dark"] .legend-item[data-cap-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
+[data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active,
+[data-theme="dark"] .legend-item[data-cap-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
+[data-theme="dark"] .legend-item[data-filter="delayed"].legend-active,
+[data-theme="dark"] .legend-item[data-cap-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
+[data-theme="dark"] .legend-item[data-filter="completed"].legend-active,
+[data-theme="dark"] .legend-item[data-cap-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
 
 /* Calendar day dimmed when filter is active and day has no matching tasks */
 .calendar-day.legend-filter-dim { opacity: 0.35; pointer-events: none; }
 .calendar-day.legend-filter-dim.today { opacity: 0.55; }
 
 /* Filter indicator badge shown in list & calendar toolbars */
-#legendFilterBadge, #legendFilterBadgeCal {
+#legendFilterBadge, #legendFilterBadgeCal, #legendFilterBadgeCap {
     display: none;
     align-items: center;
     gap: 5px;
@@ -2981,9 +3035,9 @@ usort($schedules, function($a, $b) {
     white-space: nowrap;
     transition: background 0.15s;
 }
-#legendFilterBadge.visible, #legendFilterBadgeCal.visible { display: inline-flex; }
-#legendFilterBadge:hover, #legendFilterBadgeCal:hover { background: rgba(55,98,200,0.18); }
-[data-theme="dark"] #legendFilterBadge, [data-theme="dark"] #legendFilterBadgeCal {
+#legendFilterBadge.visible, #legendFilterBadgeCal.visible, #legendFilterBadgeCap.visible { display: inline-flex; }
+#legendFilterBadge:hover, #legendFilterBadgeCal:hover, #legendFilterBadgeCap:hover { background: rgba(55,98,200,0.18); }
+[data-theme="dark"] #legendFilterBadge, [data-theme="dark"] #legendFilterBadgeCal, [data-theme="dark"] #legendFilterBadgeCap {
     background: rgba(95,140,255,0.14);
     border-color: rgba(95,140,255,0.30);
     color: #8ab4f8;
@@ -3191,8 +3245,58 @@ usort($schedules, function($a, $b) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   CAPSULE VIEW — GRADIENT CARD GRID (screenshot-style)
+   SCHED EVIDENCE LIGHTBOX (mirrors pending_reports.php)
 ═══════════════════════════════════════════════════════ */
+.sched-evidence-strip { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.sched-evidence-thumb {
+    width:76px; height:76px; border-radius:10px; object-fit:cover;
+    border:2px solid var(--border-color); cursor:pointer;
+    transition:transform .2s, box-shadow .2s; background:rgba(0,0,0,.06);
+}
+.sched-evidence-thumb:hover { transform:scale(1.07); box-shadow:0 6px 18px rgba(55,98,200,.30); }
+.sched-evidence-section-label {
+    font-size:11px; font-weight:700; color:var(--text-secondary);
+    text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; margin-top:10px;
+}
+.sched-no-evidence { color:var(--text-secondary); font-size:13px; opacity:.65; font-style:italic; }
+.sched-evidence-loading { color:var(--text-secondary); font-size:12px; opacity:.6; }
+
+/* Lightbox */
+#schedEvidenceLightbox {
+    position:fixed; inset:0; background:rgba(0,0,0,.88);
+    display:none; align-items:center; justify-content:center;
+    z-index:9600; flex-direction:column;
+}
+#schedEvidenceLightbox.active { display:flex; }
+#schedLightboxImg {
+    max-width:88vw; max-height:80vh; border-radius:12px;
+    box-shadow:0 8px 40px rgba(0,0,0,.6); user-select:none;
+    cursor:zoom-in; transition:transform .15s ease;
+}
+#schedLightboxImg.sched-lb-zoomed { cursor:grab; }
+.sched-lb-close {
+    position:absolute; top:20px; right:20px; background:rgba(255,255,255,.15);
+    border:none; color:#fff; font-size:28px; width:44px; height:44px;
+    border-radius:50%; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; z-index:1;
+}
+.sched-lb-close:hover { background:rgba(255,255,255,.30); }
+.sched-lb-nav {
+    position:absolute; top:50%; transform:translateY(-50%);
+    background:rgba(255,255,255,.18); border:none; color:#fff;
+    font-size:26px; width:48px; height:48px; border-radius:50%;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .2s; z-index:1;
+}
+.sched-lb-nav:hover { background:rgba(255,255,255,.35); }
+.sched-lb-nav.left  { left:20px; }
+.sched-lb-nav.right { right:20px; }
+.sched-lb-nav.hidden { display:none; }
+.sched-lb-counter {
+    position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+    color:rgba(255,255,255,.7); font-size:13px; font-weight:600; pointer-events:none;
+}
+@media(max-width:768px) { .sched-lb-nav { display:none!important; } }
 #capsuleView { padding: 0; }
 #capsuleView.hidden { display: none; }
 
@@ -3283,7 +3387,7 @@ usort($schedules, function($a, $b) {
 }
 /* Delayed → red (#c62828 legend) */
 .capsule-card.cap-delayed {
-    background: linear-gradient(135deg, #c62828 0%, #d32f2f 50%, #ef5350 100%) !important;
+    background: linear-gradient(135deg, #b71c1c 0%, #c62828 50%, #e53935 100%) !important;
 }
 /* Completed → green (#2e7d32 legend) */
 .capsule-card.cap-completed {
@@ -3294,15 +3398,18 @@ usort($schedules, function($a, $b) {
 .capsule-card-watermark {
     position: absolute;
     bottom: -10px;
-    right: 10px;
-    font-size: 110px;
+    right: 8px;
+    font-size: clamp(44px, 10vw, 110px);
     font-weight: 900;
     line-height: 1;
     color: rgba(255,255,255,.10);
     pointer-events: none;
     user-select: none;
-    letter-spacing: -4px;
+    letter-spacing: -2px;
     z-index: 0;
+    white-space: nowrap;
+    max-width: 70%;
+    overflow: hidden;
 }
 
 /* Card top: icon (left) + [rep badge + status badge] (right) */
@@ -4915,10 +5022,14 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </div>
             <!-- Legend -->
             <div class="calendar-legend" style="margin-bottom:14px;">
-                <span class="legend-item cap-legend-filter" data-filter="upcoming" title="Filter: Scheduled"><span class="legend-dot legend-upcoming"></span>Scheduled</span>
-                <span class="legend-item cap-legend-filter" data-filter="ongoing" title="Filter: In Progress"><span class="legend-dot legend-ongoing"></span>In Progress</span>
-                <span class="legend-item cap-legend-filter" data-filter="delayed" title="Filter: Delayed"><span class="legend-dot legend-delayed"></span>Delayed</span>
-                <span class="legend-item cap-legend-filter" data-filter="completed" title="Filter: Completed"><span class="legend-dot legend-completed"></span>Completed</span>
+                <span class="legend-item cap-legend-filter" data-cap-filter="upcoming" title="Filter: Scheduled"><span class="legend-dot legend-upcoming"></span>Scheduled</span>
+                <span class="legend-item cap-legend-filter" data-cap-filter="ongoing" title="Filter: In Progress"><span class="legend-dot legend-ongoing"></span>In Progress</span>
+                <span class="legend-item cap-legend-filter" data-cap-filter="delayed" title="Filter: Delayed"><span class="legend-dot legend-delayed"></span>Delayed</span>
+                <span class="legend-item cap-legend-filter" data-cap-filter="completed" title="Filter: Completed"><span class="legend-dot legend-completed"></span>Completed</span>
+                <span id="legendFilterBadgeCap" title="Click to clear filter">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span id="legendFilterBadgeCapLabel">Scheduled</span>
+                </span>
             </div>
             <div class="capsule-board" id="capsuleBoard">
                 <!-- Cards rendered by JS -->
@@ -5986,36 +6097,42 @@ document.addEventListener('DOMContentLoaded', function() {
     function applyLegendFilter(filter) {
         activeLegendFilter = filter;
 
-        // ── 1. Update all legend pill states (both list + calendar legends) ──
+        // ── 1. Update all legend pill states (list + calendar legends) ──
         document.querySelectorAll('.legend-item[data-filter]').forEach(pill => {
             const f = pill.getAttribute('data-filter');
             pill.classList.remove('legend-active', 'legend-dimmed');
-            if (!filter) return; // no filter → all normal
+            if (!filter) return;
             if (f === filter) pill.classList.add('legend-active');
             else              pill.classList.add('legend-dimmed');
         });
 
-        // ── 2. Update clear-filter badges ──
+        // ── 2. Update clear-filter badges (list, calendar, capsule) ──
         const badge    = document.getElementById('legendFilterBadge');
         const badgeCal = document.getElementById('legendFilterBadgeCal');
+        const badgeCap = document.getElementById('legendFilterBadgeCap');
         const lbl      = document.getElementById('legendFilterBadgeLabel');
         const lblCal   = document.getElementById('legendFilterBadgeCalLabel');
+        const lblCap   = document.getElementById('legendFilterBadgeCapLabel');
 
         if (filter) {
             const name = LEGEND_LABELS[filter] || filter;
             if (lbl)    lbl.textContent    = name;
             if (lblCal) lblCal.textContent = name;
+            if (lblCap) lblCap.textContent = name;
             badge    && badge.classList.add('visible');
             badgeCal && badgeCal.classList.add('visible');
+            badgeCap && badgeCap.classList.add('visible');
         } else {
             badge    && badge.classList.remove('visible');
             badgeCal && badgeCal.classList.remove('visible');
+            badgeCap && badgeCap.classList.remove('visible');
         }
 
-        // ── 3. Filter list view items — also respect any active search text ──
+        // ── 3. Update capsule legend pills ──
+        if (typeof _syncCapsuleLegendUI === 'function') _syncCapsuleLegendUI();
+
+        // ── 4. Filter list view items ──
         if (scheduleListHolder) {
-            // If there's active search text, re-fire the search input event to let the
-            // combined search+legend logic handle visibility in one pass.
             if (scheduleSearch && scheduleSearch.value.trim().length > 0) {
                 scheduleSearch.dispatchEvent(new Event('input'));
             } else {
@@ -6033,8 +6150,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // ── 4. Re-render calendar with filter applied ──
+        // ── 5. Re-render calendar with filter applied ──
         renderCalendar();
+
+        // ── 6. Re-render capsule if it's the active view ──
+        if (currentView === 'capsule' && typeof renderCapsuleView === 'function') {
+            renderCapsuleView();
+        }
     }
 
     function clearLegendFilter() { applyLegendFilter(null); }
@@ -6162,6 +6284,19 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
+        // Evidence row placeholder — populated async for report-sourced items
+        const evidenceRow = t.source === 'report' && t.rep_id
+            ? `<div class="modal-task-row" id="schedEvidenceRow-${t.rep_id}">
+                    <div class="modal-task-row-icon"><i class="fas fa-images"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Evidence Images</div>
+                        <div class="modal-task-row-value">
+                            <span class="sched-evidence-loading">Loading images…</span>
+                        </div>
+                    </div>
+               </div>`
+            : '';
+
         modalBody.innerHTML = `
             <div class="modal-task-item theme-${key}">
                 <div class="modal-task-row">
@@ -6206,7 +6341,72 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 ${engineerRow}
                 ${budgetRow}
+                ${evidenceRow}
             </div>`;
+
+        // Async fetch evidence for report-sourced items
+        if (t.source === 'report' && t.rep_id) {
+            (function(repId) {
+                fetch('sched.php?action=get_evidence&rep_id=' + encodeURIComponent(repId))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        const rowEl = document.getElementById('schedEvidenceRow-' + repId);
+                        if (!rowEl) return;
+                        const valEl = rowEl.querySelector('.modal-task-row-value');
+                        if (!valEl) return;
+
+                        const evidence = (data.evidence || []);
+                        const progress = (data.progress || []);
+                        const allImgs  = evidence.concat(progress);
+
+                        if (!allImgs.length) {
+                            valEl.innerHTML = '<span class="sched-no-evidence">No images attached.</span>';
+                            return;
+                        }
+
+                        let html = '';
+                        if (evidence.length) {
+                            html += '<div class="sched-evidence-section-label">📸 Request Evidence</div>';
+                            html += '<div class="sched-evidence-strip">';
+                            evidence.forEach(function(src, i) {
+                                html += `<img class="sched-evidence-thumb" src="${src}" alt="Evidence ${i+1}"
+                                             data-images='${JSON.stringify(evidence).replace(/'/g,"&#39;")}' data-index="${i}"
+                                             onerror="this.style.display='none'">`;
+                            });
+                            html += '</div>';
+                        }
+                        if (progress.length) {
+                            html += '<div class="sched-evidence-section-label">🔧 Progress Photos</div>';
+                            html += '<div class="sched-evidence-strip">';
+                            progress.forEach(function(src, i) {
+                                html += `<img class="sched-evidence-thumb" src="${src}" alt="Progress ${i+1}"
+                                             data-images='${JSON.stringify(progress).replace(/'/g,"&#39;")}' data-index="${i}"
+                                             onerror="this.style.display='none'">`;
+                            });
+                            html += '</div>';
+                        }
+                        valEl.innerHTML = html;
+
+                        // Wire click handlers
+                        valEl.querySelectorAll('.sched-evidence-thumb').forEach(function(img) {
+                            img.addEventListener('click', function() {
+                                try {
+                                    const imgs = JSON.parse(img.getAttribute('data-images'));
+                                    const idx  = parseInt(img.getAttribute('data-index') || '0', 10);
+                                    schedLbOpen(imgs, idx);
+                                } catch(e) {}
+                            });
+                        });
+                    })
+                    .catch(function() {
+                        const rowEl = document.getElementById('schedEvidenceRow-' + repId);
+                        if (rowEl) {
+                            const valEl = rowEl.querySelector('.modal-task-row-value');
+                            if (valEl) valEl.innerHTML = '<span class="sched-no-evidence">Could not load images.</span>';
+                        }
+                    });
+            })(t.rep_id);
+        }
 
         // Update nav bar state
         const navBar     = document.getElementById('modalNavBar');
@@ -6801,7 +7001,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ── Capsule View: Render ──────────────────────────────────────────────────
-    let _capsuleLegendFilter = null;
     let _capsuleSortMode = 'date-asc';
 
     // Wire capsule sort dropdown — event delegation matching #capSortWrap (uses sort-dropdown-wrap class)
@@ -6839,38 +7038,36 @@ document.addEventListener('DOMContentLoaded', function() {
     function _capIcon(task, category, source) {
         const t = (task     || '').toLowerCase();
         const c = (category || '').toLowerCase();
+        const s = 'font-size:19px;color:rgba(255,255,255,.92);';
 
-        // Infrastructure-specific first
-        if (t.includes('road') || t.includes('street') || t.includes('pavement') || t.includes('asphalt'))
-            return '<i class="fas fa-road" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+        // Match reference image icon set — order matters (most specific first)
+        if (t.includes('road') || t.includes('street') || t.includes('pavement') || t.includes('asphalt') || t.includes('highway') || c.includes('road'))
+            return `<i class="fas fa-road" style="${s}"></i>`;
+        if (t.includes('light') || t.includes('lamp') || t.includes('streetlight') || t.includes('lighting') || t.includes('solar'))
+            return `<i class="fas fa-solar-panel" style="${s}"></i>`;
+        if (t.includes('drainage') || t.includes('canal') || t.includes('flood') || t.includes('drain') || t.includes('sewage') || t.includes('sewer'))
+            return `<i class="fas fa-tint" style="${s}"></i>`;
+        if (t.includes('facility') || t.includes('center') || t.includes('court') || t.includes('gym') || t.includes('sports') || t.includes('hall') || t.includes('building') || t.includes('structure') || t.includes('roof') || t.includes('floor') || t.includes('ceiling') || t.includes('concrete') || t.includes('wall') || c.includes('facility'))
+            return `<i class="fas fa-th-large" style="${s}"></i>`;
+        if (t.includes('water') || t.includes('plumbing') || t.includes('pipe') || t.includes('pump') || t.includes('supply'))
+            return `<i class="fas fa-water" style="${s}"></i>`;
+        if (t.includes('electric') || t.includes('power') || t.includes('generator') || t.includes('wiring') || t.includes('cable') || c.includes('electrical') || c.includes('power'))
+            return `<i class="fas fa-bolt" style="${s}"></i>`;
+        if (t.includes('aircon') || t.includes('hvac') || t.includes('cooling') || t.includes('ac ') || c.includes('hvac'))
+            return `<i class="fas fa-snowflake" style="${s}"></i>`;
         if (t.includes('bridge'))
-            return '<i class="fas fa-archway" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('drainage') || t.includes('canal') || t.includes('flood'))
-            return '<i class="fas fa-water" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('aircon') || t.includes('hvac') || t.includes('cooling') || c.includes('hvac'))
-            return '<i class="fas fa-snowflake" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('generator') || t.includes('power') || t.includes('electric') || t.includes('wiring') || c.includes('electrical'))
-            return '<i class="fas fa-bolt" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('water') || t.includes('plumbing') || t.includes('pipe') || t.includes('pump'))
-            return '<i class="fas fa-faucet" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+            return `<i class="fas fa-archway" style="${s}"></i>`;
         if (t.includes('fire') || t.includes('extinguisher') || c.includes('safety'))
-            return '<i class="fas fa-fire-extinguisher" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('building') || t.includes('roof') || t.includes('wall') || t.includes('ceiling') || t.includes('floor') || t.includes('concrete'))
-            return '<i class="fas fa-building" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+            return `<i class="fas fa-fire-extinguisher" style="${s}"></i>`;
         if (t.includes('park') || t.includes('garden') || t.includes('tree') || t.includes('landscape'))
-            return '<i class="fas fa-tree" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('court') || t.includes('facility') || t.includes('gym') || t.includes('sports'))
-            return '<i class="fas fa-futbol" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('light') || t.includes('lamp') || t.includes('streetlight'))
-            return '<i class="fas fa-lightbulb" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        if (t.includes('fence') || t.includes('gate') || t.includes('wall'))
-            return '<i class="fas fa-border-all" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+            return `<i class="fas fa-tree" style="${s}"></i>`;
+        if (t.includes('fence') || t.includes('gate'))
+            return `<i class="fas fa-border-all" style="${s}"></i>`;
         if (t.includes('waiting') || t.includes('shed') || t.includes('shelter'))
-            return '<i class="fas fa-home" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+            return `<i class="fas fa-home" style="${s}"></i>`;
         if (source === 'report')
-            return '<i class="fas fa-file-alt" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
-        // Generic fallback
-        return '<i class="fas fa-tools" style="font-size:19px;color:rgba(255,255,255,.92);"></i>';
+            return `<i class="fas fa-file-alt" style="${s}"></i>`;
+        return `<i class="fas fa-tools" style="${s}"></i>`;
     }
 
     // Status → short badge label
@@ -6916,8 +7113,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // CPRF filter: only show shared items
             if (isCprfFilter && !t.is_shared) return;
 
-            // Legend filter
-            if (_capsuleLegendFilter && key !== _capsuleLegendFilter) return;
+            // Legend filter — use shared activeLegendFilter
+            if (activeLegendFilter && key !== activeLegendFilter) return;
 
             // Search filter — includes CPRF/shared
             if (sl) {
@@ -6948,17 +7145,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const icon      = _capIcon(t.task, t.category, t.source);
             const badgeLabel = CAP_BADGE_LABELS[key] || 'SCHED';
-            const dateStr   = t.schedule_date    ? fmtDate(t.schedule_date)    : '—';
-            const endStr    = t.estimated_end_date ? ' → ' + fmtDate(t.estimated_end_date) : '';
             const locStr    = t.location || '—';
             const repTag    = t.rep_id  ? `<span class="capsule-rep-badge cap-hl-rep">REP-${escH(String(t.rep_id))}</span>` : '';
             const catTag    = (t.category && t.category !== 'Infrastructure Report' && t.category !== 'General Maintenance')
                             ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
-            const facilityTag = t.facility_name
-                            ? `<span class="cap-facility-badge">🏢 ${escH(t.facility_name)}</span>` : '';
             const cprfTag   = t.is_shared
                             ? `<span class="cap-cprf-badge">🔗 CPRF</span>` : '';
-            const numStr    = String(cardIndex).padStart(2, '0');
+            const numStr    = String(cardIndex);
 
             card.innerHTML = `
                 <div class="capsule-card-watermark">${numStr}</div>
@@ -6972,10 +7165,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="capsule-card-body">
                     <div class="capsule-card-title cap-hl-task">${escH(t.task || 'Untitled Task')}</div>
                     <div class="capsule-card-desc">
-                        📍 <span class="cap-hl-loc">${escH(locStr)}</span><br>
-                        🗓️ ${escH(dateStr + endStr)}
+                        📍 <span class="cap-hl-loc">${escH(locStr)}</span>
                     </div>
-                    ${facilityTag || cprfTag ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">${facilityTag}${cprfTag}</div>` : ''}
+                    ${cprfTag ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">${cprfTag}</div>` : ''}
                 </div>
                 <div class="capsule-card-bottom">
                     <button class="capsule-card-btn">
@@ -7064,22 +7256,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Capsule legend filter
+    // Capsule legend filter — uses data-cap-filter to avoid collision with list/cal applyLegendFilter
     document.addEventListener('click', function(e) {
+        // Clear-filter badge click
+        if (e.target.closest('#legendFilterBadgeCap')) {
+            applyLegendFilter(null);
+            return;
+        }
+
         const pill = e.target.closest('.cap-legend-filter');
         if (!pill) return;
-        const f = pill.getAttribute('data-filter');
-        _capsuleLegendFilter = _capsuleLegendFilter === f ? null : f;
+        const f = pill.getAttribute('data-cap-filter');
+        if (!f) return;
+        // Toggle: clicking active filter again clears it
+        applyLegendFilter(activeLegendFilter === f ? null : f);
+    });
+
+    function _syncCapsuleLegendUI() {
+        const f = activeLegendFilter;   // single source of truth
+        // Pills
         document.querySelectorAll('.cap-legend-filter').forEach(function(p) {
-            const pf = p.getAttribute('data-filter');
+            const pf = p.getAttribute('data-cap-filter');
             p.classList.remove('legend-active', 'legend-dimmed');
-            if (_capsuleLegendFilter) {
-                if (pf === _capsuleLegendFilter) p.classList.add('legend-active');
+            if (f) {
+                if (pf === f) p.classList.add('legend-active');
                 else p.classList.add('legend-dimmed');
             }
         });
-        renderCapsuleView();
-    });
+        // Clear badge
+        const badge = document.getElementById('legendFilterBadgeCap');
+        const lbl   = document.getElementById('legendFilterBadgeCapLabel');
+        if (badge) badge.classList.toggle('visible', !!f);
+        if (lbl && f)   lbl.textContent = LEGEND_LABELS[f] || f;
+    }
 
     // ── View Switching ────────────────────────────────────────────────────────
     const capsuleView = document.getElementById('capsuleView');
@@ -7861,7 +8070,175 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ═══════════════════════════════════════════════════════
+//  SCHED EVIDENCE LIGHTBOX — exact zoom port from requests.php
+// ═══════════════════════════════════════════════════════
+(function() {
+    const BASE_ZOOM = 2, MAX_WHEEL_ZOOM = 5, WHEEL_ZOOM_SPEED = 0.002;
+    let isZoomed = false, isDragging = false;
+    let startX = 0, startY = 0, translateX = 0, translateY = 0, currentScale = 1;
+    let _schedLbImages = [], _schedLbIndex = 0;
+
+    const lb        = () => document.getElementById('schedEvidenceLightbox');
+    const lbImg     = () => document.getElementById('schedLightboxImg');
+    const lbClose   = () => document.getElementById('schedLbCloseBtn');
+    const lbCounter = () => document.getElementById('schedLbCounter');
+    const lbPrev    = () => document.getElementById('schedLbPrev');
+    const lbNext    = () => document.getElementById('schedLbNext');
+
+    function resetZoom() {
+        isZoomed = isDragging = false;
+        translateX = translateY = 0; currentScale = 1;
+        const img = lbImg(); if (!img) return;
+        img.classList.remove('sched-lb-zoomed');
+        img.style.transform = 'scale(1)';
+        img.style.cursor = 'zoom-in';
+        const btn = lbClose(); if (btn) { btn.style.display = 'flex'; btn.disabled = false; }
+    }
+
+    function updateImage() {
+        const img = lbImg(); if (!img || !_schedLbImages.length) return;
+        img.src = _schedLbImages[_schedLbIndex];
+        const single = _schedLbImages.length <= 1;
+        const p = lbPrev(), n = lbNext();
+        if (p) p.classList.toggle('hidden', single);
+        if (n) n.classList.toggle('hidden', single);
+        const c = lbCounter();
+        if (c) c.textContent = single ? '' : `${_schedLbIndex + 1} / ${_schedLbImages.length}`;
+        resetZoom();
+    }
+
+    window.schedLbOpen = function(images, index) {
+        _schedLbImages = images; _schedLbIndex = index || 0;
+        const el = lb(); if (el) el.classList.add('active');
+        updateImage();
+    };
+    window.schedLbClose = function() {
+        resetZoom();
+        const el = lb(); if (el) el.classList.remove('active');
+    };
+    window.schedLbPrev = function() {
+        if (_schedLbImages.length < 2) return;
+        _schedLbIndex = (_schedLbIndex - 1 + _schedLbImages.length) % _schedLbImages.length;
+        updateImage();
+    };
+    window.schedLbNext = function() {
+        if (_schedLbImages.length < 2) return;
+        _schedLbIndex = (_schedLbIndex + 1) % _schedLbImages.length;
+        updateImage();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const img = lbImg(); if (!img) return;
+
+        // Backdrop click
+        const el = lb();
+        if (el) el.addEventListener('click', function(e) { if (e.target === el) window.schedLbClose(); });
+
+        // Keyboard
+        document.addEventListener('keydown', function(e) {
+            if (!el || !el.classList.contains('active')) return;
+            if (e.key === 'ArrowLeft')  { window.schedLbPrev(); e.preventDefault(); }
+            if (e.key === 'ArrowRight') { window.schedLbNext(); e.preventDefault(); }
+            if (e.key === 'Escape')     window.schedLbClose();
+        });
+
+        // Double-click zoom (exact from requests.php)
+        img.addEventListener('dblclick', function(e) {
+            const rect = img.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width;
+            const py = (e.clientY - rect.top)  / rect.height;
+            if (!isZoomed) {
+                isZoomed = true; currentScale = BASE_ZOOM;
+                translateX = (0.5 - px) * rect.width  * (BASE_ZOOM - 1);
+                translateY = (0.5 - py) * rect.height * (BASE_ZOOM - 1);
+                img.classList.add('sched-lb-zoomed');
+                img.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+                img.style.cursor = 'grab';
+                const btn = lbClose(); if (btn) { btn.style.display = 'none'; btn.disabled = true; }
+            } else {
+                resetZoom();
+            }
+        });
+
+        // Mouse drag (exact from requests.php)
+        img.addEventListener('mousedown', function(e) {
+            if (!isZoomed || e.button !== 0) return;
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            img.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mouseup', function() {
+            if (!isZoomed) return;
+            isDragging = false;
+            img.style.cursor = 'grab';
+        });
+        window.addEventListener('mousemove', function(e) {
+            if (!isZoomed || !isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            img.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+        });
+
+        // Wheel zoom (exact from requests.php)
+        img.addEventListener('wheel', function(e) {
+            if (!isZoomed) return;
+            e.preventDefault();
+            const rect = img.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width;
+            const py = (e.clientY - rect.top)  / rect.height;
+            const ns = Math.min(Math.max(currentScale + (-e.deltaY * WHEEL_ZOOM_SPEED), BASE_ZOOM), MAX_WHEEL_ZOOM);
+            const sd = ns / currentScale;
+            translateX = translateX * sd + (0.5 - px) * rect.width  * (sd - 1);
+            translateY = translateY * sd + (0.5 - py) * rect.height * (sd - 1);
+            currentScale = ns;
+            img.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+        }, { passive: false });
+
+        // Mobile pinch & swipe (exact from requests.php)
+        let initDist = null, touchSX = 0, touchEX = 0;
+        img.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2)
+                initDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+            else if (e.touches.length === 1)
+                touchSX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        img.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2 && initDist) {
+                e.preventDefault();
+                const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+                currentScale = Math.min(Math.max(d / initDist, 0.5), 3);
+                img.style.transform = `scale(${currentScale})`;
+            }
+        });
+        img.addEventListener('touchend', function(e) {
+            if (currentScale < 1) currentScale = 1;
+            img.style.transform = `scale(${currentScale})`;
+            initDist = null;
+            if (e.changedTouches.length === 1) {
+                touchEX = e.changedTouches[0].screenX;
+                const dx = touchEX - touchSX;
+                if (Math.abs(dx) >= 50 && _schedLbImages.length > 1) {
+                    dx > 0 ? window.schedLbPrev() : window.schedLbNext();
+                }
+            }
+        }, { passive: true });
+    });
+})();
+
 </script>
+<!-- ══════════════════════════════════════════════
+     SCHED EVIDENCE LIGHTBOX
+══════════════════════════════════════════════ -->
+<div id="schedEvidenceLightbox">
+    <button class="sched-lb-close" id="schedLbCloseBtn" onclick="schedLbClose()">&times;</button>
+    <button class="sched-lb-nav left  hidden" id="schedLbPrev" onclick="schedLbPrev()">&#10094;</button>
+    <img id="schedLightboxImg" src="" alt="Evidence">
+    <button class="sched-lb-nav right hidden" id="schedLbNext" onclick="schedLbNext()">&#10095;</button>
+    <div class="sched-lb-counter" id="schedLbCounter"></div>
+</div>
+
 </body>
 
 <script>

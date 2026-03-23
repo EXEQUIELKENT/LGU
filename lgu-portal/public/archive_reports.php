@@ -280,28 +280,28 @@ foreach ($rows as $row) {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 7px 14px 7px 8px;
     border-radius: 24px;
-    border: 1.5px solid rgba(46,125,50,.38);
-    background: rgba(46,125,50,.07);
+    border: 1.5px solid rgba(37,99,235,.38);
+    background: rgba(37,99,235,.07);
     cursor: pointer;
     transition: background .2s, border-color .2s, transform .15s, box-shadow .2s;
     outline: none;
     font-size: 13px; font-weight: 700;
-    color: #2e7d32;
+    color: #2563eb;
     white-space: nowrap;
     font-family: inherit;
 }
 .eng-self-profile-btn:hover {
-    background: rgba(46,125,50,.14);
-    border-color: #2e7d32;
+    background: rgba(37,99,235,.14);
+    border-color: #2563eb;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(46,125,50,.25);
+    box-shadow: 0 4px 14px rgba(37,99,235,.25);
 }
 .eng-self-profile-btn:active { transform: translateY(0); }
 .eng-self-profile-avatar {
     width: 28px; height: 28px; border-radius: 50%;
     overflow: hidden; flex-shrink: 0;
-    border: 1.5px solid rgba(46,125,50,.45);
-    background: rgba(46,125,50,.1);
+    border: 1.5px solid rgba(37,99,235,.45);
+    background: rgba(37,99,235,.1);
     display: flex; align-items: center; justify-content: center;
 }
 .eng-self-profile-avatar img {
@@ -309,13 +309,13 @@ foreach ($rows as $row) {
 }
 .eng-self-profile-avatar svg { width: 100%; height: 100%; display: block; }
 [data-theme="dark"] .eng-self-profile-btn {
-    background: rgba(46,125,50,.12);
-    border-color: rgba(46,125,50,.35);
-    color: #2e7d32;
+    background: rgba(37,99,235,.12);
+    border-color: rgba(37,99,235,.35);
+    color: #60a5fa;
 }
 [data-theme="dark"] .eng-self-profile-btn:hover {
-    background: rgba(46,125,50,.2);
-    border-color: #2e7d32;
+    background: rgba(37,99,235,.2);
+    border-color: #60a5fa;
 }
 @media (max-width: 768px) {
     .eng-self-profile-btn .eng-self-profile-label { display: none; }
@@ -1330,9 +1330,9 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 if ($hasPic): ?>
                     <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt=""
                          onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#e0f2fe"/><circle cx="50" cy="36" r="20" fill="#2563eb"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/></svg>
                 <?php else: ?>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e0f2fe"/><circle cx="50" cy="36" r="20" fill="#2563eb"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2563eb"/></svg>
                 <?php endif; ?>
             </span>
             <span class="eng-self-profile-label">My Profile</span>
@@ -1389,7 +1389,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <?php if (!empty($rows)): ?>
                 <?php foreach ($rows as $row):
                     $rawStatus = $row['resolution_status'] ?: 'Completed';
-                    $notes = $row['res_note'] ?: htmlspecialchars($row['issue'] ?? '—');
+                    $notes = $row['issue'] ?? '—';
                 ?>
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button></td>
@@ -1432,7 +1432,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
     <?php if (!empty($rows)): ?>
         <?php foreach ($rows as $row):
             $rawStatus = $row['resolution_status'] ?: 'Completed';
-            $notes = $row['res_note'] ?: ($row['issue'] ?? '—');
+            $notes = $row['issue'] ?? '—';
         ?>
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
