@@ -65,12 +65,15 @@ $report_result = $conn->query("
     SELECT
         r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
         r.priority_lvl, r.budget,
-        res.status AS resolution_status,
-        req.infrastructure, req.location
+        res.status AS resolution_status, res.req_id,
+        req.infrastructure, req.location, req.issue,
+        GROUP_CONCAT(ev.img_path ORDER BY ev.uploaded_at ASC SEPARATOR ',') AS evidence_images
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id  = res.res_id
     LEFT JOIN requests             req ON res.req_id = req.req_id
+    LEFT JOIN evidence_images      ev  ON res.req_id = ev.req_id
     WHERE r.starting_date IS NOT NULL
+    GROUP BY r.rep_id
     ORDER BY r.starting_date DESC
 ");
 if ($report_result) {
@@ -87,17 +90,23 @@ if ($report_result) {
             $dispStatus = 'Scheduled';
         }
 
+        $evImgs = [];
+        if (!empty($rRow['evidence_images'])) {
+            $evImgs = array_values(array_filter(explode(',', $rRow['evidence_images'])));
+        }
         $maintenance_data[] = [
-            'display_id'   => (int)$rRow['rep_id'],
-            'modal_id'     => 10000 + (int)$rRow['rep_id'],
-            'id_label'     => '#RPT-' . str_pad($rRow['rep_id'], 3, '0', STR_PAD_LEFT),
-            'task'         => $rRow['infrastructure'] ?? 'Infrastructure Report',
-            'location'     => $rRow['location'] ?? '—',
-            'category'     => 'Infrastructure Report',
-            'status'       => $dispStatus,
-            'starting_date'=> $rRow['starting_date'],
-            'end_date'     => $rRow['end_date'],
-            'budget'       => (float)$rRow['budget'],
+            'display_id'      => (int)$rRow['rep_id'],
+            'modal_id'        => 10000 + (int)$rRow['rep_id'],
+            'id_label'        => '#RPT-' . str_pad($rRow['rep_id'], 3, '0', STR_PAD_LEFT),
+            'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
+            'location'        => $rRow['location'] ?? '—',
+            'status'          => $dispStatus,
+            'starting_date'   => $rRow['starting_date'],
+            'end_date'        => $rRow['end_date'],
+            'budget'          => (float)$rRow['budget'],
+            'priority'        => $rRow['priority_lvl'] ?? '',
+            'issue'           => $rRow['issue'] ?? '',
+            'evidence_images' => $evImgs,
         ];
     }
 }
@@ -1058,6 +1067,59 @@ foreach ($maintenance_data as $_item) {
         .sched-divider      { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 14px 0; }
         .sched-grid-2       { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 
+        /* Evidence strip */
+        .sched-evidence-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+        .sched-evidence-thumb {
+            width: 80px; height: 80px; border-radius: 10px; object-fit: cover;
+            border: 2px solid var(--border-color, rgba(0,0,0,.1));
+            cursor: pointer; transition: transform .2s, box-shadow .2s;
+        }
+        .sched-evidence-thumb:hover { transform: scale(1.07); box-shadow: 0 4px 14px rgba(55,98,200,.3); }
+        .sched-no-evidence { font-size: 13px; color: var(--text-secondary, #64748b); opacity: .7; font-style: italic; }
+
+        /* Priority badges */
+        .sched-priority-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 700;
+        }
+        .sched-priority-badge.p-low      { background:#d1fae5; color:#065f46; }
+        .sched-priority-badge.p-medium   { background:#fef3c7; color:#92400e; }
+        .sched-priority-badge.p-high     { background:#fde8e8; color:#9b1c1c; }
+        .sched-priority-badge.p-critical { background:#fce7f3; color:#831843; }
+        [data-theme="dark"] .sched-priority-badge.p-low      { background:rgba(6,95,70,.3);    color:#6ee7b7; }
+        [data-theme="dark"] .sched-priority-badge.p-medium   { background:rgba(146,64,14,.3);  color:#fcd34d; }
+        [data-theme="dark"] .sched-priority-badge.p-high     { background:rgba(155,28,28,.3);  color:#fca5a5; }
+        [data-theme="dark"] .sched-priority-badge.p-critical { background:rgba(131,24,67,.3);  color:#f9a8d4; }
+
+        /* Lightbox */
+        .sched-lightbox {
+            position: fixed; inset: 0; background: rgba(0,0,0,.88);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; overflow: hidden;
+        }
+        .sched-lightbox.active { display: flex; }
+        .sched-lightbox img {
+            max-width: 88vw; max-height: 80vh; border-radius: 10px;
+            cursor: zoom-in; transition: transform .15s ease;
+            transform-origin: center center;
+            user-select: none; -webkit-user-select: none;
+        }
+        .sched-lightbox img.zoomed { cursor: grab; }
+        .sched-lightbox img.dragging { cursor: grabbing; }
+        .sched-lightbox-close {
+            position: absolute; top: 16px; right: 20px;
+            background: rgba(255,255,255,.15); border: none; color: #fff;
+            font-size: 28px; width: 44px; height: 44px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+        .sched-lightbox-close:hover { background: rgba(255,255,255,.3); }
+        .sched-lightbox-hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,.5); font-size: 12px; pointer-events: none;
+            transition: opacity .4s;
+        }
+
         @media (max-width: 768px) {
             .sched-detail-modal { width: 95%; max-height: 90vh; }
             .sched-modal-header, .sched-modal-body { padding-left: 18px; padding-right: 18px; }
@@ -1361,10 +1423,6 @@ foreach ($maintenance_data as $_item) {
                         <span class="value searchable"><?= htmlspecialchars($item['id_label']) ?></span>
                     </div>
                     <div class="report-row">
-                        <span class="label" data-i18n="reports_mobile_category">Category:</span>
-                        <span class="value searchable"><?= htmlspecialchars($item['category']) ?></span>
-                    </div>
-                    <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_task">Task:</span>
                         <span class="value searchable"><?= htmlspecialchars($item['task']) ?></span>
                     </div>
@@ -1555,6 +1613,13 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <!-- ═══════════════ SCHEDULE DETAIL MODAL ═══════════════ -->
+<!-- Evidence Lightbox -->
+<div id="schedLightbox" class="sched-lightbox">
+    <button class="sched-lightbox-close" id="schedLightboxClose">&#215;</button>
+    <img id="schedLightboxImg" src="" alt="Evidence" draggable="false">
+    <div class="sched-lightbox-hint" id="schedLightboxHint">Double-tap to zoom &nbsp;·&nbsp; Scroll to zoom</div>
+</div>
+
 <div id="schedModalBackdrop" class="sched-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="schedModalTitle">
     <div id="schedDetailModal" class="sched-detail-modal">
         <div class="sched-modal-band" id="schedModalBand"></div>
@@ -1573,12 +1638,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="sched-field-label" id="lbl-location">📍 Location</div>
                 <div class="sched-field-value" id="schedModalLocation"></div>
             </div>
-            <div class="sched-field">
-                <div class="sched-field-label" id="lbl-category">🏷️ Category</div>
-                <div class="sched-field-value" id="schedModalCategory"></div>
+            <div class="sched-field" id="sched-issue-field" style="display:none;">
+                <div class="sched-field-label" id="lbl-issue">📝 Issue / Notes</div>
+                <div class="sched-field-value" id="schedModalIssue"></div>
             </div>
             <div class="sched-divider"></div>
             <div class="sched-grid-2">
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-priority">🚦 Priority</div>
+                    <div class="sched-field-value" id="schedModalPriority"></div>
+                </div>
+                <div class="sched-field">
+                    <div class="sched-field-label" id="lbl-budget">💰 Budget</div>
+                    <div class="sched-field-value" id="schedModalBudget"></div>
+                </div>
                 <div class="sched-field">
                     <div class="sched-field-label" id="lbl-start">📅 Start Date</div>
                     <div class="sched-field-value" id="schedModalStart"></div>
@@ -1587,10 +1660,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="sched-field-label" id="lbl-end">🏁 Est. Completion</div>
                     <div class="sched-field-value" id="schedModalEnd"></div>
                 </div>
-                <div class="sched-field">
-                    <div class="sched-field-label" id="lbl-budget">💰 Budget</div>
-                    <div class="sched-field-value" id="schedModalBudget"></div>
-                </div>
+            </div>
+            <div class="sched-divider" id="sched-evidence-divider" style="display:none;"></div>
+            <div class="sched-field" id="sched-evidence-field" style="display:none;">
+                <div class="sched-field-label" id="lbl-evidence">🖼️ Evidence Photos</div>
+                <div class="sched-evidence-strip" id="schedModalEvidence"></div>
             </div>
         </div>
     </div>
@@ -1604,16 +1678,18 @@ document.addEventListener("DOMContentLoaded", () => {
         $modal_data = [];
         foreach ($maintenance_data as $m) {
             $modal_data[] = [
-                'id'       => (int)$m['modal_id'],
-                'task'     => $m['task'],
-                'location' => $m['location'],
-                'category' => $m['category'],
-                'status'   => $m['status'],
-                'start'    => !empty($m['starting_date']) ? date('M d, Y', strtotime($m['starting_date'])) : '—',
-                'end'      => !empty($m['end_date'])
-                                ? date('M d, Y', strtotime($m['end_date']))
-                                : '—',
-                'budget'   => '₱' . number_format((float)$m['budget'], 2),
+                'id'              => (int)$m['modal_id'],
+                'task'            => $m['task'],
+                'location'        => $m['location'],
+                'status'          => $m['status'],
+                'start'           => !empty($m['starting_date']) ? date('M d, Y', strtotime($m['starting_date'])) : '—',
+                'end'             => !empty($m['end_date'])
+                                       ? date('M d, Y', strtotime($m['end_date']))
+                                       : '—',
+                'budget'          => '₱' . number_format((float)$m['budget'], 2),
+                'priority'        => $m['priority'] ?? '',
+                'issue'           => $m['issue'] ?? '',
+                'evidence_images' => $m['evidence_images'] ?? [],
             ];
         }
         echo json_encode($modal_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
@@ -1628,19 +1704,25 @@ document.addEventListener("DOMContentLoaded", () => {
     var LABELS = {
         en: {
             location : '📍 Location',
-            category : '🏷️ Category',
+            issue    : '📝 Issue / Notes',
+            priority : '🚦 Priority',
             start    : '📅 Start Date',
             end      : '🏁 Est. Completion',
             budget   : '💰 Budget',
+            evidence : '🖼️ Evidence Photos',
             noDate   : 'Not set',
+            noPriority: 'Not specified',
         },
         tl: {
             location : '📍 Lokasyon',
-            category : '🏷️ Kategorya',
+            issue    : '📝 Isyu / Mga Tala',
+            priority : '🚦 Priyoridad',
             start    : '📅 Petsa ng Pagsisimula',
             end      : '🏁 Tinatayang Tapusin',
             budget   : '💰 Badyet',
+            evidence : '🖼️ Mga Larawan ng Ebidensya',
             noDate   : 'Hindi pa natakda',
+            noPriority: 'Hindi tinukoy',
         }
     };
 
@@ -1654,24 +1736,42 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /* ── DOM refs ── */
-    var backdrop = document.getElementById('schedModalBackdrop');
-    var band     = document.getElementById('schedModalBand');
-    var idEl     = document.getElementById('schedModalId');
-    var titleEl  = document.getElementById('schedModalTitle');
-    var statusEl = document.getElementById('schedModalStatus');
-    var locEl    = document.getElementById('schedModalLocation');
-    var catEl    = document.getElementById('schedModalCategory');
-    var startEl  = document.getElementById('schedModalStart');
-    var endEl    = document.getElementById('schedModalEnd');
-    var budgetEl = document.getElementById('schedModalBudget');
-    var closeBtn = document.getElementById('schedModalClose');
+    var backdrop         = document.getElementById('schedModalBackdrop');
+    var band             = document.getElementById('schedModalBand');
+    var idEl             = document.getElementById('schedModalId');
+    var titleEl          = document.getElementById('schedModalTitle');
+    var statusEl         = document.getElementById('schedModalStatus');
+    var locEl            = document.getElementById('schedModalLocation');
+    var issueEl          = document.getElementById('schedModalIssue');
+    var issueFld         = document.getElementById('sched-issue-field');
+    var priorityEl       = document.getElementById('schedModalPriority');
+    var startEl          = document.getElementById('schedModalStart');
+    var endEl            = document.getElementById('schedModalEnd');
+    var budgetEl         = document.getElementById('schedModalBudget');
+    var evidenceEl       = document.getElementById('schedModalEvidence');
+    var evidenceFld      = document.getElementById('sched-evidence-field');
+    var evidenceDivider  = document.getElementById('sched-evidence-divider');
+    var closeBtn         = document.getElementById('schedModalClose');
+    var lightbox         = document.getElementById('schedLightbox');
+    var lightboxImg      = document.getElementById('schedLightboxImg');
+    var lightboxClose    = document.getElementById('schedLightboxClose');
 
     /* ── Label elements ── */
     var lblLocation = document.getElementById('lbl-location');
-    var lblCategory = document.getElementById('lbl-category');
+    var lblIssue    = document.getElementById('lbl-issue');
+    var lblPriority = document.getElementById('lbl-priority');
     var lblStart    = document.getElementById('lbl-start');
     var lblEnd      = document.getElementById('lbl-end');
     var lblBudget   = document.getElementById('lbl-budget');
+    var lblEvidence = document.getElementById('lbl-evidence');
+
+    /* ── Priority badge helper ── */
+    var PRIORITY_MAP = {
+        'Low':      'p-low',
+        'Medium':   'p-medium',
+        'High':     'p-high',
+        'Critical': 'p-critical',
+    };
 
     /* ── Open ── */
     window.openSchedModal = function (schedId) {
@@ -1684,25 +1784,74 @@ document.addEventListener("DOMContentLoaded", () => {
         var lang   = getLang();
         var lbl    = LABELS[lang] || LABELS.en;
         var smap   = STATUS_MAP[rec.status] || { cls: 'sched-pending', en: rec.status, tl: rec.status };
+        var isRpt  = (rec.id >= 10000); // reports are offset by 10000
 
         /* Labels */
         lblLocation.textContent = lbl.location;
-        lblCategory.textContent = lbl.category;
+        if (lblIssue)    lblIssue.textContent    = lbl.issue;
+        if (lblPriority) lblPriority.textContent = lbl.priority;
         lblStart.textContent    = lbl.start;
         lblEnd.textContent      = lbl.end;
         lblBudget.textContent   = lbl.budget;
+        if (lblEvidence) lblEvidence.textContent = lbl.evidence;
 
         /* Band colour */
         band.className = 'sched-modal-band ' + smap.cls;
 
-        /* Fields */
-        idEl.textContent     = '#SCH-' + String(rec.id).padStart(3, '0');
+        /* ID prefix differs: SCH- for maintenance, RPT- for reports */
+        if (isRpt) {
+            idEl.textContent = '#RPT-' + String(rec.id - 10000).padStart(3, '0');
+        } else {
+            idEl.textContent = '#SCH-' + String(rec.id).padStart(3, '0');
+        }
         titleEl.textContent  = rec.task;
-        locEl.textContent    = rec.location  || '—';
-        catEl.textContent    = rec.category  || '—';
-        startEl.textContent  = rec.start     || lbl.noDate;
-        endEl.textContent    = rec.end       || lbl.noDate;
-        budgetEl.textContent = rec.budget    || '—';
+        locEl.textContent    = rec.location || '—';
+        startEl.textContent  = rec.start    || lbl.noDate;
+        endEl.textContent    = rec.end      || lbl.noDate;
+        budgetEl.textContent = rec.budget   || '—';
+
+        /* Issue / Notes — only for reports */
+        if (issueFld) {
+            if (isRpt && rec.issue && rec.issue.trim()) {
+                issueEl.textContent = rec.issue;
+                issueFld.style.display = '';
+            } else {
+                issueFld.style.display = 'none';
+            }
+        }
+
+        /* Priority — only for reports */
+        if (priorityEl) {
+            if (isRpt && rec.priority) {
+                var pClass = PRIORITY_MAP[rec.priority] || 'p-low';
+                priorityEl.innerHTML = '<span class="sched-priority-badge ' + pClass + '">' + rec.priority + '</span>';
+            } else if (isRpt) {
+                priorityEl.textContent = lbl.noPriority;
+            } else {
+                priorityEl.textContent = '—';
+            }
+        }
+
+        /* Evidence images — only for reports */
+        if (evidenceFld && evidenceEl) {
+            var imgs = (rec.evidence_images && rec.evidence_images.length) ? rec.evidence_images : [];
+            if (isRpt && imgs.length > 0) {
+                evidenceEl.innerHTML = '';
+                imgs.forEach(function (src) {
+                    var img = document.createElement('img');
+                    img.src = src;
+                    img.alt = 'Evidence';
+                    img.className = 'sched-evidence-thumb';
+                    img.onclick = function () { openSchedLightbox(src); };
+                    evidenceEl.appendChild(img);
+                });
+                evidenceFld.style.display = '';
+                if (evidenceDivider) evidenceDivider.style.display = '';
+            } else {
+                evidenceFld.style.display = 'none';
+                if (evidenceDivider) evidenceDivider.style.display = 'none';
+            }
+        }
 
         /* Status pill */
         statusEl.textContent = (lang === 'tl') ? smap.tl : smap.en;
@@ -1713,6 +1862,150 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.style.overflow = 'hidden';
         closeBtn.focus();
     };
+
+    /* ── Lightbox with zoom/pan ── */
+    var lbScale = 1, lbTX = 0, lbTY = 0;
+    var lbDragging = false, lbDragStartX = 0, lbDragStartY = 0;
+    var LB_BASE_ZOOM = 2.5, LB_MAX_ZOOM = 5;
+    var lbHintTimer = null;
+
+    function lbSetTransform() {
+        lightboxImg.style.transform = 'scale(' + lbScale + ') translate(' + lbTX + 'px,' + lbTY + 'px)';
+    }
+
+    function lbReset() {
+        lbScale = 1; lbTX = 0; lbTY = 0;
+        lbSetTransform();
+        lightboxImg.classList.remove('zoomed','dragging');
+        lightboxImg.style.cursor = 'zoom-in';
+    }
+
+    function openSchedLightbox(src) {
+        if (!lightbox || !lightboxImg) return;
+        lbReset();
+        lightboxImg.src = src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        /* Show hint briefly */
+        var hint = document.getElementById('schedLightboxHint');
+        if (hint) {
+            hint.style.opacity = '1';
+            clearTimeout(lbHintTimer);
+            lbHintTimer = setTimeout(function(){ hint.style.opacity = '0'; }, 2500);
+        }
+    }
+
+    function closeSchedLightbox() {
+        if (!lightbox) return;
+        lbReset();
+        lightbox.classList.remove('active');
+        lightboxImg.src = '';
+        document.body.style.overflow = '';
+    }
+
+    /* Double-click / double-tap to zoom */
+    lightboxImg && lightboxImg.addEventListener('dblclick', function(e) {
+        if (lbScale > 1) { lbReset(); return; }
+        var rect = lightboxImg.getBoundingClientRect();
+        var px = (e.clientX - rect.left) / rect.width  - 0.5;
+        var py = (e.clientY - rect.top)  / rect.height - 0.5;
+        lbScale = LB_BASE_ZOOM;
+        lbTX = -px * rect.width  * (LB_BASE_ZOOM - 1) / LB_BASE_ZOOM;
+        lbTY = -py * rect.height * (LB_BASE_ZOOM - 1) / LB_BASE_ZOOM;
+        lbSetTransform();
+        lightboxImg.classList.add('zoomed');
+        lightboxImg.style.cursor = 'grab';
+    });
+
+    /* Mouse wheel zoom */
+    lightboxImg && lightboxImg.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var rect = lightboxImg.getBoundingClientRect();
+        var px = (e.clientX - rect.left) / rect.width  - 0.5;
+        var py = (e.clientY - rect.top)  / rect.height - 0.5;
+        var delta = e.deltaY < 0 ? 0.25 : -0.25;
+        var newScale = Math.min(Math.max(lbScale + delta, 1), LB_MAX_ZOOM);
+        if (newScale === 1) { lbReset(); return; }
+        var scaleDelta = newScale / lbScale;
+        lbTX = lbTX * scaleDelta - px * rect.width  * (scaleDelta - 1) / newScale;
+        lbTY = lbTY * scaleDelta - py * rect.height * (scaleDelta - 1) / newScale;
+        lbScale = newScale;
+        lbSetTransform();
+        lightboxImg.classList.add('zoomed');
+        lightboxImg.style.cursor = 'grab';
+    }, { passive: false });
+
+    /* Mouse drag */
+    lightboxImg && lightboxImg.addEventListener('mousedown', function(e) {
+        if (lbScale <= 1 || e.button !== 0) return;
+        lbDragging = true;
+        lbDragStartX = e.clientX - lbTX * lbScale;
+        lbDragStartY = e.clientY - lbTY * lbScale;
+        lightboxImg.classList.add('dragging');
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!lbDragging) return;
+        lbTX = (e.clientX - lbDragStartX) / lbScale;
+        lbTY = (e.clientY - lbDragStartY) / lbScale;
+        lbSetTransform();
+    });
+    document.addEventListener('mouseup', function() {
+        if (!lbDragging) return;
+        lbDragging = false;
+        if (lightboxImg) lightboxImg.classList.remove('dragging');
+    });
+
+    /* Touch pinch-to-zoom + swipe */
+    var lbTouchStartDist = null, lbTouchStartScale = 1;
+    var lbTouchStartX = 0, lbSwipeStartX = 0;
+    lightboxImg && lightboxImg.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            lbTouchStartDist = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            lbTouchStartScale = lbScale;
+        } else if (e.touches.length === 1) {
+            lbSwipeStartX = e.touches[0].clientX;
+            if (lbScale > 1) {
+                lbDragging = true;
+                lbDragStartX = e.touches[0].clientX - lbTX * lbScale;
+                lbDragStartY = e.touches[0].clientY - lbTY * lbScale;
+            }
+        }
+    }, { passive: true });
+    lightboxImg && lightboxImg.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 2 && lbTouchStartDist) {
+            e.preventDefault();
+            var dist = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            lbScale = Math.min(Math.max(lbTouchStartScale * (dist / lbTouchStartDist), 1), LB_MAX_ZOOM);
+            lbSetTransform();
+            if (lbScale > 1) lightboxImg.classList.add('zoomed');
+        } else if (e.touches.length === 1 && lbDragging && lbScale > 1) {
+            lbTX = (e.touches[0].clientX - lbDragStartX) / lbScale;
+            lbTY = (e.touches[0].clientY - lbDragStartY) / lbScale;
+            lbSetTransform();
+        }
+    }, { passive: false });
+    lightboxImg && lightboxImg.addEventListener('touchend', function(e) {
+        lbTouchStartDist = null;
+        lbDragging = false;
+        if (lbScale <= 1) lbReset();
+    }, { passive: true });
+
+    lightboxClose && lightboxClose.addEventListener('click', closeSchedLightbox);
+    lightbox && lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox) closeSchedLightbox();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox && lightbox.classList.contains('active')) {
+            closeSchedLightbox();
+        }
+    });
 
     /* ── Close ── */
     function closeSchedModal() {

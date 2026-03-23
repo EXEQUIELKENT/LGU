@@ -691,28 +691,28 @@ foreach ($rows as $row) {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 7px 14px 7px 8px;
     border-radius: 24px;
-    border: 1.5px solid rgba(55,98,200,.38);
-    background: rgba(55,98,200,.07);
+    border: 1.5px solid rgba(255,152,0,.38);
+    background: rgba(255,152,0,.07);
     cursor: pointer;
     transition: background .2s, border-color .2s, transform .15s, box-shadow .2s;
     outline: none;
     font-size: 13px; font-weight: 700;
-    color: #3762c8;
+    color: #ff9800;
     white-space: nowrap;
     font-family: inherit;
 }
 .eng-self-profile-btn:hover {
-    background: rgba(55,98,200,.14);
-    border-color: #2851b3;
+    background: rgba(255,152,0,.14);
+    border-color: #ff9800;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(55,98,200,.25);
+    box-shadow: 0 4px 14px rgba(255,152,0,.25);
 }
 .eng-self-profile-btn:active { transform: translateY(0); }
 .eng-self-profile-avatar {
     width: 28px; height: 28px; border-radius: 50%;
     overflow: hidden; flex-shrink: 0;
-    border: 1.5px solid rgba(55,98,200,.45);
-    background: rgba(55,98,200,.1);
+    border: 1.5px solid rgba(255,152,0,.45);
+    background: rgba(255,152,0,.1);
     display: flex; align-items: center; justify-content: center;
 }
 .eng-self-profile-avatar img {
@@ -720,13 +720,13 @@ foreach ($rows as $row) {
 }
 .eng-self-profile-avatar svg { width: 100%; height: 100%; display: block; }
 [data-theme="dark"] .eng-self-profile-btn {
-    background: rgba(55,98,200,.12);
-    border-color: rgba(55,98,200,.35);
-    color: #3762c8;
+    background: rgba(255,152,0,.12);
+    border-color: rgba(255,152,0,.35);
+    color: #ff9800;
 }
 [data-theme="dark"] .eng-self-profile-btn:hover {
-    background: rgba(55,98,200,.2);
-    border-color: #3762c8;
+    background: rgba(255,152,0,.2);
+    border-color: #ff9800;
 }
 @media (max-width: 768px) {
     .eng-self-profile-btn .eng-self-profile-label { display: none; }
@@ -2500,9 +2500,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 if ($hasPic): ?>
                     <img src="<?= htmlspecialchars($profilePictureSrc) ?>" alt=""
                          onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#e8f0fe"/><circle cx="50" cy="36" r="20" fill="#3762c8"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#3762c8"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="display:none"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>
                 <?php else: ?>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f0fe"/><circle cx="50" cy="36" r="20" fill="#3762c8"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#3762c8"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>
                 <?php endif; ?>
             </span>
             <span class="eng-self-profile-label">My Profile</span>
@@ -2710,7 +2710,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="repModalLocation"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128295; Issue</div><div class="rep-field-value" id="repModalIssue"></div></div>
-                <div class="rep-field" id="repEngField"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div><div id="repEngMetricsPills"></div></div>
+                <div class="rep-field" id="repEngField"><div class="rep-field-label">&#128119; Engineer</div><div class="rep-field-value" id="repModalEngineer"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128100; Reported By</div><div class="rep-field-value" id="repModalReporter"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Start Date</div><div class="rep-field-value" id="repModalStart"></div></div>
                 <div class="rep-field"><div class="rep-field-label">&#128197; Est. End Date</div><div class="rep-field-value" id="repModalEnd"></div></div>
@@ -3673,12 +3673,7 @@ function openRepModal(repId) {
         if (engField) engField.style.display = '';
         document.getElementById('repModalEngineer').textContent = data.engineer_name || '—';
     }
-    // ── Engineer metrics pills (view-details modal) ──────────────────────────
-    const repEngMetricsEl = document.getElementById('repEngMetricsPills');
-    if (repEngMetricsEl) repEngMetricsEl.innerHTML = '<span class="eng-metrics-loading" style="font-size:11px;">Loading…</span>';
-    if (!IS_ENGINEER && data.engineer_id) {
-        fetchEngineerMetrics(data.engineer_id).then(m => renderEngMetricsPills(m, 'repEngMetricsPills'));
-    }
+
     document.getElementById('repModalReporter').textContent = data.reporter_name || '—';
     // Start / End date — editable pickers for accepted engineers, plain text otherwise
     if (IS_ENGINEER && data.engineer_accepted && data.resolution_status !== 'Pending Admin Approval') {
