@@ -3034,6 +3034,486 @@ usort($schedules, function($a, $b) {
 [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
 /* ═══════════════════════════════════════════════════════
+   VIEW SWITCHER DROPDOWN (replaces toggle buttons)
+═══════════════════════════════════════════════════════ */
+.view-switcher-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+.view-switcher-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 13px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .22s ease;
+    box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    white-space: nowrap;
+    font-family: inherit;
+}
+.view-switcher-btn:hover {
+    background: linear-gradient(135deg,#2851b3,#1f3e99);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(55,98,200,.40);
+}
+.view-switcher-btn i { font-size: 12px; }
+.view-switcher-chevron { font-size: 10px !important; transition: transform .2s; }
+.view-switcher-wrap.open .view-switcher-chevron { transform: rotate(180deg); }
+.view-switcher-label { display: inline; }
+@media (max-width: 520px) { .view-switcher-label { display: none; } }
+
+.view-switcher-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-secondary, #fff);
+    border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999;
+    min-width: 175px;
+    overflow: hidden;
+    animation: viewDropIn .18s ease;
+}
+.view-switcher-wrap.open .view-switcher-dropdown { display: block; }
+@keyframes viewDropIn {
+    from { opacity: 0; transform: translateY(-6px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.view-switcher-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary, #333);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    border-left: 3px solid transparent;
+}
+.view-switcher-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.view-switcher-option.active {
+    background: rgba(55,98,200,.10);
+    color: #3762c8;
+    font-weight: 700;
+    border-left-color: #3762c8;
+}
+.view-switcher-option i { width: 14px; text-align: center; font-size: 12px; }
+[data-theme="dark"] .view-switcher-dropdown {
+    background: rgba(30,30,40,.98);
+    border-color: rgba(95,140,255,.22);
+    box-shadow: 0 8px 28px rgba(0,0,0,.45);
+}
+[data-theme="dark"] .view-switcher-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .view-switcher-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .view-switcher-option.active {
+    background: rgba(95,140,255,.18);
+    color: #8fb4ff;
+    border-left-color: #5f8cff;
+}
+
+/* Mobile view switcher (mob icon btn style) */
+.mob-view-switcher-wrap { position: relative; }
+.mob-view-switcher-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-secondary, #fff);
+    border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.18);
+    z-index: 9999;
+    min-width: 165px;
+    overflow: hidden;
+    animation: viewDropIn .18s ease;
+}
+.mob-view-switcher-wrap.open .mob-view-switcher-dropdown { display: block; }
+.mob-view-switcher-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-secondary, #333);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    border-left: 3px solid transparent;
+}
+.mob-view-switcher-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.mob-view-switcher-option.active {
+    background: rgba(55,98,200,.10);
+    color: #3762c8;
+    font-weight: 700;
+    border-left-color: #3762c8;
+}
+.mob-view-switcher-option i { width: 14px; text-align: center; font-size: 12px; }
+[data-theme="dark"] .mob-view-switcher-dropdown {
+    background: rgba(30,30,40,.98);
+    border-color: rgba(95,140,255,.22);
+}
+[data-theme="dark"] .mob-view-switcher-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .mob-view-switcher-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .mob-view-switcher-option.active {
+    background: rgba(95,140,255,.18);
+    color: #8fb4ff;
+    border-left-color: #5f8cff;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CAPSULE VIEW — GRADIENT CARD GRID (screenshot-style)
+═══════════════════════════════════════════════════════ */
+#capsuleView { padding: 0; }
+#capsuleView.hidden { display: none; }
+
+/* Toolbar — exact mirror of .list-view-toolbar */
+.capsule-toolbar {
+    padding: 8px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(55, 98, 200, 0.13);
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+[data-theme="dark"] .capsule-toolbar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+
+/* Search wrap — exact mirror of .list-view-toolbar .search-wrap */
+.capsule-toolbar .cap-search-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+.capsule-toolbar .cap-search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .capsule-toolbar .cap-search-wrap svg { color: #64748b; }
+
+/* Search input — exact mirror of #scheduleSearch */
+#capsuleSearch {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(55, 98, 200, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(55,98,200,0.06);
+    font-family: inherit;
+}
+#capsuleSearch:focus {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,0.13);
+    background: #fff;
+}
+#capsuleSearch::placeholder {
+    color: #94a3b8;
+    font-size: 12.5px;
+}
+[data-theme="dark"] #capsuleSearch {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(95,140,255,0.22);
+    color: var(--text-primary);
+}
+[data-theme="dark"] #capsuleSearch:focus {
+    border-color: #5f8cff;
+    box-shadow: 0 0 0 3px rgba(95,140,255,0.18);
+    background: rgba(255,255,255,0.10);
+}
+[data-theme="dark"] #capsuleSearch::placeholder { color: #64748b; }
+
+/* Sort button for capsule — reuses .sort-btn/.sort-dropdown appearance */
+.cap-sort-wrap { position: relative; flex-shrink: 0; }
+.cap-sort-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 13px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all .22s ease; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    white-space: nowrap; font-family: inherit;
+}
+.cap-sort-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.40); }
+.cap-sort-btn i { font-size: 12px; }
+.cap-sort-chevron { font-size: 10px !important; transition: transform .2s; }
+.cap-sort-wrap.open .cap-sort-chevron { transform: rotate(180deg); }
+.cap-sort-label { display: inline; }
+@media (max-width: 520px) { .cap-sort-label { display: none; } }
+.cap-sort-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
+    border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+    z-index: 9999; min-width: 200px; overflow: hidden; animation: sortDropIn .18s ease;
+}
+.cap-sort-wrap.open .cap-sort-dropdown { display: block; }
+.cap-sort-option {
+    display: flex; align-items: center; gap: 9px; padding: 10px 16px;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary,#333);
+    cursor: pointer; transition: background .15s,color .15s; border-left: 3px solid transparent;
+}
+.cap-sort-option:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+.cap-sort-option.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+.cap-sort-option i { width: 14px; text-align: center; font-size: 12px; }
+.cap-sort-divider { height: 1px; background: var(--border-color,rgba(0,0,0,.08)); margin: 3px 0; }
+[data-theme="dark"] .cap-sort-dropdown { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+[data-theme="dark"] .cap-sort-option { color: var(--text-secondary,#ccc); }
+[data-theme="dark"] .cap-sort-option:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+[data-theme="dark"] .cap-sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
+.capsule-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+@media (max-width: 1024px) { .capsule-board { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .capsule-board { grid-template-columns: 1fr; } }
+
+/* Capsule card — gradient background */
+.capsule-card {
+    border-radius: 20px;
+    padding: 22px 22px 20px;
+    min-height: 210px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform .2s ease, box-shadow .2s ease;
+    box-shadow: 0 6px 24px rgba(0,0,0,.22);
+}
+.capsule-card:hover {
+    transform: translateY(-5px) scale(1.01);
+    box-shadow: 0 14px 40px rgba(0,0,0,.32);
+}
+
+/* Status-based gradients */
+.capsule-card.cap-scheduled  {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #1565c0 100%);
+}
+.capsule-card.cap-inprogress {
+    background: linear-gradient(135deg, #bf360c 0%, #d84315 40%, #f4511e 100%);
+}
+.capsule-card.cap-delayed {
+    background: linear-gradient(135deg, #7b1fa2 0%, #8e24aa 40%, #ab47bc 100%);
+}
+.capsule-card.cap-completed {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 40%, #388e3c 100%);
+}
+
+/* Watermark number — large translucent in bottom-right */
+.capsule-card-watermark {
+    position: absolute;
+    bottom: -10px;
+    right: 10px;
+    font-size: 110px;
+    font-weight: 900;
+    line-height: 1;
+    color: rgba(255,255,255,.10);
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: -4px;
+    z-index: 0;
+}
+
+/* Card top: icon (left) + [rep badge + status badge] (right) */
+.capsule-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+}
+.capsule-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+/* Right side of top row — rep + status badge in a row */
+.capsule-card-top-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 65%;
+}
+.capsule-card-badge {
+    padding: 5px 13px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.28);
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.capsule-rep-badge {
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.35);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.35);
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+/* Card body text */
+.capsule-card-body {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}
+.capsule-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.capsule-card-desc {
+    font-size: 13px;
+    color: rgba(255,255,255,.75);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 0;
+}
+
+/* Card bottom: view button + (watermark sits behind) */
+.capsule-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+.capsule-card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255,255,255,.40);
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .18s, border-color .18s, transform .14s;
+    white-space: nowrap;
+}
+.capsule-card-btn:hover {
+    background: rgba(255,255,255,.25);
+    border-color: rgba(255,255,255,.65);
+    transform: translateX(2px);
+}
+.capsule-card-btn i { font-size: 10px; }
+.capsule-card-extra-badges {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 45%;
+}
+.capsule-mini-badge {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.35);
+    border: 1px solid rgba(255,255,255,.35);
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(4px);
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+/* Hidden states */
+.capsule-card.cap-hidden        { display: none; }
+.capsule-card.cap-legend-hidden { display: none; }
+
+/* Empty state */
+#capsuleEmptyState {
+    display: none;
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-secondary);
+    opacity: .5;
+}
+#capsuleEmptyState svg { margin-bottom: 12px; }
+#capsuleEmptyState p { font-size: 14px; }
+
+/* Mobile */
+@media (max-width: 768px) {
+    #capsuleView {
+        padding: 14px;
+        margin-top: 0;
+        border-radius: 18px;
+        background: rgba(255,255,255,.88);
+        box-shadow: 0 6px 20px rgba(0,0,0,.18);
+    }
+    [data-theme="dark"] #capsuleView { background: rgba(26,26,26,.92); }
+    .capsule-card { min-height: 185px; padding: 18px 18px 16px; }
+    .capsule-card-watermark { font-size: 80px; }
+    .capsule-card-title { font-size: 14px; }
+    .capsule-board { gap: 14px; }
+}
+
+/* ═══════════════════════════════════════════════════════
    SORT DROPDOWN
 ═══════════════════════════════════════════════════════ */
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -4066,9 +4546,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
                 </div>
             </div>
-            <button id="mobileToCalendarBtn" class="mob-icon-btn" title="Switch to Calendar View">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            </button>
+            <div class="mob-view-switcher-wrap" id="mobListViewSwitcherWrap">
+                <button class="mob-icon-btn" id="mobListViewSwitcherBtn" title="Switch View">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="7" height="7" rx="1"/><rect x="9" y="3" width="7" height="7" rx="1"/><rect x="1" y="13" width="7" height="7" rx="1"/><rect x="9" y="13" width="7" height="7" rx="1"/></svg>
+                </button>
+                <div class="mob-view-switcher-dropdown" id="mobListViewSwitcherDropdown">
+                    <div class="mob-view-switcher-option active" data-view="list"><i class="fas fa-list"></i> List View</div>
+                    <div class="mob-view-switcher-option" data-view="calendar"><i class="fas fa-calendar-alt"></i> Calendar View</div>
+                    <div class="mob-view-switcher-option" data-view="capsule"><i class="fas fa-th-large"></i> Capsule View</div>
+                </div>
+            </div>
         </div>
 
         <!-- Mobile: Calendar header -->
@@ -4084,9 +4571,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="opacity:0.45;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
             <div class="mob-cal-right">
-                <button id="mobileToListBtn" class="mob-icon-btn" title="Switch to List View">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                </button>
+                <div class="mob-view-switcher-wrap" id="mobCalViewSwitcherWrap">
+                    <button class="mob-icon-btn" id="mobCalViewSwitcherBtn" title="Switch View">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="7" height="7" rx="1"/><rect x="9" y="3" width="7" height="7" rx="1"/><rect x="1" y="13" width="7" height="7" rx="1"/><rect x="9" y="13" width="7" height="7" rx="1"/></svg>
+                    </button>
+                    <div class="mob-view-switcher-dropdown" id="mobCalViewSwitcherDropdown">
+                        <div class="mob-view-switcher-option" data-view="list"><i class="fas fa-list"></i> List View</div>
+                        <div class="mob-view-switcher-option active" data-view="calendar"><i class="fas fa-calendar-alt"></i> Calendar View</div>
+                        <div class="mob-view-switcher-option" data-view="capsule"><i class="fas fa-th-large"></i> Capsule View</div>
+                    </div>
+                </div>
                 <button id="mobileNextMonth" class="mob-nav-btn" title="Next month">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
@@ -4107,10 +4601,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="opacity:0.45;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
                 <div class="cal-header-right">
-                    <button id="toListBtn" class="view-switch-btn" title="Switch to List View">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                        <span class="btn-label">List View</span>
-                    </button>
+                    <div class="view-switcher-wrap" id="calViewSwitcherWrap">
+                        <button class="view-switcher-btn" id="calViewSwitcherBtn" title="Switch View">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span class="view-switcher-label">Calendar</span>
+                            <i class="fas fa-chevron-down view-switcher-chevron"></i>
+                        </button>
+                        <div class="view-switcher-dropdown" id="calViewSwitcherDropdown">
+                            <div class="view-switcher-option" data-view="list"><i class="fas fa-list"></i> List View</div>
+                            <div class="view-switcher-option active" data-view="calendar"><i class="fas fa-calendar-alt"></i> Calendar View</div>
+                            <div class="view-switcher-option" data-view="capsule"><i class="fas fa-th-large"></i> Capsule View</div>
+                        </div>
+                    </div>
                     <button id="nextMonth" class="cal-nav-btn" title="Next month">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
@@ -4208,10 +4710,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
                     </div>
                 </div>
-                <button id="toCalendarBtn" class="view-switch-btn" title="Switch to Calendar View">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    <span class="btn-label">Calendar</span>
-                </button>
+                <div class="view-switcher-wrap" id="listViewSwitcherWrap">
+                    <button class="view-switcher-btn" id="listViewSwitcherBtn" title="Switch View">
+                        <i class="fas fa-list"></i>
+                        <span class="view-switcher-label">List</span>
+                        <i class="fas fa-chevron-down view-switcher-chevron"></i>
+                    </button>
+                    <div class="view-switcher-dropdown" id="listViewSwitcherDropdown">
+                        <div class="view-switcher-option active" data-view="list"><i class="fas fa-list"></i> List View</div>
+                        <div class="view-switcher-option" data-view="calendar"><i class="fas fa-calendar-alt"></i> Calendar View</div>
+                        <div class="view-switcher-option" data-view="capsule"><i class="fas fa-th-large"></i> Capsule View</div>
+                    </div>
+                </div>
             </div>
             <!-- Legend shown in list view below search bar -->
             <div class="calendar-legend">
@@ -4356,6 +4866,60 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <?php endforeach; ?>
                 <p id="noResultMsg" style="display:none; text-align:center; padding:20px; color:var(--text-secondary);">No matching data or result.</p>
             <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- CAPSULE VIEW -->
+        <div id="capsuleView" class="hidden">
+            <div class="capsule-toolbar">
+                <div class="cap-search-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input id="capsuleSearch" type="text" placeholder="Search by task, location, category, status, or date...">
+                </div>
+                <!-- Sort dropdown -->
+                <div class="cap-sort-wrap" id="capSortWrap">
+                    <button class="cap-sort-btn" id="capSortBtn" title="Sort schedules">
+                        <i class="fas fa-sort"></i>
+                        <span class="cap-sort-label">Sort</span>
+                        <i class="fas fa-chevron-down cap-sort-chevron"></i>
+                    </button>
+                    <div class="cap-sort-dropdown" id="capSortDropdown">
+                        <div class="cap-sort-option active" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Earliest)</div>
+                        <div class="cap-sort-option" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Latest)</div>
+                        <div class="cap-sort-divider"></div>
+                        <div class="cap-sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Task A → Z</div>
+                        <div class="cap-sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
+                        <div class="cap-sort-divider"></div>
+                        <div class="cap-sort-option" data-sort="status"><i class="fas fa-layer-group"></i> By Status</div>
+                    </div>
+                </div>
+                <!-- View switcher -->
+                <div class="view-switcher-wrap" id="capsuleViewSwitcherWrap">
+                    <button class="view-switcher-btn" id="capsuleViewSwitcherBtn" title="Switch View">
+                        <i class="fas fa-th-large"></i>
+                        <span class="view-switcher-label">Capsule</span>
+                        <i class="fas fa-chevron-down view-switcher-chevron"></i>
+                    </button>
+                    <div class="view-switcher-dropdown" id="capsuleViewSwitcherDropdown">
+                        <div class="view-switcher-option" data-view="list"><i class="fas fa-list"></i> List View</div>
+                        <div class="view-switcher-option" data-view="calendar"><i class="fas fa-calendar-alt"></i> Calendar View</div>
+                        <div class="view-switcher-option active" data-view="capsule"><i class="fas fa-th-large"></i> Capsule View</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Legend -->
+            <div class="calendar-legend" style="margin-bottom:14px;">
+                <span class="legend-item cap-legend-filter" data-filter="upcoming" title="Filter: Scheduled"><span class="legend-dot legend-upcoming"></span>Scheduled</span>
+                <span class="legend-item cap-legend-filter" data-filter="ongoing" title="Filter: In Progress"><span class="legend-dot legend-ongoing"></span>In Progress</span>
+                <span class="legend-item cap-legend-filter" data-filter="delayed" title="Filter: Delayed"><span class="legend-dot legend-delayed"></span>Delayed</span>
+                <span class="legend-item cap-legend-filter" data-filter="completed" title="Filter: Completed"><span class="legend-dot legend-completed"></span>Completed</span>
+            </div>
+            <div class="capsule-board" id="capsuleBoard">
+                <!-- Cards rendered by JS -->
+            </div>
+            <div id="capsuleEmptyState">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".4"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p>No matching schedules found.</p>
             </div>
         </div>
 
@@ -6227,31 +6791,288 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function showCalendarView() {
-        if (!calendarView || !scheduleView) return;
-        calendarView.classList.remove('hidden');
-        scheduleView.classList.add('hidden');
-        showingCalendar = true;
+    // ── Capsule View: Render ──────────────────────────────────────────────────
+    let _capsuleLegendFilter = null;
+    let _capsuleSortMode = 'date-asc';
+
+    // Wire capsule sort dropdown
+    document.addEventListener('click', function(e) {
+        // Toggle sort wrap
+        const sortBtn = e.target.closest('#capSortBtn');
+        if (sortBtn) {
+            const wrap = document.getElementById('capSortWrap');
+            if (wrap) {
+                const isOpen = wrap.classList.contains('open');
+                wrap.classList.toggle('open', !isOpen);
+                // Close other dropdowns
+                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+            }
+            return;
+        }
+        // Sort option clicked
+        const sortOpt = e.target.closest('.cap-sort-option');
+        if (sortOpt) {
+            const sort = sortOpt.getAttribute('data-sort');
+            if (sort) {
+                _capsuleSortMode = sort;
+                document.querySelectorAll('.cap-sort-option').forEach(o => o.classList.toggle('active', o.getAttribute('data-sort') === sort));
+                const wrap = document.getElementById('capSortWrap');
+                if (wrap) wrap.classList.remove('open');
+                renderCapsuleView();
+            }
+            return;
+        }
+        // Close capsule sort when clicking outside
+        const wrap = document.getElementById('capSortWrap');
+        if (wrap && !e.target.closest('#capSortWrap')) wrap.classList.remove('open');
+    });
+
+    // Category → icon emoji
+    function _capIcon(category, source) {
+        if (source === 'report') return '📄';
+        const c = (category || '').toLowerCase();
+        if (c.includes('hvac') || c.includes('cooling')) return '❄️';
+        if (c.includes('power') || c.includes('electric')) return '⚡';
+        if (c.includes('road') || c.includes('pavement')) return '🛣️';
+        if (c.includes('safety') || c.includes('fire')) return '🔥';
+        if (c.includes('water') || c.includes('plumbing')) return '💧';
+        if (c.includes('structural')) return '🏗️';
+        return '🔧';
+    }
+
+    // Status → short badge label
+    const CAP_BADGE_LABELS = {
+        upcoming:  'SCHED',
+        ongoing:   'IN PROG',
+        delayed:   'DELAYED',
+        completed: 'DONE',
+    };
+
+    // Status sort order
+    const STATUS_ORDER = { upcoming: 0, ongoing: 1, delayed: 2, completed: 3 };
+
+    function renderCapsuleView() {
+        const board = document.getElementById('capsuleBoard');
+        if (!board) return;
+        board.innerHTML = '';
+
+        let data = (window.scheduleData || []).slice();
+        const searchQ = (document.getElementById('capsuleSearch') || {}).value || '';
+        const sl = searchQ.trim().toLowerCase();
+
+        // Sort
+        data.sort(function(a, b) {
+            if (_capsuleSortMode === 'date-asc')   return (a.schedule_date || '') < (b.schedule_date || '') ? -1 : 1;
+            if (_capsuleSortMode === 'date-desc')  return (a.schedule_date || '') > (b.schedule_date || '') ? -1 : 1;
+            if (_capsuleSortMode === 'alpha-asc')  return (a.task || '').localeCompare(b.task || '');
+            if (_capsuleSortMode === 'alpha-desc') return (b.task || '').localeCompare(a.task || '');
+            if (_capsuleSortMode === 'status')     return (STATUS_ORDER[getStatusKey(a.status_label)] ?? 4) - (STATUS_ORDER[getStatusKey(b.status_label)] ?? 4);
+            return 0;
+        });
+
+        let cardIndex = 0;
+        let visibleCount = 0;
+
+        data.forEach(function(t) {
+            const key = getStatusKey(t.status_label || '');
+
+            // Legend filter
+            if (_capsuleLegendFilter && key !== _capsuleLegendFilter) return;
+
+            // Search filter
+            if (sl) {
+                const hay = [t.task, t.location, t.category, t.schedule_date, t.status_label, t.rep_id ? 'rep-' + t.rep_id : '']
+                    .map(v => (v || '').toLowerCase()).join(' ');
+                if (!hay.includes(sl)) return;
+            }
+
+            cardIndex++;
+            visibleCount++;
+
+            const card = document.createElement('div');
+            card.className = `capsule-card cap-${key}`;
+            card.setAttribute('data-cap-task',   (t.task || '').toLowerCase());
+            card.setAttribute('data-cap-location',(t.location || '').toLowerCase());
+            card.setAttribute('data-cap-status',  (t.status_label || '').toLowerCase());
+            card.setAttribute('data-cap-category',(t.category || '').toLowerCase());
+            card.setAttribute('data-cap-date',     t.schedule_date || '');
+            card.setAttribute('data-cap-rep-id',   t.rep_id || 0);
+            card.setAttribute('data-cap-source',   t.source || 'schedule');
+            card.setAttribute('data-cap-key',      key);
+
+            const icon      = _capIcon(t.category, t.source);
+            const badgeLabel = CAP_BADGE_LABELS[key] || 'SCHED';
+            const dateStr   = t.schedule_date    ? fmtDate(t.schedule_date)    : '—';
+            const endStr    = t.estimated_end_date ? ' → ' + fmtDate(t.estimated_end_date) : '';
+            const locStr    = t.location || '—';
+            const repTag    = t.rep_id  ? `<span class="capsule-rep-badge">REP-${escH(String(t.rep_id))}</span>` : '';
+            const catTag    = (t.category && t.category !== 'Infrastructure Report' && t.category !== 'General Maintenance')
+                            ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
+            const numStr    = String(cardIndex).padStart(2, '0');
+
+            card.innerHTML = `
+                <div class="capsule-card-watermark">${numStr}</div>
+                <div class="capsule-card-top">
+                    <div class="capsule-card-icon">${icon}</div>
+                    <div class="capsule-card-top-right">
+                        ${repTag}
+                        <div class="capsule-card-badge">${badgeLabel}</div>
+                    </div>
+                </div>
+                <div class="capsule-card-body">
+                    <div class="capsule-card-title">${escH(t.task || 'Untitled Task')}</div>
+                    <div class="capsule-card-desc">
+                        📍 ${escH(locStr)}<br>
+                        🗓️ ${escH(dateStr + endStr)}
+                    </div>
+                </div>
+                <div class="capsule-card-bottom">
+                    <button class="capsule-card-btn">
+                        VIEW DETAILS &nbsp;<i class="fas fa-arrow-right"></i>
+                    </button>
+                    <div class="capsule-card-extra-badges">
+                        ${catTag}
+                    </div>
+                </div>`;
+
+            card.addEventListener('click', function() {
+                const schedData = window.scheduleData || [];
+                const repId     = parseInt(card.getAttribute('data-cap-rep-id') || '0', 10);
+                const source    = card.getAttribute('data-cap-source') || '';
+                const taskName  = card.getAttribute('data-cap-task') || '';
+                const dateAttr  = card.getAttribute('data-cap-date') || '';
+
+                let matches = [];
+                if (source === 'report' && repId > 0) {
+                    matches = schedData.filter(function(x) {
+                        return x.source === 'report' && parseInt(x.rep_id, 10) === repId;
+                    });
+                }
+                if (!matches.length) {
+                    matches = schedData.filter(function(x) {
+                        return x.schedule_date === dateAttr &&
+                               (x.task || '').toLowerCase() === taskName;
+                    });
+                }
+                if (matches.length) openModal(matches, 0);
+            });
+
+            board.appendChild(card);
+        });
+
+        // Empty state
+        const emptyEl = document.getElementById('capsuleEmptyState');
+        if (emptyEl) emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    function _applyCapsuleSearch() {
+        renderCapsuleView();
+    }
+
+    function _applyCapsuleLegendFilter() {
+        renderCapsuleView();
+    }
+
+    // Capsule search input handler
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'capsuleSearch') {
+            renderCapsuleView();
+        }
+    });
+
+    // Capsule legend filter
+    document.addEventListener('click', function(e) {
+        const pill = e.target.closest('.cap-legend-filter');
+        if (!pill) return;
+        const f = pill.getAttribute('data-filter');
+        _capsuleLegendFilter = _capsuleLegendFilter === f ? null : f;
+        document.querySelectorAll('.cap-legend-filter').forEach(function(p) {
+            const pf = p.getAttribute('data-filter');
+            p.classList.remove('legend-active', 'legend-dimmed');
+            if (_capsuleLegendFilter) {
+                if (pf === _capsuleLegendFilter) p.classList.add('legend-active');
+                else p.classList.add('legend-dimmed');
+            }
+        });
+        renderCapsuleView();
+    });
+
+    // ── View Switching ────────────────────────────────────────────────────────
+    const capsuleView = document.getElementById('capsuleView');
+    let currentView = 'calendar'; // 'calendar' | 'list' | 'capsule'
+
+    const VIEW_ICONS = { list: 'fa-list', calendar: 'fa-calendar-alt', capsule: 'fa-th-large' };
+    const VIEW_LABELS = { list: 'List', calendar: 'Calendar', capsule: 'Capsule' };
+
+    function switchToView(view) {
+        currentView = view;
+        showingCalendar = (view === 'calendar');
+
+        // Toggle main panels
+        if (calendarView)  calendarView.classList.toggle('hidden', view !== 'calendar');
+        if (scheduleView)  scheduleView.classList.toggle('hidden', view !== 'list');
+        if (capsuleView)   capsuleView.classList.toggle('hidden',  view !== 'capsule');
+
+        // Render capsule on demand
+        if (view === 'capsule') renderCapsuleView();
+
         updateMobileControls();
         updateWeekdayLabels();
+
+        // Update all view-switcher dropdowns
+        document.querySelectorAll('.view-switcher-option, .mob-view-switcher-option').forEach(function(opt) {
+            opt.classList.toggle('active', opt.getAttribute('data-view') === view);
+        });
+
+        // Update view-switcher button labels & icons
+        const ICON = VIEW_ICONS[view] || 'fa-list';
+        const LABEL = VIEW_LABELS[view] || 'View';
+        document.querySelectorAll('.view-switcher-btn').forEach(function(btn) {
+            const iEl = btn.querySelector('i:first-child');
+            const lEl = btn.querySelector('.view-switcher-label');
+            if (iEl) { iEl.className = 'fas ' + ICON; }
+            if (lEl) lEl.textContent = LABEL;
+        });
+
+        // Close all view-switcher dropdowns
+        document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(function(w) {
+            w.classList.remove('open');
+        });
     }
-    function showListView() {
-        if (!calendarView || !scheduleView) return;
-        calendarView.classList.add('hidden');
-        scheduleView.classList.remove('hidden');
-        showingCalendar = false;
-        updateMobileControls();
-        updateWeekdayLabels();
-    }
-    if (toCalendarBtn) toCalendarBtn.onclick = showCalendarView;
-    if (toListBtn) toListBtn.onclick = showListView;
+
+    // Wire all view-switcher dropdowns (desktop + mobile)
+    document.addEventListener('click', function(e) {
+        // Toggle dropdown open/close
+        const btn = e.target.closest('.view-switcher-btn, #mobListViewSwitcherBtn, #mobCalViewSwitcherBtn');
+        if (btn) {
+            const wrap = btn.closest('.view-switcher-wrap, .mob-view-switcher-wrap');
+            if (wrap) {
+                const isOpen = wrap.classList.contains('open');
+                // Close all first
+                document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+                if (!isOpen) wrap.classList.add('open');
+                return;
+            }
+        }
+
+        // Option clicked
+        const opt = e.target.closest('.view-switcher-option, .mob-view-switcher-option');
+        if (opt) {
+            const view = opt.getAttribute('data-view');
+            if (view) switchToView(view);
+            return;
+        }
+
+        // Click outside — close all
+        document.querySelectorAll('.view-switcher-wrap, .mob-view-switcher-wrap').forEach(w => w.classList.remove('open'));
+    }, true);
 
     function updateMobileControls() {
         if (!mobileListControls || !mobileCalendarControls) return;
 
         // CSS handles desktop vs mobile visibility via @media (max-width: 768px).
-        // JS only toggles which mobile toolbar is active (list vs calendar).
-        if (showingCalendar) {
+        // JS only toggles which mobile toolbar is active (list / capsule vs calendar).
+        if (currentView === 'calendar') {
             mobileCalendarControls.classList.add('mob-active');
             mobileListControls.classList.remove('mob-active');
             // Sync month label text
