@@ -487,7 +487,18 @@ $sql = "
 ";
 $result = $conn->query($sql);
 
-function statusPill(string $status, bool $forEngineer = false): string {
+function statusPill(string $status, bool $forEngineer = false, string $estimatedEndDate = ''): string {
+    // ── Delayed override: if today is past the estimated end date and status is still active ──
+    $nonDelayableStatuses = ['Completed', 'Cancelled', 'Pending Completion', 'Pending Admin Approval'];
+    if (!empty($estimatedEndDate) && !in_array($status, $nonDelayableStatuses)) {
+        try {
+            $today = new DateTime('today', new DateTimeZone('Asia/Manila'));
+            $endDt = new DateTime($estimatedEndDate, new DateTimeZone('Asia/Manila'));
+            if ($today > $endDt) {
+                return "<span class=\"status delayed-st\">Delayed</span>";
+            }
+        } catch (Exception $e) {}
+    }
     // Engineers see "Pending Completion" as "Pending Approval" (awaiting admin)
     if ($forEngineer && $status === 'Pending Completion') {
         return "<span class=\"status pending-completion-st\">Pending Approval</span>";
@@ -912,6 +923,8 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
 .pending-st   { background: #ffe0b2; color: #e65100; }
 .scheduled-st { background: #bbdefb; color: #0d47a1; border: 1.5px solid #90caf9; }
 .cancelled-st { background: #ffcdd2; color: #b71c1c; }
+.delayed-st   { background: #fce4ec; color: #880e4f; border: 1.5px solid #f48fb1; }
+[data-theme="dark"] .status.delayed-st { background: rgba(136,14,79,.28); color: #f48fb1; border-color: rgba(244,143,177,.45); }
 .mobile-report-list { display: none; }
 @media (max-width: 768px) {
     .desktop-top-nav { display: none; }
@@ -1102,6 +1115,8 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-status-pill.pending   { background:rgba(25,118,210,.12);color:#0d47a1; }
 .rep-status-pill.on-going  { background:rgba(255,152,0,.15);color:#e65100; }
 .rep-status-pill.completed { background:rgba(46,125,50,.15);color:#1b5e20; }
+.rep-status-pill.delayed   { background:rgba(136,14,79,.12);color:#880e4f;border:1.5px solid rgba(244,143,177,.55); }
+[data-theme="dark"] .rep-status-pill.delayed { background:rgba(136,14,79,.28);color:#f48fb1;border-color:rgba(244,143,177,.45); }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(230,81,0,.3); }
@@ -2014,7 +2029,7 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
                     <td class="searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></td>
                     <td class="searchable"><?= priorityBadge($row['priority_lvl']) ?></td>
                     <td class="searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></td>
-                    <td class="searchable status-cell"><?= statusPill($rawStatus, $isEngineer) ?></td>
+                    <td class="searchable status-cell"><?= statusPill($rawStatus, $isEngineer, $row['estimated_end_date'] ?? '') ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -2060,7 +2075,7 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
             <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge($row['priority_lvl']) ?></span></div>
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
             <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
-                <?= statusPill($rawStatus, $isEngineer) ?>
+                <?= statusPill($rawStatus, $isEngineer, $row['estimated_end_date'] ?? '') ?>
                 <button class="btn-view-rep btn-view-rep-mobile" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
             </div>
         </div>
@@ -2574,9 +2589,20 @@ function openRepModal(repId) {
     const st = data.resolution_status || 'Pending';
     const isPendingCompletion = data.is_pending_completion;
 
+    // ── Delayed check: today > estimated_end_date for non-terminal statuses ──
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    const endDateStr    = data.estimated_end_date || '';
+    let isDelayed = false;
+    if (endDateStr && !isPendingCompletion && !['Completed','Cancelled'].includes(st)) {
+        const endDt = new Date(endDateStr); endDt.setHours(0,0,0,0);
+        isDelayed = todayMidnight > endDt;
+    }
+
     // Status pill display
     let displaySt, pillClass;
-    if (isPendingCompletion) {
+    if (isDelayed) {
+        displaySt = 'Delayed'; pillClass = 'delayed';
+    } else if (isPendingCompletion) {
         if (IS_ADMIN) { displaySt = 'Pending Completion'; pillClass = 'pending'; }
         else          { displaySt = 'Pending Approval';   pillClass = 'pending'; }
     } else if (st === 'Pending' || st === 'Scheduled') {

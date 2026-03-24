@@ -353,12 +353,16 @@ if ($reportResult && $reportResult->num_rows > 0) {
         // Map to display status + color key
         if ($resStatus === 'Completed') {
             $statusLabel = 'Completed';
-        } elseif ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
-            $statusLabel = 'In Progress';
         } else {
-            // Scheduled / Pending — check delay: no notes AND past end date
-            $statusLabel = 'Scheduled';
-            if (empty($resNote) && !empty($endDate)) {
+            // Determine base label from DB status
+            if ($resStatus === 'In Progress' || $resStatus === 'Pending Completion') {
+                $statusLabel = 'In Progress';
+            } else {
+                // Scheduled / Pending
+                $statusLabel = 'Scheduled';
+            }
+            // ── Delayed override: if today is strictly past the estimated end date ──
+            if (!empty($endDate)) {
                 try {
                     $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
                     if ($todayPhp > $endDt) {
