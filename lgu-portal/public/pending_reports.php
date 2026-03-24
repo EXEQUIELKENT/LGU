@@ -1789,6 +1789,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 const IS_ENGINEER  = <?= $isEngineer ? 'true' : 'false' ?>;
 // ── Engineer self-profile button ─────────────────────────────────────────────
 const SELF_ENG_ID  = <?= $isEngineer ? (int)$_SESSION['employee_id'] : 0 ?>;
+window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
 const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
 
@@ -3680,15 +3681,21 @@ function renderProgressStrip(images) {
     const dropdown = document.getElementById('repSortDropdown');
     if (!wrap || !btn || !dropdown) return;
 
+    // Per-user, per-page sort persistence key (mirrors sched.php pattern)
+    const _SORT_KEY     = 'cimm_pending_sort_' + (window.CURRENT_EMP_ID || 0);
+    const _DEFAULT_SORT = 'date-desc';
+
     btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
     document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
 
     dropdown.querySelectorAll('.sort-option').forEach(opt => {
         opt.addEventListener('click', () => {
+            const chosenSort = opt.dataset.sort;
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
             wrap.classList.remove('open');
-            applySort(opt.dataset.sort);
+            try { localStorage.setItem(_SORT_KEY, chosenSort); } catch(e) {}
+            applySort(chosenSort);
         });
     });
 
@@ -3722,6 +3729,17 @@ function renderProgressStrip(images) {
         if (mode === 'alpha-desc') return bt.localeCompare(at);
         return 0;
     }
+
+    // Restore saved sort preference for this user on page load
+    (function restoreSort() {
+        let saved;
+        try { saved = localStorage.getItem(_SORT_KEY); } catch(e) {}
+        const active = saved || _DEFAULT_SORT;
+        dropdown.querySelectorAll('.sort-option').forEach(o => {
+            o.classList.toggle('active', o.dataset.sort === active);
+        });
+        applySort(active);
+    })();
 })();
 
 </script>

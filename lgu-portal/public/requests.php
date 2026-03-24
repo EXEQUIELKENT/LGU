@@ -186,6 +186,7 @@ const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 const USER_ROLE         = '<?= htmlspecialchars($userRole, ENT_QUOTES) ?>';
 const USER_DISPLAY_NAME = '<?= htmlspecialchars($displayName, ENT_QUOTES) ?>';
+window.CURRENT_EMP_ID   = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 (function () {
     try {
         let t = localStorage.getItem('theme');
@@ -2672,13 +2673,13 @@ function switchView(target) {
         gisEl.style.display = 'none';
         reqEl.style.display = '';
     }
-    try { localStorage.setItem('activeView', target); } catch(e) {}
+    try { localStorage.setItem('cimm_req_view_' + (window.CURRENT_EMP_ID || 0), target); } catch(e) {}
 }
 
-// Restore last view on load
+// Restore last view on load (per-user)
 (function() {
     try {
-        const saved = localStorage.getItem('activeView');
+        const saved = localStorage.getItem('cimm_req_view_' + (window.CURRENT_EMP_ID || 0));
         if (saved === 'requests') {
             document.getElementById('gisView').style.display = 'none';
             document.getElementById('requestsView').style.display = '';
@@ -3543,6 +3544,7 @@ function setDateFilter(filter) {
     // Reset custom picker labels when a preset is chosen
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
+    try { localStorage.setItem('cimm_req_gis_period_' + (window.CURRENT_EMP_ID || 0), filter); } catch(e) {}
     applyVisibility();
 }
 
@@ -3559,6 +3561,7 @@ function setStatusFilter(filter) {
     document.querySelectorAll('.gis-filter-btn[id^="filter"]').forEach(b => b.classList.remove('active'));
     const legMap={all:'filterAll',Pending:'filterPending',Approved:'filterApproved',Rejected:'filterRejected'};
     const el=document.getElementById(legMap[filter]); if(el) el.classList.add('active');
+    try { localStorage.setItem('cimm_req_gis_status_' + (window.CURRENT_EMP_ID || 0), filter); } catch(e) {}
     applyVisibility();
 }
 
@@ -3571,6 +3574,7 @@ function setInfraFilter(infra) {
     if (btn) { btn.classList.toggle('has-filter', infra !== 'all'); btn.classList.toggle('infra', true); }
     document.querySelectorAll('#gisTypeMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === infra));
     const w = document.getElementById('gisTypeWrap'); if(w) w.classList.remove('open');
+    try { localStorage.setItem('cimm_req_gis_infra_' + (window.CURRENT_EMP_ID || 0), infra); } catch(e) {}
     applyVisibility();
 }
 
@@ -3651,6 +3655,23 @@ async function initializeAndGeocode() {
 
     applyVisibility();
     if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESTORE GIS FILTERS — per-user persistence
+// ═══════════════════════════════════════════════════════
+function restoreGisFilters() {
+    const uid = window.CURRENT_EMP_ID || 0;
+    try {
+        const savedStatus = localStorage.getItem('cimm_req_gis_status_' + uid);
+        if (savedStatus && savedStatus !== 'all') setStatusFilter(savedStatus);
+
+        const savedInfra = localStorage.getItem('cimm_req_gis_infra_' + uid);
+        if (savedInfra && savedInfra !== 'all') setInfraFilter(savedInfra);
+
+        const savedPeriod = localStorage.getItem('cimm_req_gis_period_' + uid);
+        if (savedPeriod && savedPeriod !== 'all') setDateFilter(savedPeriod);
+    } catch(e) {}
 }
 
 function initMap() {
@@ -3838,7 +3859,7 @@ function syncModalFilterButtons() {
 //  INIT
 // ═══════════════════════════════════════════════════════
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
-document.addEventListener('DOMContentLoaded', () => { initMap(); initSearch(); initRequestSort(); });
+document.addEventListener('DOMContentLoaded', () => { restoreGisFilters(); initMap(); initSearch(); initRequestSort(); });
 
 // ═══════════════════════════════════════════════════════
 //  SORT — Requests Table
@@ -3849,7 +3870,9 @@ function initRequestSort() {
     const dropdown= document.getElementById('reqSortDropdown');
     if (!wrap || !btn || !dropdown) return;
 
-    let currentSort = 'date-desc';
+    // Per-user, per-page sort persistence key (mirrors sched.php pattern)
+    const _SORT_KEY     = 'cimm_requests_sort_' + (window.CURRENT_EMP_ID || 0);
+    const _DEFAULT_SORT = 'date-desc';
 
     // Toggle open/close
     btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
@@ -3857,11 +3880,12 @@ function initRequestSort() {
 
     dropdown.querySelectorAll('.sort-option').forEach(opt => {
         opt.addEventListener('click', () => {
-            currentSort = opt.dataset.sort;
+            const chosenSort = opt.dataset.sort;
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
             wrap.classList.remove('open');
-            applyRequestSort(currentSort);
+            try { localStorage.setItem(_SORT_KEY, chosenSort); } catch(e) {}
+            applyRequestSort(chosenSort);
         });
     });
 
@@ -3911,6 +3935,17 @@ function initRequestSort() {
             if (noMob) mList.appendChild(noMob);
         }
     }
+
+    // Restore saved sort preference for this user on page load
+    (function restoreSort() {
+        let saved;
+        try { saved = localStorage.getItem(_SORT_KEY); } catch(e) {}
+        const active = saved || _DEFAULT_SORT;
+        dropdown.querySelectorAll('.sort-option').forEach(o => {
+            o.classList.toggle('active', o.dataset.sort === active);
+        });
+        applyRequestSort(active);
+    })();
 }
 
 // ═══════════════════════════════════════════════════════

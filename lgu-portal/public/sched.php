@@ -5806,8 +5806,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-window.scheduleData = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-window.IS_ENGINEER  = <?= $isEngineer ? 'true' : 'false' ?>;</script>
+window.scheduleData   = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.IS_ENGINEER    = <?= $isEngineer ? 'true' : 'false' ?>;
+window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
 <script>
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtDate(s){ if(!s||s==='0000-00-00')return'—'; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
@@ -7005,7 +7006,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ── Capsule View: Render ──────────────────────────────────────────────────
-    let _capsuleSortMode = 'date-asc';
+    const _EMP_ID       = window.CURRENT_EMP_ID || 0;
+    const _CAP_SORT_KEY = 'cimm_cap_sort_' + _EMP_ID;
+    let _capsuleSortMode = (function() {
+        try { return localStorage.getItem(_CAP_SORT_KEY) || 'date-asc'; } catch(e) { return 'date-asc'; }
+    })();
+    // Sync dropdown active marker to match restored value
+    document.querySelectorAll('.cap-sort-option').forEach(function(o) {
+        o.classList.toggle('active', o.getAttribute('data-sort') === _capsuleSortMode);
+    });
 
     // Wire capsule sort dropdown — event delegation matching #capSortWrap (uses sort-dropdown-wrap class)
     document.addEventListener('click', function(e) {
@@ -7024,6 +7033,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const sort = opt.getAttribute('data-sort');
             if (sort) {
                 _capsuleSortMode = sort;
+                try { localStorage.setItem(_CAP_SORT_KEY, sort); } catch(e) {}
                 document.querySelectorAll('.cap-sort-option').forEach(o =>
                     o.classList.toggle('active', o.getAttribute('data-sort') === sort)
                 );
@@ -7297,9 +7307,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── View Switching ────────────────────────────────────────────────────────
     const capsuleView = document.getElementById('capsuleView');
 
-    // Restore saved view (default: calendar)
-    const _SCHED_VIEW_KEY = 'cimm_sched_view';
-    let currentView = localStorage.getItem(_SCHED_VIEW_KEY) || 'calendar';
+    // Restore saved view (default: calendar) — scoped per employee
+    const _SCHED_VIEW_KEY = 'cimm_sched_view_' + (window.CURRENT_EMP_ID || 0);
+    const _LIST_SORT_KEY  = 'cimm_list_sort_'  + (window.CURRENT_EMP_ID || 0);
+    let currentView = (function() {
+        try { return localStorage.getItem(_SCHED_VIEW_KEY) || 'calendar'; } catch(e) { return 'calendar'; }
+    })();
 
     const VIEW_ICONS = { list: 'fa-list', calendar: 'fa-calendar-alt', capsule: 'fa-th-large' };
     const VIEW_LABELS = { list: 'List', calendar: 'Calendar', capsule: 'Capsule' };
@@ -7820,21 +7833,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
             dropdown.querySelectorAll('.sort-option').forEach(opt => {
                 opt.addEventListener('click', () => {
+                    const chosenSort = opt.dataset.sort;
                     // Sync active state across both dropdowns
                     ['schedSortDropdown', 'mobSchedSortDropdown'].forEach(id => {
                         const d = document.getElementById(id);
                         if (d) d.querySelectorAll('.sort-option').forEach(o => {
-                            o.classList.toggle('active', o.dataset.sort === opt.dataset.sort);
+                            o.classList.toggle('active', o.dataset.sort === chosenSort);
                         });
                     });
                     wrap.classList.remove('open');
-                    applySchedSort(opt.dataset.sort);
+                    // Save per-user list sort preference
+                    try { localStorage.setItem(_LIST_SORT_KEY, chosenSort); } catch(e) {}
+                    applySchedSort(chosenSort);
                 });
             });
         }
 
         wireSort('schedSortWrap',    'schedSortBtn',    'schedSortDropdown',    'mobSchedSortDropdown');
         wireSort('mobSchedSortWrap', 'mobSchedSortBtn', 'mobSchedSortDropdown', 'schedSortDropdown');
+
+        // ── Restore saved list sort on page load ──────────────────────────
+        (function restoreListSort() {
+            let saved;
+            try { saved = localStorage.getItem(_LIST_SORT_KEY); } catch(e) {}
+            if (!saved) return;
+            ['schedSortDropdown', 'mobSchedSortDropdown'].forEach(function(id) {
+                const d = document.getElementById(id);
+                if (d) d.querySelectorAll('.sort-option').forEach(function(o) {
+                    o.classList.toggle('active', o.dataset.sort === saved);
+                });
+            });
+            applySchedSort(saved);
+        })();
     })();
 
     // Restore saved view — must be LAST so all functions and wireViewSwitcher are ready
