@@ -153,6 +153,7 @@ function fetchSchedules($conn, $from, $to) {
             IFNULL(req.infrastructure,'Infrastructure Report')    AS task,
             IFNULL(req.location,'—')                              AS location,
             r.starting_date,
+            r.estimated_end_date                                  AS raw_end_date,
             DATE_FORMAT(r.starting_date,'%d-%b-%Y')             AS start_fmt,
             DATE_FORMAT(r.estimated_end_date,'%d-%b-%Y')        AS end_fmt,
             res.status                                            AS status,
@@ -173,13 +174,23 @@ function fetchSchedules($conn, $from, $to) {
     ");
     $stmt2->bind_param('ss', $from, $to);
     $stmt2->execute();
+    $todayGen = new DateTime('today', new DateTimeZone('Asia/Manila'));
     foreach ($stmt2->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        $r['status'] = match($r['status']) {
-            'Completed'          => 'Completed',
-            'In Progress',
-            'Pending Completion' => 'In Progress',
-            default              => 'Scheduled',
-        };
+        $rawSt   = $r['status'];
+        $rawEnd  = $r['raw_end_date'] ?? '';
+        if ($rawSt === 'Completed') {
+            $r['status'] = 'Completed';
+        } elseif (in_array($rawSt, ['In Progress', 'Pending Completion'])) {
+            $r['status'] = 'In Progress';
+        } else {
+            $r['status'] = 'Scheduled';
+            if (!empty($rawEnd)) {
+                try {
+                    $endDtGen = new DateTime($rawEnd, new DateTimeZone('Asia/Manila'));
+                    if ($todayGen > $endDtGen) $r['status'] = 'Delayed';
+                } catch (Exception $e) {}
+            }
+        }
         $rows[] = $r;
     }
     $stmt2->close();
@@ -227,6 +238,7 @@ function fetchPendingReports($conn, $from, $to) {
             IFNULL(req.issue,'—')                                         AS issue,
             IFNULL(r.priority_lvl,'—')                                    AS priority_lvl,
             FORMAT(r.budget,2)                                            AS budget_fmt,
+            r.estimated_end_date                                          AS raw_end_date,
             DATE_FORMAT(r.starting_date,'%d-%b-%Y')                     AS start_fmt,
             DATE_FORMAT(r.estimated_end_date,'%d-%b-%Y')                AS end_fmt,
             res.status                                                    AS resolution_status,
@@ -242,7 +254,21 @@ function fetchPendingReports($conn, $from, $to) {
     ");
     $stmt->bind_param('ss', $from, $to);
     $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    // Compute Delayed override where today is past estimated_end_date
+    $todayPend = new DateTime('today', new DateTimeZone('Asia/Manila'));
+    foreach ($rows as &$r) {
+        $st     = $r['resolution_status'] ?? '';
+        $rawEnd = $r['raw_end_date'] ?? '';
+        if (!in_array($st, ['In Progress','Pending Completion','Completed','Cancelled']) && !empty($rawEnd)) {
+            try {
+                $endDtP = new DateTime($rawEnd, new DateTimeZone('Asia/Manila'));
+                if ($todayPend > $endDtP) $r['resolution_status'] = 'Delayed';
+            } catch (Exception $e) {}
+        }
+    }
+    unset($r);
+    return $rows;
 }
 
 function fetchArchiveReports($conn, $from, $to) {

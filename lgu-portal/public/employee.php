@@ -197,6 +197,7 @@ $recentPendingQuery = "SELECT
     r.rep_id,
     r.priority_lvl,
     r.starting_date,
+    r.estimated_end_date,
     req.infrastructure,
     req.location,
     res.status AS resolution_status,
@@ -445,7 +446,7 @@ if ($rptUpRes) {
             $statusLabel = 'In Progress';
         } else {
             $statusLabel = 'Scheduled';
-            if (empty($resNote) && !empty($endDate)) {
+            if (!empty($endDate)) {
                 try {
                     $endDt = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
                     if ($todayDt > $endDt) $statusLabel = 'Delayed';
@@ -523,7 +524,7 @@ if ($rpChartRes) {
             $schedStatusCounts['In Progress']++;
         } else {
             $rpLabel = 'Scheduled';
-            if (empty($rpNote) && !empty($rpEndDate)) {
+            if (!empty($rpEndDate)) {
                 try {
                     $rpEndDt = new DateTime($rpEndDate, new DateTimeZone('Asia/Manila'));
                     if ($todayChartDt > $rpEndDt) $rpLabel = 'Delayed';
@@ -3045,14 +3046,28 @@ HTML;
                         $pIdx = 0;
                         foreach ($recentPendingRows as $rep):
                             $resStatus = $rep['resolution_status'] ?? '';
-                            $statusMap = [
-                                'In Progress'        => ['label'=>'In Progress',   'color'=>'var(--metric-blue)'],
-                                'Pending Completion' => ['label'=>'Pending Approval','color'=>'var(--metric-orange)'],
-                                'Scheduled'          => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
-                                'Pending'            => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
-                                ''                   => ['label'=>'Scheduled',     'color'=>'var(--metric-blue)'],
-                            ];
-                            $sm = $statusMap[$resStatus] ?? ['label'=>$resStatus,'color'=>'var(--metric-blue)'];
+                            // ── Delayed check: today > estimated_end_date ──
+                            $pendIsDelayed = false;
+                            $pendEndDate   = $rep['estimated_end_date'] ?? '';
+                            if (!empty($pendEndDate) && !in_array($resStatus, ['In Progress','Pending Completion'])) {
+                                try {
+                                    $pendToday = new DateTime('today', new DateTimeZone('Asia/Manila'));
+                                    $pendEndDt = new DateTime($pendEndDate, new DateTimeZone('Asia/Manila'));
+                                    if ($pendToday > $pendEndDt) $pendIsDelayed = true;
+                                } catch (Exception $ex) {}
+                            }
+                            if ($pendIsDelayed) {
+                                $sm = ['label' => 'Delayed', 'color' => '#c62828'];
+                            } else {
+                                $statusMap = [
+                                    'In Progress'        => ['label' => 'In Progress',      'color' => '#f57f17'],
+                                    'Pending Completion' => ['label' => 'Pending Approval',  'color' => '#7c3aed'],
+                                    'Scheduled'          => ['label' => 'Scheduled',          'color' => '#1565c0'],
+                                    'Pending'            => ['label' => 'Scheduled',          'color' => '#1565c0'],
+                                    ''                   => ['label' => 'Scheduled',          'color' => '#1565c0'],
+                                ];
+                                $sm = $statusMap[$resStatus] ?? ['label' => $resStatus, 'color' => '#475569'];
+                            }
                             $priority = $rep['priority_lvl'] ?? 'Low';
                             $priorityColors = ['High'=>'#f44336','Medium'=>'#ff9800','Low'=>'#4caf50'];
                             $pColor = $priorityColors[$priority] ?? '#2196f3';

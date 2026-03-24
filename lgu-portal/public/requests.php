@@ -109,6 +109,7 @@ $sql = "SELECT
     rp.rep_id,
     rp.engineer_id,
     rp.engineer_accepted,
+    rp.estimated_end_date,
     CONCAT(eng.first_name, ' ', eng.last_name) AS engineer_name,
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
@@ -122,17 +123,29 @@ $result = $conn->query($sql);
 
 // ── Compute the live report workflow status from joined columns ───────────────
 function computeReportStatus(array $row): string {
-    $resSt      = $row['resolution_status'] ?? '';
-    $engId      = (int)($row['engineer_id']      ?? 0);
-    $engAccepted= (bool)($row['engineer_accepted'] ?? false);
-    if (!$resSt) return '';                                          // no report created yet
+    $resSt       = $row['resolution_status'] ?? '';
+    $engId       = (int)($row['engineer_id']       ?? 0);
+    $engAccepted = (bool)($row['engineer_accepted'] ?? false);
+    $endDate     = $row['estimated_end_date']       ?? '';
+
+    if (!$resSt) return '';                                           // no report created yet
     if ($resSt === 'Pending Admin Approval') return 'Pending Approval';
     if ($resSt === 'Completed')   return 'Completed';
     if ($resSt === 'Cancelled')   return 'Cancelled';
-    if ($resSt === 'Scheduled')   return 'Scheduled';
     if ($resSt === 'Pending Completion') return 'Pending Completion';
+
+    // Check for Delayed: past estimated end date and not yet completed/cancelled
+    if ($endDate) {
+        try {
+            $today  = new DateTime('today', new DateTimeZone('Asia/Manila'));
+            $endDt  = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
+            if ($today > $endDt) return 'Delayed';
+        } catch (Exception $e) {}
+    }
+
+    if ($resSt === 'Scheduled')   return 'Scheduled';
     if (in_array($resSt, ['Approved', 'In Progress'])) {
-        if (!$engId)      return 'Awaiting Engineer';
+        if (!$engId)       return 'Awaiting Engineer';
         if (!$engAccepted) return 'Pending Acceptance';
         return 'In Progress';
     }
@@ -186,7 +199,6 @@ const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 const USER_ROLE         = '<?= htmlspecialchars($userRole, ENT_QUOTES) ?>';
 const USER_DISPLAY_NAME = '<?= htmlspecialchars($displayName, ENT_QUOTES) ?>';
-window.CURRENT_EMP_ID   = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 (function () {
     try {
         let t = localStorage.getItem('theme');
@@ -1219,20 +1231,22 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .report-status-pill.rsp-awaiting     { background:#fff7ed;  color:#9a3412;  border:1px solid #fdba74; }
 .report-status-pill.rsp-pending-acc  { background:#fef3c7;  color:#92400e;  border:1px solid #fcd34d; }
 .report-status-pill.rsp-pending-appr { background:#ede9fe;  color:#4c1d95;  border:1px solid #c4b5fd; }
-.report-status-pill.rsp-in-progress  { background:#dbeafe;  color:#1e40af;  border:1px solid #93c5fd; }
-.report-status-pill.rsp-scheduled    { background:#e0f2fe;  color:#0c4a6e;  border:1px solid #7dd3fc; }
+.report-status-pill.rsp-in-progress  { background:#fff8e1;  color:#f57f17;  border:1px solid rgba(245,127,23,.3); }
+.report-status-pill.rsp-scheduled    { background:#e3f2fd;  color:#1565c0;  border:1px solid rgba(21,101,192,.3); }
 .report-status-pill.rsp-pending-comp { background:#fef9c3;  color:#713f12;  border:1px solid #fde047; }
-.report-status-pill.rsp-completed    { background:#dcfce7;  color:#14532d;  border:1px solid #86efac; }
+.report-status-pill.rsp-completed    { background:#e8f5e9;  color:#2e7d32;  border:1px solid rgba(46,125,50,.3); }
 .report-status-pill.rsp-cancelled    { background:#fee2e2;  color:#7f1d1d;  border:1px solid #fca5a5; }
+.report-status-pill.rsp-delayed      { background:#ffebee;  color:#c62828;  border:1px solid rgba(198,40,40,.3); }
 [data-theme="dark"] .report-status-pill.rsp-none         { background:rgba(100,116,139,.18); color:#94a3b8; border-color:rgba(100,116,139,.3); }
 [data-theme="dark"] .report-status-pill.rsp-awaiting     { background:rgba(251,146,60,.12);  color:#fb923c; border-color:rgba(251,146,60,.3); }
 [data-theme="dark"] .report-status-pill.rsp-pending-acc  { background:rgba(252,211,77,.12);  color:#fbbf24; border-color:rgba(252,211,77,.3); }
 [data-theme="dark"] .report-status-pill.rsp-pending-appr { background:rgba(167,139,250,.14); color:#a78bfa; border-color:rgba(167,139,250,.3); }
-[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(96,165,250,.12);  color:#60a5fa; border-color:rgba(96,165,250,.3); }
-[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(56,189,248,.12);  color:#38bdf8; border-color:rgba(56,189,248,.3); }
+[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(245,158,11,.18);  color:#fdd835; border-color:rgba(253,216,53,.3); }
+[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(21,101,192,.2);   color:#90caf9; border-color:rgba(144,202,249,.3); }
 [data-theme="dark"] .report-status-pill.rsp-pending-comp { background:rgba(250,204,21,.12);  color:#facc15; border-color:rgba(250,204,21,.3); }
-[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(74,222,128,.12);  color:#4ade80; border-color:rgba(74,222,128,.3); }
+[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(76,175,80,.2);    color:#81c784; border-color:rgba(129,199,132,.3); }
 [data-theme="dark"] .report-status-pill.rsp-cancelled    { background:rgba(248,113,113,.12); color:#f87171; border-color:rgba(248,113,113,.3); }
+[data-theme="dark"] .report-status-pill.rsp-delayed      { background:rgba(244,67,54,.2);    color:#e57373; border-color:rgba(229,115,115,.3); }
 .report-status-rep-link {
     font-size: 11.5px;
     color: var(--text-secondary);
@@ -2673,13 +2687,13 @@ function switchView(target) {
         gisEl.style.display = 'none';
         reqEl.style.display = '';
     }
-    try { localStorage.setItem('cimm_req_view_' + (window.CURRENT_EMP_ID || 0), target); } catch(e) {}
+    try { localStorage.setItem('activeView', target); } catch(e) {}
 }
 
-// Restore last view on load (per-user)
+// Restore last view on load
 (function() {
     try {
-        const saved = localStorage.getItem('cimm_req_view_' + (window.CURRENT_EMP_ID || 0));
+        const saved = localStorage.getItem('activeView');
         if (saved === 'requests') {
             document.getElementById('gisView').style.display = 'none';
             document.getElementById('requestsView').style.display = '';
@@ -2838,6 +2852,7 @@ function reportStatusClass(rs) {
         'Pending Completion': 'rsp-pending-comp',
         'Completed':          'rsp-completed',
         'Cancelled':          'rsp-cancelled',
+        'Delayed':            'rsp-delayed',
     };
     return map[rs] || 'rsp-none';
 }
@@ -2851,6 +2866,7 @@ const REPORT_STATUS_ICON = {
     'Pending Completion': '🕐',
     'Completed':          '✅',
     'Cancelled':          '🚫',
+    'Delayed':            '⚠️',
 };
 
 // ── Fills/hides the Report Status section in a modal ─────────────────────────
@@ -3544,7 +3560,6 @@ function setDateFilter(filter) {
     // Reset custom picker labels when a preset is chosen
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
-    try { localStorage.setItem('cimm_req_gis_period_' + (window.CURRENT_EMP_ID || 0), filter); } catch(e) {}
     applyVisibility();
 }
 
@@ -3561,7 +3576,6 @@ function setStatusFilter(filter) {
     document.querySelectorAll('.gis-filter-btn[id^="filter"]').forEach(b => b.classList.remove('active'));
     const legMap={all:'filterAll',Pending:'filterPending',Approved:'filterApproved',Rejected:'filterRejected'};
     const el=document.getElementById(legMap[filter]); if(el) el.classList.add('active');
-    try { localStorage.setItem('cimm_req_gis_status_' + (window.CURRENT_EMP_ID || 0), filter); } catch(e) {}
     applyVisibility();
 }
 
@@ -3574,7 +3588,6 @@ function setInfraFilter(infra) {
     if (btn) { btn.classList.toggle('has-filter', infra !== 'all'); btn.classList.toggle('infra', true); }
     document.querySelectorAll('#gisTypeMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === infra));
     const w = document.getElementById('gisTypeWrap'); if(w) w.classList.remove('open');
-    try { localStorage.setItem('cimm_req_gis_infra_' + (window.CURRENT_EMP_ID || 0), infra); } catch(e) {}
     applyVisibility();
 }
 
@@ -3655,23 +3668,6 @@ async function initializeAndGeocode() {
 
     applyVisibility();
     if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }
-}
-
-// ═══════════════════════════════════════════════════════
-//  RESTORE GIS FILTERS — per-user persistence
-// ═══════════════════════════════════════════════════════
-function restoreGisFilters() {
-    const uid = window.CURRENT_EMP_ID || 0;
-    try {
-        const savedStatus = localStorage.getItem('cimm_req_gis_status_' + uid);
-        if (savedStatus && savedStatus !== 'all') setStatusFilter(savedStatus);
-
-        const savedInfra = localStorage.getItem('cimm_req_gis_infra_' + uid);
-        if (savedInfra && savedInfra !== 'all') setInfraFilter(savedInfra);
-
-        const savedPeriod = localStorage.getItem('cimm_req_gis_period_' + uid);
-        if (savedPeriod && savedPeriod !== 'all') setDateFilter(savedPeriod);
-    } catch(e) {}
 }
 
 function initMap() {
@@ -3859,7 +3855,7 @@ function syncModalFilterButtons() {
 //  INIT
 // ═══════════════════════════════════════════════════════
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
-document.addEventListener('DOMContentLoaded', () => { restoreGisFilters(); initMap(); initSearch(); initRequestSort(); });
+document.addEventListener('DOMContentLoaded', () => { initMap(); initSearch(); initRequestSort(); });
 
 // ═══════════════════════════════════════════════════════
 //  SORT — Requests Table
@@ -3870,9 +3866,7 @@ function initRequestSort() {
     const dropdown= document.getElementById('reqSortDropdown');
     if (!wrap || !btn || !dropdown) return;
 
-    // Per-user, per-page sort persistence key (mirrors sched.php pattern)
-    const _SORT_KEY     = 'cimm_requests_sort_' + (window.CURRENT_EMP_ID || 0);
-    const _DEFAULT_SORT = 'date-desc';
+    let currentSort = 'date-desc';
 
     // Toggle open/close
     btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
@@ -3880,12 +3874,11 @@ function initRequestSort() {
 
     dropdown.querySelectorAll('.sort-option').forEach(opt => {
         opt.addEventListener('click', () => {
-            const chosenSort = opt.dataset.sort;
+            currentSort = opt.dataset.sort;
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
             wrap.classList.remove('open');
-            try { localStorage.setItem(_SORT_KEY, chosenSort); } catch(e) {}
-            applyRequestSort(chosenSort);
+            applyRequestSort(currentSort);
         });
     });
 
@@ -3935,17 +3928,6 @@ function initRequestSort() {
             if (noMob) mList.appendChild(noMob);
         }
     }
-
-    // Restore saved sort preference for this user on page load
-    (function restoreSort() {
-        let saved;
-        try { saved = localStorage.getItem(_SORT_KEY); } catch(e) {}
-        const active = saved || _DEFAULT_SORT;
-        dropdown.querySelectorAll('.sort-option').forEach(o => {
-            o.classList.toggle('active', o.dataset.sort === active);
-        });
-        applyRequestSort(active);
-    })();
 }
 
 // ═══════════════════════════════════════════════════════
