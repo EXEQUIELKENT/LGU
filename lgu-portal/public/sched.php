@@ -2578,25 +2578,47 @@ usort($schedules, function($a, $b) {
     .modal-nav-counter { font-size: 11px; padding: 2px 10px; }
 }
 
-/* ── Status-themed Modal Headers ── */
-.modal-header.theme-upcoming  { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); }
-.modal-header.theme-ongoing   { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); }
+/* ── Status-themed Modal Headers (scoped to #taskModal for specificity) ── */
+#taskModal .modal-header.theme-upcoming  { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important; }
+#taskModal .modal-header.theme-ongoing   { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%) !important; }
+#taskModal .modal-header.theme-delayed   { background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%) !important; }
+#taskModal .modal-header.theme-completed { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important; }
 
-/* Dark text for yellow header — white on yellow is unreadable */
-.modal-header.theme-ongoing .modal-label  { color: rgba(28, 20, 0, 0.6); }
-.modal-header.theme-ongoing .modal-title  { color: #1c1400; }
-.modal-header.theme-ongoing .modal-close-btn {
+/* Dark text for yellow (ongoing) header — white on yellow is unreadable */
+#taskModal .modal-header.theme-ongoing .modal-label  { color: rgba(28, 20, 0, 0.6); }
+#taskModal .modal-header.theme-ongoing .modal-title  { color: #1c1400; }
+#taskModal .modal-header.theme-ongoing .modal-close-btn {
     color: #1c1400;
     background: rgba(0, 0, 0, 0.1);
 }
-.modal-header.theme-ongoing .modal-close-btn:hover {
+#taskModal .modal-header.theme-ongoing .modal-close-btn:hover {
     background: rgba(0, 0, 0, 0.18);
 }
-.modal-header.theme-ongoing .modal-header-icon {
+#taskModal .modal-header.theme-ongoing .modal-header-icon {
     background: rgba(0, 0, 0, 0.1);
 }
-.modal-header.theme-delayed   { background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%); }
-.modal-header.theme-completed { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); }
+
+/* ── Engineer-profile modal: status-based colour themes ── */
+/* Default (no class = completed/green) is already defined in base rules above */
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-band      { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+#schedEngDetailsModal.eng-theme-ongoing  .sched-eng-det-band      { background: linear-gradient(90deg, #f57f17, #ffd54f); }
+#schedEngDetailsModal.eng-theme-delayed  .sched-eng-det-band      { background: linear-gradient(90deg, #c62828, #ef5350); }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-band     { background: linear-gradient(90deg, #2e7d32, #43a047); }
+
+#schedEngDetailsModal.eng-theme-upcoming  .sched-eng-det-avatar-wrap { border-color: #1565c0;  box-shadow: 0 4px 12px rgba(21,101,192,.30); }
+#schedEngDetailsModal.eng-theme-ongoing   .sched-eng-det-avatar-wrap { border-color: #f57f17;  box-shadow: 0 4px 12px rgba(245,127,23,.30); }
+#schedEngDetailsModal.eng-theme-delayed   .sched-eng-det-avatar-wrap { border-color: #c62828;  box-shadow: 0 4px 12px rgba(198,40,40,.30);  }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-avatar-wrap { border-color: #2e7d32;  box-shadow: 0 4px 12px rgba(46,125,50,.25);  }
+
+#schedEngDetailsModal.eng-theme-upcoming  .sched-eng-det-close:hover { background: rgba(21,101,192,.10); color: #1565c0; }
+#schedEngDetailsModal.eng-theme-ongoing   .sched-eng-det-close:hover { background: rgba(245,127,23,.10); color: #f57f17; }
+#schedEngDetailsModal.eng-theme-delayed   .sched-eng-det-close:hover { background: rgba(198,40,40,.10);  color: #c62828; }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-close:hover { background: rgba(46,125,50,.10);  color: #2e7d32; }
+
+#schedEngDetailsModal.eng-theme-upcoming  .sched-eng-det-close-btn { background: linear-gradient(135deg, #1565c0, #0d47a1); box-shadow: 0 4px 12px rgba(21,101,192,.30); }
+#schedEngDetailsModal.eng-theme-ongoing   .sched-eng-det-close-btn { background: linear-gradient(135deg, #f57f17, #e65100); box-shadow: 0 4px 12px rgba(245,127,23,.30); }
+#schedEngDetailsModal.eng-theme-delayed   .sched-eng-det-close-btn { background: linear-gradient(135deg, #c62828, #b71c1c); box-shadow: 0 4px 12px rgba(198,40,40,.30);  }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-close-btn { background: linear-gradient(135deg, #2e7d32, #1b5e20); box-shadow: 0 4px 12px rgba(46,125,50,.30);  }
 
 /* Nav bar accent per status */
 .modal-nav-bar.theme-upcoming  { background: rgba(21,101,192,0.07);  border-bottom-color: rgba(21,101,192,0.15); }
@@ -5686,6 +5708,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     background: rgba(35,35,46,.95);
     border-color: rgba(46,125,50,.4);
 }
+/* Status-based avatar button border colours */
+.sched-eng-profile-btn.eng-btn-upcoming  { border-color: rgba(21,101,192,.50); }
+.sched-eng-profile-btn.eng-btn-upcoming:hover  { border-color: #1565c0; box-shadow: 0 2px 10px rgba(21,101,192,.35); }
+.sched-eng-profile-btn.eng-btn-ongoing   { border-color: rgba(245,127,23,.55); }
+.sched-eng-profile-btn.eng-btn-ongoing:hover   { border-color: #f57f17; box-shadow: 0 2px 10px rgba(245,127,23,.35); }
+.sched-eng-profile-btn.eng-btn-delayed   { border-color: rgba(198,40,40,.55); }
+.sched-eng-profile-btn.eng-btn-delayed:hover   { border-color: #c62828; box-shadow: 0 2px 10px rgba(198,40,40,.35); }
+.sched-eng-profile-btn.eng-btn-completed { border-color: rgba(46,125,50,.50); }
+.sched-eng-profile-btn.eng-btn-completed:hover { border-color: #2e7d32; box-shadow: 0 2px 10px rgba(46,125,50,.35); }
+[data-theme="dark"] .sched-eng-profile-btn.eng-btn-upcoming  { border-color: rgba(144,202,249,.45); }
+[data-theme="dark"] .sched-eng-profile-btn.eng-btn-ongoing   { border-color: rgba(253,224,71,.45);  }
+[data-theme="dark"] .sched-eng-profile-btn.eng-btn-delayed   { border-color: rgba(239,154,154,.45); }
+[data-theme="dark"] .sched-eng-profile-btn.eng-btn-completed { border-color: rgba(165,214,167,.45); }
 
 /* Engineer Details Modal — sched.php version */
 #schedEngDetailsBackdrop {
@@ -5744,6 +5779,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 }
 .sched-eng-det-body::-webkit-scrollbar { width: 5px; }
 .sched-eng-det-body::-webkit-scrollbar-thumb { background: #43a047; border-radius: 3px; }
+/* Scrollbar tint per status */
+#schedEngDetailsModal.eng-theme-upcoming  .sched-eng-det-body { scrollbar-color: #1565c0 rgba(0,0,0,.07); }
+#schedEngDetailsModal.eng-theme-upcoming  .sched-eng-det-body::-webkit-scrollbar-thumb { background: #1565c0; }
+#schedEngDetailsModal.eng-theme-ongoing   .sched-eng-det-body { scrollbar-color: #f57f17 rgba(0,0,0,.07); }
+#schedEngDetailsModal.eng-theme-ongoing   .sched-eng-det-body::-webkit-scrollbar-thumb { background: #f57f17; }
+#schedEngDetailsModal.eng-theme-delayed   .sched-eng-det-body { scrollbar-color: #c62828 rgba(0,0,0,.07); }
+#schedEngDetailsModal.eng-theme-delayed   .sched-eng-det-body::-webkit-scrollbar-thumb { background: #c62828; }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-body { scrollbar-color: #43a047 rgba(0,0,0,.07); }
+#schedEngDetailsModal.eng-theme-completed .sched-eng-det-body::-webkit-scrollbar-thumb { background: #43a047; }
 .sched-eng-det-footer {
     padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08));
     flex-shrink: 0; display: flex; justify-content: center;
@@ -6269,7 +6313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Assigned Engineer</div>
                         <div class="modal-task-row-value" style="display:flex;align-items:center;gap:8px;">
-                            ${t.engineer_id ? `<button class="sched-eng-profile-btn" onclick="schedOpenEngineerProfile(${t.engineer_id})" title="View Engineer Profile">${buildSchedAvatar(t.engineer_pic)}</button>` : ''}
+                            ${t.engineer_id ? `<button class="sched-eng-profile-btn eng-btn-${key}" onclick="schedOpenEngineerProfile(${t.engineer_id}, '${key}')" title="View Engineer Profile">${buildSchedAvatar(t.engineer_pic, key)}</button>` : ''}
                             <span>${escH(t.engineer_name)}</span>
                         </div>
                     </div>
@@ -7878,15 +7922,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // SCHED — Engineer Profile Button + Details Modal
 // ════════════════════════════════════════════════════════════════
 
-const SCHED_FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>';
+const SCHED_AVATAR_THEME = {
+    upcoming:  { bg: '#e3f2fd', fill: '#1565c0' },
+    ongoing:   { bg: '#fff8e1', fill: '#f57f17' },
+    delayed:   { bg: '#ffebee', fill: '#c62828' },
+    completed: { bg: '#e8f5e9', fill: '#2e7d32' },
+};
+function buildSchedFallbackSVG(statusKey) {
+    const t = SCHED_AVATAR_THEME[statusKey] || SCHED_AVATAR_THEME.completed;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${t.bg}"/><circle cx="50" cy="36" r="20" fill="${t.fill}"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="${t.fill}"/></svg>`;
+}
 
-function buildSchedAvatar(picPath) {
+function buildSchedAvatar(picPath, statusKey) {
+    const svg = buildSchedFallbackSVG(statusKey || 'completed');
     if (picPath && picPath !== 'profile.png') {
         return `<img src="${picPath}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
                     onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                <span style="display:none;width:100%;height:100%;">${SCHED_FALLBACK_SVG}</span>`;
+                <span style="display:none;width:100%;height:100%;">${svg}</span>`;
     }
-    return SCHED_FALLBACK_SVG;
+    return svg;
 }
 
 
@@ -7935,8 +7989,9 @@ async function _schedLoadEngineers() {
     return _schedEngCache;
 }
 
-async function schedOpenEngineerProfile(engineerId) {
+async function schedOpenEngineerProfile(engineerId, statusKey) {
     if (!engineerId) return;
+    statusKey = statusKey || 'upcoming';
     let eng = null;
     const engineers = await _schedLoadEngineers();
     eng = engineers.find(e => e.id == engineerId);
@@ -7950,17 +8005,30 @@ async function schedOpenEngineerProfile(engineerId) {
         } catch(e) {}
     }
     if (!eng) return;
-    _schedPopulateEngModal(eng);
+    _schedPopulateEngModal(eng, statusKey);
     document.getElementById('schedEngDetailsBackdrop').classList.add('show');
 }
 
-function _schedPopulateEngModal(eng) {
+function _schedPopulateEngModal(eng, statusKey) {
+    statusKey = statusKey || 'upcoming';
+
+    // Apply status-based theme to the modal
+    const modal = document.getElementById('schedEngDetailsModal');
+    if (modal) {
+        ['eng-theme-upcoming','eng-theme-ongoing','eng-theme-delayed','eng-theme-completed']
+            .forEach(c => modal.classList.remove(c));
+        modal.classList.add('eng-theme-' + statusKey);
+    }
+
+    // Status-aware colours for fallback SVG and discipline label
+    const tc = SCHED_AVATAR_THEME[statusKey] || SCHED_AVATAR_THEME.completed;
+
     const wrap = document.getElementById('schedEngDetAvatarWrap');
     if (wrap) {
         const img = document.createElement('img');
         img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;';
         img.alt = '';
-        const fallback = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>');
+        const fallback = 'data:image/svg+xml,' + encodeURIComponent(buildSchedFallbackSVG(statusKey));
         img.onerror = function() { this.src = fallback; };
         img.src = eng.profile_picture || fallback;
         wrap.innerHTML = '';
@@ -7969,7 +8037,10 @@ function _schedPopulateEngModal(eng) {
     const nameEl = document.getElementById('schedEngDetName');
     const discEl = document.getElementById('schedEngDetDiscipline');
     if (nameEl) nameEl.textContent = eng.name || '—';
-    if (discEl) discEl.textContent = eng.engineering_discipline || 'Engineer';
+    if (discEl) {
+        discEl.textContent = eng.engineering_discipline || 'Engineer';
+        discEl.style.color = tc.fill;
+    }
 
     const fv = (v) => v ? _schedEscH(String(v)) : '<span style="opacity:.5;">—</span>';
     let html = '';

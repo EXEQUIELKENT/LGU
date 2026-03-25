@@ -90,6 +90,17 @@ if ($report_result) {
             $dispStatus = 'Scheduled';
         }
 
+        // ── Delayed override: if today is strictly past the estimated end date ──
+        if ($dispStatus !== 'Completed' && !empty($rRow['end_date'])) {
+            try {
+                $todayDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
+                $endDt   = new DateTime($rRow['end_date'], new DateTimeZone('Asia/Manila'));
+                if ($todayDt > $endDt) {
+                    $dispStatus = 'Delayed';
+                }
+            } catch (Exception $e) {}
+        }
+
         $evImgs = [];
         if (!empty($rRow['evidence_images'])) {
             $evImgs = array_values(array_filter(explode(',', $rRow['evidence_images'])));

@@ -2261,6 +2261,7 @@ tbody td {
                     data-location="<?= htmlspecialchars($row['location']) ?>"
                     data-issue="<?= htmlspecialchars($row['issue']) ?>"
                     data-date="<?= format_datetime_ampm($row['created_at']) ?>"
+                    data-created-iso="<?= htmlspecialchars($row['created_at'] ?? '') ?>"
                     data-status="<?= htmlspecialchars($row['approval_status']) ?>"
                     data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
                     data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
@@ -2326,6 +2327,7 @@ tbody td {
             data-location="<?= htmlspecialchars($row['location']) ?>"
             data-issue="<?= htmlspecialchars($row['issue']) ?>"
             data-date="<?= format_datetime_ampm($row['created_at']) ?>"
+            data-created-iso="<?= htmlspecialchars($row['created_at'] ?? '') ?>"
             data-status="<?= htmlspecialchars($row['approval_status']) ?>"
             data-evidence='<?= htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8') ?>'
             data-requester="<?= htmlspecialchars($row['name'] ?? '') ?>"
@@ -3378,7 +3380,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let rowText = '';
             searchable.forEach(el => { storeOriginal(el); reset(el); rowText += el.textContent.toLowerCase() + ' '; });
             const match = rowText.includes(keyword);
-            row.style.display = match || !keyword ? '' : 'none';
+            const dateHidden = row.dataset.dateHidden === '1';
+            row.dataset.searchHidden = (!match && keyword) ? '1' : '';
+            row.style.display = (dateHidden || (!match && keyword)) ? 'none' : '';
             if (match && keyword) { searchable.forEach(el => highlight(el, keyword)); found++; }
         });
         document.getElementById('noRequestResult').style.display = keyword && found === 0 ? '' : 'none';
@@ -3387,7 +3391,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let cardText = '';
             searchable.forEach(el => { storeOriginal(el); reset(el); cardText += el.textContent.toLowerCase() + ' '; });
             const match = cardText.includes(keyword);
-            card.style.display = match || !keyword ? '' : 'none';
+            const dateHidden = card.dataset.dateHidden === '1';
+            card.dataset.searchHidden = (!match && keyword) ? '1' : '';
+            card.style.display = (dateHidden || (!match && keyword)) ? 'none' : '';
             if (match && keyword) searchable.forEach(el => highlight(el, keyword));
         });
     });
@@ -3561,6 +3567,8 @@ function setDateFilter(filter) {
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
     applyVisibility();
+    // Also filter the requests table/card list
+    if (window._applyRequestListFilter) window._applyRequestListFilter();
 }
 
 function setStatusFilter(filter) {
@@ -3882,10 +3890,55 @@ function initRequestSort() {
         });
     });
 
-    function parseRequestDate(str) {
-        // data-date format: "February 5, 2025 02:30 PM"
-        return str ? new Date(str) : new Date(0);
+    function parseRequestDate(el) {
+        // Prefer the reliable ISO timestamp; fall back to the formatted string
+        const iso = el.dataset.createdIso || el.dataset.date || '';
+        return iso ? new Date(iso.replace(' ', 'T')) : new Date(0);
     }
+
+    function applyRequestListFilter() {
+        const dateRange = getDateFilterRange(activeDateFilter);
+        const tbody = document.querySelector('#requestsView table tbody');
+        if (tbody) {
+            const noResult = document.getElementById('noRequestResult');
+            tbody.querySelectorAll('tr.request-row').forEach(row => {
+                if (!dateRange) { row.dataset.dateHidden = ''; return; }
+                const iso = row.dataset.createdIso || '';
+                const dt  = iso ? new Date(iso.replace(' ', 'T')) : null;
+                const hide = dt && (
+                    (dateRange.from && dt < dateRange.from) ||
+                    (dateRange.to   && dt >= dateRange.to)
+                );
+                row.dataset.dateHidden = hide ? '1' : '';
+                // Respect current search visibility too
+                if (hide) row.style.display = 'none';
+                else if (row.style.display === 'none' && !row.dataset.searchHidden) row.style.display = '';
+            });
+            if (noResult) {
+                const visible = tbody.querySelectorAll('tr.request-row:not([style*="display: none"]):not([style*="display:none"])').length;
+                noResult.style.display = visible === 0 ? '' : 'none';
+            }
+        }
+        const mList = document.querySelector('.mobile-request-list');
+        if (mList) {
+            const noMob = document.getElementById('noMobileRequestResult');
+            mList.querySelectorAll('.request-card').forEach(card => {
+                if (!dateRange) { card.dataset.dateHidden = ''; return; }
+                const iso = card.dataset.createdIso || '';
+                const dt  = iso ? new Date(iso.replace(' ', 'T')) : null;
+                const hide = dt && (
+                    (dateRange.from && dt < dateRange.from) ||
+                    (dateRange.to   && dt >= dateRange.to)
+                );
+                card.dataset.dateHidden = hide ? '1' : '';
+                if (hide) card.style.display = 'none';
+                else if (card.style.display === 'none' && !card.dataset.searchHidden) card.style.display = '';
+            });
+        }
+    }
+
+    // Expose so setDateFilter can call it
+    window._applyRequestListFilter = applyRequestListFilter;
 
     function applyRequestSort(mode) {
         // ── Desktop table rows ──
@@ -3894,8 +3947,8 @@ function initRequestSort() {
             const noResult = document.getElementById('noRequestResult');
             const rows = Array.from(tbody.querySelectorAll('tr.request-row'));
             rows.sort((a, b) => {
-                if (mode === 'date-desc') return parseRequestDate(b.dataset.date) - parseRequestDate(a.dataset.date);
-                if (mode === 'date-asc')  return parseRequestDate(a.dataset.date) - parseRequestDate(b.dataset.date);
+                if (mode === 'date-desc') return parseRequestDate(b) - parseRequestDate(a);
+                if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
@@ -3914,8 +3967,8 @@ function initRequestSort() {
             const noMob = document.getElementById('noMobileRequestResult');
             const cards = Array.from(mList.querySelectorAll('.request-card'));
             cards.sort((a, b) => {
-                if (mode === 'date-desc') return parseRequestDate(b.dataset.date) - parseRequestDate(a.dataset.date);
-                if (mode === 'date-asc')  return parseRequestDate(a.dataset.date) - parseRequestDate(b.dataset.date);
+                if (mode === 'date-desc') return parseRequestDate(b) - parseRequestDate(a);
+                if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
