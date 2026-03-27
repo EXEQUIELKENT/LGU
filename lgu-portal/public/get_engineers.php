@@ -57,7 +57,8 @@ $stmt = $conn->prepare(
         ep.skill_structural_design,
         ep.skill_site_inspection,
         ep.skill_project_planning,
-        ep.cad_software
+        ep.cad_software,
+        ep.district
      FROM employees e
      INNER JOIN engineer_profiles ep ON ep.user_id = e.user_id
      WHERE e.role = 'Engineer'{$idClause}
@@ -102,6 +103,7 @@ while ($row = $result->fetch_assoc()) {
         'skill_project_planning' => (bool)$row['skill_project_planning'],
         'cad_software'           => $row['cad_software']           ?? '',
         'email'                  => $row['email']                  ?? '',
+        'district'               => $row['district']               ?? '',
     ];
 }
 

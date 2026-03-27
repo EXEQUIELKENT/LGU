@@ -75,6 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $coord_lng = isset($_POST['coord_lng']) ? trim($_POST['coord_lng']) : '';
     $coordinates = ($coord_lat !== '' && $coord_lng !== '') ? $coord_lat . ',' . $coord_lng : null;
 
+    $district = isset($_POST['district']) ? trim($_POST['district']) : '';
+    // Ensure district column exists in requests table
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS district VARCHAR(50) DEFAULT NULL");
+
     $consent_agree = isset($_POST['consent_agree']) ? $_POST['consent_agree'] : '';
     $pure_number = preg_replace('/\D/', '', $contact_number);
 
@@ -119,10 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         else {
             $stmt = $conn->prepare(
-                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, created_at)
-                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, NOW())"
+                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, district, created_at)
+                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, ?, NOW())"
             );
-            $stmt->bind_param("sssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates, $req_email);
+            $stmt->bind_param("ssssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates, $req_email, $district);
 
             if ($stmt->execute()) {
                 $request_id = $conn->insert_id;
@@ -1636,6 +1640,7 @@ input[type="file"] {
 
                 <input type="hidden" id="coord_lat" name="coord_lat">
                 <input type="hidden" id="coord_lng" name="coord_lng">
+                <input type="hidden" id="district_field" name="district">
 
                 <div class="btn-container">
                     <button type="submit" class="btn-primary" id="submit-btn" data-i18n="form_submit_button">Submit Request</button>
@@ -3557,6 +3562,13 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
             const lng = typeof selectedLatLng.lng === 'function' ? selectedLatLng.lng() : selectedLatLng.lng;
             document.getElementById('coord_lat').value = lat; document.getElementById('coord_lng').value = lng;
             localStorage.setItem('coord_lat', lat); localStorage.setItem('coord_lng', lng);
+        }
+        // Save detected district from districtInfo banner
+        const districtEl = document.getElementById('districtInfo');
+        if (districtEl && districtEl.style.display !== 'none') {
+            // districtInfo text is "📌 District 2" — strip the emoji prefix
+            const rawDistrict = districtEl.textContent.replace('📌', '').trim();
+            document.getElementById('district_field').value = rawDistrict;
         }
         closeMapModal();
     }

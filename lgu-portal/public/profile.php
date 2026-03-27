@@ -68,6 +68,9 @@ $conn->query("
         `skill_site_inspection`   TINYINT(1)    NOT NULL DEFAULT 0,
         `skill_project_planning`  TINYINT(1)    NOT NULL DEFAULT 0,
         `cad_software`            VARCHAR(500)  DEFAULT NULL,
+        `district`                VARCHAR(50)   DEFAULT NULL,
+        `address_lat`             DECIMAL(10,7) DEFAULT NULL,
+        `address_lng`             DECIMAL(11,7) DEFAULT NULL,
         `created_at`              TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `updated_at`              TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
@@ -75,6 +78,10 @@ $conn->query("
         CONSTRAINT `fk_ep_user` FOREIGN KEY (`user_id`) REFERENCES `employees` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
+// Ensure new columns exist on already-created tables
+$conn->query("ALTER TABLE engineer_profiles ADD COLUMN IF NOT EXISTS district VARCHAR(50) DEFAULT NULL");
+$conn->query("ALTER TABLE engineer_profiles ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,7) DEFAULT NULL");
+$conn->query("ALTER TABLE engineer_profiles ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,7) DEFAULT NULL");
 
 // --- Profile Cooldown Section (NEW) ---
 $employeeId = $_SESSION['employee_id'] ?? null;
@@ -441,6 +448,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $ep_site           = isset($_POST['ep_skill_site_inspection']) ? 1 : 0;
             $ep_planning       = isset($_POST['ep_skill_project_planning']) ? 1 : 0;
             $ep_cad            = trim($_POST['ep_cad_software'] ?? '');
+            // District and coordinates from address map picker
+            $ep_district   = trim($_POST['ep_district'] ?? '');
+            $ep_addr_lat   = is_numeric($_POST['ep_addr_lat'] ?? '') ? (float)$_POST['ep_addr_lat'] : null;
+            $ep_addr_lng   = is_numeric($_POST['ep_addr_lng'] ?? '') ? (float)$_POST['ep_addr_lng'] : null;
 
             $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
             $epCheck->bind_param("i", $employeeId);
@@ -449,11 +460,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $epCheck->close();
 
             if ($epExists) {
-                $epStmt = $conn->prepare("UPDATE engineer_profiles SET full_name=?, gender=?, date_of_birth=?, address=?, contact_number=?, engineering_discipline=?, department=?, years_of_experience=?, areas_of_specialization=?, skill_structural_design=?, skill_site_inspection=?, skill_project_planning=?, cad_software=?, updated_at=NOW() WHERE user_id=?");
-                $epStmt->bind_param("sssssssssiiisi", $ep_full_name, $ep_gender, $ep_dob, $ep_address, $ep_contact, $ep_discipline, $ep_department, $ep_experience, $ep_specialization, $ep_structural, $ep_site, $ep_planning, $ep_cad, $employeeId);
+                $epStmt = $conn->prepare("UPDATE engineer_profiles SET full_name=?, gender=?, date_of_birth=?, address=?, contact_number=?, engineering_discipline=?, department=?, years_of_experience=?, areas_of_specialization=?, skill_structural_design=?, skill_site_inspection=?, skill_project_planning=?, cad_software=?, district=?, address_lat=?, address_lng=?, updated_at=NOW() WHERE user_id=?");
+                $epStmt->bind_param("sssssssssiiissddi", $ep_full_name, $ep_gender, $ep_dob, $ep_address, $ep_contact, $ep_discipline, $ep_department, $ep_experience, $ep_specialization, $ep_structural, $ep_site, $ep_planning, $ep_cad, $ep_district, $ep_addr_lat, $ep_addr_lng, $employeeId);
             } else {
-                $epStmt = $conn->prepare("INSERT INTO engineer_profiles (user_id, full_name, gender, date_of_birth, address, contact_number, engineering_discipline, department, years_of_experience, areas_of_specialization, skill_structural_design, skill_site_inspection, skill_project_planning, cad_software) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                $epStmt->bind_param("isssssssssiiis", $employeeId, $ep_full_name, $ep_gender, $ep_dob, $ep_address, $ep_contact, $ep_discipline, $ep_department, $ep_experience, $ep_specialization, $ep_structural, $ep_site, $ep_planning, $ep_cad);
+                $epStmt = $conn->prepare("INSERT INTO engineer_profiles (user_id, full_name, gender, date_of_birth, address, contact_number, engineering_discipline, department, years_of_experience, areas_of_specialization, skill_structural_design, skill_site_inspection, skill_project_planning, cad_software, district, address_lat, address_lng) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $epStmt->bind_param("isssssssssiiissdd", $employeeId, $ep_full_name, $ep_gender, $ep_dob, $ep_address, $ep_contact, $ep_discipline, $ep_department, $ep_experience, $ep_specialization, $ep_structural, $ep_site, $ep_planning, $ep_cad, $ep_district, $ep_addr_lat, $ep_addr_lng);
             }
             if ($epStmt->execute()) {
                 $engineerProfileUpdated = true;
@@ -2621,9 +2632,58 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                                 </div>
                             </div>
                             <div class="eng-form-group" style="grid-column:1/-1">
+                                <label><span class="lbl-icon">🗺️</span> District (Quezon City)</label>
+                                <?php
+                                    $savedDistrict = $engineerProfile['district'] ?? '';
+                                    $districtOpts  = ['District 1','District 2','District 3','District 4','District 5','District 6'];
+                                    $distLocked    = $cooldownActive && !$isSuperAdmin;
+                                ?>
+                                <input type="hidden" name="ep_district" id="epDistrictVal" value="<?= htmlspecialchars($savedDistrict) ?>">
+                                <div class="prof-combobox" id="cbDistrict">
+                                    <div class="prof-combobox-display<?= $distLocked ? ' locked' : '' ?>" id="cbDistrictDisplay">
+                                        <span class="prof-combobox-label<?= $savedDistrict ? ' selected' : '' ?>" id="cbDistrictLabel">
+                                            <?= $savedDistrict ? htmlspecialchars($savedDistrict) : '— Select district —' ?>
+                                        </span>
+                                        <span class="prof-combobox-arrow">▾</span>
+                                    </div>
+                                    <?php if (!$distLocked): ?>
+                                    <div class="prof-combobox-dropdown" id="cbDistrictDropdown">
+                                        <input class="prof-combobox-search" type="text" placeholder="🔍 Search district…" autocomplete="off">
+                                        <div class="prof-combobox-list">
+                                            <?php foreach ($districtOpts as $dist): ?>
+                                            <div class="prof-combobox-option<?= $savedDistrict === $dist ? ' selected-opt' : '' ?>" data-value="<?= $dist ?>">
+                                                <?= htmlspecialchars($dist) ?>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">Select the district where you are primarily assigned in Quezon City. This is used to match you with reports in your area.</small>
+                            </div>
+                            <div class="eng-form-group" style="grid-column:1/-1">
                                 <label><span class="lbl-icon">🏠</span> Address</label>
-                                <textarea name="ep_address" placeholder="Street / Barangay / City / Province"
-                                    <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;"' : '' ?>><?= htmlspecialchars($engineerProfile['address'] ?? '') ?></textarea>
+                                <?php
+                                    $savedAddrLat = $engineerProfile['address_lat'] ?? '';
+                                    $savedAddrLng = $engineerProfile['address_lng'] ?? '';
+                                ?>
+                                <!-- Hidden coordinate fields -->
+                                <input type="hidden" name="ep_addr_lat" id="epAddrLat" value="<?= htmlspecialchars($savedAddrLat) ?>">
+                                <input type="hidden" name="ep_addr_lng" id="epAddrLng" value="<?= htmlspecialchars($savedAddrLng) ?>">
+                                <div style="position:relative;">
+                                    <textarea name="ep_address" id="epAddressField" placeholder="Type your address or click the 📍 pin button to locate on map"
+                                        style="padding-right:48px;"
+                                        <?= $cooldownActive && !$isSuperAdmin ? 'readonly style="background:var(--bg-tertiary);cursor:not-allowed;padding-right:48px;"' : '' ?>><?= htmlspecialchars($engineerProfile['address'] ?? '') ?></textarea>
+                                    <?php if (!($cooldownActive && !$isSuperAdmin)): ?>
+                                    <button type="button" id="epAddrMapBtn" title="Pick address on map"
+                                        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                                               background:#2b6cb0;border:none;color:#fff;width:34px;height:34px;
+                                               border-radius:50%;cursor:pointer;font-size:16px;
+                                               display:flex;align-items:center;justify-content:center;
+                                               box-shadow:0 2px 8px rgba(0,0,0,.25);">📍</button>
+                                    <?php endif; ?>
+                                </div>
+                                <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">You can type your address directly, or use 📍 to pin your location on the map. Locations outside Quezon City are also allowed.</small>
                             </div>
                             <div class="eng-form-group">
                                 <label><span class="lbl-icon">📞</span> Contact Number</label>
@@ -3507,6 +3567,7 @@ document.addEventListener('DOMContentLoaded', function() {
         { display: 'cbGenderDisplay', dropdown: 'cbGenderDropdown', hidden: 'epGenderVal', label: 'cbGenderLabel' },
         { display: 'cbDiscDisplay',   dropdown: 'cbDiscDropdown',   hidden: 'epDiscVal',   label: 'cbDiscLabel'   },
         { display: 'cbDeptDisplay',   dropdown: 'cbDeptDropdown',   hidden: 'epDeptVal',   label: 'cbDeptLabel'   },
+        { display: 'cbDistrictDisplay', dropdown: 'cbDistrictDropdown', hidden: 'epDistrictVal', label: 'cbDistrictLabel' },
     ];
 
     function positionDropdown(displayEl, dropdownEl) {
@@ -4124,6 +4185,422 @@ if (saveAlertBackdrop) {
     checkCompletion();
 })();
 </script>
+
+<?php if ($isEngineer): ?>
+<!-- ═══════════════════════════════════════════════════════════
+     ENGINEER ADDRESS MAP MODAL
+     Uses visibility:hidden (not display:none) so Leaflet can
+     measure the container and be initialised at DOMContentLoaded —
+     the same pattern used in citizenrepform.php.
+═══════════════════════════════════════════════════════════ -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* ── Engineer address map modal ──────────────────────────────── */
+#epAddrMapBackdrop {
+    position:fixed;inset:0;background:rgba(0,0,0,.5);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    /* visibility+opacity instead of display:none so Leaflet can
+       measure the map container during eager init on DOMContentLoaded */
+    display:flex;align-items:stretch;justify-content:stretch;
+    z-index:9000;
+    visibility:hidden;opacity:0;pointer-events:none;
+    transition:opacity .18s ease, visibility .18s ease;
+}
+#epAddrMapBackdrop.show {
+    visibility:visible;opacity:1;pointer-events:auto;
+}
+#epAddrMapModal {
+    background:var(--modal-bg,#fff);width:100%;height:100%;
+    display:flex;flex-direction:column;overflow:hidden;
+}
+#epAddrMap { flex:1;min-height:300px;width:100%; }
+.ep-map-header {
+    padding:14px 18px;font-weight:600;font-size:16px;
+    border-bottom:1px solid var(--border-color,#e5e7eb);
+    display:flex;justify-content:center;align-items:center;
+    position:relative;color:var(--text-primary,#111);
+    flex-shrink:0;
+}
+.ep-map-header button.close-btn {
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    background:none;border:none;font-size:22px;cursor:pointer;
+    color:var(--text-secondary,#6b7280);line-height:1;
+}
+.ep-map-addr-bar {
+    padding:10px 16px;border-bottom:1px solid var(--border-color,#e5e7eb);
+    display:flex;gap:8px;flex-shrink:0;
+}
+#epMapSearchInput {
+    flex:1;padding:9px 12px;border-radius:9px;
+    border:1.5px solid var(--input-border,#c0c9d1);
+    background:var(--input-bg,#fff);color:var(--text-primary,#111);
+    font-size:14px;box-sizing:border-box;
+}
+#epMapSearchInput:focus{outline:none;border-color:#2b6cb0;box-shadow:0 0 0 3px rgba(43,108,176,.15);}
+#epMapGpsBtn {
+    background:#eef2ff;border:none;border-radius:9px;
+    padding:9px 13px;font-size:18px;cursor:pointer;flex-shrink:0;
+}
+#epMapGpsBtn:hover{background:#e0e7ff;}
+#epMapAddrField {
+    width:100%;padding:9px 12px;border-radius:9px;
+    border:1.5px solid var(--input-border,#c0c9d1);
+    background:var(--input-bg,#fff);color:var(--text-primary,#111);
+    font-size:13px;box-sizing:border-box;
+}
+#epMapDistrictInfo {
+    background:#eef2ff;border:1px solid #c7d1f3;border-radius:7px;
+    padding:5px 11px;font-size:12px;color:#3650c7;font-weight:600;
+    text-align:center;display:none;margin:0 16px 4px;flex-shrink:0;
+}
+.ep-map-actions {
+    padding:12px 16px;border-top:1px solid var(--border-color,#e5e7eb);
+    display:flex;gap:10px;justify-content:center;flex-shrink:0;
+}
+.ep-map-actions button {
+    flex:0 1 200px;padding:11px 20px;border-radius:10px;
+    font-weight:600;font-size:15px;cursor:pointer;border:none;transition:all .2s;
+}
+.ep-map-actions .btn-cancel{background:#f3f4f6;color:#374151;border:1px solid #d1d5db;}
+.ep-map-actions .btn-cancel:hover{background:#e5e7eb;}
+.ep-map-actions .btn-save{background:#2b6cb0;color:#fff;}
+.ep-map-actions .btn-save:hover{background:#245a96;}
+#epMapSearchDropdown {
+    position:absolute;top:calc(100% + 4px);left:0;right:0;
+    background:var(--bg-secondary,#fff);border:1.5px solid var(--input-border,#c0c9d1);
+    border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);
+    max-height:200px;overflow-y:auto;z-index:10200;display:none;
+}
+#epMapSearchDropdown.open{display:block;}
+.ep-map-search-item {
+    padding:9px 13px;font-size:13px;cursor:pointer;
+    color:var(--text-primary,#111);
+    border-bottom:1px solid var(--border-color,#e5e7eb);
+}
+.ep-map-search-item:last-child{border-bottom:none;}
+.ep-map-search-item:hover{background:rgba(43,108,176,.09);}
+.ep-map-search-wrap{position:relative;flex:1;}
+@media(max-width:480px){
+    .ep-map-addr-bar{padding:8px 12px;gap:6px;}
+    .ep-map-actions button{flex:1;max-width:none;padding:10px 12px;font-size:14px;}
+}
+</style>
+
+<!-- Address Map Modal HTML -->
+<div id="epAddrMapBackdrop">
+    <div id="epAddrMapModal">
+        <div class="ep-map-header">
+            <span>📍 Pick Address on Map</span>
+            <button type="button" class="close-btn" onclick="closeEpAddrMap()">×</button>
+        </div>
+        <div id="epMapDistrictInfo"></div>
+        <div class="ep-map-addr-bar">
+            <button type="button" id="epMapGpsBtn" title="Use my current location">📍</button>
+            <div class="ep-map-search-wrap">
+                <input type="text" id="epMapSearchInput" placeholder="🔍 Search any address or place…" autocomplete="off">
+                <div id="epMapSearchDropdown"></div>
+            </div>
+        </div>
+        <div class="ep-map-addr-bar" style="padding-top:0;border-bottom:none;">
+            <input type="text" id="epMapAddrField" placeholder="Move the pin or search to detect address…" readonly>
+        </div>
+        <div id="epAddrMap"></div>
+        <div class="ep-map-actions">
+            <button type="button" class="btn-cancel" onclick="closeEpAddrMap()">Cancel</button>
+            <button type="button" class="btn-save" id="epMapSaveBtn" onclick="saveEpAddrMap()">Use This Address</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// ENGINEER PROFILE — Address Map Picker
+// Pattern mirrors citizenrepform.php: modal is visibility:hidden
+// (not display:none) so Leaflet gets real pixel dimensions on
+// DOMContentLoaded, then invalidateSize() is called on open.
+// Works for any location — inside OR outside Quezon City.
+// ════════════════════════════════════════════════════════════════
+(function () {
+    'use strict';
+    let epMap = null, epMarker = null;
+    let epSelectedLatLng = null;
+    let epAddrTimeout = null, epAddrAbort = null;
+    let epSearchTimer = null, epSearchAbort = null;
+    let epFetchingAddress = false;
+
+    const backdrop    = document.getElementById('epAddrMapBackdrop');
+    const addrField   = document.getElementById('epMapAddrField');
+    const distInfo    = document.getElementById('epMapDistrictInfo');
+    const searchInput = document.getElementById('epMapSearchInput');
+    const searchDrop  = document.getElementById('epMapSearchDropdown');
+    const gpsBtn      = document.getElementById('epMapGpsBtn');
+    const saveBtn     = document.getElementById('epMapSaveBtn');
+    const mapBtn      = document.getElementById('epAddrMapBtn');
+
+    // ── District detection via barangay name matching ─────────────
+    const DISTRICT_BARANGAYS = {
+        'District 1': ['Alicia','Bagong Pag-asa','Bahay Toro','Balingasa','Bungad','Damar','Damayan','Del Monte','Katipunan','Lourdes','Maharlika','Manresa','Mariblo','Masambong','N.S. Amoranto','Nayong Kanluran','Paang Bundok','Pag-ibig sa Nayon','Paltok','Paraiso','Phil-Am','Project 6','Ramon Magsaysay','Saint Peter','Salvacion','San Antonio','San Isidro Labrador','San Jose','Santa Cruz','Santa Teresita','Santo Cristo','Santo Domingo','Sienna','Talayan','Vasra','Veterans Village','West Triangle'],
+        'District 2': ['Bagong Silangan','Batasan Hills','Commonwealth','Holy Spirit','Payatas'],
+        'District 3': ['Amihan','Bagumbayan','Bagumbuhay','Bayanihan','Blue Ridge A','Blue Ridge B','Camp Aguinaldo','Claro','Dioquino Zobel','Duyan-Duyan','E. Rodriguez','East Kamias','Escopa I','Escopa II','Escopa III','Escopa IV','Libis','Loyola Heights','Mangga','Marilag','Masagana','Matandang Balara','Milagrosa','Pansol','Quirino 2-A','Quirino 2-B','Quirino 2-C','Quirino 3-A','San Roque','Silangan','Socorro','St. Ignatius','Tagumpay','Ugong Norte','Villa Maria Clara','West Kamias','White Plains'],
+        'District 4': ['Bagong Lipunan ng Crame','Botocan','Central','Damayang Lagi','Don Manuel','Doña Aurora','Doña Imelda','Doña Josefa','Horseshoe','Immaculate Conception','Kalusugan','Kamuning','Kaunlaran','Kristong Hari','Krus na Ligas','Laging Handa','Malaya','Mariana','Obrero','Old Capitol Site','Paligsahan','Pinagkaisahan','Pinyahan','Roxas','Sacred Heart','San Isidro Galas','San Martin de Porres','San Vicente','Santol','Santo Niño','Sikatuna Village','South Triangle','Tatalon','Teachers Village East','Teachers Village West','U.P. Campus','U.P. Village','Valencia'],
+        'District 5': ['Bagbag','Capri','Fairview','Greater Lagro','Gulod','Kaligayahan','Nagkaisang Nayon','North Fairview','Novaliches Proper','Pasong Putik Proper','Regalado','San Agustin','San Bartolome','Santa Lucia','Santa Monica'],
+        'District 6': ['Apolonio Samson','Baesa','Balon Bato','Culiat','New Era','Pasong Tamo','Sangandaan','Sauyo','Talipapa','Tandang Sora','Unang Sigaw'],
+    };
+
+    function detectDistrict(addrText) {
+        if (!addrText) return '';
+        const al = addrText.toLowerCase();
+        for (const [dist, brgys] of Object.entries(DISTRICT_BARANGAYS)) {
+            for (const b of brgys) {
+                if (al.includes(b.toLowerCase())) return dist;
+            }
+        }
+        return '';
+    }
+
+    function updateDistrictBanner(district) {
+        if (district) {
+            distInfo.textContent  = '📌 ' + district;
+            distInfo.style.display = 'block';
+        } else {
+            distInfo.style.display = 'none';
+        }
+    }
+
+    function setSaveState(disabled) {
+        if (!saveBtn) return;
+        saveBtn.disabled      = disabled;
+        saveBtn.style.opacity = disabled ? '0.55' : '';
+        saveBtn.style.cursor  = disabled ? 'not-allowed' : '';
+    }
+
+    // ── Reverse-geocode the current pin ───────────────────────────
+    async function reverseGeocode(lat, lng) {
+        addrField.value  = 'Fetching address…';
+        epFetchingAddress = true;
+        setSaveState(true);
+        if (epAddrAbort) epAddrAbort.abort();
+        epAddrAbort = new AbortController();
+        try {
+            const r = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                { signal: epAddrAbort.signal }
+            );
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d     = await r.json();
+            const addr  = d.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            addrField.value = addr;
+            updateDistrictBanner(detectDistrict(addr));
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            addrField.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            updateDistrictBanner('');
+        } finally {
+            epFetchingAddress = false;
+            setSaveState(false);
+        }
+    }
+
+    function onPinMove(latlng) {
+        epSelectedLatLng = latlng;
+        if (epAddrTimeout) clearTimeout(epAddrTimeout);
+        epAddrTimeout = setTimeout(() => reverseGeocode(latlng.lat, latlng.lng), 300);
+    }
+
+    // ── Map init — called once at DOMContentLoaded ────────────────
+    function initEpMap() {
+        if (epMap) return;
+        const savedLat = parseFloat(document.getElementById('epAddrLat').value) || 14.6760;
+        const savedLng = parseFloat(document.getElementById('epAddrLng').value) || 121.0437;
+
+        epMap = L.map('epAddrMap', {
+            zoomControl:      true,
+            scrollWheelZoom:  true,
+            touchZoom:        true,
+            doubleClickZoom:  true,
+        }).setView([savedLat, savedLng], 14);
+
+        // Satellite layer (same as citizenrepform)
+        L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19, attribution: 'Esri Satellite' }
+        ).addTo(epMap);
+
+        epMarker = L.marker([savedLat, savedLng], { draggable: true }).addTo(epMap);
+        epSelectedLatLng = L.latLng(savedLat, savedLng);
+
+        epMarker.on('dragend', () => onPinMove(epMarker.getLatLng()));
+        epMap.on('click', e => { epMarker.setLatLng(e.latlng); onPinMove(e.latlng); });
+    }
+
+    // ── Open ──────────────────────────────────────────────────────
+    window.openEpAddrMap = function () {
+        backdrop.classList.add('show');
+        // One rAF so the browser paints the modal before we recalc size
+        requestAnimationFrame(() => {
+            if (!epMap) {
+                initEpMap();
+            }
+            epMap.invalidateSize(false);
+
+            // Restore previously saved coords
+            const lat = parseFloat(document.getElementById('epAddrLat').value);
+            const lng = parseFloat(document.getElementById('epAddrLng').value);
+            if (lat && lng && lat !== 14.6760) {
+                epMap.setView([lat, lng], 16);
+                epMarker.setLatLng([lat, lng]);
+                epSelectedLatLng = L.latLng(lat, lng);
+                // Show saved address immediately (don't re-fetch every open)
+                const savedAddr = document.getElementById('epAddressField').value.trim();
+                if (savedAddr) {
+                    addrField.value = savedAddr;
+                    updateDistrictBanner(detectDistrict(savedAddr));
+                } else {
+                    reverseGeocode(lat, lng);
+                }
+            } else {
+                addrField.value = '';
+                updateDistrictBanner('');
+            }
+        });
+    };
+
+    // ── Close ─────────────────────────────────────────────────────
+    window.closeEpAddrMap = function () {
+        backdrop.classList.remove('show');
+        if (epAddrAbort) { epAddrAbort.abort(); epAddrAbort = null; }
+        if (epSearchAbort) { epSearchAbort.abort(); epSearchAbort = null; }
+        clearTimeout(epAddrTimeout);
+        clearTimeout(epSearchTimer);
+        searchInput.value = '';
+        searchDrop.classList.remove('open');
+        searchDrop.innerHTML = '';
+    };
+
+    // ── Save to profile form ──────────────────────────────────────
+    window.saveEpAddrMap = function () {
+        if (!epSelectedLatLng) {
+            alert('Please select a location on the map first.');
+            return;
+        }
+        if (epFetchingAddress) {
+            alert('Please wait — address is still loading.');
+            return;
+        }
+        const addrText = addrField.value.trim();
+        if (!addrText || addrText === 'Fetching address…') {
+            alert('Please wait for the address to load.');
+            return;
+        }
+        // Fill the profile form
+        document.getElementById('epAddressField').value = addrText;
+        document.getElementById('epAddrLat').value      = epSelectedLatLng.lat;
+        document.getElementById('epAddrLng').value      = epSelectedLatLng.lng;
+
+        // Auto-fill district dropdown if a QC district is detected and not yet set
+        const detected  = detectDistrict(addrText);
+        const distHidden = document.getElementById('epDistrictVal');
+        const distLabel  = document.getElementById('cbDistrictLabel');
+        if (detected && distHidden && !distHidden.value) {
+            distHidden.value = detected;
+            if (distLabel) {
+                distLabel.textContent = detected;
+                distLabel.classList.add('selected');
+            }
+            // Also mark the matching option in the dropdown as selected
+            document.querySelectorAll('#cbDistrictDropdown .prof-combobox-option').forEach(opt => {
+                opt.classList.toggle('selected-opt', opt.dataset.value === detected);
+            });
+        }
+
+        window.closeEpAddrMap();
+    };
+
+    // ── Wire the 📍 button ────────────────────────────────────────
+    if (mapBtn) mapBtn.addEventListener('click', () => window.openEpAddrMap());
+
+    // ── GPS ───────────────────────────────────────────────────────
+    if (gpsBtn) {
+        gpsBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+            gpsBtn.textContent = '⏳';
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                    if (epMap) { epMap.setView(ll, 17); epMarker.setLatLng(ll); }
+                    onPinMove(ll);
+                    gpsBtn.textContent = '📍';
+                },
+                () => { alert('Unable to retrieve your location.'); gpsBtn.textContent = '📍'; },
+                { enableHighAccuracy: true }
+            );
+        });
+    }
+
+    // ── Address search (Nominatim, no PH restriction) ─────────────
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        clearTimeout(epSearchTimer);
+        if (!q) {
+            searchDrop.classList.remove('open');
+            searchDrop.innerHTML = '';
+            return;
+        }
+        searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">Searching…</div>';
+        searchDrop.classList.add('open');
+        epSearchTimer = setTimeout(async () => {
+            if (epSearchAbort) epSearchAbort.abort();
+            epSearchAbort = new AbortController();
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json` +
+                    `&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&accept-language=en`;
+                const res  = await fetch(url, { signal: epSearchAbort.signal });
+                const data = await res.json();
+                searchDrop.innerHTML = '';
+                if (!data.length) {
+                    searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">No results found.</div>';
+                } else {
+                    data.forEach(r => {
+                        const el     = document.createElement('div');
+                        el.className = 'ep-map-search-item';
+                        el.textContent = r.display_name;
+                        el.addEventListener('mousedown', ev => {
+                            ev.preventDefault();
+                            const ll = L.latLng(parseFloat(r.lat), parseFloat(r.lon));
+                            if (epMap) { epMap.setView(ll, 17); epMarker.setLatLng(ll); }
+                            onPinMove(ll);
+                            searchInput.value = '';
+                            searchDrop.classList.remove('open');
+                            searchDrop.innerHTML = '';
+                        });
+                        searchDrop.appendChild(el);
+                    });
+                }
+                searchDrop.classList.add('open');
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">Search unavailable. Try again.</div>';
+            }
+        }, 400);
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.ep-map-search-wrap')) {
+            searchDrop.classList.remove('open');
+        }
+    });
+
+    // ── Eager init at DOMContentLoaded (modal is visibility:hidden
+    //    but display:flex so the container has real pixel dimensions) ──
+    document.addEventListener('DOMContentLoaded', () => {
+        initEpMap();
+        requestAnimationFrame(() => { if (epMap) epMap.invalidateSize(false); });
+    });
+})();
+</script>
+<?php endif; ?>
 
 </body>
 </html>

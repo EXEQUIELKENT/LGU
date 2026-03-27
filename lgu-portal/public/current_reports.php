@@ -517,6 +517,7 @@ $sql = "
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
         req.created_at AS req_created_at,
+        COALESCE(req.district, '') AS req_district,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
@@ -646,6 +647,7 @@ foreach ($rows as $row) {
         'contact_number'    => $row['contact_number'] ?? '',
         'coordinates'       => $row['coordinates'] ?? '',
         'req_email'         => $row['req_email']     ?? '',
+        'req_district'      => $row['req_district']  ?? '',
         'images'            => $imgs,
     ];
 }
@@ -1104,9 +1106,9 @@ tr.notif-highlight > td:first-child {
 [data-theme="dark"] #engComboList::-webkit-scrollbar-thumb { background: #5f8cff; }
 [data-theme="dark"] #engComboList::-webkit-scrollbar-thumb:hover { background: #4a7aef; }
 .eng-combo-option {
-    padding: 7px 10px; font-size: 11px; cursor: pointer;
+    padding: 6px 10px; font-size: 11px; cursor: pointer;
     color: var(--text-primary); border-bottom: 1px solid var(--border-color);
-    transition: background .15s; display: flex; align-items: center; gap: 6px;
+    transition: background .15s; display: flex; align-items: center; gap: 8px;
 }
 .eng-combo-option:last-child { border-bottom: none; }
 .eng-combo-option:hover, .eng-combo-option.highlighted { background: rgba(255,152,0,.14); }
@@ -1116,6 +1118,32 @@ tr.notif-highlight > td:first-child {
     object-fit: cover; flex-shrink: 0;
     border: 1.5px solid rgba(255,152,0,.35);
     background: rgba(0,0,0,.06);
+}
+/* Two-line info column: name on top, badges below */
+.eng-opt-info {
+    display: flex; flex-direction: column;
+    flex: 1; min-width: 0; gap: 3px;
+}
+.eng-opt-name {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.eng-opt-badges {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+}
+/* District badge — compact pill below the name */
+.eng-opt-dist-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 9px; font-weight: 700;
+    padding: 1px 6px; border-radius: 20px;
+    background: rgba(22,163,74,.12); color: #166534;
+    border: 1px solid rgba(22,163,74,.25);
+    white-space: nowrap; flex-shrink: 0; letter-spacing: .02em;
+}
+[data-theme="dark"] .eng-opt-dist-badge {
+    background: rgba(134,239,172,.12); color: #86efac;
+    border-color: rgba(134,239,172,.25);
 }
 
 
@@ -1238,13 +1266,14 @@ tr.notif-highlight > td:first-child {
 .eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,152,0,.4); }
 .eng-combo-no-results { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); opacity: .7; }
 .eng-combo-loading { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); }
-/* Specialization match badge shown next to engineer name */
+/* Specialization match badge shown below engineer name */
 .eng-opt-spec-badge {
-    display: inline-block; font-size: 9px; font-weight: 700;
-    padding: 1px 6px; border-radius: 20px; margin-left: 5px;
-    background: rgba(255,152,0,.15); color: #e65100;
-    border: 1px solid rgba(255,152,0,.3); white-space: nowrap;
-    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 9px; font-weight: 700;
+    padding: 1px 6px; border-radius: 20px;
+    background: rgba(255,152,0,.12); color: #e65100;
+    border: 1px solid rgba(255,152,0,.25); white-space: nowrap;
+    flex-shrink: 0; letter-spacing: .02em;
 }
 /* "Show all engineers" toggle row at bottom of list */
 .eng-combo-show-all {
@@ -2601,7 +2630,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                             <?php endif; ?>
                         <?php elseif ($canAssignEngineer): ?>
                             <!-- Desktop combobox trigger — dropdown is a body-level portal -->
-                            <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>">
+                            <div class="eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>" data-district="<?= htmlspecialchars($row['req_district'] ?? '') ?>">
                                 <div class="eng-combo-display" title="Assign engineer">
                                     <span class="eng-combo-label">Assign engineer</span>
                                     <span class="eng-combo-arrow">▾</span>
@@ -2662,7 +2691,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                         <?php endif; ?>
                     <?php elseif ($canAssignEngineer): ?>
                         <!-- Mobile combobox trigger — dropdown is a body-level portal -->
-                        <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>">
+                        <div class="eng-combobox mobile-eng-combobox" data-rep-id="<?= $row['rep_id'] ?>" data-infrastructure="<?= htmlspecialchars($row['infrastructure'] ?? '') ?>" data-district="<?= htmlspecialchars($row['req_district'] ?? '') ?>">
                             <div class="eng-combo-display" title="Assign engineer">
                                 <span class="eng-combo-label">Assign engineer</span>
                                 <span class="eng-combo-arrow">▾</span>
@@ -3070,6 +3099,7 @@ let engineersCache = null;
 let activeComboEl   = null;   // the .eng-combobox trigger currently open
 let pendingConfirm  = null;   // { repId, engineerId, engineerName }
 let activeInfrastructure = ''; // infrastructure type of the currently-open combobox
+let activeDistrict       = ''; // district of the report for the currently-open combobox
 
 const portal     = document.getElementById('engComboPortal');
 const comboSearch= document.getElementById('engComboSearch');
@@ -3101,94 +3131,197 @@ async function loadEngineers() {
 }
 
 // ── Render options into the shared list ──────────────────────────
-// infrastructure: if set, matched engineers appear first with a badge;
-// unmatched are hidden behind a "Show all engineers" toggle.
-function renderPortalList(engineers, query, infrastructure) {
+// district:       engineers in the report's district appear first.
+// infrastructure: within each group, spec-matched sub-section appears
+//                 before non-spec-matched — both filters work together.
+function renderPortalList(engineers, query, infrastructure, district) {
     comboList.innerHTML = '';
-    const q = (query || '').toLowerCase().trim();
+    const q     = (query || '').toLowerCase().trim();
     const infra = (infrastructure || '').trim();
+    const dist  = (district || '').trim();
 
-    // Split into matched vs unmatched by specialization
-    let matched   = engineers;
-    let unmatched = [];
-    if (infra) {
-        matched   = engineers.filter(e =>  engineerMatchesInfrastructure(e, infra));
-        unmatched = engineers.filter(e => !engineerMatchesInfrastructure(e, infra));
+    // ── Split by district ─────────────────────────────────────────
+    let distMatched   = engineers;
+    let distUnmatched = [];
+    if (dist) {
+        distMatched   = engineers.filter(e => (e.district || '').trim() === dist);
+        distUnmatched = engineers.filter(e => (e.district || '').trim() !== dist);
     }
 
-    // Apply name search query on top
-    const matchedFiltered   = q ? matched.filter(e => e.name.toLowerCase().includes(q))   : matched;
-    const unmatchedFiltered = q ? unmatched.filter(e => e.name.toLowerCase().includes(q)) : unmatched;
+    // ── Split a list by infrastructure specialization ─────────────
+    function bySpec(list) {
+        if (!infra) return { yes: list, no: [] };
+        return {
+            yes: list.filter(e =>  engineerMatchesInfrastructure(e, infra)),
+            no:  list.filter(e => !engineerMatchesInfrastructure(e, infra)),
+        };
+    }
 
-    if (matchedFiltered.length === 0 && unmatchedFiltered.length === 0) {
+    // ── Apply name search query ───────────────────────────────────
+    const fq = e => e.name.toLowerCase().includes(q);
+    function applyQ(list) { return q ? list.filter(fq) : list; }
+
+    const ds = bySpec(distMatched);
+    const os = bySpec(distUnmatched);
+
+    // Visible counts after query filter
+    const dmYes = applyQ(ds.yes);   // district ✓ + spec ✓
+    const dmNo  = applyQ(ds.no);    // district ✓ + spec ✗
+    const omYes = applyQ(os.yes);   // district ✗ + spec ✓
+    const omNo  = applyQ(os.no);    // district ✗ + spec ✗
+
+    const totalVisible = dmYes.length + dmNo.length + omYes.length + omNo.length;
+    if (totalVisible === 0) {
         comboList.innerHTML = '<div class="eng-combo-no-results">No engineers found</div>';
         return;
     }
 
     const FALLBACK_PIC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E';
 
-    function buildOption(eng, showBadge) {
+    function buildOption(eng, showSpecBadge, showDistBadge) {
         const item = document.createElement('div');
         item.className    = 'eng-combo-option';
         item.dataset.id   = eng.id;
         item.dataset.name = eng.name;
-        const imgSrc      = eng.profile_picture || FALLBACK_PIC;
-        const avatarHtml  = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
+        const imgSrc     = eng.profile_picture || FALLBACK_PIC;
+        const avatarHtml = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
             onerror="this.src='${FALLBACK_PIC}'">`;
-        const badgeHtml   = (showBadge && infra)
-            ? `<span class="eng-opt-spec-badge">✓ ${escapeHtml(infra)}</span>`
-            : '';
-        item.innerHTML    = avatarHtml + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(eng.name)}</span>` + badgeHtml;
-        item._engData     = eng;
+        let badgeHtml = '';
+        if (showDistBadge && dist) badgeHtml += `<span class="eng-opt-dist-badge">📍 ${escapeHtml(dist)}</span>`;
+        if (showSpecBadge && infra) badgeHtml += `<span class="eng-opt-spec-badge">✓ ${escapeHtml(infra)}</span>`;
+        const badgesRow = badgeHtml ? `<div class="eng-opt-badges">${badgeHtml}</div>` : '';
+        item.innerHTML = avatarHtml +
+            `<div class="eng-opt-info">
+                <span class="eng-opt-name">${escapeHtml(eng.name)}</span>
+                ${badgesRow}
+            </div>`;
+        item._engData = eng;
         return item;
     }
 
-    // Section label when there are matched engineers
-    if (infra && matchedFiltered.length > 0) {
+    function addSectionLabel(text) {
         const lbl = document.createElement('div');
         lbl.className   = 'eng-combo-section-label';
-        lbl.textContent = `Matched — ${infra}`;
+        lbl.textContent = text;
         comboList.appendChild(lbl);
     }
 
-    // Matched engineers (always visible)
-    if (matchedFiltered.length === 0 && infra) {
-        const empty = document.createElement('div');
-        empty.className   = 'eng-combo-no-results';
-        empty.textContent = `No engineers specializing in "${infra}"`;
-        comboList.appendChild(empty);
-    } else {
-        matchedFiltered.forEach(eng => comboList.appendChild(buildOption(eng, true)));
+    function addEmpty(text) {
+        const el = document.createElement('div');
+        el.className   = 'eng-combo-no-results';
+        el.textContent = text;
+        comboList.appendChild(el);
     }
 
-    // Unmatched engineers — hidden behind a toggle
-    if (unmatchedFiltered.length > 0) {
-        const toggleRow = document.createElement('div');
-        toggleRow.className   = 'eng-combo-show-all';
-        toggleRow.textContent = `▸ Show all engineers (${unmatchedFiltered.length} others)`;
+    // ══════════════════════════════════════════════════════════════
+    // CASE A — District known: show district engineers always-visible,
+    //          split by spec within the district group.
+    // ══════════════════════════════════════════════════════════════
+    if (dist) {
+        // ── District + Spec matched (best match) ──────────────────
+        if (infra) {
+            if (dmYes.length > 0) {
+                addSectionLabel(`📍 ${dist} — ✓ ${infra}`);
+                dmYes.forEach(e => comboList.appendChild(buildOption(e, true, true)));
+            }
+            // ── District matched, different specialization ─────────
+            if (dmNo.length > 0) {
+                addSectionLabel(`📍 ${dist} — Other specialization`);
+                dmNo.forEach(e => comboList.appendChild(buildOption(e, false, true)));
+            }
+            if (dmYes.length === 0 && dmNo.length === 0) {
+                addSectionLabel(`📍 ${dist}`);
+                addEmpty(`No engineers assigned to ${dist}`);
+            }
+        } else {
+            // No infra filter — just show all district engineers
+            if (dmYes.length > 0) {
+                addSectionLabel(`📍 Engineers in ${dist}`);
+                dmYes.forEach(e => comboList.appendChild(buildOption(e, false, true)));
+            } else {
+                addSectionLabel(`📍 Engineers in ${dist}`);
+                addEmpty(`No engineers assigned to ${dist}`);
+            }
+        }
 
-        // Container for unmatched — starts hidden
-        const otherSection = document.createElement('div');
-        otherSection.style.display = 'none';
+        // ── Other districts — collapsed ────────────────────────────
+        const othersAll = [...omYes, ...omNo];
+        if (othersAll.length > 0) {
+            const otherLabel = `Other districts (${othersAll.length})`;
+            const toggleRow  = document.createElement('div');
+            toggleRow.className   = 'eng-combo-show-all';
+            toggleRow.textContent = `▸ Show ${otherLabel}`;
 
-        const otherLbl = document.createElement('div');
-        otherLbl.className   = 'eng-combo-section-label';
-        otherLbl.textContent = 'Other engineers';
-        otherSection.appendChild(otherLbl);
-        unmatchedFiltered.forEach(eng => otherSection.appendChild(buildOption(eng, false)));
+            const otherSection = document.createElement('div');
+            otherSection.style.display = 'none';
 
-        toggleRow.addEventListener('mousedown', e => {
-            e.preventDefault(); e.stopPropagation();
-            const open = otherSection.style.display !== 'none';
-            otherSection.style.display = open ? 'none' : 'block';
-            toggleRow.textContent = open
-                ? `▸ Show all engineers (${unmatchedFiltered.length} others)`
-                : `▾ Hide other engineers`;
-            positionPortal(activeComboEl.querySelector('.eng-combo-display'));
-        });
+            if (infra && omYes.length > 0) {
+                const lbl = document.createElement('div');
+                lbl.className   = 'eng-combo-section-label';
+                lbl.textContent = `Other districts — ✓ ${infra}`;
+                otherSection.appendChild(lbl);
+                omYes.forEach(e => otherSection.appendChild(buildOption(e, true, false)));
+            }
+            if (omNo.length > 0) {
+                if (infra && omYes.length > 0) {
+                    const lbl2 = document.createElement('div');
+                    lbl2.className   = 'eng-combo-section-label';
+                    lbl2.textContent = 'Other districts — Other specialization';
+                    otherSection.appendChild(lbl2);
+                } else if (!infra) {
+                    const lbl2 = document.createElement('div');
+                    lbl2.className   = 'eng-combo-section-label';
+                    lbl2.textContent = 'Other districts';
+                    otherSection.appendChild(lbl2);
+                }
+                omNo.forEach(e => otherSection.appendChild(buildOption(e, false, false)));
+            }
 
-        comboList.appendChild(toggleRow);
-        comboList.appendChild(otherSection);
+            toggleRow.addEventListener('mousedown', ev => {
+                ev.preventDefault(); ev.stopPropagation();
+                const open = otherSection.style.display !== 'none';
+                otherSection.style.display = open ? 'none' : 'block';
+                toggleRow.textContent = open ? `▸ Show ${otherLabel}` : `▾ Hide ${otherLabel}`;
+                positionPortal(activeComboEl.querySelector('.eng-combo-display'));
+            });
+
+            comboList.appendChild(toggleRow);
+            comboList.appendChild(otherSection);
+        }
+
+    // ══════════════════════════════════════════════════════════════
+    // CASE B — No district: filter by infrastructure only (original behaviour)
+    // ══════════════════════════════════════════════════════════════
+    } else {
+        if (infra) {
+            if (dmYes.length > 0) {
+                addSectionLabel(`Matched — ${infra}`);
+                dmYes.forEach(e => comboList.appendChild(buildOption(e, true, false)));
+            } else {
+                addEmpty(`No engineers specializing in "${infra}"`);
+            }
+            if (dmNo.length > 0) {
+                const toggleRow  = document.createElement('div');
+                const otherLabel = `Other engineers (${dmNo.length})`;
+                toggleRow.className   = 'eng-combo-show-all';
+                toggleRow.textContent = `▸ Show ${otherLabel}`;
+                const otherSection = document.createElement('div');
+                otherSection.style.display = 'none';
+                dmNo.forEach(e => otherSection.appendChild(buildOption(e, false, false)));
+                toggleRow.addEventListener('mousedown', ev => {
+                    ev.preventDefault(); ev.stopPropagation();
+                    const open = otherSection.style.display !== 'none';
+                    otherSection.style.display = open ? 'none' : 'block';
+                    toggleRow.textContent = open ? `▸ Show ${otherLabel}` : `▾ Hide ${otherLabel}`;
+                    positionPortal(activeComboEl.querySelector('.eng-combo-display'));
+                });
+                comboList.appendChild(toggleRow);
+                comboList.appendChild(otherSection);
+            }
+        } else {
+            // No filters at all — show everyone
+            dmYes.forEach(e => comboList.appendChild(buildOption(e, false, false)));
+        }
     }
 }
 
@@ -3232,6 +3365,7 @@ async function openPortal(comboEl) {
 
     activeComboEl = comboEl;
     activeInfrastructure = (comboEl.dataset.infrastructure || '').trim();
+    activeDistrict       = (comboEl.dataset.district       || '').trim();
     comboEl.querySelector('.eng-combo-display').classList.add('open');
 
     comboSearch.value   = '';
@@ -3243,7 +3377,7 @@ async function openPortal(comboEl) {
     comboSearch.focus();
 
     const engineers = await loadEngineers();
-    renderPortalList(engineers, '', activeInfrastructure);
+    renderPortalList(engineers, '', activeInfrastructure, activeDistrict);
     // Re-position after list is populated (height may change)
     positionPortal(comboEl.querySelector('.eng-combo-display'));
 }
@@ -3256,6 +3390,7 @@ function closePortal() {
         activeComboEl = null;
     }
     activeInfrastructure = '';
+    activeDistrict       = '';
 }
 
 // ── Attach click to every trigger ────────────────────────────────
@@ -3274,7 +3409,7 @@ function initAllComboboxes() {
 // ── Live search ───────────────────────────────────────────────────
 comboSearch.addEventListener('input', async () => {
     const engineers = await loadEngineers();
-    renderPortalList(engineers, comboSearch.value, activeInfrastructure);
+    renderPortalList(engineers, comboSearch.value, activeInfrastructure, activeDistrict);
 });
 
 // ── Option click → confirmation modal ────────────────────────────
