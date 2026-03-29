@@ -1575,13 +1575,15 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
    and shows a brief banner above the table.
 ═══════════════════════════════════════════════════════ */
 (function initNotifHighlight() {
-    const params = new URLSearchParams(window.location.search);
-    const repId  = params.get('highlight_rep');
+    const params    = new URLSearchParams(window.location.search);
+    const repId     = params.get('highlight_rep');
+    const openModal = params.get('open_modal') === '1';
     if (!repId) return;
 
     // Clean URL immediately
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('highlight_rep');
+    cleanUrl.searchParams.delete('open_modal');
     history.replaceState(null, '', cleanUrl);
 
     // Wait for DOM to settle
@@ -1590,6 +1592,12 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         var card = document.querySelector('.report-card[data-rep-id="' + repId + '"]');
 
         if (!tr && !card) return; // rep_id not on this page
+
+        // ── When coming from requests.php via "Open Report": just open the modal ──
+        if (openModal) {
+            if (typeof openRepModal === 'function') openRepModal(parseInt(repId, 10));
+            return;
+        }
 
         var isMobile = window.matchMedia('(max-width: 768px)').matches;
         var primary  = isMobile ? (card || tr) : (tr || card);
@@ -1606,9 +1614,6 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         }
 
         // ── Mobile card highlight ───────────────────────────────────────────
-        // Inject a <style> into <head> with the card's exact data-rep-id selector
-        // and !important on every property — this beats all existing CSS rules
-        // including media-query overrides and dark-mode variable declarations.
         if (card && isMobile) {
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var styleEl = document.createElement('style');
@@ -1639,7 +1644,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             }, 5500);
         }
 
-        // ── Banner ──────────────────────────────────────────────────────────
+        // ── Banner ─────────────────────────────────────────────────────────
         if (document.getElementById('notifHighlightBanner')) return;
         var banner = document.createElement('div');
         banner.id        = 'notifHighlightBanner';

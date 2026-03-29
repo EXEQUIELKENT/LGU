@@ -199,6 +199,7 @@ const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 const USER_ROLE         = '<?= htmlspecialchars($userRole, ENT_QUOTES) ?>';
 const USER_DISPLAY_NAME = '<?= htmlspecialchars($displayName, ENT_QUOTES) ?>';
+const USER_EMPLOYEE_ID  = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 (function () {
     try {
         let t = localStorage.getItem('theme');
@@ -1262,6 +1263,75 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     margin-top: 2px;
 }
 
+/* ── View Report redirect button ─────────────────────────────────────────── */
+/* ── Redesigned View Report redirect button ─────────────────────────────── */
+.btn-view-report {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 9px 18px 9px 14px;
+    background: linear-gradient(135deg, #0e9f82, #0b8a70);
+    color: #fff;
+    border: none;
+    border-radius: 50px;                          /* pill shape */
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .2s ease, transform .15s ease,
+                box-shadow .2s ease, letter-spacing .15s ease;
+    box-shadow: 0 3px 12px rgba(14,159,130,.38), 0 1px 3px rgba(0,0,0,.08);
+    letter-spacing: .02em;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+/* left accent stripe */
+.btn-view-report::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: rgba(255,255,255,.3);
+    border-radius: 50px 0 0 50px;
+}
+.btn-view-report .bvr-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    background: rgba(255,255,255,.22);
+    border-radius: 50%;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+.btn-view-report .bvr-arrow {
+    font-size: 10px;
+    opacity: .8;
+    transition: transform .18s ease;
+    flex-shrink: 0;
+}
+.btn-view-report:hover {
+    background: linear-gradient(135deg, #0b8a70, #087a62);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(14,159,130,.48), 0 2px 6px rgba(0,0,0,.1);
+    color: #fff;
+    text-decoration: none;
+    letter-spacing: .04em;
+}
+.btn-view-report:hover .bvr-arrow { transform: translateX(3px); }
+.btn-view-report:active { transform: scale(.96) translateY(0); }
+[data-theme="dark"] .btn-view-report {
+    background: linear-gradient(135deg, #12b896, #0e9f82);
+    box-shadow: 0 3px 14px rgba(14,159,130,.5), 0 1px 4px rgba(0,0,0,.22);
+}
+[data-theme="dark"] .btn-view-report:hover {
+    background: linear-gradient(135deg, #0e9f82, #0b8a70);
+    box-shadow: 0 6px 22px rgba(14,159,130,.60);
+}
+
 /* ─── Validate confirm — role pill ─────────────────────────────────────── */
 .validate-role-pill {
     display: inline-flex;
@@ -2270,6 +2340,7 @@ tbody td {
                     data-email="<?= htmlspecialchars($row['email'] ?? '') ?>"
                     data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
                     data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
+                    data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
                     data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
                     <td class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
@@ -2335,6 +2406,7 @@ tbody td {
             data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
             data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
             data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
+            data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
             data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
             <div><strong>Request ID:</strong> <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
             <div><strong>Infrastructure:</strong> <span class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
@@ -2417,6 +2489,11 @@ tbody td {
                 <div class="report-status-eng" id="detailReportEngineer" style="display:none;">
                     <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="detailReportEngineerName"></span>
                 </div>
+                <a id="detailViewReportBtn" class="btn-view-report" href="#" target="_self" style="display:none;">
+                    <span class="bvr-icon"><i class="fas fa-file-alt"></i></span>
+                    Open Report
+                    <i class="fas fa-arrow-right bvr-arrow"></i>
+                </a>
             </div>
             <div class="detail-field"><div class="detail-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="detail-field-value" id="detailLocation"></div></div>
             <div class="detail-field"><div class="detail-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="detail-field-value" id="detailCoordinates"></div></div>
@@ -2467,6 +2544,11 @@ tbody td {
                 <div class="report-status-eng" id="gisReportEngineer" style="display:none;">
                     <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="gisReportEngineerName"></span>
                 </div>
+                <a id="gisViewReportBtn" class="btn-view-report" href="#" target="_self" style="display:none;">
+                    <span class="bvr-icon"><i class="fas fa-file-alt"></i></span>
+                    Open Report
+                    <i class="fas fa-arrow-right bvr-arrow"></i>
+                </a>
             </div>
             <div class="gis-field"><div class="gis-field-label"><i class="fas fa-map-marker-alt"></i> Location</div><div class="gis-field-value" id="modalLocation"></div></div>
             <div class="gis-field"><div class="gis-field-label"><i class="fas fa-globe"></i> Coordinates</div><div class="gis-field-value" id="modalCoordinates"></div></div>
@@ -2871,9 +2953,18 @@ const REPORT_STATUS_ICON = {
     'Delayed':            '⚠️',
 };
 
+// ── Maps a report_status to the correct report page ───────────────────────────
+function reportPageForStatus(rs) {
+    if (!rs) return null;
+    if (rs === 'Pending Approval') return 'pending_reports.php';
+    if (rs === 'Completed' || rs === 'Cancelled') return 'archive_reports.php';
+    // Awaiting Engineer, Pending Acceptance, In Progress, Scheduled, Pending Completion, Delayed
+    return 'current_reports.php';
+}
+
 // ── Fills/hides the Report Status section in a modal ─────────────────────────
-// pillId, sectionId, repBadgeId, engWrapId, engNameId are element IDs
-function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId, repBadgeId, engWrapId, engNameId) {
+// pillId, sectionId, repBadgeId, engWrapId, engNameId, viewBtnId are element IDs
+function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId, repBadgeId, engWrapId, engNameId, viewBtnId, engineerId) {
     const section = document.getElementById(sectionId);
     if (!section) return;
     if (!reportStatus) { section.style.display = 'none'; return; }
@@ -2894,6 +2985,23 @@ function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId,
     } else if (engWrap) {
         engWrap.style.display = 'none';
     }
+    // ── Wire the "Open Report" redirect button ────────────────────────────────
+    if (viewBtnId) {
+        const viewBtn = document.getElementById(viewBtnId);
+        if (viewBtn) {
+            const page = reportPageForStatus(reportStatus);
+            const isEngineerRole = USER_ROLE.toLowerCase() === 'engineer';
+            // Engineers can only see the button if they are the assigned engineer
+            const assignedEngId = parseInt(engineerId) || 0;
+            const isAssigned    = assignedEngId > 0 && assignedEngId === USER_EMPLOYEE_ID;
+            if (page && repId && (!isEngineerRole || isAssigned)) {
+                viewBtn.href = page + '?highlight_rep=' + repId + '&open_modal=1';
+                viewBtn.style.display = 'inline-flex';
+            } else {
+                viewBtn.style.display = 'none';
+            }
+        }
+    }
 }
 
 function openRequestDetail(button) {
@@ -2911,6 +3019,7 @@ function openRequestDetail(button) {
     const reportStatus  = row.dataset.reportStatus || '';
     const repId         = row.dataset.repId        || '';
     const engineerName  = row.dataset.engineerName || '';
+    const engineerId    = row.dataset.engineerId   || '';
     let evidence = [];
     try { evidence = JSON.parse(row.dataset.evidence); } catch(e) {}
 
@@ -2936,7 +3045,8 @@ function openRequestDetail(button) {
     // Live report lifecycle status
     applyReportStatus(reportStatus, repId, engineerName,
         'detailReportStatusPill', 'detailReportStatusSection',
-        'detailRepIdBadge', 'detailReportEngineer', 'detailReportEngineerName');
+        'detailRepIdBadge', 'detailReportEngineer', 'detailReportEngineerName',
+        'detailViewReportBtn', row.dataset.engineerId || '');
 
     const strip = document.getElementById('detailEvidenceContainer');
     strip.innerHTML = '';
@@ -3032,7 +3142,8 @@ function openGisDetailModal(reqId) {
     // Live report lifecycle status
     applyReportStatus(req.report_status || '', req.rep_id || '', req.engineer_name || '',
         'gisReportStatusPill', 'gisReportStatusSection',
-        'gisRepIdBadge', 'gisReportEngineer', 'gisReportEngineerName');
+        'gisRepIdBadge', 'gisReportEngineer', 'gisReportEngineerName',
+        'gisViewReportBtn', req.engineer_id || '');
 
     const evidenceWrap = document.getElementById('modalEvidence');
     evidenceWrap.innerHTML = '';
