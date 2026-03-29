@@ -2316,12 +2316,6 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 
         if (!tr && !card) return; // rep_id not on this page
 
-        // ── When coming from requests.php via "Open Report": just open the modal ──
-        if (openModal) {
-            if (typeof openRepModal === 'function') openRepModal(parseInt(repId, 10));
-            return;
-        }
-
         var isMobile = window.matchMedia('(max-width: 768px)').matches;
         var primary  = isMobile ? (card || tr) : (tr || card);
 
@@ -2337,6 +2331,9 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
         }
 
         // ── Mobile card highlight ───────────────────────────────────────────
+        // Inject a <style> into <head> with the card's exact data-rep-id selector
+        // and !important on every property — this beats all existing CSS rules
+        // including media-query overrides and dark-mode variable declarations.
         if (card && isMobile) {
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var styleEl = document.createElement('style');
@@ -2367,7 +2364,13 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
             }, 5500);
         }
 
-        // ── Banner ─────────────────────────────────────────────────────────
+        // ── Auto-open modal when redirected from requests page ──────────────
+        if (openModal && typeof openRepModal === 'function') {
+            openRepModal(parseInt(repId, 10));
+        }
+
+        // ── Banner (only shown when NOT auto-opening the modal) ─────────────
+        if (openModal) return; // modal open is sufficient feedback
         if (document.getElementById('notifHighlightBanner')) return;
         var banner = document.createElement('div');
         banner.id        = 'notifHighlightBanner';
