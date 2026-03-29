@@ -520,6 +520,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     --text-secondary: #333333;
     --border-color: rgba(0, 0, 0, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.2);
+    /* Map modal variables */
+    --modal-bg: rgba(255, 255, 255, 0.98);
+    --input-bg: #fff;
+    --input-border: #c0c9d1;
+    --input-focus-border: #2b6cb0;
+    --input-focus-shadow: rgba(43,108,176,.15);
+    --input-placeholder: #666666;
 }
 
 [data-theme="dark"] {
@@ -530,6 +537,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     --text-secondary: #e0e0e0;
     --border-color: rgba(255, 255, 255, 0.1);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    /* Map modal variables — dark */
+    --modal-bg: rgba(28, 28, 35, 0.98);
+    --input-bg: rgba(40, 40, 50, 0.9);
+    --input-border: rgba(255, 255, 255, 0.18);
+    --input-focus-border: #4a8fd8;
+    --input-focus-shadow: rgba(74, 143, 216, 0.25);
+    --input-placeholder: #888888;
 }
 
 .main-content {
@@ -2264,6 +2278,104 @@ textarea:-webkit-autofill:active {
     text-transform: uppercase;
     box-shadow: 0 3px 12px rgba(239, 68, 68, 0.4);
 }
+
+/* ── Profile locked banner ─────────────────────────────────── */
+.profile-locked-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 22px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(99,84,210,0.07) 0%, rgba(43,108,176,0.09) 100%);
+    border: 1.5px solid rgba(99,84,210,0.22);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+}
+.profile-locked-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6354d2, #2b6cb0, #6384d2);
+    border-radius: 14px 14px 0 0;
+}
+.profile-locked-icon-wrap {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6354d2, #2b6cb0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(99,84,210,0.32);
+}
+.profile-locked-icon {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+    stroke: #fff;
+}
+.profile-locked-body {
+    flex: 1;
+    min-width: 0;
+}
+.profile-locked-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #3d2fa0;
+    letter-spacing: 0.01em;
+    margin-bottom: 4px;
+}
+[data-theme="dark"] .profile-locked-title {
+    color: #a89dff;
+}
+.profile-locked-msg {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+.profile-locked-date {
+    display: inline-block;
+    background: linear-gradient(135deg, #6354d2, #2b6cb0);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-left: 3px;
+    letter-spacing: 0.02em;
+}
+.profile-locked-chip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 13px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(99,84,210,0.3);
+    color: #6354d2;
+    background: rgba(99,84,210,0.08);
+    white-space: nowrap;
+}
+[data-theme="dark"] .profile-locked-banner {
+    background: linear-gradient(135deg, rgba(99,84,210,0.12) 0%, rgba(43,108,176,0.14) 100%);
+    border-color: rgba(99,84,210,0.3);
+}
+[data-theme="dark"] .profile-locked-chip {
+    color: #a89dff;
+    border-color: rgba(168,157,255,0.3);
+    background: rgba(99,84,210,0.15);
+}
+@media (max-width: 520px) {
+    .profile-locked-banner { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
+    .profile-locked-chip { align-self: flex-start; }
+}
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -2488,9 +2600,24 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
         </div>
 
         <?php if ($cooldownActive): ?>
-            <div style="margin-bottom: 18px; background: #fffbe6; border: 1px solid #ffe38f; color: #664d03; padding: 13px 18px; border-radius: 9px; font-size: 16px;">
-                <strong>Profile update is temporarily locked.</strong><br>
-                You can update your profile again on <b><?= htmlspecialchars($nextAllowedDate) ?></b>.
+            <div class="profile-locked-banner">
+                <div class="profile-locked-icon-wrap">
+                    <svg class="profile-locked-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div class="profile-locked-body">
+                    <div class="profile-locked-title">Profile Update Temporarily Locked</div>
+                    <div class="profile-locked-msg">
+                        Your profile can only be updated once every <strong>7 days</strong>. Next update available on
+                        <span class="profile-locked-date"><?= htmlspecialchars($nextAllowedDate) ?></span>.
+                    </div>
+                </div>
+                <div class="profile-locked-chip">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Locked
+                </div>
             </div>
         <?php endif; ?>
 
@@ -4197,149 +4324,398 @@ if (saveAlertBackdrop) {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-/* ── Engineer address map modal ──────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   ENGINEER ADDRESS MAP MODAL — full dark-mode support
+   Design mirrors citizenrepform.php map modal exactly.
+══════════════════════════════════════════════════════════════ */
 #epAddrMapBackdrop {
-    position:fixed;inset:0;background:rgba(0,0,0,.5);
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-    /* visibility+opacity instead of display:none so Leaflet can
-       measure the map container during eager init on DOMContentLoaded */
-    display:flex;align-items:stretch;justify-content:stretch;
-    z-index:9000;
-    visibility:hidden;opacity:0;pointer-events:none;
-    transition:opacity .18s ease, visibility .18s ease;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: stretch; justify-content: stretch;
+    z-index: 9000;
+    /* visibility+opacity so Leaflet can measure container on DOMContentLoaded */
+    visibility: hidden; opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, visibility .18s ease;
 }
 #epAddrMapBackdrop.show {
-    visibility:visible;opacity:1;pointer-events:auto;
+    visibility: visible; opacity: 1; pointer-events: auto;
 }
+
+/* ── Modal shell ─────────────────────────────────────── */
 #epAddrMapModal {
-    background:var(--modal-bg,#fff);width:100%;height:100%;
-    display:flex;flex-direction:column;overflow:hidden;
+    background: var(--modal-bg);
+    width: 100%; height: 100%;
+    border-radius: 0; overflow: hidden;
+    box-shadow: none;
+    display: flex; flex-direction: column;
+    flex: 1;
 }
-#epAddrMap { flex:1;min-height:300px;width:100%; }
+
+/* ── Header ─────────────────────────────────────────── */
 .ep-map-header {
-    padding:14px 18px;font-weight:600;font-size:16px;
-    border-bottom:1px solid var(--border-color,#e5e7eb);
-    display:flex;justify-content:center;align-items:center;
-    position:relative;color:var(--text-primary,#111);
-    flex-shrink:0;
+    padding: 14px 18px; font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: center; align-items: center;
+    position: relative; flex-shrink: 0;
+    color: var(--text-primary);
 }
-.ep-map-header button.close-btn {
-    position:absolute;right:14px;top:50%;transform:translateY(-50%);
-    background:none;border:none;font-size:22px;cursor:pointer;
-    color:var(--text-secondary,#6b7280);line-height:1;
+.ep-map-header h3 { flex: 1; text-align: center; margin: 0; font-size: 16px; }
+
+/* GPS button — absolute left in header (matches citizenrepform) */
+#epMapGpsBtn {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    border: none; background: #eef2ff;
+    border-radius: 10px; padding: 8px 12px; font-size: 18px; cursor: pointer; z-index: 10;
+    transition: background .15s;
 }
-.ep-map-addr-bar {
-    padding:10px 16px;border-bottom:1px solid var(--border-color,#e5e7eb);
-    display:flex;gap:8px;flex-shrink:0;
+#epMapGpsBtn:hover { background: #e0e7ff; }
+[data-theme="dark"] #epMapGpsBtn { background: rgba(55,98,200,.22); color: var(--text-primary); }
+[data-theme="dark"] #epMapGpsBtn:hover { background: rgba(55,98,200,.35); }
+
+/* Layer toggle button — absolute right in header */
+#epMapLayerToggle {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    background: #2b6cb0; color: #fff; border: none;
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+    cursor: pointer; font-weight: 600; transition: all .2s; z-index: 10;
+}
+#epMapLayerToggle:hover { background: #245a96; }
+
+/* ── District info banner ────────────────────────────── */
+#epMapDistrictInfo {
+    background: #eef2ff; border: 1px solid #c7d1f3;
+    border-radius: 8px; padding: 6px 12px;
+    margin: 6px 16px 0; font-size: 12px;
+    color: #3650c7; font-weight: 600;
+    text-align: center; display: none; flex-shrink: 0;
+}
+[data-theme="dark"] #epMapDistrictInfo {
+    background: rgba(55,98,200,.2);
+    border-color: rgba(55,98,200,.4);
+    color: #8ab4f8;
+}
+
+/* ── Address / search bar ────────────────────────────── */
+.ep-map-address-input {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+}
+.ep-map-search-wrap {
+    position: relative; flex: 1; min-width: 0;
 }
 #epMapSearchInput {
-    flex:1;padding:9px 12px;border-radius:9px;
-    border:1.5px solid var(--input-border,#c0c9d1);
-    background:var(--input-bg,#fff);color:var(--text-primary,#111);
-    font-size:14px;box-sizing:border-box;
+    width: 100%; box-sizing: border-box;
+    padding: 10px 34px 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--input-border);
+    font-size: 14px; background: var(--input-bg); color: var(--text-primary);
+    transition: border-color .2s, box-shadow .2s;
+    font-family: inherit;
 }
-#epMapSearchInput:focus{outline:none;border-color:#2b6cb0;box-shadow:0 0 0 3px rgba(43,108,176,.15);}
-#epMapGpsBtn {
-    background:#eef2ff;border:none;border-radius:9px;
-    padding:9px 13px;font-size:18px;cursor:pointer;flex-shrink:0;
+#epMapSearchInput::placeholder { color: var(--input-placeholder); opacity: .7; }
+#epMapSearchInput:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
 }
-#epMapGpsBtn:hover{background:#e0e7ff;}
+
+/* Search clear button */
+#epMapSearchClearBtn {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-secondary); font-size: 15px; line-height: 1;
+    padding: 2px 4px; border-radius: 4px; display: none;
+    transition: color .15s;
+}
+#epMapSearchClearBtn:hover { color: var(--text-primary); }
+#epMapSearchClearBtn.visible { display: block; }
+
+/* Detected address read-only field */
 #epMapAddrField {
-    width:100%;padding:9px 12px;border-radius:9px;
-    border:1.5px solid var(--input-border,#c0c9d1);
-    background:var(--input-bg,#fff);color:var(--text-primary,#111);
-    font-size:13px;box-sizing:border-box;
+    width: 100%; box-sizing: border-box;
+    padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid var(--input-border);
+    font-size: 14px; background: var(--input-bg); color: var(--text-primary);
+    transition: border-color .2s;
+    font-family: inherit;
 }
-#epMapDistrictInfo {
-    background:#eef2ff;border:1px solid #c7d1f3;border-radius:7px;
-    padding:5px 11px;font-size:12px;color:#3650c7;font-weight:600;
-    text-align:center;display:none;margin:0 16px 4px;flex-shrink:0;
+#epMapAddrField:focus {
+    outline: none;
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-shadow);
 }
+[data-theme="dark"] #epMapAddrField { color: var(--text-primary); }
+
+/* ── Search autocomplete dropdown ───────────────────── */
+#epMapSearchDropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--modal-bg); border: 1.5px solid var(--input-border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    max-height: 200px; overflow-y: auto; z-index: 10200;
+    display: none; overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+#epMapSearchDropdown::-webkit-scrollbar { width: 5px; }
+#epMapSearchDropdown::-webkit-scrollbar-track { background: transparent; }
+#epMapSearchDropdown::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+#epMapSearchDropdown.open { display: block; }
+[data-theme="dark"] #epMapSearchDropdown { box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+
+.ep-map-search-item {
+    padding: 9px 13px; font-size: 13px; cursor: pointer;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: flex-start; gap: 8px;
+    transition: background .12s;
+}
+.ep-map-search-item:last-child { border-bottom: none; }
+.ep-map-search-item:hover { background: rgba(43,108,176,.09); }
+[data-theme="dark"] .ep-map-search-item:hover { background: rgba(74,143,216,.12); }
+
+/* ── Map wrapper (bordered + rounded like citizenrepform) ── */
+#epAddrMapWrapper {
+    position: relative; margin: 10px 12px 12px;
+    border-radius: 12px; flex: 1; min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+}
+#epAddrMap {
+    width: 100%; flex: 1; min-height: 300px;
+    border-radius: 12px; touch-action: none;
+    display: block;
+}
+
+/* ── Action buttons ──────────────────────────────────── */
 .ep-map-actions {
-    padding:12px 16px;border-top:1px solid var(--border-color,#e5e7eb);
-    display:flex;gap:10px;justify-content:center;flex-shrink:0;
+    display: flex; justify-content: center; align-items: center;
+    padding: 12px 16px; border-top: 1px solid var(--border-color);
+    gap: 12px; flex-shrink: 0;
 }
 .ep-map-actions button {
-    flex:0 1 200px;padding:11px 20px;border-radius:10px;
-    font-weight:600;font-size:15px;cursor:pointer;border:none;transition:all .2s;
+    flex: 0 1 200px; min-width: 120px; max-width: 240px;
+    padding: 11px 22px; border-radius: 10px;
+    font-weight: 600; cursor: pointer; border: none;
+    transition: all .2s ease; font-size: 15px;
+    font-family: inherit;
 }
-.ep-map-actions .btn-cancel{background:#f3f4f6;color:#374151;border:1px solid #d1d5db;}
-.ep-map-actions .btn-cancel:hover{background:#e5e7eb;}
-.ep-map-actions .btn-save{background:#2b6cb0;color:#fff;}
-.ep-map-actions .btn-save:hover{background:#245a96;}
-#epMapSearchDropdown {
-    position:absolute;top:calc(100% + 4px);left:0;right:0;
-    background:var(--bg-secondary,#fff);border:1.5px solid var(--input-border,#c0c9d1);
-    border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);
-    max-height:200px;overflow-y:auto;z-index:10200;display:none;
+.ep-map-actions .btn-cancel { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.ep-map-actions .btn-cancel:hover { background: #e5e7eb; }
+[data-theme="dark"] .ep-map-actions .btn-cancel {
+    background: rgba(255,255,255,.1); color: var(--text-primary); border-color: var(--border-color);
 }
-#epMapSearchDropdown.open{display:block;}
+[data-theme="dark"] .ep-map-actions .btn-cancel:hover { background: rgba(255,255,255,.15); }
+.ep-map-actions .btn-save { background: #2b6cb0; color: #fff; }
+.ep-map-actions .btn-save:hover { background: #245a96; }
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width: 768px) {
+    #epAddrMapWrapper { margin: 8px 10px 10px; border-radius: 10px; }
+    #epAddrMap { min-height: 250px; border-radius: 10px; }
+    .ep-map-header { padding-top: max(14px, env(safe-area-inset-top)) !important; }
+    #epMapGpsBtn { left: 14px; padding: 6px 10px; font-size: 16px; }
+    #epMapLayerToggle { right: 14px; padding: 6px 12px; font-size: 12px; }
+    .ep-map-actions { flex-direction: row; gap: 10px; }
+    .ep-map-actions button { flex: 1; padding: 12px 16px; font-size: 14px; max-width: 160px; }
+}
+@media (max-width: 480px) {
+    #epAddrMapWrapper { margin: 6px 8px 8px; border-radius: 8px; }
+    #epAddrMap { min-height: 200px; border-radius: 8px; }
+    .ep-map-header { padding-top: max(14px, env(safe-area-inset-top)) !important; }
+    #epMapGpsBtn { left: 12px; padding: 5px 8px; font-size: 14px; }
+    #epMapLayerToggle { right: 12px; padding: 5px 10px; font-size: 11px; }
+    .ep-map-address-input { padding: 10px 12px; }
+    .ep-map-actions { padding: 10px 12px; gap: 8px; }
+    .ep-map-actions button { flex: 1; padding: 10px 12px; font-size: 13px; max-width: none; }
+}
+
+/* ── Search result item — two-line layout ────────────────────── */
 .ep-map-search-item {
-    padding:9px 13px;font-size:13px;cursor:pointer;
-    color:var(--text-primary,#111);
-    border-bottom:1px solid var(--border-color,#e5e7eb);
+    padding: 9px 13px; font-size: 13px; cursor: pointer;
+    color: var(--text-primary); border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: flex-start; gap: 8px;
+    transition: background .12s;
 }
-.ep-map-search-item:last-child{border-bottom:none;}
-.ep-map-search-item:hover{background:rgba(43,108,176,.09);}
-.ep-map-search-wrap{position:relative;flex:1;}
-@media(max-width:480px){
-    .ep-map-addr-bar{padding:8px 12px;gap:6px;}
-    .ep-map-actions button{flex:1;max-width:none;padding:10px 12px;font-size:14px;}
+.ep-map-search-item:last-child { border-bottom: none; }
+.ep-map-search-item:hover { background: rgba(43,108,176,.09); }
+[data-theme="dark"] .ep-map-search-item:hover { background: rgba(74,143,216,.12); }
+.ep-map-search-item-icon { flex-shrink: 0; margin-top: 1px; opacity: .6; font-size: 14px; }
+.ep-map-search-item-text { flex: 1; min-width: 0; }
+.ep-map-search-item-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ep-map-search-item-addr { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Search spinner ─────────────────────────────────────────── */
+.ep-map-search-spinner { display: none; padding: 10px 14px; font-size: 12px; color: var(--text-secondary); }
+.ep-map-search-spinner.visible { display: block; }
+
+/* ── Leaflet dark mode overrides ────────────────────────────── */
+[data-theme="dark"] .leaflet-bar a { background-color: #2a2a35 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.12) !important; }
+[data-theme="dark"] .leaflet-bar a:hover { background-color: #3a3a4a !important; }
+[data-theme="dark"] .leaflet-control-attribution { background: rgba(28,28,35,.85) !important; color: #94a3b8 !important; }
+[data-theme="dark"] .leaflet-control-attribution a { color: #8ab4f8 !important; }
+[data-theme="dark"] .leaflet-popup-content-wrapper,
+[data-theme="dark"] .leaflet-popup-tip { background: #1e1e2e !important; color: #e2e8f0 !important; box-shadow: 0 6px 20px rgba(0,0,0,.5) !important; }
+
+/* ── Zoom button design (mirrored from citizenrepform.php) ────── */
+#epAddrMap .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+#epAddrMap .leaflet-control-zoom-in,
+#epAddrMap .leaflet-control-zoom-out {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    color: #2b6cb0 !important;
+    background: rgba(255,255,255,.92) !important;
+    border: none !important;
+    border-bottom: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background .15s ease, color .15s ease, transform .12s ease !important;
+    text-decoration: none !important;
+    position: relative !important;
+}
+#epAddrMap .leaflet-control-zoom-in {
+    border-radius: 14px 14px 0 0 !important;
+}
+#epAddrMap .leaflet-control-zoom-out {
+    border-radius: 0 0 14px 14px !important;
+    border-top: 1px solid rgba(43,108,176,.12) !important;
+}
+#epAddrMap .leaflet-control-zoom-in:hover,
+#epAddrMap .leaflet-control-zoom-out:hover {
+    background: #2b6cb0 !important;
+    color: #fff !important;
+    transform: none !important;
+}
+#epAddrMap .leaflet-control-zoom-in:active,
+#epAddrMap .leaflet-control-zoom-out:active {
+    background: #245a96 !important;
+    color: #fff !important;
+    transform: scale(.94) !important;
+}
+/* Dark mode zoom buttons */
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-in,
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-out {
+    background: rgba(26,26,26,.88) !important;
+    color: #8ab4f8 !important;
+}
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-out {
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-in:hover,
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-out:hover {
+    background: #3762c8 !important;
+    color: #fff !important;
+}
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom {
+    box-shadow: 0 4px 20px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3) !important;
+}
+/* Disabled state */
+#epAddrMap .leaflet-control-zoom-in.leaflet-disabled,
+#epAddrMap .leaflet-control-zoom-out.leaflet-disabled {
+    color: #b0b8c9 !important;
+    cursor: not-allowed !important;
+    background: rgba(255,255,255,.6) !important;
+}
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-in.leaflet-disabled,
+[data-theme="dark"] #epAddrMap .leaflet-control-zoom-out.leaflet-disabled {
+    color: rgba(255,255,255,.2) !important;
+    background: rgba(26,26,26,.5) !important;
 }
 </style>
 
-<!-- Address Map Modal HTML -->
+<!-- Address Map Modal HTML — structure mirrors citizenrepform.php -->
 <div id="epAddrMapBackdrop">
     <div id="epAddrMapModal">
+
+        <!-- Header: GPS (left) | Title (center) | Layer toggle (right) -->
         <div class="ep-map-header">
-            <span>📍 Pick Address on Map</span>
-            <button type="button" class="close-btn" onclick="closeEpAddrMap()">×</button>
-        </div>
-        <div id="epMapDistrictInfo"></div>
-        <div class="ep-map-addr-bar">
             <button type="button" id="epMapGpsBtn" title="Use my current location">📍</button>
+            <h3>📍 Pick Your Address</h3>
+            <button type="button" id="epMapLayerToggle">🛰 Satellite</button>
+        </div>
+
+        <!-- District banner -->
+        <div id="epMapDistrictInfo"></div>
+
+        <!-- Search + detected-address inputs -->
+        <div class="ep-map-address-input">
             <div class="ep-map-search-wrap">
-                <input type="text" id="epMapSearchInput" placeholder="🔍 Search any address or place…" autocomplete="off">
-                <div id="epMapSearchDropdown"></div>
+                <input type="text" id="epMapSearchInput"
+                    placeholder="🔍 Search any address or place…"
+                    autocomplete="off">
+                <button type="button" id="epMapSearchClearBtn" title="Clear search">✕</button>
+                <div id="epMapSearchDropdown">
+                    <div class="ep-map-search-spinner" id="epMapSearchSpinner">Searching…</div>
+                </div>
             </div>
+            <input type="text" id="epMapAddrField"
+                placeholder="Move the pin or search to detect address…"
+                readonly>
         </div>
-        <div class="ep-map-addr-bar" style="padding-top:0;border-bottom:none;">
-            <input type="text" id="epMapAddrField" placeholder="Move the pin or search to detect address…" readonly>
+
+        <!-- Map (wrapped so border-radius works) -->
+        <div id="epAddrMapWrapper">
+            <div id="epAddrMap"></div>
         </div>
-        <div id="epAddrMap"></div>
+
+        <!-- Actions -->
         <div class="ep-map-actions">
             <button type="button" class="btn-cancel" onclick="closeEpAddrMap()">Cancel</button>
             <button type="button" class="btn-save" id="epMapSaveBtn" onclick="saveEpAddrMap()">Use This Address</button>
         </div>
+
     </div>
 </div>
 
 <script>
 // ════════════════════════════════════════════════════════════════
 // ENGINEER PROFILE — Address Map Picker
-// Pattern mirrors citizenrepform.php: modal is visibility:hidden
-// (not display:none) so Leaflet gets real pixel dimensions on
-// DOMContentLoaded, then invalidateSize() is called on open.
-// Works for any location — inside OR outside Quezon City.
+// Mirrors citizenrepform.php exactly:
+//   • Satellite / Street layer toggle
+//   • Search with two-line results + clear button
+//   • GPS button in header (absolute-left)
+//   • District banner with dark-mode colours
+//   • Full dark-mode support via CSS variables
 // ════════════════════════════════════════════════════════════════
 (function () {
     'use strict';
-    let epMap = null, epMarker = null;
+
+    // ── DOM refs ──────────────────────────────────────────────────
+    const backdrop      = document.getElementById('epAddrMapBackdrop');
+    const addrField     = document.getElementById('epMapAddrField');
+    const distInfo      = document.getElementById('epMapDistrictInfo');
+    const searchInput   = document.getElementById('epMapSearchInput');
+    const searchDrop    = document.getElementById('epMapSearchDropdown');
+    const searchSpinner = document.getElementById('epMapSearchSpinner');
+    const searchClearBtn= document.getElementById('epMapSearchClearBtn');
+    const gpsBtn        = document.getElementById('epMapGpsBtn');
+    const layerToggle   = document.getElementById('epMapLayerToggle');
+    const saveBtn       = document.getElementById('epMapSaveBtn');
+    const mapBtn        = document.getElementById('epAddrMapBtn');
+
+    // ── State ─────────────────────────────────────────────────────
+    let epMap            = null;
+    let epMarker         = null;
     let epSelectedLatLng = null;
-    let epAddrTimeout = null, epAddrAbort = null;
-    let epSearchTimer = null, epSearchAbort = null;
-    let epFetchingAddress = false;
+    let epAddrTimeout    = null;
+    let epAddrAbort      = null;
+    let epSearchTimer    = null;
+    let epSearchAbort    = null;
+    let epFetchingAddress= false;
 
-    const backdrop    = document.getElementById('epAddrMapBackdrop');
-    const addrField   = document.getElementById('epMapAddrField');
-    const distInfo    = document.getElementById('epMapDistrictInfo');
-    const searchInput = document.getElementById('epMapSearchInput');
-    const searchDrop  = document.getElementById('epMapSearchDropdown');
-    const gpsBtn      = document.getElementById('epMapGpsBtn');
-    const saveBtn     = document.getElementById('epMapSaveBtn');
-    const mapBtn      = document.getElementById('epAddrMapBtn');
+    // ── Tile layers (satellite + street, same as citizenrepform) ──
+    let satelliteLayer = null;
+    let streetLayer    = null;
+    let isSatellite    = true;   // start on satellite
 
-    // ── District detection via barangay name matching ─────────────
+    // ── District detection (barangay → QC district) ───────────────
     const DISTRICT_BARANGAYS = {
         'District 1': ['Alicia','Bagong Pag-asa','Bahay Toro','Balingasa','Bungad','Damar','Damayan','Del Monte','Katipunan','Lourdes','Maharlika','Manresa','Mariblo','Masambong','N.S. Amoranto','Nayong Kanluran','Paang Bundok','Pag-ibig sa Nayon','Paltok','Paraiso','Phil-Am','Project 6','Ramon Magsaysay','Saint Peter','Salvacion','San Antonio','San Isidro Labrador','San Jose','Santa Cruz','Santa Teresita','Santo Cristo','Santo Domingo','Sienna','Talayan','Vasra','Veterans Village','West Triangle'],
         'District 2': ['Bagong Silangan','Batasan Hills','Commonwealth','Holy Spirit','Payatas'],
@@ -4362,7 +4738,7 @@ if (saveAlertBackdrop) {
 
     function updateDistrictBanner(district) {
         if (district) {
-            distInfo.textContent  = '📌 ' + district;
+            distInfo.textContent   = '📌 ' + district;
             distInfo.style.display = 'block';
         } else {
             distInfo.style.display = 'none';
@@ -4376,9 +4752,16 @@ if (saveAlertBackdrop) {
         saveBtn.style.cursor  = disabled ? 'not-allowed' : '';
     }
 
+    // ── Layer toggle label sync ───────────────────────────────────
+    function syncLayerToggleLabel() {
+        if (!layerToggle) return;
+        layerToggle.textContent = isSatellite ? '🗺 Street' : '🛰 Satellite';
+    }
+
     // ── Reverse-geocode the current pin ───────────────────────────
     async function reverseGeocode(lat, lng) {
-        addrField.value  = 'Fetching address…';
+        addrField.value   = 'Fetching address…';
+        addrField.style.color = 'var(--input-placeholder)';
         epFetchingAddress = true;
         setSaveState(true);
         if (epAddrAbort) epAddrAbort.abort();
@@ -4389,13 +4772,15 @@ if (saveAlertBackdrop) {
                 { signal: epAddrAbort.signal }
             );
             if (!r.ok) throw new Error('HTTP ' + r.status);
-            const d     = await r.json();
-            const addr  = d.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            const d    = await r.json();
+            const addr = d.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
             addrField.value = addr;
+            addrField.style.color = '';
             updateDistrictBanner(detectDistrict(addr));
         } catch (e) {
             if (e.name === 'AbortError') return;
             addrField.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            addrField.style.color = '';
             updateDistrictBanner('');
         } finally {
             epFetchingAddress = false;
@@ -4409,26 +4794,33 @@ if (saveAlertBackdrop) {
         epAddrTimeout = setTimeout(() => reverseGeocode(latlng.lat, latlng.lng), 300);
     }
 
-    // ── Map init — called once at DOMContentLoaded ────────────────
+    // ── Map init (called once at DOMContentLoaded) ────────────────
     function initEpMap() {
         if (epMap) return;
         const savedLat = parseFloat(document.getElementById('epAddrLat').value) || 14.6760;
         const savedLng = parseFloat(document.getElementById('epAddrLng').value) || 121.0437;
 
         epMap = L.map('epAddrMap', {
-            zoomControl:      true,
-            scrollWheelZoom:  true,
-            touchZoom:        true,
-            doubleClickZoom:  true,
+            zoomControl:     true,
+            scrollWheelZoom: true,
+            touchZoom:       true,
+            doubleClickZoom: true,
         }).setView([savedLat, savedLng], 14);
 
-        // Satellite layer (same as citizenrepform)
-        L.tileLayer(
+        // ── Tile layers ───────────────────────────────────────────
+        satelliteLayer = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             { maxZoom: 19, attribution: 'Esri Satellite' }
-        ).addTo(epMap);
+        );
+        streetLayer = L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            { maxZoom: 19, attribution: '© OpenStreetMap contributors' }
+        );
+        satelliteLayer.addTo(epMap);   // start on satellite
+        isSatellite = true;
+        syncLayerToggleLabel();
 
-        epMarker = L.marker([savedLat, savedLng], { draggable: true }).addTo(epMap);
+        epMarker         = L.marker([savedLat, savedLng], { draggable: true }).addTo(epMap);
         epSelectedLatLng = L.latLng(savedLat, savedLng);
 
         epMarker.on('dragend', () => onPinMove(epMarker.getLatLng()));
@@ -4438,24 +4830,20 @@ if (saveAlertBackdrop) {
     // ── Open ──────────────────────────────────────────────────────
     window.openEpAddrMap = function () {
         backdrop.classList.add('show');
-        // One rAF so the browser paints the modal before we recalc size
         requestAnimationFrame(() => {
-            if (!epMap) {
-                initEpMap();
-            }
+            if (!epMap) initEpMap();
             epMap.invalidateSize(false);
 
-            // Restore previously saved coords
             const lat = parseFloat(document.getElementById('epAddrLat').value);
             const lng = parseFloat(document.getElementById('epAddrLng').value);
             if (lat && lng && lat !== 14.6760) {
                 epMap.setView([lat, lng], 16);
                 epMarker.setLatLng([lat, lng]);
                 epSelectedLatLng = L.latLng(lat, lng);
-                // Show saved address immediately (don't re-fetch every open)
                 const savedAddr = document.getElementById('epAddressField').value.trim();
                 if (savedAddr) {
                     addrField.value = savedAddr;
+                    addrField.style.color = '';
                     updateDistrictBanner(detectDistrict(savedAddr));
                 } else {
                     reverseGeocode(lat, lng);
@@ -4470,13 +4858,14 @@ if (saveAlertBackdrop) {
     // ── Close ─────────────────────────────────────────────────────
     window.closeEpAddrMap = function () {
         backdrop.classList.remove('show');
-        if (epAddrAbort) { epAddrAbort.abort(); epAddrAbort = null; }
-        if (epSearchAbort) { epSearchAbort.abort(); epSearchAbort = null; }
+        if (epAddrAbort)  { epAddrAbort.abort();  epAddrAbort  = null; }
+        if (epSearchAbort){ epSearchAbort.abort(); epSearchAbort = null; }
         clearTimeout(epAddrTimeout);
         clearTimeout(epSearchTimer);
         searchInput.value = '';
+        if (searchClearBtn) searchClearBtn.classList.remove('visible');
         searchDrop.classList.remove('open');
-        searchDrop.innerHTML = '';
+        searchDrop.innerHTML = '<div class="ep-map-search-spinner" id="epMapSearchSpinner">Searching…</div>';
     };
 
     // ── Save to profile form ──────────────────────────────────────
@@ -4494,22 +4883,20 @@ if (saveAlertBackdrop) {
             alert('Please wait for the address to load.');
             return;
         }
-        // Fill the profile form
         document.getElementById('epAddressField').value = addrText;
         document.getElementById('epAddrLat').value      = epSelectedLatLng.lat;
         document.getElementById('epAddrLng').value      = epSelectedLatLng.lng;
 
-        // Auto-fill district dropdown if a QC district is detected and not yet set
+        // Auto-fill district dropdown when a QC district is detected
         const detected  = detectDistrict(addrText);
         const distHidden = document.getElementById('epDistrictVal');
         const distLabel  = document.getElementById('cbDistrictLabel');
-        if (detected && distHidden && !distHidden.value) {
+        if (detected && distHidden) {
             distHidden.value = detected;
             if (distLabel) {
                 distLabel.textContent = detected;
                 distLabel.classList.add('selected');
             }
-            // Also mark the matching option in the dropdown as selected
             document.querySelectorAll('#cbDistrictDropdown .prof-combobox-option').forEach(opt => {
                 opt.classList.toggle('selected-opt', opt.dataset.value === detected);
             });
@@ -4518,13 +4905,16 @@ if (saveAlertBackdrop) {
         window.closeEpAddrMap();
     };
 
-    // ── Wire the 📍 button ────────────────────────────────────────
+    // ── Wire map-open button ──────────────────────────────────────
     if (mapBtn) mapBtn.addEventListener('click', () => window.openEpAddrMap());
 
     // ── GPS ───────────────────────────────────────────────────────
     if (gpsBtn) {
         gpsBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser.');
+                return;
+            }
             gpsBtn.textContent = '⏳';
             navigator.geolocation.getCurrentPosition(
                 pos => {
@@ -4533,23 +4923,62 @@ if (saveAlertBackdrop) {
                     onPinMove(ll);
                     gpsBtn.textContent = '📍';
                 },
-                () => { alert('Unable to retrieve your location.'); gpsBtn.textContent = '📍'; },
+                () => {
+                    alert('Unable to retrieve your location.');
+                    gpsBtn.textContent = '📍';
+                },
                 { enableHighAccuracy: true }
             );
         });
     }
 
-    // ── Address search (Nominatim, no PH restriction) ─────────────
+    // ── Layer toggle (Satellite ↔ Street) ─────────────────────────
+    if (layerToggle) {
+        layerToggle.addEventListener('click', () => {
+            if (!epMap) return;
+            if (isSatellite) {
+                epMap.removeLayer(satelliteLayer);
+                streetLayer.addTo(epMap);
+            } else {
+                epMap.removeLayer(streetLayer);
+                satelliteLayer.addTo(epMap);
+            }
+            isSatellite = !isSatellite;
+            syncLayerToggleLabel();
+        });
+    }
+
+    // ── Search clear button ───────────────────────────────────────
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchClearBtn.classList.remove('visible');
+            searchDrop.classList.remove('open');
+            searchDrop.innerHTML = '<div class="ep-map-search-spinner">Searching…</div>';
+            if (epSearchAbort) { epSearchAbort.abort(); epSearchAbort = null; }
+            clearTimeout(epSearchTimer);
+            searchInput.focus();
+        });
+    }
+
+    // ── Address search (Nominatim) ────────────────────────────────
     searchInput.addEventListener('input', () => {
         const q = searchInput.value.trim();
         clearTimeout(epSearchTimer);
+
+        // Show / hide clear button
+        if (searchClearBtn) searchClearBtn.classList.toggle('visible', q.length > 0);
+
         if (!q) {
             searchDrop.classList.remove('open');
-            searchDrop.innerHTML = '';
             return;
         }
-        searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">Searching…</div>';
+
+        // Show spinner while debouncing
+        const spinner = document.getElementById('epMapSearchSpinner');
+        if (spinner) spinner.classList.add('visible');
         searchDrop.classList.add('open');
+
         epSearchTimer = setTimeout(async () => {
             if (epSearchAbort) epSearchAbort.abort();
             epSearchAbort = new AbortController();
@@ -4558,42 +4987,60 @@ if (saveAlertBackdrop) {
                     `&q=${encodeURIComponent(q)}&limit=6&addressdetails=1&accept-language=en`;
                 const res  = await fetch(url, { signal: epSearchAbort.signal });
                 const data = await res.json();
-                searchDrop.innerHTML = '';
+
+                // Rebuild dropdown (keep spinner element)
+                searchDrop.innerHTML = '<div class="ep-map-search-spinner" id="epMapSearchSpinner">Searching…</div>';
+
                 if (!data.length) {
-                    searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">No results found.</div>';
+                    const noRes = document.createElement('div');
+                    noRes.style.cssText = 'padding:10px 14px;font-size:13px;color:var(--text-secondary);';
+                    noRes.textContent   = 'No results found.';
+                    searchDrop.appendChild(noRes);
                 } else {
                     data.forEach(r => {
-                        const el     = document.createElement('div');
-                        el.className = 'ep-map-search-item';
-                        el.textContent = r.display_name;
-                        el.addEventListener('mousedown', ev => {
+                        // Split display_name: first part = place name, rest = address
+                        const parts   = r.display_name.split(',');
+                        const name    = parts[0].trim();
+                        const address = parts.slice(1).join(',').trim();
+
+                        const item = document.createElement('div');
+                        item.className = 'ep-map-search-item';
+                        item.innerHTML = `
+                            <span class="ep-map-search-item-icon">📍</span>
+                            <div class="ep-map-search-item-text">
+                                <div class="ep-map-search-item-name">${name}</div>
+                                <div class="ep-map-search-item-addr">${address}</div>
+                            </div>`;
+                        item.addEventListener('mousedown', ev => {
                             ev.preventDefault();
                             const ll = L.latLng(parseFloat(r.lat), parseFloat(r.lon));
                             if (epMap) { epMap.setView(ll, 17); epMarker.setLatLng(ll); }
                             onPinMove(ll);
                             searchInput.value = '';
+                            if (searchClearBtn) searchClearBtn.classList.remove('visible');
                             searchDrop.classList.remove('open');
-                            searchDrop.innerHTML = '';
                         });
-                        searchDrop.appendChild(el);
+                        searchDrop.appendChild(item);
                     });
                 }
                 searchDrop.classList.add('open');
             } catch (e) {
                 if (e.name === 'AbortError') return;
-                searchDrop.innerHTML = '<div style="padding:9px 13px;font-size:12px;color:#888;">Search unavailable. Try again.</div>';
+                searchDrop.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">Search unavailable. Try again.</div>';
             }
         }, 400);
     });
 
+    // Close dropdown when clicking outside
     document.addEventListener('click', e => {
         if (!e.target.closest('.ep-map-search-wrap')) {
             searchDrop.classList.remove('open');
         }
     });
 
-    // ── Eager init at DOMContentLoaded (modal is visibility:hidden
-    //    but display:flex so the container has real pixel dimensions) ──
+    // ── Eager init at DOMContentLoaded ───────────────────────────
+    // Modal uses visibility:hidden (not display:none) so Leaflet can
+    // measure the container and initialise with correct dimensions.
     document.addEventListener('DOMContentLoaded', () => {
         initEpMap();
         requestAnimationFrame(() => { if (epMap) epMap.invalidateSize(false); });
