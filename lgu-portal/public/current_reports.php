@@ -2926,13 +2926,15 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
    and shows a brief banner above the table.
 ═══════════════════════════════════════════════════════ */
 (function initNotifHighlight() {
-    const params = new URLSearchParams(window.location.search);
-    const repId  = params.get('highlight_rep');
+    const params    = new URLSearchParams(window.location.search);
+    const repId     = params.get('highlight_rep');
+    const openModal = params.get('open_modal') === '1';
     if (!repId) return;
 
     // Clean URL immediately
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('highlight_rep');
+    cleanUrl.searchParams.delete('open_modal');
     history.replaceState(null, '', cleanUrl);
 
     // Wait for DOM to settle
@@ -2990,7 +2992,13 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             }, 5500);
         }
 
-        // ── Banner ──────────────────────────────────────────────────────────
+        // ── Auto-open modal when redirected from requests page ──────────────
+        if (openModal && typeof openRepModal === 'function') {
+            openRepModal(parseInt(repId, 10));
+        }
+
+        // ── Banner (only shown when NOT auto-opening the modal) ─────────────
+        if (openModal) return; // modal open is sufficient feedback
         if (document.getElementById('notifHighlightBanner')) return;
         var banner = document.createElement('div');
         banner.id        = 'notifHighlightBanner';

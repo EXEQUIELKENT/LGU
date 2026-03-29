@@ -427,27 +427,9 @@ foreach ($rows as $row) {
 @keyframes bannerFadeIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
 @keyframes bannerFadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
 
-/* Redirect-from-requests banner — distinct teal/green accent */
-.redirect-highlight-banner {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 9px 16px;
-    background: linear-gradient(135deg, rgba(14,165,120,.13), rgba(14,165,120,.07));
-    border: 1.5px solid rgba(14,165,120,.35);
-    border-radius: 10px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #0b8a63;
-    margin-bottom: 12px;
-    animation: bannerFadeIn .35s ease, bannerFadeOut .5s ease 4.5s forwards;
-    pointer-events: none;
-}
-[data-theme="dark"] .redirect-highlight-banner {
-    background: linear-gradient(135deg, rgba(20,200,150,.15), rgba(20,200,150,.07));
-    border-color: rgba(20,200,150,.35);
-    color: #3fd4a8;
-}
+/* Desktop <tr> highlight — uses inset box-shadow (works with border-collapse:separate) */
+tr.notif-highlight > td {
+    animation: trCellHighlight 5s ease-out forwards;
     position: relative;
 }
 tr.notif-highlight > td:first-child {
@@ -1593,17 +1575,15 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
    and shows a brief banner above the table.
 ═══════════════════════════════════════════════════════ */
 (function initNotifHighlight() {
-    const params       = new URLSearchParams(window.location.search);
-    const repId        = params.get('highlight_rep');
-    const openModal    = params.get('open_modal') === '1';
-    const fromRequests = params.get('from') === 'requests';
+    const params    = new URLSearchParams(window.location.search);
+    const repId     = params.get('highlight_rep');
+    const openModal = params.get('open_modal') === '1';
     if (!repId) return;
 
     // Clean URL immediately
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('highlight_rep');
     cleanUrl.searchParams.delete('open_modal');
-    cleanUrl.searchParams.delete('from');
     history.replaceState(null, '', cleanUrl);
 
     // Wait for DOM to settle
@@ -1612,30 +1592,6 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         var card = document.querySelector('.report-card[data-rep-id="' + repId + '"]');
 
         if (!tr && !card) return; // rep_id not on this page
-
-        // ── When coming from requests.php via "Open Report": open modal + show redirect banner ──
-        if (openModal && fromRequests) {
-            if (typeof openRepModal === 'function') openRepModal(parseInt(repId, 10));
-            // Show redirect-specific banner
-            if (!document.getElementById('redirectHighlightBanner')) {
-                var rBanner = document.createElement('div');
-                rBanner.id        = 'redirectHighlightBanner';
-                rBanner.className = 'redirect-highlight-banner';
-                rBanner.innerHTML = '<span style="font-size:16px;flex-shrink:0;">📋</span>' +
-                                    '<span>You were redirected here from Requests — this report is now open.</span>';
-                var rContainer = (tr || card).closest('.mobile-report-list, .table-wrapper, .table-card');
-                if (rContainer) rContainer.insertBefore(rBanner, rContainer.firstChild);
-                else if ((tr || card).parentElement) (tr || card).parentElement.insertBefore(rBanner, (tr || card));
-                setTimeout(function () { if (rBanner.parentElement) rBanner.parentElement.removeChild(rBanner); }, 5200);
-            }
-            return;
-        }
-
-        // ── When coming from a notification (open_modal without from=requests): just open modal ──
-        if (openModal) {
-            if (typeof openRepModal === 'function') openRepModal(parseInt(repId, 10));
-            return;
-        }
 
         var isMobile = window.matchMedia('(max-width: 768px)').matches;
         var primary  = isMobile ? (card || tr) : (tr || card);
@@ -1652,6 +1608,9 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
         }
 
         // ── Mobile card highlight ───────────────────────────────────────────
+        // Inject a <style> into <head> with the card's exact data-rep-id selector
+        // and !important on every property — this beats all existing CSS rules
+        // including media-query overrides and dark-mode variable declarations.
         if (card && isMobile) {
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var styleEl = document.createElement('style');
@@ -1682,7 +1641,13 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             }, 5500);
         }
 
-        // ── Banner ─────────────────────────────────────────────────────────
+        // ── Auto-open modal when redirected from requests page ──────────────
+        if (openModal && typeof openRepModal === 'function') {
+            openRepModal(parseInt(repId, 10));
+        }
+
+        // ── Banner (only shown when NOT auto-opening the modal) ─────────────
+        if (openModal) return; // modal open is sufficient feedback
         if (document.getElementById('notifHighlightBanner')) return;
         var banner = document.createElement('div');
         banner.id        = 'notifHighlightBanner';
