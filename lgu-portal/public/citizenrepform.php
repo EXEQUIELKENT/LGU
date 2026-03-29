@@ -2702,7 +2702,7 @@ input[type="file"] {
         { name: "Manresa", lat: 14.6417, lng: 121.0025, district: "District 1" },
         { name: "Mariblo", lat: 14.6345, lng: 121.0162, district: "District 1" },
         { name: "Masambong", lat: 14.6417, lng: 121.0095, district: "District 1" },
-        { name: "N.S. Amoranto (Gintong Silahis)", lat: 14.6478, lng: 121.0233, district: "District 1" },
+        { name: "N.S. Amoranto (Gintong Silahis)", lat: 14.6327, lng: 120.9935, district: "District 1" },
         { name: "Nayong Kanluran", lat: 14.6403, lng: 121.0251, district: "District 1" },
         { name: "Paang Bundok", lat: 14.627, lng: 120.9917, district: "District 1" },
         { name: "Pag-ibig sa Nayon", lat: 14.6475, lng: 120.9975, district: "District 1" },
@@ -2719,14 +2719,14 @@ input[type="file"] {
         { name: "Santa Cruz", lat: 14.6359, lng: 121.0205, district: "District 1" },
         { name: "Santa Teresita", lat: 14.6214, lng: 120.999, district: "District 1" },
         { name: "Santo Cristo", lat: 14.6607, lng: 121.0297, district: "District 1" },
-        { name: "Santo Domingo (Matalahib)", lat: 14.6756, lng: 121.0312, district: "District 1" },
+        { name: "Santo Domingo (Matalahib)", lat: 14.6297, lng: 121.0077, district: "District 1" },
         { name: "Sienna", lat: 14.6367, lng: 121.0054, district: "District 1" },
         { name: "Talayan", lat: 14.6359, lng: 121.011, district: "District 1" },
-        { name: "Vasra", lat: 14.6581, lng: 121.047, district: "District 1" },
+        { name: "Vasra", lat: 14.6569, lng: 121.0463, district: "District 1" },
         { name: "Veterans Village", lat: 14.6542, lng: 121.0219, district: "District 1" },
         { name: "West Triangle", lat: 14.6444, lng: 121.0302, district: "District 1" },
         // DISTRICT 2 (5 barangays — Batasan/Commonwealth area)
-        { name: "Bagong Silangan", lat: 14.7176, lng: 121.1114, district: "District 2" },
+        { name: "Bagong Silangan", lat: 14.7059, lng: 121.1086, district: "District 2" },
         { name: "Batasan Hills", lat: 14.6807, lng: 121.0961, district: "District 2" },
         { name: "Commonwealth", lat: 14.7038, lng: 121.0854, district: "District 2" },
         { name: "Holy Spirit", lat: 14.6794, lng: 121.0787, district: "District 2" },
@@ -2741,14 +2741,14 @@ input[type="file"] {
         { name: "Camp Aguinaldo", lat: 14.6102, lng: 121.0621, district: "District 3" },
         { name: "Claro", lat: 14.6317, lng: 121.0641, district: "District 3" },
         { name: "Dioquino Zobel", lat: 14.6197, lng: 121.0651, district: "District 3" },
-        { name: "Duyan-Duyan", lat: 14.6303, lng: 121.0672, district: "District 3" },
-        { name: "E. Rodriguez", lat: 14.6178, lng: 121.0489, district: "District 3" },
+        { name: "Duyan-Duyan", lat: 14.6300, lng: 121.0671, district: "District 3" },
+        { name: "E. Rodriguez", lat: 14.6160, lng: 121.0497, district: "District 3" },
         { name: "East Kamias", lat: 14.6323, lng: 121.0557, district: "District 3" },
         { name: "Escopa I", lat: 14.6241, lng: 121.0737, district: "District 3" },
         { name: "Escopa II", lat: 14.6241, lng: 121.0744, district: "District 3" },
         { name: "Escopa III", lat: 14.6271, lng: 121.0732, district: "District 3" },
         { name: "Escopa IV", lat: 14.6255, lng: 121.0741, district: "District 3" },
-        { name: "Libis", lat: 14.6157, lng: 121.0762, district: "District 3" },
+        { name: "Libis", lat: 14.6161, lng: 121.0766, district: "District 3" },
         { name: "Loyola Heights", lat: 14.6383, lng: 121.0752, district: "District 3" },
         { name: "Mangga", lat: 14.6255, lng: 121.0623, district: "District 3" },
         { name: "Marilag", lat: 14.6251, lng: 121.0699, district: "District 3" },
@@ -2763,7 +2763,7 @@ input[type="file"] {
         { name: "San Roque", lat: 14.6196, lng: 121.0623, district: "District 3" },
         { name: "Silangan", lat: 14.6284, lng: 121.0593, district: "District 3" },
         { name: "Socorro", lat: 14.6168, lng: 121.0583, district: "District 3" },
-        { name: "St. Ignatius", lat: 14.6934, lng: 121.0634, district: "District 3" },
+        { name: "St. Ignatius", lat: 14.6397, lng: 121.0769, district: "District 3" },
         { name: "Tagumpay", lat: 14.6222, lng: 121.0639, district: "District 3" },
         { name: "Ugong Norte", lat: 14.5974, lng: 121.0714, district: "District 3" },
         { name: "Villa Maria Clara", lat: 14.6161, lng: 121.0687, district: "District 3" },
@@ -2776,10 +2776,10 @@ input[type="file"] {
         { name: "Damayang Lagi", lat: 14.6173, lng: 121.0232, district: "District 4" },
         { name: "Don Manuel", lat: 14.617, lng: 121.0054, district: "District 4" },
         { name: "Doña Aurora", lat: 14.6161, lng: 121.0091, district: "District 4" },
-        { name: "Doña Imelda", lat: 14.613, lng: 121.0163, district: "District 4" },
+        { name: "Doña Imelda", lat: 14.6130, lng: 121.0172, district: "District 4" },
         { name: "Doña Josefa", lat: 14.6193, lng: 121.0069, district: "District 4" },
         { name: "Horseshoe", lat: 14.6125, lng: 121.0421, district: "District 4" },
-        { name: "Immaculate Conception", lat: 14.6067, lng: 121.0512, district: "District 4" },
+        { name: "Immaculate Conception", lat: 14.6098, lng: 121.0640, district: "District 4" },
         { name: "Kalusugan", lat: 14.6225, lng: 121.0216, district: "District 4" },
         { name: "Kamuning", lat: 14.6272, lng: 121.0396, district: "District 4" },
         { name: "Kaunlaran", lat: 14.6156, lng: 121.0438, district: "District 4" },
@@ -2795,7 +2795,7 @@ input[type="file"] {
         { name: "Pinyahan", lat: 14.6377, lng: 121.048, district: "District 4" },
         { name: "Roxas", lat: 14.6274, lng: 121.0221, district: "District 4" },
         { name: "Sacred Heart", lat: 14.6325, lng: 121.0391, district: "District 4" },
-        { name: "San Isidro Galas", lat: 14.6145, lng: 121.0523, district: "District 4" },
+        { name: "San Isidro Galas", lat: 14.6162, lng: 121.0518, district: "District 4" },
         { name: "San Martin de Porres", lat: 14.6165, lng: 121.0493, district: "District 4" },
         { name: "San Vicente", lat: 14.6527, lng: 121.0559, district: "District 4" },
         { name: "Santol", lat: 14.6112, lng: 121.0144, district: "District 4" },
@@ -2805,8 +2805,8 @@ input[type="file"] {
         { name: "Tatalon", lat: 14.623, lng: 121.0149, district: "District 4" },
         { name: "Teachers Village East", lat: 14.6453, lng: 121.0587, district: "District 4" },
         { name: "Teachers Village West", lat: 14.6425, lng: 121.0564, district: "District 4" },
-        { name: "U.P. Campus", lat: 14.6538, lng: 121.0682, district: "District 4" },
-        { name: "U.P. Village", lat: 14.6501, lng: 121.0645, district: "District 4" },
+        { name: "U.P. Campus", lat: 14.6517, lng: 121.0650, district: "District 4" },
+        { name: "U.P. Village", lat: 14.6495, lng: 121.0625, district: "District 4" },
         { name: "Valencia", lat: 14.6102, lng: 121.0375, district: "District 4" },
         // DISTRICT 5 (15 barangays — Novaliches/Fairview area)
         { name: "Bagbag", lat: 14.6983, lng: 121.0289, district: "District 5" },
@@ -2818,8 +2818,8 @@ input[type="file"] {
         { name: "Nagkaisang Nayon", lat: 14.7164, lng: 121.0292, district: "District 5" },
         { name: "North Fairview", lat: 14.7121, lng: 121.0602, district: "District 5" },
         { name: "Novaliches Proper", lat: 14.7195, lng: 121.0365, district: "District 5" },
-        { name: "Pasong Putik Proper", lat: 14.7337, lng: 121.0616, district: "District 5" },
-        { name: "Regalado", lat: 14.7167, lng: 121.0523, district: "District 5" },
+        { name: "Pasong Putik Proper", lat: 14.7351, lng: 121.0601, district: "District 5" },
+        { name: "Regalado", lat: 14.7224, lng: 121.0605, district: "District 5" },
         { name: "San Agustin", lat: 14.729, lng: 121.0359, district: "District 5" },
         { name: "San Bartolome", lat: 14.7059, lng: 121.0315, district: "District 5" },
         { name: "Santa Lucia", lat: 14.7076, lng: 121.0505, district: "District 5" },
@@ -2827,7 +2827,7 @@ input[type="file"] {
         // DISTRICT 6 (11 barangays — Banlat/Balintawak/Tandang Sora area)
         { name: "Apolonio Samson", lat: 14.6542, lng: 121.0093, district: "District 6" },
         { name: "Baesa", lat: 14.6681, lng: 121.0147, district: "District 6" },
-        { name: "Balon Bato", lat: 14.6956, lng: 121.0089, district: "District 6" },
+        { name: "Balon Bato", lat: 14.7015, lng: 121.0200, district: "District 6" },
         { name: "Culiat", lat: 14.6669, lng: 121.0535, district: "District 6" },
         { name: "New Era", lat: 14.6646, lng: 121.0604, district: "District 6" },
         { name: "Pasong Tamo", lat: 14.6753, lng: 121.0507, district: "District 6" },
@@ -2835,7 +2835,7 @@ input[type="file"] {
         { name: "Sauyo", lat: 14.6942, lng: 121.0434, district: "District 6" },
         { name: "Talipapa", lat: 14.6824, lng: 121.0238, district: "District 6" },
         { name: "Tandang Sora", lat: 14.6796, lng: 121.0359, district: "District 6" },
-        { name: "Unang Sigaw", lat: 14.6591, lng: 121.0018, district: "District 6" }
+        { name: "Unang Sigaw", lat: 14.6595, lng: 121.0010, district: "District 6" }
     ];
 
     const PH_BOUNDS = [[4.215806, 116.954468], [21.321780, 126.807617]];
@@ -2950,10 +2950,10 @@ input[type="file"] {
                 // Ensure GeoJSON is loaded then draw the real polygon + fitBounds to it
                 loadBarangayGeoJSON().then(() => {
                     const layer = highlightBarangayBoundary(bName, true); // fitBounds = true
-                    // If polygon found, re-centre marker on polygon centre for accuracy
+                    // If polygon found, re-centre marker on true polygon centroid for accuracy
                     if (layer) {
                         try {
-                            const c = layer.getBounds().getCenter();
+                            const c = _getPolygonCentroid(layer) || layer.getBounds().getCenter();
                             selectedLatLng = window.selectedLatLng = c;
                             if (marker) marker.setLatLng(c);
                         } catch(e) {}
@@ -3181,8 +3181,45 @@ input[type="file"] {
     function _normBrgyName(n) {
         return (n || '').toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s*\([^)]*\)/g, '')          // strip parenthetical suffixes e.g. "(Matalahib)"
             .replace(/[.\u2019']/g, '').replace(/[-]/g, ' ')
             .replace(/\s+/g, ' ').trim();
+    }
+
+    // ── True polygon centroid (shoelace / signed-area formula) ───────────
+    // Returns a {lat, lng} object for the largest ring of the GeoJSON layer,
+    // which is visually more accurate than getBounds().getCenter() for
+    // irregular or concave barangay shapes.
+    function _getPolygonCentroid(layer) {
+        try {
+            let coords = null;
+            layer.eachLayer(function(l) {
+                if (coords) return;
+                const g = l.feature && l.feature.geometry;
+                if (!g) return;
+                if (g.type === 'Polygon') {
+                    coords = g.coordinates[0];
+                } else if (g.type === 'MultiPolygon') {
+                    // Pick the largest outer ring by vertex count
+                    coords = g.coordinates.reduce(function(a, b) {
+                        return b[0].length > a[0].length ? b : a;
+                    })[0];
+                }
+            });
+            if (!coords || coords.length < 3) return null;
+            let A = 0, cx = 0, cy = 0;
+            for (let i = 0; i < coords.length - 1; i++) {
+                const x0 = coords[i][0],   y0 = coords[i][1];
+                const x1 = coords[i+1][0], y1 = coords[i+1][1];
+                const cross = x0 * y1 - x1 * y0;
+                A  += cross;
+                cx += (x0 + x1) * cross;
+                cy += (y0 + y1) * cross;
+            }
+            A /= 2;
+            if (Math.abs(A) < 1e-12) return null;
+            return { lat: cy / (6 * A), lng: cx / (6 * A) };
+        } catch(e) { return null; }
     }
 
     // highlightBarangayBoundary(bName, fitToPolygon)
