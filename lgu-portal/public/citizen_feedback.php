@@ -321,6 +321,7 @@ body {
     cursor: pointer;
     transition: transform .2s cubic-bezier(0.34,1.56,0.64,1);
     user-select: none;
+    overflow: hidden; /* prevent half-star drop-shadow glow from bleeding outside the star */
 }
 .hsr-star:hover { transform: scale(1.28); }
 /* Base: empty star */
@@ -359,7 +360,7 @@ body {
     top: 0; left: 0;
     width: 100%;
     height: 100%;
-    overflow: visible;
+    overflow: hidden;
     color: #f59e0b;
     -webkit-text-fill-color: #f59e0b;
     font-size: 38px;

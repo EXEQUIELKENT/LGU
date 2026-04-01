@@ -1533,25 +1533,25 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         <div class="metric-card orange">
             <div class="metric-icon-box"><i class="fas fa-exclamation-circle"></i></div>
             <div class="metric-title">New / Unread</div>
-            <div class="metric-value"><?= $statusCounts['New'] ?></div>
+            <div class="metric-value" id="metricNew"><?= $statusCounts['New'] ?></div>
             <div class="metric-sub">Awaiting review</div>
         </div>
         <div class="metric-card green">
             <div class="metric-icon-box"><i class="fas fa-check-circle"></i></div>
             <div class="metric-title">Resolved</div>
-            <div class="metric-value"><?= $statusCounts['Resolved'] ?></div>
+            <div class="metric-value" id="metricResolved"><?= $statusCounts['Resolved'] ?></div>
             <div class="metric-sub">Addressed issues</div>
         </div>
         <div class="metric-card purple">
             <div class="metric-icon-box"><i class="fas fa-star"></i></div>
             <div class="metric-title">Average Rating</div>
-            <div class="metric-value"><?= $avgRating ?><span style="font-size:16px;font-weight:500;"> / 5</span></div>
+            <div class="metric-value" id="metricAvgRating"><?= $avgRating ?><span style="font-size:16px;font-weight:500;"> / 5</span></div>
             <div class="metric-sub">Citizen satisfaction</div>
         </div>
         <div class="metric-card red">
             <div class="metric-icon-box"><i class="fas fa-search"></i></div>
             <div class="metric-title">Under Review</div>
-            <div class="metric-value"><?= $statusCounts['Under Review'] ?></div>
+            <div class="metric-value" id="metricUnderReview"><?= $statusCounts['Under Review'] ?></div>
             <div class="metric-sub">In progress</div>
         </div>
     </div>
@@ -2476,16 +2476,70 @@ async function deleteFeedback(id) {
         var data = await resp.json();
         if (data.success) {
             closeDetail();
+
+            // Track deleted item's status/rating BEFORE removing from ALL_FEEDBACK
+            var deletedItem = ALL_FEEDBACK.find(function(x){ return x.feedback_id === id; });
+
+            // Remove from DOM
             var row = document.querySelector('.fbk-row[data-id="'+id+'"]');
             if (row) row.remove();
             var mcard = document.querySelector('.fbk-mobile-card[data-id="'+id+'"]');
             if (mcard) mcard.remove();
-            // Update visible row count
+
+            // Remove from in-memory data array
+            var idx = ALL_FEEDBACK.findIndex(function(x){ return x.feedback_id === id; });
+            if (idx !== -1) ALL_FEEDBACK.splice(idx, 1);
+
+            // ── Real-time metric card updates ──────────────────────────────
+            if (deletedItem) {
+                var statusMap = { 'New': 'metricNew', 'Resolved': 'metricResolved', 'Under Review': 'metricUnderReview' };
+                var metricId = statusMap[deletedItem.status];
+                if (metricId) {
+                    var metricEl = document.getElementById(metricId);
+                    if (metricEl) metricEl.textContent = Math.max(0, parseInt(metricEl.textContent || '0') - 1);
+                }
+            }
+            // Recalculate average rating from remaining items
+            var avgEl = document.getElementById('metricAvgRating');
+            if (avgEl) {
+                if (ALL_FEEDBACK.length === 0) {
+                    avgEl.innerHTML = '0.0<span style="font-size:16px;font-weight:500;"> / 5</span>';
+                } else {
+                    var sum = ALL_FEEDBACK.reduce(function(acc, fb){ return acc + fb.rating; }, 0);
+                    var avg = (sum / ALL_FEEDBACK.length).toFixed(1);
+                    avgEl.innerHTML = avg + '<span style="font-size:16px;font-weight:500;"> / 5</span>';
+                }
+            }
+
+            // ── Update feedback list row count badge ───────────────────────
             var countEl = document.getElementById('rowCount');
             if (countEl) {
                 var visible = document.querySelectorAll('.fbk-row:not([style*="display: none"])').length;
                 countEl.textContent = visible;
             }
+
+            // ── Show empty state in desktop table if no rows remain ────────
+            var tbody = document.getElementById('feedbackTbody');
+            if (tbody && document.querySelectorAll('#feedbackTbody .fbk-row').length === 0) {
+                tbody.innerHTML =
+                    '<tr><td colspan="9">' +
+                    '<div class="empty-state">' +
+                    '<i class="fas fa-comment-slash"></i>' +
+                    '<p>No feedback has been submitted yet.</p>' +
+                    '</div></td></tr>';
+            }
+
+            // ── Show empty state in mobile list if no cards remain ─────────
+            var mobileList = document.getElementById('mobileFeedbackList');
+            if (mobileList && document.querySelectorAll('#mobileFeedbackList .fbk-mobile-card').length === 0) {
+                mobileList.innerHTML =
+                    '<div class="feedback-card">' +
+                    '<div class="empty-state">' +
+                    '<i class="fas fa-comment-slash"></i>' +
+                    '<p>No feedback has been submitted yet.</p>' +
+                    '</div></div>';
+            }
+
             showToast('success', 'Feedback #' + String(id).padStart(3,'0') + ' has been deleted.');
         } else {
             showToast('error', 'Delete failed. Please try again.');
