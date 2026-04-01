@@ -277,42 +277,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
 
 /* =======================
-   Dark Mode Variables
+   Design Variables — mirrored from citizen_feedback.php
 ========================== */
 :root {
-    --bg-primary: #ffffff;
-    --bg-secondary: rgba(255, 255, 255, 0.95);
-    --bg-tertiary: rgba(255, 255, 255, 0.9);
+    --bg-primary:   #ffffff;
+    --bg-secondary: rgba(255,255,255,.95);
+    --bg-tertiary:  rgba(255,255,255,.9);
     --text-primary: #000000;
-    --text-secondary: #333333;
-    --border-color: rgba(0, 0, 0, 0.1);
-    --shadow-color: rgba(0, 0, 0, 0.2);
-    --card-bg: #ffffff;
-    --nav-bg: rgba(255, 255, 255, 0.87);
-    --input-bg: #fff;
-    --input-border: #c0c9d1;
+    --text-secondary:#333333;
+    --border-color: rgba(0,0,0,.1);
+    --shadow-color: rgba(0,0,0,.2);
+    --card-bg:      #ffffff;
+    --nav-bg:       rgba(255,255,255,.87);
+    --accent-primary:   #2b6cb0;
+    --accent-secondary: #3762c8;
+    --accent-light:     #e6f0ff;
+    --card-border:  1.5px solid rgb(47,99,156);
+    --card-shadow:  0 4px 20px rgba(0,0,0,.45);
+    --modal-bg:           #ffffff;
+    --input-bg:           #fff;
+    --input-border:       #c0c9d1;
     --input-focus-border: #2b6cb0;
     --input-focus-shadow: rgba(43,108,176,.15);
-    --input-placeholder: #666666;
-    --modal-bg: rgba(255, 255, 255, 0.95);
+    --input-placeholder:  #666666;
 }
 
 [data-theme="dark"] {
-    --bg-primary: #1a1a1a;
-    --bg-secondary: rgba(26, 26, 26, 0.95);
-    --bg-tertiary: rgba(30, 30, 30, 0.9);
+    --bg-primary:   #1a1a1a;
+    --bg-secondary: rgba(26,26,26,.95);
+    --bg-tertiary:  rgba(30,30,30,.9);
     --text-primary: #ffffff;
-    --text-secondary: #e0e0e0;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --card-bg: rgba(30, 30, 30, 0.95);
-    --nav-bg: rgba(26, 26, 26, 0.87);
-    --input-bg: rgba(40, 40, 40, 0.9);
-    --input-border: rgba(255, 255, 255, 0.2);
+    --text-secondary:#e0e0e0;
+    --border-color: rgba(255,255,255,.1);
+    --shadow-color: rgba(0,0,0,.5);
+    --card-bg:      rgba(30,30,30,.95);
+    --nav-bg:       rgba(26,26,26,.87);
+    --accent-primary:   #4a8fd8;
+    --accent-secondary: #5a9fe8;
+    --accent-light:     #1e3a5f;
+    --card-border:  1px solid rgba(255,255,255,.08);
+    --card-shadow:  0 4px 20px rgba(0,0,0,.45);
+    --modal-bg:           rgba(24,24,30,.98);
+    --input-bg:           rgba(40,40,40,.9);
+    --input-border:       rgba(255,255,255,.2);
     --input-focus-border: #4a8fd8;
-    --input-focus-shadow: rgba(74, 143, 216, 0.25);
-    --input-placeholder: #888888;
-    --modal-bg: rgba(30, 30, 30, 0.95);
+    --input-focus-shadow: rgba(74,143,216,.25);
+    --input-placeholder:  #888888;
 }
 
 body {
@@ -433,39 +443,51 @@ body {
     }
 }
 
+
 .form-wrapper {
     position: relative;
     z-index: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 110px 16px 40px;
+    padding: 110px 20px 60px;
     flex: 1;
     min-height: 0;
 }
+
 .report-card {
     width: 100%;
-    max-width: 900px;
-    background: var(--card-bg);
-    padding: 30px;
+    max-width: 860px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 36px 40px;
     border-radius: 22px;
-    box-shadow: 0 20px 45px var(--shadow-color);
+    border: var(--card-border);
+    box-shadow: var(--card-shadow);
     transition: all .25s ease;
 }
 .report-card h2 {
     margin-bottom: 24px;
     font-size: 2rem;
     line-height: 1.25;
-    color: var(--text-primary);
+    color: var(--accent-primary);
     text-align: center;
     letter-spacing: .02em;
-    font-weight: 700;
+    font-weight: 800;
     grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 14px;
 }
+.report-card h2 i { font-size: 1.5rem; }
 .report-card form {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 18px 24px;
 }
 .input-group.full-width { grid-column: 1 / -1; }
 .input-group {
@@ -476,25 +498,35 @@ body {
     transition: all .25s ease;
 }
 .input-group label {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     margin-bottom: 6px;
-    color: var(--text-primary);
-    letter-spacing: 0.01em;
+    color: var(--text-secondary);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.input-group label .optional {
+    font-size: 10px;
+    font-weight: 500;
+    color: #94a3b8;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 5px;
 }
 .input-group select,
 .input-group input,
 .input-group textarea {
     width: 100%;
-    padding: 11px 14px;
-    border-radius: 11px;
-    border: 1.5px solid var(--input-border);
-    background: var(--input-bg);
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-tertiary);
     font-family: 'Poppins', sans-serif;
-    font-size: 15px;
-    transition: all .3s ease;
+    font-size: 14px;
+    transition: border .2s, box-shadow .2s;
     box-sizing: border-box;
     color: var(--text-primary);
+    outline: none;
 }
 .input-group select::placeholder,
 .input-group input::placeholder,
@@ -511,14 +543,18 @@ body {
 .input-group select:focus,
 .input-group textarea:focus {
     outline: none;
-    border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+}
+.input-group input:hover:not(:focus),
+.input-group select:hover:not(:focus),
+.input-group textarea:hover:not(:focus) {
+    border-color: var(--accent-secondary);
 }
 [data-theme="dark"] .input-group input:hover:not(:focus),
 [data-theme="dark"] .input-group select:hover:not(:focus),
 [data-theme="dark"] .input-group textarea:hover:not(:focus) {
-    background: rgba(50, 50, 50, 0.9);
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255,255,255,.35);
 }
 
 input[type="file"] {
@@ -535,32 +571,40 @@ input[type="file"] {
 .custom-file-wrapper {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 2px dashed var(--input-border);
-    background: var(--input-bg);
+    gap: 0;
+    padding: 24px 20px 56px;
+    border-radius: 14px;
+    border: 2px dashed var(--accent-secondary);
+    background: var(--accent-light);
     cursor: pointer;
     box-sizing: border-box;
     width: 100%;
-    transition: border-color .2s;
+    transition: background .2s, border-color .2s;
+    flex-direction: column;
+    text-align: center;
+    position: relative;
 }
-.custom-file-wrapper:hover { border-color: var(--input-focus-border); }
+.custom-file-wrapper:hover { background: rgba(55,98,200,.08); }
+[data-theme="dark"] .custom-file-wrapper { background: rgba(55,98,200,.12); }
 .custom-file-btn {
     flex-shrink: 0;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1.5px solid var(--input-border);
-    border-radius: 7px;
-    padding: 6px 14px;
+    background: var(--accent-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
-    transition: background .15s, border-color .15s;
+    transition: background .15s;
+    box-shadow: 0 2px 8px rgba(43,108,176,.25);
 }
-.custom-file-btn:hover { background: var(--bg-tertiary); border-color: var(--input-focus-border); }
+.custom-file-btn:hover { background: var(--accent-secondary); }
+.photo-drop-icon { margin-bottom: 4px; }
+.photo-drop-text { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.photo-drop-hint { font-size: 12px; color: #94a3b8; margin-top: 2px; margin-bottom: 10px; }
 .custom-file-text {
     font-size: 14px;
     color: var(--input-placeholder);
@@ -702,16 +746,17 @@ input[type="file"] {
 .btn-consent-cancel:hover { background: var(--bg-secondary); }
 
 #cameraBtn {
-    position: absolute; right: 12px; top: 50%;
-    transform: translateY(-50%);
+    position: absolute; right: 10px; bottom: 10px;
     background: #2b6cb0; border: none; color: #fff;
     font-size: 20px; width: 38px; height: 38px;
     border-radius: 50%; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    z-index: 2;
+    transition: background .15s, transform .15s;
 }
-#cameraBtn:hover { background: #245a96; }
-@media (max-width: 768px) { #cameraBtn { width: 42px; height: 42px; font-size: 22px; } }
+#cameraBtn:hover { background: #245a96; transform: scale(1.08); }
+@media (max-width: 768px) { #cameraBtn { width: 42px; height: 42px; font-size: 22px; right: 10px; bottom: 10px; } }
 #cameraHelperText { display: none; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
 @media (max-width: 768px) { #cameraHelperText { display: block; } }
 
@@ -749,12 +794,25 @@ input[type="file"] {
 
 .btn-container { display: flex; justify-content: center; gap: 0; margin-top: 0; grid-column: 1 / -1; }
 .btn-primary {
-    width: 40%; background: #2b6cb0; color: #fff;
-    border: none; border-radius: 14px; padding: 14px 38px;
-    font-weight: 600; font-size: 18px; cursor: pointer;
-    transition: all .25s; box-shadow: none; margin: 0 auto; display: block;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    width: auto;
+    min-width: 200px;
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 34px;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all .25s;
+    box-shadow: 0 4px 16px rgba(43,108,176,.35);
+    margin: 0 auto;
 }
-.btn-primary:hover { transform: translateY(-4px); background: #245a96; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(43,108,176,.5); background: linear-gradient(135deg, #245a96, #1d4ed8); }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 #submitAlertBackdrop {
     position: fixed; z-index: 5000; inset: 0;
@@ -1191,32 +1249,32 @@ input[type="file"] {
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; transition: color 0.3s ease; }
     .mobile-dark-mode-btn { position: absolute; right: 12px; width: 38px; height: 38px; z-index: 1; }
     .sidebar-nav { display: flex !important; }
-    .form-wrapper { margin-top: 20px !important; padding-left: 5vw !important; padding-right: 5vw !important; padding-top: 100px !important; }
-    .report-card { padding: 20px 8vw !important; max-width: 99vw; }
-    .report-card h2 { font-size: 30px; padding: 18px 6vw; margin-bottom: 20px; }
-    .report-card form { grid-template-columns: 1fr; gap: 19px; }
+    .form-wrapper { margin-top: 20px !important; padding-left: 20px !important; padding-right: 20px !important; padding-top: 90px !important; }
+    .report-card { padding: 22px 18px !important; max-width: 99vw; }
+    .report-card h2 { font-size: 1.6rem; padding-bottom: 12px; margin-bottom: 18px; }
+    .report-card form { grid-template-columns: 1fr; gap: 18px; }
     .input-group { margin-bottom: 0px; }
-    .input-group label { font-size: 14px; margin-bottom: 6px; }
-    .input-group input, .input-group select, .input-group textarea { padding: 11px 14px; border-radius: 11px; font-size: 15px; }
-    .btn-primary { font-size: 17px; padding: 14px 14px; margin-bottom: 20px; }
+    .input-group label { font-size: 12.5px; margin-bottom: 6px; }
+    .input-group input, .input-group select, .input-group textarea { padding: 10px 14px; border-radius: 10px; font-size: 14px; }
+    .btn-primary { font-size: 15px; padding: 13px 24px; margin-bottom: 20px; width: auto; min-width: unset; }
     .btn-container { justify-content: center; }
     .footer { padding: 40px 20px 20px; }
     .footer-content { grid-template-columns: 1fr; gap: 30px; margin-bottom: 30px; }
     .footer-bottom { flex-direction: column; gap: 20px; padding-top: 20px; margin-top: 20px; }
 }
 @media (max-width: 580px) {
-    .report-card { padding: 17px 5vw !important; }
-    .btn-primary { font-size: 17px; padding: 14px 14px; }
+    .report-card { padding: 22px 18px !important; }
+    .btn-primary { font-size: 14px; padding: 12px 24px; width: auto; }
     .btn-container { justify-content: center; }
 }
 @media (max-width: 480px) {
-    .form-wrapper { padding: 90px 3vw 24px !important; }
-    .report-card { padding: 15px 4vw !important; }
+    .form-wrapper { padding: 85px 20px 24px !important; }
+    .report-card { padding: 22px 18px !important; }
     .btn-container { flex-direction: column; gap: 0; align-items: center; }
-    .btn-primary { padding: 14px 10px; width: 90%; font-size: 17px; }
-    .input-group input, .input-group select, .input-group textarea { padding: 10px 12px; font-size: 14px; }
-    .input-group label { font-size: 13px; }
-    .report-card h2 { font-size: 26px; }
+    .btn-primary { padding: 13px 34px; width: auto; min-width: 200px; font-size: 14px; }
+    .input-group input, .input-group select, .input-group textarea { padding: 10px 14px; font-size: 14px; }
+    .input-group label { font-size: 12.5px; }
+    .report-card h2 { font-size: 1.4rem; }
 }
 @media (min-width: 769px) { .mobile-top-nav { display: none !important; } .sidebar-nav { display: none !important; } .nav { display: flex !important; } }
 @media (min-width: 769px) { #cameraBtn { display: none !important; } }
@@ -1241,7 +1299,7 @@ input[type="file"] {
 @media (max-width: 360px) {
     .mobile-clock { font-size: 12px; right: 52px; }
     .report-card h2 { font-size: 24px; }
-    .report-card { padding: 12px 3vw !important; }
+    .report-card { padding: 22px 16px !important; }
 }
 
 /* ═══════════════════════════════════════════
@@ -1255,23 +1313,23 @@ input[type="file"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 11px 14px;
-    border-radius: 11px;
-    border: 1.5px solid var(--input-border);
-    background: var(--input-bg);
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
     user-select: none;
     transition: border-color .2s, box-shadow .2s;
-    min-height: 44px;
+    min-height: 42px;
     box-sizing: border-box;
     font-family: inherit;
 }
-.prof-combobox-display:hover { border-color: var(--input-focus-border); }
+.prof-combobox-display:hover { border-color: var(--accent-secondary); }
 .prof-combobox-display.open {
-    border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 3px var(--input-focus-shadow);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
@@ -1480,6 +1538,7 @@ input[type="file"] {
                 <a href="citizencimm.php" data-i18n="nav_home">Home</a>
                 <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
                 <a href="#" class="active" data-i18n="nav_requests">Requests</a>
+                <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
                 <a href="about.php" data-i18n="nav_about">About</a>
             </div>
             <div class="nav-divider"></div>
@@ -1518,6 +1577,7 @@ input[type="file"] {
                 <li><a href="citizencimm.php" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
                 <li><a href="citizenreports.php" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
                 <li><a href="#" class="nav-link active"><span><i class="fas fa-clipboard-list"></i></span><span data-i18n="nav_requests">Requests</span></a></li>
+                <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
                 <li><a href="about.php" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
             </ul>
         </div>
@@ -1551,7 +1611,7 @@ input[type="file"] {
 
     <div class="form-wrapper">
         <div class="report-card">
-            <h2 data-i18n="form_title">Maintenance Request</h2>
+            <h2 data-i18n="form_title"></i> Submit a Request</h2>
 
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <?php if (!empty($_SESSION['last_req_id'])): ?>
@@ -1560,7 +1620,7 @@ input[type="file"] {
                 <?php endif; ?>
 
                 <div class="input-group">
-                    <label data-i18n="form_infrastructure_label">Infrastructure Type *</label>
+                    <label data-i18n="form_infrastructure_label">Infrastructure Type <span style="color:#ef4444">*</span></label>
                     <input type="hidden" id="cbInfraVal" name="infrastructure">
                     <div class="prof-combobox" id="cbInfra">
                         <div class="prof-combobox-display" id="cbInfraDisplay">
@@ -1582,45 +1642,43 @@ input[type="file"] {
                 </div>
 
                 <div class="input-group" style="position:relative;">
-                    <label for="locationInput" data-i18n="form_location_label">Location *</label>
+                    <label for="locationInput" data-i18n="form_location_label">Location <span style="color:#ef4444">*</span></label>
                     <input type="text" id="locationInput" name="location" data-i18n-placeholder="form_location_placeholder" placeholder="Click to select location" autocomplete="off" required readonly style="background: var(--input-bg); cursor:pointer;">
                     <div id="locationSuggestions" class="location-suggestions"></div>
                 </div>
 
                 <div class="input-group">
-                    <label for="name" data-i18n="form_name_label">Name (Optional)</label>
+                    <label data-i18n="form_name_label">Name <span class="optional">(Optional)</span></label>
                     <input type="text" id="name" name="name" data-i18n-placeholder="form_name_placeholder" placeholder="Your name">
                 </div>
 
                 <div class="input-group">
-                    <label for="contact_number" data-i18n="form_contact_label">Contact Number *</label>
+                    <label for="contact_number" data-i18n="form_contact_label">Contact Number <span style="color:#ef4444">*</span></label>
                     <input type="tel" id="contact_number" name="contact_number" data-i18n-placeholder="form_contact_placeholder" placeholder="09XX-XXX-XXXX" maxlength="13" required>
                 </div>
 
                 <div class="input-group full-width">
-                    <label for="req_email">Email Address <span style="font-size:11px;font-weight:400;color:#888;margin-left:4px;">(Optional)</span></label>
+                    <label>Email Address <span class="optional">(Optional)</span></label>
                     <input type="email" id="req_email" name="req_email" placeholder="your@email.com" autocomplete="email">
-                    <small style="color:#888;font-size:11px;margin-top:5px;display:block;">📧 If provided, we'll send you progress updates on your report.</small>
+                    <small style="color:#94a3b8;font-size:11px;margin-top:5px;display:block;">📧 If provided, we'll send you progress updates on your report.</small>
                 </div>
 
                 <div class="input-group full-width">
-                    <label for="issue" data-i18n="form_issue_label">Issue / Damage Description *</label>
+                    <label for="issue" data-i18n="form_issue_label">Issue / Damage Description <span style="color:#ef4444">*</span></label>
                     <textarea id="issue" name="issue" data-i18n-placeholder="form_issue_placeholder" placeholder="Describe the problem in detail..." required></textarea>
                 </div>
 
                 <div class="input-group full-width">
-                    <label for="evidence" data-i18n="form_evidence_label">Evidence - Upload Images (up to 4 images accepted)</label>
+                    <label data-i18n="form_evidence_label">Evidence Photos <span class="optional">(up to 4 images)</span></label>
                     <div class="evidence-upload-wrapper">
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple style="display:none;">
                         <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;">
                         <div class="custom-file-wrapper" id="customFileWrapper" onclick="document.getElementById('evidence').click()">
-                            <button type="button" class="custom-file-btn" id="customFileBtn"
-                                data-i18n="form_file_choose"
-                                onclick="event.stopPropagation();document.getElementById('evidence').click()">Choose File(s)</button>
-                            <span class="custom-file-text" id="customFileText"
-                                data-i18n-id="form_file_none">No file chosen</span>
+                            <div class="photo-drop-icon"><i class="fas fa-cloud-upload-alt" style="font-size:2.4rem;color:var(--accent-secondary);"></i></div>
+                            <div class="photo-drop-text" id="customFileText" data-i18n-id="form_file_none">Click or drag to upload images</div>
+                            <div class="photo-drop-hint">JPG, PNG, WEBP · Max 4 files</div>
                         </div>
-                        <button type="button" id="cameraBtn" title="Capture using camera" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);">📷</button>
+                        <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
                     <small id="cameraHelperText" data-i18n="form_camera_helper">Tap 📷 to capture</small>
                     <div id="image-preview" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
@@ -1643,9 +1701,12 @@ input[type="file"] {
                 <input type="hidden" id="district_field" name="district">
 
                 <div class="btn-container">
-                    <button type="submit" class="btn-primary" id="submit-btn" data-i18n="form_submit_button">Submit Request</button>
+                    <button type="submit" class="btn-primary" id="submit-btn" data-i18n="form_submit_button">
+                        <i class="fas fa-paper-plane"></i> Submit Request
+                    </button>
                 </div>
             </form>
+        </div>
         </div>
     </div>
 
@@ -2742,7 +2803,7 @@ input[type="file"] {
         { name: "Claro", lat: 14.6317, lng: 121.0641, district: "District 3" },
         { name: "Dioquino Zobel", lat: 14.6197, lng: 121.0651, district: "District 3" },
         { name: "Duyan-Duyan", lat: 14.6300, lng: 121.0671, district: "District 3" },
-        { name: "E. Rodriguez", lat: 14.6160, lng: 121.0497, district: "District 3" },
+        { name: "E. Rodriguez", lat: 14.6264, lng: 121.0521, district: "District 3" },
         { name: "East Kamias", lat: 14.6323, lng: 121.0557, district: "District 3" },
         { name: "Escopa I", lat: 14.6241, lng: 121.0737, district: "District 3" },
         { name: "Escopa II", lat: 14.6241, lng: 121.0744, district: "District 3" },
@@ -2763,7 +2824,7 @@ input[type="file"] {
         { name: "San Roque", lat: 14.6196, lng: 121.0623, district: "District 3" },
         { name: "Silangan", lat: 14.6284, lng: 121.0593, district: "District 3" },
         { name: "Socorro", lat: 14.6168, lng: 121.0583, district: "District 3" },
-        { name: "St. Ignatius", lat: 14.6397, lng: 121.0769, district: "District 3" },
+        { name: "St. Ignatius", lat: 14.6128, lng: 121.0729, district: "District 3" },
         { name: "Tagumpay", lat: 14.6222, lng: 121.0639, district: "District 3" },
         { name: "Ugong Norte", lat: 14.5974, lng: 121.0714, district: "District 3" },
         { name: "Villa Maria Clara", lat: 14.6161, lng: 121.0687, district: "District 3" },
@@ -2779,7 +2840,7 @@ input[type="file"] {
         { name: "Doña Imelda", lat: 14.6130, lng: 121.0172, district: "District 4" },
         { name: "Doña Josefa", lat: 14.6193, lng: 121.0069, district: "District 4" },
         { name: "Horseshoe", lat: 14.6125, lng: 121.0421, district: "District 4" },
-        { name: "Immaculate Conception", lat: 14.6098, lng: 121.0640, district: "District 4" },
+        { name: "Immaculate Conception", lat: 14.6224, lng: 121.0443, district: "District 4" },
         { name: "Kalusugan", lat: 14.6225, lng: 121.0216, district: "District 4" },
         { name: "Kamuning", lat: 14.6272, lng: 121.0396, district: "District 4" },
         { name: "Kaunlaran", lat: 14.6156, lng: 121.0438, district: "District 4" },
@@ -2795,7 +2856,7 @@ input[type="file"] {
         { name: "Pinyahan", lat: 14.6377, lng: 121.048, district: "District 4" },
         { name: "Roxas", lat: 14.6274, lng: 121.0221, district: "District 4" },
         { name: "Sacred Heart", lat: 14.6325, lng: 121.0391, district: "District 4" },
-        { name: "San Isidro Galas", lat: 14.6162, lng: 121.0518, district: "District 4" },
+        { name: "San Isidro Galas", lat: 14.6129, lng: 121.0083, district: "District 4" },
         { name: "San Martin de Porres", lat: 14.6165, lng: 121.0493, district: "District 4" },
         { name: "San Vicente", lat: 14.6527, lng: 121.0559, district: "District 4" },
         { name: "Santol", lat: 14.6112, lng: 121.0144, district: "District 4" },
@@ -2805,8 +2866,8 @@ input[type="file"] {
         { name: "Tatalon", lat: 14.623, lng: 121.0149, district: "District 4" },
         { name: "Teachers Village East", lat: 14.6453, lng: 121.0587, district: "District 4" },
         { name: "Teachers Village West", lat: 14.6425, lng: 121.0564, district: "District 4" },
-        { name: "U.P. Campus", lat: 14.6517, lng: 121.0650, district: "District 4" },
-        { name: "U.P. Village", lat: 14.6495, lng: 121.0625, district: "District 4" },
+        { name: "U.P. Campus", lat: 14.6541, lng: 121.0641, district: "District 4" },
+        { name: "U.P. Village", lat: 14.6490, lng: 121.0564, district: "District 4" },
         { name: "Valencia", lat: 14.6102, lng: 121.0375, district: "District 4" },
         // DISTRICT 5 (15 barangays — Novaliches/Fairview area)
         { name: "Bagbag", lat: 14.6983, lng: 121.0289, district: "District 5" },
@@ -2819,7 +2880,6 @@ input[type="file"] {
         { name: "North Fairview", lat: 14.7121, lng: 121.0602, district: "District 5" },
         { name: "Novaliches Proper", lat: 14.7195, lng: 121.0365, district: "District 5" },
         { name: "Pasong Putik Proper", lat: 14.7351, lng: 121.0601, district: "District 5" },
-        { name: "Regalado", lat: 14.7224, lng: 121.0605, district: "District 5" },
         { name: "San Agustin", lat: 14.729, lng: 121.0359, district: "District 5" },
         { name: "San Bartolome", lat: 14.7059, lng: 121.0315, district: "District 5" },
         { name: "Santa Lucia", lat: 14.7076, lng: 121.0505, district: "District 5" },
@@ -2827,7 +2887,7 @@ input[type="file"] {
         // DISTRICT 6 (11 barangays — Banlat/Balintawak/Tandang Sora area)
         { name: "Apolonio Samson", lat: 14.6542, lng: 121.0093, district: "District 6" },
         { name: "Baesa", lat: 14.6681, lng: 121.0147, district: "District 6" },
-        { name: "Balon Bato", lat: 14.7015, lng: 121.0200, district: "District 6" },
+        { name: "Balon Bato", lat: 14.6632, lng: 121.0029, district: "District 6" },
         { name: "Culiat", lat: 14.6669, lng: 121.0535, district: "District 6" },
         { name: "New Era", lat: 14.6646, lng: 121.0604, district: "District 6" },
         { name: "Pasong Tamo", lat: 14.6753, lng: 121.0507, district: "District 6" },
@@ -3179,11 +3239,18 @@ input[type="file"] {
     function updateDistrictInfo(district) { if (districtInfo) { districtInfo.textContent = `📌 ${district}`; districtInfo.style.display = 'block'; } }
     // Normalize name for matching: lowercase, strip accents/dots/dashes
     function _normBrgyName(n) {
-        return (n || '').toLowerCase()
+        let s = (n || '').toLowerCase()
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/\s*\([^)]*\)/g, '')          // strip parenthetical suffixes e.g. "(Matalahib)"
             .replace(/[.\u2019']/g, '').replace(/[-]/g, ' ')
             .replace(/\s+/g, ' ').trim();
+        // Normalise OSM name variants so GeoJSON features match PHP barangay names
+        s = s.replace(/^saint\b/, 'st');            // "Saint Ignatius" -> "st ignatius"
+        s = s.replace(/\bsr\b\.?$/, '').trim();   // "e rodriguez sr" -> "e rodriguez"
+        s = s.replace(/concepcion$/, 'conception');  // "Immaculate Concepcion" -> "Immaculate Conception"
+        s = s.replace(/^up campus$/, 'up campus');   // already normalised — kept for clarity
+        s = s.replace(/^up village$/, 'up village'); // same
+        return s;
     }
 
     // ── True polygon centroid (shoelace / signed-area formula) ───────────

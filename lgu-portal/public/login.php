@@ -2678,6 +2678,7 @@ body:has(#resetPasswordModal) {
             <a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="nav_home">Home</a>
             <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
             <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
             <a href="<?= $BASE_URL ?>about.php" data-i18n="nav_about">About</a>
         </div>
         
@@ -2719,6 +2720,7 @@ body:has(#resetPasswordModal) {
             <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
             <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>

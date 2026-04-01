@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 27, 2026 at 08:13 AM
+-- Generation Time: Apr 01, 2026 at 12:21 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -22,6 +22,29 @@ SET time_zone = "+00:00";
 --
 
 -- --------------------------------------------------------
+
+--
+-- Table structure for table `citizen_feedback`
+--
+
+CREATE TABLE `citizen_feedback` (
+  `feedback_id` int(10) UNSIGNED NOT NULL,
+  `full_name` varchar(120) NOT NULL DEFAULT 'Citizen',
+  `contact_number` varchar(20) DEFAULT NULL,
+  `email` varchar(120) DEFAULT NULL,
+  `feedback_type` enum('Concern','Acknowledgement','Improvement','Complaint','Suggestion') NOT NULL DEFAULT 'Concern',
+  `title` varchar(200) NOT NULL,
+  `description` text NOT NULL,
+  `rating` tinyint(4) NOT NULL DEFAULT 3 COMMENT '1–5 stars',
+  `infrastructure` varchar(200) DEFAULT NULL COMMENT 'Infrastructure / facility being addressed',
+  `address` text DEFAULT NULL COMMENT 'Free-text address from map picker',
+  `coordinates` varchar(60) DEFAULT NULL COMMENT 'lat,lng from Leaflet',
+  `rep_id` int(11) DEFAULT NULL COMMENT 'Optional reference to archive report rep_id',
+  `status` enum('New','Under Review','Resolved','Dismissed') NOT NULL DEFAULT 'New',
+  `employee_notes` text DEFAULT NULL COMMENT 'Internal notes by employee',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `employees`
@@ -63,7 +86,7 @@ INSERT INTO `employees` (`user_id`, `first_name`, `last_name`, `profile_picture`
 (3, 'Jhoven', 'Las-ay', NULL, 'jhovenjadelas@gmail.com', 'Office Staff', '$2y$10$UYCT9LIpZ/ds4RH5gU3OCO6uhqbWeO5bqXbKL7hHzXOaf2.VAO1Ni', 0, 1, NULL, NULL, '2026-02-03 09:32:17', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (5, 'Steven', 'Valera', NULL, 'stevennicole30@gmail.com', 'Engineer', '$2y$10$Yf48Xq/C6DnXo49WzPdRP.hbmQ1NjsTINi4.rXnrvyhnYSpHO0XPe', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (8, 'Steph', 'Sagun', NULL, 'stephanie.saguns@gmail.com', 'Super Admin', '$2y$10$IJVWo8Rq6kJq1QAOFYzW3eZB6UsBrVJe6mY7bdESPtgUz/Ld0XwE6', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
-(13, 'Exequiel', 'Bartolome', NULL, 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-02-02 01:42:22', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
+(13, 'Exequiel', 'Bartolome', NULL, 'bartolomstolome@gmail.com', 'Engineer', '$2y$10$nGULzfEnsv7xugNhr33tPeMbH3KS.qCie3Dq1CA4GtzQ/oukDmVFa', 0, 1, NULL, NULL, '2026-02-02 01:42:22', NULL, NULL, 0, NULL, '2026-03-27 15:40:51', NULL, NULL, 0, 0, NULL, NULL),
 (14, 'Warv', 'Villa', NULL, 'villawarv@gmail.com', 'Super Admin', '$2y$10$5VxEbVQGo6bZLhJ4TGSKVutVoH6/uzXnEm.FmlKovuZHQVbdUbUhS', 0, 1, NULL, NULL, '2026-02-03 09:33:18', NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (15, 'Exequiel', 'Bartolome', NULL, 'bartolomeexequielkent2003@gmail.com', 'Super Admin', '$2y$10$NnT5QBl0A66tRTJoYAgvc.NggVXq6jyym0g.WOUKkY4ddT4Zhl76S', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
 (16, 'Marycarl', 'Dagondong', NULL, 'marycarldagondong28@gmail.com', 'Super Admin', '$2y$10$nxvAvmwcwXVD.08n0fT.7eoyDHUCArLsH4IYgWXm/OM6xqT79vvcK', 0, 1, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL),
@@ -104,7 +127,7 @@ CREATE TABLE `engineer_profiles` (
 --
 
 INSERT INTO `engineer_profiles` (`id`, `user_id`, `full_name`, `gender`, `date_of_birth`, `address`, `contact_number`, `engineering_discipline`, `department`, `years_of_experience`, `areas_of_specialization`, `skill_structural_design`, `skill_site_inspection`, `skill_project_planning`, `cad_software`, `created_at`, `updated_at`, `district`, `address_lat`, `address_lng`) VALUES
-(1, 13, 'Exequiel Kent Tarroza Bartolome', 'Male', '2003-11-20', 'Bagong Silang Caloocan City', '0921-212-1212', 'Civil', 'Engineering Office', 1, 'Roads', 1, 0, 1, 'Civil 3D', '2026-03-17 13:38:33', '2026-03-17 13:38:33', NULL, NULL, NULL),
+(1, 13, 'Exequiel Kent Tarroza Bartolome', 'Male', '2003-11-20', 'Bagong Silang Caloocan City', '0921-212-1212', 'Civil', 'Engineering Office', 1, 'Roads', 1, 0, 1, 'Civil 3D', '2026-03-17 13:38:33', '2026-03-27 07:40:51', 'District 6', NULL, NULL),
 (2, 22, 'Micheal De Santa', 'Male', '1984-10-22', 'Quezon City', '0921-212-2212', 'Civil', 'Infrastructure Unit', 1, 'Street Lights,Drainage,Public Facilities', 0, 0, 1, 'AutoCAD', '2026-03-19 17:59:59', '2026-03-19 17:59:59', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
@@ -142,6 +165,19 @@ INSERT INTO `evidence_images` (`img_id`, `req_id`, `img_path`, `uploaded_at`) VA
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `feedback_images`
+--
+
+CREATE TABLE `feedback_images` (
+  `img_id` int(10) UNSIGNED NOT NULL,
+  `feedback_id` int(10) UNSIGNED NOT NULL,
+  `img_path` varchar(300) NOT NULL,
+  `uploaded_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `login_logs`
 --
 
@@ -156,8 +192,6 @@ CREATE TABLE `login_logs` (
   `otp_resends` int(11) DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `maintenance_schedule`
@@ -469,11 +503,11 @@ INSERT INTO `requests` (`req_id`, `infrastructure`, `location`, `issue`, `contac
 (116, 'Roads', 'Pasong Tamo, Quezon City', 'nasira daaan', '09875432456', 'Steph Dela cruz', 'Pending', '14.6845,121.0389', '2026-02-23 08:12:29', NULL, 'District 6'),
 (117, 'Street Lights', 'Project 7, N.S. Amoranto (Gintong Silahis), Quezon City, Miller Avenue', 'natumba street ligts banda dito sa Project 7', '09654432171', 'Jhoven Bartolome', 'Pending', '14.6391,121.0294', '2026-02-23 08:14:48', NULL, 'District 1'),
 (118, 'Public Facilities', 'Pasong Tamo, Sikatuna Village, Quezon City, Kasay-Kasay Street', 'nasira  cubicle sa pasong tamo public CR', '09856345143', 'Marisol Valencia', 'Pending', '14.6767,121.0623', '2026-02-23 08:18:35', NULL, 'District 4'),
-(119, 'Drainage', 'Libis, Quezon City', 'nagbara sa dami ng basura', '09786543456', 'Jeffrey Las-ay', 'Pending', '14.6345,121.0612', '2026-02-23 08:21:43', NULL, 'District 3'),
+(119, 'Drainage', 'Libis, Quezon City', 'nagbara sa dami ng basura', '09786543456', 'Jeffrey Las-ay', 'Approved', '14.6345,121.0612', '2026-02-23 08:21:43', NULL, 'District 3'),
 (120, 'Electrical', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'Bumagsak wiring dito sa project 8 santo domango', '09765432111', 'Marycarl Mallari', 'Pending', '14.6467,121.0334', '2026-02-23 08:26:51', NULL, 'District 1'),
 (121, 'Waiting Shed', 'Pansol, Krus Na Ligas, Quezon City, Montalban Street', 'bumagsak  yung bubong ng waiting shed sa panson', '09785634522', 'Jasmin Padilla', 'Pending', '14.6543,121.0721', '2026-02-23 08:31:42', NULL, 'District 4'),
 (123, 'traffic light', 'Project 8, Santo Domingo (Matalahib), Quezon City, Mindanao Avenue', 'nasira traffic light', '09123456785', 'Hannah Roxas', 'Pending', '14.6467,121.0330', '2026-02-23 09:07:47', NULL, 'District 1'),
-(124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Pending', '14.6845,121.0395', '2026-02-23 09:16:42', NULL, 'District 6'),
+(124, 'Roads', 'Pasong Tamo, Quezon City', 'sira daanan banda dito sa pasong tamo.', '09765536274', 'Mark Santilan', 'Approved', '14.6845,121.0395', '2026-02-23 09:16:42', NULL, 'District 6'),
 (125, 'Traffic light', 'Santo Domingo (Matalahib), Quezon City', 'The Traffic light in the Santo domingo is broken.', '09009356577', 'Kent Bartolome', 'Pending', '14.6756,121.0309', '2026-02-23 09:39:54', NULL, 'District 1');
 
 -- --------------------------------------------------------
@@ -516,7 +550,7 @@ CREATE TABLE `request_ai_analysis` (
 CREATE TABLE `request_resolutions` (
   `res_id` int(10) UNSIGNED NOT NULL,
   `req_id` int(10) UNSIGNED NOT NULL,
-  `status` enum('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion','Pending Admin Approval') NOT NULL DEFAULT 'Approved',
+  `status` enum('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion') NOT NULL DEFAULT 'Approved',
   `res_note` text DEFAULT NULL,
   `resolved_by` int(10) UNSIGNED NOT NULL,
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -525,9 +559,19 @@ CREATE TABLE `request_resolutions` (
   `highlight_days` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `citizen_feedback`
+--
+ALTER TABLE `citizen_feedback`
+  ADD PRIMARY KEY (`feedback_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created` (`created_at`),
+  ADD KEY `idx_rep_id` (`rep_id`);
 
 --
 -- Indexes for table `employees`
@@ -549,6 +593,13 @@ ALTER TABLE `engineer_profiles`
 ALTER TABLE `evidence_images`
   ADD PRIMARY KEY (`img_id`),
   ADD KEY `fk_evidence_request` (`req_id`);
+
+--
+-- Indexes for table `feedback_images`
+--
+ALTER TABLE `feedback_images`
+  ADD PRIMARY KEY (`img_id`),
+  ADD KEY `idx_fbk_id` (`feedback_id`);
 
 --
 -- Indexes for table `login_logs`
@@ -654,6 +705,12 @@ ALTER TABLE `request_resolutions`
 --
 
 --
+-- AUTO_INCREMENT for table `citizen_feedback`
+--
+ALTER TABLE `citizen_feedback`
+  MODIFY `feedback_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
@@ -672,10 +729,16 @@ ALTER TABLE `evidence_images`
   MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=127;
 
 --
+-- AUTO_INCREMENT for table `feedback_images`
+--
+ALTER TABLE `feedback_images`
+  MODIFY `img_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `login_logs`
 --
 ALTER TABLE `login_logs`
-  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
+  MODIFY `log_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=164;
 
 --
 -- AUTO_INCREMENT for table `maintenance_schedule`
@@ -693,7 +756,7 @@ ALTER TABLE `materials_equipment_costs`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=750;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=798;
 
 --
 -- AUTO_INCREMENT for table `pending_registrations`
@@ -711,7 +774,7 @@ ALTER TABLE `repair_archive`
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `rep_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `report_daily_images`
@@ -741,13 +804,13 @@ ALTER TABLE `requests`
 -- AUTO_INCREMENT for table `request_ai_analysis`
 --
 ALTER TABLE `request_ai_analysis`
-  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `analysis_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `request_resolutions`
 --
 ALTER TABLE `request_resolutions`
-  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `res_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables
