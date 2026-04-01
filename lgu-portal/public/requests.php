@@ -2314,7 +2314,13 @@ tbody td {
             </thead>
             <tbody>
             <tr id="noRequestResult" style="display:none;">
-                <td colspan="8" style="text-align:center;padding:48px 20px;font-weight:500;color:var(--text-secondary);">No matching data or result</td>
+                <td colspan="8" style="text-align:center;padding:48px 20px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                        <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                        <div style="font-size:15px;font-weight:700;">No matching results found</div>
+                        <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or type filter</div>
+                    </div>
+                </td>
             </tr>
             <?php if ($result && $result->num_rows > 0): ?>
                 <?php
@@ -2393,6 +2399,13 @@ tbody td {
                 if (!empty($evidenceImages))
                     $images = array_values(array_filter(explode(',', $evidenceImages)));
         ?>
+        <div id="noMobileRequestResult" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching results found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or type filter</div>
+            </div>
+        </div>
         <div class="request-card"
             data-req-id="<?= $row['req_id'] ?>"
             data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
@@ -3508,6 +3521,11 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.display = (dateHidden || (!match && keyword)) ? 'none' : '';
             if (match && keyword) searchable.forEach(el => highlight(el, keyword));
         });
+        const noMob = document.getElementById('noMobileRequestResult');
+        if (noMob) {
+            const visibleCards = document.querySelectorAll('.request-card:not([style*="display: none"]):not([style*="display:none"])').length;
+            noMob.style.display = keyword && visibleCards === 0 ? '' : 'none';
+        }
     });
 });
 

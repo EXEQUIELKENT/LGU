@@ -50,7 +50,7 @@ $conn->query("
       `feedback_type`  ENUM('Concern','Acknowledgement','Improvement','Complaint','Suggestion') NOT NULL DEFAULT 'Concern',
       `title`          VARCHAR(200) NOT NULL,
       `description`    TEXT         NOT NULL,
-      `rating`         TINYINT      NOT NULL DEFAULT 3,
+      `rating`         DECIMAL(3,1) NOT NULL DEFAULT 3.0,
       `infrastructure` VARCHAR(200) DEFAULT NULL,
       `address`        TEXT         DEFAULT NULL,
       `coordinates`    VARCHAR(60)  DEFAULT NULL,
@@ -62,6 +62,8 @@ $conn->query("
       PRIMARY KEY (`feedback_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 ");
+// Migrate existing tables: promote rating from TINYINT to DECIMAL(3,1) for half-star support
+@$conn->query("ALTER TABLE `citizen_feedback` MODIFY COLUMN `rating` DECIMAL(3,1) NOT NULL DEFAULT 3.0");
 $conn->query("
     CREATE TABLE IF NOT EXISTS `feedback_images` (
       `img_id`      INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -295,38 +297,81 @@ body {
 }
 .fbk-group textarea { resize: vertical; min-height: 100px; }
 
-/* ── Star rating redesign ── */
+/* ── Half-star rating ── */
 .star-rating-outer {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-.star-rating-wrap {
+.hsr-wrap {
     display: flex;
-    flex-direction: row-reverse;
-    gap: 4px;
-    justify-content: flex-end;
+    flex-direction: row;
+    gap: 2px;
+    align-items: center;
 }
-.star-rating-wrap input[type="radio"] { display: none; }
-.star-rating-wrap label {
-    font-size: 36px;
-    color: #d1d5db;
-    cursor: pointer;
-    transition: color .18s, transform .2s cubic-bezier(0.34,1.56,0.64,1);
+.hsr-star {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    font-size: 38px;
     line-height: 1;
-    text-transform: none;
-    letter-spacing: 0;
-    font-weight: 400;
-    filter: drop-shadow(0 0 0 transparent);
+    cursor: pointer;
+    transition: transform .2s cubic-bezier(0.34,1.56,0.64,1);
+    user-select: none;
 }
-.star-rating-wrap label:hover,
-.star-rating-wrap label:hover ~ label,
-.star-rating-wrap input:checked ~ label {
+.hsr-star:hover { transform: scale(1.28); }
+/* Base: empty star */
+.hsr-star::before {
+    content: '☆';
+    color: #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: color .18s;
+}
+/* Full star */
+.hsr-star[data-fill="full"]::before {
+    content: '★';
     color: #f59e0b;
-    filter: drop-shadow(0 2px 6px rgba(245,158,11,.4));
+    filter: drop-shadow(0 2px 6px rgba(245,158,11,.45));
+    background: none;
+    -webkit-text-fill-color: #f59e0b;
 }
-.star-rating-wrap label:hover { transform: scale(1.3) rotate(-5deg); }
-.star-rating-wrap input:checked + label { transform: scale(1.15); }
+/* Half star — gray ★ behind via ::before, gold ★ clipped to 50% via ::after */
+.hsr-star[data-fill="half"]::before {
+    content: '★';
+    color: #d1d5db;
+    -webkit-text-fill-color: #d1d5db;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: none;
+}
+.hsr-star[data-fill="half"]::after {
+    content: '★';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    color: #f59e0b;
+    -webkit-text-fill-color: #f59e0b;
+    font-size: 38px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 6px rgba(245,158,11,.45));
+    clip-path: inset(0 50% 0 0);
+}
 .star-rating-bar {
     display: flex;
     gap: 6px;
@@ -351,7 +396,7 @@ body {
     color: var(--text-secondary);
     font-weight: 600;
     white-space: nowrap;
-    min-width: 120px;
+    min-width: 130px;
 }
 
 /* ── Feedback type cards ── */
@@ -364,13 +409,15 @@ body {
     .fbk-type-wrap { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 480px) {
-    .fbk-type-wrap { grid-template-columns: repeat(3, 1fr); gap: 7px; }
-    .fbk-type-wrap label { padding: 10px 5px; font-size: 10px; gap: 4px; border-radius: 10px; }
-    .fbk-type-icon { font-size: 1.2rem; }
+    .fbk-type-wrap { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .fbk-type-wrap label { padding: 10px 6px; font-size: 11px; gap: 4px; border-radius: 10px; }
+    .fbk-type-wrap label:last-of-type { grid-column: 1 / -1; max-width: calc(50% - 4px); margin: 0 auto; width: 100%; }
+    .fbk-type-icon { font-size: 1.3rem; }
 }
 @media (max-width: 380px) {
     .fbk-type-wrap { grid-template-columns: repeat(2, 1fr); }
     .fbk-type-wrap label { padding: 10px 6px; font-size: 11px; }
+    .fbk-type-wrap label:last-of-type { grid-column: 1 / -1; max-width: calc(50% - 4px); margin: 0 auto; width: 100%; }
     .fbk-type-icon { font-size: 1.3rem; }
 }
 .fbk-type-wrap input[type="radio"] { display: none; }
@@ -475,6 +522,8 @@ body {
     padding: 5px 12px;
     border-radius: 8px;
     display: none;
+    align-self: flex-start;
+    width: fit-content;
 }
 [data-theme="dark"] .map-coords-badge { background: #14532d; border-color: #4ade80; color: #86efac; }
 
@@ -1115,7 +1164,6 @@ body {
     .fbk-grid .full { grid-column: 1; }
     .fbk-hero h1 { font-size: 2rem; }
     .map-section { grid-column: 1; }
-    .fbk-card-title { font-size: 1.6rem; }
 }
 </style>
 </head>
@@ -1280,14 +1328,15 @@ body {
                 </div>
 
                 <div class="fbk-group">
-                    <label>Star Rating <span style="color:#ef4444">*</span></label>
+                    <label>Star Rating <span style="color:#ef4444">*</span> <span class="optional">hover left/right half of a star for .5 values</span></label>
                     <div class="star-rating-outer">
-                        <div class="star-rating-wrap">
-                            <?php for ($s = 5; $s >= 1; $s--): ?>
-                            <input type="radio" name="rating" id="star<?= $s ?>" value="<?= $s ?>"
-                                   <?= (($POST['rating'] ?? 3) == $s) ? 'checked' : ($s === 3 ? 'checked' : '') ?>>
-                            <label for="star<?= $s ?>" title="<?= $s ?> star<?= $s > 1 ? 's' : '' ?>">&#9733;</label>
-                            <?php endfor; ?>
+                        <input type="hidden" name="rating" id="ratingVal" value="<?= htmlspecialchars($_POST['rating'] ?? '3') ?>">
+                        <div class="hsr-wrap" id="hsrWrap">
+                            <span class="hsr-star" data-star="1" data-fill="full"></span>
+                            <span class="hsr-star" data-star="2" data-fill="full"></span>
+                            <span class="hsr-star" data-star="3" data-fill="full"></span>
+                            <span class="hsr-star" data-star="4" data-fill="empty"></span>
+                            <span class="hsr-star" data-star="5" data-fill="empty"></span>
                         </div>
                         <div class="star-rating-bar">
                             <div class="star-rating-bar-track">
@@ -1671,26 +1720,72 @@ document.addEventListener('keydown', function(e){
     });
 })();
 
-// ── Star rating ──────────────────────────────────────────────────────────────
+// ── Half-star rating ─────────────────────────────────────────────────────────
 (function(){
-    const hints = ['','Very Poor','Poor','Average','Good','Excellent'];
-    const colors = ['','#ef4444','#f97316','#f59e0b','#22c55e','#16a34a'];
-    const fill = document.getElementById('starBarFill');
-    const hint = document.getElementById('starHint');
-    document.querySelectorAll('.star-rating-wrap input[type="radio"]').forEach(function(r){
-        r.addEventListener('change', function(){
-            const v = parseInt(r.value);
-            if (hint) hint.textContent = v + ' / 5 — ' + hints[v];
-            if (fill) { fill.style.width = (v/5*100) + '%'; fill.style.background = 'linear-gradient(90deg,'+colors[v]+','+colors[v]+'cc)'; }
+    var HINTS = {
+        0.5:'Very Poor', 1:'Very Poor', 1.5:'Poor', 2:'Poor',
+        2.5:'Below Average', 3:'Average', 3.5:'Above Average',
+        4:'Good', 4.5:'Very Good', 5:'Excellent'
+    };
+    var COLORS = {
+        0.5:'#ef4444', 1:'#ef4444', 1.5:'#f97316', 2:'#f97316',
+        2.5:'#f59e0b', 3:'#f59e0b', 3.5:'#84cc16',
+        4:'#22c55e', 4.5:'#16a34a', 5:'#16a34a'
+    };
+    var hiddenInput = document.getElementById('ratingVal');
+    var barFill     = document.getElementById('starBarFill');
+    var hintEl      = document.getElementById('starHint');
+    var stars       = Array.from(document.querySelectorAll('#hsrWrap .hsr-star'));
+    var wrap        = document.getElementById('hsrWrap');
+    if (!wrap || !stars.length) return;
+
+    var currentRating = parseFloat(hiddenInput ? hiddenInput.value : '3') || 3;
+
+    function renderStars(val) {
+        stars.forEach(function(star) {
+            var n = parseFloat(star.dataset.star);
+            if (val >= n)           star.dataset.fill = 'full';
+            else if (val >= n - 0.5) star.dataset.fill = 'half';
+            else                    star.dataset.fill = 'empty';
+        });
+    }
+
+    function updateBar(val) {
+        var col = COLORS[val] || '#f59e0b';
+        if (barFill) {
+            barFill.style.width      = (val / 5 * 100) + '%';
+            barFill.style.background = 'linear-gradient(90deg,' + col + ',' + col + 'cc)';
+        }
+        if (hintEl) hintEl.textContent = val + ' / 5 — ' + (HINTS[val] || '');
+    }
+
+    function getVal(star, e) {
+        var rect = star.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var n = parseFloat(star.dataset.star);
+        return x < rect.width / 2 ? n - 0.5 : n;
+    }
+
+    stars.forEach(function(star) {
+        star.addEventListener('mousemove', function(e) {
+            renderStars(getVal(star, e));
+        });
+        star.addEventListener('click', function(e) {
+            currentRating = getVal(star, e);
+            if (hiddenInput) hiddenInput.value = currentRating;
+            renderStars(currentRating);
+            updateBar(currentRating);
+            try { localStorage.setItem('fbk_rating', currentRating); } catch(ex){}
         });
     });
-    // init
-    const checked = document.querySelector('.star-rating-wrap input[type="radio"]:checked');
-    if (checked) {
-        const v = parseInt(checked.value);
-        if (hint) hint.textContent = v + ' / 5 — ' + hints[v];
-        if (fill) fill.style.width = (v/5*100) + '%';
-    }
+
+    wrap.addEventListener('mouseleave', function() {
+        renderStars(currentRating);
+    });
+
+    // Initialise display
+    renderStars(currentRating);
+    updateBar(currentRating);
 })();
 
 // ── Submit confirmation modal ─────────────────────────────────────────────────
@@ -1864,18 +1959,13 @@ function clearRefSelect() {}
             localStorage.setItem(key, input.value);
         });
     });
-    // Rating radio buttons
+    // Rating restore (hidden input + half-star widget)
     var savedRating = localStorage.getItem('fbk_rating');
-    if (savedRating) {
-        var ratingRadio = form.querySelector('input[name="rating"][value="' + savedRating + '"]');
-        if (ratingRadio) {
-            ratingRadio.checked = true;
-            ratingRadio.dispatchEvent(new Event('change'));
-        }
+    if (savedRating !== null) {
+        var ratingInput = document.getElementById('ratingVal');
+        if (ratingInput) ratingInput.value = savedRating;
+        // The half-star widget reads ratingVal on init, so no extra dispatch needed
     }
-    form.querySelectorAll('input[name="rating"]').forEach(function(r) {
-        r.addEventListener('change', function() { localStorage.setItem('fbk_rating', r.value); });
-    });
     // Feedback type radio buttons
     var savedType = localStorage.getItem('fbk_feedback_type');
     if (savedType) {

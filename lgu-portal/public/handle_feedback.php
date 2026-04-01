@@ -29,7 +29,7 @@ $conn->query("
       `feedback_type`  ENUM('Concern','Acknowledgement','Improvement','Complaint','Suggestion') NOT NULL DEFAULT 'Concern',
       `title`          VARCHAR(200) NOT NULL,
       `description`    TEXT         NOT NULL,
-      `rating`         TINYINT      NOT NULL DEFAULT 3,
+      `rating`         DECIMAL(3,1) NOT NULL DEFAULT 3.0,
       `infrastructure` VARCHAR(200) DEFAULT NULL,
       `address`        TEXT         DEFAULT NULL,
       `coordinates`    VARCHAR(60)  DEFAULT NULL,
@@ -41,6 +41,8 @@ $conn->query("
       PRIMARY KEY (`feedback_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 ");
+// Migrate existing tables: promote rating from TINYINT to DECIMAL(3,1) for half-star support
+@$conn->query("ALTER TABLE `citizen_feedback` MODIFY COLUMN `rating` DECIMAL(3,1) NOT NULL DEFAULT 3.0");
 $conn->query("
     CREATE TABLE IF NOT EXISTS `feedback_images` (
       `img_id`      INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -60,7 +62,8 @@ $email          = trim($_POST['email'] ?? '');
 $feedback_type  = trim($_POST['feedback_type'] ?? 'Concern');
 $title          = trim($_POST['title'] ?? '');
 $description    = trim($_POST['description'] ?? '');
-$rating         = (int)($_POST['rating'] ?? 3);
+// FIX: Cast to float (not int) so half-star values like 2.5 are preserved
+$rating         = (float)($_POST['rating'] ?? 3.0);
 $infrastructure = trim($_POST['infrastructure'] ?? '');
 $address        = trim($_POST['address'] ?? '');
 $coord_lat      = trim($_POST['coord_lat'] ?? '');
@@ -70,7 +73,9 @@ $rep_id_raw     = trim($_POST['rep_id'] ?? '');
 // Validation
 $valid_types = ['Concern','Acknowledgement','Improvement','Complaint','Suggestion'];
 if (!in_array($feedback_type, $valid_types)) $feedback_type = 'Concern';
-if ($rating < 1 || $rating > 5) $rating = 3;
+// FIX: Allow half-star values (0.5 increments). Snap to nearest 0.5 and clamp.
+$rating = round($rating * 2) / 2;
+if ($rating < 0.5 || $rating > 5.0) $rating = 3.0;
 if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $email = '';
 $pure_number = preg_replace('/\D/', '', $contact_number);
 if ($pure_number !== '' && !preg_match('/^09\d{9}$/', $pure_number)) {
@@ -96,7 +101,7 @@ $stmt = $conn->prepare("
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ");
 $stmt->bind_param(
-    'ssssssisssi',
+    'ssssssdsssi', // FIX: 'd' (double) instead of 'i' (integer) for rating
     $full_name, $contact_number, $email, $feedback_type, $title, $description,
     $rating, $infrastructure, $address, $coordinates, $rep_id
 );

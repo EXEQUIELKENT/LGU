@@ -82,7 +82,7 @@ $conn->query("
       `feedback_type`  ENUM('Concern','Acknowledgement','Improvement','Complaint','Suggestion') NOT NULL DEFAULT 'Concern',
       `title`          VARCHAR(200) NOT NULL,
       `description`    TEXT         NOT NULL,
-      `rating`         TINYINT      NOT NULL DEFAULT 3,
+      `rating`         DECIMAL(3,1) NOT NULL DEFAULT 3.0,
       `infrastructure` VARCHAR(200) DEFAULT NULL,
       `address`        TEXT         DEFAULT NULL,
       `coordinates`    VARCHAR(60)  DEFAULT NULL,
@@ -94,6 +94,8 @@ $conn->query("
       PRIMARY KEY (`feedback_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 ");
+// Upgrade existing tables: promote rating from TINYINT to DECIMAL(3,1) for half-star support
+@$conn->query("ALTER TABLE `citizen_feedback` MODIFY COLUMN `rating` DECIMAL(3,1) NOT NULL DEFAULT 3.0");
 $conn->query("
     CREATE TABLE IF NOT EXISTS `feedback_images` (
       `img_id`      INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -104,6 +106,26 @@ $conn->query("
       KEY `idx_fbk_id` (`feedback_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 ");
+
+// ── Half-star display helper ──────────────────────────────────────────────────
+function renderHalfStars($rating) {
+    $rating = (float)$rating;
+    $html   = '<span class="hsd-wrap">';
+    for ($i = 1; $i <= 5; $i++) {
+        if ($rating >= $i) {
+            $html .= '<span class="hsd-star hsd-full">★</span>';
+        } elseif ($rating >= $i - 0.5) {
+            // Stacked overlay: gray ★ behind, gold ★ clipped to 50% on top — bulletproof cross-browser
+            $html .= '<span class="hsd-star hsd-half-wrap">'
+                   . '<span class="hsd-half-bg">★</span>'
+                   . '<span class="hsd-half-fill">★</span>'
+                   . '</span>';
+        } else {
+            $html .= '<span class="hsd-star hsd-empty">☆</span>';
+        }
+    }
+    return $html . '</span>';
+}
 
 // ── AJAX handlers ─────────────────────────────────────────────────────────────
 if (isset($_GET['ajax'])) {
@@ -169,7 +191,7 @@ if ($result) {
     }
 }
 $totalFeedback = count($feedbackRows);
-$avgRating     = $totalFeedback > 0 ? number_format(array_sum(array_column($feedbackRows, 'rating')) / $totalFeedback, 2) : '0.00';
+$avgRating = $totalFeedback > 0 ? number_format(array_sum(array_column($feedbackRows, 'rating')) / $totalFeedback, 1) : '0.0';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -277,6 +299,34 @@ body { overflow: hidden; height: 100vh; }
 .metric-card.red .metric-icon-box    { background:linear-gradient(135deg,#f44336,#e57373); }
 .metric-card.purple .metric-icon-box { background:linear-gradient(135deg,#9c27b0,#ba68c8); }
 .metric-icon-box i { color:#fff; font-size:24px; line-height:1; }
+
+/* ── Half-star display (PHP-rendered, detail modal) ── */
+.hsd-wrap      { display:inline-flex; align-items:center; gap:1px; }
+.hsd-star      { font-size:inherit; line-height:1; display:inline-flex; align-items:center; justify-content:center; }
+.hsd-full      { color:#f59e0b; }
+.hsd-empty     { color:#d1d5db; }
+/* Half star: stacked overlay — gray ★ behind, gold ★ clipped at 50% on top */
+.hsd-half-wrap {
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+    font-size: inherit;
+}
+.hsd-half-bg {
+    color: #d1d5db;
+    display: block;
+    line-height: 1;
+}
+.hsd-half-fill {
+    position: absolute;
+    top: 0; left: 0;
+    width: 50%;
+    overflow: hidden;
+    color: #f59e0b;
+    white-space: nowrap;
+    line-height: 1;
+    display: block;
+}
 
 /* ── Toolbar (matching requests.php) ── */
 .search-toolbar {
@@ -531,15 +581,47 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
 /* ── Action buttons ── */
 .btn-action {
-    padding: 5px 12px; border-radius: 8px;
-    border: none; font-size: 12px; font-weight: 700;
-    cursor: pointer; transition: all .2s; font-family: inherit;
-    display: inline-flex; align-items: center; gap: 5px;
+    border: none; font-family: inherit;
+    cursor: pointer; transition: all .22s cubic-bezier(.34,1.56,.64,1);
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    font-weight: 700; white-space: nowrap;
 }
-.btn-view   { background:rgba(55,98,200,.12); color:#3762c8; }
-.btn-view:hover { background:#3762c8; color:#fff; }
-.btn-delete { background:rgba(239,68,68,.1); color:#dc2626; }
-.btn-delete:hover { background:#dc2626; color:#fff; }
+.btn-view {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(55,98,200,.30);
+    border: none;
+}
+.btn-view:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 16px rgba(55,98,200,.48);
+    background: linear-gradient(135deg, #2b50b0, #4a78f5);
+}
+.btn-view:active { transform: scale(.96); }
+.btn-delete {
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    background: rgba(239,68,68,.10);
+    color: #dc2626;
+    border: 1.5px solid rgba(239,68,68,.25);
+}
+.btn-delete:hover {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px rgba(239,68,68,.38);
+}
+.btn-delete:active { transform: scale(.96); }
+[data-theme="dark"] .btn-delete {
+    background: rgba(239,68,68,.14);
+    border-color: rgba(239,68,68,.30);
+    color: #f87171;
+}
 
 /* ── Detail modal — requests.php style ── */
 #detailBackdrop {
@@ -759,6 +841,19 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .empty-state { text-align:center; padding:60px 20px; color:var(--text-secondary); }
 .empty-state i { font-size:3rem; margin-bottom:16px; opacity:.4; }
 .empty-state p { font-size:15px; }
+
+/* ── Search highlight ── */
+.search-highlight {
+    background: #fff176;
+    color: #000;
+    padding: 1px 3px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+[data-theme="dark"] .search-highlight {
+    background: #b8a000;
+    color: #fff;
+}
 
 /* ── Reference Report badge pill — theme-aware text color ── */
 .rep-badge-pill {
@@ -1553,39 +1648,49 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                 </td>
             </tr>
             <?php else: ?>
+            <tr id="fbkNoResult" style="display:none;">
+                <td colspan="9" style="text-align:center;padding:48px 20px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                        <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                        <div style="font-size:15px;font-weight:700;">No matching results found</div>
+                        <div style="font-size:13px;opacity:.7;">Try a different keyword or adjust your filters</div>
+                    </div>
+                </td>
+            </tr>
             <?php foreach ($feedbackRows as $i => $fb):
                 $status   = $fb['status'] ?? 'New';
                 $type     = $fb['feedback_type'] ?? 'Concern';
                 $sClass   = strtolower(str_replace(' ', '-', $status));
                 $tClass   = strtolower($type);
-                $stars    = str_repeat('★', (int)$fb['rating']) . str_repeat('☆', 5 - (int)$fb['rating']);
+                $stars    = renderHalfStars($fb['rating']);
             ?>
             <tr class="fbk-row"
                 data-id="<?= $fb['feedback_id'] ?>"
+                data-fbk-id="<?= $fb['feedback_id'] ?>"
                 data-status="<?= htmlspecialchars($status) ?>"
                 data-type="<?= htmlspecialchars($type) ?>"
-                data-rating="<?= (int)$fb['rating'] ?>"
+                data-rating="<?= (float)$fb['rating'] ?>"
                 data-created-iso="<?= htmlspecialchars($fb['created_at']) ?>"
                 data-name="<?= strtolower(htmlspecialchars($fb['full_name'])) ?>"
-                data-text="<?= strtolower(htmlspecialchars($fb['full_name'].' '.$fb['title'].' '.$fb['description'].' '.$type)) ?>">
-                <td style="font-weight:700;color:var(--text-secondary);"><?= ($i+1) ?></td>
+                data-text="<?= strtolower(htmlspecialchars($fb['full_name'].' '.$fb['title'].' '.$fb['description'].' '.$type.' '.($fb['contact_number'] ?? '').' '.date('F d, Y g:i A', strtotime($fb['created_at'])))) ?>">
+                <td style="font-weight:700;color:var(--text-secondary);"><span class="searchable">#<?= str_pad($fb['feedback_id'], 3, '0', STR_PAD_LEFT) ?></span></td>
                 <td>
-                    <div style="font-weight:700;color:var(--text-primary);"><?= htmlspecialchars($fb['full_name']) ?></div>
+                    <div style="font-weight:700;color:var(--text-primary);"><span class="searchable"><?= htmlspecialchars($fb['full_name']) ?></span></div>
                     <?php if ($fb['contact_number']): ?>
-                    <div style="font-size:11px;color:var(--text-secondary);"><?= htmlspecialchars($fb['contact_number']) ?></div>
+                    <div style="font-size:11px;color:var(--text-secondary);"><span class="searchable"><?= htmlspecialchars($fb['contact_number']) ?></span></div>
                     <?php endif; ?>
                 </td>
                 <td><span class="badge badge-<?= $tClass ?>"><?= htmlspecialchars($type) ?></span></td>
-                <td style="font-weight:600;"><?= htmlspecialchars($fb['title']) ?></td>
+                <td style="font-weight:600;"><span class="searchable"><?= htmlspecialchars($fb['title']) ?></span></td>
                 <td>
-                    <div class="star-display"><?= $stars ?></div>
-                    <div style="font-size:11px;color:var(--text-secondary);"><?= (int)$fb['rating'] ?>/5</div>
+                    <div class="star-display" style="font-size:15px;"><?= $stars ?></div>
+                    <div style="font-size:11px;color:var(--text-secondary);"><?= number_format((float)$fb['rating'], 1) ?>/5</div>
                 </td>
-                <td><span class="badge badge-<?= $sClass ?>"><?= htmlspecialchars($status) ?></span></td>
-                <td style="font-size:12px;"><?= htmlspecialchars($fb['infrastructure'] ?? '—') ?></td>
+                <td><span class="badge badge-<?= $sClass ?> searchable"><?= htmlspecialchars($status) ?></span></td>
+                <td style="font-size:12px;"><span class="searchable"><?= htmlspecialchars($fb['infrastructure'] ?? '—') ?></span></td>
                 <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">
-                    <?= date('M d, Y', strtotime($fb['created_at'])) ?><br>
-                    <span style="font-size:10px;"><?= date('g:i A', strtotime($fb['created_at'])) ?></span>
+                    <span class="searchable"><?= date('F d, Y', strtotime($fb['created_at'])) ?></span><br>
+                    <span class="searchable" style="font-size:10px;"><?= date('g:i A', strtotime($fb['created_at'])) ?></span>
                 </td>
                 <td>
                     <button class="btn-action btn-view" onclick="openDetail(<?= $fb['feedback_id'] ?>)">
@@ -1614,42 +1719,53 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                 </div>
             </div>
         <?php else: ?>
+        <div id="fbkNoResultMobile" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching results found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword or adjust your filters</div>
+            </div>
+        </div>
         <?php foreach ($feedbackRows as $i => $fb):
             $status = $fb['status'] ?? 'New';
             $type   = $fb['feedback_type'] ?? 'Concern';
             $sClass = strtolower(str_replace(' ', '-', $status));
             $tClass = strtolower($type);
-            $stars  = str_repeat('★', (int)$fb['rating']) . str_repeat('☆', 5 - (int)$fb['rating']);
+            $stars  = renderHalfStars($fb['rating']);
         ?>
         <div class="feedback-card fbk-mobile-card"
             data-id="<?= $fb['feedback_id'] ?>"
+            data-fbk-id="<?= $fb['feedback_id'] ?>"
             data-status="<?= htmlspecialchars($status) ?>"
             data-type="<?= htmlspecialchars($type) ?>"
-            data-rating="<?= (int)$fb['rating'] ?>"
+            data-rating="<?= (float)$fb['rating'] ?>"
             data-created-iso="<?= htmlspecialchars($fb['created_at']) ?>"
             data-name="<?= strtolower(htmlspecialchars($fb['full_name'])) ?>"
-            data-text="<?= strtolower(htmlspecialchars($fb['full_name'].' '.$fb['title'].' '.$fb['description'].' '.$type)) ?>">
+            data-text="<?= strtolower(htmlspecialchars($fb['full_name'].' '.$fb['title'].' '.$fb['description'].' '.$type.' '.($fb['contact_number'] ?? '').' '.date('F d, Y g:i A', strtotime($fb['created_at'])))) ?>">
             <div class="feedback-card-header">
                 <div style="flex:1;min-width:0;">
-                    <div class="feedback-card-title"><?= htmlspecialchars($fb['title']) ?></div>
-                    <div class="feedback-card-name"><i class="fas fa-user" style="font-size:10px;"></i> <?= htmlspecialchars($fb['full_name']) ?></div>
+                    <div class="feedback-card-title"><span class="searchable"><?= htmlspecialchars($fb['title']) ?></span></div>
+                    <div class="feedback-card-name"><i class="fas fa-user" style="font-size:10px;"></i> <span class="searchable"><?= htmlspecialchars($fb['full_name']) ?></span></div>
                 </div>
-                <span class="badge badge-<?= $sClass ?>"><?= htmlspecialchars($status) ?></span>
+                <span class="badge badge-<?= $sClass ?> searchable"><?= htmlspecialchars($status) ?></span>
             </div>
             <div class="feedback-card-body">
                 <div class="feedback-card-row">
                     <span class="badge badge-<?= $tClass ?>"><?= htmlspecialchars($type) ?></span>
-                    <div style="color:#f59e0b;font-size:14px;letter-spacing:1px;"><?= $stars ?> <span style="font-size:11px;color:var(--text-secondary);"><?= (int)$fb['rating'] ?>/5</span></div>
+                    <div style="color:#f59e0b;font-size:14px;letter-spacing:1px;"><?= $stars ?> <span style="font-size:11px;color:var(--text-secondary);"><?= number_format((float)$fb['rating'], 1) ?>/5</span></div>
                 </div>
                 <?php if ($fb['infrastructure']): ?>
-                <div><strong>Infrastructure:</strong> <?= htmlspecialchars($fb['infrastructure']) ?></div>
+                <div><strong>Infrastructure:</strong> <span class="searchable"><?= htmlspecialchars($fb['infrastructure']) ?></span></div>
                 <?php endif; ?>
                 <?php if ($fb['contact_number']): ?>
-                <div><strong>Contact:</strong> <?= htmlspecialchars($fb['contact_number']) ?></div>
+                <div><strong>Contact:</strong> <span class="searchable"><?= htmlspecialchars($fb['contact_number']) ?></span></div>
                 <?php endif; ?>
                 <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">
                     <i class="fas fa-clock" style="font-size:10px;"></i>
-                    <?= date('M d, Y g:i A', strtotime($fb['created_at'])) ?>
+                    <span class="searchable"><?= date('F d, Y g:i A', strtotime($fb['created_at'])) ?></span>
+                </div>
+                <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">
+                    <span class="searchable" style="font-weight:600;">#<?= str_pad($fb['feedback_id'], 3, '0', STR_PAD_LEFT) ?></span>
                 </div>
             </div>
             <div class="feedback-card-actions">
@@ -1721,7 +1837,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             <i class="fas fa-save"></i> Save Changes
         </button>
         <?php if ($isAdmin): ?>
-        <button class="btn-action btn-delete" id="footerDeleteBtn" style="padding:10px 18px;font-size:13px;">
+        <button class="btn-action btn-delete" id="footerDeleteBtn" style="padding:9px 18px;font-size:13px;border-radius:20px;">
             <i class="fas fa-trash"></i> Delete Feedback
         </button>
         <?php endif; ?>
@@ -1752,7 +1868,7 @@ const ALL_FEEDBACK = <?= json_encode(array_map(function($fb){
         'feedback_type' => $fb['feedback_type'],
         'title'         => $fb['title'],
         'description'   => $fb['description'],
-        'rating'        => (int)$fb['rating'],
+        'rating'        => (float)$fb['rating'],
         'infrastructure'=> $fb['infrastructure'],
         'address'       => $fb['address'],
         'coordinates'   => $fb['coordinates'],
@@ -1861,7 +1977,17 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
         return (!q  || (dataset.text || '').includes(q)) &&
                (!filterStatus || dataset.status === filterStatus) &&
                (!filterType   || dataset.type   === filterType)   &&
-               (!filterRating || parseInt(dataset.rating) >= filterRating);
+               (!filterRating || parseFloat(dataset.rating) >= filterRating);
+    }
+
+    // ── Highlight helpers ────
+    function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function storeOriginal(el) { if (!el.dataset.original) el.dataset.original = el.innerHTML; }
+    function resetEl(el) { if (el.dataset.original !== undefined) el.innerHTML = el.dataset.original; }
+    function highlightEl(el, keyword) {
+        if (!keyword) return;
+        var regex = new RegExp('(' + escapeRegExp(keyword) + ')', 'gi');
+        el.innerHTML = el.innerHTML.replace(regex, '<span class="search-highlight">$1</span>');
     }
 
     function sortRows(rows) {
@@ -1871,8 +1997,8 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
                 case 'date-asc':  return new Date(a.dataset.createdIso) - new Date(b.dataset.createdIso);
                 case 'id-asc':    return parseInt(a.dataset.id) - parseInt(b.dataset.id);
                 case 'id-desc':   return parseInt(b.dataset.id) - parseInt(a.dataset.id);
-                case 'rating-desc': return parseInt(b.dataset.rating) - parseInt(a.dataset.rating);
-                case 'rating-asc':  return parseInt(a.dataset.rating) - parseInt(b.dataset.rating);
+                case 'rating-desc': return parseFloat(b.dataset.rating) - parseFloat(a.dataset.rating);
+                case 'rating-asc':  return parseFloat(a.dataset.rating) - parseFloat(b.dataset.rating);
                 case 'alpha-asc':  return (a.dataset.name||'').localeCompare(b.dataset.name||'');
                 case 'alpha-desc': return (b.dataset.name||'').localeCompare(a.dataset.name||'');
                 default: return 0;
@@ -1881,19 +2007,46 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
     }
 
     function applyAll() {
+        var keyword = search ? search.value.trim().toLowerCase() : '';
         var tbody = document.getElementById('feedbackTbody');
+        var noResultDesk = document.getElementById('fbkNoResult');
         var sorted = sortRows(tbodyRows);
+        var visD = 0;
         sorted.forEach(function(r){
-            r.style.display = matchesFilters(r.dataset) ? '' : 'none';
+            var searchables = r.querySelectorAll('.searchable');
+            searchables.forEach(function(el){ storeOriginal(el); resetEl(el); });
+            var visible = matchesFilters(r.dataset);
+            r.style.display = visible ? '' : 'none';
+            if (visible) {
+                visD++;
+                if (keyword) searchables.forEach(function(el){ highlightEl(el, keyword); });
+            }
             tbody.appendChild(r);
         });
+        if (noResultDesk) {
+            noResultDesk.style.display = (sorted.length > 0 && visD === 0) ? '' : 'none';
+            tbody.appendChild(noResultDesk);
+        }
+
         var mobileList = document.getElementById('mobileFeedbackList');
+        var noResultMob = document.getElementById('fbkNoResultMobile');
         var sortedMobile = sortRows(mobileCards);
+        var visM = 0;
         sortedMobile.forEach(function(c){
-            c.style.display = matchesFilters(c.dataset) ? '' : 'none';
+            var searchables = c.querySelectorAll('.searchable');
+            searchables.forEach(function(el){ storeOriginal(el); resetEl(el); });
+            var visible = matchesFilters(c.dataset);
+            c.style.display = visible ? '' : 'none';
+            if (visible) {
+                visM++;
+                if (keyword) searchables.forEach(function(el){ highlightEl(el, keyword); });
+            }
             mobileList.appendChild(c);
         });
-        var visD = sorted.filter(function(r){ return r.style.display !== 'none'; }).length;
+        if (noResultMob) {
+            noResultMob.style.display = (sortedMobile.length > 0 && visM === 0) ? '' : 'none';
+        }
+
         if (countEl) countEl.textContent = visD;
         updateSortBtnLabel();
         saveState();
@@ -1982,7 +2135,28 @@ function openDetail(id) {
     if (fbkIdEl) fbkIdEl.textContent = 'FEEDBACK #' + String(id).padStart(3,'0') + ' · ' + fb.feedback_type;
     if (titleEl) titleEl.textContent = fb.title;
 
-    var stars = '★'.repeat(fb.rating) + '☆'.repeat(5 - fb.rating);
+    // Half-star renderer for detail modal — stacked overlay (bulletproof cross-browser)
+    function renderHalfStarsHtml(val) {
+        val = parseFloat(val) || 0;
+        var html = '';
+        for (var i = 1; i <= 5; i++) {
+            if (val >= i) {
+                html += '<span style="color:#f59e0b;line-height:1;">★</span>';
+            } else if (val >= i - 0.5) {
+                // Gray star behind, gold star clipped to 50% width on top
+                html += '<span style="position:relative;display:inline-block;line-height:1;">' +
+                            '<span style="color:#d1d5db;display:block;line-height:1;">★</span>' +
+                            '<span style="position:absolute;top:0;left:0;width:50%;overflow:hidden;' +
+                                   'color:#f59e0b;white-space:nowrap;display:block;line-height:1;">★</span>' +
+                        '</span>';
+            } else {
+                html += '<span style="color:#d1d5db;line-height:1;">☆</span>';
+            }
+        }
+        return html;
+    }
+
+    var stars = renderHalfStarsHtml(fb.rating);
 
     var typeColors = {
         Concern:'#ef4444', Acknowledgement:'#16a34a',
@@ -2025,11 +2199,11 @@ function openDetail(id) {
             '<span class="rep-badge-pill">' +
             '<i class="fas fa-file-alt"></i> ' + _repNum + '</span>' +
             '<button type="button" onclick="window.location.href=\''+_archiveUrl+'\'"' +
-            ' style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:1.5px solid rgba(55,98,200,.30);' +
-            'background:rgba(55,98,200,.10);color:#3762c8;font-size:12px;font-weight:700;cursor:pointer;' +
-            'transition:all .2s;font-family:inherit;"' +
-            ' onmouseover="this.style.background=\'rgba(55,98,200,.20)\';this.style.boxShadow=\'0 3px 10px rgba(55,98,200,.25)\'"' +
-            ' onmouseout="this.style.background=\'rgba(55,98,200,.10)\';this.style.boxShadow=\'none\'">' +
+            ' style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:20px;border:none;' +
+            'background:linear-gradient(135deg,#3762c8,#5f8cff);color:#fff;font-size:12px;font-weight:700;cursor:pointer;' +
+            'box-shadow:0 2px 8px rgba(55,98,200,.30);transition:all .22s cubic-bezier(.34,1.56,.64,1);font-family:inherit;"' +
+            ' onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 5px 16px rgba(55,98,200,.48)\'"' +
+            ' onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 2px 8px rgba(55,98,200,.30)\'">' +
             '<i class="fas fa-archive"></i> View in Archive</button>' +
             '</div>';
     } else {
@@ -2092,7 +2266,7 @@ function openDetail(id) {
         '<div class="req-detail-grid-2">' +
             '<div class="req-detail-field">' +
                 '<div class="req-detail-field-label"><i class="fas fa-star"></i> Rating</div>' +
-                '<div class="req-detail-field-value"><span style="color:#f59e0b;font-size:16px;letter-spacing:2px;">'+stars+'</span> <span style="font-size:12px;color:var(--text-secondary);">'+fb.rating+'/5</span></div>' +
+                '<div class="req-detail-field-value"><span style="color:#f59e0b;font-size:16px;letter-spacing:2px;">'+stars+'</span> <span style="font-size:12px;color:var(--text-secondary);">'+parseFloat(fb.rating).toFixed(1)+'/5</span></div>' +
             '</div>' +
             '<div class="req-detail-field">' +
                 '<div class="req-detail-field-label"><i class="fas fa-building"></i> Infrastructure</div>' +
