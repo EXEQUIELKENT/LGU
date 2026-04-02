@@ -756,7 +756,11 @@
         chip_privacy_msg:       'Tell me about the Privacy Policy.',
         chip_terms_msg:         'What are the Terms and Conditions?',
         chip_language_msg:      'How do I switch the language?',
-        chip_report_types_msg:  'What types of issues can I report?'
+        chip_report_types_msg:  'What types of issues can I report?',
+        chip_feedback_submit_msg:  'How do I submit feedback on this system?',
+        chip_feedback_types_msg:   'What types of feedback can I submit?',
+        chip_feedback_rating_msg:  'How does the star rating work on the feedback form?',
+        chip_feedback_ref_msg:     'What is the reference completed report field in feedback?'
     };
 
     function t(key) {
@@ -848,12 +852,13 @@
     ══════════════════════════════════════════════════════ */
     function getCurrentPage() {
         var path = window.location.pathname.toLowerCase();
-        if (path.includes('citizencimm'))    return 'home';
-        if (path.includes('citizenreports')) return 'reports';
-        if (path.includes('citizenrepform')) return 'request';
-        if (path.includes('about'))          return 'about';
-        if (path.includes('privacy'))        return 'privacy';
-        if (path.includes('termcon'))        return 'terms';
+        if (path.includes('citizencimm'))       return 'home';
+        if (path.includes('citizenreports'))    return 'reports';
+        if (path.includes('citizenrepform'))    return 'request';
+        if (path.includes('citizen_feedback'))  return 'feedback';
+        if (path.includes('about'))             return 'about';
+        if (path.includes('privacy'))           return 'privacy';
+        if (path.includes('termcon'))           return 'terms';
         return 'general';
     }
 
@@ -861,18 +866,24 @@
        CHIPS
     ══════════════════════════════════════════════════════ */
     var CHIP_SETS = {
-        home:    [['chip_how_report','chip_how_report_msg'],['chip_track','chip_track_msg'],['chip_language','chip_language_msg'],['chip_contact','chip_contact_msg']],
-        reports: [['chip_track','chip_track_msg'],['chip_how_report','chip_how_report_msg'],['chip_report_types','chip_report_types_msg'],['chip_contact','chip_contact_msg']],
-        request: [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_report_types','chip_report_types_msg'],['chip_terms','chip_terms_msg']],
-        about:   [['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg'],['chip_privacy','chip_privacy_msg'],['chip_language','chip_language_msg']],
-        privacy: [['chip_privacy','chip_privacy_msg'],['chip_terms','chip_terms_msg'],['chip_contact','chip_contact_msg'],['chip_how_report','chip_how_report_msg']],
-        terms:   [['chip_terms','chip_terms_msg'],['chip_privacy','chip_privacy_msg'],['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg']],
-        general: [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_track','chip_track_msg'],['chip_contact','chip_contact_msg']]
+        home:     [['chip_how_report','chip_how_report_msg'],['chip_track','chip_track_msg'],['chip_language','chip_language_msg'],['chip_contact','chip_contact_msg']],
+        reports:  [['chip_track','chip_track_msg'],['chip_how_report','chip_how_report_msg'],['chip_report_types','chip_report_types_msg'],['chip_contact','chip_contact_msg']],
+        request:  [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_report_types','chip_report_types_msg'],['chip_terms','chip_terms_msg']],
+        feedback: [['chip_feedback_submit','chip_feedback_submit_msg'],['chip_feedback_types','chip_feedback_types_msg'],['chip_feedback_rating','chip_feedback_rating_msg'],['chip_feedback_ref','chip_feedback_ref_msg']],
+        about:    [['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg'],['chip_privacy','chip_privacy_msg'],['chip_language','chip_language_msg']],
+        privacy:  [['chip_privacy','chip_privacy_msg'],['chip_terms','chip_terms_msg'],['chip_contact','chip_contact_msg'],['chip_how_report','chip_how_report_msg']],
+        terms:    [['chip_terms','chip_terms_msg'],['chip_privacy','chip_privacy_msg'],['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg']],
+        general:  [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_track','chip_track_msg'],['chip_contact','chip_contact_msg']]
     };
     var CHIP_FALLBACK = {
-        chip_how_report:'How to report?', chip_upload:'Upload photos', chip_track:'Track my request',
-        chip_contact:'Contact support', chip_privacy:'Privacy Policy', chip_terms:'Terms & Conditions',
-        chip_language:'Switch language', chip_report_types:'What can I report?'
+        chip_how_report:'How to report?',       chip_upload:'Upload photos',
+        chip_track:'Track my request',          chip_contact:'Contact support',
+        chip_privacy:'Privacy Policy',          chip_terms:'Terms & Conditions',
+        chip_language:'Switch language',        chip_report_types:'What can I report?',
+        chip_feedback_submit:'How to give feedback?',
+        chip_feedback_types:'Feedback types',
+        chip_feedback_rating:'Star rating',
+        chip_feedback_ref:'Reference report'
     };
 
     function renderContextChips() {

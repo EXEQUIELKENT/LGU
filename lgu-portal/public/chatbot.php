@@ -42,7 +42,7 @@ $aiResult    = $data['aiResult'] ?? null;
 $images      = is_array($data['images'] ?? null) ? $data['images'] : [];
 
 // Normalise context
-$allowedContexts = ['home','reports','request','about','privacy','terms','general'];
+$allowedContexts = ['home','reports','request','about','privacy','terms','feedback','general'];
 if (!in_array($context, $allowedContexts)) $context = 'general';
 
 $isTagalog = ($lang === 'tl');
@@ -86,7 +86,7 @@ function extractConversationTopic(array $history): string {
         'navigation / how to use'   => ['navigate','menu','button','how to','where','find','go to'],
         'infrastructure types'      => ['road','drainage','streetlight','sidewalk','electrical','water','facility'],
         'maintenance schedules'     => ['schedule','completion','budget','timeline','sched'],
-        'contact / support'         => ['contact','email','phone','support','hotline','helpdesk'],
+        'feedback / rating'         => ['feedback','rating','star','review','complaint','suggestion','acknowledgement','concern','improvement','rate','comment','opinion','evaluate'],
     ];
 
     $best = ''; $bestScore = 0;
@@ -378,16 +378,68 @@ Buttons: [Cancel] | [Submit]
 **Back button:** 'Back to Home'
 ",
 
+    'feedback' => "
+## Feedback Page (citizen_feedback) — Full Structure
+
+**Navigation Bar (top):**
+- Same as other citizen pages: Home | Reports | Requests | Feedback (active) | About
+- Right side: 🌐 language toggle | 🌙 dark mode | live digital clock
+
+**Hero Section:**
+- Headline: 'Submit Feedback — CIMM LGU'
+
+**Feedback Form Card (max-width 820px):**
+
+**Section 1 — Your Information:**
+- Full Name (optional) — text input, defaults to 'Citizen'
+- Contact Number (optional) — 09XX-XXX-XXXX format, auto-formatted
+- Email Address (optional) — if provided, LGU will send a notification on your feedback
+
+**Section 2 — Feedback Details:**
+- Type of Feedback — 5 colorful radio-card options:
+  ⚠️ Concern (orange) | 👍 Acknowledgement (green) | 💡 Improvement (blue) | 📢 Complaint (red) | ✏️ Suggestion (purple)
+- Feedback Title * — required text input
+- Description * — required textarea
+- Star Rating * — half-star interactive widget (0.5–5.0), with progress bar and label:
+  0.5–1 = Very Poor | 1.5–2 = Poor | 2.5 = Below Average | 3 = Average | 3.5 = Above Average | 4 = Good | 4.5 = Very Good | 5 = Excellent
+
+**Section 3 — Infrastructure & Location:**
+- Infrastructure / Facility (optional) — searchable combobox dropdown:
+  Roads | Street Lights | Drainage | Public Facilities | Water Supply | Electrical
+- Reference Completed Report (optional) — searchable dropdown of archived/completed reports with [View] button per entry
+- Address / Location (optional) — text field + interactive Leaflet map picker (same GPS/satellite features as citizenrepform.php)
+
+**Section 4 — Photo Evidence (optional, max 5 photos):**
+- Drag-and-drop or click upload zone (JPG, PNG, WEBP, 5 MB each)
+- Thumbnail previews with ✕ remove button
+- Full lightbox view on thumbnail click
+
+**Submit Button:** [Submit Feedback] → opens confirm modal
+
+**Confirm Submission Modal:**
+- Icon: 📬
+- Title: 'Confirm Submission'
+- Body: 'Are you sure you want to submit your feedback? You won't be able to edit it after submission.'
+- Buttons: [Cancel] | [Submit]
+
+**After Submit:** Redirects to handle_feedback.php, shows success notification
+
+**Form preserves drafts via localStorage** — data is restored if user navigates away and returns
+
+**Footer:** Same as other citizen pages
+",
+
     'general' => "
 ## InfraGovServices Portal — General Overview
 
 This is the InfraGovServices (CIMMS) portal for Quezon City, Philippines.
-The system allows citizens to report, track, and monitor infrastructure maintenance issues in Quezon City.
+The system allows citizens to report, track, monitor infrastructure maintenance issues, and submit feedback.
 
 **All available pages:**
 - Home / Dashboard (citizencimm.php)
 - Maintenance Reports list (citizenreports.php)
 - Submit Request form (citizenrepform.php)
+- Feedback Form (citizen_feedback.php)
 - About page (about.php)
 - Privacy Policy (privacy.php)
 - Terms and Conditions (termcon.php)
@@ -411,6 +463,7 @@ The system allows citizens to report, track, and monitor infrastructure maintena
 - AI-assisted damage analysis from uploaded images
 - Bilingual interface: English / Filipino (Tagalog)
 - Real-time status tracking: Pending → In Progress → Completed / Delayed
+- Citizen feedback with star ratings, feedback types, and reference to completed reports
 ",
 ];
 
@@ -1083,6 +1136,69 @@ $KB = [
                 "• Kung ang iyong isyu ay nasa labas ng QC, kailangan mong mag-ulat sa sistema ng LGU ng lunsod na iyon\n\n" .
                 "💡 *Ang Quezon City ay may 142 barangay — lahat ay nakalista sa dropdown ng mapa.*",
     ],
+
+    'feedback' => [
+        'keywords' => [
+            'feedback','feedbacks','rate','rating','star','review','reviews','opinion','evaluate',
+            'complaint','complaints','concern','concerns','suggestion','suggestions','improvement',
+            'acknowledgement','acknowledge','commend','praise','comment','comments','experience',
+            'satisfied','satisfaction','unsatisfied','dissatisfied','happy','unhappy','service quality',
+            'leave a review','submit feedback','give feedback','write a review','share feedback',
+            'mag-feedback','mag-rate','pumuri','magreklamo','magbigay ng opinyon',
+            'karanasan','kasiyahan','hindi nasiyahan','magkomento','ibahagi','feedback form',
+        ],
+        'phrases' => [
+            'how to submit feedback','how to give feedback','how to rate','how to leave a review',
+            'submit my feedback','leave feedback','give a rating','star rating',
+            'what is feedback','feedback form','feedback page','types of feedback',
+            'reference a report','link a report','acknowledge a repair','completed report feedback',
+            'paano mag-submit ng feedback','paano magbigay ng rating','mag-iwan ng review',
+            'ano ang feedback','uri ng feedback','i-rate ang serbisyo',
+        ],
+        'en' => "**Submitting Citizen Feedback** 💬\n\n" .
+                "Visit the **Feedback page** — click **Feedback** in the navigation menu.\n\n" .
+                "**5 Types of Feedback you can submit:**\n\n" .
+                "⚠️ **Concern** — raise a worry or issue you've noticed\n" .
+                "👍 **Acknowledgement** — commend or appreciate good work done by the LGU\n" .
+                "💡 **Improvement** — suggest ways to make services or infrastructure better\n" .
+                "📢 **Complaint** — formally report dissatisfaction with a service or process\n" .
+                "✏️ **Suggestion** — propose a new idea or recommendation\n\n" .
+                "**Required fields (marked *):**\n" .
+                "• **Feedback Title*** — brief summary of your feedback\n" .
+                "• **Description*** — full details of your feedback\n" .
+                "• **Star Rating*** — hover left/right half of a star for 0.5 increments (⭐ 0.5 – ⭐⭐⭐⭐⭐ 5.0)\n\n" .
+                "**Optional fields:**\n" .
+                "• 👤 Your name and contact info (name defaults to 'Citizen')\n" .
+                "• 📧 Email — receive a notification update on your feedback status\n" .
+                "• 🏗️ Infrastructure / Facility type (Roads, Drainage, Street Lights, etc.)\n" .
+                "• 📋 Reference a completed report (#REP-XXX) — link your feedback to a specific finished repair\n" .
+                "• 📍 Address / Location — use the interactive map picker or type manually\n" .
+                "• 📸 Up to 5 photo attachments (JPG, PNG, WEBP, 5 MB each)\n\n" .
+                "**After submitting:** You'll see a confirmation modal before the form is sent. The LGU will review your feedback.\n\n" .
+                "💡 *Your draft is auto-saved — if you navigate away and return, your answers will be restored.*",
+        'tl' => "**Pagsusumite ng Feedback ng Mamamayan** 💬\n\n" .
+                "Pumunta sa **Feedback page** — i-click ang **Feedback** sa navigation menu.\n\n" .
+                "**5 Uri ng Feedback na maaari mong isumite:**\n\n" .
+                "⚠️ **Alalahanin (Concern)** — itaas ang isang isyu o pag-aalala\n" .
+                "👍 **Pagkilala (Acknowledgement)** — purihin ang magandang ginagawa ng LGU\n" .
+                "💡 **Pagpapabuti (Improvement)** — magmungkahi ng paraan para mapabuti ang serbisyo\n" .
+                "📢 **Reklamo (Complaint)** — pormal na iulat ang hindi kasiya-siyang serbisyo\n" .
+                "✏️ **Mungkahi (Suggestion)** — magpanukala ng bagong ideya o rekomendasyon\n\n" .
+                "**Mga kinakailangang field (may *):**\n" .
+                "• **Pamagat ng Feedback*** — maikling buod ng iyong feedback\n" .
+                "• **Paglalarawan*** — kumpletong detalye ng iyong feedback\n" .
+                "• **Star Rating*** — i-hover ang kaliwa/kanang kalahati ng bituin para sa 0.5 na hakbang\n\n" .
+                "**Mga opsyonal na field:**\n" .
+                "• 👤 Pangalan at contact info (default sa 'Citizen' kung walang pangalan)\n" .
+                "• 📧 Email — makakatanggap ng notification sa status ng iyong feedback\n" .
+                "• 🏗️ Uri ng Imprastraktura / Pasilidad\n" .
+                "• 📋 Sangguniang natapos na ulat (#REP-XXX) — i-link ang feedback sa isang natapos na pag-aayos\n" .
+                "• 📍 Address / Lokasyon — gamitin ang map picker o i-type nang mano-mano\n" .
+                "• 📸 Hanggang 5 larawan (JPG, PNG, WEBP, 5 MB bawat isa)\n\n" .
+                "**Pagkatapos mag-submit:** May lalabas na confirmation modal bago maipadala ang form.\n\n" .
+                "💡 *Awtomatikong nase-save ang iyong draft — maibabalik ang iyong mga sagot kung lumayo ka sa pahina.*",
+    ],
+
 ];
 
 // ════════════════════════════════════════════════════════════
@@ -1113,6 +1229,10 @@ $PAGE_CONTEXT_INFO = [
     'terms'   => [
         'en' => "You're on the **Terms and Conditions page** — the rules, data use agreements, AI disclaimer, and data subject rights for using InfraGovServices.",
         'tl' => "Nasa **Terms and Conditions page** ka — ang mga patakaran, kasunduan sa paggamit ng data, AI disclaimer, at mga karapatan ng data subject sa paggamit ng InfraGovServices.",
+    ],
+    'feedback' => [
+        'en' => "You're on the **Feedback page** — submit your feedback about InfraGovServices or a completed repair. Choose from 5 feedback types (Concern, Acknowledgement, Improvement, Complaint, Suggestion), give a star rating (0.5–5.0), and optionally link to a specific completed report.",
+        'tl' => "Nasa **Feedback page** ka — isumite ang iyong feedback tungkol sa InfraGovServices o isang natapos na pag-aayos. Pumili mula sa 5 uri ng feedback (Concern, Acknowledgement, Improvement, Complaint, Suggestion), magbigay ng star rating (0.5–5.0), at opsyonal na i-link sa isang partikular na natapos na ulat.",
     ],
     'general' => [
         'en' => "You're using **InfraGovServices** — the Community Infrastructure Maintenance Management System (CIMMS) for Quezon City, Philippines. Use the navigation bar to access Reports, submit a new Request, or learn more About the system.",
@@ -1196,6 +1316,7 @@ function getGreetingResponse(string $context, bool $isTagalog, array $pageContex
                "**Narito ako para tumulong sa:**\n" .
                "• 📋 Pag-uulat ng isyu sa imprastraktura (kalsada, drainage, ilaw, atbp.)\n" .
                "• 📍 Pagsubaybay ng mga ulat at pag-unawa sa mga status\n" .
+               "• 💬 Pagsusumite ng feedback, rating, at mungkahi\n" .
                "• 🗺️ Paggamit ng mapa at pagtakda ng lokasyon\n" .
                "• 🔒 Mga tanong sa Privacy Policy at Terms\n" .
                "• 📸 Pagsusuri ng mga screenshot na iyong ia-upload\n" .
@@ -1206,6 +1327,7 @@ function getGreetingResponse(string $context, bool $isTagalog, array $pageContex
                "**I'm here to help you with:**\n" .
                "• 📋 Reporting infrastructure issues (roads, drainage, streetlights, etc.)\n" .
                "• 📍 Tracking reports and understanding status updates\n" .
+               "• 💬 Submitting feedback, ratings, and suggestions\n" .
                "• 🗺️ Using the map and setting your location\n" .
                "• 🔒 Privacy Policy & Terms of Service questions\n" .
                "• 📸 Analyzing screenshots you upload\n" .
@@ -1234,6 +1356,7 @@ function getFallbackResponse(string $context, bool $isTagalog, array $pageContex
                "**Maaari akong tumulong sa mga sumusunod:**\n" .
                "• 📋 Paano mag-ulat ng isyu sa imprastraktura\n" .
                "• 📍 Pagsubaybay ng status ng iyong ulat\n" .
+               "• 💬 Paano mag-submit ng feedback, rating, at mungkahi\n" .
                "• 🗺️ Pagtakda ng lokasyon sa mapa\n" .
                "• 📸 Pag-upload ng mga larawan bilang ebidensya\n" .
                "• 🔒 Privacy Policy at Terms and Conditions\n" .
@@ -1247,6 +1370,7 @@ function getFallbackResponse(string $context, bool $isTagalog, array $pageContex
                "**I can help you with:**\n" .
                "• 📋 How to report an infrastructure issue\n" .
                "• 📍 Tracking your request status\n" .
+               "• 💬 How to submit feedback, ratings, and suggestions\n" .
                "• 🗺️ Setting your location on the map\n" .
                "• 📸 Uploading photos as evidence\n" .
                "• 🔒 Privacy Policy & Terms and Conditions\n" .
@@ -1297,7 +1421,7 @@ function callClaudeText(
 {$pageStruct}
 
 ## Scope — ONLY answer questions about:
-1. InfraGovServices portal features (reporting, tracking, forms, navigation, search, filters)
+1. InfraGovServices portal features (reporting, tracking, forms, navigation, search, filters, feedback)
 2. Infrastructure types in Quezon City (roads, drainage, streetlights, sidewalks, water, electrical, public facilities)
 3. Report status meanings: Pending → In Progress → Completed / Delayed
 4. Evidence photo requirements and tips
@@ -1307,6 +1431,7 @@ function callClaudeText(
 8. AI features (TensorFlow image analysis, this chatbot)
 9. Contact information: admin@infragovservices.com | dpo@infragovservices.com | (02) 8988-4242
 10. How to navigate the portal, dark mode, language switching
+11. Feedback form: 5 feedback types (Concern, Acknowledgement, Improvement, Complaint, Suggestion), star ratings (0.5–5.0 with half-star support), referencing completed reports (#REP-XXX), and the full feedback submission process
 
 ## Rules
 1. If the user asks something outside scope (e.g., weather, unrelated topics), politely redirect: 'I'm specialized in InfraGovServices — let me know if you have any portal-related questions!'
@@ -1599,6 +1724,42 @@ function fallbackImageAnalysis(string $context, bool $isTagalog, array $pageStru
                     "💎 **Mga Pangunahing Halaga:** Kahusayan | Transparency | Komunidad Muna | Seguridad\n\n" .
                     "May nais ka pa bang malaman tungkol sa sistema?",
         ],
+        'feedback' => [
+            'en' => "📸 I can see the **Feedback page** of InfraGovServices.\n\n" .
+                    "**Form sections guide:**\n\n" .
+                    "👤 **Your Information** (all optional):\n" .
+                    "• Full Name, Contact Number (09XX-XXX-XXXX), Email\n" .
+                    "• If you provide an email, the LGU will notify you on your feedback status\n\n" .
+                    "💬 **Feedback Details:**\n" .
+                    "• **Type** — ⚠️ Concern | 👍 Acknowledgement | 💡 Improvement | 📢 Complaint | ✏️ Suggestion\n" .
+                    "• **Feedback Title*** — required brief summary\n" .
+                    "• **Description*** — required full details\n" .
+                    "• **Star Rating*** — hover left/right half of a star for 0.5 values (0.5–5.0)\n\n" .
+                    "🏗️ **Infrastructure & Location** (optional):\n" .
+                    "• Infrastructure type dropdown (Roads, Drainage, Street Lights, etc.)\n" .
+                    "• Reference a completed report (#REP-XXX) — link to a finished repair\n" .
+                    "• Address / Location with interactive map picker\n\n" .
+                    "📸 **Photo Evidence** (optional, up to 5 photos, 5 MB each)\n\n" .
+                    "**[Submit Feedback]** → opens a confirmation modal before sending.\n\n" .
+                    "Would you like help filling in a specific section?",
+            'tl' => "📸 Nakikita ko ang **Feedback page** ng InfraGovServices.\n\n" .
+                    "**Gabay sa mga seksyon ng form:**\n\n" .
+                    "👤 **Iyong Impormasyon** (lahat ay opsyonal):\n" .
+                    "• Buong Pangalan, Numero ng Kontak, Email\n" .
+                    "• Kung magbibigay ka ng email, aabisuhan ka ng LGU sa status ng iyong feedback\n\n" .
+                    "💬 **Mga Detalye ng Feedback:**\n" .
+                    "• **Uri** — ⚠️ Concern | 👍 Acknowledgement | 💡 Improvement | 📢 Complaint | ✏️ Suggestion\n" .
+                    "• **Pamagat ng Feedback*** — kinakailangan\n" .
+                    "• **Paglalarawan*** — kinakailangan\n" .
+                    "• **Star Rating*** — i-hover ang kaliwa/kanang kalahati ng bituin para sa 0.5 na hakbang\n\n" .
+                    "🏗️ **Imprastraktura at Lokasyon** (opsyonal):\n" .
+                    "• Uri ng imprastraktura (Kalsada, Drainage, Mga Ilaw, atbp.)\n" .
+                    "• Sangguniang natapos na ulat (#REP-XXX)\n" .
+                    "• Address / Lokasyon gamit ang interactive na mapa\n\n" .
+                    "📸 **Mga Larawan bilang Ebidensya** (opsyonal, hanggang 5, 5 MB bawat isa)\n\n" .
+                    "**[Isumite ang Feedback]** → lalabas ang confirmation modal bago maipadala.\n\n" .
+                    "Gusto mo bang tulungan kita sa isang partikular na seksyon?",
+        ],
         'general' => [
             'en' => "📸 I can see a screenshot from the **InfraGovServices portal**.\n\n" .
                     "To help you best, here's what I can assist with:\n\n" .
@@ -1696,6 +1857,7 @@ if (!$intent && isFollowUp($userMessage) && $conversationTopic) {
         'infrastructure types'    => 'infrastructure_types',
         'maintenance schedules'   => 'maintenance_schedule',
         'contact / support'       => 'contact',
+        'feedback / rating'       => 'feedback',
     ];
     $intent = $topicIntentMap[$conversationTopic] ?? null;
 }

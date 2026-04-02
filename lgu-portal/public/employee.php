@@ -3430,7 +3430,10 @@ HTML;
             <div class="chart-card" style="margin-top: 20px;">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title">Citizen Feedback</div>
+                        <div class="chart-title" style="display:flex;align-items:center;gap:8px;">
+                            Citizen Feedback
+                            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+                        </div>
                         <div class="chart-subtitle">Latest citizen submissions</div>
                     </div>
                     <a href="emp_feedback.php" class="fb-widget-viewall" onclick="event.stopPropagation()">

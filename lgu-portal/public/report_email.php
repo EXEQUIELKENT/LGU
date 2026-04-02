@@ -365,6 +365,208 @@ function sendRejectionEmail(
 
 
 /**
+ * Send a feedback status notification email (Valid or Dismissed) to the citizen.
+ *
+ * @param string $toEmail
+ * @param string $citizenName
+ * @param int    $feedbackId
+ * @param string $status          'Valid' | 'Dismissed'
+ * @param string $adminReply      Admin's reply / employee_notes (required)
+ * @param string $feedbackTitle
+ * @param string $feedbackType
+ * @param float  $rating          Star rating 0–5 (optional)
+ * @param string $description     Citizen's own description (optional)
+ * @param string $createdAt       Submitted datetime string (optional)
+ * @param int    $refRepId        Referenced report ID, 0 = none (optional)
+ * @param string $refInfra        Infrastructure from referenced report (optional)
+ * @param string $engineerName    Engineer assigned to referenced report (optional)
+ */
+function sendFeedbackStatusEmail(
+    string $toEmail,
+    string $citizenName,
+    int    $feedbackId,
+    string $status,
+    string $adminReply,
+    string $feedbackTitle,
+    string $feedbackType,
+    float  $rating       = 0.0,
+    string $description  = '',
+    string $createdAt    = '',
+    int    $refRepId     = 0,
+    string $refInfra     = '',
+    string $engineerName = ''
+): bool {
+    if (empty($toEmail)) return false;
+
+    $isValid     = ($status === 'Valid');
+    $accentColor = $isValid ? '#16a34a' : '#64748b';
+    $statusIcon  = $isValid ? '✅' : '❌';
+    $statusLabel = $isValid ? 'Feedback Validated' : 'Feedback Dismissed';
+    $name        = htmlspecialchars(trim($citizenName) ?: 'Citizen');
+    $title       = htmlspecialchars($feedbackTitle);
+    $type        = htmlspecialchars($feedbackType);
+    $reply       = htmlspecialchars($adminReply);
+    $fbkId       = '#FBK-' . str_pad($feedbackId, 3, '0', STR_PAD_LEFT);
+
+    // ── Star rating HTML (inline, email-safe) ─────────────────────────────
+    $starsHtml = '';
+    if ($rating > 0) {
+        $starsHtml = '<tr><td style="color:#64748b;padding:5px 0;width:40%;vertical-align:middle;">Rating</td>'
+            . '<td style="vertical-align:middle;">'
+            . '<span style="color:#f59e0b;font-size:14px;font-weight:700;">&#9733; ' . number_format($rating, 1) . ' / 5 stars</span>'
+            . '</td></tr>';
+    }
+
+    // ── Submitted date ────────────────────────────────────────────────────
+    $dateHtml = '';
+    if (!empty($createdAt)) {
+        $ts = strtotime($createdAt);
+        $formatted = $ts ? date('F j, Y \a\t g:i A', $ts) : htmlspecialchars($createdAt);
+        $dateHtml = '<tr><td style="color:#64748b;padding:5px 0;width:40%;">Submitted</td>'
+            . '<td style="color:#1e293b;">' . $formatted . '</td></tr>';
+    }
+
+    // ── Reference report ─────────────────────────────────────────────────
+    $refRepHtml = '';
+    if ($refRepId > 0) {
+        $repLabel = '#REP-' . str_pad($refRepId, 3, '0', STR_PAD_LEFT);
+        $refRepHtml = '<tr><td style="color:#64748b;padding:5px 0;width:40%;">Reference Report</td>'
+            . '<td style="color:#27417b;font-weight:600;">' . htmlspecialchars($repLabel) . '</td></tr>';
+    }
+
+    // ── Infrastructure ────────────────────────────────────────────────────
+    $infraHtml = '';
+    if (!empty($refInfra)) {
+        $infraHtml = '<tr><td style="color:#64748b;padding:5px 0;width:40%;">Infrastructure</td>'
+            . '<td style="color:#1e293b;">' . htmlspecialchars($refInfra) . '</td></tr>';
+    }
+
+    // ── Engineer ──────────────────────────────────────────────────────────
+    $engHtml = '';
+    $engTrimmed = trim($engineerName);
+    if (!empty($engTrimmed) && $engTrimmed !== ' ') {
+        $engHtml = '<tr><td style="color:#64748b;padding:5px 0;width:40%;">Assigned Engineer</td>'
+            . '<td style="color:#1e293b;">' . htmlspecialchars($engTrimmed) . '</td></tr>';
+    }
+
+    // ── Description ───────────────────────────────────────────────────────
+    $descSection = '';
+    $descTrimmed = trim($description);
+    if (!empty($descTrimmed)) {
+        $descSection = '<div style="margin:20px 0;background:#f0f4f8;border-radius:8px;padding:16px 20px;">
+            <p style="color:#374151;font-size:13px;font-weight:700;margin:0 0 8px;">&#128172; Your Feedback Description:</p>
+            <p style="color:#374151;font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap;">' . htmlspecialchars($descTrimmed) . '</p>
+        </div>';
+    }
+
+    $bannerHtml = $isValid
+        ? '<div style="background:#dcfce7;border-left:4px solid #16a34a;padding:14px 18px;border-radius:6px;margin:18px 0;">
+               <p style="color:#15803d;font-size:14px;font-weight:700;margin:0;">&#9989; Your feedback has been reviewed and marked as <strong>VALID</strong>.</p>
+               <p style="color:#166534;font-size:13px;margin:6px 0 0;">Thank you for your valuable input. Your concern has been acknowledged and recorded.</p>
+           </div>'
+        : '<div style="background:#f1f5f9;border-left:4px solid #64748b;padding:14px 18px;border-radius:6px;margin:18px 0;">
+               <p style="color:#334155;font-size:14px;font-weight:700;margin:0;">&#10060; Your feedback has been reviewed and marked as <strong>DISMISSED</strong>.</p>
+               <p style="color:#475569;font-size:13px;margin:6px 0 0;">After careful review, the LGU has decided not to act on this feedback at this time.</p>
+           </div>';
+
+    $replySection = '<div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #e2e8f0;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">&#128221; Admin Reply:</p>
+        <p style="color:#374151;font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap;">' . $reply . '</p>
+    </div>';
+
+    // Build details table rows — only include rows that have data
+    $detailRows = '';
+    $detailRows .= '<tr><td style="color:#64748b;padding:5px 0;width:40%;">Feedback ID</td><td style="color:#1e293b;font-weight:600;">' . $fbkId . '</td></tr>';
+    $detailRows .= '<tr><td style="color:#64748b;padding:5px 0;">Title</td><td style="color:#1e293b;">' . $title . '</td></tr>';
+    $detailRows .= '<tr><td style="color:#64748b;padding:5px 0;">Type</td><td style="color:#1e293b;">' . $type . '</td></tr>';
+    $detailRows .= $dateHtml;
+    $detailRows .= $starsHtml;
+    $detailRows .= $refRepHtml;
+    $detailRows .= $infraHtml;
+    $detailRows .= $engHtml;
+    $detailRows .= '<tr><td style="color:#64748b;padding:5px 0;">Status</td><td style="color:' . $accentColor . ';font-weight:700;">' . $status . '</td></tr>';
+
+    $mail = new PHPMailer(true);
+    try {
+        $mail->SMTPDebug  = 0;
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'lguportalph@gmail.com';
+        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->SMTPSecure = 'tls';
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'quoted-printable';
+        $mail->Timeout    = 30;
+        $mail->SMTPOptions = ['ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+            'crypto_method'     => STREAM_CRYPTO_METHOD_TLS_CLIENT,
+        ]];
+        $mail->SMTPAutoTLS   = true;
+        $mail->SMTPKeepAlive = false;
+        $mail->WordWrap      = 0;
+
+        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->addAddress($toEmail, $name);
+        $mail->isHTML(true);
+        $mail->Subject = "Your Feedback {$fbkId} Has Been {$status} — LGU Portal";
+
+        $mail->Body = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:36px 32px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.1);border-top:4px solid ' . $accentColor . ';">
+    <h1 style="color:#27417b;margin:0 0 4px;font-size:26px;text-align:center;">LGU Portal</h1>
+    <p style="color:#64748b;font-size:13px;text-align:center;margin:0 0 24px;">City Infrastructure Management &amp; Monitoring</p>
+    <h2 style="color:' . $accentColor . ';margin:0 0 6px;font-size:17px;font-weight:700;text-align:center;">' . $statusIcon . ' ' . $statusLabel . '</h2>
+    <p style="color:#374151;font-size:14px;text-align:center;margin:0 0 20px;">Feedback <strong style="color:#27417b">' . $fbkId . '</strong></p>
+    <p style="color:#374151;font-size:14px;margin:0 0 16px;">Hello <strong>' . $name . '</strong>,</p>
+    <p style="color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 16px;">
+        We would like to inform you that your feedback has been reviewed by our team.
+    </p>
+    ' . $bannerHtml . '
+    <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin:20px 0;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Feedback Details</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">'
+            . $detailRows .
+        '</table>
+    </div>
+    ' . $descSection . '
+    ' . $replySection . '
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">If you have any further concerns, please contact your local LGU office.</p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">
+        This is an automated message. Please do not reply to this email.
+    </p>
+    <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px;">
+        &copy; ' . date('Y') . ' LGU Portal &mdash; City Infrastructure Management &amp; Monitoring
+    </p>
+</div>
+</body></html>';
+
+        // Plain-text fallback
+        $plainParts = ["LGU Portal — Feedback Update\n\nHello {$name},\n"];
+        $plainParts[] = "Your feedback {$fbkId} (\"{$feedbackTitle}\") has been {$status}.\n";
+        if ($rating > 0)          $plainParts[] = "Rating: " . number_format($rating, 1) . " / 5";
+        if (!empty($createdAt))   $plainParts[] = "Submitted: " . (($ts = strtotime($createdAt)) ? date('F j, Y g:i A', $ts) : $createdAt);
+        if ($refRepId > 0)        $plainParts[] = "Reference Report: #REP-" . str_pad($refRepId, 3, '0', STR_PAD_LEFT);
+        if (!empty($refInfra))    $plainParts[] = "Infrastructure: {$refInfra}";
+        if (!empty($engTrimmed) && $engTrimmed !== ' ') $plainParts[] = "Assigned Engineer: {$engTrimmed}";
+        if (!empty($descTrimmed)) $plainParts[] = "\nYour Description:\n{$descTrimmed}";
+        $plainParts[] = "\nAdmin Reply:\n{$adminReply}";
+        $plainParts[] = "\n© " . date('Y') . " LGU Portal";
+        $mail->AltBody = implode("\n", $plainParts);
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log('Feedback status email error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Send an approval/validation notification email to the requester.
  *
  * @param string $toEmail

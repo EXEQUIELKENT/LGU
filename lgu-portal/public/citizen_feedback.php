@@ -1165,6 +1165,21 @@ body {
     .fbk-hero h1 { font-size: 2rem; }
     .map-section { grid-column: 1; }
 }
+
+/* ── Footer ── */
+.footer {
+    width: 100%; padding: 60px 20px 30px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -2px 12px var(--shadow-color);
+    margin-top: 0; flex-shrink: 0;
+}
+@media (max-width: 768px) {
+    .footer { padding: 40px 20px 20px; }
+    .footer-content { grid-template-columns: 1fr !important; gap: 30px !important; margin-bottom: 30px !important; }
+    .footer-bottom { flex-direction: column !important; gap: 20px !important; padding-top: 20px !important; margin-top: 20px !important; }
+}
 </style>
 </head>
 <body>
@@ -1184,8 +1199,8 @@ body {
                 <?php endif; ?>
                 <a href="citizencimm.php" data-i18n="nav_home">Home</a>
                 <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
-                <a href="citizenrepform.php" data-i18n="nav_request">Requests</a>
-                <a href="citizen_feedback.php" class="active">Feedback</a>
+                <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
+                <a href="citizen_feedback.php" class="active" data-i18n="nav_feedback">Feedback</a>
                 <a href="about.php" data-i18n="nav_about">About</a>
             </div>
             <div class="nav-divider"></div>
@@ -1261,7 +1276,7 @@ body {
 
     <!-- Feedback Form Card -->
     <div class="fbk-card">
-        <div class="fbk-card-title">
+        <div class="fbk-card-title" data-i18n="fbk_card_title">
             Feedback Form
         </div>
 
@@ -1270,39 +1285,40 @@ body {
             <div class="fbk-grid">
 
                 <!-- ── SECTION: Who are you? ── -->
-                <div class="fbk-section-label">Your Information <span style="font-size:10px;font-weight:400;color:#94a3b8;">(Name is optional — defaults to "Citizen")</span></div>
+                <div class="fbk-section-label"><span data-i18n="fbk_section_your_info">Your Information</span> <span style="font-size:10px;font-weight:400;color:#94a3b8;" data-i18n="fbk_name_optional_note">(Name is optional — defaults to "Citizen")</span></div>
 
                 <div class="fbk-group">
-                    <label>Full Name <span class="optional">optional</span></label>
-                    <input type="text" name="full_name" placeholder="e.g. Juan Dela Cruz"
+                    <label><span data-i18n="fbk_label_fullname">Full Name</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
+                    <input type="text" name="full_name" placeholder="e.g. Juan Dela Cruz" data-i18n-placeholder="fbk_fullname_placeholder"
                            value="<?= htmlspecialchars($_POST['full_name'] ?? '') ?>">
                 </div>
 
                 <div class="fbk-group">
-                    <label>Contact Number <span class="optional">optional</span></label>
+                    <label><span data-i18n="fbk_label_contact">Contact Number</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
                     <input type="tel" id="fbkContactNumber" name="contact_number" placeholder="09XX-XXX-XXXX" maxlength="13"
                            value="<?= htmlspecialchars($_POST['contact_number'] ?? '') ?>">
                 </div>
 
                 <div class="fbk-group full">
-                    <label>Email Address <span class="optional">optional</span></label>
-                    <input type="email" name="email" placeholder="your@email.com"
+                    <label><span data-i18n="fbk_label_email">Email Address</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
+                    <input type="email" name="email" placeholder="your@email.com" data-i18n-placeholder="fbk_email_placeholder"
                            value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                    <small style="color:#94a3b8;font-size:11px;margin-top:5px;display:block;" data-i18n="fbk_email_hint">📧 If provided, we'll send you notification on your feedback.</small>
                 </div>
 
                 <!-- ── SECTION: Feedback Details ── -->
-                <div class="fbk-section-label">Feedback Details</div>
+                <div class="fbk-section-label" data-i18n="fbk_section_details">Feedback Details</div>
 
                 <div class="fbk-group full">
-                    <label>Type of Feedback</label>
+                    <label data-i18n="fbk_label_type">Type of Feedback</label>
                     <div class="fbk-type-wrap">
                         <?php
                         $fbkTypes = [
-                            'Concern'         => ['icon' => '⚠️', 'label' => 'Concern'],
-                            'Acknowledgement' => ['icon' => '👍', 'label' => 'Acknowledgement'],
-                            'Improvement'     => ['icon' => '💡', 'label' => 'Improvement'],
-                            'Complaint'       => ['icon' => '📢', 'label' => 'Complaint'],
-                            'Suggestion'      => ['icon' => '✏️', 'label' => 'Suggestion'],
+                            'Concern'         => ['icon' => '⚠️', 'label' => 'Concern',         'i18n' => 'fbk_type_concern'],
+                            'Acknowledgement' => ['icon' => '👍', 'label' => 'Acknowledgement', 'i18n' => 'fbk_type_acknowledgement'],
+                            'Improvement'     => ['icon' => '💡', 'label' => 'Improvement',     'i18n' => 'fbk_type_improvement'],
+                            'Complaint'       => ['icon' => '📢', 'label' => 'Complaint',        'i18n' => 'fbk_type_complaint'],
+                            'Suggestion'      => ['icon' => '✏️', 'label' => 'Suggestion',       'i18n' => 'fbk_type_suggestion'],
                         ];
                         $selectedType = $_POST['feedback_type'] ?? 'Concern';
                         foreach ($fbkTypes as $type => $meta): ?>
@@ -1310,25 +1326,25 @@ body {
                                value="<?= $type ?>" <?= $selectedType === $type ? 'checked' : '' ?>>
                         <label for="ftype_<?= strtolower($type) ?>">
                             <span class="fbk-type-icon"><?= $meta['icon'] ?></span>
-                            <span><?= $meta['label'] ?></span>
+                            <span data-i18n="<?= $meta['i18n'] ?>"><?= $meta['label'] ?></span>
                         </label>
                         <?php endforeach; ?>
                     </div>
                 </div>
 
                 <div class="fbk-group full">
-                    <label>Feedback Title <span style="color:#ef4444">*</span></label>
-                    <input type="text" name="title" placeholder="Brief title of your feedback"
+                    <label><span data-i18n="fbk_label_title">Feedback Title</span> <span style="color:#ef4444">*</span></label>
+                    <input type="text" name="title" placeholder="Brief title of your feedback" data-i18n-placeholder="fbk_title_placeholder"
                            required value="<?= htmlspecialchars($_POST['title'] ?? '') ?>">
                 </div>
 
                 <div class="fbk-group full">
-                    <label>Description <span style="color:#ef4444">*</span></label>
-                    <textarea name="description" placeholder="Please provide detailed feedback…" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <label><span data-i18n="fbk_label_description">Description</span> <span style="color:#ef4444">*</span></label>
+                    <textarea name="description" placeholder="Please provide detailed feedback…" data-i18n-placeholder="fbk_description_placeholder" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <div class="fbk-group">
-                    <label>Star Rating <span style="color:#ef4444">*</span> <span class="optional">hover left/right half of a star for .5 values</span></label>
+                    <label><span data-i18n="fbk_label_rating">Star Rating</span> <span style="color:#ef4444">*</span> <span class="optional" data-i18n="fbk_rating_hint">hover left/right half of a star for .5 values</span></label>
                     <div class="star-rating-outer">
                         <input type="hidden" name="rating" id="ratingVal" value="<?= htmlspecialchars($_POST['rating'] ?? '3') ?>">
                         <div class="hsr-wrap" id="hsrWrap">
@@ -1348,10 +1364,10 @@ body {
                 </div>
 
                 <!-- ── SECTION: Where / What ── -->
-                <div class="fbk-section-label">Infrastructure & Location</div>
+                <div class="fbk-section-label" data-i18n="fbk_section_infra_location">Infrastructure & Location</div>
 
                 <div class="fbk-group">
-                    <label>Infrastructure / Facility <span class="optional">optional</span></label>
+                    <label><span data-i18n="fbk_label_infrastructure">Infrastructure / Facility</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
                     <input type="hidden" id="infraVal" name="infrastructure" value="<?= htmlspecialchars($_POST['infrastructure'] ?? '') ?>">
                     <div class="prof-combobox" id="cbInfra">
                         <div class="prof-combobox-display" id="cbInfraDisplay">
@@ -1361,31 +1377,31 @@ body {
                             <span class="prof-combobox-arrow">▾</span>
                         </div>
                         <div class="prof-combobox-dropdown" id="cbInfraDropdown">
-                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">
+                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" data-i18n-placeholder="infra_search_placeholder" autocomplete="off">
                             <div class="prof-combobox-list">
-                                <div class="prof-combobox-option" data-value="Roads"><i class="fas fa-road"></i> Roads</div>
-                                <div class="prof-combobox-option" data-value="Street Lights"><i class="fas fa-lightbulb"></i> Street Lights</div>
-                                <div class="prof-combobox-option" data-value="Drainage"><i class="fas fa-water"></i> Drainage</div>
-                                <div class="prof-combobox-option" data-value="Public Facilities"><i class="fas fa-landmark"></i> Public Facilities</div>
-                                <div class="prof-combobox-option" data-value="Water Supply"><i class="fas fa-faucet"></i> Water Supply</div>
-                                <div class="prof-combobox-option" data-value="Electrical"><i class="fas fa-bolt"></i> Electrical</div>
+                                <div class="prof-combobox-option" data-value="Roads"><i class="fas fa-road"></i> <span data-i18n="infra_roads">Roads</span></div>
+                                <div class="prof-combobox-option" data-value="Street Lights"><i class="fas fa-lightbulb"></i> <span data-i18n="infra_street_lights">Street Lights</span></div>
+                                <div class="prof-combobox-option" data-value="Drainage"><i class="fas fa-water"></i> <span data-i18n="infra_drainage">Drainage</span></div>
+                                <div class="prof-combobox-option" data-value="Public Facilities"><i class="fas fa-landmark"></i> <span data-i18n="infra_public_facilities">Public Facilities</span></div>
+                                <div class="prof-combobox-option" data-value="Water Supply"><i class="fas fa-faucet"></i> <span data-i18n="infra_water_supply">Water Supply</span></div>
+                                <div class="prof-combobox-option" data-value="Electrical"><i class="fas fa-bolt"></i> <span data-i18n="infra_electrical">Electrical</span></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="fbk-group">
-                    <label>Reference Completed Report <span class="optional">optional</span></label>
+                    <label><span data-i18n="fbk_label_ref_report">Reference Completed Report</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
                     <input type="hidden" id="refRepIdVal" name="rep_id" value="">
                     <div class="prof-combobox" id="cbRef">
                         <div class="prof-combobox-display" id="cbRefDisplay">
-                            <span class="prof-combobox-label" id="cbRefLabel">— None —</span>
+                            <span class="prof-combobox-label" id="cbRefLabel" data-i18n="fbk_ref_none">— None —</span>
                             <span class="prof-combobox-arrow">▾</span>
                         </div>
                         <div class="prof-combobox-dropdown" id="cbRefDropdown">
-                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search report…" autocomplete="off">
+                            <input class="prof-combobox-search" type="text" placeholder="🔍 Search report…" data-i18n-placeholder="fbk_ref_search_placeholder" autocomplete="off">
                             <div class="prof-combobox-list">
-                                <div class="prof-combobox-option" data-value="">— None —</div>
+                                <div class="prof-combobox-option" data-value="" data-i18n="fbk_ref_none">— None —</div>
                                 <?php foreach ($archiveReports as $ar): ?>
                                 <div class="prof-combobox-option ref-report-option"
                                      data-value="<?= $ar['rep_id'] ?>"
@@ -1398,7 +1414,7 @@ body {
                                     <button type="button" class="ref-view-btn"
                                             onclick="event.stopPropagation();openRefReportModal(<?= $ar['rep_id'] ?>)"
                                             title="View this report">
-                                        <i class="fas fa-eye"></i> View
+                                        <i class="fas fa-eye"></i> <span data-i18n="fbk_ref_view_btn">View</span>
                                     </button>
                                 </div>
                                 <?php endforeach; ?>
@@ -1409,13 +1425,15 @@ body {
 
                 <!-- Address with Leaflet map -->
                 <div class="fbk-group full map-section">
-                    <label>Address / Location <span class="optional">optional</span></label>
+                    <label><span data-i18n="fbk_label_address">Address / Location</span> <span class="optional" data-i18n="fbk_optional">optional</span></label>
                     <div style="position:relative;">
                         <input type="text" name="address" id="addressInput"
                                placeholder="Enter address or pick on map…"
+                               data-i18n-placeholder="fbk_address_placeholder"
                                style="padding-right:46px;"
                                value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                         <button type="button" onclick="openMapModal()" title="Pick on Map"
+                            data-i18n-title="fbk_pick_on_map"
                             style="position:absolute;right:8px;top:50%;transform:translateY(-50%);
                                    background:#2b6cb0;border:none;color:#fff;width:32px;height:32px;
                                    border-radius:50%;cursor:pointer;font-size:15px;
@@ -1426,19 +1444,19 @@ body {
                     </div>
                     <input type="hidden" name="coord_lat" id="coordLat">
                     <input type="hidden" name="coord_lng" id="coordLng">
-                    <span class="map-coords-badge" id="coordsBadge" style="margin-top:6px;display:none;">📍 Location pinned</span>
+                    <span class="map-coords-badge" id="coordsBadge" style="margin-top:6px;display:none;" data-i18n="fbk_coords_badge">📍 Location pinned</span>
                 </div>
 
                 <!-- ── SECTION: Photo Evidence ── -->
-                <div class="fbk-section-label">Photo Evidence <span style="font-size:10px;font-weight:400;color:#94a3b8;">(optional — max 5 photos)</span></div>
+                <div class="fbk-section-label"><span data-i18n="fbk_section_photos">Photo Evidence</span> <span style="font-size:10px;font-weight:400;color:#94a3b8;" data-i18n="fbk_photos_note">(optional — max 5 photos)</span></div>
 
                 <div class="fbk-group full">
                     <div class="photo-drop-zone" id="photoDropZone">
                         <input type="file" name="photos[]" id="photoInput"
                                accept="image/*" multiple>
                         <div class="photo-drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                        <div class="photo-drop-text">Click or drag photos here</div>
-                        <div class="photo-drop-hint">JPG, PNG, WEBP — max 5 photos, 5 MB each</div>
+                        <div class="photo-drop-text" data-i18n="fbk_photo_drop_text">Click or drag photos here</div>
+                        <div class="photo-drop-hint" data-i18n="fbk_photo_drop_hint">JPG, PNG, WEBP — max 5 photos, 5 MB each</div>
                     </div>
                     <div class="photo-preview-grid" id="photoPreviewGrid"></div>
                 </div>
@@ -1446,7 +1464,7 @@ body {
                 <!-- ── Submit ── -->
                 <div class="fbk-submit-row">
                     <button type="button" class="btn-fbk-submit" id="submitBtn" onclick="openFbkSubmitModal()">
-                        <i class="fas fa-paper-plane"></i> Submit Feedback
+                        <i class="fas fa-paper-plane"></i> <span data-i18n="fbk_submit_btn">Submit Feedback</span>
                     </button>
                 </div>
 
@@ -1460,11 +1478,11 @@ body {
 <div id="submitAlertBackdrop">
     <div id="submitAlertModal">
         <div class="icon-wrap"><span class="icon">📬</span></div>
-        <div class="alert-title">Confirm Submission</div>
-        <div class="alert-desc">Are you sure you want to submit your feedback? You won't be able to edit it after submission.</div>
+        <div class="alert-title" data-i18n="fbk_submit_modal_title">Confirm Submission</div>
+        <div class="alert-desc" data-i18n="fbk_submit_modal_desc">Are you sure you want to submit your feedback? You won't be able to edit it after submission.</div>
         <div class="alert-btns">
-            <button class="alert-btn cancel" type="button" onclick="closeFbkSubmitModal()">Cancel</button>
-            <button class="alert-btn confirm" type="button" id="fbkConfirmBtn">Submit</button>
+            <button class="alert-btn cancel" type="button" onclick="closeFbkSubmitModal()" data-i18n="fbk_submit_modal_cancel">Cancel</button>
+            <button class="alert-btn confirm" type="button" id="fbkConfirmBtn" data-i18n="fbk_submit_modal_confirm">Submit</button>
         </div>
     </div>
 </div>
@@ -1486,12 +1504,12 @@ body {
             </div>
 
             <div class="ref-modal-field">
-                <div class="ref-modal-field-label">📍 Location</div>
+                <div class="ref-modal-field-label" data-i18n="modal_location">📍 Location</div>
                 <div class="ref-modal-field-value" id="refModalLocation"></div>
             </div>
 
             <div class="ref-modal-field" id="refModalIssueFld">
-                <div class="ref-modal-field-label">📝 Issue / Notes</div>
+                <div class="ref-modal-field-label" data-i18n="modal_issue_notes">📝 Issue / Notes</div>
                 <div class="ref-modal-field-value" id="refModalIssue"></div>
             </div>
 
@@ -1499,19 +1517,19 @@ body {
 
             <div class="ref-modal-grid-2">
                 <div class="ref-modal-field">
-                    <div class="ref-modal-field-label">🚦 Priority</div>
+                    <div class="ref-modal-field-label" data-i18n="modal_priority">🚦 Priority</div>
                     <div class="ref-modal-field-value" id="refModalPriority"></div>
                 </div>
                 <div class="ref-modal-field">
-                    <div class="ref-modal-field-label">💰 Budget</div>
+                    <div class="ref-modal-field-label" data-i18n="modal_budget">💰 Budget</div>
                     <div class="ref-modal-field-value" id="refModalBudget"></div>
                 </div>
                 <div class="ref-modal-field">
-                    <div class="ref-modal-field-label">📅 Start Date</div>
+                    <div class="ref-modal-field-label" data-i18n="modal_start_date">📅 Start Date</div>
                     <div class="ref-modal-field-value" id="refModalStart"></div>
                 </div>
                 <div class="ref-modal-field">
-                    <div class="ref-modal-field-label">🏁 Est. Completion</div>
+                    <div class="ref-modal-field-label" data-i18n="modal_est_completion">🏁 Est. Completion</div>
                     <div class="ref-modal-field-value" id="refModalEnd"></div>
                 </div>
             </div>
@@ -1519,7 +1537,7 @@ body {
             <div id="refModalEvidenceFld" style="display:none;">
                 <div class="ref-modal-divider"></div>
                 <div class="ref-modal-field">
-                    <div class="ref-modal-field-label">🖼️ Evidence Photos</div>
+                    <div class="ref-modal-field-label" data-i18n="modal_evidence_photos">🖼️ Evidence Photos</div>
                     <div class="sched-evidence-strip" id="refModalEvidenceStrip"></div>
                 </div>
             </div>
@@ -1538,8 +1556,8 @@ body {
     <div id="fbkMapModal">
         <!-- Header: GPS (left) | Title (center) | Layer toggle (right) -->
         <div class="fbk-map-header">
-            <button type="button" id="fbkMapGpsBtn" title="Use my current location">📍</button>
-            <h3>📍 Pick Your Location</h3>
+            <button type="button" id="fbkMapGpsBtn" data-i18n-title="map_gps_title" title="Use my current location">📍</button>
+            <h3 data-i18n="fbk_map_title">📍 Pick Your Location</h3>
             <button type="button" id="fbkMapLayerToggle">🛰 Satellite</button>
         </div>
         <!-- Search + detected-address inputs -->
@@ -1547,14 +1565,16 @@ body {
             <div class="fbk-map-search-wrap">
                 <input type="text" id="fbkMapSearchInput"
                     placeholder="🔍 Search any address or place…"
+                    data-i18n-placeholder="fbk_map_search_placeholder"
                     autocomplete="off">
                 <button type="button" id="fbkMapSearchClearBtn" title="Clear search">✕</button>
                 <div id="fbkMapSearchDropdown">
-                    <div class="fbk-map-search-spinner" id="fbkMapSearchSpinner">Searching…</div>
+                    <div class="fbk-map-search-spinner" id="fbkMapSearchSpinner" data-i18n="fbk_map_searching">Searching…</div>
                 </div>
             </div>
             <input type="text" id="fbkMapAddrField"
                 placeholder="Move the pin or search to detect address…"
+                data-i18n-placeholder="fbk_map_addr_placeholder"
                 readonly>
         </div>
         <!-- Map wrapper -->
@@ -1563,8 +1583,8 @@ body {
         </div>
         <!-- Actions -->
         <div class="fbk-map-actions">
-            <button type="button" class="btn-cancel" onclick="closeFbkMap()">Cancel</button>
-            <button type="button" class="btn-save" id="fbkMapSaveBtn" onclick="saveFbkMap()">Use This Address</button>
+            <button type="button" class="btn-cancel" onclick="closeFbkMap()" data-i18n="fbk_map_cancel">Cancel</button>
+            <button type="button" class="btn-save" id="fbkMapSaveBtn" onclick="saveFbkMap()" data-i18n="fbk_map_save">Use This Address</button>
         </div>
     </div>
 </div>
@@ -1618,8 +1638,12 @@ body {
         document.getElementById('refModalTitle').textContent = rec.infrastructure || '—';
 
         // Status pill
+        var lang = localStorage.getItem('lang') || 'en';
+        var tr = (window.__preloadedTranslations && window.__preloadedTranslations[lang]) || {};
         var pill = document.getElementById('refModalStatus');
-        pill.textContent = isCancelled ? '❌ Cancelled' : '✅ Completed';
+        pill.textContent = isCancelled
+            ? (tr['modal_status_cancelled'] || '❌ Cancelled')
+            : (tr['modal_status_completed'] || '✅ Completed');
         pill.className   = 'ref-status-pill' + (isCancelled ? ' cancelled' : '');
 
         // Location
@@ -1750,13 +1774,27 @@ document.addEventListener('keydown', function(e){
         });
     }
 
+    var HINTS_KEYS = {
+        0.5:'fbk_rating_very_poor',     1:'fbk_rating_very_poor',
+        1.5:'fbk_rating_poor',          2:'fbk_rating_poor',
+        2.5:'fbk_rating_below_average', 3:'fbk_rating_average',
+        3.5:'fbk_rating_above_average', 4:'fbk_rating_good',
+        4.5:'fbk_rating_very_good',     5:'fbk_rating_excellent'
+    };
+
     function updateBar(val) {
         var col = COLORS[val] || '#f59e0b';
         if (barFill) {
             barFill.style.width      = (val / 5 * 100) + '%';
             barFill.style.background = 'linear-gradient(90deg,' + col + ',' + col + 'cc)';
         }
-        if (hintEl) hintEl.textContent = val + ' / 5 — ' + (HINTS[val] || '');
+        if (hintEl) {
+            var lang = localStorage.getItem('lang') || 'en';
+            var tr = (window.__preloadedTranslations && window.__preloadedTranslations[lang]) || {};
+            var hintKey  = HINTS_KEYS[val];
+            var hintText = (hintKey && tr[hintKey]) ? tr[hintKey] : (HINTS[val] || '');
+            hintEl.textContent = val + ' / 5 — ' + hintText;
+        }
     }
 
     function getVal(star, e) {
@@ -1915,6 +1953,59 @@ initProfCombobox({ displayId:'cbInfraDisplay', dropdownId:'cbInfraDropdown', hid
 // Init reference report combobox
 initProfCombobox({ displayId:'cbRefDisplay', dropdownId:'cbRefDropdown', hiddenId:'refRepIdVal', labelId:'cbRefLabel', placeholder:'— None —', storageKey:'fbk_rep_id', storageLabelKey:'fbk_rep_id_label' });
 
+// ── i18nReady: update combobox placeholders + star hint labels on language change ──
+document.addEventListener('i18nReady', function(e) {
+    var lang = e.detail && e.detail.lang ? e.detail.lang : (localStorage.getItem('lang') || 'en');
+    var tr = window.__preloadedTranslations;
+    if (!tr || !tr[lang]) return;
+    var t = tr[lang];
+
+    // Combobox placeholder for Infrastructure (only when nothing selected)
+    var infraHidden = document.getElementById('infraVal');
+    var infraLabel  = document.getElementById('cbInfraLabel');
+    if (infraLabel && infraHidden && !infraHidden.value) {
+        infraLabel.textContent = t['form_infra_placeholder'] || '— Select infrastructure —';
+    }
+
+    // Combobox placeholder for Reference Report (only when nothing selected)
+    var refHidden = document.getElementById('refRepIdVal');
+    var refLabel  = document.getElementById('cbRefLabel');
+    if (refLabel && refHidden && !refHidden.value) {
+        refLabel.textContent = t['fbk_ref_none'] || '— None —';
+    }
+
+    // Star hint labels
+    var HINTS_EN = { 0.5:'Very Poor', 1:'Very Poor', 1.5:'Poor', 2:'Poor', 2.5:'Below Average', 3:'Average', 3.5:'Above Average', 4:'Good', 4.5:'Very Good', 5:'Excellent' };
+    var HINTS_TL = { 0.5:'Napaka-Sama', 1:'Napaka-Sama', 1.5:'Mahina', 2:'Mahina', 2.5:'Mas Mababa sa Average', 3:'Katamtaman', 3.5:'Mas Mataas sa Average', 4:'Maganda', 4.5:'Napakaganda', 5:'Napakahusay' };
+    var HINTS_KEYS = { 0.5:'fbk_rating_very_poor', 1:'fbk_rating_very_poor', 1.5:'fbk_rating_poor', 2:'fbk_rating_poor', 2.5:'fbk_rating_below_average', 3:'fbk_rating_average', 3.5:'fbk_rating_above_average', 4:'fbk_rating_good', 4.5:'fbk_rating_very_good', 5:'fbk_rating_excellent' };
+    var ratingVal = parseFloat(document.getElementById('ratingVal') ? document.getElementById('ratingVal').value : '3') || 3;
+    var hintEl = document.getElementById('starHint');
+    if (hintEl) {
+        var hintKey  = HINTS_KEYS[ratingVal];
+        var hintText = hintKey && t[hintKey] ? t[hintKey] : (lang === 'tl' ? (HINTS_TL[ratingVal] || '') : (HINTS_EN[ratingVal] || ''));
+        hintEl.textContent = ratingVal + ' / 5 — ' + hintText;
+    }
+
+    // Report view modal status pill — re-translate if modal is open
+    var openPill = document.querySelector('#refReportModalBackdrop.active .ref-status-pill');
+    if (openPill) {
+        var isCancelled = openPill.classList.contains('cancelled');
+        openPill.textContent = isCancelled
+            ? (t['modal_status_cancelled'] || '❌ Cancelled')
+            : (t['modal_status_completed'] || '✅ Completed');
+    }
+
+    // Map layer toggle label (satellite/street)
+    var layerToggle = document.getElementById('fbkMapLayerToggle');
+    if (layerToggle) {
+        // Preserve current state — text depends on whether satellite is currently active
+        var isSat = layerToggle.dataset.isSatellite !== 'false';
+        layerToggle.textContent = isSat
+            ? (t['map_layer_toggle_street'] || '🗺️ Street')
+            : (t['map_layer_toggle_satellite'] || '🛰️ Satellite');
+    }
+});
+
 // ── Reference report clear (legacy, now handled by combobox) ──────────────────
 function toggleRefClear() {}
 function clearRefSelect() {}
@@ -2001,6 +2092,8 @@ function clearRefSelect() {}
 
     function renderPreviews() {
         grid.innerHTML = '';
+        var noneLabel = document.getElementById('photoNoneLabel');
+        if (noneLabel) noneLabel.style.display = fileList.length ? 'none' : 'block';
         fileList.forEach(function(f, i) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -2088,7 +2181,17 @@ function clearRefSelect() {}
     let isSatellite       = true;
 
     function syncLayerLabel() {
-        if (layerToggle) layerToggle.textContent = isSatellite ? '🗺 Street' : '🛰 Satellite';
+        if (layerToggle) {
+            layerToggle.dataset.isSatellite = isSatellite ? 'true' : 'false';
+            var tr = window.__preloadedTranslations;
+            var lang = localStorage.getItem('lang') || 'en';
+            var t = tr && tr[lang] ? tr[lang] : null;
+            if (isSatellite) {
+                layerToggle.textContent = (t && t['map_layer_toggle_street']) || '🗺️ Street';
+            } else {
+                layerToggle.textContent = (t && t['map_layer_toggle_satellite']) || '🛰️ Satellite';
+            }
+        }
     }
 
     function setSaveState(disabled) {
@@ -2347,6 +2450,58 @@ window.addEventListener('scroll', function(){
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </script>
 <?php include 'citizen_global.php'; ?>
+
+<footer class="footer" style="margin-top:50px;">
+    <div class="footer-content">
+        <div class="footer-about">
+            <h3>InfraGovServices</h3>
+            <p data-i18n="footer_desc">Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.</p>
+            <div class="footer-contact">
+                <div class="contact-item"><i class="fas fa-envelope"></i><span>contact@infragovservices.com</span></div>
+                <div class="contact-item"><i class="fas fa-phone"></i><span>(02) 8988-4242</span></div>
+                <div class="contact-item"><i class="fas fa-map-marker-alt"></i><span>Quezon City Hall, Quezon City</span></div>
+            </div>
+        </div>
+        <div class="footer-links">
+            <h4 data-i18n="footer_quick_links">Quick Links</h4>
+            <ul>
+                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
+            </ul>
+        </div>
+        <div class="footer-links">
+            <h4 data-i18n="footer_resources">Resources</h4>
+            <ul>
+                <li><a href="#" data-i18n="footer_link_guide">User Guide</a></li>
+                <li><a href="#" data-i18n="footer_link_faqs">FAQs</a></li>
+                <li><a href="#" data-i18n="footer_link_areas">Service Areas</a></li>
+                <li><a href="#" data-i18n="footer_link_emergency">Emergency Contacts</a></li>
+            </ul>
+        </div>
+        <div class="footer-links">
+            <h4 data-i18n="footer_legal">Legal</h4>
+            <ul>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
+                <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div data-i18n="footer_copyright">© 2026 LGU Quezon City · InfraGovServices · All Rights Reserved</div>
+        <div class="footer-social">
+            <a href="#" class="social-link" title="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+            <a href="#" class="social-link" title="Twitter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+            <a href="#" class="social-link" title="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>
+            <a href="#" class="social-link" title="Email"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></a>
+        </div>
+    </div>
+</footer>
+
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
 <?php include 'chatbot-widget.php'; ?>
 

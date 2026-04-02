@@ -3437,6 +3437,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li><a href="<?php echo htmlspecialchars($basePath); ?>citizencimm.php">Home</a></li>
                 <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenreports.php">Reports</a></li>
                 <li><a href="<?php echo htmlspecialchars($basePath); ?>citizenrepform.php">Submit Request</a></li>
+                <li><a href="<?php echo htmlspecialchars($basePath); ?>citizen_feedback.php">Feedback</a></li>
                 <li><a href="<?php echo htmlspecialchars($basePath); ?>about.php">About Us</a></li>
             </ul>
         </div>

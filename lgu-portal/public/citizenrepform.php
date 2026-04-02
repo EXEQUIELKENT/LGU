@@ -1611,7 +1611,7 @@ input[type="file"] {
 
     <div class="form-wrapper">
         <div class="report-card">
-            <h2 data-i18n="form_title"></i> Submit a Request</h2>
+            <h2 data-i18n="form_page_title"><i class="fas fa-clipboard-list"></i> Submit a Request</h2>
 
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <?php if (!empty($_SESSION['last_req_id'])): ?>
@@ -1620,7 +1620,7 @@ input[type="file"] {
                 <?php endif; ?>
 
                 <div class="input-group">
-                    <label data-i18n="form_infrastructure_label">Infrastructure Type <span style="color:#ef4444">*</span></label>
+                    <label><span data-i18n="form_infrastructure_label">Infrastructure Type</span> <span style="color:#ef4444">*</span></label>
                     <input type="hidden" id="cbInfraVal" name="infrastructure">
                     <div class="prof-combobox" id="cbInfra">
                         <div class="prof-combobox-display" id="cbInfraDisplay">
@@ -1642,7 +1642,7 @@ input[type="file"] {
                 </div>
 
                 <div class="input-group" style="position:relative;">
-                    <label for="locationInput" data-i18n="form_location_label">Location <span style="color:#ef4444">*</span></label>
+                    <label for="locationInput"><span data-i18n="form_location_label">Location</span> <span style="color:#ef4444">*</span></label>
                     <input type="text" id="locationInput" name="location" data-i18n-placeholder="form_location_placeholder" placeholder="Click to select location" autocomplete="off" required readonly style="background: var(--input-bg); cursor:pointer;">
                     <div id="locationSuggestions" class="location-suggestions"></div>
                 </div>
@@ -1653,18 +1653,18 @@ input[type="file"] {
                 </div>
 
                 <div class="input-group">
-                    <label for="contact_number" data-i18n="form_contact_label">Contact Number <span style="color:#ef4444">*</span></label>
+                    <label for="contact_number"><span data-i18n="form_contact_label">Contact Number</span> <span style="color:#ef4444">*</span></label>
                     <input type="tel" id="contact_number" name="contact_number" data-i18n-placeholder="form_contact_placeholder" placeholder="09XX-XXX-XXXX" maxlength="13" required>
                 </div>
 
                 <div class="input-group full-width">
                     <label>Email Address <span class="optional">(Optional)</span></label>
                     <input type="email" id="req_email" name="req_email" placeholder="your@email.com" autocomplete="email">
-                    <small style="color:#94a3b8;font-size:11px;margin-top:5px;display:block;">📧 If provided, we'll send you progress updates on your report.</small>
+                    <small style="color:#94a3b8;font-size:11px;margin-top:5px;display:block;" data-i18n="form_email_hint">📧 If provided, we'll send you progress updates on your report.</small>
                 </div>
 
                 <div class="input-group full-width">
-                    <label for="issue" data-i18n="form_issue_label">Issue / Damage Description <span style="color:#ef4444">*</span></label>
+                    <label for="issue"><span data-i18n="form_issue_label">Issue / Damage Description</span> <span style="color:#ef4444">*</span></label>
                     <textarea id="issue" name="issue" data-i18n-placeholder="form_issue_placeholder" placeholder="Describe the problem in detail..." required></textarea>
                 </div>
 
@@ -1675,8 +1675,8 @@ input[type="file"] {
                         <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;">
                         <div class="custom-file-wrapper" id="customFileWrapper" onclick="document.getElementById('evidence').click()">
                             <div class="photo-drop-icon"><i class="fas fa-cloud-upload-alt" style="font-size:2.4rem;color:var(--accent-secondary);"></i></div>
-                            <div class="photo-drop-text" id="customFileText" data-i18n-id="form_file_none">Click or drag to upload images</div>
-                            <div class="photo-drop-hint">JPG, PNG, WEBP · Max 4 files</div>
+                            <div class="photo-drop-text" id="customFileText" data-i18n="form_upload_label">Click or drag to upload images</div>
+                            <div class="photo-drop-hint" data-i18n="form_upload_hint">JPG, PNG, WEBP · Max 4 files</div>
                         </div>
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
@@ -1886,8 +1886,13 @@ input[type="file"] {
         var isOpen     = false;
         var highlighted = -1;
 
+        // Move dropdown to <body> so backdrop-filter on .report-card does not
+        // create a new containing block that breaks position:fixed coordinates.
+        document.body.appendChild(dropdownEl);
+
         function positionDropdown() {
             var rect = displayEl.getBoundingClientRect();
+            var vw = window.innerWidth;
             var vh = window.innerHeight;
             dropdownEl.style.width = rect.width + 'px';
             dropdownEl.style.visibility = 'hidden';
@@ -1895,9 +1900,13 @@ input[type="file"] {
             var dh = dropdownEl.offsetHeight || 260;
             dropdownEl.style.display = '';
             dropdownEl.style.visibility = '';
-            var top = rect.bottom + 4;
+            var top  = rect.bottom + 4;
+            var left = rect.left;
+            // Prevent right-edge overflow
+            if (left + rect.width > vw - 8) left = vw - rect.width - 8;
+            if (left < 8) left = 8;
+            // Flip above if not enough space below
             if (top + dh > vh - 12 && rect.top > dh + 12) top = rect.top - dh - 4;
-            var left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
             dropdownEl.style.top  = top  + 'px';
             dropdownEl.style.left = left + 'px';
         }
@@ -2011,7 +2020,7 @@ input[type="file"] {
         window.addEventListener('resize', function() { if (isOpen) positionDropdown(); });
         document.addEventListener('scroll', function() { if (isOpen) positionDropdown(); }, true);
         document.addEventListener('click', function(e) {
-            if (!document.getElementById('cbInfra')?.contains(e.target)) closeDropdown();
+            if (!document.getElementById('cbInfra')?.contains(e.target) && !dropdownEl.contains(e.target)) closeDropdown();
         });
 
         // ── Translate option labels and search input on language change ──────
@@ -4521,6 +4530,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
                 <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
                 <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>

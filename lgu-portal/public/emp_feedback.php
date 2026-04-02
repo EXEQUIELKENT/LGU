@@ -148,10 +148,73 @@ if (isset($_GET['ajax'])) {
         $notes  = trim($_POST['employee_notes'] ?? '');
         $validS = ['Under Review','Valid','Dismissed'];
         if (!$fid || !in_array($status, $validS)) { echo json_encode(['success'=>false,'msg'=>'Invalid input']); exit; }
+
+        // Reply is required when finalizing (Valid or Dismissed)
+        if (in_array($status, ['Valid','Dismissed']) && empty($notes)) {
+            echo json_encode(['success'=>false,'msg'=>'Reply is required when setting status to Valid or Dismissed.']); exit;
+        }
+
+        // Lock check — fetch current status before updating
+        $chk = $conn->prepare('
+            SELECT f.status, f.email, f.full_name, f.title, f.feedback_type,
+                   f.rating, f.description, f.created_at, f.rep_id, f.infrastructure
+            FROM citizen_feedback f
+            WHERE f.feedback_id = ?
+        ');
+        $chk->bind_param('i', $fid); $chk->execute();
+        $cur = $chk->get_result()->fetch_assoc(); $chk->close();
+        if (!$cur) { echo json_encode(['success'=>false,'msg'=>'Feedback not found.']); exit; }
+
+        // Once Valid or Dismissed, the record is locked — no further changes allowed
+        if (in_array($cur['status'], ['Valid','Dismissed'])) {
+            echo json_encode(['success'=>false,'msg'=>'This feedback has already been finalized and cannot be changed.','locked'=>true]); exit;
+        }
+
         $stmt = $conn->prepare('UPDATE citizen_feedback SET status=?, employee_notes=? WHERE feedback_id=?');
         $stmt->bind_param('ssi', $status, $notes, $fid);
         $ok = $stmt->execute(); $stmt->close();
-        echo json_encode(['success'=>$ok]); exit;
+
+        // Send notification email when finalizing (Valid or Dismissed) and email exists
+        $emailSent = false;
+        if ($ok && in_array($status, ['Valid','Dismissed']) && !empty($cur['email'])) {
+            try {
+                // Fetch engineer name from referenced report if present
+                $refEngineerName = '';
+                if (!empty($cur['rep_id'])) {
+                    $engStmt = $conn->prepare('
+                        SELECT CONCAT(e.first_name," ",e.last_name) AS eng_name
+                        FROM reports r
+                        LEFT JOIN employees e ON r.engineer_id = e.user_id
+                        WHERE r.rep_id = ? LIMIT 1
+                    ');
+                    $engStmt->bind_param('i', $cur['rep_id']);
+                    $engStmt->execute();
+                    $engRow = $engStmt->get_result()->fetch_assoc();
+                    $engStmt->close();
+                    $refEngineerName = $engRow['eng_name'] ?? '';
+                }
+                require_once __DIR__ . '/report_email.php';
+                $emailSent = sendFeedbackStatusEmail(
+                    $cur['email'],
+                    $cur['full_name'],
+                    $fid,
+                    $status,
+                    $notes,
+                    $cur['title'],
+                    $cur['feedback_type'],
+                    (float)($cur['rating'] ?? 0),
+                    $cur['description'] ?? '',
+                    $cur['created_at']  ?? '',
+                    (int)($cur['rep_id'] ?? 0),
+                    $cur['infrastructure'] ?? '',
+                    $refEngineerName
+                );
+            } catch (Throwable $e) {
+                error_log('[emp_feedback] Email error: ' . $e->getMessage());
+            }
+        }
+
+        echo json_encode(['success'=>$ok,'email_sent'=>$emailSent]); exit;
     }
 
     // Delete (admin only)
@@ -176,12 +239,14 @@ $sql = "
            GROUP_CONCAT(fi.img_path ORDER BY fi.uploaded_at ASC SEPARATOR '|') AS img_paths,
            r.rep_id AS ref_rep_id,
            req.infrastructure AS ref_infra,
-           req.location       AS ref_location
+           req.location       AS ref_location,
+           CONCAT(e.first_name,' ',e.last_name) AS ref_engineer_name
     FROM citizen_feedback f
     LEFT JOIN feedback_images fi ON fi.feedback_id = f.feedback_id
     LEFT JOIN reports r          ON r.rep_id        = f.rep_id
     LEFT JOIN request_resolutions res ON r.res_id   = res.res_id
     LEFT JOIN requests req        ON res.req_id      = req.req_id
+    LEFT JOIN employees e         ON r.engineer_id   = e.user_id
     GROUP BY f.feedback_id
     ORDER BY f.created_at DESC
 ";
@@ -419,7 +484,48 @@ body { overflow: hidden; height: 100vh; }
 }
 .filter-select:focus { border-color: #3762c8; }
 
-/* ── Sort dropdown (from requests.php) ── */
+/* ── CIMM email/save loading overlay (matches pending_reports.php) ── */
+#fbkEmailOverlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: none; justify-content: center; align-items: center;
+    z-index: 19000; opacity: 0; transition: opacity .3s ease;
+}
+#fbkEmailOverlay.show { display: flex; opacity: 1; }
+#fbkEmailOverlay .fbk-email-content { text-align: center; }
+#fbkEmailOverlay .fbk-email-spinner {
+    display: inline-block; font-size: 58px; font-weight: 800;
+    color: #6384d2; letter-spacing: 8px;
+    animation: fbkSpinLGU 2s linear infinite;
+    text-shadow: 0 4px 12px rgba(99,132,210,.4);
+    font-family: 'Poppins', Arial, sans-serif;
+}
+@keyframes fbkSpinLGU { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+#fbkEmailOverlay .fbk-email-text {
+    margin-top: 22px; color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+}
+/* ── Detail modal footer action buttons (match pending_reports.php) ── */
+#footerSaveBtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; border: none; padding: 11px 20px; border-radius: 11px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all .25s; box-shadow: 0 4px 14px rgba(55,98,200,.3);
+    font-family: inherit;
+}
+#footerSaveBtn:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(55,98,200,.45); }
+#footerSaveBtn:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+#footerDeleteBtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: #fff; border: none; padding: 11px 20px; border-radius: 11px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: all .25s; box-shadow: 0 4px 14px rgba(220,38,38,.3);
+    font-family: inherit;
+}
+#footerDeleteBtn:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(220,38,38,.45); }
+
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
 .sort-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1814,6 +1920,14 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 </div>
 </div><!-- /.main-content -->
 
+<!-- ─── CIMM loading overlay (matches pending_reports.php) ───────────── -->
+<div id="fbkEmailOverlay">
+    <div class="fbk-email-content">
+        <div class="fbk-email-spinner">CIMM</div>
+        <div class="fbk-email-text" id="fbkEmailOverlayText">Saving &amp; Sending Notification…</div>
+    </div>
+</div>
+
 <!-- ─── Save Confirmation Modal ───────────────────────────────────────── -->
 <div class="confirm-modal-backdrop" id="saveConfirmBackdrop">
     <div class="confirm-modal save-confirm">
@@ -1821,7 +1935,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3762c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         </div>
         <div class="lo-title">Save Changes?</div>
-        <div class="lo-desc">Are you sure you want to update the status and notes for this feedback?</div>
+        <div class="lo-desc" id="saveConfirmDesc">Are you sure you want to update the status and notes for this feedback?</div>
         <div class="lo-btns">
             <button class="lo-btn lo-cancel" id="saveCancelBtn">Cancel</button>
             <button class="lo-btn lo-confirm-save" id="saveConfirmBtn">Save Changes</button>
@@ -1859,11 +1973,11 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         <!-- dynamically populated -->
     </div>
     <div class="detail-modal-footer" id="detailModalFooter" style="display:none;">
-        <button class="btn-update" id="footerSaveBtn">
+        <button id="footerSaveBtn">
             <i class="fas fa-save"></i> Save Changes
         </button>
         <?php if ($isAdmin): ?>
-        <button class="btn-action btn-delete" id="footerDeleteBtn" style="padding:9px 18px;font-size:13px;border-radius:20px;">
+        <button id="footerDeleteBtn">
             <i class="fas fa-trash"></i> Delete Feedback
         </button>
         <?php endif; ?>
@@ -1899,9 +2013,10 @@ const ALL_FEEDBACK = <?= json_encode(array_map(function($fb){
         'address'       => $fb['address'],
         'coordinates'   => $fb['coordinates'],
         'rep_id'        => $fb['rep_id'],
-        'ref_infra'     => $fb['ref_infra'],
-        'ref_location'  => $fb['ref_location'],
-        'status'        => $fb['status'],
+        'ref_infra'          => $fb['ref_infra'],
+        'ref_location'       => $fb['ref_location'],
+        'ref_engineer_name'  => $fb['ref_engineer_name'],
+        'status'             => $fb['status'],
         'employee_notes'=> $fb['employee_notes'],
         'created_at'    => $fb['created_at'],
         'images'        => array_values($fb['images']),
@@ -2327,19 +2442,45 @@ function openDetail(id) {
 
         '<div class="req-detail-divider"></div>' +
 
-        '<div class="update-section">' +
-            '<h4><i class="fas fa-edit"></i> Update Feedback</h4>' +
-            '<div class="update-grid">' +
-                '<div class="form-group">' +
-                    '<label>Set Status</label>' +
-                    statusDropdownHtml +
+        (function() {
+            var isFinalised = (fb.status === 'Valid' || fb.status === 'Dismissed');
+            if (isFinalised) {
+                var lockIcon   = fb.status === 'Valid' ? '✅' : '❌';
+                var lockColor  = fb.status === 'Valid' ? '#15803d' : '#475569';
+                var lockBg     = fb.status === 'Valid' ? 'rgba(22,163,74,.08)' : 'rgba(100,116,139,.08)';
+                var lockBorder = fb.status === 'Valid' ? 'rgba(22,163,74,.3)' : 'rgba(100,116,139,.3)';
+                var replyHtml  = fb.employee_notes
+                    ? '<div class="req-detail-field" style="margin-top:12px;"><div class="req-detail-field-label"><i class="fas fa-reply"></i> Admin Reply</div>' +
+                      '<div class="req-detail-field-value" style="white-space:pre-wrap;line-height:1.6;">' +
+                      fb.employee_notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+                      '</div></div>'
+                    : '';
+                return '<div class="update-section">' +
+                    '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:' + lockBg + ';border:1.5px solid ' + lockBorder + ';border-radius:10px;">' +
+                        '<span style="font-size:20px;flex-shrink:0;">' + lockIcon + '</span>' +
+                        '<div style="flex:1;min-width:0;">' +
+                            '<div style="font-size:13px;font-weight:700;color:' + lockColor + ';">Feedback is finalised (' + fb.status + ')</div>' +
+                            '<div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">No further changes can be made once a feedback is marked Valid or Dismissed.</div>' +
+                        '</div>' +
+                        '<i class="fas fa-lock" style="flex-shrink:0;color:' + lockColor + ';opacity:.7;font-size:16px;"></i>' +
+                    '</div>' +
+                    replyHtml +
+                '</div>';
+            }
+            return '<div class="update-section">' +
+                '<h4><i class="fas fa-edit"></i> Update Feedback</h4>' +
+                '<div class="update-grid">' +
+                    '<div class="form-group">' +
+                        '<label>Set Status</label>' +
+                        statusDropdownHtml +
+                    '</div>' +
+                    '<div class="form-group full">' +
+                        '<label>Your Reply <span style="color:#ef4444;" title="Required">*</span></label>' +
+                        '<textarea id="updateNotes" placeholder="Write your reply to this feedback…" required>' + (fb.employee_notes || '') + '</textarea>' +
+                    '</div>' +
                 '</div>' +
-                '<div class="form-group full">' +
-                    '<label>Your Reply <span style="color:#ef4444;" title="Required">*</span></label>' +
-                    '<textarea id="updateNotes" placeholder="Write your reply to this feedback…" required>' + (fb.employee_notes || '') + '</textarea>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
+            '</div>';
+        })();
 
     // Wire custom status dropdown
     (function(){
@@ -2372,11 +2513,14 @@ function openDetail(id) {
     // Show footer with Save and Delete buttons
     var footer = document.getElementById('detailModalFooter');
     if (footer) {
-        footer.style.display = '';
+        var isFinalised = (fb.status === 'Valid' || fb.status === 'Dismissed');
         var saveBtn   = document.getElementById('footerSaveBtn');
         var deleteBtn = document.getElementById('footerDeleteBtn');
-        if (saveBtn)   saveBtn.onclick   = function(){ showSaveConfirm(id); };
-        if (deleteBtn) deleteBtn.onclick = function(){ showDeleteConfirm(id); };
+        // Hide Save button for finalised feedback — only show Delete (admin only)
+        if (saveBtn)   { saveBtn.style.display = isFinalised ? 'none' : ''; saveBtn.onclick = function(){ showSaveConfirm(id); }; }
+        if (deleteBtn) { deleteBtn.style.display = ''; deleteBtn.onclick = function(){ showDeleteConfirm(id); }; }
+        // Show footer if there's at least one visible button
+        footer.style.display = (isFinalised && !deleteBtn) ? 'none' : '';
     }
 
     // Render map if coordinates exist
@@ -2438,7 +2582,28 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { if (
 var _pendingSaveId   = null;
 var _pendingDeleteId = null;
 
-function showSaveConfirm(id)   {
+function renderStarsHtml(rating, isDark) {
+    rating = parseFloat(rating) || 0;
+    isDark = isDark || false;
+    var numColor = isDark ? '#fcd34d' : '#92400e';
+    var html = '<span style="display:inline-flex;align-items:center;gap:2px;vertical-align:middle;">';
+    for (var i = 1; i <= 5; i++) {
+        if (rating >= i) {
+            html += '<span style="color:#f59e0b;font-size:16px;line-height:1;">★</span>';
+        } else if (rating >= i - 0.5) {
+            html += '<span style="position:relative;display:inline-block;line-height:1;font-size:16px;">' +
+                        '<span style="color:#d1d5db;display:block;line-height:1;">★</span>' +
+                        '<span style="position:absolute;top:0;left:0;width:50%;overflow:hidden;color:#f59e0b;white-space:nowrap;display:block;line-height:1;">★</span>' +
+                    '</span>';
+        } else {
+            html += '<span style="color:' + (isDark ? '#4b5563' : '#d1d5db') + ';font-size:16px;line-height:1;">☆</span>';
+        }
+    }
+    html += '</span> <span style="font-size:13px;font-weight:700;color:' + numColor + ';vertical-align:middle;">' + rating.toFixed(1) + ' / 5</span>';
+    return html;
+}
+
+function showSaveConfirm(id) {
     var notes = document.getElementById('updateNotes') ? document.getElementById('updateNotes').value.trim() : '';
     if (!notes) {
         showToast('error', 'Your Reply is required before saving.');
@@ -2446,8 +2611,84 @@ function showSaveConfirm(id)   {
         if (ta) { ta.focus(); ta.style.borderColor = '#ef4444'; ta.style.boxShadow = '0 0 0 3px rgba(239,68,68,.15)'; setTimeout(function(){ ta.style.borderColor = ''; ta.style.boxShadow = ''; }, 2500); }
         return;
     }
+    var statusLbl = document.getElementById('statusDdText');
+    var status    = statusLbl ? statusLbl.textContent.trim() : '';
+    var descEl    = document.getElementById('saveConfirmDesc');
+    if (descEl) {
+        var fb       = ALL_FEEDBACK.find(function(x){ return x.feedback_id === id; });
+        var hasEmail = fb && fb.email;
+        var isFinal  = (status === 'Valid' || status === 'Dismissed');
+
+        // Detect dark mode once — used for all inline color decisions below
+        var isDark = document.documentElement.hasAttribute('data-theme');
+
+        // Build rating block — only shown when finalizing (Valid or Dismissed)
+        var ratingHtml = '';
+        if (isFinal && fb && fb.rating) {
+            var ratBg     = isDark ? 'rgba(245,158,11,.18)'  : 'rgba(245,158,11,.10)';
+            var ratBorder = isDark ? 'rgba(245,158,11,.45)'  : 'rgba(245,158,11,.30)';
+            var ratLabel  = isDark ? '#fcd34d'               : '#92400e';
+            ratingHtml = '<div style="margin:10px 0 4px;padding:10px 14px;background:' + ratBg + ';' +
+                'border:1.5px solid ' + ratBorder + ';border-radius:9px;text-align:center;">' +
+                '<div style="font-size:11px;font-weight:700;color:' + ratLabel + ';text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Citizen Rating</div>' +
+                renderStarsHtml(fb.rating, isDark) + '</div>';
+        }
+
+        // Build engineer context block — only shown when finalizing (Valid or Dismissed)
+        var engHtml = '';
+        if (isFinal && fb && fb.rep_id) {
+            var engName = (fb.ref_engineer_name && fb.ref_engineer_name.trim() && fb.ref_engineer_name.trim() !== ' ')
+                ? fb.ref_engineer_name.trim() : null;
+            if (engName) {
+                var engBg     = isDark ? 'rgba(55,98,200,.20)'  : 'rgba(55,98,200,.07)';
+                var engBorder = isDark ? 'rgba(95,140,255,.40)' : 'rgba(55,98,200,.20)';
+                var engText   = isDark ? '#93c5fd'              : '#1e3a8a';
+                var engSub    = isDark ? '#7cb3f7'              : '#3b5ebb';
+                engHtml = '<div style="margin:8px 0 0;padding:10px 14px;background:' + engBg + ';' +
+                    'border:1.5px solid ' + engBorder + ';border-radius:9px;font-size:12.5px;color:' + engText + ';">' +
+                    '<i class="fas fa-hard-hat" style="margin-right:6px;color:' + (isDark ? '#7cb3f7' : '#3762c8') + ';"></i>' +
+                    '<strong>Engineer:</strong> ' + escapeHtml(engName) +
+                    '<div style="margin-top:4px;font-size:11.5px;color:' + engSub + ';">This rating will be reflected on their performance record.</div>' +
+                    '</div>';
+            } else {
+                var lnkBg     = isDark ? 'rgba(55,98,200,.15)'  : 'rgba(55,98,200,.05)';
+                var lnkBorder = isDark ? 'rgba(95,140,255,.30)' : 'rgba(55,98,200,.14)';
+                var lnkText   = isDark ? '#93c5fd'              : '#64748b';
+                engHtml = '<div style="margin:8px 0 0;padding:8px 14px;background:' + lnkBg + ';' +
+                    'border:1.5px solid ' + lnkBorder + ';border-radius:9px;font-size:12px;color:' + lnkText + ';">' +
+                    '<i class="fas fa-file-alt" style="margin-right:6px;"></i>' +
+                    'Linked to Report <strong>#REP-' + String(fb.rep_id).padStart(3,'0') + '</strong> — this rating will be applied to the assigned engineer\'s record.' +
+                    '</div>';
+            }
+        } else if (isFinal && fb) {
+            engHtml = '<div style="margin:8px 0 0;font-size:12px;color:' + (isDark ? '#94a3b8' : '#6b7280') + ';font-style:italic;">' +
+                '<i class="fas fa-info-circle" style="margin-right:5px;"></i>No reference report linked — rating will not affect an engineer\'s record.' +
+                '</div>';
+        }
+
+        if (isFinal && hasEmail) {
+            descEl.innerHTML =
+                'This will mark the feedback as <strong>' + status + '</strong> and send a notification email to the citizen.' +
+                ratingHtml + engHtml +
+                '<div style="margin-top:10px;font-size:12px;color:#ef4444;font-weight:600;"><i class="fas fa-lock" style="margin-right:4px;"></i>This action cannot be undone.</div>';
+        } else if (isFinal) {
+            descEl.innerHTML =
+                'This will mark the feedback as <strong>' + status + '</strong>.' +
+                ratingHtml + engHtml +
+                '<div style="margin-top:8px;font-size:12px;color:#94a3b8;">' +
+                '<i class="fas fa-envelope-open" style="margin-right:5px;"></i>No email on file — notification will not be sent.</div>' +
+                '<div style="margin-top:6px;font-size:12px;color:#ef4444;font-weight:600;"><i class="fas fa-lock" style="margin-right:4px;"></i>This action cannot be undone.</div>';
+        } else {
+            descEl.innerHTML = 'Are you sure you want to update the status and notes for this feedback?' +
+                ratingHtml + engHtml;
+        }
+    }
     _pendingSaveId = id;
     document.getElementById('saveConfirmBackdrop').classList.add('active');
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function closeSaveConfirm()    { document.getElementById('saveConfirmBackdrop').classList.remove('active'); _pendingSaveId = null; }
 function showDeleteConfirm(id) { _pendingDeleteId = id; document.getElementById('deleteConfirmBackdrop').classList.add('active'); }
@@ -2469,6 +2710,22 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', function()
     if (idToDelete !== null) deleteFeedback(idToDelete);
 });
 
+// ── CIMM overlay helpers ─────────────────────────────────────────────────────
+function showFbkOverlay(msg) {
+    var overlay = document.getElementById('fbkEmailOverlay');
+    var txt     = document.getElementById('fbkEmailOverlayText');
+    if (!overlay) return;
+    if (txt) txt.textContent = msg || 'Saving…';
+    overlay.style.display = 'flex';
+    requestAnimationFrame(function(){ overlay.classList.add('show'); });
+}
+function hideFbkOverlay() {
+    var overlay = document.getElementById('fbkEmailOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    setTimeout(function(){ overlay.style.display = 'none'; }, 320);
+}
+
 // ── Save update ───────────────────────────────────────────────────────────────
 async function saveFeedbackUpdate(id) {
     var statusLbl = document.getElementById('statusDdText');
@@ -2481,6 +2738,12 @@ async function saveFeedbackUpdate(id) {
     }
     var btn       = document.getElementById('footerSaveBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+    var isFinalSave = (status === 'Valid' || status === 'Dismissed');
+    var fb = ALL_FEEDBACK.find(function(x){ return x.feedback_id === id; });
+    var hasEmail = fb && fb.email;
+    showFbkOverlay(isFinalSave && hasEmail ? 'Saving & Sending Notification…' : 'Saving Changes…');
+
     try {
         var fd = new FormData();
         fd.append('feedback_id', id);
@@ -2490,7 +2753,14 @@ async function saveFeedbackUpdate(id) {
         var data = await resp.json();
         if (data.success) {
             closeDetail();
-            showToast('success', 'Feedback #' + String(id).padStart(3,'0') + ' updated successfully!');
+            var isFinal = (status === 'Valid' || status === 'Dismissed');
+            var msg = 'Feedback #' + String(id).padStart(3,'0') + ' updated successfully!';
+            if (isFinal && data.email_sent) {
+                msg += ' A notification email has been sent to the citizen.';
+            } else if (isFinal) {
+                msg += ' (No email on file — notification not sent.)';
+            }
+            showToast('success', msg);
             var row = document.querySelector('.fbk-row[data-id="'+id+'"]');
             if (row) {
                 row.dataset.status = status;
@@ -2505,12 +2775,16 @@ async function saveFeedbackUpdate(id) {
             }
             var fb = ALL_FEEDBACK.find(function(x){ return x.feedback_id === id; });
             if (fb) { fb.status = status; fb.employee_notes = notes; }
+        } else if (data.locked) {
+            closeDetail();
+            showToast('warning', 'This feedback is already finalised and cannot be changed.');
         } else {
-            showToast('error','Failed to update. Please try again.');
+            showToast('error', data.msg || 'Failed to update. Please try again.');
         }
     } catch(e) {
         showToast('error','Network error.');
     } finally {
+        hideFbkOverlay();
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; }
     }
 }
@@ -2519,6 +2793,7 @@ async function saveFeedbackUpdate(id) {
 async function deleteFeedback(id) {
     var fd = new FormData();
     fd.append('feedback_id', id);
+    showFbkOverlay('Deleting Feedback…');
     try {
         var resp = await fetch('emp_feedback.php?ajax=delete', { method:'POST', body:fd });
         var data = await resp.json();
@@ -2594,6 +2869,8 @@ async function deleteFeedback(id) {
         }
     } catch(e) {
         showToast('error', 'Network error. Please try again.');
+    } finally {
+        hideFbkOverlay();
     }
 }
 

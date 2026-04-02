@@ -1548,6 +1548,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                 <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
                 <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
@@ -1654,7 +1655,7 @@ document.addEventListener('DOMContentLoaded', function() {
             guide_footer_title:   '🔗 Footer',
             guide_chatbot_title:  '🤖 AI Chat Assistant',
             /* ── Guide step descriptions ── */
-            guide_nav_desc:      'The top bar on every page. Use <b>Home</b>, <b>Reports</b>, <b>Requests</b>, and <b>About</b> to navigate. On mobile, tap <b>☰</b> to open the sidebar menu.',
+            guide_nav_desc:      'The top bar on every page. Use <b>Home</b>, <b>Reports</b>, <b>Requests</b>, <b>Feedback</b>, and <b>About</b> to navigate. On mobile, tap <b>☰</b> to open the sidebar menu.',
             guide_lang_desc:     'Click the <b>globe / "EN" button</b> to switch between English and Filipino. Click the <b>moon / sun button</b> to toggle Dark Mode for comfortable night-time viewing.',
             guide_lang_desc_mobile: 'This top bar contains two controls: the <b>globe button</b> (with the current language letter) — tap it to switch between <b>English</b> and <b>Filipino</b>. And the <b>sun/moon button</b> on the far right — tap it to toggle <b>Dark Mode</b>.',
             guide_submit_desc:   'Click here to open the <b>Request Form</b>. Describe the infrastructure problem, attach photos, and pin the exact location — your report goes directly to the engineering team.',
@@ -1697,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', function() {
             guide_footer_title:   '🔗 Footer ng Pahina',
             guide_chatbot_title:  '🤖 AI Chat Assistant',
             /* ── Guide step descriptions ── */
-            guide_nav_desc:      'Ang tuktok na bar sa bawat pahina. Gamitin ang <b>Home</b>, <b>Reports</b>, <b>Requests</b>, at <b>About</b> para lumipat ng pahina. Sa mobile, i-tap ang <b>☰</b> para buksan ang sidebar menu.',
+            guide_nav_desc:      'Ang tuktok na bar sa bawat pahina. Gamitin ang <b>Home</b>, <b>Reports</b>, <b>Requests</b>, <b>Feedback</b>, at <b>About</b> para lumipat ng pahina. Sa mobile, i-tap ang <b>☰</b> para buksan ang sidebar menu.',
             guide_lang_desc:     'I-click ang <b>globe / "EN" na pindutan</b> para lumipat sa pagitan ng English at Filipino. I-click ang <b>moon / sun na pindutan</b> para i-toggle ang Dark Mode para sa komportableng panonood sa gabi.',
             guide_lang_desc_mobile: 'Ang bar na ito ay naglalaman ng dalawang kontrol: ang <b>globe na pindutan</b> (may titik ng kasalukuyang wika) — i-tap para lumipat sa <b>English</b> o <b>Filipino</b>. At ang <b>sun/moon na pindutan</b> sa kanan — i-tap para i-toggle ang <b>Dark Mode</b>.',
             guide_submit_desc:   'I-click dito para buksan ang <b>Request Form</b>. Ilarawan ang problema sa imprastraktura, mag-attach ng mga larawan, at i-pin ang eksaktong lokasyon — ang iyong ulat ay direktang napupunta sa engineering team.',
