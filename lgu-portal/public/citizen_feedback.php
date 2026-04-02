@@ -237,7 +237,7 @@ body {
 }
 
 .fbk-card-title {
-    font-size: 2rem;
+    font-size: 2.0rem;
     font-weight: 800;
     color: var(--accent-primary);
     margin-bottom: 24px;

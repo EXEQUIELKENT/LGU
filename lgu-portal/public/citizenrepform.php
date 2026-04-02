@@ -1611,7 +1611,7 @@ input[type="file"] {
 
     <div class="form-wrapper">
         <div class="report-card">
-            <h2 data-i18n="form_page_title"><i class="fas fa-clipboard-list"></i> Submit a Request</h2>
+            <h2 data-i18n="form_page_title"></i> Submit a Request</h2>
 
             <form method="POST" enctype="multipart/form-data" autocomplete="off" id="maintenanceRequestForm">
                 <?php if (!empty($_SESSION['last_req_id'])): ?>
