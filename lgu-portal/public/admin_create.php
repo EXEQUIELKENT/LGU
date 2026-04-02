@@ -47,6 +47,12 @@ if (
     exit;
 }
 
+// 🔐 Role guard — Admin and Super Admin only
+if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
+    header("Location: employee.php");
+    exit;
+}
+
 require __DIR__ . '/db.php';
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';

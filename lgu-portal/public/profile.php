@@ -2495,16 +2495,11 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
-            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php if ($isAdmin): ?>
-            <li>
-                <a href="admin_create.php"
-                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
-                data-tooltip="Create Account">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Create Account</span>
-                </a>
-            </li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <!-- Remove profile link ONLY on profile page -->
             <?php if (!$isProfilePage): ?>

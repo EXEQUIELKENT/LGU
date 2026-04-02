@@ -119,6 +119,57 @@ $isAdmin = in_array(
     ['admin', 'super admin']
 );
 
+// ── Feedback widget data (Admin / Super Admin only) ───────────────────────────
+$feedbackWidget = null;
+if ($isAdmin) {
+    // Ensure table exists before querying (mirrors emp_feedback.php guard)
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `citizen_feedback` (
+          `feedback_id`    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          `full_name`      VARCHAR(120) NOT NULL DEFAULT 'Citizen',
+          `contact_number` VARCHAR(20)  DEFAULT NULL,
+          `email`          VARCHAR(120) DEFAULT NULL,
+          `feedback_type`  ENUM('Concern','Acknowledgement','Improvement','Complaint','Suggestion') NOT NULL DEFAULT 'Concern',
+          `title`          VARCHAR(200) NOT NULL,
+          `description`    TEXT         NOT NULL,
+          `rating`         DECIMAL(3,1) NOT NULL DEFAULT 3.0,
+          `status`         ENUM('New','Under Review','Resolved','Dismissed') NOT NULL DEFAULT 'New',
+          `employee_notes` TEXT         DEFAULT NULL,
+          `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (`feedback_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+    ");
+
+    // Summary counts
+    $fbSum = $conn->query("
+        SELECT
+            COUNT(*)                          AS total,
+            SUM(status = 'New')               AS new_count,
+            SUM(status = 'Under Review')      AS review_count,
+            SUM(status = 'Resolved')          AS resolved_count,
+            ROUND(AVG(rating), 1)             AS avg_rating
+        FROM citizen_feedback
+    ");
+    $fbSummary = $fbSum ? $fbSum->fetch_assoc() : [];
+
+    // 5 most recent entries
+    $fbRecent = $conn->query("
+        SELECT feedback_id, full_name, feedback_type, title, status, rating, created_at
+        FROM   citizen_feedback
+        ORDER  BY created_at DESC
+        LIMIT  5
+    ");
+    $fbRecentRows = [];
+    if ($fbRecent) {
+        while ($fbr = $fbRecent->fetch_assoc()) {
+            $fbRecentRows[] = $fbr;
+        }
+    }
+
+    $feedbackWidget = ['summary' => $fbSummary, 'recent' => $fbRecentRows];
+}
+
 // Engineer detection — same pattern as sched.php
 $isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
@@ -2419,6 +2470,177 @@ body {
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 
 /* ══════════════════════════════════════════════
+   CITIZEN FEEDBACK WIDGET — Admin / Super Admin
+══════════════════════════════════════════════ */
+.fb-widget-wrapper {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color, rgba(0,0,0,.1));
+    animation: fbFadeIn .4s ease;
+}
+@keyframes fbFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Header */
+.fb-widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.fb-widget-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #000);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.fb-widget-title i { color: #3762c8; font-size: 15px; }
+.fb-widget-viewall {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3762c8;
+    text-decoration: none;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(55,98,200,.09);
+    transition: background .2s;
+}
+.fb-widget-viewall:hover { background: rgba(55,98,200,.18); }
+
+/* Summary pills */
+.fb-summary-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 14px;
+}
+.fb-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.fb-pill i { font-size: 10px; }
+.fb-pill-total    { background: rgba(55,98,200,.10);  color: #3762c8; }
+.fb-pill-new      { background: rgba(244,67,54,.10);  color: #e53935; }
+.fb-pill-review   { background: rgba(255,152,0,.12);  color: #e65100; }
+.fb-pill-resolved { background: rgba(76,175,80,.12);  color: #388e3c; }
+.fb-pill-rating   { background: rgba(245,158,11,.13); color: #b45309; }
+
+/* Recent list */
+.fb-recent-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.fb-recent-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 4px;
+    border-bottom: 1px solid var(--border-color, rgba(0,0,0,.07));
+    transition: background .15s;
+    border-radius: 6px;
+}
+.fb-recent-item:last-child { border-bottom: none; }
+.fb-recent-item:hover { background: rgba(55,98,200,.04); }
+
+/* Type icon bubble */
+.fb-type-icon {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3762c8, #5b8aff);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.fb-type-icon i { color: #fff; font-size: 13px; }
+
+/* Body */
+.fb-recent-body { flex: 1; min-width: 0; }
+.fb-recent-top  {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 2px; flex-wrap: wrap;
+}
+.fb-recent-name {
+    font-size: 13px; font-weight: 600;
+    color: var(--text-primary, #000);
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-width: 150px;
+}
+.fb-recent-title {
+    font-size: 12px;
+    color: var(--text-secondary, #555);
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; margin-bottom: 4px;
+}
+.fb-recent-meta {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.fb-stars         { font-size: 12px; line-height: 1; }
+.fb-star-full     { color: #f59e0b; }
+.fb-star-half     { color: #f59e0b; opacity: .55; }
+.fb-star-empty    { color: #d1d5db; }
+.fb-type-label    { font-size: 11px; color: var(--text-secondary, #777); }
+.fb-time          { font-size: 11px; color: var(--text-secondary, #999); margin-left: auto; }
+
+/* Status badges */
+.fb-badge {
+    font-size: 10.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 12px;
+    white-space: nowrap; flex-shrink: 0;
+}
+.fb-status-new       { background: rgba(244,67,54,.12);   color: #c62828; }
+.fb-status-review    { background: rgba(255,152,0,.14);   color: #e65100; }
+.fb-status-resolved  { background: rgba(76,175,80,.13);   color: #2e7d32; }
+.fb-status-dismissed { background: rgba(158,158,158,.15); color: #616161; }
+
+/* Arrow link */
+.fb-item-arrow {
+    color: var(--text-secondary, #aaa);
+    font-size: 12px; padding: 4px 6px;
+    border-radius: 6px; text-decoration: none;
+    transition: color .2s, background .2s;
+    flex-shrink: 0;
+}
+.fb-item-arrow:hover { color: #3762c8; background: rgba(55,98,200,.09); }
+
+/* Empty state */
+.fb-empty-state {
+    display: flex; align-items: center; gap: 10px;
+    padding: 18px 0;
+    color: var(--text-secondary, #aaa);
+    font-size: 13px;
+    justify-content: center;
+}
+.fb-empty-state i { font-size: 20px; opacity: .5; }
+
+/* Dark mode */
+[data-theme="dark"] .fb-type-icon { background: linear-gradient(135deg,#2a4da0,#4a6fcc); }
+[data-theme="dark"] .fb-pill-total    { background: rgba(90,130,255,.14); color: #8aabff; }
+[data-theme="dark"] .fb-pill-new      { background: rgba(244,67,54,.14);  color: #ff7c7c; }
+[data-theme="dark"] .fb-pill-review   { background: rgba(255,152,0,.14);  color: #ffb74d; }
+[data-theme="dark"] .fb-pill-resolved { background: rgba(76,175,80,.14);  color: #81c784; }
+[data-theme="dark"] .fb-pill-rating   { background: rgba(245,158,11,.14); color: #fcd34d; }
+[data-theme="dark"] .fb-star-empty    { color: #4b5563; }
+
+/* Responsive */
+@media (max-width: 600px) {
+    .fb-summary-pills { gap: 5px; }
+    .fb-pill          { font-size: 10.5px; padding: 3px 9px; }
+    .fb-recent-name   { max-width: 100px; }
+}
+
+/* ══════════════════════════════════════════════
    MAIN-CONTENT SCROLLBAR — matches emp-global.css
 ══════════════════════════════════════════════ */
 .main-content {
@@ -2580,16 +2802,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 </ul>
             </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
-            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php if ($isAdmin): ?>
-            <li>
-                <a href="admin_create.php"
-                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
-                data-tooltip="Create Account">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Create Account</span>
-                </a>
-            </li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -3204,7 +3421,115 @@ HTML;
                     <p style="text-align: center; color: var(--text-secondary); padding: 20px;">No recent activity</p>
                     <?php endif; ?>
                 </div>
+
             </div>
+            <!-- end Recent Activity chart-card -->
+
+            <?php if ($feedbackWidget !== null): ?>
+            <!-- Citizen Feedback -->
+            <div class="chart-card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title">Citizen Feedback</div>
+                        <div class="chart-subtitle">Latest citizen submissions</div>
+                    </div>
+                    <a href="emp_feedback.php" class="fb-widget-viewall" onclick="event.stopPropagation()">
+                        View all &rsaquo;
+                    </a>
+                </div>
+                <!-- ── Citizen Feedback Summary (Admin / Super Admin) ── -->
+                <div class="fb-widget-wrapper" id="feedbackActivityWidget">
+
+                    <!-- Summary pills -->
+                    <div class="fb-summary-pills">
+                        <span class="fb-pill fb-pill-total">
+                            <i class="fas fa-layer-group"></i>
+                            <?= (int)($feedbackWidget['summary']['total'] ?? 0) ?> Total
+                        </span>
+                        <span class="fb-pill fb-pill-new">
+                            <i class="fas fa-bell"></i>
+                            <?= (int)($feedbackWidget['summary']['new_count'] ?? 0) ?> New
+                        </span>
+                        <span class="fb-pill fb-pill-review">
+                            <i class="fas fa-spinner"></i>
+                            <?= (int)($feedbackWidget['summary']['review_count'] ?? 0) ?> In Review
+                        </span>
+                        <span class="fb-pill fb-pill-resolved">
+                            <i class="fas fa-check-circle"></i>
+                            <?= (int)($feedbackWidget['summary']['resolved_count'] ?? 0) ?> Resolved
+                        </span>
+                        <span class="fb-pill fb-pill-rating">
+                            <i class="fas fa-star"></i>
+                            <?= number_format((float)($feedbackWidget['summary']['avg_rating'] ?? 0), 1) ?> Avg Rating
+                        </span>
+                    </div>
+
+                    <!-- Recent feedback rows -->
+                    <?php if (empty($feedbackWidget['recent'])): ?>
+                        <div class="fb-empty-state">
+                            <i class="fas fa-comment-slash"></i>
+                            <span>No feedback submitted yet.</span>
+                        </div>
+                    <?php else: ?>
+                        <ul class="fb-recent-list">
+                        <?php foreach ($feedbackWidget['recent'] as $fb):
+                            $fbStatusClass = [
+                                'New'          => 'fb-status-new',
+                                'Under Review' => 'fb-status-review',
+                                'Resolved'     => 'fb-status-resolved',
+                                'Dismissed'    => 'fb-status-dismissed',
+                            ][$fb['status']] ?? 'fb-status-new';
+
+                            $fbTypeIcon = [
+                                'Concern'         => 'fa-exclamation-circle',
+                                'Acknowledgement' => 'fa-thumbs-up',
+                                'Improvement'     => 'fa-lightbulb',
+                                'Complaint'       => 'fa-angry',
+                                'Suggestion'      => 'fa-paper-plane',
+                            ][$fb['feedback_type']] ?? 'fa-comment';
+
+                            $fbStars = '';
+                            $fbR = (float)$fb['rating'];
+                            for ($fs = 1; $fs <= 5; $fs++) {
+                                if ($fbR >= $fs)         $fbStars .= '<span class="fb-star fb-star-full">&#9733;</span>';
+                                elseif ($fbR >= $fs-.5)  $fbStars .= '<span class="fb-star fb-star-half">&#9733;</span>';
+                                else                      $fbStars .= '<span class="fb-star fb-star-empty">&#9734;</span>';
+                            }
+
+                            $fbDiff = time() - strtotime($fb['created_at']);
+                            if ($fbDiff < 60)          $fbAgo = 'just now';
+                            elseif ($fbDiff < 3600)    $fbAgo = floor($fbDiff/60)    . 'm ago';
+                            elseif ($fbDiff < 86400)   $fbAgo = floor($fbDiff/3600)  . 'h ago';
+                            elseif ($fbDiff < 2592000) $fbAgo = floor($fbDiff/86400) . 'd ago';
+                            else                        $fbAgo = date('M j', strtotime($fb['created_at']));
+                        ?>
+                            <li class="fb-recent-item">
+                                <span class="fb-type-icon"><i class="fas <?= $fbTypeIcon ?>"></i></span>
+                                <div class="fb-recent-body">
+                                    <div class="fb-recent-top">
+                                        <span class="fb-recent-name"><?= htmlspecialchars($fb['full_name']) ?></span>
+                                        <span class="fb-badge <?= $fbStatusClass ?>"><?= htmlspecialchars($fb['status']) ?></span>
+                                    </div>
+                                    <div class="fb-recent-title"><?= htmlspecialchars($fb['title']) ?></div>
+                                    <div class="fb-recent-meta">
+                                        <span class="fb-stars"><?= $fbStars ?></span>
+                                        <span class="fb-type-label"><?= htmlspecialchars($fb['feedback_type']) ?></span>
+                                        <span class="fb-time"><?= $fbAgo ?></span>
+                                    </div>
+                                </div>
+                                <a href="emp_feedback.php" class="fb-item-arrow" title="Open Feedback" onclick="event.stopPropagation()">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                </div><!-- /fb-widget-wrapper -->
+
+            </div>
+            <!-- end Citizen Feedback chart-card -->
+            <?php endif; ?>
 
             <!-- ============================================================
                  EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)

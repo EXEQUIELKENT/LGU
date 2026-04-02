@@ -90,6 +90,29 @@ $engineerId    = (int)($_SESSION['employee_id'] ?? 0);
 $userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
 
+// ── AJAX: engineer average rating from valid citizen feedbacks ────────────────
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'engineer_rating') {
+    header('Content-Type: application/json');
+    $eid = (int)($_GET['id'] ?? 0);
+    if (!$eid) { echo json_encode(['success'=>false]); exit; }
+    $stmt = $conn->prepare("
+        SELECT ROUND(AVG(cf.rating), 1) AS avg_rating, COUNT(*) AS total
+        FROM citizen_feedback cf
+        JOIN reports r ON r.rep_id = cf.rep_id
+        WHERE r.engineer_id = ? AND cf.status = 'Valid'
+    ");
+    $stmt->bind_param('i', $eid);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    echo json_encode([
+        'success'    => true,
+        'avg_rating' => (float)($row['avg_rating'] ?? 0),
+        'total'      => (int)($row['total'] ?? 0),
+    ]);
+    exit;
+}
+
 // ─── FETCH: Completed (Archive) reports only ──────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
 // Auto-add requester email column if not present
@@ -1177,6 +1200,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 [data-theme="dark"] .rep-eng-metric-pill.m-declined  { background:rgba(249,115,22,.18); color:#fb923c; }
 [data-theme="dark"] .rep-eng-metric-pill.m-rejected  { background:rgba(139,92,246,.18); color:#c4b5fd; }
 
+
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1286,7 +1310,9 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             </li>
 
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
@@ -1382,7 +1408,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     <th>Issue / Notes</th>
                     <?php if (!$isEngineer): ?><th>Engineer</th><?php endif; ?>
                     <th>Reported By</th>
-                    <th>Start Date</th><th>Est. End Date</th><th>Priority</th>
+                    <th>Start Date</th><th>End Date</th><th>Priority</th>
                     <th>Budget</th><th>Status</th>
                 </tr>
             </thead>
@@ -1422,7 +1448,12 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:24px;opacity:.6;">No archived reports found</td></tr>
+                <tr><td colspan="<?= $isEngineer ? 11 : 12 ?>">
+                    <div class="empty-state">
+                        <div class="empty-icon">🗄️</div>
+                        <p>No archived reports found.</p>
+                    </div>
+                </td></tr>
             <?php endif; ?>
                 <tr id="noDesktopResult" style="display:none;"><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
             </tbody>
@@ -1460,7 +1491,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <?php endif; ?>
             <div class="rc-row"><span class="rc-label">Reported By:</span><span class="rc-value searchable"><?= htmlspecialchars($row['reporter_name'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Start Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['starting_date'])) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Est. End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
+            <div class="rc-row"><span class="rc-label">End Date:</span><span class="rc-value searchable"><?= date('M d, Y', strtotime($row['estimated_end_date'])) ?></span></div>
             <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge($row['priority_lvl']) ?></span></div>
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable">₱<?= number_format($row['budget'] ?? 0, 2) ?></span></div>
             <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
@@ -2187,10 +2218,13 @@ async function _populateEngDetailsModal(eng) {
 
     document.getElementById('engDetBody').innerHTML = html;
 
-    // ── Async fetch metrics and render ─────────────────────────────────────
+    // ── Async fetch metrics and rating in parallel ──────────────────────────
     if (eng.id) {
-        const metrics = await fetchEngineerMetrics(eng.id);
-        renderEngMetricsFull(metrics, 'engDetMetricsContainer');
+        const [metrics, ratingData] = await Promise.all([
+            fetchEngineerMetrics(eng.id),
+            fetchEngineerRating(eng.id)
+        ]);
+        renderEngMetricsFull(metrics, 'engDetMetricsContainer', ratingData);
     }
 }
 
@@ -2433,7 +2467,15 @@ async function fetchEngineerMetrics(engineerId) {
     } catch(e) { return null; }
 }
 
-function renderEngMetricsFull(m, containerId) {
+async function fetchEngineerRating(engineerId) {
+    try {
+        const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+        const data = await res.json();
+        return data.success ? data : null;
+    } catch(e) { return null; }
+}
+
+function renderEngMetricsFull(m, containerId, ratingData) {
     const el = document.getElementById(containerId);
     if (!el) return;
     if (!m) {
@@ -2444,6 +2486,10 @@ function renderEngMetricsFull(m, containerId) {
 
     const retCurrent = m.admin_returned_current ?? m.admin_rejected ?? 0;
     const retPending = m.admin_returned_pending ?? 0;
+
+    // Rating data
+    const avgRating   = ratingData ? (parseFloat(ratingData.avg_rating) || 0) : 0;
+    const ratingCount = ratingData ? (ratingData.total || 0) : 0;
 
     function card(color, icon, value, title, subIcon, subText, subClass) {
         return `<div class="emc-card emc-${color}">
@@ -2464,6 +2510,30 @@ function renderEngMetricsFull(m, containerId) {
     const declinedSub  = m.declined_count > 0 ? 'warning' : 'neutral';
     const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
     const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
+    const ratingSub    = avgRating >= 4 ? 'positive' : avgRating > 0 ? 'neutral' : 'neutral';
+    const ratingValue  = avgRating > 0
+        ? `${avgRating.toFixed(1)}<span style="font-size:13px;font-weight:500;"> / 5</span>`
+        : '<span style="opacity:.5;">—</span>';
+    const ratingSubText = ratingCount > 0 ? `${ratingCount} valid feedback(s)` : 'No valid feedbacks yet';
+
+    // Build half-star HTML for rating card
+    let ratingStarsHtml = '<div style="display:inline-flex;align-items:center;gap:1px;font-size:15px;line-height:1;margin:4px 0 2px;position:relative;z-index:1;">';
+    for (let _i = 1; _i <= 5; _i++) {
+        if (avgRating >= _i)
+            ratingStarsHtml += '<span style="color:#f59e0b;">★</span>';
+        else if (avgRating >= _i - 0.5)
+            ratingStarsHtml += '<span style="position:relative;display:inline-block;"><span style="color:#d1d5db;">★</span><span style="position:absolute;top:0;left:0;width:50%;overflow:hidden;color:#f59e0b;white-space:nowrap;">★</span></span>';
+        else
+            ratingStarsHtml += '<span style="color:#d1d5db;">☆</span>';
+    }
+    ratingStarsHtml += '</div>';
+
+    const ratingCard = '<div class="emc-card emc-amber">' +
+        '<div class="emc-header"><div class="emc-title">Rating</div><div class="emc-icon"><i class="fas fa-star"></i></div></div>' +
+        '<div class="emc-value">' + (avgRating > 0 ? avgRating.toFixed(1) + '<span style="font-size:14px;font-weight:500;letter-spacing:0"> / 5</span>' : '—') + '</div>' +
+        ratingStarsHtml +
+        '<div class="emc-sub ' + ratingSub + '"><span class="emc-sub-icon">★</span><span>' + ratingSubText + '</span></div>' +
+        '</div>';
 
     /* Single flat grid — section labels span full width via CSS grid-column:1/-1
        All cards flow naturally: desktop 3-col, mobile 2-col, no blank gaps */
@@ -2481,6 +2551,7 @@ function renderEngMetricsFull(m, containerId) {
             ${card('purple', 'fas fa-undo-alt',          retCurrent,         'Returned (Approval)',    '↩', 'Admin sent back to revise', retCurSub)}
             ${card('purple', 'fas fa-ban',               retPending,         'Returned (Not Done)',    '↩', 'Admin marked incomplete',   retPenSub)}
             ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
+            ${ratingCard}
         </div>`;
 }
 

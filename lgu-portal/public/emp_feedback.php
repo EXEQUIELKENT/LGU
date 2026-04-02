@@ -28,6 +28,12 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     header('Location: login.php'); exit;
 }
 
+// 🔐 Role guard — Admin and Super Admin only
+if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
+    header('Location: employee.php');
+    exit;
+}
+
 require __DIR__ . '/db.php';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,7 +93,7 @@ $conn->query("
       `address`        TEXT         DEFAULT NULL,
       `coordinates`    VARCHAR(60)  DEFAULT NULL,
       `rep_id`         INT          DEFAULT NULL,
-      `status`         ENUM('New','Under Review','Resolved','Dismissed') NOT NULL DEFAULT 'New',
+      `status`         ENUM('Under Review','Valid','Dismissed') NOT NULL DEFAULT 'Under Review',
       `employee_notes` TEXT         DEFAULT NULL,
       `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
       `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -96,6 +102,10 @@ $conn->query("
 ");
 // Upgrade existing tables: promote rating from TINYINT to DECIMAL(3,1) for half-star support
 @$conn->query("ALTER TABLE `citizen_feedback` MODIFY COLUMN `rating` DECIMAL(3,1) NOT NULL DEFAULT 3.0");
+// Migrate status: only Under Review / Valid / Dismissed are used now
+@$conn->query("UPDATE `citizen_feedback` SET `status`='Under Review' WHERE `status`='New'");
+@$conn->query("UPDATE `citizen_feedback` SET `status`='Valid' WHERE `status`='Resolved'");
+@$conn->query("ALTER TABLE `citizen_feedback` MODIFY COLUMN `status` ENUM('Under Review','Valid','Dismissed') NOT NULL DEFAULT 'Under Review'");
 $conn->query("
     CREATE TABLE IF NOT EXISTS `feedback_images` (
       `img_id`      INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -136,7 +146,7 @@ if (isset($_GET['ajax'])) {
         $fid    = (int)($_POST['feedback_id'] ?? 0);
         $status = $_POST['status'] ?? '';
         $notes  = trim($_POST['employee_notes'] ?? '');
-        $validS = ['New','Under Review','Resolved','Dismissed'];
+        $validS = ['Under Review','Valid','Dismissed'];
         if (!$fid || !in_array($status, $validS)) { echo json_encode(['success'=>false,'msg'=>'Invalid input']); exit; }
         $stmt = $conn->prepare('UPDATE citizen_feedback SET status=?, employee_notes=? WHERE feedback_id=?');
         $stmt->bind_param('ssi', $status, $notes, $fid);
@@ -177,7 +187,7 @@ $sql = "
 ";
 $result = $conn->query($sql);
 $feedbackRows = [];
-$statusCounts = ['New'=>0,'Under Review'=>0,'Resolved'=>0,'Dismissed'=>0];
+$statusCounts = ['Under Review'=>0,'Valid'=>0,'Dismissed'=>0];
 $typeCounts   = ['Concern'=>0,'Acknowledgement'=>0,'Improvement'=>0,'Complaint'=>0,'Suggestion'=>0];
 if ($result) {
     while ($row = $result->fetch_assoc()) {
@@ -533,6 +543,16 @@ body { overflow: hidden; height: 100vh; }
     color:#fff; font-size:11px; font-weight:700;
     padding: 2px 9px; border-radius:20px;
 }
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
+}
 
 table {
     width: 100%; border-collapse: separate; border-spacing: 0;
@@ -562,18 +582,16 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     border-radius: 20px; font-size: 11px; font-weight: 700;
     white-space: nowrap;
 }
-.badge-new           { background:#dbeafe; color:#1e40af; }
 .badge-under-review  { background:#fef9c3; color:#854d0e; }
-.badge-resolved      { background:#dcfce7; color:#15803d; }
+.badge-valid         { background:#dcfce7; color:#15803d; }
 .badge-dismissed     { background:#f1f5f9; color:#64748b; }
 .badge-concern       { background:#fee2e2; color:#dc2626; }
 .badge-acknowledgement { background:#dcfce7; color:#15803d; }
 .badge-improvement   { background:#fef9c3; color:#92400e; }
 .badge-complaint     { background:#fde8e8; color:#b91c1c; }
 .badge-suggestion    { background:#ede9fe; color:#6d28d9; }
-[data-theme="dark"] .badge-new            { background:rgba(30,64,175,.3); color:#93c5fd; }
 [data-theme="dark"] .badge-under-review   { background:rgba(133,77,14,.3); color:#fde68a; }
-[data-theme="dark"] .badge-resolved       { background:rgba(21,128,61,.3); color:#86efac; }
+[data-theme="dark"] .badge-valid          { background:rgba(21,128,61,.3); color:#86efac; }
 [data-theme="dark"] .badge-dismissed      { background:rgba(100,116,139,.2); color:#94a3b8; }
 
 /* ── Star display ── */
@@ -645,6 +663,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .detail-modal-band { height: 8px; border-radius: 20px 20px 0 0; width: 100%; flex-shrink: 0; }
 .detail-modal-band.band-new          { background: linear-gradient(90deg,#2196f3,#64b5f6); }
 .detail-modal-band.band-under-review { background: linear-gradient(90deg,#ff9800,#ffb74d); }
+.detail-modal-band.band-valid        { background: linear-gradient(90deg,#4caf50,#81c784); }
 .detail-modal-band.band-resolved     { background: linear-gradient(90deg,#4caf50,#81c784); }
 .detail-modal-band.band-dismissed    { background: linear-gradient(90deg,#9e9e9e,#bdbdbd); }
 .detail-modal-header {
@@ -678,6 +697,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 .detail-status-pill.pill-new          { background: rgba(33,150,243,.14);  color: #0d47a1; }
 .detail-status-pill.pill-under-review { background: rgba(255,152,0,.14);   color: #e65100; }
+.detail-status-pill.pill-valid        { background: rgba(76,175,80,.14);   color: #1b5e20; }
 .detail-status-pill.pill-resolved     { background: rgba(76,175,80,.14);   color: #1b5e20; }
 .detail-status-pill.pill-dismissed    { background: rgba(158,158,158,.14); color: #424242; }
 [data-theme="dark"] .detail-status-pill.pill-new          { color: #90caf9; }
@@ -793,9 +813,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 .status-dd-item:hover { background: rgba(55,98,200,.07); color: #3762c8; }
 .status-dd-item.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
-.status-dd-item .status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 .status-dot-new         { background: #3b82f6; }
 .status-dot-review      { background: #f59e0b; }
+.status-dot-valid       { background: #22c55e; }
 .status-dot-resolved    { background: #22c55e; }
 .status-dot-dismissed   { background: #94a3b8; }
 [data-theme="dark"] .status-dd-menu { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
@@ -1531,16 +1552,16 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     <!-- Metrics -->
     <div class="metrics-grid">
         <div class="metric-card orange">
-            <div class="metric-icon-box"><i class="fas fa-exclamation-circle"></i></div>
-            <div class="metric-title">New / Unread</div>
-            <div class="metric-value" id="metricNew"><?= $statusCounts['New'] ?></div>
-            <div class="metric-sub">Awaiting review</div>
+            <div class="metric-icon-box"><i class="fas fa-hourglass-half"></i></div>
+            <div class="metric-title">Under Review</div>
+            <div class="metric-value" id="metricUnderReview"><?= $statusCounts['Under Review'] ?></div>
+            <div class="metric-sub">Awaiting admin decision</div>
         </div>
         <div class="metric-card green">
             <div class="metric-icon-box"><i class="fas fa-check-circle"></i></div>
-            <div class="metric-title">Resolved</div>
-            <div class="metric-value" id="metricResolved"><?= $statusCounts['Resolved'] ?></div>
-            <div class="metric-sub">Addressed issues</div>
+            <div class="metric-title">Valid</div>
+            <div class="metric-value" id="metricValid"><?= $statusCounts['Valid'] ?></div>
+            <div class="metric-sub">Confirmed valid feedbacks</div>
         </div>
         <div class="metric-card purple">
             <div class="metric-icon-box"><i class="fas fa-star"></i></div>
@@ -1549,10 +1570,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             <div class="metric-sub">Citizen satisfaction</div>
         </div>
         <div class="metric-card red">
-            <div class="metric-icon-box"><i class="fas fa-search"></i></div>
-            <div class="metric-title">Under Review</div>
-            <div class="metric-value" id="metricUnderReview"><?= $statusCounts['Under Review'] ?></div>
-            <div class="metric-sub">In progress</div>
+            <div class="metric-icon-box"><i class="fas fa-ban"></i></div>
+            <div class="metric-title">Dismissed</div>
+            <div class="metric-value" id="metricDismissed"><?= $statusCounts['Dismissed'] ?></div>
+            <div class="metric-sub">Rejected feedbacks</div>
         </div>
     </div>
 
@@ -1564,6 +1585,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                 Feedback List
                 <span class="badge-count" id="rowCount"><?= $totalFeedback ?></span>
             </h2>
+            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
         </div>
 
         <!-- Search & sort toolbar inside card (requests.php style) -->
@@ -1597,9 +1619,8 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                     <!-- Status filter -->
                     <div class="sort-dropdown-section-label"><i class="fas fa-circle-dot"></i> Status</div>
                     <div class="sort-filter-option active" data-filter="status" data-val=""><i class="fas fa-layer-group"></i> All Statuses</div>
-                    <div class="sort-filter-option" data-filter="status" data-val="New"><span class="status-dot status-dot-new"></span> New</div>
                     <div class="sort-filter-option" data-filter="status" data-val="Under Review"><span class="status-dot status-dot-review"></span> Under Review</div>
-                    <div class="sort-filter-option" data-filter="status" data-val="Resolved"><span class="status-dot status-dot-resolved"></span> Resolved</div>
+                    <div class="sort-filter-option" data-filter="status" data-val="Valid"><span class="status-dot status-dot-valid"></span> Valid</div>
                     <div class="sort-filter-option" data-filter="status" data-val="Dismissed"><span class="status-dot status-dot-dismissed"></span> Dismissed</div>
                     <!-- Type filter -->
                     <div class="sort-dropdown-section-label"><i class="fas fa-tag"></i> Type</div>
@@ -1612,11 +1633,16 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                     <!-- Rating filter -->
                     <div class="sort-dropdown-section-label"><i class="fas fa-star"></i> Rating</div>
                     <div class="sort-filter-option active" data-filter="rating" data-val="0"><i class="fas fa-layer-group"></i> All Ratings</div>
-                    <div class="sort-filter-option" data-filter="rating" data-val="5"><i class="fas fa-star" style="color:#f59e0b;"></i> ⭐⭐⭐⭐⭐ (5)</div>
-                    <div class="sort-filter-option" data-filter="rating" data-val="4"><i class="fas fa-star" style="color:#f59e0b;"></i> ⭐⭐⭐⭐ (4+)</div>
-                    <div class="sort-filter-option" data-filter="rating" data-val="3"><i class="fas fa-star" style="color:#f59e0b;"></i> ⭐⭐⭐ (3+)</div>
-                    <div class="sort-filter-option" data-filter="rating" data-val="2"><i class="fas fa-star" style="color:#f59e0b;"></i> ⭐⭐ (2+)</div>
-                    <div class="sort-filter-option" data-filter="rating" data-val="1"><i class="fas fa-star" style="color:#f59e0b;"></i> ⭐ (1+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span></span> (5)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="4.5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-half-wrap"><span class="hsd-half-bg">★</span><span class="hsd-half-fill">★</span></span></span> (4.5+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="4"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-empty">☆</span></span> (4+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="3.5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-half-wrap"><span class="hsd-half-bg">★</span><span class="hsd-half-fill">★</span></span><span class="hsd-star hsd-empty">☆</span></span> (3.5+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="3"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (3+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="2.5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-half-wrap"><span class="hsd-half-bg">★</span><span class="hsd-half-fill">★</span></span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (2.5+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="2"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (2+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="1.5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-half-wrap"><span class="hsd-half-bg">★</span><span class="hsd-half-fill">★</span></span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (1.5+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="1"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-full">★</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (1+)</div>
+                    <div class="sort-filter-option" data-filter="rating" data-val="0.5"><span class="hsd-wrap" style="font-size:12px;"><span class="hsd-star hsd-half-wrap"><span class="hsd-half-bg">★</span><span class="hsd-half-fill">★</span></span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span><span class="hsd-star hsd-empty">☆</span></span> (0.5+)</div>
                 </div>
             </div>
         </div>
@@ -1658,9 +1684,9 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                 </td>
             </tr>
             <?php foreach ($feedbackRows as $i => $fb):
-                $status   = $fb['status'] ?? 'New';
+                $status   = $fb['status'] ?? 'Under Review';
                 $type     = $fb['feedback_type'] ?? 'Concern';
-                $sClass   = strtolower(str_replace(' ', '-', $status));
+                $sClass   = strtolower(str_replace([' '], ['-'], $status));
                 $tClass   = strtolower($type);
                 $stars    = renderHalfStars($fb['rating']);
             ?>
@@ -1727,9 +1753,9 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             </div>
         </div>
         <?php foreach ($feedbackRows as $i => $fb):
-            $status = $fb['status'] ?? 'New';
+            $status = $fb['status'] ?? 'Under Review';
             $type   = $fb['feedback_type'] ?? 'Concern';
-            $sClass = strtolower(str_replace(' ', '-', $status));
+            $sClass = strtolower(str_replace([' '], ['-'], $status));
             $tClass = strtolower($type);
             $stars  = renderHalfStars($fb['rating']);
         ?>
@@ -1923,7 +1949,7 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
             if (saved.sort)   currentSort   = saved.sort;
             if (saved.status !== undefined) filterStatus  = saved.status;
             if (saved.type   !== undefined) filterType    = saved.type;
-            if (saved.rating !== undefined) filterRating  = parseInt(saved.rating) || 0;
+            if (saved.rating !== undefined) filterRating  = parseFloat(saved.rating) || 0;
             // Restore sort option active state
             document.querySelectorAll('#fbkSortDropdown .sort-option').forEach(function(o){
                 o.classList.toggle('active', o.dataset.sort === currentSort);
@@ -1936,7 +1962,7 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
                 o.classList.toggle('active', o.dataset.val === filterType);
             });
             document.querySelectorAll('#fbkSortDropdown .sort-filter-option[data-filter="rating"]').forEach(function(o){
-                o.classList.toggle('active', parseInt(o.dataset.val) === filterRating);
+                o.classList.toggle('active', parseFloat(o.dataset.val) === filterRating);
             });
             updateSortBtnLabel();
         } catch(e) {}
@@ -2072,7 +2098,7 @@ const FBK_STATE_KEY = 'fbk_sort_state_' + FBK_EMP_ID;
             opt.classList.add('active');
             if (filterGroup === 'status') filterStatus = opt.dataset.val;
             if (filterGroup === 'type')   filterType   = opt.dataset.val;
-            if (filterGroup === 'rating') filterRating = parseInt(opt.dataset.val) || 0;
+            if (filterGroup === 'rating') filterRating = parseFloat(opt.dataset.val) || 0;
             applyAll();
         });
     });
@@ -2123,7 +2149,7 @@ function openDetail(id) {
     _currentFeedbackId = id;
 
     // Update modal band color by status
-    var bandClasses = { 'New':'band-new','Under Review':'band-under-review','Resolved':'band-resolved','Dismissed':'band-dismissed' };
+    var bandClasses = { 'Under Review':'band-under-review','Valid':'band-valid','Dismissed':'band-dismissed' };
     var band = document.getElementById('detailModalBand');
     if (band) {
         band.className = 'detail-modal-band ' + (bandClasses[fb.status] || 'band-dismissed');
@@ -2163,10 +2189,10 @@ function openDetail(id) {
         Improvement:'#f59e0b', Complaint:'#dc2626', Suggestion:'#8b5cf6'
     };
 
-    var pillClasses = { 'New':'pill-new','Under Review':'pill-under-review','Resolved':'pill-resolved','Dismissed':'pill-dismissed' };
+    var pillClasses = { 'Under Review':'pill-under-review','Valid':'pill-valid','Dismissed':'pill-dismissed' };
     var pillCls = pillClasses[fb.status] || 'pill-dismissed';
 
-    var statusIcons = { 'New':'fa-circle-dot','Under Review':'fa-clock','Resolved':'fa-check-circle','Dismissed':'fa-ban' };
+    var statusIcons = { 'Under Review':'fa-clock','Valid':'fa-check-circle','Dismissed':'fa-ban' };
     var sIcon = statusIcons[fb.status] || 'fa-circle';
 
     // Images — use gallery viewer (store in global to avoid JSON/quote issues in onclick)
@@ -2211,17 +2237,20 @@ function openDetail(id) {
     }
 
     // Custom status dropdown HTML (Fix 4)
-    var statusItems = ['New','Under Review','Resolved','Dismissed'];
-    var dotMap = {'New':'status-dot-new','Under Review':'status-dot-review','Resolved':'status-dot-resolved','Dismissed':'status-dot-dismissed'};
+    var statusItems = ['Under Review','Valid','Dismissed'];
+    var dotMap = {'Under Review':'status-dot-review','Valid':'status-dot-valid','Dismissed':'status-dot-dismissed'};
     var statusDropdownHtml =
         '<div class="status-dropdown-wrap" id="statusDdWrap">' +
             '<button type="button" class="status-dd-btn" id="statusDdBtn">' +
-                '<span class="status-dd-label" id="statusDdLabel">' + fb.status + '</span>' +
+                '<span style="display:inline-flex;align-items:center;gap:7px;" id="statusDdLabel">' +
+                    '<span class="status-dot ' + dotMap[fb.status] + '" id="statusDdDot"></span>' +
+                    '<span id="statusDdText">' + fb.status + '</span>' +
+                '</span>' +
                 '<i class="fas fa-chevron-down status-dd-chevron"></i>' +
             '</button>' +
             '<div class="status-dd-menu" id="statusDdMenu">' +
                 statusItems.map(function(s){
-                    return '<div class="status-dd-item'+(fb.status===s?' active':'')+'" data-val="'+s+'">' +
+                    return '<div class="status-dd-item'+(fb.status===s?' active':'')+'" data-val="'+s+'" data-dot="'+dotMap[s]+'">' +
                         '<span class="status-dot '+dotMap[s]+'"></span>' + s + '</div>';
                 }).join('') +
             '</div>' +
@@ -2306,8 +2335,8 @@ function openDetail(id) {
                     statusDropdownHtml +
                 '</div>' +
                 '<div class="form-group full">' +
-                    '<label>Internal Notes</label>' +
-                    '<textarea id="updateNotes" placeholder="Add internal notes…">' + (fb.employee_notes || '') + '</textarea>' +
+                    '<label>Your Reply <span style="color:#ef4444;" title="Required">*</span></label>' +
+                    '<textarea id="updateNotes" placeholder="Write your reply to this feedback…" required>' + (fb.employee_notes || '') + '</textarea>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -2330,7 +2359,11 @@ function openDetail(id) {
             item.addEventListener('click', function(){
                 menu.querySelectorAll('.status-dd-item').forEach(function(i){ i.classList.remove('active'); });
                 item.classList.add('active');
-                if (lbl) lbl.textContent = item.dataset.val;
+                // Update dot class
+                var dot  = document.getElementById('statusDdDot');
+                var text = document.getElementById('statusDdText');
+                if (dot)  { dot.className = 'status-dot ' + (item.dataset.dot || ''); }
+                if (text) { text.textContent = item.dataset.val; }
                 wrap.classList.remove('open');
             });
         });
@@ -2405,7 +2438,17 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { if (
 var _pendingSaveId   = null;
 var _pendingDeleteId = null;
 
-function showSaveConfirm(id)   { _pendingSaveId = id;   document.getElementById('saveConfirmBackdrop').classList.add('active'); }
+function showSaveConfirm(id)   {
+    var notes = document.getElementById('updateNotes') ? document.getElementById('updateNotes').value.trim() : '';
+    if (!notes) {
+        showToast('error', 'Your Reply is required before saving.');
+        var ta = document.getElementById('updateNotes');
+        if (ta) { ta.focus(); ta.style.borderColor = '#ef4444'; ta.style.boxShadow = '0 0 0 3px rgba(239,68,68,.15)'; setTimeout(function(){ ta.style.borderColor = ''; ta.style.boxShadow = ''; }, 2500); }
+        return;
+    }
+    _pendingSaveId = id;
+    document.getElementById('saveConfirmBackdrop').classList.add('active');
+}
 function closeSaveConfirm()    { document.getElementById('saveConfirmBackdrop').classList.remove('active'); _pendingSaveId = null; }
 function showDeleteConfirm(id) { _pendingDeleteId = id; document.getElementById('deleteConfirmBackdrop').classList.add('active'); }
 function closeDeleteConfirm()  { document.getElementById('deleteConfirmBackdrop').classList.remove('active'); _pendingDeleteId = null; }
@@ -2428,9 +2471,14 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', function()
 
 // ── Save update ───────────────────────────────────────────────────────────────
 async function saveFeedbackUpdate(id) {
-    var statusLbl = document.getElementById('statusDdLabel');
+    var statusLbl = document.getElementById('statusDdText');
     var status    = statusLbl ? statusLbl.textContent.trim() : '';
-    var notes     = document.getElementById('updateNotes') ? document.getElementById('updateNotes').value : '';
+    var notes     = document.getElementById('updateNotes') ? document.getElementById('updateNotes').value.trim() : '';
+    if (!notes) {
+        showToast('error', 'Your Reply is required before saving.');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; }
+        return;
+    }
     var btn       = document.getElementById('footerSaveBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
     try {
@@ -2447,7 +2495,7 @@ async function saveFeedbackUpdate(id) {
             if (row) {
                 row.dataset.status = status;
                 var sc = row.querySelector('td:nth-child(6) .badge');
-                if (sc) { sc.className = 'badge badge-'+status.toLowerCase().replace(/\s+/g,'-'); sc.textContent = status; }
+                if (sc) { sc.className = 'badge badge-'+status.toLowerCase().replace(/\s+/g,'-')+ ' searchable'; sc.textContent = status; }
             }
             var mcard = document.querySelector('.fbk-mobile-card[data-id="'+id+'"]');
             if (mcard) {
@@ -2492,7 +2540,7 @@ async function deleteFeedback(id) {
 
             // ── Real-time metric card updates ──────────────────────────────
             if (deletedItem) {
-                var statusMap = { 'New': 'metricNew', 'Resolved': 'metricResolved', 'Under Review': 'metricUnderReview' };
+                var statusMap = { 'Under Review': 'metricUnderReview', 'Valid': 'metricValid', 'Dismissed': 'metricDismissed' };
                 var metricId = statusMap[deletedItem.status];
                 if (metricId) {
                     var metricEl = document.getElementById(metricId);

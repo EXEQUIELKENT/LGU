@@ -321,7 +321,7 @@ body {
     cursor: pointer;
     transition: transform .2s cubic-bezier(0.34,1.56,0.64,1);
     user-select: none;
-    overflow: hidden; /* prevent half-star drop-shadow glow from bleeding outside the star */
+    overflow: hidden;
 }
 .hsr-star:hover { transform: scale(1.28); }
 /* Base: empty star */
@@ -370,7 +370,6 @@ body {
     justify-content: center;
     white-space: nowrap;
     pointer-events: none;
-    filter: drop-shadow(0 2px 6px rgba(245,158,11,.45));
     clip-path: inset(0 50% 0 0);
 }
 .star-rating-bar {

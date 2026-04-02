@@ -4623,16 +4623,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 </ul>
             </li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
-            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php if ($isAdmin): ?>
-            <li>
-                <a href="admin_create.php"
-                class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
-                data-tooltip="Create Account">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Create Account</span>
-                </a>
-            </li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -5801,6 +5796,74 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     transition: all .18s ease;
 }
 .sched-eng-det-close-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(46,125,50,.4); }
+
+/* ══════════════════════════════════════════════
+   STATUS-THEMED OVERRIDES — band, avatar, buttons, section titles
+   Upcoming (Scheduled) → Blue
+   Ongoing (In Progress) → Amber/Orange
+   Delayed → Red
+   Completed → Green (default, no override needed)
+══════════════════════════════════════════════ */
+
+/* — Upcoming / Scheduled — */
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-band {
+    background: linear-gradient(90deg, #1565c0, #1e88e5);
+}
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-avatar-wrap {
+    border-color: #1565c0;
+    box-shadow: 0 4px 12px rgba(21,101,192,.25);
+}
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-close:hover {
+    background: rgba(21,101,192,.1); color: #1565c0;
+}
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-close-btn {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    box-shadow: 0 4px 12px rgba(21,101,192,.3);
+}
+#schedEngDetailsModal.eng-theme-upcoming .sched-eng-det-close-btn:hover {
+    box-shadow: 0 6px 16px rgba(21,101,192,.4);
+}
+#schedEngDetailsModal.eng-theme-upcoming .eng-det-section-title { color: #1565c0; }
+
+/* — Ongoing / In Progress — */
+#schedEngDetailsModal.eng-theme-ongoing .sched-eng-det-band {
+    background: linear-gradient(90deg, #f57f17, #ffa726);
+}
+#schedEngDetailsModal.eng-theme-ongoing .sched-eng-det-avatar-wrap {
+    border-color: #f57f17;
+    box-shadow: 0 4px 12px rgba(245,127,23,.25);
+}
+#schedEngDetailsModal.eng-theme-ongoing .sched-eng-det-close:hover {
+    background: rgba(245,127,23,.1); color: #f57f17;
+}
+#schedEngDetailsModal.eng-theme-ongoing .sched-eng-det-close-btn {
+    background: linear-gradient(135deg, #f57f17, #e65100);
+    box-shadow: 0 4px 12px rgba(245,127,23,.3);
+}
+#schedEngDetailsModal.eng-theme-ongoing .sched-eng-det-close-btn:hover {
+    box-shadow: 0 6px 16px rgba(245,127,23,.4);
+}
+#schedEngDetailsModal.eng-theme-ongoing .eng-det-section-title { color: #e65100; }
+
+/* — Delayed — */
+#schedEngDetailsModal.eng-theme-delayed .sched-eng-det-band {
+    background: linear-gradient(90deg, #c62828, #e53935);
+}
+#schedEngDetailsModal.eng-theme-delayed .sched-eng-det-avatar-wrap {
+    border-color: #c62828;
+    box-shadow: 0 4px 12px rgba(198,40,40,.25);
+}
+#schedEngDetailsModal.eng-theme-delayed .sched-eng-det-close:hover {
+    background: rgba(198,40,40,.1); color: #c62828;
+}
+#schedEngDetailsModal.eng-theme-delayed .sched-eng-det-close-btn {
+    background: linear-gradient(135deg, #c62828, #b71c1c);
+    box-shadow: 0 4px 12px rgba(198,40,40,.3);
+}
+#schedEngDetailsModal.eng-theme-delayed .sched-eng-det-close-btn:hover {
+    box-shadow: 0 6px 16px rgba(198,40,40,.4);
+}
+#schedEngDetailsModal.eng-theme-delayed .eng-det-section-title { color: #c62828; }
 
 </style>
 
@@ -7946,7 +8009,7 @@ function buildSchedAvatar(picPath, statusKey) {
 
 
 // renderEngMetricsFull — used by sched.php engineer profile modal
-function renderEngMetricsFull(m, containerId) {
+function renderEngMetricsFull(m, containerId, ratingData) {
     const el = document.getElementById(containerId);
     if (!el) return;
     if (!m) {
@@ -7963,6 +8026,32 @@ function renderEngMetricsFull(m, containerId) {
     const declinedSub  = m.declined_count > 0 ? 'warning' : 'neutral';
     const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
     const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
+
+    // Rating data
+    const avgRating   = ratingData ? (parseFloat(ratingData.avg_rating) || 0) : 0;
+    const ratingCount = ratingData ? (ratingData.total || 0) : 0;
+    const ratingSub   = avgRating >= 4 ? 'positive' : avgRating > 0 ? 'neutral' : 'neutral';
+    const ratingSubText = ratingCount > 0 ? `${ratingCount} valid feedback(s)` : 'No valid feedbacks yet';
+
+    // Build half-star HTML for rating card
+    let ratingStarsHtml = '<div style="display:inline-flex;align-items:center;gap:1px;font-size:15px;line-height:1;margin:4px 0 2px;position:relative;z-index:1;">';
+    for (let _i = 1; _i <= 5; _i++) {
+        if (avgRating >= _i)
+            ratingStarsHtml += '<span style="color:#f59e0b;">★</span>';
+        else if (avgRating >= _i - 0.5)
+            ratingStarsHtml += '<span style="position:relative;display:inline-block;"><span style="color:#d1d5db;">★</span><span style="position:absolute;top:0;left:0;width:50%;overflow:hidden;color:#f59e0b;white-space:nowrap;">★</span></span>';
+        else
+            ratingStarsHtml += '<span style="color:#d1d5db;">☆</span>';
+    }
+    ratingStarsHtml += '</div>';
+
+    const ratingCard = '<div class="emc-card emc-amber">' +
+        '<div class="emc-header"><div class="emc-title">Rating</div><div class="emc-icon"><i class="fas fa-star"></i></div></div>' +
+        '<div class="emc-value">' + (avgRating > 0 ? avgRating.toFixed(1) + '<span style="font-size:14px;font-weight:500;letter-spacing:0"> / 5</span>' : '—') + '</div>' +
+        ratingStarsHtml +
+        '<div class="emc-sub ' + ratingSub + '"><span class="emc-sub-icon">★</span><span>' + ratingSubText + '</span></div>' +
+        '</div>';
+
     el.innerHTML = `<div class="emc-grid-wrap">
         <div class="emc-section-label">Report Activity</div>
         ${card('green','fas fa-check-circle',m.completed,'Completed','↗','Finished reports',completedSub)}
@@ -7976,6 +8065,7 @@ function renderEngMetricsFull(m, containerId) {
         ${card('purple','fas fa-undo-alt',retCurrent,'Returned (Approval)','↩','Admin sent back to revise',retCurSub)}
         ${card('purple','fas fa-ban',retPending,'Returned (Not Done)','↩','Admin marked incomplete',retPenSub)}
         ${m.pending_completion > 0 ? card('teal','fas fa-hourglass-half',m.pending_completion,'Pend. Completion','⏳','Awaiting admin review','neutral') : ''}
+        ${ratingCard}
     </div>`;
 }
 let _schedEngCache = null;
@@ -8010,7 +8100,7 @@ async function schedOpenEngineerProfile(engineerId, statusKey) {
     document.getElementById('schedEngDetailsBackdrop').classList.add('show');
 }
 
-function _schedPopulateEngModal(eng, statusKey) {
+async function _schedPopulateEngModal(eng, statusKey) {
     statusKey = statusKey || 'upcoming';
 
     // Apply status-based theme to the modal
@@ -8105,7 +8195,8 @@ function _schedPopulateEngModal(eng, statusKey) {
     html += `<div class="eng-det-divider"></div>
              <div class="eng-det-section-title">🛠️ Skills & Tools</div>`;
     if (skills.length) {
-        html += '<div class="eng-det-skills">' + skills.map(s => `<span class="eng-det-skill-badge" style="background:rgba(46,125,50,.12);color:#1b5e20;border-color:rgba(46,125,50,.3);">${s}</span>`).join('') + '</div>';
+        const _tcHex = tc.fill;
+        html += '<div class="eng-det-skills">' + skills.map(s => `<span class="eng-det-skill-badge" style="background:${_tcHex}1a;color:${_tcHex};border-color:${_tcHex}4d;">${s}</span>`).join('') + '</div>';
     } else {
         html += '<div class="eng-det-field-value" style="opacity:.5;">No skills listed</div>';
     }
@@ -8123,29 +8214,31 @@ function _schedPopulateEngModal(eng, statusKey) {
 
     document.getElementById('schedEngDetBody').innerHTML = html;
 
-    // Async load metrics
+    // Async load metrics + rating in parallel
     if (eng.id) {
-        _schedFetchMetrics(eng.id).then(m => {
-            if (typeof renderEngMetricsFull === 'function') {
-                renderEngMetricsFull(m, 'schedEngDetMetrics');
-            } else {
-                // Fallback inline renderer if the function isn't available
-                const el = document.getElementById('schedEngDetMetrics');
-                if (el && m) {
-                    el.innerHTML = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
-                        ✅ Completed: <b>${m.completed}</b> &nbsp;
-                        🔄 Ongoing: <b>${m.ongoing}</b> &nbsp;
-                        📅 Scheduled: <b>${m.scheduled}</b> &nbsp;
-                        ⏰ Delayed: <b>${m.delayed}</b><br>
-                        📋 Current Assigned: <b>${m.current_assigned}</b> &nbsp;
-                        🗓️ Pending Assigned: <b>${m.pending_assigned}</b><br>
-                        🚫 Declined: <b>${m.declined_count}</b> &nbsp;
-                        ↩️ Approval Returns: <b>${m.admin_returned_current ?? m.admin_rejected ?? 0}</b> &nbsp;
-                        ↩️ Not-Done Returns: <b>${m.admin_returned_pending ?? 0}</b>
-                    </div>`;
-                }
+        const [m, ratingData] = await Promise.all([
+            _schedFetchMetrics(eng.id),
+            fetchEngineerRating(eng.id)
+        ]);
+        if (typeof renderEngMetricsFull === 'function') {
+            renderEngMetricsFull(m, 'schedEngDetMetrics', ratingData);
+        } else {
+            // Fallback inline renderer if the function isn't available
+            const el = document.getElementById('schedEngDetMetrics');
+            if (el && m) {
+                el.innerHTML = `<div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
+                    ✅ Completed: <b>${m.completed}</b> &nbsp;
+                    🔄 Ongoing: <b>${m.ongoing}</b> &nbsp;
+                    📅 Scheduled: <b>${m.scheduled}</b> &nbsp;
+                    ⏰ Delayed: <b>${m.delayed}</b><br>
+                    📋 Current Assigned: <b>${m.current_assigned}</b> &nbsp;
+                    🗓️ Pending Assigned: <b>${m.pending_assigned}</b><br>
+                    🚫 Declined: <b>${m.declined_count}</b> &nbsp;
+                    ↩️ Approval Returns: <b>${m.admin_returned_current ?? m.admin_rejected ?? 0}</b> &nbsp;
+                    ↩️ Not-Done Returns: <b>${m.admin_returned_pending ?? 0}</b>
+                </div>`;
             }
-        });
+        }
     }
 }
 
@@ -8154,6 +8247,14 @@ async function _schedFetchMetrics(engineerId) {
         const res  = await fetch('get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data.metrics : null;
+    } catch(e) { return null; }
+}
+
+async function fetchEngineerRating(engineerId) {
+    try {
+        const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+        const data = await res.json();
+        return data.success ? data : null;
     } catch(e) { return null; }
 }
 

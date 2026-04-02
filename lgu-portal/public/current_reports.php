@@ -826,18 +826,18 @@ table {
     width: 100%; border-collapse: separate; border-spacing: 0;
     table-layout: fixed;
 }
-/* Percentage widths — all 11 cols sum to 100%, nothing clips */
-table colgroup col:nth-child(1)  { width: 5%;  }  /* Rep #          */
-table colgroup col:nth-child(2)  { width: 8%;  }  /* Infrastructure */
-table colgroup col:nth-child(3)  { width: 10%; }  /* Location       */
-table colgroup col:nth-child(4)  { width: 8%;  }  /* Issue / Notes  */
-table colgroup col:nth-child(5)  { width: 15%; }  /* Engineer       */
-table colgroup col:nth-child(6)  { width: 8%;  }  /* Reported By    */
-table colgroup col:nth-child(7)  { width: 7%;  }  /* Start Date     */
-table colgroup col:nth-child(8)  { width: 7%;  }  /* Est. End Date  */
-table colgroup col:nth-child(9)  { width: 7%;  }  /* Priority       */
-table colgroup col:nth-child(10) { width: 14%; }  /* Budget         */
-table colgroup col:nth-child(11) { width: 11%; }  /* Status         */
+table colgroup col:nth-child(1)  { width: 6%;  }  /* Action         */
+table colgroup col:nth-child(2)  { width: 5%;  }  /* Rep #          */
+table colgroup col:nth-child(3)  { width: 8%;  }  /* Infrastructure */
+table colgroup col:nth-child(4)  { width: 10%; }  /* Location       */
+table colgroup col:nth-child(5)  { width: 8%;  }  /* Issue / Notes  */
+table colgroup col:nth-child(6)  { width: 11%; }  /* Engineer       */
+table colgroup col:nth-child(7)  { width: 9%;  }  /* Reported By    */
+table colgroup col:nth-child(8)  { width: 7%;  }  /* Start Date     */
+table colgroup col:nth-child(9)  { width: 7%;  }  /* End Date       */
+table colgroup col:nth-child(10) { width: 8%;  }  /* Priority       */
+table colgroup col:nth-child(11) { width: 12%; }  /* Budget         */
+table colgroup col:nth-child(12) { width: 9%;  }  /* Status         */
 thead { background: #ff9800; }
 thead th {
     padding: 11px 7px; font-size: 11.5px; font-weight: 600; text-align: left;
@@ -2453,7 +2453,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
@@ -2581,13 +2583,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <table id="reportsTable">
             <colgroup>
                 <?php if ($isEngineer): ?>
-                <col style="width:6%"><col style="width:6%"><col style="width:11%"><col style="width:12%">
-                <col style="width:10%"><col style="width:11%"><col style="width:9%"><col style="width:9%">
-                <col style="width:9%"><col style="width:17%"><col style="width:10%">
+                <col><col><col><col><col><col><col><col><col><col><col>
                 <?php else: ?>
-                <col style="width:5%"><col style="width:5%"><col style="width:8%"><col style="width:9%">
-                <col style="width:8%"><col style="width:11%"><col style="width:9%"><col style="width:7%">
-                <col style="width:7%"><col style="width:7%"><col style="width:15%"><col style="width:9%">
+                <col><col><col><col><col><col><col><col><col><col><col><col>
                 <?php endif; ?>
             </colgroup>
             <thead>
@@ -2651,7 +2649,12 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:24px;opacity:.6;">No in-progress reports found</td></tr>
+                <tr><td colspan="<?= $isEngineer ? 11 : 12 ?>">
+                    <div class="empty-state">
+                        <div class="empty-icon">🔄</div>
+                        <p>No in-progress reports at this time.</p>
+                    </div>
+                </td></tr>
             <?php endif; ?>
                 <tr id="noDesktopResult" style="display:none;">
                     <td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td>
@@ -3697,8 +3700,11 @@ async function _populateEngDetailsModal(eng) {
 
     // ── Async fetch metrics and render ─────────────────────────────────────
     if (eng.id) {
-        const metrics = await fetchEngineerMetrics(eng.id);
-        renderEngMetricsFull(metrics, 'engDetMetricsContainer');
+        const [metrics, ratingData] = await Promise.all([
+            fetchEngineerMetrics(eng.id),
+            fetchEngineerRating(eng.id)
+        ]);
+        renderEngMetricsFull(metrics, 'engDetMetricsContainer', ratingData);
     }
 }
 
@@ -5099,7 +5105,15 @@ async function fetchEngineerMetrics(engineerId) {
     } catch(e) { return null; }
 }
 
-function renderEngMetricsFull(m, containerId) {
+async function fetchEngineerRating(engineerId) {
+    try {
+        const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+        const data = await res.json();
+        return data.success ? data : null;
+    } catch(e) { return null; }
+}
+
+function renderEngMetricsFull(m, containerId, ratingData) {
     const el = document.getElementById(containerId);
     if (!el) return;
     if (!m) {
@@ -5131,6 +5145,31 @@ function renderEngMetricsFull(m, containerId) {
     const retCurSub    = retCurrent > 0 ? 'warning' : 'neutral';
     const retPenSub    = retPending > 0 ? 'warning' : 'neutral';
 
+    // Rating data
+    const avgRating   = ratingData ? (parseFloat(ratingData.avg_rating) || 0) : 0;
+    const ratingCount = ratingData ? (ratingData.total || 0) : 0;
+    const ratingSub   = avgRating >= 4 ? 'positive' : avgRating > 0 ? 'neutral' : 'neutral';
+    const ratingSubText = ratingCount > 0 ? `${ratingCount} valid feedback(s)` : 'No valid feedbacks yet';
+
+    // Build half-star HTML for rating card
+    let ratingStarsHtml = '<div style="display:inline-flex;align-items:center;gap:1px;font-size:15px;line-height:1;margin:4px 0 2px;position:relative;z-index:1;">';
+    for (let _i = 1; _i <= 5; _i++) {
+        if (avgRating >= _i)
+            ratingStarsHtml += '<span style="color:#f59e0b;">★</span>';
+        else if (avgRating >= _i - 0.5)
+            ratingStarsHtml += '<span style="position:relative;display:inline-block;"><span style="color:#d1d5db;">★</span><span style="position:absolute;top:0;left:0;width:50%;overflow:hidden;color:#f59e0b;white-space:nowrap;">★</span></span>';
+        else
+            ratingStarsHtml += '<span style="color:#d1d5db;">☆</span>';
+    }
+    ratingStarsHtml += '</div>';
+
+    const ratingCard = '<div class="emc-card emc-amber">' +
+        '<div class="emc-header"><div class="emc-title">Rating</div><div class="emc-icon"><i class="fas fa-star"></i></div></div>' +
+        '<div class="emc-value">' + (avgRating > 0 ? avgRating.toFixed(1) + '<span style="font-size:14px;font-weight:500;letter-spacing:0"> / 5</span>' : '—') + '</div>' +
+        ratingStarsHtml +
+        '<div class="emc-sub ' + ratingSub + '"><span class="emc-sub-icon">★</span><span>' + ratingSubText + '</span></div>' +
+        '</div>';
+
     /* Single flat grid — section labels span full width via CSS grid-column:1/-1
        All cards flow naturally: desktop 3-col, mobile 2-col, no blank gaps */
     el.innerHTML = `
@@ -5147,6 +5186,7 @@ function renderEngMetricsFull(m, containerId) {
             ${card('purple', 'fas fa-undo-alt',          retCurrent,         'Returned (Approval)',    '↩', 'Admin sent back to revise', retCurSub)}
             ${card('purple', 'fas fa-ban',               retPending,         'Returned (Not Done)',    '↩', 'Admin marked incomplete',   retPenSub)}
             ${m.pending_completion > 0 ? card('teal', 'fas fa-hourglass-half', m.pending_completion, 'Pend. Completion', '⏳', 'Awaiting admin review', 'neutral') : ''}
+            ${ratingCard}
         </div>`;
 }
 
