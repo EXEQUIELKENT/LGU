@@ -147,6 +147,10 @@ while ($row = $result->fetch_assoc()) {
         preg_match('/#REP-?(\d+)/i', $row['title'] ?? '', $rm)) {
         $row['url'] .= '?highlight_rep=' . $rm[1];
     }
+    // Feedback notifications: ensure emp_feedback.php URLs carry highlight_fbk param
+    if (!empty($row['url']) && preg_match('/emp_feedback\.php\?highlight_fbk=(\d+)/i', $row['url'])) {
+        // URL is already correct — nothing to do
+    }
     // ── End URL normalisation ────────────────────────────────────────────────
 
     $notifications[] = [

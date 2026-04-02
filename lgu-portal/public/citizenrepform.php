@@ -1251,7 +1251,7 @@ input[type="file"] {
     .sidebar-nav { display: flex !important; }
     .form-wrapper { margin-top: 20px !important; padding-left: 20px !important; padding-right: 20px !important; padding-top: 90px !important; }
     .report-card { padding: 22px 18px !important; max-width: 99vw; }
-    .report-card h2 { font-size: 1.6rem; padding-bottom: 12px; margin-bottom: 18px; }
+    .report-card h2 { font-size: 1.5rem; padding-bottom: 12px; margin-bottom: 18px; }
     .report-card form { grid-template-columns: 1fr; gap: 18px; }
     .input-group { margin-bottom: 0px; }
     .input-group label { font-size: 12.5px; margin-bottom: 6px; }
@@ -1274,7 +1274,7 @@ input[type="file"] {
     .btn-primary { padding: 13px 34px; width: auto; min-width: 200px; font-size: 14px; }
     .input-group input, .input-group select, .input-group textarea { padding: 10px 14px; font-size: 14px; }
     .input-group label { font-size: 12.5px; }
-    .report-card h2 { font-size: 1.4rem; }
+    .report-card h2 { font-size: 1.5rem; }
 }
 @media (min-width: 769px) { .mobile-top-nav { display: none !important; } .sidebar-nav { display: none !important; } .nav { display: flex !important; } }
 @media (min-width: 769px) { #cameraBtn { display: none !important; } }
@@ -1298,7 +1298,7 @@ input[type="file"] {
 }
 @media (max-width: 360px) {
     .mobile-clock { font-size: 12px; right: 52px; }
-    .report-card h2 { font-size: 24px; }
+    .report-card h2 { font-size: 1.5rem; }
     .report-card { padding: 22px 16px !important; }
 }
 

@@ -9,6 +9,7 @@ date_default_timezone_set('Asia/Manila');
 
 require_once 'auth_config.php';
 require_once 'db.php';
+require_once 'notif_helper.php';
 
 function setNotification($type, $message) {
     $_SESSION['notification'] = ['type' => $type, 'message' => $message];
@@ -113,6 +114,14 @@ if (!$stmt->execute()) {
 }
 $feedback_id = (int)$conn->insert_id;
 $stmt->close();
+
+// ── Notify Admin & Super Admin about new citizen feedback ─────────────────────
+$notifUrl   = 'emp_feedback.php?highlight_fbk=' . $feedback_id;
+$notifTitle = 'New Citizen Feedback: ' . (strlen($title) > 60 ? substr($title, 0, 57) . '…' : $title);
+$article    = in_array(strtolower($feedback_type[0] ?? ''), ['a','e','i','o','u']) ? 'an' : 'a';
+$notifDesc  = htmlspecialchars($full_name, ENT_QUOTES) . ' submitted ' . $article . ' ' . $feedback_type . ' feedback.';
+notifyAdminsOnly($conn, $notifTitle, $notifDesc, $notifUrl, 'Feedback');
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Handle photo uploads ──────────────────────────────────────────────────────
 if (isset($_FILES['photos']) && is_array($_FILES['photos']['name'])) {

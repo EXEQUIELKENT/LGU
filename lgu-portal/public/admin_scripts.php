@@ -610,11 +610,12 @@ startClock();
     function getPageLabel(url) {
         if (!url) return null;
         const u = url.toLowerCase().split('?')[0];
-        if (u.includes('pending_reports'))  return { label: 'Pending Reports',  cls: 'notif-page-pending'  };
-        if (u.includes('current_reports'))  return { label: 'Current Reports',  cls: 'notif-page-current'  };
-        if (u.includes('archive_reports'))  return { label: 'Archive Reports',  cls: 'notif-page-archive'  };
-        if (u.includes('requests'))         return { label: 'Requests',         cls: 'notif-page-requests' };
-        if (u.includes('employee'))         return { label: 'Dashboard',        cls: 'notif-page-dashboard'};
+        if (u.includes('pending_reports'))  return { label: 'Pending Reports',   cls: 'notif-page-pending'  };
+        if (u.includes('current_reports'))  return { label: 'Current Reports',   cls: 'notif-page-current'  };
+        if (u.includes('archive_reports'))  return { label: 'Archive Reports',   cls: 'notif-page-archive'  };
+        if (u.includes('emp_feedback'))     return { label: 'Citizen Feedback',  cls: 'notif-page-feedback' };
+        if (u.includes('requests'))         return { label: 'Requests',          cls: 'notif-page-requests' };
+        if (u.includes('employee'))         return { label: 'Dashboard',         cls: 'notif-page-dashboard'};
         return null;
     }
 
@@ -900,7 +901,17 @@ startClock();
     border-left-color: #fbbf24;
     color: #fde68a;
 }
-.notif-relocated-page-banner a { color: inherit; }
+/* ── Citizen Feedback page pill ── */
+.notif-page-feedback {
+    background: linear-gradient(135deg, rgba(16,185,129,.18), rgba(5,150,105,.13));
+    color: #065f46;
+    border-color: rgba(16,185,129,.45);
+}
+[data-theme="dark"] .notif-page-feedback {
+    background: linear-gradient(135deg, rgba(16,185,129,.25), rgba(5,150,105,.18));
+    color: #6ee7b7;
+    border-color: rgba(52,211,153,.5);
+}
 </style>
 
 <script>

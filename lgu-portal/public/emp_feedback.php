@@ -1523,6 +1523,75 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     #fbkImageModalImg { max-height: 55vh; border-radius: 12px; }
     .fbk-image-modal-close { top: 20px; right: 20px; width: 40px; height: 40px; font-size: 24px; }
 }
+
+/* ── Notification highlight — feedback rows/cards ── */
+tr.notif-highlight > td {
+    animation: fbkCellHighlight 5s ease-out forwards;
+    position: relative;
+}
+tr.notif-highlight > td:first-child {
+    border-left: 3px solid #3762c8 !important;
+}
+@keyframes fbkCellHighlight {
+    0%   { background: rgba(55,98,200,.18); box-shadow: inset 0 1px 0 rgba(55,98,200,.5), inset 0 -1px 0 rgba(55,98,200,.5); }
+    25%  { background: rgba(55,98,200,.13); box-shadow: inset 0 1px 0 rgba(55,98,200,.35), inset 0 -1px 0 rgba(55,98,200,.35); }
+    60%  { background: rgba(55,98,200,.07); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td {
+    animation: fbkCellHighlightDark 5s ease-out forwards;
+}
+@keyframes fbkCellHighlightDark {
+    0%   { background: rgba(95,140,255,.22); box-shadow: inset 0 1px 0 rgba(95,140,255,.55), inset 0 -1px 0 rgba(95,140,255,.55); }
+    25%  { background: rgba(95,140,255,.15); box-shadow: inset 0 1px 0 rgba(95,140,255,.35), inset 0 -1px 0 rgba(95,140,255,.35); }
+    60%  { background: rgba(95,140,255,.08); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td:first-child {
+    border-left-color: #5f8cff !important;
+}
+/* Mobile card highlight */
+.feedback-card.notif-highlight {
+    animation: fbkCardHighlight 5s ease-out forwards;
+    outline: 2px solid rgba(55,98,200,.5);
+    outline-offset: -2px;
+}
+@keyframes fbkCardHighlight {
+    0%   { box-shadow: 0 0 0 4px rgba(55,98,200,.45); background: rgba(55,98,200,.10); }
+    30%  { box-shadow: 0 0 0 3px rgba(55,98,200,.30); background: rgba(55,98,200,.07); }
+    100% { box-shadow: none; background: transparent; }
+}
+[data-theme="dark"] .feedback-card.notif-highlight {
+    animation: fbkCardHighlightDark 5s ease-out forwards;
+    outline-color: rgba(95,140,255,.6);
+}
+@keyframes fbkCardHighlightDark {
+    0%   { box-shadow: 0 0 0 4px rgba(95,140,255,.50); background: rgba(95,140,255,.13); }
+    30%  { box-shadow: 0 0 0 3px rgba(95,140,255,.30); background: rgba(95,140,255,.08); }
+    100% { box-shadow: none; background: transparent; }
+}
+/* Notification banner — sits between search bar and table/cards */
+.notif-highlight-banner {
+    display: none;
+    align-items: center; gap: 10px;
+    background: #eef3ff; border: 1px solid #b8cdf8;
+    border-radius: 8px; padding: 10px 16px;
+    font-size: 13px; color: #2851b3;
+    margin-bottom: 14px;
+}
+/* animation only fires when actually shown */
+.notif-highlight-banner.visible {
+    display: flex;
+    animation: fbkBannerIn .35s ease;
+}
+[data-theme="dark"] .notif-highlight-banner {
+    background: rgba(55,98,200,.18); border-color: rgba(95,140,255,.35); color: #8fb4ff;
+}
+@keyframes fbkBannerIn  { from { opacity:0; transform:translateY(-6px); } to   { opacity:1; transform:translateY(0);   } }
+@keyframes fbkBannerOut { from { opacity:1; transform:translateY(0);   } to   { opacity:0; transform:translateY(-6px); } }
+.notif-highlight-banner.hiding {
+    animation: fbkBannerOut .4s ease forwards;
+}
 </style>
 <body>
 
@@ -1753,6 +1822,13 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             </div>
         </div>
         </div>
+
+        <!-- Notification highlight banner: shown by JS when ?highlight_fbk= is present -->
+        <div class="notif-highlight-banner" id="fbkNotifHighlightBanner" style="display:none">
+            <span style="font-size:16px;flex-shrink:0;">🔔</span>
+            <span>You were directed here from a notification — this feedback is highlighted below.</span>
+        </div>
+
         <!-- DESKTOP TABLE -->
         <div class="desktop-feedback-table" style="overflow-x:auto;">
         <table id="feedbackTable">
@@ -2025,6 +2101,66 @@ const ALL_FEEDBACK = <?= json_encode(array_map(function($fb){
 </script>
 
 <?php include 'admin_scripts.php'; ?>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT — emp_feedback.php
+   Reads ?highlight_fbk={feedback_id}, scrolls to the
+   matching row / mobile card, animates it, shows banner.
+═══════════════════════════════════════════════════════ */
+(function initFbkNotifHighlight() {
+    var params = new URLSearchParams(window.location.search);
+    var fbkId  = params.get('highlight_fbk');
+    if (!fbkId) return;
+
+    // Clean URL immediately (no ?highlight_fbk= in history)
+    var cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight_fbk');
+    history.replaceState(null, '', cleanUrl);
+
+    setTimeout(function () {
+        var tr   = document.querySelector('.fbk-row[data-id="' + fbkId + '"]');
+        var card = document.querySelector('.fbk-mobile-card[data-id="' + fbkId + '"]');
+        if (!tr && !card) return;
+
+        var isMobile = window.matchMedia('(max-width: 768px)').matches;
+        var primary  = isMobile ? (card || tr) : (tr || card);
+
+        primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Desktop row
+        if (tr && !isMobile) {
+            tr.classList.add('notif-highlight');
+            setTimeout(function () {
+                tr.classList.remove('notif-highlight');
+                tr.querySelectorAll('td').forEach(function (td) { td.style.borderLeft = ''; });
+            }, 5500);
+        }
+
+        // Mobile card
+        if (card && isMobile) {
+            card.classList.add('notif-highlight');
+            setTimeout(function () { card.classList.remove('notif-highlight'); }, 5500);
+        }
+
+        // Show static banner (between search bar and table)
+        var banner = document.getElementById('fbkNotifHighlightBanner');
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.classList.add('visible');
+            // After 4.8s start fading out, then hide after the 0.4s animation
+            setTimeout(function () {
+                banner.classList.remove('visible');
+                banner.classList.add('hiding');
+                setTimeout(function () {
+                    banner.classList.remove('hiding');
+                    banner.style.display = 'none';
+                }, 400);
+            }, 4800);
+        }
+    }, 500);
+})();
+</script>
 
 <script>
 // ── Sort + Filter dropdown toggle ────────────────────────────────────────────

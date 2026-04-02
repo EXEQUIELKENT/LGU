@@ -1160,6 +1160,7 @@ body {
 /* ── Responsive ── */
 @media (max-width: 680px) {
     .fbk-card { padding: 22px 18px; }
+    .fbk-card-title { font-size: 1.5rem; }
     .fbk-grid { grid-template-columns: 1fr; }
     .fbk-grid .full { grid-column: 1; }
     .fbk-hero h1 { font-size: 2rem; }
