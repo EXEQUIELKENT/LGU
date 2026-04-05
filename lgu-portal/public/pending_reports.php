@@ -891,9 +891,14 @@ tr.notif-highlight > td:first-child {
 .empty-state p { font-size: 16px; font-weight: 500; }
 .table-wrapper {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
-    background: var(--bg-secondary); overflow: hidden;
+    background: var(--bg-secondary); overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+/* Thin, subtle horizontal scrollbar */
+.table-wrapper::-webkit-scrollbar { height: 5px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
+.table-wrapper::-webkit-scrollbar-thumb { background: rgba(230,81,0,.30); border-radius: 3px; }
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,109,0,.35); }
+table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; min-width: 920px; }
 thead { background: linear-gradient(135deg, #e65100, #ff6d00); }
 thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
 thead th:first-child { border-top-left-radius: 12px; }
@@ -1073,8 +1078,12 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 
-/* ── Compact table style ── */
-table { table-layout: fixed; }
+/* Reduce card padding on narrower desktop viewports so the table gets more room */
+@media (max-width: 1100px) {
+    .card { padding: 20px 16px !important; }
+}
+
+/* ── Compact table style — column widths (table base + scrollable wrapper declared above) ── */
 table colgroup col:nth-child(1)  { width: 6%;  }
 table colgroup col:nth-child(2)  { width: 5%;  }
 table colgroup col:nth-child(3)  { width: 8%;  }

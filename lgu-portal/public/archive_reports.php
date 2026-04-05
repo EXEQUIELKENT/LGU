@@ -550,9 +550,14 @@ tr.notif-highlight > td:first-child {
 .empty-state p { font-size: 16px; font-weight: 500; }
 .table-wrapper {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
-    background: var(--bg-secondary); overflow: hidden;
+    background: var(--bg-secondary); overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+/* Thin, subtle horizontal scrollbar */
+.table-wrapper::-webkit-scrollbar { height: 5px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
+.table-wrapper::-webkit-scrollbar-thumb { background: rgba(46,125,50,.30); border-radius: 3px; }
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb { background: rgba(76,175,80,.35); }
+table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; min-width: 920px; }
 thead { background: linear-gradient(135deg, #2e7d32, #43a047); }
 thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
 thead th:first-child { border-top-left-radius: 12px; }
@@ -725,23 +730,11 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
 
 /* ── Compact table layout (matching current_reports style) ── */
-table { table-layout: fixed; }
-table colgroup col:nth-child(1)  { width: 6%;  }  /* Action       */
-table colgroup col:nth-child(2)  { width: 5%;  }  /* Rep #        */
-table colgroup col:nth-child(3)  { width: 8%;  }  /* Infrastructure */
-table colgroup col:nth-child(4)  { width: 10%; }  /* Location     */
-table colgroup col:nth-child(5)  { width: 8%;  }  /* Issue        */
-table colgroup col:nth-child(6)  { width: 11%; }  /* Engineer     */
-table colgroup col:nth-child(7)  { width: 9%;  }  /* Reported By  */
-table colgroup col:nth-child(8)  { width: 7%;  }  /* Start        */
-table colgroup col:nth-child(9)  { width: 7%;  }  /* End          */
-table colgroup col:nth-child(10) { width: 8%;  }  /* Priority     */
-table colgroup col:nth-child(11) { width: 12%; }  /* Budget       */
-table colgroup col:nth-child(12) { width: 9%;  }  /* Status       */
-thead th { padding: 11px 7px; font-size: 11.5px; }
-td { padding: 10px 7px; font-size: 11.5px; white-space: normal; word-break: break-word; }
-/* Keep status/priority cells from wrapping unexpectedly */
-td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
+/* min-width + scrollable wrapper already declared above; only column widths repeated here */
+/* Reduce card padding on narrower desktop viewports so the table gets more room */
+@media (max-width: 1100px) {
+    .card { padding: 20px 16px !important; }
+}
 
 /* ── View modal (green accent for archive) ── */
 .rep-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:8000; }

@@ -820,11 +820,16 @@ foreach ($rows as $row) {
 .empty-state p { font-size: 16px; font-weight: 500; }
 .table-wrapper {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
-    background: var(--bg-secondary); overflow: hidden;
+    background: var(--bg-secondary); overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
+/* Thin, subtle horizontal scrollbar */
+.table-wrapper::-webkit-scrollbar { height: 5px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
+.table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,152,0,.35); border-radius: 3px; }
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,152,0,.40); }
 table {
     width: 100%; border-collapse: separate; border-spacing: 0;
-    table-layout: fixed;
+    table-layout: fixed; min-width: 920px;
 }
 table colgroup col:nth-child(1)  { width: 6%;  }  /* Action         */
 table colgroup col:nth-child(2)  { width: 5%;  }  /* Rep #          */
@@ -976,6 +981,10 @@ tr.notif-highlight > td:first-child {
 }
 
 .search-toolbar { display: flex; align-items: center; gap: 10px; }
+/* Reduce card padding on narrower desktop viewports so the table gets more room */
+@media (max-width: 1100px) {
+    .card { padding: 20px 16px !important; }
+}
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
 .sort-btn {
     display: inline-flex; align-items: center; gap: 6px;

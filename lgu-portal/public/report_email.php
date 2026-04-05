@@ -172,6 +172,15 @@ function sendReportUpdateEmail(
     ' . $descSection . '
     ' . $imageSection . '
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">If you have any concerns or questions, please contact your local LGU office.</p>
+    <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Share Your Feedback</p>
+        <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">We value your experience. Let us know how we\'re doing by submitting a feedback, suggestion, or concern about our services.</p>
+        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+           style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
+                  padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
+            &#128203; Submit Feedback — CIMM LGU
+        </a>
+    </div>
     <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">This is an automated message. Please do not reply to this email.</p>
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px;">&copy; ' . date('Y') . ' LGU Portal &mdash; City Infrastructure Management &amp; Monitoring</p>
 </div>
@@ -182,6 +191,7 @@ function sendReportUpdateEmail(
             . ($isComplete ? "Your report #REP-{$repId} has been COMPLETED.\n\n" : "Progress update on your report #REP-{$repId}.\n\n")
             . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
             . ($desc ? "\nEngineer Notes:\n{$descRaw}\n" : '')
+            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen_feedback.php\n"
             . "\n© " . date('Y') . " LGU Portal";
 
         $mail->send();
@@ -470,7 +480,7 @@ function sendFeedbackStatusEmail(
            </div>';
 
     $replySection = '<div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin:20px 0;border:1px solid #e2e8f0;">
-        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">&#128221; Admin Reply:</p>
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;">&#128221; CIMM LGU replied:</p>
         <p style="color:#374151;font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap;">' . $reply . '</p>
     </div>';
 
@@ -536,6 +546,15 @@ function sendFeedbackStatusEmail(
     ' . $descSection . '
     ' . $replySection . '
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">If you have any further concerns, please contact your local LGU office.</p>
+    <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Submit Another Feedback</p>
+        <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">Have more suggestions or concerns? We always welcome your input to help us improve our services.</p>
+        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+           style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
+                  padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
+            &#128203; Submit Feedback — CIMM LGU
+        </a>
+    </div>
     <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">
         This is an automated message. Please do not reply to this email.
     </p>
@@ -554,7 +573,8 @@ function sendFeedbackStatusEmail(
         if (!empty($refInfra))    $plainParts[] = "Infrastructure: {$refInfra}";
         if (!empty($engTrimmed) && $engTrimmed !== ' ') $plainParts[] = "Assigned Engineer: {$engTrimmed}";
         if (!empty($descTrimmed)) $plainParts[] = "\nYour Description:\n{$descTrimmed}";
-        $plainParts[] = "\nAdmin Reply:\n{$adminReply}";
+        $plainParts[] = "\nCIMM LGU replied:\n{$adminReply}";
+        $plainParts[] = "\n---\nHave more suggestions or concerns? Submit feedback here:\n" . getBaseUrl() . "/citizen_feedback.php";
         $plainParts[] = "\n© " . date('Y') . " LGU Portal";
         $mail->AltBody = implode("\n", $plainParts);
 
@@ -656,6 +676,15 @@ function sendValidationEmail(
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">
         If you have any concerns, please contact your local LGU office.
     </p>
+    <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Share Your Feedback</p>
+        <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">We value your experience. Let us know how we\'re doing by submitting a feedback, suggestion, or concern about our services.</p>
+        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+           style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
+                  padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
+            &#128203; Submit Feedback — CIMM LGU
+        </a>
+    </div>
     <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">
         This is an automated message. Please do not reply to this email.
     </p>
@@ -669,6 +698,7 @@ function sendValidationEmail(
             . "Your request {$reqLabel} has been APPROVED. Report {$repLabel} has been created.\n\n"
             . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
             . "\nYou will receive progress updates as work proceeds.\n"
+            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen_feedback.php\n"
             . "\n© " . date('Y') . " LGU Portal";
 
         $mail->send();

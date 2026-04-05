@@ -544,10 +544,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-dd-chevron { font-size: 9px !important; transition: transform .18s; }
 .gis-dd-wrap.open .gis-dd-chevron { transform: rotate(180deg); }
 .gis-dd-menu {
-    display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    display: none; position: fixed; /* fixed so ancestor overflow:hidden cannot clip it */
     background: var(--bg-secondary); border: 1.5px solid rgba(55,98,200,.18);
     border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
-    z-index: 9999; min-width: 200px; overflow: hidden;
+    z-index: 99999; min-width: 200px; overflow: hidden;
     animation: gisDropIn .18s ease;
 }
 .gis-dd-wrap.open .gis-dd-menu { display: block; }
@@ -1733,6 +1733,84 @@ tbody td {
     .btn-validate, .btn-reject { flex: 1; justify-content: center; min-width: 0; }
     .detail-footer-inner { flex-direction: row; }
     .gis-detail-modal { width: 95%; max-height: 90vh; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESKTOP MODE ON PHONES
+   When a mobile browser switches to Desktop Mode it ignores
+   the viewport meta tag and renders at ~980 px, triggering
+   the min-width-769px desktop rules — but the physical screen
+   is still phone-sized. The rules below correct layout issues
+   that only appear in that scenario.
+═══════════════════════════════════════════════════════ */
+
+/* 1. Use dynamic viewport height so content is never clipped by the
+      mobile browser's address bar or bottom navigation bar.
+      100dvh = visible area only; 100vh can include hidden chrome. */
+@media (min-width: 769px) {
+    body {
+        height: 100dvh !important;
+        overflow-x: auto  !important;   /* allow rescue-scroll if anything overflows */
+        overflow-y: hidden !important;
+    }
+    .main-content { height: 100dvh !important; }
+}
+
+/* 2. Narrow-desktop breakpoint: 769 px – 1100 px.
+      Fires in Desktop Mode on phones (~980 px) but NOT on a real
+      desktop monitor (usually ≥ 1200 px), so regular desktop users
+      are unaffected. Also improves layout on narrow tablets. */
+@media (min-width: 769px) and (max-width: 1100px) {
+
+    /* ── Request table ──────────────────────────────────────────────
+       At ~650 px inner width an 8-column fixed-layout table collapses.
+       Horizontal scroll keeps every column readable without wrapping. */
+    .table-card {
+        overflow-x: auto !important;
+    }
+    .table-card table {
+        min-width: 720px   !important; /* all 8 cols stay legible */
+        table-layout: auto !important; /* browser sizes cols by content */
+    }
+    /* Tighter cell padding to recover horizontal space */
+    .table-card th,
+    .table-card td      { padding: 10px 8px !important; font-size: 12px  !important; }
+    .status             { padding: 4px 8px  !important; font-size: 10px  !important; white-space: nowrap !important; }
+    .btn-view           { padding: 5px 8px  !important; font-size: 11px  !important; white-space: nowrap !important; }
+    .evidence-thumb,
+    .evidence-thumb-wrapper { width: 50px !important; height: 50px !important; }
+    /* Table-card padding reduction to reclaim ~38 px per side */
+    .table-card { padding: 20px 18px !important; }
+
+    /* ── GIS map toolbar ────────────────────────────────────────────
+       At ~650 px width the title + fixed-260px search + 3 dropdowns
+       cannot all share one row. Removing the decorative title and
+       making the search flex-grow produces a clean two-row layout:
+         Row 1 → [search bar (flex-grow)]  [Satellite]
+         Row 2 → [Status]  [Types]  [Period]              */
+    .gis-map-title  { display: none !important; }
+    .gis-search-wrap {
+        flex: 1 1 auto  !important;
+        width: auto     !important;
+        min-width: 140px !important;
+        margin-left: 0  !important;
+    }
+    .gis-dd-group {
+        width: 100%      !important;
+        flex-wrap: wrap  !important;
+    }
+    /* Compact dropdown buttons so all three fit in one row on the second line */
+    .gis-dd-btn { font-size: 11px !important; padding: 0 9px !important; }
+
+    /* ── GIS map height ─────────────────────────────────────────────
+       The wrapped second toolbar row adds ~42 px; compensate so the
+       map doesn't overflow the viewport. */
+    #gisMap { height: calc(100dvh - 410px) !important; min-height: 360px !important; }
+
+    /* ── Fullscreen map modal ───────────────────────────────────────
+       In Desktop Mode the modal still opens; use dvh so it fills the
+       visible area correctly, matching what the mobile-only rule does. */
+    .gis-fullmap-modal { height: 100dvh !important; }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
@@ -3630,17 +3708,23 @@ function placeAllMarkers() {
         savedGisBounds = bounds;
         map.fitBounds(bounds, {maxZoom: 16});
     }
+    // Re-apply the current filter after placing/updating markers so that any
+    // filter already set by the user is honoured even when geocoding completes.
+    applyVisibility();
 }
 
 function getDateFilterRange(filter) {
-    const now = new Date();
+    // Use SERVER_TIME (PHP-generated Unix timestamp) for consistent
+    // Asia/Manila-based date math instead of the browser's local clock,
+    // which may differ from the server timezone.
+    const now = new Date(SERVER_TIME);
     const y = now.getFullYear(), m = now.getMonth(), d = now.getDate(), dow = now.getDay();
     if (filter === 'today')     { const s=new Date(y,m,d); s.setHours(0,0,0,0); const e=new Date(y,m,d+1); e.setHours(0,0,0,0); return {from:s,to:e}; }
     if (filter === 'yesterday') { const s=new Date(y,m,d-1); s.setHours(0,0,0,0); const e=new Date(y,m,d); e.setHours(0,0,0,0); return {from:s,to:e}; }
-    if (filter === 'week')      { const s=new Date(y,m,d-dow); s.setHours(0,0,0,0); return {from:s,to:null}; }
-    if (filter === 'month')     { return {from:new Date(y,m,1),to:null}; }
-    if (filter === 'year')      { return {from:new Date(y,0,1),to:null}; }
-    if (filter === 'lastyear')  { return {from:new Date(y-1,0,1),to:new Date(y,0,1)}; }
+    if (filter === 'week')      { const s=new Date(y,m,d-dow); s.setHours(0,0,0,0); const e=new Date(y,m,d+1); e.setHours(0,0,0,0); return {from:s,to:e}; }
+    if (filter === 'month')     { return {from:new Date(y,m,1), to:new Date(y,m+1,1)}; }
+    if (filter === 'year')      { return {from:new Date(y,0,1), to:new Date(y+1,0,1)}; }
+    if (filter === 'lastyear')  { return {from:new Date(y-1,0,1), to:new Date(y,0,1)}; }
     if (filter && filter.startsWith('specificMonth:')) {
         const parts = filter.split(':')[1].split('-');
         return {from:new Date(+parts[0],+parts[1]-1,1), to:new Date(+parts[0],+parts[1],1)};
@@ -3666,8 +3750,39 @@ function _periodLabel(filter) {
 function _initGisDd(wrapId) {
     const wrap = document.getElementById(wrapId);
     if (!wrap) return;
-    const btn = wrap.querySelector('.gis-dd-btn');
-    btn.addEventListener('click', e => { e.stopPropagation(); _closeAllGisDd(wrapId); wrap.classList.toggle('open'); });
+    const btn  = wrap.querySelector('.gis-dd-btn');
+    const menu = wrap.querySelector('.gis-dd-menu');
+
+    function _positionMenu() {
+        if (!menu || !btn) return;
+        const rect = btn.getBoundingClientRect();
+        const vw   = window.innerWidth;
+        const vh   = window.innerHeight;
+        // Temporarily show to measure real dimensions
+        menu.style.visibility = 'hidden';
+        menu.style.display    = 'block';
+        const mw = menu.offsetWidth  || 220;
+        const mh = menu.offsetHeight || 320;
+        menu.style.display    = '';
+        menu.style.visibility = '';
+
+        let top  = rect.bottom + 4;
+        let left = rect.left;
+        if (left + mw > vw - 8) left = Math.max(8, vw - mw - 8);
+        if (left < 8) left = 8;
+        // Flip above the button when it would go below the viewport
+        if (top + mh > vh - 8 && rect.top > mh + 8) top = rect.top - mh - 4;
+        menu.style.top  = top  + 'px';
+        menu.style.left = left + 'px';
+    }
+
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const opening = !wrap.classList.contains('open');
+        _closeAllGisDd(wrapId);
+        if (opening) { _positionMenu(); wrap.classList.add('open'); }
+        else          { wrap.classList.remove('open'); }
+    });
 }
 function _closeAllGisDd(except) {
     ['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => {
@@ -3686,15 +3801,13 @@ function setDateFilter(filter) {
     const lbl = document.getElementById('gisPeriodLabel');
     if (lbl) lbl.textContent = _periodLabel(filter);
     const btn = document.getElementById('gisPeriodBtn');
-    if (btn) { btn.classList.toggle('has-filter period', filter !== 'all'); btn.classList.toggle('period', true); }
+    if (btn) { btn.classList.toggle('has-filter', filter !== 'all'); btn.classList.add('period'); }
     document.querySelectorAll('#gisPeriodMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === filter));
     const w = document.getElementById('gisPeriodWrap'); if(w) w.classList.remove('open');
     // Reset custom picker labels when a preset is chosen
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
     applyVisibility();
-    // Also filter the requests table/card list
-    if (window._applyRequestListFilter) window._applyRequestListFilter();
 }
 
 function setStatusFilter(filter) {
@@ -3735,7 +3848,10 @@ function applyVisibility() {
     Object.values(markersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
         let dateOk = true;
         if (dateRange && createdAt) {
-            const dt = new Date(createdAt.replace(' ','T'));
+            // Parse MySQL datetime string safely. Append explicit local-time
+            // offset to prevent browsers from treating the string as UTC.
+            const normalized = createdAt.replace(' ', 'T');
+            const dt = new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
             if (dateRange.from && dt < dateRange.from) dateOk = false;
             if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
         }
@@ -3906,7 +4022,8 @@ function applyModalVisibility() {
     Object.values(modalMarkersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
         let dateOk = true;
         if (dateRange && createdAt) {
-            const dt = new Date(createdAt.replace(' ','T'));
+            const normalized = createdAt.replace(' ', 'T');
+            const dt = new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
             if (dateRange.from && dt < dateRange.from) dateOk = false;
             if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
         }
@@ -4019,7 +4136,15 @@ function initRequestSort() {
     function parseRequestDate(el) {
         // Prefer the reliable ISO timestamp; fall back to the formatted string
         const iso = el.dataset.createdIso || el.dataset.date || '';
-        return iso ? new Date(iso.replace(' ', 'T')) : new Date(0);
+        if (!iso) return new Date(0);
+        const normalized = iso.replace(' ', 'T');
+        return new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
+    }
+
+    function _parseDateStr(iso) {
+        if (!iso) return null;
+        const normalized = iso.replace(' ', 'T');
+        return new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
     }
 
     function applyRequestListFilter() {
@@ -4029,8 +4154,7 @@ function initRequestSort() {
             const noResult = document.getElementById('noRequestResult');
             tbody.querySelectorAll('tr.request-row').forEach(row => {
                 if (!dateRange) { row.dataset.dateHidden = ''; return; }
-                const iso = row.dataset.createdIso || '';
-                const dt  = iso ? new Date(iso.replace(' ', 'T')) : null;
+                const dt  = _parseDateStr(row.dataset.createdIso || '');
                 const hide = dt && (
                     (dateRange.from && dt < dateRange.from) ||
                     (dateRange.to   && dt >= dateRange.to)
@@ -4050,8 +4174,7 @@ function initRequestSort() {
             const noMob = document.getElementById('noMobileRequestResult');
             mList.querySelectorAll('.request-card').forEach(card => {
                 if (!dateRange) { card.dataset.dateHidden = ''; return; }
-                const iso = card.dataset.createdIso || '';
-                const dt  = iso ? new Date(iso.replace(' ', 'T')) : null;
+                const dt  = _parseDateStr(card.dataset.createdIso || '');
                 const hide = dt && (
                     (dateRange.from && dt < dateRange.from) ||
                     (dateRange.to   && dt >= dateRange.to)
@@ -4063,8 +4186,7 @@ function initRequestSort() {
         }
     }
 
-    // Expose so setDateFilter can call it
-    window._applyRequestListFilter = applyRequestListFilter;
+    // (applyRequestListFilter is kept for internal table-only date filtering if needed in future)
 
     function applyRequestSort(mode) {
         // ── Desktop table rows ──

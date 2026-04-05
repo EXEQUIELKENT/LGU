@@ -2586,7 +2586,7 @@ function openDetail(id) {
                 var lockBg     = fb.status === 'Valid' ? 'rgba(22,163,74,.08)' : 'rgba(100,116,139,.08)';
                 var lockBorder = fb.status === 'Valid' ? 'rgba(22,163,74,.3)' : 'rgba(100,116,139,.3)';
                 var replyHtml  = fb.employee_notes
-                    ? '<div class="req-detail-field" style="margin-top:12px;"><div class="req-detail-field-label"><i class="fas fa-reply"></i> Admin Reply</div>' +
+                    ? '<div class="req-detail-field" style="margin-top:12px;"><div class="req-detail-field-label"><i class="fas fa-reply"></i> CIMM LGU replied</div>' +
                       '<div class="req-detail-field-value" style="white-space:pre-wrap;line-height:1.6;">' +
                       fb.employee_notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
                       '</div></div>'
