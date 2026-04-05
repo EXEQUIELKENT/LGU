@@ -561,7 +561,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 thead { background: linear-gradient(135deg, #2e7d32, #43a047); }
 thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
 thead th:first-child { border-top-left-radius: 12px; }
-thead th:last-child  { border-top-right-radius: 12px; }
+thead th:last-child  { border-top-right-radius: 12px; text-align: center; }
 td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 td.wrap { white-space: normal; word-break: break-word; }
 td.status-cell { white-space: normal; overflow: visible; text-overflow: clip; }
@@ -735,6 +735,24 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
 @media (max-width: 1100px) {
     .card { padding: 20px 16px !important; }
 }
+
+/* ── Explicit pixel column widths — reliable with table-layout:fixed ── */
+table colgroup col:nth-child(1)  { width: 6%;  }
+table colgroup col:nth-child(2)  { width: 5%;  }
+table colgroup col:nth-child(3)  { width: 8%;  }
+table colgroup col:nth-child(4)  { width: 10%; }
+table colgroup col:nth-child(5)  { width: 8%;  }
+table colgroup col:nth-child(6)  { width: 11%; }
+table colgroup col:nth-child(7)  { width: 9%;  }
+table colgroup col:nth-child(8)  { width: 7%;  }
+table colgroup col:nth-child(9)  { width: 7%;  }
+table colgroup col:nth-child(10) { width: 8%;  }
+table colgroup col:nth-child(11) { width: 12%; }
+table colgroup col:nth-child(12) { width: 9%;  }
+thead th { padding: 11px 7px; font-size: 11.5px; }
+td { padding: 10px 7px; font-size: 11.5px; white-space: normal; word-break: break-word; }
+/* Keep status/priority cells contained */
+td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 
 /* ── View modal (green accent for archive) ── */
 .rep-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:8000; }
@@ -1316,7 +1334,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
-            Logout <i class="fas fa-sign-out-alt"></i>
+            <span class="logout-label">Logout</span> <i class="fas fa-sign-out-alt"></i>
         </button>
     </div>
 </div>

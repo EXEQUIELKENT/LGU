@@ -369,7 +369,18 @@ const USER_EMPLOYEE_ID  = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 
 table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 
-.table-card {
+/* ── Scrollable table wrapper — fixes cramped layout in desktop mode on phones ── */
+.table-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    /* Thin, branded scrollbar */
+}
+.table-scroll-wrap::-webkit-scrollbar { height: 5px; }
+.table-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(55,98,200,.30); border-radius: 3px; }
+[data-theme="dark"] .table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(95,140,255,.35); }
+.table-scroll-wrap table { min-width: 760px; }
     background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px;
     box-shadow: 0 6px 20px var(--shadow-color); transition: .2s;
@@ -1541,8 +1552,8 @@ tbody td {
 @media (min-width: 769px) and (max-width: 1200px) {
     .main-content { margin-left: calc(var(--sidebar-expanded) + 10px) !important; margin-right: 10px !important; padding-left: 10px !important; padding-right: 10px !important; padding-top: 66px !important; height: 100vh !important; overflow-y: auto !important; overflow-x: hidden !important; }
     .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 10px) !important; }
-    .table-card { padding: 20px 16px !important; overflow: hidden !important; }
-    .table-card table { display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+    .table-card { padding: 20px 16px !important; }
+    .table-card table { display: table !important; }
     .table-card table thead, .table-card table tbody { display: table !important; width: 100% !important; table-layout: fixed !important; }
     .table-card table th:nth-child(1), .table-card table td:nth-child(1) { width: 80px; }
     .table-card table th:nth-child(2), .table-card table td:nth-child(2) { width: 120px; }
@@ -1763,24 +1774,16 @@ tbody td {
 @media (min-width: 769px) and (max-width: 1100px) {
 
     /* ── Request table ──────────────────────────────────────────────
-       At ~650 px inner width an 8-column fixed-layout table collapses.
-       Horizontal scroll keeps every column readable without wrapping. */
-    .table-card {
-        overflow-x: auto !important;
-    }
-    .table-card table {
-        min-width: 720px   !important; /* all 8 cols stay legible */
-        table-layout: auto !important; /* browser sizes cols by content */
-    }
-    /* Tighter cell padding to recover horizontal space */
+       The .table-scroll-wrap already handles overflow-x: auto and
+       min-width unconditionally. Here we just tighten padding and
+       font sizes so the 8 columns breathe at ~650 px inner width. */
+    .table-card { padding: 20px 18px !important; }
     .table-card th,
     .table-card td      { padding: 10px 8px !important; font-size: 12px  !important; }
     .status             { padding: 4px 8px  !important; font-size: 10px  !important; white-space: nowrap !important; }
     .btn-view           { padding: 5px 8px  !important; font-size: 11px  !important; white-space: nowrap !important; }
     .evidence-thumb,
     .evidence-thumb-wrapper { width: 50px !important; height: 50px !important; }
-    /* Table-card padding reduction to reclaim ~38 px per side */
-    .table-card { padding: 20px 18px !important; }
 
     /* ── GIS map toolbar ────────────────────────────────────────────
        At ~650 px width the title + fixed-260px search + 3 dropdowns
@@ -2373,6 +2376,7 @@ tbody td {
     </div>
 
         <!-- DESKTOP TABLE -->
+        <div class="table-scroll-wrap">
         <table>
             <thead>
                 <tr>
@@ -2461,6 +2465,7 @@ tbody td {
             <?php endif; ?>
             </tbody>
         </table>
+        </div><!-- /.table-scroll-wrap -->
 
         <!-- MOBILE CARDS -->
         <div class="mobile-request-list">
@@ -3808,6 +3813,8 @@ function setDateFilter(filter) {
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
     applyVisibility();
+    // Also filter the requests table/card list
+    if (window._applyRequestListFilter) window._applyRequestListFilter();
 }
 
 function setStatusFilter(filter) {
@@ -4186,7 +4193,8 @@ function initRequestSort() {
         }
     }
 
-    // (applyRequestListFilter is kept for internal table-only date filtering if needed in future)
+    // Expose so setDateFilter can call it
+    window._applyRequestListFilter = applyRequestListFilter;
 
     function applyRequestSort(mode) {
         // ── Desktop table rows ──

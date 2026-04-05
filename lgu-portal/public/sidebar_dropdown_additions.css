@@ -5,13 +5,34 @@
 
 /* ══════════════════════════════════════════════════
    1. SIDEBAR STRUCTURE FIX
-   Logo + divider stay fixed; nav-list fills to footer
+   Sidebar is a flex column: top grows, footer is pinned
 ══════════════════════════════════════════════════ */
+
+/* ── Ensure sidebar itself is a proper flex column ── */
+.sidebar-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    /* justify-content: space-between already set in emp-global.css,
+       but we re-enforce here so footer is always pinned */
+    justify-content: flex-start !important;
+}
+
+/* ── sidebar-top: fills available space, NO height:100% ── */
 .sidebar-nav .sidebar-top {
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    height: 100% !important;
+    /* KEY FIX: flex:1 so it grows, but NOT height:100%
+       which was the root cause pushing logout off-screen */
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    height: auto !important;   /* ← override any stray height:100% */
+}
+
+/* ── Footer area (divider + user-info) must never shrink away ── */
+.sidebar-nav > .sidebar-divider,
+.sidebar-nav > .user-info {
+    flex-shrink: 0 !important;
 }
 
 .sidebar-nav .site-logo        { flex-shrink: 0 !important; }
@@ -25,7 +46,7 @@
     display: none !important;
 }
 
-/* Nav list: takes ALL remaining space and scrolls */
+/* Nav list: takes ALL remaining space inside sidebar-top, scrolls */
 .sidebar-nav .nav-list {
     flex: 1 1 0% !important;
     min-height: 0 !important;
@@ -148,7 +169,6 @@
     max-height: 180px;
     opacity: 1;
     pointer-events: auto;
-    /* Margin separates sub-list from the Reports toggle */
     margin: 8px 0 6px 0;
     padding: 5px 5px;
 }
@@ -175,7 +195,6 @@
     max-height: 160px;
     opacity: 1;
     pointer-events: auto;
-    /* Clear gap between Reports icon and sub-items */
     margin: 6px 0 6px 0;
     padding: 4px 4px;
 }
@@ -250,27 +269,18 @@
 ══════════════════════════════════════════════════ */
 .sidebar-nav.collapsed .nav-sub-link {
     justify-content: center !important;
-    padding: 9px 0 !important;   /* even vertical padding, zero horizontal */
+    padding: 9px 0 !important;
     gap: 0 !important;
     transform: none !important;
-    /* Make the whole row the same width as a normal nav-link icon cell */
     width: 100%;
 }
 
-/* Hide text label */
-.sidebar-nav.collapsed .nav-sub-link span {
-    display: none !important;
-}
+.sidebar-nav.collapsed .nav-sub-link span { display: none !important; }
+.sidebar-nav.collapsed .nav-sub-link::before { display: none !important; }
 
-/* Hide accent line */
-.sidebar-nav.collapsed .nav-sub-link::before {
-    display: none !important;
-}
-
-/* Icon — same size & centering as top-level collapsed icons */
 .sidebar-nav.collapsed .nav-sub-link i {
     font-size: 16px;
-    width: 20px;          /* fixed width so icon is truly centred */
+    width: 20px;
     text-align: center;
     opacity: 0.8;
     margin: 0 auto;
@@ -288,10 +298,197 @@
 
 
 /* ══════════════════════════════════════════════════
-   9. MOBILE ADJUSTMENTS
+   9. LOGOUT BUTTON — REDESIGNED
+   Always visible, pinned to bottom of sidebar
+══════════════════════════════════════════════════ */
+
+/* Container */
+.sidebar-nav .user-info {
+    padding: 14px 16px 18px !important;
+    border-top: 1px solid rgba(55,98,200,0.12) !important;
+    background: transparent;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+[data-theme="dark"] .sidebar-nav .user-info {
+    border-top-color: rgba(95,140,255,0.14) !important;
+}
+
+/* Username label — centered, larger, prominent */
+.sidebar-nav .user-welcome {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: none !important;
+    color: var(--text-primary) !important;
+    opacity: 0.85 !important;
+    text-align: center !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+}
+
+/* ── REDESIGNED LOGOUT BUTTON ── */
+.sidebar-nav .logout-btn {
+    /* Reset base */
+    all: unset;
+    box-sizing: border-box;
+
+    /* Layout — fixed width so it never stretches full sidebar */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: 160px !important;
+    max-width: 100% !important;
+    padding: 10px 18px !important;
+
+    /* Light mode appearance — solid, high-contrast, always visible */
+    background: #dc2626 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
+
+    /* Typography */
+    font-family: inherit !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    white-space: nowrap !important;
+
+    /* Interaction */
+    cursor: pointer !important;
+    transition:
+        background 0.22s ease,
+        transform 0.18s cubic-bezier(.34,1.56,.64,1),
+        box-shadow 0.22s ease !important;
+    outline: none !important;
+    user-select: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25) !important;
+}
+
+/* Icon inside the button */
+.sidebar-nav .logout-btn i {
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+    transition: transform 0.22s cubic-bezier(.34,1.56,.64,1) !important;
+}
+
+/* Shimmer sweep on hover */
+.sidebar-nav .logout-btn::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background: linear-gradient(
+        105deg,
+        transparent 35%,
+        rgba(255,255,255,0.18) 50%,
+        transparent 65%
+    ) !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.45s ease !important;
+    pointer-events: none !important;
+    border-radius: inherit !important;
+}
+
+.sidebar-nav .logout-btn:hover {
+    background: #b91c1c !important;
+    transform: translateY(-2px) !important;
+    box-shadow:
+        0 8px 22px rgba(220, 38, 38, 0.4),
+        0 2px 6px rgba(220, 38, 38, 0.25) !important;
+}
+.sidebar-nav .logout-btn:hover::after {
+    transform: translateX(100%) !important;
+}
+.sidebar-nav .logout-btn:hover i {
+    transform: translateX(3px) !important;
+}
+
+.sidebar-nav .logout-btn:active {
+    transform: translateY(0px) scale(0.97) !important;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25) !important;
+}
+
+/* Dark mode — same solid red, slightly adjusted shadow */
+[data-theme="dark"] .sidebar-nav .logout-btn {
+    background: #dc2626 !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3) !important;
+}
+[data-theme="dark"] .sidebar-nav .logout-btn:hover {
+    background: #b91c1c !important;
+    box-shadow:
+        0 8px 22px rgba(239, 68, 68, 0.38),
+        0 2px 6px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* ── COLLAPSED STATE — icon-only square ── */
+.sidebar-nav.collapsed .user-welcome {
+    display: none !important;
+}
+
+.sidebar-nav.collapsed .logout-btn {
+    padding: 11px 0 !important;
+    gap: 0 !important;
+    width: 44px !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+}
+
+/* Hide text label in collapsed mode */
+.sidebar-nav.collapsed .logout-btn .logout-label {
+    display: none !important;
+}
+
+/* Override old ::before emoji icon */
+.sidebar-nav.collapsed .logout-btn::before {
+    display: none !important;
+    content: none !important;
+}
+
+.sidebar-nav.collapsed .logout-btn i {
+    font-size: 17px !important;
+    margin: 0 !important;
+}
+
+.sidebar-nav.collapsed .logout-btn:hover i {
+    transform: scale(1.18) translateX(0) !important;
+}
+
+
+/* ══════════════════════════════════════════════════
+   10. MOBILE ADJUSTMENTS
 ══════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-    .sidebar-nav .sidebar-top { height: 100% !important; }
+    /* Ensure sidebar is a proper flex column on mobile */
+    .sidebar-nav {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+    }
+
+    .sidebar-nav .sidebar-top {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: hidden !important;
+    }
+
+    .sidebar-nav > .sidebar-divider,
+    .sidebar-nav > .user-info {
+        flex-shrink: 0 !important;
+    }
 
     .sidebar-nav .nav-list {
         max-height: none !important;
@@ -306,4 +503,10 @@
     }
 
     .nav-dropdown-item.open .nav-sub-list { max-height: 200px; }
+
+    /* Logout slightly larger tap target on mobile */
+    .sidebar-nav .logout-btn {
+        padding: 13px 0 !important;
+        font-size: 14px !important;
+    }
 }

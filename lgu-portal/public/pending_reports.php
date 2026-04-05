@@ -1925,7 +1925,7 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
-            Logout <i class="fas fa-sign-out-alt"></i>
+            <span class="logout-label">Logout</span> <i class="fas fa-sign-out-alt"></i>
         </button>
     </div>
 </div>

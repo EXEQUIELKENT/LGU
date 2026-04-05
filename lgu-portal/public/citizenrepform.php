@@ -756,7 +756,57 @@ input[type="file"] {
     transition: background .15s, transform .15s;
 }
 #cameraBtn:hover { background: #245a96; transform: scale(1.08); }
-@media (max-width: 768px) { #cameraBtn { width: 42px; height: 42px; font-size: 22px; right: 10px; bottom: 10px; } }
+
+/* ── Camera button — mobile redesign ── */
+@media (max-width: 768px) {
+    #cameraBtn {
+        /* Positioning: larger tap target, slightly inset from corner */
+        right: 12px;
+        bottom: 12px;
+
+        /* Size */
+        width: 46px;
+        height: 46px;
+        font-size: 21px;
+
+        /* Vivid gradient fill */
+        background: linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%);
+
+        /* Layered shadow: colour glow + depth */
+        box-shadow:
+            0 0 0 3px rgba(255, 255, 255, 0.25),
+            0 6px 20px rgba(29, 78, 216, 0.55),
+            0 2px 6px rgba(0, 0, 0, 0.2);
+
+        /* Smooth interactions */
+        transition: transform .2s cubic-bezier(.34,1.56,.64,1),
+                    box-shadow .2s ease,
+                    opacity .15s ease;
+    }
+
+    #cameraBtn:active {
+        transform: scale(0.91);
+        box-shadow:
+            0 0 0 3px rgba(255, 255, 255, 0.18),
+            0 3px 10px rgba(29, 78, 216, 0.4);
+    }
+
+    #cameraBtn:disabled {
+        opacity: 0.4 !important;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+}
+
+[data-theme="dark"] #cameraBtn {
+    background: linear-gradient(145deg, #4a90e2 0%, #2563eb 100%);
+    box-shadow:
+        0 0 0 3px rgba(255, 255, 255, 0.15),
+        0 6px 20px rgba(37, 99, 235, 0.6),
+        0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
 #cameraHelperText { display: none; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
 @media (max-width: 768px) { #cameraHelperText { display: block; } }
 

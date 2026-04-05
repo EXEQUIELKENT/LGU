@@ -846,7 +846,7 @@ table colgroup col:nth-child(12) { width: 9%;  }  /* Status         */
 thead { background: #ff9800; }
 thead th {
     padding: 11px 7px; font-size: 11.5px; font-weight: 600; text-align: left;
-    color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #fff; white-space: nowrap;
 }
 thead th:last-child { text-align: center; }
 tbody tr td:last-child { text-align: center; }
@@ -2475,7 +2475,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <div class="user-info">
         <div class="user-welcome"><?= htmlspecialchars($displayName) ?></div>
         <button id="logoutBtn" class="logout-btn" data-tooltip="Log out">
-            Logout <i class="fas fa-sign-out-alt"></i>
+            <span class="logout-label">Logout</span> <i class="fas fa-sign-out-alt"></i>
         </button>
     </div>
 </div>
