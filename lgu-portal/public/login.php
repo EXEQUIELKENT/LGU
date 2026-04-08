@@ -1154,40 +1154,49 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
    Dark Mode Variables
 ========================== */
 :root {
-    --bg-primary: #ffffff;
-    --bg-secondary: rgba(1, 1, 1, 0.95);
-    --bg-tertiary: rgba(255, 255, 255, 0.9);
-    --text-primary: #000000;
-    --text-secondary: #333333;
-    --border-color: rgba(0, 0, 0, 0.1);
-    --shadow-color: rgba(0, 0, 0, 0.2);
-    --card-bg: #ffffff;
-    --nav-bg: rgba(255, 255, 255, 0.87);
-    --input-bg: #fff;
-    --input-border: #c0c9d1;
+    --bg-primary:         #ffffff;
+    --bg-secondary:       rgba(255,255,255,.95);
+    --bg-tertiary:        rgba(255,255,255,.9);
+    --text-primary:       #000000;
+    --text-secondary:     #333333;
+    --border-color:       rgba(0,0,0,.1);
+    --shadow-color:       rgba(0,0,0,.2);
+    --card-bg:            #ffffff;
+    --nav-bg:             rgba(255,255,255,.87);
+    --accent-primary:     #2b6cb0;
+    --accent-secondary:   #3762c8;
+    --accent-light:       #e6f0ff;
+    --card-border:        1.5px solid rgb(47,99,156);
+    --card-shadow:        0 4px 20px rgba(0,0,0,.45);
+    --input-bg:           #fff;
+    --input-border:       #c0c9d1;
     --input-focus-border: #2b6cb0;
     --input-focus-shadow: rgba(43,108,176,.15);
-    --input-placeholder: #666666;
-    --modal-bg: rgba(255, 255, 255, 0.95);
+    --input-placeholder:  #666666;
+    --modal-bg:           rgba(255,255,255,.95);
 }
 
-/* Add to your [data-theme="dark"] section */
 [data-theme="dark"] {
-    --bg-primary: #1a1a1a;
-    --bg-secondary: rgba(26, 26, 26, 0.95);
-    --bg-tertiary: rgba(30, 30, 30, 0.9);
-    --text-primary: #ffffff;
-    --text-secondary: #e0e0e0;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --card-bg: rgba(30, 30, 30, 0.95);
-    --nav-bg: rgba(26, 26, 26, 0.87);
-    --input-bg: rgba(40, 40, 40, 0.9);
-    --input-border: rgba(255, 255, 255, 0.2);
+    --bg-primary:         #1a1a1a;
+    --bg-secondary:       rgba(26,26,26,.95);
+    --bg-tertiary:        rgba(30,30,30,.9);
+    --text-primary:       #ffffff;
+    --text-secondary:     #e0e0e0;
+    --border-color:       rgba(255,255,255,.1);
+    --shadow-color:       rgba(0,0,0,.5);
+    --card-bg:            rgba(30,30,30,.95);
+    --nav-bg:             rgba(26,26,26,.87);
+    --accent-primary:     #4a8fd8;
+    --accent-secondary:   #5a9fe8;
+    --accent-light:       #1e3a5f;
+    --card-border:        1px solid rgba(255,255,255,.08);
+    --card-shadow:        0 4px 20px rgba(0,0,0,.45);
+    --input-bg:           rgba(40,40,40,.9);
+    --input-border:       rgba(255,255,255,.2);
     --input-focus-border: #4a8fd8;
-    --input-focus-shadow: rgba(74, 143, 216, 0.25);
-    --input-placeholder: #888888;
-    --modal-bg: rgba(30, 30, 30, 0.95);
+    --input-focus-shadow: rgba(74,143,216,.25);
+    --input-placeholder:  #888888;
+    --modal-bg:           rgba(24,24,30,.98);
 }
 
 body {
@@ -1214,10 +1223,13 @@ body {
 .card {
     width: 100%;
     max-width: 390px;
-    background: var(--card-bg);
+    background: var(--bg-secondary);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     padding: 30px;
     border-radius: 22px;
-    box-shadow: 0 20px 45px var(--shadow-color);
+    border: var(--card-border);
+    box-shadow: var(--card-shadow);
     transition: all .25s ease;
     text-align: center;
 }
@@ -1228,13 +1240,15 @@ body {
 }
 
 .title {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     font-size: 2rem;
     line-height: 1.25;
-    color: var(--text-primary);
+    color: var(--accent-primary);
     text-align: center;
     letter-spacing: .02em;
-    font-weight: 700;
+    font-weight: 800;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 14px;
 }
 
 .subtitle {
@@ -1254,23 +1268,24 @@ body {
 }
 
 .input-box label {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     margin-bottom: 6px;
-    color: var(--text-primary);
-    letter-spacing: 0.01em;
+    color: var(--text-secondary);
+    letter-spacing: .04em;
+    text-transform: uppercase;
     transition: color 0.3s ease;
 }
 
 .input-box input {
     width: 100%;
-    padding: 11px 38px 11px 14px;
-    border-radius: 11px;
-    border: 1.5px solid var(--input-border);
-    background: var(--input-bg);
+    padding: 10px 38px 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-tertiary);
     font-family: 'Poppins', sans-serif;
-    font-size: 15px;
-    transition: all .3s ease;
+    font-size: 14px;
+    transition: border .2s, box-shadow .2s;
     box-sizing: border-box;
     outline: none;
     color: var(--text-primary);
@@ -1280,27 +1295,23 @@ body {
 .input-box input::placeholder {
     color: var(--input-placeholder);
     opacity: 0.6;
-    transition: opacity 0.3s ease;
 }
 
-/* Focus state - different colors for light and dark mode */
+/* Focus state */
 .input-box input:focus {
     outline: none;
-    border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 3px var(--input-focus-shadow);
-    background: var(--input-bg);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+    background: var(--bg-tertiary);
 }
 
-/* Hover state for better UX */
+/* Hover state */
 .input-box input:hover:not(:focus) {
-    border-color: var(--input-border);
-    opacity: 0.9;
+    border-color: var(--accent-secondary);
 }
 
-/* Dark mode specific hover enhancement */
 [data-theme="dark"] .input-box input:hover:not(:focus) {
-    background: rgba(50, 50, 50, 0.9);
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255,255,255,.35);
 }
 
 /* Autofill styling for both themes */
@@ -1308,7 +1319,7 @@ body {
 .input-box input:-webkit-autofill:hover,
 .input-box input:-webkit-autofill:focus {
     -webkit-text-fill-color: var(--text-primary);
-    -webkit-box-shadow: 0 0 0px 1000px var(--input-bg) inset;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
     transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -1317,20 +1328,26 @@ body {
 [data-theme="dark"] .input-box input:-webkit-autofill:hover,
 [data-theme="dark"] .input-box input:-webkit-autofill:focus {
     -webkit-text-fill-color: #ffffff;
-    -webkit-box-shadow: 0 0 0px 1000px rgba(40, 40, 40, 0.9) inset;
+    -webkit-box-shadow: 0 0 0px 1000px #282828 inset;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: #ffffff;
 }
 
 /* Input icon (if you have one) */
 .input-box .icon {
     position: absolute;
     right: 12px;
-    top: 50px;
-    transform: translateY(-50%);
+    top: auto;
+    bottom: 11px;          /* aligns icon center with input center (input padding-bottom: 10px + half icon) */
+    transform: none;
     font-size: 18px;
     opacity: 0.6;
     pointer-events: none;
     color: var(--text-secondary);
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    line-height: 1;
 }
 
 /* Icon changes on input focus */
@@ -1408,11 +1425,15 @@ body {
 .icon {
     position: absolute;
     right: 12px;
-    top: 50px;
-    transform: translateY(-50%);
+    top: auto;
+    bottom: 11px;
+    transform: none;
     font-size: 18px;
     opacity: 0.6;
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    line-height: 1;
 }
 
 /* BUTTON */
@@ -1424,24 +1445,35 @@ body {
 }
 
 .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
     width: 100%;
-    background: #2b6cb0;
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
     color: #fff;
     border: none;
-    border-radius: 14px;
-    padding: 14px 38px;
-    font-weight: 600;
-    font-size: 18px;
+    border-radius: 12px;
+    padding: 13px 34px;
+    font-weight: 800;
+    font-size: 15px;
     cursor: pointer;
     transition: all .25s;
-    box-shadow: none;
+    box-shadow: 0 4px 16px rgba(43,108,176,.35);
     margin: 0 auto;
-    display: block;
 }
 
 .btn-primary:hover {
-    transform: translateY(-4px);
-    background: #245a96;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(43,108,176,.5);
+    background: linear-gradient(135deg, #245a96, #1d4ed8);
+}
+
+.btn-primary:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 /* OTP Timer */
@@ -1490,7 +1522,7 @@ body {
     display: inline-block;
     font-size: 64px;
     font-weight: 800;
-    color: #6384d2;
+    color: var(--accent-secondary);
     letter-spacing: 8px;
     animation: spinLGU 2s linear infinite;
     text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
@@ -1608,29 +1640,29 @@ body {
 }
 
 .otp-input:focus {
-    border-color: #6384d2;
+    border-color: var(--accent-secondary);
     box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.1);
     background: var(--input-bg);
 }
 
 .otp-input.active {
-    border-color: #6384d2;
+    border-color: var(--accent-secondary);
     box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.15);
 }
 
 .verify-code-btn,
 .resend-code-btn {
     width: 100%;
-    background: #2b6cb0;
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
     color: #fff;
     border: none;
-    border-radius: 14px;
-    padding: 14px 38px;
-    font-weight: 600;
-    font-size: 18px;
+    border-radius: 12px;
+    padding: 13px 38px;
+    font-weight: 800;
+    font-size: 15px;
     cursor: pointer;
     transition: all .25s;
-    box-shadow: none;
+    box-shadow: 0 4px 16px rgba(43,108,176,.35);
     margin: 0 auto;
     display: block;
 }
@@ -1641,8 +1673,9 @@ body {
 
 .verify-code-btn:hover,
 .resend-code-btn:hover {
-    transform: translateY(-4px);
-    background: #245a96;
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #245a96, #1d4ed8);
+    box-shadow: 0 8px 24px rgba(43,108,176,.5);
 }
 
 .verify-code-btn:disabled {
@@ -1724,7 +1757,7 @@ body:has(#changePasswordModal) {
 #changePasswordModal .modal-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #6384d2 0%, #285ccd 100%);
+    background: linear-gradient(135deg, #2b6cb0 0%, #2563eb 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1779,21 +1812,23 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .input-box label {
     display: block;
-    margin-bottom: 5px;
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
 }
 
 #changePasswordModal .input-box input {
     width: 100%;
     padding: 10px 38px 10px 12px;
-    border: none;
+    border: 1.5px solid var(--border-color);
     border-radius: 10px;
-    font-size: 15px;
+    font-size: 14px;
     outline: none;
-    transition: all 0.25s ease;
-    background: var(--input-bg);
+    transition: border .2s, box-shadow .2s;
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     box-sizing: border-box;
     font-family: 'Poppins', Arial, sans-serif;
@@ -1803,23 +1838,25 @@ body:has(#changePasswordModal) {
 }
 
 #changePasswordModal .input-box input::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.7;
+    color: var(--input-placeholder);
+    opacity: 0.6;
 }
 
 #changePasswordModal .input-box input:focus {
-    background: var(--input-bg);
-    box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+    background: var(--bg-tertiary);
 }
 
-#changePasswordModal .input-box input:hover {
-    background: var(--input-bg);
+#changePasswordModal .input-box input:hover:not(:focus) {
+    border-color: var(--accent-secondary);
 }
 
 #changePasswordModal .password-toggle {
     position: absolute;
     right: 12px;
-    top: 35px;
+    top: auto;
+    bottom: 6px;
     background: none;
     border: none;
     cursor: pointer;
@@ -1837,7 +1874,7 @@ body:has(#changePasswordModal) {
 }
 
 #changePasswordModal .password-toggle:hover {
-    color: #6384d2;
+    color: var(--accent-secondary);
     opacity: 1;
 }
 
@@ -1948,16 +1985,17 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .btn-change-password {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
+    padding: 13px;
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
     border-radius: 12px;
     color: #fff;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 800;
     cursor: pointer;
-    transition: 0.25s ease;
+    transition: all .25s ease;
     font-family: 'Poppins', Arial, sans-serif;
+    box-shadow: 0 4px 16px rgba(43,108,176,.35);
     position: relative;
     overflow: hidden;
 }
@@ -1969,7 +2007,7 @@ body:has(#changePasswordModal) {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
     transition: left 0.5s;
 }
 
@@ -1978,14 +2016,14 @@ body:has(#changePasswordModal) {
 }
 
 #changePasswordModal .btn-change-password:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    background: linear-gradient(135deg, #245a96, #1d4ed8);
     transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(43, 91, 222, 0.45);
+    box-shadow: 0 8px 24px rgba(43,108,176,.5);
 }
 
 #changePasswordModal .btn-change-password:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(43, 91, 222, 0.3);
+    box-shadow: 0 2px 8px rgba(43,108,176,.3);
 }
 
 #changePasswordModal .btn-change-password:disabled {
@@ -1998,7 +2036,7 @@ body:has(#changePasswordModal) {
 #changePasswordModal .btn-change-password:disabled:hover {
     transform: none;
     box-shadow: none;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
 }
 
 /* ==================== FORGOT PASSWORD MODAL ==================== */
@@ -2050,7 +2088,7 @@ body:has(#changePasswordModal) {
 #forgotPasswordModal .modal-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #6384d2 0%, #285ccd 100%);
+    background: linear-gradient(135deg, #2b6cb0 0%, #2563eb 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -2080,26 +2118,36 @@ body:has(#changePasswordModal) {
 
 #forgotPasswordModal .input-box label {
     display: block;
-    margin-bottom: 5px;
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
 }
 
 #forgotPasswordModal .input-box input {
     width: 100%;
-    padding: 10px 12px;
-    border: none;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border-color);
     border-radius: 10px;
-    font-size: 15px;
-    background: var(--input-bg);
+    font-size: 14px;
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     box-sizing: border-box;
+    outline: none;
+    transition: border .2s, box-shadow .2s;
+    font-family: 'Poppins', sans-serif;
 }
 
 #forgotPasswordModal .input-box input:focus {
-    background: var(--input-bg);
-    box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+    background: var(--bg-tertiary);
+}
+
+#forgotPasswordModal .input-box input:hover:not(:focus) {
+    border-color: var(--accent-secondary);
 }
 
 #forgotPasswordModal .modal-footer {
@@ -2114,39 +2162,43 @@ body:has(#changePasswordModal) {
     padding: 12px;
     border: none;
     border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    transition: 0.25s ease;
+    transition: all .25s ease;
 }
 
 #forgotPasswordModal .btn-send-reset {
-    background: linear-gradient(135deg, #6384d2, #285ccd);
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
     color: #fff;
+    box-shadow: 0 4px 14px rgba(43,108,176,.35);
 }
 
 #forgotPasswordModal .btn-send-reset:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    background: linear-gradient(135deg, #245a96, #1d4ed8);
     transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(43,108,176,.5);
 }
 
 #forgotPasswordModal .btn-cancel {
-    background: #e5e7eb;
-    color: #374151;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 [data-theme="dark"] #forgotPasswordModal .btn-cancel {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255,255,255,.08);
     color: var(--text-primary);
+    border-color: rgba(255,255,255,.12);
 }
 
 #forgotPasswordModal .btn-cancel:hover {
-    background: #d1d5db;
+    background: var(--border-color);
     transform: translateY(-2px);
 }
 
 [data-theme="dark"] #forgotPasswordModal .btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255,255,255,.13);
 }
 
 /* ==================== RESET PASSWORD MODAL ==================== */
@@ -2192,7 +2244,7 @@ body:has(#resetPasswordModal) {
 #resetPasswordModal .modal-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #6384d2 0%, #285ccd 100%);
+    background: linear-gradient(135deg, #2b6cb0 0%, #2563eb 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -2223,30 +2275,40 @@ body:has(#resetPasswordModal) {
 
 #resetPasswordModal .input-box label {
     display: block;
-    margin-bottom: 5px;
-    color: var(--text-primary);
-    font-weight: 500;
-    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
 }
 #resetPasswordModal .input-box input {
     width: 100%;
     padding: 10px 38px 10px 12px;
-    border: none;
+    border: 1.5px solid var(--border-color);
     border-radius: 10px;
-    font-size: 15px;
-    background: var(--input-bg);
+    font-size: 14px;
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     box-sizing: border-box;
+    outline: none;
+    transition: border .2s, box-shadow .2s;
+    font-family: 'Poppins', Arial, sans-serif;
 }
 #resetPasswordModal .input-box input:focus {
-    background: var(--input-bg);
-    box-shadow: 0 2px 8px rgba(99, 132, 210, 0.15);
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 0 3px rgba(55,98,200,.13);
+    background: var(--bg-tertiary);
+}
+#resetPasswordModal .input-box input:hover:not(:focus) {
+    border-color: var(--accent-secondary);
 }
 
 #resetPasswordModal .password-toggle {
     position: absolute;
     right: 12px;
-    top: 35px;
+    top: auto;
+    bottom: 6px;
     background: none;
     border: none;
     cursor: pointer;
@@ -2256,7 +2318,7 @@ body:has(#resetPasswordModal) {
 }
 
 #resetPasswordModal .password-toggle:hover {
-    color: #6384d2;
+    color: var(--accent-secondary);
     opacity: 1;
 }
 
@@ -2342,26 +2404,30 @@ body:has(#resetPasswordModal) {
 
 #resetPasswordModal .btn-reset-password {
     width: 100%;
-    padding: 12px;
-    background: linear-gradient(135deg, #6384d2, #285ccd);
+    padding: 13px;
+    background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
     border-radius: 12px;
     color: #fff;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 800;
     cursor: pointer;
-    transition: 0.25s ease;
+    transition: all .25s ease;
+    box-shadow: 0 4px 16px rgba(43,108,176,.35);
+    font-family: 'Poppins', Arial, sans-serif;
 }
 
 #resetPasswordModal .btn-reset-password:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
+    background: linear-gradient(135deg, #245a96, #1d4ed8);
     transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(43,108,176,.5);
 }
 
 #resetPasswordModal .btn-reset-password:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
 }
 
 /* ===========================
@@ -2512,19 +2578,19 @@ body:has(#resetPasswordModal) {
     }
 
     .input-box label {
-        font-size: 14px;
+        font-size: 12px;
         margin-bottom: 6px;
     }
 
     .input-box input {
-        padding: 11px 38px 11px 14px;
-        border-radius: 11px;
-        font-size: 15px;
+        padding: 10px 38px 10px 14px;
+        border-radius: 10px;
+        font-size: 14px;
     }
 
     .btn-primary {
-        font-size: 17px;
-        padding: 14px 14px;
+        font-size: 15px;
+        padding: 13px 14px;
         margin-bottom: 20px;
     }
 
@@ -2579,8 +2645,8 @@ body:has(#resetPasswordModal) {
     }
     
     .btn-primary {
-        font-size: 17px;
-        padding: 14px 14px;
+        font-size: 15px;
+        padding: 13px 14px;
     }
     
     .btn-container {
@@ -2601,9 +2667,9 @@ body:has(#resetPasswordModal) {
     }
     
     .btn-primary {
-        padding: 14px 10px;
+        padding: 13px 10px;
         width: 90%;
-        font-size: 17px;
+        font-size: 15px;
     }
 
     .input-box input {
@@ -2612,7 +2678,7 @@ body:has(#resetPasswordModal) {
     }
     
     .input-box label {
-        font-size: 13px;
+        font-size: 12px;
     }
 }
 
@@ -2925,7 +2991,8 @@ body:has(#resetPasswordModal) {
                             style="
                                 position: absolute;
                                 right: 10px;
-                                top: 36px;
+                                top: auto;
+                                bottom: 6px;
                                 background: none;
                                 border: none;
                                 cursor: pointer;

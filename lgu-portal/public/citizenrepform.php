@@ -557,6 +557,25 @@ body {
     border-color: rgba(255,255,255,.35);
 }
 
+/* Autofill — light mode: keep white background */
+.input-group input:-webkit-autofill,
+.input-group input:-webkit-autofill:hover,
+.input-group input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #000000;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Autofill — dark mode: solid opaque dark background (rgba is stripped by browsers) */
+[data-theme="dark"] .input-group input:-webkit-autofill,
+[data-theme="dark"] .input-group input:-webkit-autofill:hover,
+[data-theme="dark"] .input-group input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0px 1000px #282828 inset;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: #ffffff;
+}
+
 input[type="file"] {
     display: none;
 }

@@ -1141,15 +1141,16 @@ tr.notif-highlight > td:first-child {
 .eng-opt-badges {
     display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
 }
-/* District badge — compact pill below the name */
-.eng-opt-dist-badge {
-    display: inline-flex; align-items: center; gap: 3px;
-    font-size: 9px; font-weight: 700;
-    padding: 1px 6px; border-radius: 20px;
-    background: rgba(22,163,74,.12); color: #166534;
-    border: 1px solid rgba(22,163,74,.25);
-    white-space: nowrap; flex-shrink: 0; letter-spacing: .02em;
+/* District badge in dropdown — compact version of the view-modal district-badge */
+.eng-opt-badges .district-badge {
+    font-size: 8.5px;
+    padding: 1.5px 7px 1.5px 5px;
+    margin-left: 0;
+    letter-spacing: .06em;
+    animation: none;
+    gap: 3px;
 }
+.eng-opt-badges .district-badge i { font-size: 8px; }
 [data-theme="dark"] .eng-opt-dist-badge {
     background: rgba(134,239,172,.12); color: #86efac;
     border-color: rgba(134,239,172,.25);
@@ -1273,9 +1274,38 @@ tr.notif-highlight > td:first-child {
     transition: all .18s ease;
 }
 .eng-det-back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,152,0,.4); }
-.eng-combo-no-results { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); opacity: .7; }
+.eng-combo-no-results {
+    padding: 20px 12px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.eng-combo-no-results .enc-nr-icon {
+    font-size: 22px; opacity: .35; line-height: 1;
+}
+.eng-combo-no-results .enc-nr-text {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-secondary); opacity: .75;
+}
+.eng-combo-no-results .enc-nr-sub {
+    font-size: 9.5px; color: var(--text-secondary); opacity: .55;
+}
 .eng-combo-loading { padding: 10px; text-align: center; font-size: 11px; color: var(--text-secondary); }
-/* Specialization match badge shown below engineer name */
+/* Specialization match badge — styled like district-badge but in orange */
+.eng-opt-infra-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 8.5px; font-weight: 700;
+    padding: 1.5px 7px 1.5px 6px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: .06em;
+    background: linear-gradient(135deg, #e65100, #ff9800);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(230,81,0,.30), 0 0 0 1.5px rgba(230,81,0,.12);
+    white-space: nowrap; flex-shrink: 0; animation: none;
+}
+.eng-opt-infra-badge i { font-size: 7.5px; flex-shrink: 0; }
+[data-theme="dark"] .eng-opt-infra-badge {
+    background: linear-gradient(135deg, #c84a00, #f59a00);
+    box-shadow: 0 2px 10px rgba(255,152,0,.45), 0 0 0 1.5px rgba(255,152,0,.20);
+}
+/* Legacy — keep for any old refs */
 .eng-opt-spec-badge {
     display: inline-flex; align-items: center; gap: 3px;
     font-size: 9px; font-weight: 700;
@@ -1284,6 +1314,13 @@ tr.notif-highlight > td:first-child {
     border: 1px solid rgba(255,152,0,.25); white-space: nowrap;
     flex-shrink: 0; letter-spacing: .02em;
 }
+/* Yellow highlight for search matches inside dropdown options */
+.eng-combo-hl {
+    background: #fff176; color: #000;
+    border-radius: 2px; padding: 0 1px;
+    font-weight: 800;
+}
+[data-theme="dark"] .eng-combo-hl { background: #f9a825; color: #000; }
 /* "Show all engineers" toggle row at bottom of list */
 .eng-combo-show-all {
     padding: 7px 10px; font-size: 10px; font-weight: 700;
@@ -2346,6 +2383,50 @@ select.rep-editable-field { cursor:pointer; }
 [data-theme="dark"] .rep-eng-metric-pill.m-declined  { background:rgba(249,115,22,.18); color:#fb923c; }
 [data-theme="dark"] .rep-eng-metric-pill.m-rejected  { background:rgba(139,92,246,.18); color:#c4b5fd; }
 
+/* ── District Badge (matches requests.php) ── */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 9px;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.5;
+    position: relative;
+    cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .18s ease,
+                filter .18s ease;
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity: 0; transform: scale(.7) translateY(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.district-badge:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.08); }
+.district-badge i { font-size: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8,#5b8aff); color:#fff; box-shadow: 0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42,#34c774); color:#fff; box-shadow: 0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00,#f59033); color:#fff; box-shadow: 0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457,#ec4899); color:#fff; box-shadow: 0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8,#8b5cf6); color:#fff; box-shadow: 0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a,#0ea5c9); color:#fff; box-shadow: 0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563,#9ca3af); color:#fff; box-shadow: 0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1 { background: linear-gradient(135deg,#2851b3,#5b8aff); box-shadow: 0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2 { background: linear-gradient(135deg,#156335,#34c774); box-shadow: 0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3 { background: linear-gradient(135deg,#a04f00,#f59033); box-shadow: 0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4 { background: linear-gradient(135deg,#9b1050,#ec4899); box-shadow: 0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5 { background: linear-gradient(135deg,#47259a,#8b5cf6); box-shadow: 0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
+
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -3178,8 +3259,11 @@ function renderPortalList(engineers, query, infrastructure, district) {
         };
     }
 
-    // ── Apply name search query ───────────────────────────────────
-    const fq = e => e.name.toLowerCase().includes(q);
+    // ── Apply search query — name, district, or specialization ──────
+    const fq = e =>
+        e.name.toLowerCase().includes(q) ||
+        (e.district || '').toLowerCase().includes(q) ||
+        (e.areas_of_specialization || '').toLowerCase().includes(q);
     function applyQ(list) { return q ? list.filter(fq) : list; }
 
     const ds = bySpec(distMatched);
@@ -3193,11 +3277,28 @@ function renderPortalList(engineers, query, infrastructure, district) {
 
     const totalVisible = dmYes.length + dmNo.length + omYes.length + omNo.length;
     if (totalVisible === 0) {
-        comboList.innerHTML = '<div class="eng-combo-no-results">No engineers found</div>';
+        const subMsg = q
+            ? `No match for "<strong>${escapeHtml(q)}</strong>"`
+            : 'Try a different search term';
+        comboList.innerHTML =
+            `<div class="eng-combo-no-results">
+                <span class="enc-nr-icon"><i class="fas fa-user-slash"></i></span>
+                <span class="enc-nr-text">No engineers found</span>
+                <span class="enc-nr-sub">${subMsg}</span>
+            </div>`;
         return;
     }
 
     const FALLBACK_PIC = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fff3e0%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ff9800%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ff9800%22/%3E%3C/svg%3E';
+
+    // ── Highlight search term inside a plain text string ───────────
+    function highlightText(text, term) {
+        if (!term || !text) return escapeHtml(text || '');
+        const safe = escapeHtml(text);
+        const safeTerm = escapeHtml(term);
+        const re = new RegExp('(' + safeTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+        return safe.replace(re, '<mark class="eng-combo-hl">$1</mark>');
+    }
 
     function buildOption(eng, showSpecBadge, showDistBadge) {
         const item = document.createElement('div');
@@ -3207,13 +3308,27 @@ function renderPortalList(engineers, query, infrastructure, district) {
         const imgSrc     = eng.profile_picture || FALLBACK_PIC;
         const avatarHtml = `<img src="${escapeHtml(imgSrc)}" class="eng-opt-avatar" alt=""
             onerror="this.src='${FALLBACK_PIC}'">`;
+
+        // District badge — highlight district text if query matches
         let badgeHtml = '';
-        if (showDistBadge && dist) badgeHtml += `<span class="eng-opt-dist-badge">📍 ${escapeHtml(dist)}</span>`;
-        if (showSpecBadge && infra) badgeHtml += `<span class="eng-opt-spec-badge">✓ ${escapeHtml(infra)}</span>`;
+        if (showDistBadge && eng.district) {
+            const distCls = makeDistrictBadge(eng.district).match(/class="district-badge ([^"]+)"/)?.[1] || '';
+            const distLabel = q ? highlightText(eng.district, q) : escapeHtml(eng.district);
+            badgeHtml += `<span class="district-badge ${distCls}" style="font-size:8.5px;padding:1.5px 7px 1.5px 5px;animation:none;gap:3px;"><i class="fas fa-location-dot" style="font-size:8px;"></i>${distLabel}</span>`;
+        }
+
+        // Infrastructure badge — styled like district-badge but orange
+        if (showSpecBadge && infra) {
+            const infraLabel = q ? highlightText(infra, q) : escapeHtml(infra);
+            badgeHtml += `<span class="eng-opt-infra-badge"><i class="fas fa-wrench"></i>${infraLabel}</span>`;
+        }
+
         const badgesRow = badgeHtml ? `<div class="eng-opt-badges">${badgeHtml}</div>` : '';
+        // Highlight engineer name if query matches
+        const nameHtml = q ? highlightText(eng.name, q) : escapeHtml(eng.name);
         item.innerHTML = avatarHtml +
             `<div class="eng-opt-info">
-                <span class="eng-opt-name">${escapeHtml(eng.name)}</span>
+                <span class="eng-opt-name">${nameHtml}</span>
                 ${badgesRow}
             </div>`;
         item._engData = eng;
@@ -3229,8 +3344,10 @@ function renderPortalList(engineers, query, infrastructure, district) {
 
     function addEmpty(text) {
         const el = document.createElement('div');
-        el.className   = 'eng-combo-no-results';
-        el.textContent = text;
+        el.className = 'eng-combo-no-results';
+        el.innerHTML = `<span class="enc-nr-icon"><i class="fas fa-user-slash"></i></span>
+            <span class="enc-nr-text">No engineers found</span>
+            <span class="enc-nr-sub">${escapeHtml(text)}</span>`;
         comboList.appendChild(el);
     }
 
@@ -3398,6 +3515,16 @@ async function openPortal(comboEl) {
     comboSearch.focus();
 
     const engineers = await loadEngineers();
+    if (engineers.length === 0) {
+        comboList.innerHTML =
+            `<div class="eng-combo-no-results">
+                <span class="enc-nr-icon"><i class="fas fa-users-slash"></i></span>
+                <span class="enc-nr-text">No engineers available</span>
+                <span class="enc-nr-sub">There are no engineers registered in the system</span>
+            </div>`;
+        positionPortal(comboEl.querySelector('.eng-combo-display'));
+        return;
+    }
     renderPortalList(engineers, '', activeInfrastructure, activeDistrict);
     // Re-position after list is populated (height may change)
     positionPortal(comboEl.querySelector('.eng-combo-display'));
@@ -3812,6 +3939,16 @@ const repBackdrop  = document.getElementById('repModalBackdrop');
 const repModalClose= document.getElementById('repModalClose');
 let currentRepData = null;
 
+function makeDistrictBadge(district) {
+    if (!district) return '';
+    const map = {
+        'district 1': 'd1', 'district 2': 'd2', 'district 3': 'd3',
+        'district 4': 'd4', 'district 5': 'd5', 'district 6': 'd6'
+    };
+    const cls = map[(district || '').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${district}</span>`;
+}
+
 function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
@@ -3833,7 +3970,9 @@ function openRepModal(repId) {
     const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending Approval'?'pending-admin':displaySt==='Pending'?'pending':'on-going';
     statusEl.className = 'rep-status-pill ' + stClass;
 
-    document.getElementById('repModalLocation').textContent = data.location || '—';
+    document.getElementById('repModalLocation').innerHTML =
+        (data.location ? data.location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—')
+        + makeDistrictBadge(data.req_district || '');
     document.getElementById('repModalIssue').textContent    = data.issue || '—';
     // Hide engineer field when the logged-in user is the engineer (they know who they are)
     const engField = document.getElementById('repEngField');

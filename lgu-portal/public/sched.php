@@ -311,6 +311,7 @@ if ($result && $result->num_rows > 0) {
         $row['facility_name'] = getMatchingFacility($row['location'] ?? '', null, null);
         $row['is_shared']     = isSharedWithCPRF($row['location'] ?? '');
         $row['rep_id']        = 0;
+        $row['district']      = '';
 
         $schedules[] = $row;
     }
@@ -329,7 +330,7 @@ $reportSql = "
         r.rep_id, r.starting_date, r.estimated_end_date, r.priority_lvl,
         r.engineer_id, r.budget,
         res.status AS resolution_status, res.res_note,
-        req.infrastructure, req.location, req.coordinates,
+        req.infrastructure, req.location, req.coordinates, req.district,
         CONCAT(e.first_name, ' ', e.last_name) AS engineer_name,
         e.profile_picture AS engineer_pic
     FROM reports r
@@ -391,6 +392,7 @@ if ($reportResult && $reportResult->num_rows > 0) {
             'id'              => 0,
             'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'        => $rRow['location'] ?? '—',
+            'district'        => $rRow['district'] ?? '',
             'facility_name'   => $rFacility,
             'is_shared'       => $rShared,
             'schedule_date'   => !empty($startDate) ? date('Y-m-d', strtotime($startDate)) : '',
@@ -2177,6 +2179,50 @@ usort($schedules, function($a, $b) {
 }
 [data-theme="dark"] .modal-task-row-label { color: #9ca3af; }
 [data-theme="dark"] .modal-task-row-value { color: #f1f5f9; }
+
+/* ── District Badge ── */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 9px;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.5;
+    position: relative;
+    cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .18s ease,
+                filter .18s ease;
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity: 0; transform: scale(.7) translateY(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.district-badge:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.08); }
+.district-badge i { font-size: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8 0%,#5b8aff 100%); color:#fff; box-shadow:0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42 0%,#34c774 100%); color:#fff; box-shadow:0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00 0%,#f59033 100%); color:#fff; box-shadow:0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457 0%,#ec4899 100%); color:#fff; box-shadow:0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8 0%,#8b5cf6 100%); color:#fff; box-shadow:0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a 0%,#0ea5c9 100%); color:#fff; box-shadow:0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563 0%,#9ca3af 100%); color:#fff; box-shadow:0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1 { background:linear-gradient(135deg,#2851b3 0%,#5b8aff 100%); box-shadow:0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2 { background:linear-gradient(135deg,#156335 0%,#34c774 100%); box-shadow:0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3 { background:linear-gradient(135deg,#a04f00 0%,#f59033 100%); box-shadow:0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4 { background:linear-gradient(135deg,#9b1050 0%,#ec4899 100%); box-shadow:0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5 { background:linear-gradient(135deg,#47259a 0%,#8b5cf6 100%); box-shadow:0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6 { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other { background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 [data-theme="dark"] .chooser-task-btn {
     background: rgba(255,255,255,0.04);
     border-color: rgba(255,255,255,0.1);
@@ -3298,8 +3344,10 @@ usort($schedules, function($a, $b) {
     max-width:88vw; max-height:80vh; border-radius:12px;
     box-shadow:0 8px 40px rgba(0,0,0,.6); user-select:none;
     cursor:zoom-in; transition:transform .15s ease;
+    -webkit-user-drag:none; /* prevent native image drag in Safari */
 }
 #schedLightboxImg.sched-lb-zoomed { cursor:grab; }
+#schedLightboxImg.sched-lb-panning { transition:none; } /* instant pan, no lag */
 .sched-lb-close {
     position:absolute; top:20px; right:20px; background:rgba(255,255,255,.15);
     border:none; color:#fff; font-size:28px; width:44px; height:44px;
@@ -3494,6 +3542,85 @@ usort($schedules, function($a, $b) {
     text-transform: uppercase;
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+/* ── Clickable REP badge inside the modal header ── */
+@keyframes repBadgeShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+@keyframes repBadgePulse {
+    0%   { box-shadow: 0 0 0 0   rgba(255,255,255,0.50), 0 2px 8px rgba(0,0,0,0.22); }
+    65%  { box-shadow: 0 0 0 7px rgba(255,255,255,0.00), 0 2px 8px rgba(0,0,0,0.22); }
+    100% { box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
+}
+.modal-rep-badge-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px 5px 9px;
+    border-radius: 999px;
+    /* always-on frosted pill with a faint shimmer stripe */
+    background: linear-gradient(
+        105deg,
+        rgba(255,255,255,0.22) 0%,
+        rgba(255,255,255,0.32) 40%,
+        rgba(255,255,255,0.22) 100%
+    );
+    background-size: 200% auto;
+    animation: repBadgeShimmer 2.8s linear infinite;
+    border: 1.5px solid rgba(255,255,255,0.60);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, transform 0.15s, box-shadow 0.18s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+    position: relative;
+    overflow: hidden;
+}
+.modal-rep-badge-link:hover {
+    background: rgba(255,255,255,0.38);
+    border-color: #fff;
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 5px 16px rgba(0,0,0,0.30);
+    color: #fff;
+    text-decoration: none;
+    animation-play-state: paused; /* freeze shimmer on hover for clarity */
+}
+.modal-rep-badge-link:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+/* File icon — always visible */
+.modal-rep-badge-link .rep-badge-icon {
+    font-size: 9.5px;
+    opacity: 1;
+    transition: transform 0.15s;
+}
+.modal-rep-badge-link:hover .rep-badge-icon {
+    transform: scale(1.15);
+}
+/* Arrow — always partially visible at rest, full on hover */
+.modal-rep-badge-link .rep-badge-arrow {
+    font-size: 8.5px;
+    opacity: 0.55;          /* visible at rest */
+    transition: opacity 0.18s, transform 0.18s;
+    transform: translateX(0);
+}
+.modal-rep-badge-link:hover .rep-badge-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+}
+/* Entry pulse — fires when badge is revealed */
+.modal-rep-badge-link.rep-badge-appear {
+    animation: repBadgePulse 0.65s ease-out forwards,
+               repBadgeShimmer 2.8s linear 0.65s infinite;
 }
 
 /* Card body text */
@@ -5095,7 +5222,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <span class="modal-label">Maintenance Task</span>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <h3 class="modal-title">Task Details</h3>
-                    <span id="modalRepBadge" style="display:none;background:rgba(255,255,255,0.22);color:#fff;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.03em;border:1px solid rgba(255,255,255,0.35);flex-shrink:0;"></span>
+                    <a id="modalRepBadge" href="#" target="_self" class="modal-rep-badge-link" style="display:none;" title="View this report"></a>
                 </div>
             </div>
             <button id="modalClose" class="modal-close-btn" aria-label="Close">&times;</button>
@@ -5919,6 +6046,15 @@ window.IS_ENGINEER    = <?= $isEngineer ? 'true' : 'false' ?>;
 window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
 <script>
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function makeDistrictBadge(district) {
+    if (!district) return '';
+    const map = {
+        'district 1': 'd1', 'district 2': 'd2', 'district 3': 'd3',
+        'district 4': 'd4', 'district 5': 'd5', 'district 6': 'd6'
+    };
+    const cls = map[(district || '').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${escH(district)}</span>`;
+}
 function fmtDate(s){ if(!s||s==='0000-00-00')return'—'; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
 </script>
 <!-- ============ END SCHEDULE DATA PATCH ============== -->
@@ -6338,12 +6474,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const key      = getStatusKey(statusLbl);
         const priKey   = priority.toLowerCase();
 
-        // Update REP badge in modal header
+        // Update REP badge in modal header — redesigned as clickable link
         const repBadgeEl = document.getElementById('modalRepBadge');
         if (repBadgeEl) {
             if (t.rep_id) {
-                repBadgeEl.textContent = 'REP-' + t.rep_id;
-                repBadgeEl.style.display = 'inline-block';
+                const isCompleted = (t.status === 'Completed' || t.status_label === 'Completed');
+                const targetPage  = isCompleted ? 'archive_reports.php' : 'pending_reports.php';
+                const targetUrl   = `${targetPage}?highlight_rep=${encodeURIComponent(t.rep_id)}&open_modal=1`;
+                repBadgeEl.href  = targetUrl;
+                repBadgeEl.innerHTML =
+                    `<i class="fas fa-file-alt rep-badge-icon"></i>` +
+                    `REP-${t.rep_id}` +
+                    `<i class="fas fa-arrow-right rep-badge-arrow"></i>`;
+                repBadgeEl.title = `View REP-${t.rep_id} in ${isCompleted ? 'Archive' : 'Pending'} Reports`;
+                repBadgeEl.style.display = '';
+                // Pulse animation to draw attention
+                repBadgeEl.classList.remove('rep-badge-appear');
+                void repBadgeEl.offsetWidth; // reflow to restart animation
+                repBadgeEl.classList.add('rep-badge-appear');
             } else {
                 repBadgeEl.style.display = 'none';
             }
@@ -6423,7 +6571,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="modal-task-row-content">
                         <div class="modal-task-row-label">Location</div>
-                        <div class="modal-task-row-value">${escH(t.location)}</div>
+                        <div class="modal-task-row-value">${escH(t.location)}${makeDistrictBadge(t.district || '')}</div>
                     </div>
                 </div>
                 <div class="modal-task-row">
@@ -8298,6 +8446,7 @@ document.addEventListener('DOMContentLoaded', function() {
         translateX = translateY = 0; currentScale = 1;
         const img = lbImg(); if (!img) return;
         img.classList.remove('sched-lb-zoomed');
+        img.classList.remove('sched-lb-panning');
         img.style.transform = 'scale(1)';
         img.style.cursor = 'zoom-in';
         const btn = lbClose(); if (btn) { btn.style.display = 'flex'; btn.disabled = false; }
@@ -8338,6 +8487,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('DOMContentLoaded', function() {
         const img = lbImg(); if (!img) return;
 
+        // Prevent browser native image-drag from hijacking custom pan
+        img.draggable = false;
+        img.addEventListener('dragstart', function(e) { e.preventDefault(); });
+
         // Backdrop click
         const el = lb();
         if (el) el.addEventListener('click', function(e) { if (e.target === el) window.schedLbClose(); });
@@ -8368,17 +8521,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Mouse drag (exact from requests.php)
+        // Mouse drag — disable transition during pan so movement is instant, not laggy
         img.addEventListener('mousedown', function(e) {
             if (!isZoomed || e.button !== 0) return;
+            e.preventDefault(); // block any residual native drag
             isDragging = true;
             startX = e.clientX - translateX;
             startY = e.clientY - translateY;
+            img.classList.add('sched-lb-panning');
             img.style.cursor = 'grabbing';
         });
         window.addEventListener('mouseup', function() {
             if (!isZoomed) return;
             isDragging = false;
+            img.classList.remove('sched-lb-panning');
             img.style.cursor = 'grab';
         });
         window.addEventListener('mousemove', function(e) {

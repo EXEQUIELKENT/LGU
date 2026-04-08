@@ -141,14 +141,14 @@ if ($isAdmin) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
-    // Summary counts
+    // Summary counts — statuses: Under Review / Valid / Dismissed
     $fbSum = $conn->query("
         SELECT
-            COUNT(*)                          AS total,
-            SUM(status = 'New')               AS new_count,
-            SUM(status = 'Under Review')      AS review_count,
-            SUM(status = 'Resolved')          AS resolved_count,
-            ROUND(AVG(rating), 1)             AS avg_rating
+            COUNT(*)                              AS total,
+            SUM(status = 'Under Review')          AS review_count,
+            SUM(status = 'Valid')                 AS valid_count,
+            SUM(status = 'Dismissed')             AS dismissed_count,
+            ROUND(AVG(rating), 1)                 AS avg_rating
         FROM citizen_feedback
     ");
     $fbSummary = $fbSum ? $fbSum->fetch_assoc() : [];
@@ -1411,44 +1411,123 @@ body {
 }
 
 /* ── Report Modal ───────────────────────────────────────── */
+@keyframes modalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(.88) translateY(-28px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+@keyframes modalSlideOut {
+    from { opacity: 1; transform: scale(1)   translateY(0); }
+    to   { opacity: 0; transform: scale(.88) translateY(-20px); }
+}
+@keyframes rippleExpand {
+    from { transform: scale(0); opacity: .55; }
+    to   { transform: scale(3.5); opacity: 0; }
+}
+@keyframes sectionReveal {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 #reportModalBackdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.5);
+    background: rgba(0, 0, 0, .60);
     display: none; align-items: center; justify-content: center;
     z-index: 8500;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
+    animation: modalBackdropIn .22s ease;
 }
 #reportModalBackdrop.active { display: flex; }
+
 .report-modal {
     background: var(--bg-primary);
-    border-radius: 20px;
-    box-shadow: 0 12px 50px var(--shadow-color);
+    border-radius: 24px;
+    box-shadow:
+        0 4px 6px rgba(0,0,0,.07),
+        0 20px 60px rgba(0,0,0,.28),
+        0 0 0 1px rgba(255,255,255,.06) inset;
     width: 92%;
-    max-width: 480px;
-    animation: modalSlideIn .3s ease;
+    max-width: 490px;
+    animation: modalSlideIn .32s cubic-bezier(.34,1.46,.64,1);
     border: 1px solid var(--border-color);
     overflow: hidden;
 }
+
+/* ── Header ── */
 .report-modal-header {
-    padding: 22px 26px;
-    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    padding: 0 26px;
+    height: 72px;
+    background: linear-gradient(135deg, #1e3faa 0%, #3762c8 55%, #5f8cff 100%);
     display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+    overflow: hidden;
 }
-.report-modal-header h3 { font-size: 18px; font-weight: 700; color: #fff; }
+.report-modal-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(255,255,255,.18) 0%, transparent 65%);
+    pointer-events: none;
+}
+.report-modal-header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+}
+.report-modal-header-left {
+    display: flex; align-items: center; gap: 13px; z-index: 1;
+}
+.report-modal-icon-wrap {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+}
+.report-modal-header h3 {
+    font-size: 17px; font-weight: 700; color: #fff;
+    letter-spacing: -.01em;
+}
+.report-modal-header h3 small {
+    display: block; font-size: 11px; font-weight: 400;
+    opacity: .75; margin-top: 1px;
+}
 .report-modal-close {
-    background: rgba(255,255,255,.2); border: none;
-    color: #fff; font-size: 22px; width: 34px; height: 34px;
-    border-radius: 8px; cursor: pointer; display: flex;
-    align-items: center; justify-content: center;
-    transition: background .2s;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.22);
+    color: #fff; font-size: 18px;
+    width: 34px; height: 34px;
+    border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s, transform .15s; z-index: 1;
+    flex-shrink: 0;
 }
-.report-modal-close:hover { background: rgba(255,255,255,.35); }
-.report-modal-body { padding: 26px; }
-.form-group { margin-bottom: 18px; }
+.report-modal-close:hover {
+    background: rgba(255,255,255,.3);
+    transform: scale(1.08) rotate(5deg);
+}
+
+/* ── Body ── */
+.report-modal-body { padding: 24px 26px 26px; }
+
+/* Section animate-in on open */
+.report-modal-body .form-group {
+    margin-bottom: 20px;
+    animation: sectionReveal .35s ease both;
+}
+.report-modal-body .form-group:nth-child(1) { animation-delay: .05s; }
+.report-modal-body .form-group:nth-child(2) { animation-delay: .11s; }
+.report-modal-body .btn-generate            { animation: sectionReveal .35s ease .17s both; }
+
 .form-group label {
-    display: block; font-size: 13px; font-weight: 600;
-    color: var(--text-secondary); margin-bottom: 7px;
-    text-transform: uppercase; letter-spacing: .03em;
+    display: block; font-size: 11px; font-weight: 700;
+    color: var(--text-secondary); margin-bottom: 9px;
+    text-transform: uppercase; letter-spacing: .06em;
 }
 .form-group select,
 .form-group input[type="date"] {
@@ -1464,7 +1543,27 @@ body {
     border-color: #3762c8;
     box-shadow: 0 0 0 3px rgba(55,98,200,.12);
 }
-.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ── Date row: two date pickers side-by-side ── */
+.date-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.date-field-wrap {
+    background: var(--bg-secondary);
+    border-radius: 14px;
+    border: 1.5px solid var(--border-color);
+    padding: 11px 14px 12px;
+    transition: border-color .2s, box-shadow .2s;
+}
+.date-field-wrap:focus-within {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.10);
+}
+.date-field-sub-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-secondary);
+    opacity: .7; margin-bottom: 5px; display: block;
+}
 
 /* ── Report custom date picker (ported from profile.php DOB picker) ── */
 .rpt-date-display {
@@ -1643,99 +1742,156 @@ body {
 [data-theme="dark"] .rdt-month-opt:hover { background: rgba(55,98,200,.22); color: #8ab4f8; }
 [data-theme="dark"] .rdt-dp-clear { color: #f87171; border-color: rgba(239,68,68,.4); }
 [data-theme="dark"] .rdt-dp-clear:hover { background: rgba(239,68,68,.1); }
+/* ── Format toggle ── */
 .format-toggle {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
 .fmt-btn {
-    padding: 11px;
+    padding: 12px 10px;
     border: 1.5px solid var(--border-color);
-    border-radius: 10px; background: var(--bg-secondary);
-    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    border-radius: 12px; background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 13.5px; font-weight: 600;
     cursor: pointer; transition: all .2s; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.fmt-btn i { font-size: 15px; }
+.fmt-btn:hover:not(.active) {
+    border-color: rgba(55,98,200,.4);
+    background: rgba(55,98,200,.06);
 }
 .fmt-btn.active {
-    border-color: #3762c8; background: rgba(55,98,200,.1); color: #3762c8;
+    border-color: #3762c8;
+    background: linear-gradient(135deg, rgba(55,98,200,.14), rgba(95,140,255,.10));
+    color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.10);
 }
+
+/* ── Generate button with ripple ── */
 .btn-generate {
-    width: 100%; padding: 13px;
-    background: linear-gradient(135deg, #3762c8, #5f8cff);
-    color: #fff; border: none; border-radius: 12px;
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #1e3faa 0%, #3762c8 55%, #5f8cff 100%);
+    color: #fff; border: none; border-radius: 14px;
     font-size: 15px; font-weight: 700; cursor: pointer;
-    transition: all .25s; margin-top: 6px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .2s, box-shadow .2s, opacity .2s;
+    margin-top: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    position: relative; overflow: hidden;
+    letter-spacing: .01em;
+    box-shadow: 0 4px 18px rgba(55,98,200,.35);
 }
-.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(55,98,200,.35); }
-.btn-generate:active { transform: translateY(0); }
+.btn-generate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(55,98,200,.50);
+}
+.btn-generate:active { transform: scale(.97); }
 .btn-generate:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* Ripple inside generate button */
+.btn-ripple {
+    position: absolute;
+    border-radius: 50%;
+    width: 80px; height: 80px;
+    margin-top: -40px; margin-left: -40px;
+    background: rgba(255,255,255,.45);
+    pointer-events: none;
+    animation: rippleExpand .55s ease-out forwards;
+}
+
 .report-info-text {
     font-size: 11px; color: var(--text-secondary);
-    text-align: center; margin-top: 10px;
+    text-align: center; margin-top: 11px; opacity: .8;
 }
 
 /* ── Password confirmation modal ──────────────────────────────────────── */
 #pwModalBackdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.55);
+    background: rgba(0, 0, 0, .60);
     display: none; align-items: center; justify-content: center;
     z-index: 9000;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(6px);
+    animation: modalBackdropIn .22s ease;
 }
 #pwModalBackdrop.active { display: flex; }
 
 .pw-modal {
     background: var(--bg-primary);
-    border-radius: 20px;
-    box-shadow: 0 16px 60px var(--shadow-color);
+    border-radius: 24px;
+    box-shadow:
+        0 4px 6px rgba(0,0,0,.07),
+        0 20px 60px rgba(0,0,0,.28),
+        0 0 0 1px rgba(255,255,255,.06) inset;
     width: 92%;
-    max-width: 400px;
+    max-width: 420px;
     overflow: hidden;
-    animation: pwModalIn .28s cubic-bezier(.34,1.56,.64,1);
+    animation: modalSlideIn .32s cubic-bezier(.34,1.46,.64,1);
     border: 1px solid var(--border-color);
 }
-@keyframes pwModalIn {
-    from { opacity:0; transform:scale(.88) translateY(-18px); }
-    to   { opacity:1; transform:scale(1) translateY(0); }
-}
 
+/* ── Header — mirrors report-modal-header ── */
 .pw-modal-header {
-    padding: 20px 24px 16px;
-    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
-    display: flex; align-items: center; gap: 12px;
+    padding: 0 26px;
+    height: 72px;
+    background: linear-gradient(135deg, #1e3faa 0%, #3762c8 55%, #5f8cff 100%);
+    display: flex; align-items: center; gap: 13px;
+    position: relative; overflow: hidden;
+}
+.pw-modal-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(255,255,255,.18) 0%, transparent 65%);
+    pointer-events: none;
+}
+.pw-modal-header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
 }
 .pw-modal-icon {
-    width: 42px; height: 42px;
+    width: 40px; height: 40px;
     background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
+    font-size: 18px; flex-shrink: 0; z-index: 1;
+    color: #fff;
 }
+.pw-modal-header-text { z-index: 1; }
 .pw-modal-header-text h3 {
-    font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px;
+    font-size: 17px; font-weight: 700; color: #fff;
+    letter-spacing: -.01em; margin-bottom: 2px;
 }
 .pw-modal-header-text p {
-    font-size: 11px; color: #93c5fd; line-height: 1.4;
+    font-size: 11px; color: rgba(255,255,255,.75); line-height: 1.4;
 }
 
-.pw-modal-body { padding: 22px 24px 20px; }
+/* ── Body ── */
+.pw-modal-body {
+    padding: 24px 26px 20px;
+    animation: sectionReveal .35s ease .05s both;
+}
 
 .pw-modal-body label {
-    display: block; font-size: 12px; font-weight: 700;
-    color: var(--text-secondary); margin-bottom: 8px;
-    text-transform: uppercase; letter-spacing: .04em;
+    display: block; font-size: 11px; font-weight: 700;
+    color: var(--text-secondary); margin-bottom: 9px;
+    text-transform: uppercase; letter-spacing: .06em;
 }
 
-.pw-input-wrap {
-    position: relative;
-}
+.pw-input-wrap { position: relative; }
 .pw-input-wrap input[type="password"],
 .pw-input-wrap input[type="text"] {
-    width: 100%; padding: 11px 44px 11px 14px;
+    width: 100%; padding: 12px 46px 12px 14px;
     border: 1.5px solid var(--border-color);
-    border-radius: 11px; font-size: 15px;
+    border-radius: 12px; font-size: 15px;
     background: var(--bg-secondary); color: var(--text-primary);
     outline: none; transition: border .2s, box-shadow .2s;
-    font-family: inherit;
+    font-family: inherit; box-sizing: border-box;
 }
+/* Suppress native browser password-reveal eye (Edge, Chrome, IE) */
+.pw-input-wrap input::-ms-reveal,
+.pw-input-wrap input::-ms-clear,
+.pw-input-wrap input::-webkit-contacts-auto-fill-button,
+.pw-input-wrap input::-webkit-credentials-auto-fill-button { display: none !important; }
 .pw-input-wrap input:focus {
     border-color: #3762c8;
     box-shadow: 0 0 0 3px rgba(55,98,200,.13);
@@ -1745,7 +1901,7 @@ body {
     box-shadow: 0 0 0 3px rgba(239,68,68,.12);
 }
 .pw-toggle-btn {
-    position: absolute; right: 12px; top: 50%;
+    position: absolute; right: 13px; top: 50%;
     transform: translateY(-50%);
     background: none; border: none; cursor: pointer;
     font-size: 17px; color: var(--text-secondary);
@@ -1755,10 +1911,10 @@ body {
 .pw-toggle-btn:hover { color: #3762c8; }
 
 .pw-error-msg {
-    display: none; margin-top: 8px;
+    display: none; margin-top: 10px;
     background: #fef2f2; border: 1px solid #fecaca;
-    color: #dc2626; border-radius: 8px;
-    padding: 8px 12px; font-size: 12px; font-weight: 600;
+    color: #dc2626; border-radius: 10px;
+    padding: 9px 13px; font-size: 12px; font-weight: 600;
     align-items: center; gap: 6px;
 }
 .pw-error-msg.show { display: flex; }
@@ -1766,40 +1922,45 @@ body {
 .pw-attempts-msg {
     display: none; margin-top: 8px;
     font-size: 11px; color: var(--text-secondary);
-    text-align: center;
+    text-align: center; opacity: .8;
 }
 .pw-attempts-msg.show { display: block; }
 
+/* ── Footer ── */
 .pw-modal-footer {
-    padding: 0 24px 20px;
+    padding: 4px 26px 26px;
     display: flex; gap: 10px;
+    animation: sectionReveal .35s ease .12s both;
 }
 .pw-cancel-btn {
-    flex: 1; padding: 11px;
+    flex: 1; padding: 13px;
     border: 1.5px solid var(--border-color);
-    border-radius: 11px; background: var(--bg-secondary);
+    border-radius: 14px; background: var(--bg-secondary);
     color: var(--text-primary); font-size: 14px; font-weight: 600;
     cursor: pointer; transition: all .2s;
 }
 .pw-cancel-btn:hover {
-    background: rgba(55,98,200,.08); border-color: #3762c8; color: #3762c8;
+    background: rgba(55,98,200,.07);
+    border-color: rgba(55,98,200,.4);
+    color: #3762c8;
 }
 .pw-confirm-btn {
-    flex: 2; padding: 11px;
-    background: linear-gradient(135deg, #1e3a5f, #2d5fa3);
-    color: #fff; border: none; border-radius: 11px;
+    flex: 2; padding: 13px;
+    background: linear-gradient(135deg, #1e3faa 0%, #3762c8 55%, #5f8cff 100%);
+    color: #fff; border: none; border-radius: 14px;
     font-size: 14px; font-weight: 700; cursor: pointer;
-    transition: all .25s; display: flex; align-items: center;
-    justify-content: center; gap: 7px;
-    box-shadow: 0 4px 14px rgba(30,58,95,.3);
+    transition: transform .2s, box-shadow .2s, opacity .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 18px rgba(55,98,200,.35);
+    position: relative; overflow: hidden;
+    letter-spacing: .01em;
 }
 .pw-confirm-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 7px 20px rgba(30,58,95,.4);
+    box-shadow: 0 8px 28px rgba(55,98,200,.50);
 }
-.pw-confirm-btn:disabled {
-    opacity: .65; cursor: not-allowed; transform: none;
-}
+.pw-confirm-btn:active:not(:disabled) { transform: scale(.97); }
+.pw-confirm-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 /* Spinner */
 .pw-spinner {
@@ -2529,11 +2690,11 @@ body {
     white-space: nowrap;
 }
 .fb-pill i { font-size: 10px; }
-.fb-pill-total    { background: rgba(55,98,200,.10);  color: #3762c8; }
-.fb-pill-new      { background: rgba(244,67,54,.10);  color: #e53935; }
-.fb-pill-review   { background: rgba(255,152,0,.12);  color: #e65100; }
-.fb-pill-resolved { background: rgba(76,175,80,.12);  color: #388e3c; }
-.fb-pill-rating   { background: rgba(245,158,11,.13); color: #b45309; }
+.fb-pill-total     { background: rgba(55,98,200,.10);  color: #3762c8; }
+.fb-pill-review    { background: rgba(133,77,14,.10);  color: #854d0e; }
+.fb-pill-valid     { background: rgba(21,128,61,.10);  color: #15803d; }
+.fb-pill-dismissed { background: rgba(100,116,139,.12); color: #475569; }
+.fb-pill-rating    { background: rgba(245,158,11,.13); color: #b45309; }
 
 /* Recent list */
 .fb-recent-list {
@@ -2542,56 +2703,14 @@ body {
     padding: 0;
     display: flex;
     flex-direction: column;
+    gap: 12px;
 }
-.fb-recent-item {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 9px 4px;
-    border-bottom: 1px solid var(--border-color, rgba(0,0,0,.07));
-    transition: background .15s;
-    border-radius: 6px;
-}
-.fb-recent-item:last-child { border-bottom: none; }
-.fb-recent-item:hover { background: rgba(55,98,200,.04); }
 
-/* Type icon bubble */
-.fb-type-icon {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #3762c8, #5b8aff);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.fb-type-icon i { color: #fff; font-size: 13px; }
-
-/* Body */
-.fb-recent-body { flex: 1; min-width: 0; }
-.fb-recent-top  {
-    display: flex; align-items: center; gap: 7px;
-    margin-bottom: 2px; flex-wrap: wrap;
-}
-.fb-recent-name {
-    font-size: 13px; font-weight: 600;
-    color: var(--text-primary, #000);
-    white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; max-width: 150px;
-}
-.fb-recent-title {
-    font-size: 12px;
-    color: var(--text-secondary, #555);
-    white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; margin-bottom: 4px;
-}
-.fb-recent-meta {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-}
-.fb-stars         { font-size: 12px; line-height: 1; }
-.fb-star-full     { color: #f59e0b; }
-.fb-star-half     { color: #f59e0b; opacity: .55; }
-.fb-star-empty    { color: #d1d5db; }
-.fb-type-label    { font-size: 11px; color: var(--text-secondary, #777); }
-.fb-time          { font-size: 11px; color: var(--text-secondary, #999); margin-left: auto; }
+/* Stars */
+.fb-stars      { font-size: 11px; line-height: 1; }
+.fb-star-full  { color: #f59e0b; }
+.fb-star-half  { color: #f59e0b; opacity: .55; }
+.fb-star-empty { color: #d1d5db; }
 
 /* Status badges */
 .fb-badge {
@@ -2599,20 +2718,9 @@ body {
     padding: 2px 8px; border-radius: 12px;
     white-space: nowrap; flex-shrink: 0;
 }
-.fb-status-new       { background: rgba(244,67,54,.12);   color: #c62828; }
-.fb-status-review    { background: rgba(255,152,0,.14);   color: #e65100; }
-.fb-status-resolved  { background: rgba(76,175,80,.13);   color: #2e7d32; }
-.fb-status-dismissed { background: rgba(158,158,158,.15); color: #616161; }
-
-/* Arrow link */
-.fb-item-arrow {
-    color: var(--text-secondary, #aaa);
-    font-size: 12px; padding: 4px 6px;
-    border-radius: 6px; text-decoration: none;
-    transition: color .2s, background .2s;
-    flex-shrink: 0;
-}
-.fb-item-arrow:hover { color: #3762c8; background: rgba(55,98,200,.09); }
+.fb-status-review    { background: #fef9c3; color: #854d0e; }
+.fb-status-valid     { background: #dcfce7; color: #15803d; }
+.fb-status-dismissed { background: #f1f5f9; color: #64748b; }
 
 /* Empty state */
 .fb-empty-state {
@@ -2625,19 +2733,20 @@ body {
 .fb-empty-state i { font-size: 20px; opacity: .5; }
 
 /* Dark mode */
-[data-theme="dark"] .fb-type-icon { background: linear-gradient(135deg,#2a4da0,#4a6fcc); }
-[data-theme="dark"] .fb-pill-total    { background: rgba(90,130,255,.14); color: #8aabff; }
-[data-theme="dark"] .fb-pill-new      { background: rgba(244,67,54,.14);  color: #ff7c7c; }
-[data-theme="dark"] .fb-pill-review   { background: rgba(255,152,0,.14);  color: #ffb74d; }
-[data-theme="dark"] .fb-pill-resolved { background: rgba(76,175,80,.14);  color: #81c784; }
-[data-theme="dark"] .fb-pill-rating   { background: rgba(245,158,11,.14); color: #fcd34d; }
-[data-theme="dark"] .fb-star-empty    { color: #4b5563; }
+[data-theme="dark"] .fb-pill-total     { background: rgba(90,130,255,.14);  color: #8aabff; }
+[data-theme="dark"] .fb-pill-review    { background: rgba(133,77,14,.30);   color: #fde68a; }
+[data-theme="dark"] .fb-pill-valid     { background: rgba(21,128,61,.30);   color: #86efac; }
+[data-theme="dark"] .fb-pill-dismissed { background: rgba(100,116,139,.20); color: #94a3b8; }
+[data-theme="dark"] .fb-pill-rating    { background: rgba(245,158,11,.14);  color: #fcd34d; }
+[data-theme="dark"] .fb-status-review    { background: rgba(133,77,14,.3);  color: #fde68a; }
+[data-theme="dark"] .fb-status-valid     { background: rgba(21,128,61,.3);  color: #86efac; }
+[data-theme="dark"] .fb-status-dismissed { background: rgba(100,116,139,.2); color: #94a3b8; }
+[data-theme="dark"] .fb-star-empty       { color: #4b5563; }
 
 /* Responsive */
 @media (max-width: 600px) {
     .fb-summary-pills { gap: 5px; }
     .fb-pill          { font-size: 10.5px; padding: 3px 9px; }
-    .fb-recent-name   { max-width: 100px; }
 }
 
 /* ══════════════════════════════════════════════
@@ -3393,6 +3502,7 @@ HTML;
                         <div class="chart-title">Recent Activity</div>
                         <div class="chart-subtitle">Latest maintenance requests</div>
                     </div>
+                    <a href="request.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php 
@@ -3402,7 +3512,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item">
+                    <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='request.php'">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
@@ -3436,9 +3546,7 @@ HTML;
                         </div>
                         <div class="chart-subtitle">Latest citizen submissions</div>
                     </div>
-                    <a href="emp_feedback.php" class="fb-widget-viewall" onclick="event.stopPropagation()">
-                        View all &rsaquo;
-                    </a>
+                    <a href="emp_feedback.php" class="view-all-link" onclick="event.stopPropagation()">View all →</a>
                 </div>
                 <!-- ── Citizen Feedback Summary (Admin / Super Admin) ── -->
                 <div class="fb-widget-wrapper" id="feedbackActivityWidget">
@@ -3449,17 +3557,17 @@ HTML;
                             <i class="fas fa-layer-group"></i>
                             <?= (int)($feedbackWidget['summary']['total'] ?? 0) ?> Total
                         </span>
-                        <span class="fb-pill fb-pill-new">
-                            <i class="fas fa-bell"></i>
-                            <?= (int)($feedbackWidget['summary']['new_count'] ?? 0) ?> New
-                        </span>
                         <span class="fb-pill fb-pill-review">
                             <i class="fas fa-spinner"></i>
-                            <?= (int)($feedbackWidget['summary']['review_count'] ?? 0) ?> In Review
+                            <?= (int)($feedbackWidget['summary']['review_count'] ?? 0) ?> Under Review
                         </span>
-                        <span class="fb-pill fb-pill-resolved">
+                        <span class="fb-pill fb-pill-valid">
                             <i class="fas fa-check-circle"></i>
-                            <?= (int)($feedbackWidget['summary']['resolved_count'] ?? 0) ?> Resolved
+                            <?= (int)($feedbackWidget['summary']['valid_count'] ?? 0) ?> Valid
+                        </span>
+                        <span class="fb-pill fb-pill-dismissed">
+                            <i class="fas fa-ban"></i>
+                            <?= (int)($feedbackWidget['summary']['dismissed_count'] ?? 0) ?> Dismissed
                         </span>
                         <span class="fb-pill fb-pill-rating">
                             <i class="fas fa-star"></i>
@@ -3474,113 +3582,102 @@ HTML;
                             <span>No feedback submitted yet.</span>
                         </div>
                     <?php else: ?>
-                        <ul class="fb-recent-list">
+                        <?php
+                        $fbColors = ['#e91e8c','#2196f3','#ff9800','#9c27b0','#4caf50'];
+                        $fbColorIdx = 0;
+                        $fbStatusColors = [
+                            'Under Review' => '#f59e0b',
+                            'Valid'        => '#22c55e',
+                            'Dismissed'    => '#64748b',
+                        ];
+                        ?>
+                        <div class="activity-list">
                         <?php foreach ($feedbackWidget['recent'] as $fb):
-                            $fbStatusClass = [
-                                'New'          => 'fb-status-new',
-                                'Under Review' => 'fb-status-review',
-                                'Resolved'     => 'fb-status-resolved',
-                                'Dismissed'    => 'fb-status-dismissed',
-                            ][$fb['status']] ?? 'fb-status-new';
-
-                            $fbTypeIcon = [
-                                'Concern'         => 'fa-exclamation-circle',
-                                'Acknowledgement' => 'fa-thumbs-up',
-                                'Improvement'     => 'fa-lightbulb',
-                                'Complaint'       => 'fa-angry',
-                                'Suggestion'      => 'fa-paper-plane',
-                            ][$fb['feedback_type']] ?? 'fa-comment';
+                            $fbInitial   = strtoupper(substr(trim($fb['title']), 0, 1)) ?: '?';
+                            $fbAvatarBg  = $fbColors[$fbColorIdx % 5];
+                            $fbStatColor = $fbStatusColors[$fb['status']] ?? '#64748b';
 
                             $fbStars = '';
                             $fbR = (float)$fb['rating'];
                             for ($fs = 1; $fs <= 5; $fs++) {
-                                if ($fbR >= $fs)         $fbStars .= '<span class="fb-star fb-star-full">&#9733;</span>';
-                                elseif ($fbR >= $fs-.5)  $fbStars .= '<span class="fb-star fb-star-half">&#9733;</span>';
-                                else                      $fbStars .= '<span class="fb-star fb-star-empty">&#9734;</span>';
+                                if ($fbR >= $fs)        $fbStars .= '<span class="fb-star fb-star-full">&#9733;</span>';
+                                elseif ($fbR >= $fs-.5) $fbStars .= '<span class="fb-star fb-star-half">&#9733;</span>';
+                                else                    $fbStars .= '<span class="fb-star fb-star-empty">&#9734;</span>';
                             }
 
-                            $fbDiff = time() - strtotime($fb['created_at']);
-                            if ($fbDiff < 60)          $fbAgo = 'just now';
-                            elseif ($fbDiff < 3600)    $fbAgo = floor($fbDiff/60)    . 'm ago';
-                            elseif ($fbDiff < 86400)   $fbAgo = floor($fbDiff/3600)  . 'h ago';
-                            elseif ($fbDiff < 2592000) $fbAgo = floor($fbDiff/86400) . 'd ago';
-                            else                        $fbAgo = date('M j', strtotime($fb['created_at']));
+                            $fbDate = date('M d, Y', strtotime($fb['created_at']));
                         ?>
-                            <li class="fb-recent-item">
-                                <span class="fb-type-icon"><i class="fas <?= $fbTypeIcon ?>"></i></span>
-                                <div class="fb-recent-body">
-                                    <div class="fb-recent-top">
-                                        <span class="fb-recent-name"><?= htmlspecialchars($fb['full_name']) ?></span>
-                                        <span class="fb-badge <?= $fbStatusClass ?>"><?= htmlspecialchars($fb['status']) ?></span>
-                                    </div>
-                                    <div class="fb-recent-title"><?= htmlspecialchars($fb['title']) ?></div>
-                                    <div class="fb-recent-meta">
-                                        <span class="fb-stars"><?= $fbStars ?></span>
-                                        <span class="fb-type-label"><?= htmlspecialchars($fb['feedback_type']) ?></span>
-                                        <span class="fb-time"><?= $fbAgo ?></span>
+                            <div class="activity-item" data-feedback data-href="emp_feedback.php" style="cursor:pointer;" onclick="window.location.href='emp_feedback.php'">
+                                <div class="activity-avatar" style="background:<?= $fbAvatarBg ?>">
+                                    <?= htmlspecialchars($fbInitial) ?>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title"><?= htmlspecialchars($fb['title']) ?></div>
+                                    <div class="activity-description">
+                                        <?= htmlspecialchars($fb['feedback_type']) ?> · <?= htmlspecialchars($fb['full_name']) ?>
                                     </div>
                                 </div>
-                                <a href="emp_feedback.php" class="fb-item-arrow" title="Open Feedback" onclick="event.stopPropagation()">
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                        </ul>
+                                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                    <span style="font-size:11px;font-weight:700;color:<?= $fbStatColor ?>;background:<?= $fbStatColor ?>22;padding:3px 9px;border-radius:12px;">
+                                        <?= htmlspecialchars($fb['status']) ?>
+                                    </span>
+                                    <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">
+                                        <?= $fbDate ?>
+                                    </span>
+                                    <span class="fb-stars"><?= $fbStars ?></span>
+                                </div>
+                            </div>
+                            </div>
+                        <?php $fbColorIdx++; endforeach; ?>
+                        </div>
                     <?php endif; ?>
 
                 </div><!-- /fb-widget-wrapper -->
 
+                <?php if ($isAdmin): ?>
+                <!-- ADMIN: Report Generation Section -->
+                <div class="report-gen-section">
+                    <div class="report-gen-header">
+                        <h3>📊 Report Generation</h3>
+                        <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+                    </div>
+                    <div class="report-type-grid">
+                        <button class="report-type-btn" onclick="openReportModal('requests')">
+                            <div class="rpt-icon"><i class="fas fa-file-alt"></i></div>
+                            <div class="rpt-title">Requests Report</div>
+                            <div class="rpt-desc">All infrastructure repair requests by date range</div>
+                        </button>
+                        <button class="report-type-btn" onclick="openReportModal('schedules')">
+                            <div class="rpt-icon"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="rpt-title">Schedules Report</div>
+                            <div class="rpt-desc">Maintenance tasks & infrastructure reports on the calendar</div>
+                        </button>
+                        <button class="report-type-btn" onclick="openReportModal('summary')">
+                            <div class="rpt-icon"><i class="fas fa-chart-pie"></i></div>
+                            <div class="rpt-title">Executive Summary</div>
+                            <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
+                        </button>
+                        <button class="report-type-btn" onclick="openReportModal('current_reports')">
+                            <div class="rpt-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="rpt-title">Current Reports</div>
+                            <div class="rpt-desc">Reports assigned to engineers — awaiting or accepted</div>
+                        </button>
+                        <button class="report-type-btn" onclick="openReportModal('pending_reports')">
+                            <div class="rpt-icon"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="rpt-title">Pending Reports</div>
+                            <div class="rpt-desc">Reports that are scheduled, in progress, or pending completion</div>
+                        </button>
+                        <button class="report-type-btn" onclick="openReportModal('archive_reports')">
+                            <div class="rpt-icon"><i class="fas fa-archive"></i></div>
+                            <div class="rpt-title">Archive Reports</div>
+                            <div class="rpt-desc">Completed and cancelled reports</div>
+                        </button>
+                    </div><!-- /report-type-grid -->
+                </div><!-- /report-gen-section -->
+                <?php endif; ?>
+
             </div>
             <!-- end Citizen Feedback chart-card -->
-            <?php endif; ?>
-
-            <!-- ============================================================
-                 EMPLOYEE.PHP PATCH — Report Generation Feature (Admin Only)
-                 3. HTML — Add INSIDE .dashboard-card, AFTER the closing </div> of 
-                 the .charts-grid / Recent Activity chart-card, just BEFORE 
-                 the final closing </div> of .dashboard-card.
-                 ============================================================ -->
-
-            <?php if ($isAdmin): ?>
-            <!-- ADMIN: Report Generation Section -->
-            <div class="report-gen-section">
-                <div class="report-gen-header">
-                    <h3>📊 Report Generation</h3>
-                    <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
-                </div>
-                <div class="report-type-grid">
-                    <button class="report-type-btn" onclick="openReportModal('requests')">
-                        <div class="rpt-icon"><i class="fas fa-file-alt"></i></div>
-                        <div class="rpt-title">Requests Report</div>
-                        <div class="rpt-desc">All infrastructure repair requests by date range</div>
-                    </button>
-                    <button class="report-type-btn" onclick="openReportModal('schedules')">
-                        <div class="rpt-icon"><i class="fas fa-calendar-alt"></i></div>
-                        <div class="rpt-title">Schedules Report</div>
-                        <div class="rpt-desc">Maintenance tasks & infrastructure reports on the calendar</div>
-                    </button>
-                    <button class="report-type-btn" onclick="openReportModal('summary')">
-                        <div class="rpt-icon"><i class="fas fa-chart-pie"></i></div>
-                        <div class="rpt-title">Executive Summary</div>
-                        <div class="rpt-desc">Key metrics, top facilities & location breakdown</div>
-                    </button>
-                    <button class="report-type-btn" onclick="openReportModal('current_reports')">
-                        <div class="rpt-icon"><i class="fas fa-check-circle"></i></div>
-                        <div class="rpt-title">Current Reports</div>
-                        <div class="rpt-desc">Reports assigned to engineers — awaiting or accepted</div>
-                    </button>
-                    <button class="report-type-btn" onclick="openReportModal('pending_reports')">
-                        <div class="rpt-icon"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="rpt-title">Pending Reports</div>
-                        <div class="rpt-desc">Reports that are scheduled, in progress, or pending completion</div>
-                    </button>
-                    <button class="report-type-btn" onclick="openReportModal('archive_reports')">
-                        <div class="rpt-icon"><i class="fas fa-archive"></i></div>
-                        <div class="rpt-title">Archive Reports</div>
-                        <div class="rpt-desc">Completed and cancelled reports</div>
-                    </button>
-                </div>
-            </div>
             <?php endif; ?>
 
         </div>
@@ -3591,7 +3688,7 @@ HTML;
 <div id="pwModalBackdrop">
     <div class="pw-modal">
         <div class="pw-modal-header">
-            <div class="pw-modal-icon"><i class="fas fa-lock"></i></div>
+            <div class="pw-modal-icon"><i class="fas fa-shield-alt"></i></div>
             <div class="pw-modal-header-text">
                 <h3>Confirm Your Identity</h3>
                 <p>Enter your account password to generate this report.</p>
@@ -3610,7 +3707,7 @@ HTML;
                        onblur="if(!this.value){this.type='text';this.style.setProperty('-webkit-text-security','disc')}">
                 <button class="pw-toggle-btn" type="button"
                         id="pwToggleBtn" title="Show/hide password"
-                        tabindex="-1"><i class="fas fa-eye"></i></button>
+                        tabindex="-1"><i class="far fa-eye-slash"></i></button>
             </div>
             <div class="pw-error-msg" id="pwErrorMsg">
                 <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
@@ -3621,7 +3718,7 @@ HTML;
             <button class="pw-cancel-btn" id="pwCancelBtn">Cancel</button>
             <button class="pw-confirm-btn" id="pwConfirmBtn">
                 <div class="pw-spinner" id="pwSpinner"></div>
-                <span id="pwConfirmText"><i class="fas fa-unlock"></i> Verify &amp; Continue</span>
+                <span id="pwConfirmText"><i class="fas fa-lock"></i> Verify &amp; Continue</span>
             </button>
         </div>
     </div>
@@ -4044,23 +4141,26 @@ if (activeReportsCtx) {
 <div id="reportModalBackdrop">
     <div class="report-modal">
         <div class="report-modal-header">
-            <h3 id="reportModalTitle">Generate Report</h3>
-            <button class="report-modal-close" id="reportModalClose">&times;</button>
+            <div class="report-modal-header-left">
+                <div class="report-modal-icon-wrap" id="reportModalIconWrap">📅</div>
+                <h3 id="reportModalTitle">Generate Report<small>Select date range &amp; export format</small></h3>
+            </div>
+            <button class="report-modal-close" id="reportModalClose" title="Close">&times;</button>
         </div>
         <div class="report-modal-body">
             <div class="form-group">
                 <label>Date Range</label>
                 <div class="date-row">
-                    <div>
-                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">From</label>
+                    <div class="date-field-wrap">
+                        <span class="date-field-sub-label">From</span>
                         <div class="rpt-date-display" id="rptFromDisplay" tabindex="0" role="button" aria-label="Select start date">
                             <span class="rdt-text" id="rptFromText"><?= date('M d, Y', strtotime(date('Y-m-01'))) ?></span>
                             <span class="rdt-icon"><i class="far fa-calendar-alt"></i></span>
                         </div>
                         <input type="hidden" id="rptDateFrom" value="<?= date('Y-m-01') ?>">
                     </div>
-                    <div>
-                        <label style="font-size:11px;font-weight:500;text-transform:none;margin-bottom:4px;display:block;color:var(--text-secondary)">To</label>
+                    <div class="date-field-wrap">
+                        <span class="date-field-sub-label">To</span>
                         <div class="rpt-date-display" id="rptToDisplay" tabindex="0" role="button" aria-label="Select end date">
                             <span class="rdt-text" id="rptToText"><?= date('M d, Y') ?></span>
                             <span class="rdt-icon"><i class="far fa-calendar-alt"></i></span>
@@ -4081,7 +4181,7 @@ if (activeReportsCtx) {
                 </div>
             </div>
             <!-- "Generate" now opens the password gate first -->
-            <button class="btn-generate" id="btnGenerate" onclick="startGenerate()">
+            <button class="btn-generate" id="btnGenerate" onclick="startGenerate(event)">
                 <span id="btnGenerateText"><i class="fas fa-lock"></i> Verify &amp; Generate</span>
             </button>
             <p class="report-info-text">
@@ -4175,7 +4275,19 @@ function openReportModal(type) {
         pending_reports: '⏳ Pending Reports',
         archive_reports: '🗄️ Archive Reports',
     };
-    document.getElementById('reportModalTitle').textContent = titles[type] || 'Generate Report';
+    const icons = {
+        requests:        '📋',
+        schedules:       '📅',
+        summary:         '📈',
+        current_reports: '📌',
+        pending_reports: '⏳',
+        archive_reports: '🗄️',
+    };
+    const labelText = (titles[type] || 'Generate Report').replace(/^.\s/, '');
+    document.getElementById('reportModalTitle').innerHTML =
+        labelText + '<small>Select date range &amp; export format</small>';
+    const iconWrap = document.getElementById('reportModalIconWrap');
+    if (iconWrap) iconWrap.textContent = icons[type] || '📄';
     document.getElementById('reportModalBackdrop').classList.add('active');
     resetBtnGenerate();
 }
@@ -4198,11 +4310,26 @@ function resetBtnGenerate() {
 }
 
 // ── Step 1: Validate date inputs, then open password gate ────────────────────
-function startGenerate() {
+function startGenerate(event) {
     const from = document.getElementById('rptDateFrom').value;
     const to   = document.getElementById('rptDateTo').value;
     if (!from || !to) { alert('Please select both a start and end date.'); return; }
     if (from > to)    { alert('Start date must be before or equal to end date.'); return; }
+
+    // ── Ripple animation on the button ───────────────────────────────────────
+    const btn = document.getElementById('btnGenerate');
+
+    if (event) {
+        const rect   = btn.getBoundingClientRect();
+        const x      = event.clientX - rect.left;
+        const y      = event.clientY - rect.top;
+        const ripple = document.createElement('span');
+        ripple.className = 'btn-ripple';
+        ripple.style.left = x + 'px';
+        ripple.style.top  = y + 'px';
+        btn.appendChild(ripple);
+        ripple.addEventListener('animationend', () => ripple.remove());
+    }
 
     // Store values for later submission
     document.getElementById('rptTypeInput').value   = _rptType;
@@ -4210,9 +4337,11 @@ function startGenerate() {
     document.getElementById('rptFromInput').value   = from;
     document.getElementById('rptToInput').value     = to;
 
-    // Close report modal and open password gate
-    closeReportModal();
-    openPwModal();
+    // Close report modal and open password gate after a short delay so animation is visible
+    setTimeout(() => {
+        closeReportModal();
+        openPwModal();
+    }, 260);
 }
 
 // ── Password modal ────────────────────────────────────────────────────────────
@@ -4223,6 +4352,9 @@ function openPwModal() {
     input.value = '';
     input.type  = 'text';
     input.style.setProperty('-webkit-text-security', 'disc');
+    // Reset toggle icon to eye-slash (password is hidden on open)
+    const toggle = document.getElementById('pwToggleBtn');
+    if (toggle) toggle.innerHTML = '<i class="far fa-eye-slash"></i>';
     hidePwError();
     document.getElementById('pwAttemptsMsg').classList.remove('show');
     document.getElementById('pwConfirmBtn').disabled = false;
@@ -4253,14 +4385,15 @@ function hidePwError() {
 // ── Password toggle (show/hide) ───────────────────────────────────────────────
 document.getElementById('pwToggleBtn').addEventListener('click', function () {
     const input = document.getElementById('pwInput');
-    // isHidden = currently masked (either real type=password or type=text with -webkit-text-security)
     const isHidden = input.type === 'password' ||
                      (input.type === 'text' && input.style.webkitTextSecurity === 'disc');
     if (isHidden) {
+        // Reveal password
         input.type = 'text';
         input.style.removeProperty('-webkit-text-security');
         this.innerHTML = '<i class="far fa-eye"></i>';
     } else {
+        // Hide password
         input.type = 'text';
         input.style.setProperty('-webkit-text-security', 'disc');
         this.innerHTML = '<i class="far fa-eye-slash"></i>';
@@ -4629,9 +4762,9 @@ document.addEventListener('keydown', function(e) {
 
     makeClickable('.metric-card');
 
-    // ── 2. Activity items → requests.php ──────────────────────────
-    document.querySelectorAll('.activity-item').forEach(function (el) {
-        el.dataset.href = 'requests.php';
+    // ── 2. Activity items → requests.php (skip feedback items which have their own onclick) ──
+    document.querySelectorAll('.activity-item:not([data-feedback])').forEach(function (el) {
+        if (!el.dataset.href) el.dataset.href = 'requests.php';
     });
     makeClickable('.activity-item');
 

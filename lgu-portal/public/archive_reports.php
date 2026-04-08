@@ -156,7 +156,7 @@ $sql = "
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
-        req.created_at AS req_created_at,
+        req.district, req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
@@ -249,6 +249,7 @@ foreach ($rows as $row) {
         'contact_number'    => $row['contact_number'] ?? '',
         'coordinates'       => $row['coordinates'] ?? '',
         'req_email'         => $row['req_email']     ?? '',
+        'district'          => $row['district']      ?? '',
         'req_created_at'    => $row['req_created_at'] ?? '',
         'starting_date'     => $row['starting_date'] ?? '',
         'estimated_end_date'=> $row['estimated_end_date'] ?? '',
@@ -1212,6 +1213,50 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 [data-theme="dark"] .rep-eng-metric-pill.m-rejected  { background:rgba(139,92,246,.18); color:#c4b5fd; }
 
 
+/* ── District Badge ── */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 9px;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.5;
+    position: relative;
+    cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .18s ease,
+                filter .18s ease;
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity: 0; transform: scale(.7) translateY(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.district-badge:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.08); }
+.district-badge i { font-size: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8 0%,#5b8aff 100%); color:#fff; box-shadow:0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42 0%,#34c774 100%); color:#fff; box-shadow:0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00 0%,#f59033 100%); color:#fff; box-shadow:0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457 0%,#ec4899 100%); color:#fff; box-shadow:0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8 0%,#8b5cf6 100%); color:#fff; box-shadow:0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a 0%,#0ea5c9 100%); color:#fff; box-shadow:0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563 0%,#9ca3af 100%); color:#fff; box-shadow:0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1     { background:linear-gradient(135deg,#2851b3 0%,#5b8aff 100%); box-shadow:0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2     { background:linear-gradient(135deg,#156335 0%,#34c774 100%); box-shadow:0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3     { background:linear-gradient(135deg,#a04f00 0%,#f59033 100%); box-shadow:0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4     { background:linear-gradient(135deg,#9b1050 0%,#ec4899 100%); box-shadow:0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5     { background:linear-gradient(135deg,#47259a 0%,#8b5cf6 100%); box-shadow:0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6     { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other{ background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
+
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1846,6 +1891,16 @@ function navigateDayNext() {
     if (currentDayIndex < currentDayDates.length - 1) { currentDayIndex++; renderArchiveDayView(); }
 }
 
+function makeDistrictBadge(district) {
+    if (!district) return '';
+    const map = {
+        'district 1': 'd1', 'district 2': 'd2', 'district 3': 'd3',
+        'district 4': 'd4', 'district 5': 'd5', 'district 6': 'd6'
+    };
+    const cls = map[(district || '').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${district}</span>`;
+}
+
 function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
@@ -1857,7 +1912,9 @@ function openRepModal(repId) {
     const statusEl = document.getElementById('repModalStatus');
     statusEl.textContent = st;
     statusEl.className   = 'rep-status-pill ' + (st==='Completed'?'completed':'on-going');
-    document.getElementById('repModalLocation').textContent  = data.location     || '—';
+    document.getElementById('repModalLocation').innerHTML =
+        (data.location ? data.location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—')
+        + makeDistrictBadge(data.district || '');
     document.getElementById('repModalIssue').textContent     = data.issue        || '—';
     // Hide engineer field when logged-in user is an engineer
     const engField = document.getElementById('repEngField');

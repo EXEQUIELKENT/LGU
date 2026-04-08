@@ -295,6 +295,26 @@ body {
     border-color: var(--accent-secondary);
     box-shadow: 0 0 0 3px rgba(55,98,200,.13);
 }
+
+/* Autofill — light mode: keep white background */
+.fbk-group input:-webkit-autofill,
+.fbk-group input:-webkit-autofill:hover,
+.fbk-group input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #000000;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Autofill — dark mode: solid opaque dark background (rgba is stripped by browsers) */
+[data-theme="dark"] .fbk-group input:-webkit-autofill,
+[data-theme="dark"] .fbk-group input:-webkit-autofill:hover,
+[data-theme="dark"] .fbk-group input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0px 1000px #282828 inset;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: #ffffff;
+}
+
 .fbk-group textarea { resize: vertical; min-height: 100px; }
 
 /* ── Half-star rating ── */

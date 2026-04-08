@@ -104,7 +104,7 @@ $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) D
 
 $sql = "SELECT
     r.req_id, r.infrastructure, r.location, r.issue, r.approval_status,
-    r.created_at, r.name, r.contact_number, r.coordinates, r.email,
+    r.created_at, r.name, r.contact_number, r.coordinates, r.email, r.district,
     res.res_id, res.status AS resolution_status,
     rp.rep_id,
     rp.engineer_id,
@@ -381,6 +381,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 .table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(55,98,200,.30); border-radius: 3px; }
 [data-theme="dark"] .table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(95,140,255,.35); }
 .table-scroll-wrap table { min-width: 760px; }
+.table-card {
     background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px;
     box-shadow: 0 6px 20px var(--shadow-color); transition: .2s;
@@ -390,7 +391,7 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 }
 .table-card table { color: var(--text-primary); }
 .table-card th    { color: #fff; }
-.table-card td    { color: var(--text-primax`ry); }
+.table-card td    { color: var(--text-primary); }
 
 .req-title-row {
     display: flex; align-items: center;
@@ -930,6 +931,115 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .swipe-indicator { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.65); color: #fff; padding: 6px 14px; font-size: 13px; border-radius: 20px; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity .4s ease; z-index: 9002; }
 
 /* ═══════════════════════════════════════════════════════
+   DISTRICT BADGE — redesigned geo-tag pill
+   ======================================================= */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 9px;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.5;
+    position: relative;
+    cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .18s ease,
+                filter .18s ease;
+    /* entrance pop */
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity: 0; transform: scale(.7) translateY(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.district-badge:hover {
+    transform: translateY(-2px) scale(1.05);
+    filter: brightness(1.08);
+}
+
+/* Icon — use a filled location-dot for a geo feel */
+.district-badge i {
+    font-size: 10px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.18));
+}
+
+/* ── Per-district gradient palette ── */
+.district-badge.d1 {
+    background: linear-gradient(135deg, #3762c8 0%, #5b8aff 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(55,98,200,.40), 0 0 0 2px rgba(55,98,200,.15);
+}
+.district-badge.d2 {
+    background: linear-gradient(135deg, #1a7a42 0%, #34c774 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(26,122,66,.40), 0 0 0 2px rgba(26,122,66,.15);
+}
+.district-badge.d3 {
+    background: linear-gradient(135deg, #b85c00 0%, #f59033 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(184,92,0,.40), 0 0 0 2px rgba(184,92,0,.15);
+}
+.district-badge.d4 {
+    background: linear-gradient(135deg, #ad1457 0%, #ec4899 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(173,20,87,.40), 0 0 0 2px rgba(173,20,87,.15);
+}
+.district-badge.d5 {
+    background: linear-gradient(135deg, #512da8 0%, #8b5cf6 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(81,45,168,.40), 0 0 0 2px rgba(81,45,168,.15);
+}
+.district-badge.d6 {
+    background: linear-gradient(135deg, #00607a 0%, #0ea5c9 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(0,96,122,.40), 0 0 0 2px rgba(0,96,122,.15);
+}
+.district-badge.d-other {
+    background: linear-gradient(135deg, #4b5563 0%, #9ca3af 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(75,85,99,.30), 0 0 0 2px rgba(75,85,99,.12);
+}
+
+/* ── Dark mode — bump up the glow, keep gradient ── */
+[data-theme="dark"] .district-badge.d1 {
+    background: linear-gradient(135deg, #2851b3 0%, #5b8aff 100%);
+    box-shadow: 0 2px 14px rgba(91,138,255,.50), 0 0 0 2px rgba(91,138,255,.22);
+}
+[data-theme="dark"] .district-badge.d2 {
+    background: linear-gradient(135deg, #156335 0%, #34c774 100%);
+    box-shadow: 0 2px 14px rgba(52,199,116,.50), 0 0 0 2px rgba(52,199,116,.22);
+}
+[data-theme="dark"] .district-badge.d3 {
+    background: linear-gradient(135deg, #a04f00 0%, #f59033 100%);
+    box-shadow: 0 2px 14px rgba(245,144,51,.50), 0 0 0 2px rgba(245,144,51,.22);
+}
+[data-theme="dark"] .district-badge.d4 {
+    background: linear-gradient(135deg, #9b1050 0%, #ec4899 100%);
+    box-shadow: 0 2px 14px rgba(236,72,153,.50), 0 0 0 2px rgba(236,72,153,.22);
+}
+[data-theme="dark"] .district-badge.d5 {
+    background: linear-gradient(135deg, #47259a 0%, #8b5cf6 100%);
+    box-shadow: 0 2px 14px rgba(139,92,246,.50), 0 0 0 2px rgba(139,92,246,.22);
+}
+[data-theme="dark"] .district-badge.d6 {
+    background: linear-gradient(135deg, #00526a 0%, #0ea5c9 100%);
+    box-shadow: 0 2px 14px rgba(14,165,201,.50), 0 0 0 2px rgba(14,165,201,.22);
+}
+[data-theme="dark"] .district-badge.d-other {
+    background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+    box-shadow: 0 2px 14px rgba(107,114,128,.40), 0 0 0 2px rgba(107,114,128,.18);
+}
+
+/* ======================================================
    REQUEST DETAIL MODAL (Requests view)
 ═══════════════════════════════════════════════════════ */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; z-index: 8000; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -2426,7 +2536,8 @@ tbody td {
                     data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
                     data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
                     data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
-                    data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
+                    data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
+                    data-district="<?= htmlspecialchars($row['district'] ?? '') ?>">
                     <td class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location']) ?></td>
@@ -2500,7 +2611,8 @@ tbody td {
             data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
             data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
             data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
-            data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>">
+            data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
+            data-district="<?= htmlspecialchars($row['district'] ?? '') ?>">
             <div><strong>Request ID:</strong> <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
             <div><strong>Infrastructure:</strong> <span class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
             <div><strong>Location:</strong> <span class="searchable"><?= htmlspecialchars($row['location']) ?></span></div>
@@ -3010,6 +3122,16 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════
 //  REQUESTS VIEW — DETAIL MODAL
 // ═══════════════════════════════════════════════════════
+function makeDistrictBadge(district) {
+    if (!district) return '';
+    const map = {
+        'district 1': 'd1', 'district 2': 'd2', 'district 3': 'd3',
+        'district 4': 'd4', 'district 5': 'd5', 'district 6': 'd6'
+    };
+    const cls = map[(district || '').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${district}</span>`;
+}
+
 function detailStatusClass(status) {
     if (!status) return 'unknown';
     const s = status.toLowerCase();
@@ -3128,7 +3250,10 @@ function openRequestDetail(button) {
     pill.textContent = `${STATUS_ICON[sc] || ''} ${status || 'Unknown'}`;
     pill.className   = `detail-status-pill ${sc}`;
 
-    document.getElementById('detailLocation').textContent    = location      || '—';
+    const detailDistrict = row.dataset.district || '';
+    document.getElementById('detailLocation').innerHTML =
+        (location ? location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—')
+        + makeDistrictBadge(detailDistrict);
     document.getElementById('detailCoordinates').textContent = row.dataset.coordinates || '—';
     document.getElementById('detailIssue').textContent       = issue         || '—';
     document.getElementById('detailDate').textContent        = date          || '—';
@@ -3224,7 +3349,9 @@ function openGisDetailModal(reqId) {
     pill.textContent = `${STATUS_ICON[sc] || ''} ${req.approval_status || 'Unknown'}`;
     pill.className   = `gis-status-pill ${sc}`;
 
-    document.getElementById('modalLocation').textContent    = req.location      || '—';
+    document.getElementById('modalLocation').innerHTML =
+        (req.location ? req.location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—')
+        + makeDistrictBadge(req.district || '');
     document.getElementById('modalCoordinates').textContent = req.coordinates   || '—';
     document.getElementById('modalIssue').textContent       = req.issue         || '—';
     document.getElementById('modalDate').textContent        = formatDate(req.created_at);

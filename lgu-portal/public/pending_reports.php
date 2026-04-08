@@ -461,7 +461,7 @@ $sql = "
         res.req_id, res.status AS resolution_status, res.res_note, res.admin_return_note, res.highlight_days,
         req.infrastructure, req.location, req.issue, req.approval_status,
         req.name AS requester_name, req.contact_number, req.coordinates,
-        req.email AS req_email,
+        req.email AS req_email, req.district,
         req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
@@ -578,6 +578,7 @@ foreach ($rows as $row) {
         'req_id'              => (int)($row['req_id'] ?? 0),
         'infrastructure'      => $row['infrastructure'] ?? '',
         'location'            => $row['location'] ?? '',
+        'district'            => $row['district'] ?? '',
         'issue'               => $row['issue'] ?? '',
         'res_note'            => $row['res_note'] ?? '',
         'admin_return_note'   => $row['admin_return_note'] ?? '',
@@ -1121,6 +1122,38 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-field { margin-bottom:13px; }
 .rep-field-label { font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px; }
 .rep-field-value { font-size:14px;color:var(--text-primary);line-height:1.55; }
+
+/* ── District badge (matches requests.php) ── */
+.district-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 11px 3px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; vertical-align: middle;
+    margin-left: 9px; white-space: nowrap; border: none;
+    line-height: 1.5; position: relative; cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease, filter .18s ease;
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity:0; transform:scale(.7) translateY(2px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+}
+.district-badge:hover { transform:translateY(-2px) scale(1.05); filter:brightness(1.08); }
+.district-badge i { font-size:10px; flex-shrink:0; filter:drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background:linear-gradient(135deg,#3762c8,#5b8aff); color:#fff; box-shadow:0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background:linear-gradient(135deg,#1a7a42,#34c774); color:#fff; box-shadow:0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background:linear-gradient(135deg,#b85c00,#f59033); color:#fff; box-shadow:0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background:linear-gradient(135deg,#ad1457,#ec4899); color:#fff; box-shadow:0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background:linear-gradient(135deg,#512da8,#8b5cf6); color:#fff; box-shadow:0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background:linear-gradient(135deg,#00607a,#0ea5c9); color:#fff; box-shadow:0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background:linear-gradient(135deg,#4b5563,#9ca3af); color:#fff; box-shadow:0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1 { background:linear-gradient(135deg,#2851b3,#5b8aff); box-shadow:0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2 { background:linear-gradient(135deg,#156335,#34c774); box-shadow:0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3 { background:linear-gradient(135deg,#a04f00,#f59033); box-shadow:0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4 { background:linear-gradient(135deg,#9b1050,#ec4899); box-shadow:0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5 { background:linear-gradient(135deg,#47259a,#8b5cf6); box-shadow:0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6 { background:linear-gradient(135deg,#00526a,#0ea5c9); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other { background:linear-gradient(135deg,#374151,#6b7280); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 .rep-divider { height:1px;background:var(--border-color);margin:14px 0; }
 .rep-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px 18px; }
 .rep-status-row { margin-bottom:12px; }
@@ -2650,7 +2683,9 @@ function openRepModal(repId) {
     const banner = document.getElementById('repAdminBanner');
     banner.style.display = (IS_ADMIN && isPendingCompletion) ? '' : 'none';
 
-    document.getElementById('repModalLocation').textContent = data.location || '—';
+    document.getElementById('repModalLocation').innerHTML =
+        (data.location ? data.location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—')
+        + makeDistrictBadge(data.district || '');
     document.getElementById('repModalIssue').textContent    = data.issue    || '—';
 
     const engField = document.getElementById('repEngField');
@@ -3215,6 +3250,15 @@ document.getElementById('repLightboxImg').addEventListener('touchend',e=>{repLbI
 document.getElementById('repLightboxImg').draggable=false;
 document.getElementById('repLightboxImg').addEventListener('dragstart',e=>e.preventDefault());
 
+function makeDistrictBadge(district) {
+    if (!district) return '';
+    const map = {
+        'district 1': 'd1', 'district 2': 'd2', 'district 3': 'd3',
+        'district 4': 'd4', 'district 5': 'd5', 'district 6': 'd6'
+    };
+    const cls = map[(district || '').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${district}</span>`;
+}
 function fmtDate(s){ if(!s)return'—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function priBadge(l){
