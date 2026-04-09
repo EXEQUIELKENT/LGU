@@ -714,6 +714,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     background: var(--bg-primary);
 }
 
+/* Autofill styling — light mode */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus,
+.input-box input:-webkit-autofill,
+.input-box input:-webkit-autofill:hover,
+.input-box input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #000000;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Autofill styling — dark mode */
+[data-theme="dark"] .form-group input:-webkit-autofill,
+[data-theme="dark"] .form-group input:-webkit-autofill:hover,
+[data-theme="dark"] .form-group input:-webkit-autofill:focus,
+[data-theme="dark"] .input-box input:-webkit-autofill,
+[data-theme="dark"] .input-box input:-webkit-autofill:hover,
+[data-theme="dark"] .input-box input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0px 1000px #282828 inset;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: #ffffff;
+}
+
 .password-strength {
     margin-top: 8px;
 }
@@ -819,6 +844,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     padding: 4px;
     color: var(--text-secondary);
     transition: color 0.3s ease;
+}
+
+/* Hide the browser's native password reveal button to prevent double eye icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+}
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
 }
 
 .password-toggle:hover {

@@ -1311,147 +1311,199 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 /* ── Report Status Tracker — shown in both view modals when a report exists ── */
 .report-status-section {
+    position: relative;
     margin: 0 0 14px 0;
-    padding: 13px 16px;
-    background: linear-gradient(135deg, rgba(55,98,200,.05), rgba(55,98,200,.02));
-    border: 1.5px solid rgba(55,98,200,.14);
-    border-radius: 12px;
+    padding: 14px 16px;
+    background: #eef3ff;
+    border: 1.5px solid #b8ccf5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(55,98,200,.10);
+}
+.report-status-section::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #3762c8 0%, #6690f5 100%);
+    border-radius: 14px 0 0 14px;
 }
 [data-theme="dark"] .report-status-section {
-    background: linear-gradient(135deg, rgba(95,140,255,.08), rgba(95,140,255,.04));
-    border-color: rgba(95,140,255,.2);
+    background: rgba(55,98,200,.07);
+    border-color: rgba(95,140,255,.22);
+}
+[data-theme="dark"] .report-status-section::before {
+    background: linear-gradient(180deg, #5f8cff 0%, #8ab4f8 100%);
 }
 .report-status-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
+    color: #3762c8;
     text-transform: uppercase;
-    letter-spacing: .07em;
-    margin-bottom: 8px;
+    letter-spacing: .10em;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: space-between;
+    margin-bottom: 11px;
 }
+[data-theme="dark"] .report-status-label { color: #8ab4f8; }
+.report-status-label i { font-size: 10px; margin-right: 4px; }
+/* Rep-ID chip repositioned inside the label row */
+.report-status-rep-link {
+    font-size: 11px;
+    font-weight: 700;
+    color: #3762c8;
+    background: rgba(55,98,200,.12);
+    border: 1px solid rgba(55,98,200,.28);
+    padding: 3px 9px;
+    border-radius: 8px;
+    letter-spacing: .01em;
+    opacity: 1;
+}
+[data-theme="dark"] .report-status-rep-link { background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.22); color: #94a3b8; }
 .report-status-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+    margin-bottom: 10px;
 }
+/* Status pill with animated dot */
 .report-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
+    gap: 7px;
+    padding: 5px 13px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: .01em;
     flex-shrink: 0;
 }
-.report-status-pill.rsp-none         { background:#f1f5f9;  color:#64748b;  border:1px solid #cbd5e1; }
-.report-status-pill.rsp-awaiting     { background:#fff7ed;  color:#9a3412;  border:1px solid #fdba74; }
-.report-status-pill.rsp-pending-acc  { background:#fef3c7;  color:#92400e;  border:1px solid #fcd34d; }
-.report-status-pill.rsp-pending-appr { background:#ede9fe;  color:#4c1d95;  border:1px solid #c4b5fd; }
-.report-status-pill.rsp-in-progress  { background:#fff8e1;  color:#f57f17;  border:1px solid rgba(245,127,23,.3); }
-.report-status-pill.rsp-scheduled    { background:#e3f2fd;  color:#1565c0;  border:1px solid rgba(21,101,192,.3); }
-.report-status-pill.rsp-pending-comp { background:#fef9c3;  color:#713f12;  border:1px solid #fde047; }
-.report-status-pill.rsp-completed    { background:#e8f5e9;  color:#2e7d32;  border:1px solid rgba(46,125,50,.3); }
-.report-status-pill.rsp-cancelled    { background:#fee2e2;  color:#7f1d1d;  border:1px solid #fca5a5; }
-.report-status-pill.rsp-delayed      { background:#ffebee;  color:#c62828;  border:1px solid rgba(198,40,40,.3); }
-[data-theme="dark"] .report-status-pill.rsp-none         { background:rgba(100,116,139,.18); color:#94a3b8; border-color:rgba(100,116,139,.3); }
-[data-theme="dark"] .report-status-pill.rsp-awaiting     { background:rgba(251,146,60,.12);  color:#fb923c; border-color:rgba(251,146,60,.3); }
-[data-theme="dark"] .report-status-pill.rsp-pending-acc  { background:rgba(252,211,77,.12);  color:#fbbf24; border-color:rgba(252,211,77,.3); }
-[data-theme="dark"] .report-status-pill.rsp-pending-appr { background:rgba(167,139,250,.14); color:#a78bfa; border-color:rgba(167,139,250,.3); }
-[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(245,158,11,.18);  color:#fdd835; border-color:rgba(253,216,53,.3); }
-[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(21,101,192,.2);   color:#90caf9; border-color:rgba(144,202,249,.3); }
-[data-theme="dark"] .report-status-pill.rsp-pending-comp { background:rgba(250,204,21,.12);  color:#facc15; border-color:rgba(250,204,21,.3); }
-[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(76,175,80,.2);    color:#81c784; border-color:rgba(129,199,132,.3); }
-[data-theme="dark"] .report-status-pill.rsp-cancelled    { background:rgba(248,113,113,.12); color:#f87171; border-color:rgba(248,113,113,.3); }
-[data-theme="dark"] .report-status-pill.rsp-delayed      { background:rgba(244,67,54,.2);    color:#e57373; border-color:rgba(229,115,115,.3); }
-.report-status-rep-link {
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    opacity: .75;
+.report-status-pill::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
+.report-status-pill.rsp-none         { background:#f1f5f9;  color:#475569;  border:1px solid #e2e8f0; }
+.report-status-pill.rsp-none::before { background:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.25); }
+.report-status-pill.rsp-awaiting     { background:#fff7ed;  color:#9a3412;  border:1px solid rgba(253,186,116,.4); }
+.report-status-pill.rsp-awaiting::before { background:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,.2); }
+.report-status-pill.rsp-pending-acc  { background:#fef3c7;  color:#92400e;  border:1px solid rgba(252,211,77,.5); }
+.report-status-pill.rsp-pending-acc::before { background:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.2); }
+.report-status-pill.rsp-pending-appr { background:#ede9fe;  color:#4c1d95;  border:1px solid rgba(196,181,253,.5); }
+.report-status-pill.rsp-pending-appr::before { background:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.2); }
+.report-status-pill.rsp-in-progress  { background:#fff8e1;  color:#b45309;  border:1px solid rgba(245,127,23,.3); }
+.report-status-pill.rsp-in-progress::before { background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2); animation:rspPulseDot 1.4s ease infinite; }
+.report-status-pill.rsp-scheduled    { background:#e3f2fd;  color:#1565c0;  border:1px solid rgba(21,101,192,.25); }
+.report-status-pill.rsp-scheduled::before { background:#1565c0; box-shadow:0 0 0 3px rgba(21,101,192,.2); }
+.report-status-pill.rsp-pending-comp { background:#fef9c3;  color:#713f12;  border:1px solid rgba(253,224,71,.5); }
+.report-status-pill.rsp-pending-comp::before { background:#ca8a04; box-shadow:0 0 0 3px rgba(202,138,4,.2); }
+.report-status-pill.rsp-completed    { background:#e8f5e9;  color:#2e7d32;  border:1px solid rgba(46,125,50,.25); }
+.report-status-pill.rsp-completed::before { background:#2e7d32; box-shadow:0 0 0 3px rgba(46,125,50,.2); }
+.report-status-pill.rsp-cancelled    { background:#fee2e2;  color:#7f1d1d;  border:1px solid rgba(252,165,165,.5); }
+.report-status-pill.rsp-cancelled::before { background:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.2); }
+.report-status-pill.rsp-delayed      { background:#ffebee;  color:#c62828;  border:1px solid rgba(198,40,40,.25); }
+.report-status-pill.rsp-delayed::before { background:#c62828; box-shadow:0 0 0 3px rgba(198,40,40,.2); }
+@keyframes rspPulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(.75)} }
+[data-theme="dark"] .report-status-pill.rsp-none         { background:rgba(100,116,139,.16); color:#94a3b8; border-color:rgba(100,116,139,.28); }
+[data-theme="dark"] .report-status-pill.rsp-awaiting     { background:rgba(251,146,60,.12);  color:#fb923c; border-color:rgba(251,146,60,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-acc  { background:rgba(252,211,77,.10);  color:#fbbf24; border-color:rgba(252,211,77,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-appr { background:rgba(167,139,250,.13); color:#a78bfa; border-color:rgba(167,139,250,.28); }
+[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(245,158,11,.15);  color:#fbbf24; border-color:rgba(245,158,11,.28); }
+[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(21,101,192,.18);  color:#93c5fd; border-color:rgba(147,197,253,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-comp { background:rgba(250,204,21,.10);  color:#facc15; border-color:rgba(250,204,21,.28); }
+[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(76,175,80,.18);   color:#86efac; border-color:rgba(134,239,172,.28); }
+[data-theme="dark"] .report-status-pill.rsp-cancelled    { background:rgba(248,113,113,.11); color:#f87171; border-color:rgba(248,113,113,.28); }
+[data-theme="dark"] .report-status-pill.rsp-delayed      { background:rgba(244,67,54,.18);   color:#fca5a5; border-color:rgba(252,165,165,.28); }
+/* Engineer row */
 .report-status-eng {
-    font-size: 11.5px;
-    color: var(--text-secondary);
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
-    flex-basis: 100%;
-    margin-top: 2px;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e3a8a;
+    padding: 6px 10px;
+    background: rgba(55,98,200,.12);
+    border-radius: 8px;
+    border: 1px solid rgba(55,98,200,.28);
+    margin-bottom: 10px;
+    width: fit-content;
+    max-width: 100%;
 }
+.report-status-eng::before {
+    display: none;
+}
+.report-status-eng i { display: none; }
+.eng-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3762c8, #6690f5);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+[data-theme="dark"] .report-status-eng { background: rgba(55,98,200,.12); border-color: rgba(95,140,255,.18); color: #93c5fd; }
+[data-theme="dark"] .eng-avatar { background: linear-gradient(135deg, #2851b3, #5f8cff); }
 
 /* ── View Report redirect button ─────────────────────────────────────────── */
-/* ── Redesigned View Report redirect button ─────────────────────────────── */
 .btn-view-report {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-top: 12px;
-    padding: 9px 18px 9px 14px;
-    background: linear-gradient(135deg, #0e9f82, #0b8a70);
+    padding: 9px 16px 9px 12px;
+    background: #0e9f82;
     color: #fff;
     border: none;
-    border-radius: 50px;                          /* pill shape */
+    border-radius: 10px;
     font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
-    transition: background .2s ease, transform .15s ease,
-                box-shadow .2s ease, letter-spacing .15s ease;
-    box-shadow: 0 3px 12px rgba(14,159,130,.38), 0 1px 3px rgba(0,0,0,.08);
-    letter-spacing: .02em;
+    transition: background .18s ease, transform .15s ease;
     font-family: inherit;
-    position: relative;
-    overflow: hidden;
     white-space: nowrap;
-}
-/* left accent stripe */
-.btn-view-report::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-    background: rgba(255,255,255,.3);
-    border-radius: 50px 0 0 50px;
+    width: fit-content;
+    align-self: flex-start;
+    box-sizing: border-box;
+    letter-spacing: .01em;
 }
 .btn-view-report .bvr-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px; height: 20px;
-    background: rgba(255,255,255,.22);
-    border-radius: 50%;
-    font-size: 10px;
+    width: 22px; height: 22px;
+    background: rgba(255,255,255,.2);
+    border-radius: 6px;
+    font-size: 11px;
     flex-shrink: 0;
 }
 .btn-view-report .bvr-arrow {
-    font-size: 10px;
+    font-size: 11px;
     opacity: .8;
     transition: transform .18s ease;
     flex-shrink: 0;
+    margin-left: auto;
 }
 .btn-view-report:hover {
-    background: linear-gradient(135deg, #0b8a70, #087a62);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(14,159,130,.48), 0 2px 6px rgba(0,0,0,.1);
+    background: #0b8a70;
+    transform: translateY(-1px);
     color: #fff;
     text-decoration: none;
-    letter-spacing: .04em;
 }
 .btn-view-report:hover .bvr-arrow { transform: translateX(3px); }
-.btn-view-report:active { transform: scale(.96) translateY(0); }
-[data-theme="dark"] .btn-view-report {
-    background: linear-gradient(135deg, #12b896, #0e9f82);
-    box-shadow: 0 3px 14px rgba(14,159,130,.5), 0 1px 4px rgba(0,0,0,.22);
-}
-[data-theme="dark"] .btn-view-report:hover {
-    background: linear-gradient(135deg, #0e9f82, #0b8a70);
-    box-shadow: 0 6px 22px rgba(14,159,130,.60);
-}
+.btn-view-report:active { transform: scale(.97) translateY(0); }
+[data-theme="dark"] .btn-view-report { background: #12b896; }
+[data-theme="dark"] .btn-view-report:hover { background: #0e9f82; }
 
 /* ─── Validate confirm — role pill ─────────────────────────────────────── */
 .validate-role-pill {
@@ -2686,13 +2738,16 @@ tbody td {
             <div class="detail-status-row"><span class="detail-status-pill" id="detailStatus"></span></div>
             <!-- Live Report Status (visible when a report has been created for this request) -->
             <div class="report-status-section" id="detailReportStatusSection" style="display:none;">
-                <div class="report-status-label"><i class="fas fa-clipboard-list" style="font-size:10px;"></i> Report Status</div>
-                <div class="report-status-row">
-                    <span class="report-status-pill" id="detailReportStatusPill"></span>
+                <div class="report-status-label">
+                    <span><i class="fas fa-clipboard-list"></i> Report Status</span>
                     <span class="report-status-rep-link" id="detailRepIdBadge"></span>
                 </div>
+                <div class="report-status-row">
+                    <span class="report-status-pill" id="detailReportStatusPill"></span>
+                </div>
                 <div class="report-status-eng" id="detailReportEngineer" style="display:none;">
-                    <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="detailReportEngineerName"></span>
+                    <span class="eng-avatar" id="detailEngAvatar"></span>
+                    <span id="detailReportEngineerName"></span>
                 </div>
                 <a id="detailViewReportBtn" class="btn-view-report" href="#" target="_self" style="display:none;">
                     <span class="bvr-icon"><i class="fas fa-file-alt"></i></span>
@@ -2741,13 +2796,16 @@ tbody td {
             <div class="gis-modal-status-row"><span class="gis-status-pill" id="modalStatusPill"></span></div>
             <!-- Live Report Status -->
             <div class="report-status-section" id="gisReportStatusSection" style="display:none;">
-                <div class="report-status-label"><i class="fas fa-clipboard-list" style="font-size:10px;"></i> Report Status</div>
-                <div class="report-status-row">
-                    <span class="report-status-pill" id="gisReportStatusPill"></span>
+                <div class="report-status-label">
+                    <span><i class="fas fa-clipboard-list"></i> Report Status</span>
                     <span class="report-status-rep-link" id="gisRepIdBadge"></span>
                 </div>
+                <div class="report-status-row">
+                    <span class="report-status-pill" id="gisReportStatusPill"></span>
+                </div>
                 <div class="report-status-eng" id="gisReportEngineer" style="display:none;">
-                    <i class="fas fa-hard-hat" style="font-size:10px;"></i> <span id="gisReportEngineerName"></span>
+                    <span class="eng-avatar" id="gisEngAvatar"></span>
+                    <span id="gisReportEngineerName"></span>
                 </div>
                 <a id="gisViewReportBtn" class="btn-view-report" href="#" target="_self" style="display:none;">
                     <span class="bvr-icon"><i class="fas fa-file-alt"></i></span>
@@ -3196,6 +3254,15 @@ function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId,
     const engName = document.getElementById(engNameId);
     if (engWrap && engineerName && engineerName.trim()) {
         engName.textContent  = engineerName;
+        // Set initials in avatar span (e.g. "Exequiel Bartolome" → "EB")
+        const avatarEl = engWrap.querySelector('.eng-avatar');
+        if (avatarEl) {
+            const parts = engineerName.trim().split(/\s+/);
+            const initials = parts.length >= 2
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                : parts[0].slice(0, 2).toUpperCase();
+            avatarEl.textContent = initials;
+        }
         engWrap.style.display = '';
     } else if (engWrap) {
         engWrap.style.display = 'none';
