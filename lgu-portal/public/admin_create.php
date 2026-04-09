@@ -1365,9 +1365,25 @@ input:-webkit-autofill:focus {
     background: #1e1e24;
     box-shadow: 0 10px 28px rgba(0,0,0,.45);
 }
+.prof-combobox-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.prof-cb-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    opacity: .55;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1;
+}
 .prof-combobox-search {
     width: 100%;
-    padding: 9px 13px;
+    padding: 9px 13px 9px 32px;
     border: none;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -1672,12 +1688,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                         <span class="prof-combobox-arrow">▾</span>
                     </div>
                     <div class="prof-combobox-dropdown" id="cbRoleDropdown">
-                        <input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">
+                        <div class="prof-combobox-search-wrap">
+                            <i class="fas fa-search prof-cb-search-icon"></i>
+                            <input class="prof-combobox-search" type="text" placeholder="Search…" autocomplete="off">
+                        </div>
                         <div class="prof-combobox-list">
-                            <div class="prof-combobox-option<?= $role === 'Manager'      ? ' selected-opt' : '' ?>" data-value="Manager">Manager</div>
-                            <div class="prof-combobox-option<?= $role === 'Engineer'     ? ' selected-opt' : '' ?>" data-value="Engineer">Engineer</div>
-                            <div class="prof-combobox-option<?= $role === 'Office Staff' ? ' selected-opt' : '' ?>" data-value="Office Staff">Office Staff</div>
-                            <div class="prof-combobox-option<?= $role === 'Admin'        ? ' selected-opt' : '' ?>" data-value="Admin">Admin</div>
+                            <div class="prof-combobox-option<?= $role === 'Manager'      ? ' selected-opt' : '' ?>" data-value="Manager"><i class="fas fa-user-tie" style="width:16px;opacity:.75;"></i> Manager</div>
+                            <div class="prof-combobox-option<?= $role === 'Engineer'     ? ' selected-opt' : '' ?>" data-value="Engineer"><i class="fas fa-hard-hat" style="width:16px;opacity:.75;"></i> Engineer</div>
+                            <div class="prof-combobox-option<?= $role === 'Office Staff' ? ' selected-opt' : '' ?>" data-value="Office Staff"><i class="fas fa-user-clock" style="width:16px;opacity:.75;"></i> Office Staff</div>
+                            <div class="prof-combobox-option<?= $role === 'Admin'        ? ' selected-opt' : '' ?>" data-value="Admin"><i class="fas fa-user-shield" style="width:16px;opacity:.75;"></i> Admin</div>
                         </div>
                     </div>
                 </div>
@@ -1981,13 +2000,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
             var opt = e.target.closest('.prof-combobox-option');
             if (!opt) return;
             e.preventDefault();
-            selectOption(opt.dataset.value, opt.textContent);
+            selectOption(opt.dataset.value, opt.dataset.value);
         });
         searchEl.addEventListener('keydown', function(e) {
             var vis = getVisible();
             if (e.key === 'ArrowDown')    { e.preventDefault(); highlighted = Math.min(highlighted+1, vis.length-1); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); highlighted = Math.max(highlighted-1, 0); }
-            else if (e.key === 'Enter')   { e.preventDefault(); if (highlighted>=0&&vis[highlighted]) selectOption(vis[highlighted].dataset.value, vis[highlighted].textContent); return; }
+            else if (e.key === 'Enter')   { e.preventDefault(); if (highlighted>=0&&vis[highlighted]) selectOption(vis[highlighted].dataset.value, vis[highlighted].dataset.value); return; }
             else if (e.key === 'Escape')  { closeDropdown(); return; }
             vis.forEach(function(o,i){ o.classList.toggle('highlighted', i===highlighted); });
             if (vis[highlighted]) vis[highlighted].scrollIntoView({ block:'nearest' });
