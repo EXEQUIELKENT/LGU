@@ -509,4 +509,112 @@
         padding: 13px 0 !important;
         font-size: 14px !important;
     }
+
+    /* ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+       MOBILE COLLAPSED OVERRIDES
+       The sidebar on mobile is a full-width overlay —
+       the desktop .collapsed (icon-only) state must be
+       completely neutralised so labels are always shown.
+    ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── */
+
+    /* Restore nav links to full expanded appearance */
+    .sidebar-nav.collapsed .nav-link {
+        justify-content: flex-start !important;
+        padding: 12px 20px !important;
+    }
+    .sidebar-nav.collapsed .nav-link:hover {
+        transform: translateX(8px) scale(1.02) !important;
+    }
+
+    /* Show all text labels */
+    .sidebar-nav.collapsed .nav-link span:last-child {
+        display: inline !important;
+    }
+
+    /* Restore nav-list padding */
+    .sidebar-nav.collapsed .nav-list {
+        padding: 0 15px !important;
+    }
+
+    /* Restore site logo to full size */
+    .sidebar-nav.collapsed .site-logo {
+        margin-left: 25px !important;
+        margin-right: 25px !important;
+        width: auto !important;
+        margin-bottom: 20px !important;
+    }
+    .sidebar-nav.collapsed .site-logo img {
+        width: 120px !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    .sidebar-nav.collapsed .sidebar-divider.logo-divider {
+        opacity: 1 !important;
+        width: calc(100% - 50px) !important;
+        margin: 18px 25px 0 25px !important;
+    }
+    .sidebar-nav.collapsed .sidebar-divider {
+        width: calc(100% - 50px) !important;
+        margin: 20px 25px 0 25px !important;
+    }
+
+    /* Restore Reports dropdown arrow */
+    .sidebar-nav.collapsed .nav-arrow {
+        display: inline-flex !important;
+    }
+
+    /* Restore Reports toggle label */
+    .sidebar-nav.collapsed .nav-dropdown-toggle {
+        justify-content: flex-start !important;
+    }
+    .sidebar-nav.collapsed .nav-dropdown-toggle span {
+        display: inline !important;
+    }
+
+    /* Restore sub-list links to full expanded appearance */
+    .sidebar-nav.collapsed .nav-sub-link {
+        justify-content: flex-start !important;
+        padding: 11px 14px 11px 30px !important;
+        gap: 10px !important;
+        transform: none !important;
+    }
+    .sidebar-nav.collapsed .nav-sub-link span {
+        display: inline !important;
+    }
+    .sidebar-nav.collapsed .nav-sub-link::before {
+        display: block !important;
+    }
+    .sidebar-nav.collapsed .nav-sub-link i {
+        font-size: 12px !important;
+        width: 14px !important;
+        margin: 0 !important;
+    }
+    .sidebar-nav.collapsed .nav-sub-link:hover {
+        transform: translateX(4px) !important;
+    }
+
+    /* Show username label */
+    .sidebar-nav.collapsed .user-welcome {
+        display: block !important;
+    }
+
+    /* Restore logout button to full-width label+icon style */
+    .sidebar-nav.collapsed .logout-btn {
+        width: 160px !important;
+        padding: 13px 18px !important;
+        gap: 8px !important;
+        border-radius: 8px !important;
+        justify-content: center !important;
+    }
+    .sidebar-nav.collapsed .logout-btn .logout-label {
+        display: inline !important;
+    }
+    .sidebar-nav.collapsed .logout-btn::before {
+        display: none !important;
+        content: none !important;
+    }
+    .sidebar-nav.collapsed .logout-btn i {
+        font-size: 14px !important;
+        margin: 0 !important;
+    }
 }

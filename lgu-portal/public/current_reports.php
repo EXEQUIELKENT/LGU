@@ -1476,7 +1476,9 @@ tr.notif-highlight > td:first-child {
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
-    .sidebar-profile-btn { position: absolute; top: 58px; left: 25px; width: 45px; height: 47px; }
+    .sidebar-top { position: relative; padding-top: 30px; }
+    .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; width: 45px; height: 47px; }
+    .site-logo { margin: 10px auto 20px auto; text-align: center; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; padding-top: 90px; height: auto; min-height: 100vh; overflow-y: auto; margin: 0; }
     .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
