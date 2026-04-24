@@ -1,19 +1,11 @@
 <?php
 /**
- * InfraGovServices Chatbot Backend v4.0
+ * InfraGovServices Chatbot Backend v5.0
  * ─────────────────────────────────────────────────────────────
- * Improvements over v3.1:
- *  • Expanded knowledge base — 18 intents (was 8), covering status, urgency,
- *    barangays, GIS map, evidence tips, maintenance schedules, chatbot help, etc.
- *  • Smarter intent detection — phrase matching + weighted scoring + minimum threshold
- *  • Conversation memory — last 8 turns sent to Claude (was 4), topic extraction
- *    from history for follow-up awareness
- *  • Follow-up detection — "what about", "also", "explain more", etc. route through
- *    Claude or KB intelligently instead of always hitting fallback
- *  • Stronger Claude system prompt — persona, scope, tone, examples, anti-hallucination
- *  • Better context injection — current topic inferred from history is sent to Claude
- *  • Graceful degradation — richer local fallback when no API key
- *  • Sanitization hardened — limits trimmed per field
+ * Changes from v4.0:
+ *  • Removed image recognition / vision API entirely (no image upload, no screenshot analysis)
+ *  • Text-only chatbot — all image-related parsing, routing, and functions removed
+ *  • All other improvements from v4.0 retained
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -37,9 +29,6 @@ $userMessage = mb_substr(strip_tags(trim($data['message'] ?? '')), 0, 1200);
 $context     = strtolower(trim($data['context']  ?? 'general'));
 $lang        = strtolower(trim($data['lang']      ?? 'en'));
 $history     = is_array($data['history'] ?? null) ? $data['history'] : [];
-$imageBase64 = $data['image']    ?? null;
-$aiResult    = $data['aiResult'] ?? null;
-$images      = is_array($data['images'] ?? null) ? $data['images'] : [];
 
 // Normalise context
 $allowedContexts = ['home','reports','request','about','privacy','terms','feedback','general'];
@@ -78,7 +67,6 @@ function extractConversationTopic(array $history): string {
     $topicMap = [
         'reporting / submission'    => ['report','submit','form','issue','damage','request','concern'],
         'tracking / status'         => ['track','status','pending','approved','rejected','progress','update'],
-        'evidence / photos'         => ['photo','image','evidence','upload','picture','screenshot','camera'],
         'location / map'            => ['location','map','gis','coordinates','barangay','address','pin'],
         'privacy policy'            => ['privacy','data','personal','consent','rights','dpo','ra 10173'],
         'terms and conditions'      => ['terms','conditions','agreement','accept'],
@@ -121,30 +109,6 @@ function isFollowUp(string $msg): bool {
         if (mb_strpos($lower, $p) !== false) return true;
     }
     return false;
-}
-
-/**
- * Returns true for vague questions that should NOT trigger intent lookup
- * when they accompany an image (e.g. "what is this", "ano ito", "explain").
- */
-function isGenericQuestion(string $msg): bool {
-    $lower = mb_strtolower(trim($msg));
-    $genericPhrases = [
-        'what is this','what\'s this','what is it','what is that',
-        'what am i looking at','explain this','explain','describe this',
-        'can you explain','tell me about this','what does this show',
-        'what does this mean','what do i see','whats this','what\'s here',
-        'ano ito','ano ba ito','ano ang nakikita ko','ipaliwanag',
-        'ipaliwanag mo','ano ang ibig sabihin','narito','ano na ito',
-        'paano ito','i-explain','ano dito',
-        'i submitted screenshots of the website for analysis.',
-        'nagsumite ako ng mga screenshot ng website para sa pagsusuri.',
-        'nagsumite ako ng screenshot ng website para sa pagsusuri.',
-    ];
-    foreach ($genericPhrases as $phrase) {
-        if (mb_strpos($lower, mb_strtolower($phrase)) !== false) return true;
-    }
-    return mb_strlen($lower) <= 15;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -605,8 +569,7 @@ $KB = [
                 "📌 Include a wider context shot to show the surrounding area\n" .
                 "📌 Shoot in good lighting (daytime preferred)\n" .
                 "📌 Capture any hazard markings, water levels, or broken elements clearly\n\n" .
-                "**After upload:** Thumbnails appear with an ✕ to remove. At least 1 image is required before you can submit.\n\n" .
-                "💡 *The AI in the system analyzes your photos to help classify the severity and type of damage.*",
+                "**After upload:** Thumbnails appear with an ✕ to remove. At least 1 image is required before you can submit.",
         'tl' => "**Pag-upload ng mga Larawan bilang Ebidensya** 📸\n\n" .
                 "Sa Request Form, tinatanggap ng **Seksyon ng Ebidensya** ang hanggang **4 na larawan**.\n\n" .
                 "**Paano mag-upload:**\n" .
@@ -618,8 +581,7 @@ $KB = [
                 "📌 Kumuha rin ng mas malawak na kontekstong larawan\n" .
                 "📌 Mag-kuha sa magandang liwanag (mas mainam sa araw)\n" .
                 "📌 Ipakita ang antas ng tubig, sirang bahagi, o mga hadlang nang malinaw\n\n" .
-                "**Pagkatapos mag-upload:** Lalabas ang mga thumbnail na may ✕ para mag-alis. Kailangan ng hindi bababa sa 1 larawan.\n\n" .
-                "💡 *Sinusuri ng AI sa sistema ang iyong mga larawan para makatulong sa pag-uuri ng kalubhaan ng pinsala.*",
+                "**Pagkatapos mag-upload:** Lalabas ang mga thumbnail na may ✕ para mag-alis. Kailangan ng hindi bababa sa 1 larawan.",
     ],
 
     'urgency_severity' => [
@@ -1000,7 +962,7 @@ $KB = [
     'chatbot_help' => [
         'keywords' => [
             'chatbot','assistant','bot','chat','you','who are you','what can you do',
-            'help me','capabilities','features','voice','mic','microphone','screenshot',
+            'help me','capabilities','features','voice','mic','microphone',
             'ikaw','sino ka','ano magagawa mo','tulong','boses','mikropono',
         ],
         'phrases' => [
@@ -1014,7 +976,6 @@ $KB = [
                 "📍 **Guide you** through submitting a maintenance report step by step\n" .
                 "📊 **Explain** report statuses, infrastructure types, and maintenance schedules\n" .
                 "🔒 **Clarify** Privacy Policy and Terms and Conditions\n" .
-                "📸 **Analyze screenshots** — upload an image and I'll explain what I see\n" .
                 "🎙️ **Voice input** — click the 🎙️ mic button to speak instead of type\n" .
                 "🌐 **Bilingual** — I respond in English or Filipino based on your language setting\n\n" .
                 "**How to clear chat history:** Click the 🗑️ trash icon in the chat header.\n\n" .
@@ -1025,7 +986,6 @@ $KB = [
                 "📍 **Gabayan ka** sa pag-submit ng ulat nang hakbang-hakbang\n" .
                 "📊 **Ipaliwanag** ang mga status ng ulat, uri ng imprastraktura, at schedule\n" .
                 "🔒 **Linawin** ang Privacy Policy at Terms and Conditions\n" .
-                "📸 **Suriin ang mga screenshot** — mag-upload ng larawan at ipapaliwanag ko\n" .
                 "🎙️ **Voice input** — i-click ang 🎙️ mic para magsalita kaysa mag-type\n" .
                 "🌐 **Bilingual** — sumasagot ako sa English o Filipino\n\n" .
                 "**Paano mag-clear ng chat history:** I-click ang 🗑️ trash icon sa chat header.\n\n" .
@@ -1087,7 +1047,6 @@ $KB = [
                 "💬 **This Chatbot (Claude AI):**\n" .
                 "• Powered by Anthropic's Claude language model\n" .
                 "• Understands natural language questions in English and Filipino\n" .
-                "• Can analyze screenshots you upload to explain what's on screen\n" .
                 "• Provides accurate, context-aware guidance specific to the portal\n\n" .
                 "⚠️ **Important:** AI recommendations are for **support only** — all final decisions are made by LGU staff.",
         'tl' => "**Mga Feature ng AI sa InfraGovServices** 🤖\n\n" .
@@ -1101,7 +1060,7 @@ $KB = [
                 "💬 **Ang Chatbot na Ito (Claude AI):**\n" .
                 "• Pinapagana ng language model ng Anthropic na si Claude\n" .
                 "• Nauunawaan ang natural na wika sa English at Filipino\n" .
-                "• Maaaring suriin ang mga screenshot na iyong ina-upload\n\n" .
+                "• Nagbibigay ng tumpak at konteksto-aware na gabay para sa portal\n\n" .
                 "⚠️ **Mahalaga:** Ang mga rekomendasyon ng AI ay para lamang sa **suporta** — ang mga pangwakas na desisyon ay ginagawa ng mga tauhan ng LGU.",
     ],
 
@@ -1319,7 +1278,6 @@ function getGreetingResponse(string $context, bool $isTagalog, array $pageContex
                "• 💬 Pagsusumite ng feedback, rating, at mungkahi\n" .
                "• 🗺️ Paggamit ng mapa at pagtakda ng lokasyon\n" .
                "• 🔒 Mga tanong sa Privacy Policy at Terms\n" .
-               "• 📸 Pagsusuri ng mga screenshot na iyong ia-upload\n" .
                "• 🔧 Pag-navigate at paggamit ng sistema\n\n" .
                "Paano kita matutulungan ngayon? 😊";
     } else {
@@ -1330,7 +1288,6 @@ function getGreetingResponse(string $context, bool $isTagalog, array $pageContex
                "• 💬 Submitting feedback, ratings, and suggestions\n" .
                "• 🗺️ Using the map and setting your location\n" .
                "• 🔒 Privacy Policy & Terms of Service questions\n" .
-               "• 📸 Analyzing screenshots you upload\n" .
                "• 🔧 Navigating and using the system\n\n" .
                "How can I assist you today? 😊";
     }
@@ -1457,98 +1414,6 @@ function callClaudeText(
 }
 
 // ════════════════════════════════════════════════════════════
-//  CLAUDE API — VISION  (screenshot / image analysis)
-// ════════════════════════════════════════════════════════════
-
-function callClaudeVision(
-    string $apiKey,
-    string $userMessage,
-    string $context,
-    string $lang,
-    array  $history,
-    string $imageBase64,
-    array  $pageStructure,
-    array  $pageContextInfo
-): ?string {
-
-    $pageStruct = $pageStructure[$context] ?? $pageStructure['general'];
-    $pageCtx    = $pageContextInfo[$context][$lang === 'tl' ? 'tl' : 'en'] ?? '';
-
-    $systemPrompt = "You are **CIMMS Assistant** — the AI chatbot for InfraGovServices (CIMMS) of Quezon City, Philippines.
-
-## Your task for this message
-The user has uploaded an image. Analyze it and respond helpfully.
-
-**If it is a screenshot of the InfraGovServices portal:**
-- Identify the exact page/section/element shown (use the page structure reference below)
-- Start with: '📸 I can see [specific page/element]...'
-- Describe what you see, then provide actionable guidance
-- Mention specific button names, field labels, or status badges visible
-
-**If it is a photo of an infrastructure issue (damage, road, drainage, etc.):**
-- Analyze the visible damage or issue
-- Identify the likely infrastructure type (road, drainage, electrical, etc.)
-- Suggest the appropriate category in the Request Form
-- Offer guidance on what to include in the Issue Description field
-- Remind them to use this photo as evidence when submitting the report
-
-**If it is unclear what the image shows:**
-- Describe what you can see
-- Ask the user to clarify what they need help with
-
-## Language: " . ($lang === 'tl' ? 'Filipino/Tagalog' : 'English') . "
-
-## Current page context
-- Detected page: {$context}
-- Context: {$pageCtx}
-
-## Page structure reference
-{$pageStruct}
-
-## Rules
-1. Be specific — mention actual visible text, colors, buttons, and UI components
-2. Never guess — if you can't determine what something is, say so
-3. Keep response under 300 words unless a detailed walkthrough is needed
-4. Always end with an offer to help further";
-
-    // Build history
-    $messages = [];
-    foreach (array_slice($history, -4) as $h) {
-        if (!empty($h['text']) && !empty($h['type'])) {
-            $messages[] = [
-                'role'    => ($h['type'] === 'user') ? 'user' : 'assistant',
-                'content' => mb_substr($h['text'], 0, 600),
-            ];
-        }
-    }
-
-    // Detect image media type
-    $mediaType = 'image/jpeg';
-    if (str_starts_with($imageBase64, 'data:image/png'))  $mediaType = 'image/png';
-    if (str_starts_with($imageBase64, 'data:image/gif'))  $mediaType = 'image/gif';
-    if (str_starts_with($imageBase64, 'data:image/webp')) $mediaType = 'image/webp';
-
-    // Strip data URI prefix
-    $base64Data = preg_replace('/^data:image\/[a-z]+;base64,/', '', $imageBase64);
-
-    $userContent = [
-        ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => $base64Data]],
-    ];
-
-    if (!empty($userMessage) && !isGenericQuestion($userMessage)) {
-        $userContent[] = ['type' => 'text', 'text' => $userMessage];
-    } else {
-        $userContent[] = ['type' => 'text', 'text' => $lang === 'tl'
-            ? 'Pakisuri ang larawang ito at ipaliwanag kung ano ang nakikita mo at kung paano ito naaayon sa InfraGovServices portal.'
-            : 'Please analyze this image and explain what you see, relating it to the InfraGovServices portal where relevant.'];
-    }
-
-    $messages[] = ['role' => 'user', 'content' => $userContent];
-
-    return claudeRequest($apiKey, $systemPrompt, $messages, 600);
-}
-
-// ════════════════════════════════════════════════════════════
 //  CLAUDE HTTP REQUEST
 // ════════════════════════════════════════════════════════════
 
@@ -1585,238 +1450,13 @@ function claudeRequest(string $apiKey, string $systemPrompt, array $messages, in
 }
 
 // ════════════════════════════════════════════════════════════
-//  FALLBACK IMAGE ANALYSIS (no Claude API key)
-// ════════════════════════════════════════════════════════════
-
-function fallbackImageAnalysis(string $context, bool $isTagalog, array $pageStructure, string $userMessage): string {
-
-    $responses = [
-        'home' => [
-            'en' => "📸 I can see a screenshot of the **Home page** of InfraGovServices.\n\n" .
-                    "**🔝 Navigation Bar (top):**\n" .
-                    "• Links: Home | Reports | Requests | About | Log in\n" .
-                    "• Right side: 🌐 Language toggle (EN/FIL) | 🌙 Dark mode | Digital clock\n\n" .
-                    "**📊 Stats Section (3 cards):**\n" .
-                    "• 🛠️ Completed Repairs | ⏳ On-Going Repairs | 📍 Pending Requests\n\n" .
-                    "**🚀 Hero Section:**\n" .
-                    "• 'Welcome to InfraGovServices' headline\n" .
-                    "• [Submit a Report] and [Learn More] buttons\n\n" .
-                    "**📋 How It Works (4 steps):**\n" .
-                    "Report → Review → Maintenance Scheduled → Issue Resolved\n\n" .
-                    "**Recent Maintenance Activity** — latest 10 records at the bottom\n\n" .
-                    "💡 Click **Requests** to submit a new report, or **Reports** to browse existing ones.",
-            'tl' => "📸 Nakikita ko ang screenshot ng **Home page** ng InfraGovServices.\n\n" .
-                    "**🔝 Navigation Bar (sa itaas):**\n" .
-                    "• Mga link: Home | Reports | Requests | About | Log in\n" .
-                    "• Kanan: 🌐 Language toggle | 🌙 Dark mode | Digital na orasan\n\n" .
-                    "**📊 Stats Section (3 cards):**\n" .
-                    "• 🛠️ Natapos na Pag-aayos | ⏳ Kasalukuyang Pag-aayos | 📍 Mga Nakabinbing Kahilingan\n\n" .
-                    "**🚀 Hero Section:**\n" .
-                    "• 'Welcome sa InfraGovServices' headline\n" .
-                    "• [Mag-ulat ng Isyu] at [Alamin Pa] buttons\n\n" .
-                    "💡 I-click ang **Requests** para mag-submit ng ulat, o **Reports** para mag-browse.",
-        ],
-        'reports' => [
-            'en' => "📸 I can see a screenshot of the **Reports page** of InfraGovServices.\n\n" .
-                    "**📊 Stats Row (top):**\n" .
-                    "• 🛠️ Repairs | ⏳ On-Going | 📍 Pending\n\n" .
-                    "**🔍 Search Bar:**\n" .
-                    "• Search by Date, Type, Location, Budget, or Status\n" .
-                    "• Matching text is highlighted in yellow\n\n" .
-                    "**📋 Reports Table (desktop):**\n" .
-                    "Columns: Sched # | Date | Type | Location | Budget | Status | Action\n\n" .
-                    "**Status badge colors:**\n" .
-                    "• 🟡 Pending | 🔵 In Progress | 🟢 Completed | 🔴 Delayed\n\n" .
-                    "**[View] button** — opens the Schedule Detail Modal with full record details\n\n" .
-                    "💡 Use the search bar to find specific reports — partial words work too (e.g., 'prog' finds 'In Progress').",
-            'tl' => "📸 Nakikita ko ang screenshot ng **Reports page** ng InfraGovServices.\n\n" .
-                    "**📊 Stats Row (sa itaas):**\n" .
-                    "• 🛠️ Mga Pag-aayos | ⏳ Kasalukuyan | 📍 Nakabinbin\n\n" .
-                    "**🔍 Search Bar:**\n" .
-                    "• Maghanap ayon sa Petsa, Uri, Lokasyon, Badyet, o Katayuan\n" .
-                    "• Ang nahanap na teksto ay naka-highlight sa dilaw\n\n" .
-                    "**📋 Talahanayan ng mga Ulat:**\n" .
-                    "Kolum: Sched # | Petsa | Uri | Lokasyon | Badyet | Katayuan | Aksyon\n\n" .
-                    "**[View] button** — nagbubukas ng Schedule Detail Modal na may kumpletong detalye\n\n" .
-                    "💡 Gamitin ang search bar para mahanap ang mga partikular na ulat.",
-        ],
-        'request' => [
-            'en' => "📸 I can see the **Request / Maintenance Request Form** page.\n\n" .
-                    "**Form fields guide:**\n\n" .
-                    "1️⃣ **Infrastructure Type *** — dropdown (Roads | Street Lights | Drainage | Public Facilities | Water Supply | Electrical | Other)\n" .
-                    "2️⃣ **Location *** — click to open the interactive map; drop a pin or use 📍 GPS; select barangay to zoom\n" .
-                    "3️⃣ **Name** (optional)\n" .
-                    "4️⃣ **Contact Number *** — 09XX-XXX-XXXX (11 digits starting with 09)\n" .
-                    "5️⃣ **Issue Description *** — describe the problem in detail\n" .
-                    "6️⃣ **Upload Images** — up to 4 photos; tap 📷 to capture on mobile\n" .
-                    "7️⃣ **Consent checkbox** — required\n" .
-                    "8️⃣ **[Submit Request]** button\n\n" .
-                    "⭐ Fields marked * are required. Need help with a specific field?",
-            'tl' => "📸 Nakikita ko ang **Request Form** page.\n\n" .
-                    "**Gabay sa mga field:**\n\n" .
-                    "1️⃣ **Uri ng Imprastraktura *** — dropdown\n" .
-                    "2️⃣ **Lokasyon *** — i-click para buksan ang mapa\n" .
-                    "3️⃣ **Pangalan** (opsyonal)\n" .
-                    "4️⃣ **Numero ng Kontak *** — 09XX-XXX-XXXX\n" .
-                    "5️⃣ **Paglalarawan ng Isyu *** — ilarawan nang detalyado\n" .
-                    "6️⃣ **Mag-upload ng Larawan** — hanggang 4, i-tap ang 📷 sa mobile\n" .
-                    "7️⃣ **Consent checkbox** — kailangan\n" .
-                    "8️⃣ **[Isumite ang Kahilingan]** button\n\n" .
-                    "⭐ Ang mga field na may * ay kailangan.",
-        ],
-        'privacy' => [
-            'en' => "📸 I can see the **Privacy Policy page** of InfraGovServices.\n\n" .
-                    "**Summary of sections:**\n\n" .
-                    "📋 **Data Collection** — names, credentials, location data, activity logs, images\n" .
-                    "⚖️ **Lawful Processing** — data collected only for declared, legitimate purposes\n" .
-                    "🔐 **Data Security** — encryption in transit and at rest\n" .
-                    "🛡️ **Your Rights (RA 10173):** Informed | Access | Correction | Object | Erasure\n" .
-                    "✅ **User Consent** — what you agree to by using the system\n" .
-                    "📞 **Contact DPO:** dpo@infragovservices.com | (02) 8988-4242\n" .
-                    "📅 Last Updated: February 2026\n\n" .
-                    "Do you have a specific question about a section of the Privacy Policy?",
-            'tl' => "📸 Nakikita ko ang **Privacy Policy page** ng InfraGovServices.\n\n" .
-                    "**Buod ng mga seksyon:**\n\n" .
-                    "📋 **Koleksyon ng Data** — mga pangalan, kredensyal, lokasyon, logs, mga larawan\n" .
-                    "🔐 **Seguridad ng Data** — encryption sa transmission at storage\n" .
-                    "🛡️ **Iyong Karapatan (RA 10173):** Malaman | Ma-access | Baguhin | Tumutol | Burahin\n" .
-                    "📞 **DPO:** dpo@infragovservices.com | (02) 8988-4242\n\n" .
-                    "May partikular ka bang tanong tungkol sa Privacy Policy?",
-        ],
-        'terms' => [
-            'en' => "📸 I can see the **Terms and Conditions page** of InfraGovServices.\n\n" .
-                    "**Summary of sections:**\n\n" .
-                    "📁 **Information Collection** — types of data collected\n" .
-                    "🎯 **Purpose** — operations, coordination, AI support, research\n" .
-                    "🔐 **Processing & Storage** — secure storage, retained only as needed\n" .
-                    "🚫 **Data Sharing** — not shared without consent (except when required by law)\n" .
-                    "⚖️ **Data Subject Rights** — Informed · Access · Correction · Object · Erasure\n" .
-                    "🤖 **AI Disclaimer** — AI recommendations are for decision support only, not replacing official authority\n" .
-                    "📧 **Contact:** admin@infragovservices.com | dpo@infragovservices.com\n" .
-                    "📅 Last Updated: February 2026\n\n" .
-                    "Which section would you like me to explain in more detail?",
-            'tl' => "📸 Nakikita ko ang **Terms and Conditions page** ng InfraGovServices.\n\n" .
-                    "**Buod ng mga seksyon:**\n\n" .
-                    "📁 **Koleksyon ng Impormasyon** — mga uri ng data\n" .
-                    "🎯 **Layunin** — operasyon, koordinasyon, AI support, pananaliksik\n" .
-                    "🚫 **Pagbabahagi ng Data** — hindi ibinabahagi nang walang pahintulot\n" .
-                    "⚖️ **Mga Karapatan:** Malaman · Ma-access · Baguhin · Tumutol · Burahin\n" .
-                    "🤖 **AI Disclaimer** — para sa suporta sa desisyon lamang\n\n" .
-                    "Aling seksyon ang nais mong ipaliwanag nang mas detalyado?",
-        ],
-        'about' => [
-            'en' => "📸 I can see the **About page** of InfraGovServices.\n\n" .
-                    "**Page covers:**\n\n" .
-                    "🏛️ **Transforming Infrastructure Management** — intro to CIMMS for Quezon City\n" .
-                    "✨ **Highlights (4 cards):** Easy Reporting | GPS Tracking | Real-Time Updates | Transparent Tracking\n" .
-                    "🎯 **Our Purpose** — 4 goals: efficiency, communication, faster response, transparency\n" .
-                    "📦 **What CIMMS Offers** — 5 features: reporting, tracking, coordination, secure access, dashboards\n" .
-                    "👥 **For QC Citizens** — exclusively for Quezon City residents\n" .
-                    "🌟 **Vision & Mission** — service excellence statements\n" .
-                    "💎 **Core Values:** Efficiency | Transparency | Community First | Security\n\n" .
-                    "Is there something specific about the system you'd like to know more about?",
-            'tl' => "📸 Nakikita ko ang **About page** ng InfraGovServices.\n\n" .
-                    "**Saklaw ng pahina:**\n\n" .
-                    "🏛️ **Pagbabago ng Pamamahala ng Imprastraktura** — intro sa CIMMS\n" .
-                    "✨ **Mga Highlight (4 cards):** Madaling Pag-uulat | GPS | Real-Time | Transparent\n" .
-                    "🎯 **Aming Layunin** — 4 layunin\n" .
-                    "🌟 **Pananaw at Misyon** — mga pahayag ng kahusayan\n" .
-                    "💎 **Mga Pangunahing Halaga:** Kahusayan | Transparency | Komunidad Muna | Seguridad\n\n" .
-                    "May nais ka pa bang malaman tungkol sa sistema?",
-        ],
-        'feedback' => [
-            'en' => "📸 I can see the **Feedback page** of InfraGovServices.\n\n" .
-                    "**Form sections guide:**\n\n" .
-                    "👤 **Your Information** (all optional):\n" .
-                    "• Full Name, Contact Number (09XX-XXX-XXXX), Email\n" .
-                    "• If you provide an email, the LGU will notify you on your feedback status\n\n" .
-                    "💬 **Feedback Details:**\n" .
-                    "• **Type** — ⚠️ Concern | 👍 Acknowledgement | 💡 Improvement | 📢 Complaint | ✏️ Suggestion\n" .
-                    "• **Feedback Title*** — required brief summary\n" .
-                    "• **Description*** — required full details\n" .
-                    "• **Star Rating*** — hover left/right half of a star for 0.5 values (0.5–5.0)\n\n" .
-                    "🏗️ **Infrastructure & Location** (optional):\n" .
-                    "• Infrastructure type dropdown (Roads, Drainage, Street Lights, etc.)\n" .
-                    "• Reference a completed report (#REP-XXX) — link to a finished repair\n" .
-                    "• Address / Location with interactive map picker\n\n" .
-                    "📸 **Photo Evidence** (optional, up to 5 photos, 5 MB each)\n\n" .
-                    "**[Submit Feedback]** → opens a confirmation modal before sending.\n\n" .
-                    "Would you like help filling in a specific section?",
-            'tl' => "📸 Nakikita ko ang **Feedback page** ng InfraGovServices.\n\n" .
-                    "**Gabay sa mga seksyon ng form:**\n\n" .
-                    "👤 **Iyong Impormasyon** (lahat ay opsyonal):\n" .
-                    "• Buong Pangalan, Numero ng Kontak, Email\n" .
-                    "• Kung magbibigay ka ng email, aabisuhan ka ng LGU sa status ng iyong feedback\n\n" .
-                    "💬 **Mga Detalye ng Feedback:**\n" .
-                    "• **Uri** — ⚠️ Concern | 👍 Acknowledgement | 💡 Improvement | 📢 Complaint | ✏️ Suggestion\n" .
-                    "• **Pamagat ng Feedback*** — kinakailangan\n" .
-                    "• **Paglalarawan*** — kinakailangan\n" .
-                    "• **Star Rating*** — i-hover ang kaliwa/kanang kalahati ng bituin para sa 0.5 na hakbang\n\n" .
-                    "🏗️ **Imprastraktura at Lokasyon** (opsyonal):\n" .
-                    "• Uri ng imprastraktura (Kalsada, Drainage, Mga Ilaw, atbp.)\n" .
-                    "• Sangguniang natapos na ulat (#REP-XXX)\n" .
-                    "• Address / Lokasyon gamit ang interactive na mapa\n\n" .
-                    "📸 **Mga Larawan bilang Ebidensya** (opsyonal, hanggang 5, 5 MB bawat isa)\n\n" .
-                    "**[Isumite ang Feedback]** → lalabas ang confirmation modal bago maipadala.\n\n" .
-                    "Gusto mo bang tulungan kita sa isang partikular na seksyon?",
-        ],
-        'general' => [
-            'en' => "📸 I can see a screenshot from the **InfraGovServices portal**.\n\n" .
-                    "To help you best, here's what I can assist with:\n\n" .
-                    "🔍 **If you see the Navigation Bar** — I can explain any menu item or button\n" .
-                    "📋 **If you see a form** — I can guide you through filling it out correctly\n" .
-                    "📊 **If you see reports/data** — I can explain what each field and status means\n" .
-                    "❌ **If you see an error** — describe the error message and I'll help troubleshoot\n" .
-                    "🗺️ **If you see the map** — I can help with location pinning and barangay selection\n\n" .
-                    "Please describe what you're seeing or what you're trying to do, and I'll give specific guidance!",
-            'tl' => "📸 Nakikita ko ang screenshot mula sa **portal ng InfraGovServices**.\n\n" .
-                    "Para mas matulungan kita:\n\n" .
-                    "🔍 **Kung nakikita mo ang Navigation Bar** — maaari kong ipaliwanag ang anumang item\n" .
-                    "📋 **Kung nakikita mo ang isang form** — maaari kitang gabayan sa tamang pagpuno\n" .
-                    "📊 **Kung nakikita mo ang mga ulat** — maaari kong ipaliwanag ang bawat field at status\n" .
-                    "❌ **Kung nakikita mo ang isang error** — ilarawan at tutulungan kita\n" .
-                    "🗺️ **Kung nakikita mo ang mapa** — maaari akong tumulong sa paglalagay ng pin\n\n" .
-                    "Mangyaring ilarawan kung ano ang nakikita mo o sinusubukan mong gawin!",
-        ],
-    ];
-
-    $base = ($responses[$context] ?? $responses['general'])[$isTagalog ? 'tl' : 'en'];
-
-    // Bridge specific (non-generic) user questions to the image analysis response
-    if (!empty($userMessage) && !isGenericQuestion($userMessage)) {
-        $questionBridge = $isTagalog
-            ? "\n\n---\n💬 **Tungkol sa iyong tanong:** \"" . htmlspecialchars($userMessage) . "\"\n\nMaaari kang mag-type ng mas detalyadong mensahe para masagot kita nang mas tumpak."
-            : "\n\n---\n💬 **Regarding your question:** \"" . htmlspecialchars($userMessage) . "\"\n\nFeel free to type more details so I can give you a more precise answer.";
-        $base .= $questionBridge;
-    }
-
-    return $base;
-}
-
-// ════════════════════════════════════════════════════════════
 //  MAIN ROUTING LOGIC
 // ════════════════════════════════════════════════════════════
 
 // Extract conversation topic from history (used in Claude prompt + fallback)
 $conversationTopic = extractConversationTopic($history);
 
-// ── 1. IMAGE PATH ─────────────────────────────────────────────
-if ($imageBase64 || !empty($images)) {
-    $primaryImage = $imageBase64 ?: ($images[0] ?? null);
-
-    if ($USE_CLAUDE_API && $primaryImage) {
-        $claudeResp = callClaudeVision(
-            $CLAUDE_API_KEY, $userMessage, $context, $lang,
-            $history, $primaryImage, $PAGE_STRUCTURE, $PAGE_CONTEXT_INFO
-        );
-        if ($claudeResp) respond($claudeResp);
-    }
-
-    // Fallback
-    respond(fallbackImageAnalysis($context, $isTagalog, $PAGE_STRUCTURE, $userMessage));
-}
-
-// ── 2. EMPTY MESSAGE ──────────────────────────────────────────
+// ── 1. EMPTY MESSAGE ──────────────────────────────────────────
 if (empty($userMessage)) {
     respond(bi(
         "Please type a message so I can help you! 😊",
@@ -1825,12 +1465,12 @@ if (empty($userMessage)) {
     ));
 }
 
-// ── 3. GREETING ───────────────────────────────────────────────
+// ── 2. GREETING ───────────────────────────────────────────────
 if (isGreeting($userMessage)) {
     respond(getGreetingResponse($context, $isTagalog, $PAGE_CONTEXT_INFO));
 }
 
-// ── 4. CLAUDE TEXT (if API key available) ─────────────────────
+// ── 3. CLAUDE TEXT (if API key available) ─────────────────────
 if ($USE_CLAUDE_API) {
     $claudeResp = callClaudeText(
         $CLAUDE_API_KEY, $userMessage, $context, $lang,
@@ -1839,16 +1479,14 @@ if ($USE_CLAUDE_API) {
     if ($claudeResp) respond($claudeResp);
 }
 
-// ── 5. LOCAL INTENT DETECTION ─────────────────────────────────
+// ── 4. LOCAL INTENT DETECTION ─────────────────────────────────
 $intent = detectIntent($userMessage, $KB);
 
 // For follow-up messages without a detected intent, try to match against the ongoing topic
 if (!$intent && isFollowUp($userMessage) && $conversationTopic) {
-    // Map topic string back to a rough intent to surface related KB entry
     $topicIntentMap = [
         'reporting / submission'  => 'reporting',
         'tracking / status'       => 'tracking',
-        'evidence / photos'       => 'evidence_photos',
         'location / map'          => 'location_map',
         'privacy policy'          => 'privacy',
         'terms and conditions'    => 'terms',
@@ -1864,7 +1502,6 @@ if (!$intent && isFollowUp($userMessage) && $conversationTopic) {
 
 if ($intent && isset($KB[$intent])) {
     $kbText = $KB[$intent][$isTagalog ? 'tl' : 'en'];
-    // Prepend page context for navigation intent
     if ($intent === 'navigation') {
         $pageInfo = $PAGE_CONTEXT_INFO[$context] ?? null;
         if ($pageInfo) {
@@ -1874,5 +1511,5 @@ if ($intent && isset($KB[$intent])) {
     respond($kbText);
 }
 
-// ── 6. FALLBACK ────────────────────────────────────────────────
+// ── 5. FALLBACK ────────────────────────────────────────────────
 respond(getFallbackResponse($context, $isTagalog, $PAGE_CONTEXT_INFO, $conversationTopic));

@@ -1,15 +1,11 @@
 <?php
 /**
- * Chatbot Widget v4
+ * Chatbot Widget v5
  * ─────────────────────────────────────────────────────────
- * Changes from v3:
- *  1. Gallery icon (not camera) — visible on DESKTOP + mobile
+ * Changes from v4:
+ *  1. Removed image recognition / gallery button and all related functionality
  *  2. Mic: manual toggle off — click again to stop recording
- *  3. Image upload → queued (never auto-sends); user types a
- *     message first, then presses Send to dispatch together
- *  4. Multiple images supported per send (up to 5)
- *  5. Image preview tray above the input row
- *  6. Better AI intent + image-analysis responses (via chatbot.php v3)
+ *  3. Text-only messaging
  *
  * Usage: <?php include 'chatbot-widget.php'; ?>
  */
@@ -179,19 +175,6 @@
 }
 .chatbot-message.user .message-time { text-align:right; }
 
-/* Image grid in message */
-.msg-image-grid {
-    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;
-}
-.msg-image-grid img {
-    max-width:calc(50% - 3px); max-height:120px; object-fit:cover;
-    border-radius:8px; cursor:zoom-in; border:1px solid rgba(255,255,255,.2);
-    transition:opacity .15s;
-}
-.msg-image-grid img:only-child  { max-width:100%; max-height:150px; }
-.msg-image-grid img:hover { opacity:.88; }
-.chatbot-message.bot .msg-image-grid img { border-color:var(--border-color,rgba(0,0,0,.1)); }
-
 /* AI bot prefix dot */
 .chatbot-message.bot::before {
     content:'🤖'; position:absolute; left:-14px; top:8px; font-size:14px; line-height:1;
@@ -222,8 +205,7 @@
 /* ────────────────────────────────────────────────────────
    TYPING + ANALYZING INDICATORS
 ──────────────────────────────────────────────────────── */
-.chatbot-typing,
-.chatbot-img-uploading {
+.chatbot-typing {
     align-self:flex-start;
     background:var(--card-bg,#ffffff);
     border:1px solid var(--border-color,rgba(0,0,0,.07));
@@ -232,18 +214,15 @@
     font-size:13px; display:none; align-items:center; gap:8px;
     color:var(--text-secondary,#666); animation:msgFade .3s ease; position:relative;
 }
-.chatbot-typing::before,
-.chatbot-img-uploading::before {
+.chatbot-typing::before {
     content:'🤖'; font-size:14px; position:absolute; left:-14px; top:8px;
 }
-[data-theme="dark"] .chatbot-typing,
-[data-theme="dark"] .chatbot-img-uploading {
+[data-theme="dark"] .chatbot-typing {
     background:rgba(36,36,44,.95);
     border-color:rgba(255,255,255,.07);
     color:var(--text-secondary,#94a3b8);
 }
-.chatbot-typing.active,
-.chatbot-img-uploading.active { display:flex; }
+.chatbot-typing.active { display:flex; }
 
 .typing-dots { display:inline-flex; gap:4px; }
 .typing-dots span {
@@ -253,13 +232,6 @@
 .typing-dots span:nth-child(2) { animation-delay:.2s; }
 .typing-dots span:nth-child(3) { animation-delay:.4s; }
 @keyframes typingDot { 0%,60%,100%{opacity:.35;transform:scale(1)} 30%{opacity:1;transform:scale(1.3) translateY(-2px)} }
-
-.chatbot-img-uploading .spin {
-    width:18px; height:18px;
-    border:2.5px solid rgba(37,99,235,.2); border-top-color:#2563eb;
-    border-radius:50%; animation:spinAnim .7s linear infinite; flex-shrink:0;
-}
-@keyframes spinAnim { to{transform:rotate(360deg)} }
 
 /* ────────────────────────────────────────────────────────
    SUGGESTION CHIPS
@@ -293,50 +265,9 @@
 .suggestion-chip:active { transform:scale(.96); }
 
 /* ────────────────────────────────────────────────────────
-   IMAGE PREVIEW TRAY (above input row)
-──────────────────────────────────────────────────────── */
-.chatbot-image-tray {
-    display:none; flex-wrap:wrap; gap:8px;
-    padding:10px 14px 2px;
-    background:var(--bg-secondary,#f8fafd);
-    border-top:1px solid var(--border-color,rgba(0,0,0,.06));
-    flex-shrink:0;
-    max-height:130px; overflow-y:auto;
-}
-.chatbot-image-tray.has-images { display:flex; }
-[data-theme="dark"] .chatbot-image-tray {
-    background:rgba(20,20,26,.95); border-color:rgba(255,255,255,.06);
-}
-
-.tray-item {
-    position:relative; width:72px; height:72px; flex-shrink:0;
-}
-.tray-item img {
-    width:100%; height:100%; object-fit:cover; border-radius:10px;
-    border:2px solid rgba(37,99,235,.3);
-}
-.tray-item .tray-remove {
-    position:absolute; top:-6px; right:-6px;
-    width:20px; height:20px; border-radius:50%;
-    background:#ef4444; color:#fff; border:none;
-    font-size:11px; font-weight:700; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 2px 6px rgba(0,0,0,.2); line-height:1;
-    transition:transform .15s;
-}
-.tray-item .tray-remove:hover { transform:scale(1.2); }
-
-.tray-count-label {
-    width:100%; font-size:10.5px; font-weight:600; padding:0 2px 6px;
-    color:var(--text-secondary,#64748b);
-    display:flex; align-items:center; justify-content:space-between;
-}
-.tray-count-label span { color:#2563eb; }
-
-/* ────────────────────────────────────────────────────────
    INPUT ROW
-   Desktop:  [🎙 Mic] [🖼 Gallery] [── Input ──] [Send]
-   Mobile:   same layout (gallery always visible)
+   Desktop:  [🎙 Mic] [── Input ──] [Send]
+   Mobile:   same layout
 ──────────────────────────────────────────────────────── */
 .chatbot-input-wrapper {
     padding:12px 14px;
@@ -391,16 +322,6 @@
     0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.5); }
     50%      { box-shadow:0 0 0 8px rgba(239,68,68,0); }
 }
-
-/* Gallery button image-count badge */
-.chatbot-icon-btn .img-count-dot {
-    position:absolute; top:-5px; right:-5px;
-    width:18px; height:18px; border-radius:50%;
-    background:#ef4444; color:#fff; font-size:9px; font-weight:700;
-    display:none; align-items:center; justify-content:center;
-    border:2px solid var(--card-bg,#fff);
-}
-.chatbot-icon-btn .img-count-dot.show { display:flex; }
 
 /* Send button */
 .chatbot-send {
@@ -469,14 +390,6 @@
     font-size: 11px;
 }
 
-/* Shrink image tray */
-.chatbot-image-tray {
-    max-height: 96px;
-    padding: 6px 10px 2px;
-}
-.tray-item             { width: 58px; height: 58px; }
-.tray-count-label      { font-size: 9.5px; }
-
 /* Tighten input row */
 .chatbot-input-wrapper {
     padding: 8px 10px;
@@ -495,8 +408,7 @@
 .chatbot-send svg      { width: 15px; height: 15px; }
 
 /* Typing / uploading indicators */
-.chatbot-typing,
-.chatbot-img-uploading {
+.chatbot-typing {
     padding: 8px 12px;
     font-size: 12px;
 }
@@ -556,23 +468,6 @@
 .chatbot-clear-modal .modal-btn.confirm { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 4px 12px rgba(239,68,68,.3); }
 .chatbot-clear-modal .modal-btn.confirm:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(239,68,68,.4); }
 
-/* ────────────────────────────────────────────────────────
-   LIGHTBOX (image zoom)
-──────────────────────────────────────────────────────── */
-.chatbot-lightbox {
-    position:fixed; inset:0; z-index:10002;
-    background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
-    display:none; align-items:center; justify-content:center;
-    cursor:zoom-out;
-}
-.chatbot-lightbox.active { display:flex; }
-.chatbot-lightbox img { max-width:90vw; max-height:88vh; border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.6); }
-.chatbot-lightbox-close {
-    position:absolute; top:16px; right:20px; color:#fff; font-size:28px;
-    cursor:pointer; line-height:1; opacity:.8; background:none; border:none;
-    transition:opacity .2s;
-}
-.chatbot-lightbox-close:hover { opacity:1; }
 </style>
 
 <!-- ── Toggle button ─────────────────────────────── -->
@@ -615,16 +510,11 @@
 
     <!-- Messages -->
     <div class="chatbot-messages" id="chatbotMessages">
-        <div class="chatbot-img-uploading" id="chatbotImgUploading">
-            <div class="spin"></div>
-            <span data-i18n="chatbot_analyzing_image">Analyzing your screenshot…</span>
-        </div>
     </div>
 
     <!-- Suggestion chips -->
     <div class="chatbot-suggestions" id="chatbotSuggestions">
         <button class="suggestion-chip" data-i18n="chip_how_report" data-i18n-msg="chip_how_report_msg">How to report?</button>
-        <button class="suggestion-chip" data-i18n="chip_upload"     data-i18n-msg="chip_upload_msg">Upload photos</button>
         <button class="suggestion-chip" data-i18n="chip_track"      data-i18n-msg="chip_track_msg">Track my request</button>
         <button class="suggestion-chip" data-i18n="chip_contact"    data-i18n-msg="chip_contact_msg">Contact support</button>
     </div>
@@ -635,14 +525,7 @@
         <span data-i18n="chatbot_typing_label">Typing…</span>
     </div>
 
-    <!-- ── Image preview tray (shows queued images before send) -->
-    <div class="chatbot-image-tray" id="chatbotImageTray">
-        <div class="tray-count-label" id="chatbotTrayLabel">
-            <span id="chatbotTrayCount">0</span> image(s) queued — type your message then Send
-        </div>
-    </div>
-
-    <!-- ── Input row: [Mic] [Gallery] [Input] [Send] ───────── -->
+    <!-- ── Input row: [Mic] [Input] [Send] ───────── -->
     <div class="chatbot-input-wrapper">
 
         <!-- Mic button -->
@@ -657,22 +540,6 @@
                 <line x1="8"  y1="23" x2="16" y2="23"/>
             </svg>
         </button>
-
-        <!-- Gallery button — visible on ALL screen sizes -->
-        <button class="chatbot-icon-btn chatbot-gallery-btn" id="chatbotGalleryBtn"
-                data-i18n-title="chatbot_img_btn_title"
-                title="Attach screenshots (up to 5)" aria-label="Attach screenshots" type="button">
-            <!-- Gallery / image stack icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            <!-- Badge shows how many images are queued -->
-            <span class="img-count-dot" id="chatbotImgCountDot">0</span>
-        </button>
-        <input type="file" id="chatbotImgInput" accept="image/*" multiple style="display:none" aria-hidden="true">
 
         <!-- Text input -->
         <input type="text" class="chatbot-input" id="chatbotInput"
@@ -707,12 +574,6 @@
     </div>
 </div>
 
-<!-- Lightbox for zooming images -->
-<div class="chatbot-lightbox" id="chatbotLightbox" role="dialog" aria-modal="true">
-    <button class="chatbot-lightbox-close" id="chatbotLightboxClose" aria-label="Close">✕</button>
-    <img id="chatbotLightboxImg" src="" alt="Full size preview">
-</div>
-
 <script>
 (function () {
     'use strict';
@@ -724,8 +585,6 @@
         STORAGE_KEY:       'chatbot_conversation_v4',
         STORAGE_STATE_KEY: 'chatbot_state_v4',
         MAX_MESSAGES:      60,
-        MAX_IMAGES:        5,          // images per send
-        MAX_IMAGE_BYTES:   5242880,    // 5 MB
         AUTO_HIDE_CHIPS:   7000,
         ENDPOINT: (window.CHATBOT_ENDPOINT || 'chatbot.php')
     };
@@ -741,16 +600,12 @@
             "How can I assist you today?",
         chatbot_error_generic:  'Sorry, I encountered an error. Please try again.',
         chatbot_error_connect:  "Sorry, I'm having trouble connecting. Please try again later.",
-        chatbot_analyzing_image:'Analyzing your screenshot…',
-        chatbot_img_btn_title:  'Attach screenshots (up to 5)',
         chatbot_mic_btn_title:  'Click to speak · Click again to stop',
         chatbot_mic_listening:  'Listening… click mic again to stop',
         chatbot_mic_no_support: 'Voice input is not supported in your browser.',
         chatbot_mic_error:      'Could not hear you. Please try again.',
-        chatbot_img_error:      'Could not read the image. Please try a different file.',
         chatbot_status_online:  'Online · Ready to help',
         chip_how_report_msg:    'How do I report an infrastructure issue?',
-        chip_upload_msg:        'How do I upload photo evidence?',
         chip_track_msg:         'How can I track the status of my request?',
         chip_contact_msg:       'How do I contact support?',
         chip_privacy_msg:       'Tell me about the Privacy Policy.',
@@ -789,17 +644,7 @@
         clearCancel:   document.getElementById('chatbotClearCancel'),
         clearConfirm:  document.getElementById('chatbotClearConfirm'),
         toast:         document.getElementById('chatbotToast'),
-        galleryBtn:    document.getElementById('chatbotGalleryBtn'),
-        imgInput:      document.getElementById('chatbotImgInput'),
-        imgCountDot:   document.getElementById('chatbotImgCountDot'),
         micBtn:        document.getElementById('chatbotMicBtn'),
-        imgUploading:  document.getElementById('chatbotImgUploading'),
-        imageTray:     document.getElementById('chatbotImageTray'),
-        trayCount:     document.getElementById('chatbotTrayCount'),
-        trayLabel:     document.getElementById('chatbotTrayLabel'),
-        lightbox:      document.getElementById('chatbotLightbox'),
-        lightboxImg:   document.getElementById('chatbotLightboxImg'),
-        lightboxClose: document.getElementById('chatbotLightboxClose'),
     };
 
     /* ══════════════════════════════════════════════════════
@@ -810,9 +655,6 @@
     var suggestionTimeout    = null;
     var recognition          = null;
     var isRecording          = false;
-
-    /** Queued images: array of { dataUrl: string, preview: string } */
-    var queuedImages = [];
 
     /* ══════════════════════════════════════════════════════
        LANGUAGE
@@ -834,7 +676,6 @@
         });
         renderContextChips();
         updateSuggestionsLayout();
-        updateTrayLabel();
 
         // Refresh welcome message if present
         var hasWelcome = conversationHistory.some(function (m) { return m.isWelcome; });
@@ -868,15 +709,15 @@
     var CHIP_SETS = {
         home:     [['chip_how_report','chip_how_report_msg'],['chip_track','chip_track_msg'],['chip_language','chip_language_msg'],['chip_contact','chip_contact_msg']],
         reports:  [['chip_track','chip_track_msg'],['chip_how_report','chip_how_report_msg'],['chip_report_types','chip_report_types_msg'],['chip_contact','chip_contact_msg']],
-        request:  [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_report_types','chip_report_types_msg'],['chip_terms','chip_terms_msg']],
+        request:  [['chip_how_report','chip_how_report_msg'],['chip_report_types','chip_report_types_msg'],['chip_terms','chip_terms_msg'],['chip_contact','chip_contact_msg']],
         feedback: [['chip_feedback_submit','chip_feedback_submit_msg'],['chip_feedback_types','chip_feedback_types_msg'],['chip_feedback_rating','chip_feedback_rating_msg'],['chip_feedback_ref','chip_feedback_ref_msg']],
         about:    [['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg'],['chip_privacy','chip_privacy_msg'],['chip_language','chip_language_msg']],
         privacy:  [['chip_privacy','chip_privacy_msg'],['chip_terms','chip_terms_msg'],['chip_contact','chip_contact_msg'],['chip_how_report','chip_how_report_msg']],
         terms:    [['chip_terms','chip_terms_msg'],['chip_privacy','chip_privacy_msg'],['chip_how_report','chip_how_report_msg'],['chip_contact','chip_contact_msg']],
-        general:  [['chip_how_report','chip_how_report_msg'],['chip_upload','chip_upload_msg'],['chip_track','chip_track_msg'],['chip_contact','chip_contact_msg']]
+        general:  [['chip_how_report','chip_how_report_msg'],['chip_track','chip_track_msg'],['chip_contact','chip_contact_msg'],['chip_language','chip_language_msg']]
     };
     var CHIP_FALLBACK = {
-        chip_how_report:'How to report?',       chip_upload:'Upload photos',
+        chip_how_report:'How to report?',
         chip_track:'Track my request',          chip_contact:'Contact support',
         chip_privacy:'Privacy Policy',          chip_terms:'Terms & Conditions',
         chip_language:'Switch language',        chip_report_types:'What can I report?',
@@ -958,139 +799,18 @@
     function setInputsBusy(busy) {
         el.send.disabled = busy;
         if (el.micBtn)    el.micBtn.disabled    = busy;
-        if (el.galleryBtn) el.galleryBtn.disabled = busy;
     }
-
-    /* ══════════════════════════════════════════════════════
-       IMAGE QUEUE / TRAY
-    ══════════════════════════════════════════════════════ */
-    function updateTrayLabel() {
-        var tl = getLang() === 'tl';
-        if (el.trayCount) el.trayCount.textContent = queuedImages.length;
-        if (el.trayLabel) {
-            el.trayLabel.innerHTML = '<span id="chatbotTrayCount">' + queuedImages.length + '</span> ' +
-                (tl ? 'larawan ang naka-queue — mag-type ng mensahe at pindutin ang Send'
-                    : 'image(s) queued — type your message then Send');
-        }
-    }
-
-    function renderTray() {
-        if (!el.imageTray) return;
-
-        // Remove old tray items (keep the label)
-        var items = el.imageTray.querySelectorAll('.tray-item');
-        items.forEach(function (i) { i.parentNode.removeChild(i); });
-
-        if (queuedImages.length === 0) {
-            el.imageTray.classList.remove('has-images');
-            el.imgCountDot && el.imgCountDot.classList.remove('show');
-            return;
-        }
-
-        el.imageTray.classList.add('has-images');
-        if (el.imgCountDot) {
-            el.imgCountDot.textContent = queuedImages.length;
-            el.imgCountDot.classList.add('show');
-        }
-
-        queuedImages.forEach(function (img, idx) {
-            var item = document.createElement('div');
-            item.className = 'tray-item';
-
-            var imgEl = document.createElement('img');
-            imgEl.src = img.preview;
-            imgEl.alt = 'Queued image ' + (idx + 1);
-            imgEl.title = 'Click to zoom';
-            imgEl.addEventListener('click', function () { openLightbox(img.preview); });
-
-            var removeBtn = document.createElement('button');
-            removeBtn.className = 'tray-remove';
-            removeBtn.textContent = '✕';
-            removeBtn.title = 'Remove image';
-            removeBtn.addEventListener('click', function () { removeQueuedImage(idx); });
-
-            item.appendChild(imgEl);
-            item.appendChild(removeBtn);
-            el.imageTray.appendChild(item);
-        });
-
-        updateTrayLabel();
-    }
-
-    function removeQueuedImage(idx) {
-        queuedImages.splice(idx, 1);
-        renderTray();
-        if (queuedImages.length === 0) el.imgInput && (el.imgInput.value = '');
-    }
-
-    function addImagesToQueue(files) {
-        var allowed = ['image/jpeg','image/jpg','image/png','image/webp','image/gif'];
-        var added   = 0;
-
-        for (var i = 0; i < files.length; i++) {
-            if (queuedImages.length >= CONFIG.MAX_IMAGES) {
-                showToast('⚠️ Max ' + CONFIG.MAX_IMAGES + ' images per message', 2500);
-                break;
-            }
-            var file = files[i];
-            if (allowed.indexOf(file.type) === -1) {
-                showToast('⚠️ Only JPG, PNG, WEBP, GIF allowed', 2500); continue;
-            }
-            if (file.size > CONFIG.MAX_IMAGE_BYTES) {
-                showToast('⚠️ ' + file.name + ' is too large (max 5 MB)', 2500); continue;
-            }
-            (function (f) {
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    queuedImages.push({ dataUrl: e.target.result, preview: e.target.result });
-                    renderTray();
-                };
-                reader.onerror = function () { showToast('❌ ' + t('chatbot_img_error'), 2500); };
-                reader.readAsDataURL(f);
-            })(file);
-            added++;
-        }
-        if (added > 0) {
-            var tl = getLang() === 'tl';
-            showToast(
-                (tl ? '✅ ' + added + ' larawang naka-queue. Mag-type at pindutin ang Send.'
-                    : '✅ ' + added + ' image(s) queued. Type your message and press Send.'),
-                3000
-            );
-            // Focus text input so user types their message
-            setTimeout(function () { el.input && el.input.focus(); }, 100);
-        }
-    }
-
-    /* ══════════════════════════════════════════════════════
-       LIGHTBOX
-    ══════════════════════════════════════════════════════ */
-    function openLightbox(src) {
-        if (!el.lightbox || !el.lightboxImg) return;
-        el.lightboxImg.src = src;
-        el.lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-    function closeLightbox() {
-        if (!el.lightbox) return;
-        el.lightbox.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-    el.lightbox      && el.lightbox.addEventListener('click', function (e) { if (e.target === el.lightbox) closeLightbox(); });
-    el.lightboxClose && el.lightboxClose.addEventListener('click', closeLightbox);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLightbox(); });
 
     /* ══════════════════════════════════════════════════════
        MESSAGE RENDERING
     ══════════════════════════════════════════════════════ */
-    function addMessage(text, type, imageDataUrls, aiCardHtml) {
-        if (!text && (!imageDataUrls || imageDataUrls.length === 0)) return;
+    function addMessage(text, type, aiCardHtml) {
+        if (!text) return;
         var message = {
             text:          text || '',
             type:          type,
             timestamp:     new Date().toISOString(),
             page:          getCurrentPage(),
-            imageDataUrls: imageDataUrls || [],
             aiCard:        aiCardHtml || null
         };
         conversationHistory.push(message);
@@ -1104,21 +824,6 @@
     function renderMessage(message) {
         var div = document.createElement('div');
         div.className = 'chatbot-message ' + message.type;
-
-        // Image grid
-        var imgs = message.imageDataUrls || (message.imageDataUrl ? [message.imageDataUrl] : []);
-        if (imgs.length > 0) {
-            var grid = document.createElement('div');
-            grid.className = 'msg-image-grid';
-            imgs.forEach(function (src) {
-                var img = document.createElement('img');
-                img.src = src;
-                img.alt = 'Attached image';
-                img.addEventListener('click', function () { openLightbox(src); });
-                grid.appendChild(img);
-            });
-            div.appendChild(grid);
-        }
 
         // Text
         if (message.text) {
@@ -1143,16 +848,15 @@
         timeSpan.textContent = formatTime(new Date(message.timestamp));
         div.appendChild(timeSpan);
 
-        // Insert before typing/uploading indicators
-        var anchor = (el.typing && el.typing.parentNode === el.messages ? el.typing : null)
-                  || (el.imgUploading && el.imgUploading.parentNode === el.messages ? el.imgUploading : null);
+        // Insert before typing indicator
+        var anchor = (el.typing && el.typing.parentNode === el.messages ? el.typing : null);
         if (anchor) el.messages.insertBefore(div, anchor);
         else        el.messages.appendChild(div);
     }
 
     function renderMessages() {
         Array.prototype.slice.call(el.messages.children).forEach(function (k) {
-            if (k !== el.imgUploading && k !== el.typing) el.messages.removeChild(k);
+            if (k !== el.typing) el.messages.removeChild(k);
         });
         conversationHistory.forEach(renderMessage);
         scrollToBottom();
@@ -1165,7 +869,7 @@
             timestamp: new Date().toISOString(),
             page: getCurrentPage(),
             isWelcome: true,
-            imageDataUrls: [], aiCard: null
+            aiCard: null
         };
         conversationHistory.push(message);
         if (conversationHistory.length > CONFIG.MAX_MESSAGES)
@@ -1174,18 +878,14 @@
         renderMessage(message);
         scrollToBottom();
         if (el.suggestions) el.suggestions.style.display = 'flex';
-    }
-
-    /* ══════════════════════════════════════════════════════
+    }    /* ══════════════════════════════════════════════════════
        CLEAR MODAL
     ══════════════════════════════════════════════════════ */
     function openClearModal()  { el.clearBackdrop && el.clearBackdrop.classList.add('active'); }
     function closeClearModal() { el.clearBackdrop && el.clearBackdrop.classList.remove('active'); }
     function confirmClear() {
         conversationHistory = [];
-        queuedImages = [];
         sessionStorage.removeItem(CONFIG.STORAGE_KEY);
-        renderTray();
         renderMessages();
         showWelcomeMessage();
         closeClearModal();
@@ -1195,47 +895,24 @@
        SEND MESSAGE (text + optional queued images)
     ══════════════════════════════════════════════════════ */
     function sendMessage() {
-        var text     = (el.input ? el.input.value.trim() : '');
-        var hasText  = text.length > 0;
-        var hasImgs  = queuedImages.length > 0;
+        var text = (el.input ? el.input.value.trim() : '');
+        if (!text || isWaitingForResponse) return;
 
-        if ((!hasText && !hasImgs) || isWaitingForResponse) return;
-
-        // Show user message bubble
-        var userImgUrls = queuedImages.map(function (q) { return q.preview; });
-        addMessage(hasText ? text : '', 'user', userImgUrls, null);
-
-        // Clear input + queue
+        addMessage(text, 'user', null);
         if (el.input) el.input.value = '';
-        var imagesToSend = queuedImages.slice();    // copy before clearing
-        queuedImages = [];
-        renderTray();
-        if (el.imgInput) el.imgInput.value = '';
 
         hideSuggestions();
 
-        // Build API payload
         var payload = {
-            message: hasText ? text : (getLang() === 'tl'
-                ? 'Nagsumite ako ng mga screenshot ng website para sa pagsusuri.'
-                : 'I submitted screenshots of the website for analysis.'),
+            message: text,
             context: getCurrentPage(),
             history: conversationHistory.slice(-6).map(function (m) {
                 return { text: m.text, type: m.type };
             }),
-            lang:    getLang(),
+            lang: getLang(),
         };
 
-        if (hasImgs) {
-            // Primary image (for vision APIs that support single-image)
-            payload.image = imagesToSend[0].dataUrl;
-            // All images as array (for future multi-image support)
-            payload.images = imagesToSend.map(function (q) { return q.dataUrl; });
-            // Show analyzing indicator
-            el.imgUploading && el.imgUploading.classList.add('active');
-        } else {
-            el.typing && el.typing.classList.add('active');
-        }
+        el.typing && el.typing.classList.add('active');
 
         isWaitingForResponse = true;
         setInputsBusy(true);
@@ -1248,16 +925,14 @@
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            el.imgUploading && el.imgUploading.classList.remove('active');
-            el.typing       && el.typing.classList.remove('active');
+            el.typing && el.typing.classList.remove('active');
             var resp = data.response || t('chatbot_error_generic');
             var card = data.aiCardHtml || null;
-            addMessage(resp, 'bot', [], card);
+            addMessage(resp, 'bot', card);
         })
         .catch(function () {
-            el.imgUploading && el.imgUploading.classList.remove('active');
-            el.typing       && el.typing.classList.remove('active');
-            addMessage(t('chatbot_error_connect') || FALLBACKS.chatbot_error_connect, 'bot', [], null);
+            el.typing && el.typing.classList.remove('active');
+            addMessage(t('chatbot_error_connect') || FALLBACKS.chatbot_error_connect, 'bot', null);
         })
         .finally(function () {
             isWaitingForResponse = false;
@@ -1394,17 +1069,6 @@
         if (e.key === 'Enter' && !isWaitingForResponse) sendMessage();
     });
 
-    // Gallery button — opens multi-file picker (NO auto-send)
-    el.galleryBtn && el.galleryBtn.addEventListener('click', function () {
-        if (!isWaitingForResponse && el.imgInput) el.imgInput.click();
-    });
-    el.imgInput && el.imgInput.addEventListener('change', function (e) {
-        if (e.target.files && e.target.files.length > 0) {
-            addImagesToQueue(Array.prototype.slice.call(e.target.files));
-            e.target.value = ''; // reset so same files can be re-added
-        }
-    });
-
     // Mic
     el.micBtn && el.micBtn.addEventListener('click', toggleMic);
 
@@ -1423,7 +1087,6 @@
         recognition = initSpeechRecognition();
         loadConversation();
         renderContextChips();
-        renderTray();
 
         var state = loadChatState();
 
