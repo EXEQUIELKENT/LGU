@@ -65,6 +65,43 @@ if (!isset($_SESSION['otp_resend_count'])) $_SESSION['otp_resend_count'] = 0;
 if (!isset($_SESSION['otp_last_sent_time'])) $_SESSION['otp_last_sent_time'] = 0;
 if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0;
 
+// ==================== PHPMAILER FACTORY ====================
+/**
+ * Returns a pre-configured PHPMailer instance ready to use.
+ * Centralises SMTP settings so changes only need to be made here.
+ */
+function createMailer(): PHPMailer {
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->SMTPDebug  = 0;                       // 0 = off; set to 2 temporarily to debug
+    $mail->Host       = 'smtp.gmail.com';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = 'lguportalph@gmail.com';
+    $mail->Password   = 'zsozvbpsggclkcno';      // Gmail App Password (16 chars, no spaces)
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // STARTTLS on port 587
+    $mail->Port       = 587;
+    $mail->CharSet    = 'UTF-8';
+    $mail->Encoding   = 'quoted-printable';
+    $mail->Timeout    = 30;
+    $mail->SMTPAutoTLS   = false;  // We set SMTPSecure explicitly; disable auto-detection
+    $mail->SMTPKeepAlive = false;
+    $mail->WordWrap      = 0;
+
+    // Disable peer verification (needed on many shared/cPanel hosts).
+    // IMPORTANT: Do NOT add 'crypto_method' here — it breaks TLS negotiation
+    //            and causes Gmail to reject authentication.
+    $mail->SMTPOptions = [
+        'ssl' => [
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
+        ],
+    ];
+
+    $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+    return $mail;
+}
+
 // 2⃣ Login Event Logger
 function logLoginEvent(
     mysqli $conn,
@@ -248,34 +285,8 @@ function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
     $stmt->close();
     
     // Send unlock email
-    $mail = new PHPMailer(true);
     try {
-        $mail->SMTPDebug = 0;
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
-        $mail->CharSet    = 'UTF-8';
-        $mail->Encoding   = 'quoted-printable';
-        $mail->Timeout    = 30;
-
-        $mail->SMTPOptions = array(
-            'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
-                'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
-            )
-        );
-
-        $mail->SMTPAutoTLS = true;
-        $mail->SMTPKeepAlive = false;
-        $mail->WordWrap = 0;
-
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail = createMailer();
         $mail->addAddress($email);
 
         $mail->isHTML(true);
@@ -419,34 +430,8 @@ if (isset($_POST['forgot_password_submit'])) {
         $updateStmt->close();
 
         // Send reset email
-        $mail = new PHPMailer(true);
         try {
-            $mail->SMTPDebug = 0;
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'lguportalph@gmail.com';
-            $mail->Password   = 'zsozvbpsggclkcno';
-            $mail->SMTPSecure = 'tls';
-            $mail->Port       = 587;
-            $mail->CharSet    = 'UTF-8';
-            $mail->Encoding   = 'quoted-printable';
-            $mail->Timeout    = 30;
-
-            $mail->SMTPOptions = array(
-                'ssl' => array(
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                    'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
-                )
-            );
-
-            $mail->SMTPAutoTLS = true;
-            $mail->SMTPKeepAlive = false;
-            $mail->WordWrap = 0;
-
-            $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+            $mail = createMailer();
             $mail->addAddress($email);
 
             $mail->isHTML(true);
@@ -1009,34 +994,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
         $_SESSION['otp_attempts'] = 0;
 
         // Send OTP email
-        $mail = new PHPMailer(true);
         try {
-            $mail->SMTPDebug = 0;
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'lguportalph@gmail.com';
-            $mail->Password   = 'zsozvbpsggclkcno';
-            $mail->SMTPSecure = 'tls';
-            $mail->Port       = 587;
-            $mail->CharSet    = 'UTF-8';
-            $mail->Encoding   = 'quoted-printable';
-            $mail->Timeout    = 30;
-
-            $mail->SMTPOptions = array(
-                'ssl' => array(
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                    'crypto_method' => STREAM_CRYPTO_METHOD_TLS_CLIENT
-                )
-            );
-
-            $mail->SMTPAutoTLS = true;
-            $mail->SMTPKeepAlive = false;
-            $mail->WordWrap = 0;
-
-            $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+            $mail = createMailer();
             $mail->addAddress($email);
 
             $mail->isHTML(true);
