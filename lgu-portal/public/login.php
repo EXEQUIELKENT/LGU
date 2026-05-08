@@ -76,8 +76,8 @@ function createMailer(): PHPMailer {
     $mail->SMTPDebug  = 0;                       // 0 = off; set to 2 temporarily to debug
     $mail->Host       = 'smtp.gmail.com';
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'lguportalph@gmail.com';
-    $mail->Password   = 'zsozvbpsggclkcno';      // Gmail App Password (16 chars, no spaces)
+    $mail->Username   = 'lguportal2026@gmail.com';
+    $mail->Password   = 'krdatioghgqriruh';      // Gmail App Password (16 chars, no spaces)
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // STARTTLS on port 587
     $mail->Port       = 587;
     $mail->CharSet    = 'UTF-8';
@@ -98,7 +98,7 @@ function createMailer(): PHPMailer {
         ],
     ];
 
-    $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+    $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
     return $mail;
 }
 
