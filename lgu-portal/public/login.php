@@ -692,7 +692,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET" &&
     !isset($_GET['reset_token'])) {
     // Only clear OTP sessions, not reset password sessions
     unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_verified']);
-    unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+    unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 }
 
 // OTP verification
@@ -707,15 +707,15 @@ if (isset($_POST['otp_submit'])) {
     if (!isset($_SESSION['otp']) || !isset($_SESSION['otp_time'])) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('error', 'OTP expired or not generated. Please log in again.');
-        unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+        unset($_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($current_time - $_SESSION['otp_time'] > 60) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP expired', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('warning', 'OTP expired. Please log in again.');
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($_SESSION['otp_attempts'] >= 3) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'OTP attempts exceeded', true, $_SESSION['otp_total_resends'] ?? 0);
         setNotification('error', 'Too many wrong attempts. This OTP is now expired. Please log in again and request a new OTP.');
-        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+        unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
     } elseif ($entered_otp == $_SESSION['otp']) {
         $_SESSION['employee_logged_in'] = true;
         $_SESSION['otp_verified'] = true;
@@ -725,7 +725,7 @@ if (isset($_POST['otp_submit'])) {
         $email = $_SESSION['login_email'];
 
         unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts']);
-        unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+        unset($_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
 
         if ($email) {
             $checkStmt = $conn->prepare("SELECT user_id, is_first_login, role, first_name FROM employees WHERE email = ?");
@@ -783,7 +783,7 @@ if (isset($_POST['otp_submit'])) {
         logLoginEvent($conn, $_SESSION['login_email'] ?? null, false, 'Invalid OTP', true, $_SESSION['otp_total_resends'] ?? 0);
         if ($_SESSION['otp_attempts'] >= 3) {
             setNotification('error', 'You have entered the wrong code 3 times. This OTP is now expired. Please log in again and request a new OTP.');
-            unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends'], $_SESSION['otp_thread_message_id']);
+            unset($_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'], $_SESSION['otp_attempts'], $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']);
         } else {
             $remaining = 3 - $_SESSION['otp_attempts'];
             setNotification('error', 'Invalid OTP. You have ' . $remaining . ' attempt' . ($remaining > 1 ? 's' : '') . ' left.');
@@ -999,28 +999,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             $mail->addAddress($email);
 
             $mail->isHTML(true);
-            // ── THREADING FIX: Static subject so all OTPs group into one thread ──
-            $mail->Subject = 'LGU Portal - OTP Verification Code';
-
-            // Generate a stable anchor Message-ID for the first OTP of this login session
-            if (empty($_SESSION['otp_thread_message_id'])) {
-                $_SESSION['otp_thread_message_id'] = sprintf(
-                    '<%s.%s@lguportal>',
-                    bin2hex(random_bytes(12)),
-                    time()
-                );
-            }
-
-            // Assign a unique Message-ID for this specific send
-            $thisMessageId = sprintf('<%s.%s@lguportal>', bin2hex(random_bytes(8)), time());
-            $mail->addCustomHeader('Message-ID', $thisMessageId);
-
-            // On resends, reference the original email so clients thread them together
-            if ($isResend && !empty($_SESSION['otp_thread_message_id'])) {
-                $mail->addCustomHeader('In-Reply-To', $_SESSION['otp_thread_message_id']);
-                $mail->addCustomHeader('References',  $_SESSION['otp_thread_message_id']);
-            }
-            // ── END THREADING FIX ──
+            $mail->Subject = 'LGU Portal - Your OTP Code: ' . $otp;
 
             $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
                 <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
