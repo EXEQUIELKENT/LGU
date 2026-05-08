@@ -1006,8 +1006,9 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 
             // ✅ Add threading headers so email clients group all OTP emails
             //    for this user into one conversation thread.
+            //    NOTE: Do NOT add a custom Message-ID — PHPMailer sets one automatically.
+            //    Adding a second one violates RFC 5322 and Gmail will reject the message.
             $threadId = '<otp-' . md5($email) . '@lguportal>';
-            $mail->addCustomHeader('Message-ID', '<otp-' . time() . '-' . md5($email) . '@lguportal>');
             $mail->addCustomHeader('In-Reply-To', $threadId);
             $mail->addCustomHeader('References', $threadId);
 
