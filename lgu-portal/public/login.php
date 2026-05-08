@@ -999,8 +999,19 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             $mail->addAddress($email);
 
             $mail->isHTML(true);
-            $mail->Subject = 'LGU Portal - Your OTP Code: ' . $otp;
+            // ✅ FIXED: Use a FIXED subject (no OTP in subject) so all OTP emails
+            //    thread together in the recipient's inbox instead of creating
+            //    a new conversation for every resend.
+            $mail->Subject = 'LGU Portal - OTP Verification';
 
+            // ✅ Add threading headers so email clients group all OTP emails
+            //    for this user into one conversation thread.
+            $threadId = '<otp-' . md5($email) . '@lguportal>';
+            $mail->addCustomHeader('Message-ID', '<otp-' . time() . '-' . md5($email) . '@lguportal>');
+            $mail->addCustomHeader('In-Reply-To', $threadId);
+            $mail->addCustomHeader('References', $threadId);
+
+            $sentAt = date('F j, Y \a\t g:i A', time());
             $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#f5f5f5">
                 <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:40px 30px;box-shadow:0 2px 10px rgba(0,0,0,0.1)">
                     <h1 style="color:#27417b;margin:0 0 10px 0;font-size:28px; text-align:center;">LGU Portal</h1>
@@ -1008,9 +1019,10 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                     <div style="background:#eaf4fe;border-radius:8px;padding:25px;text-align:center;margin:30px 0">
                         <div style="color:#666;font-size:16px;margin-bottom:10px">Your authentication code is</div>
                         <div style="font-size:42px;font-family:\'Courier New\',monospace;color:#1f66b1;font-weight:700;letter-spacing:8px">'.$otp.'</div>
+                        <div style="color:#999;font-size:12px;margin-top:12px">Sent: ' . $sentAt . '</div>
                     </div>
                     <p style="color:#666;font-size:14px;line-height:1.6;margin:20px 0; text-align:center;">
-                        This code is valid for <strong style="color:#174c86">5 minutes</strong> and can only be used once.
+                        This code is valid for <strong style="color:#174c86">60 seconds</strong> and can only be used once.
                     </p>
                     <p style="color:#ca173f;font-size:14px;font-weight:700;margin:20px 0; text-align:center;">
                         Never share this code with anyone.<br>
@@ -1026,7 +1038,8 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
             $mail->Body = $htmlBody;
             $mail->AltBody = "LGU Portal - OTP Verification\n\n" .
                             "Your authentication code is: $otp\n\n" .
-                            "This code is valid for 5 minutes and can only be used once.\n\n" .
+                            "Sent: $sentAt\n\n" .
+                            "This code is valid for 60 seconds and can only be used once.\n\n" .
                             "Never share this code with anyone.\n\n" .
                             "© " . date('Y') . " LGU Portal";
 
