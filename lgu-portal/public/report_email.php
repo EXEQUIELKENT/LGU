@@ -60,9 +60,11 @@ function sendReportUpdateEmail(
     $isComplete  = ($eventType === 'completed');
     $accentColor = $isComplete ? '#16a34a' : '#2563eb';
     $statusLabel = $isComplete ? 'Completed ✅' : ('Progress Update' . ($dayLabel ? " — {$dayLabel}" : ''));
-    $subjectLine = $isComplete
-        ? "Your Report #REP-{$repId} Has Been Completed — LGU Portal"
-        : "Progress Update" . ($dayLabel ? " ({$dayLabel})" : '') . " on Your Report #REP-{$repId} — LGU Portal";
+    // ✅ FIXED: Use a stable subject per report so all progress updates
+    //    (Day 1, Day 2 … Completed) thread together in the inbox instead of
+    //    creating a new conversation for every status change.
+    //    The day / completion detail is shown in the email body only.
+    $subjectLine = "LGU Portal — Report #REP-{$repId} Status Update";
 
     $statusBanner = $isComplete
         ? '<div style="background:#dcfce7;border-left:4px solid #16a34a;padding:14px 18px;border-radius:6px;margin:18px 0;">
@@ -147,6 +149,14 @@ function sendReportUpdateEmail(
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = $subjectLine;
+
+        // ✅ Threading headers: all status emails for the same report
+        //    share the same thread ID so they stack in the recipient's inbox.
+        //    Do NOT add a custom Message-ID — PHPMailer sets one automatically;
+        //    a duplicate violates RFC 5322 and Gmail will reject the email.
+        $threadId = '<report-' . $repId . '-' . md5($toEmail) . '@lguportal>';
+        $mail->addCustomHeader('In-Reply-To', $threadId);
+        $mail->addCustomHeader('References',  $threadId);
 
         $htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:20px 0;font-family:Arial,sans-serif;background:#f5f5f5">
