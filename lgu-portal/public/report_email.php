@@ -126,8 +126,8 @@ function sendReportUpdateEmail(
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->Username   = 'lguportal2026@gmail.com';
+        $mail->Password   = 'krdatioghgqriruh';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
@@ -143,7 +143,7 @@ function sendReportUpdateEmail(
         $mail->SMTPKeepAlive = false;
         $mail->WordWrap      = 0;
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = $subjectLine;
@@ -313,8 +313,8 @@ function sendRejectionEmail(
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->Username   = 'lguportal2026@gmail.com';
+        $mail->Password   = 'krdatioghgqriruh';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
@@ -329,7 +329,7 @@ function sendRejectionEmail(
         $mail->SMTPAutoTLS   = true;
         $mail->SMTPKeepAlive = false;
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Request {$reqLabel} Has Been Rejected — LGU Portal";
@@ -502,8 +502,8 @@ function sendFeedbackStatusEmail(
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->Username   = 'lguportal2026@gmail.com';
+        $mail->Password   = 'krdatioghgqriruh';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
@@ -519,7 +519,7 @@ function sendFeedbackStatusEmail(
         $mail->SMTPKeepAlive = false;
         $mail->WordWrap      = 0;
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Feedback {$fbkId} Has Been {$status} — LGU Portal";
@@ -618,8 +618,8 @@ function sendValidationEmail(
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportalph@gmail.com';
-        $mail->Password   = 'zsozvbpsggclkcno';
+        $mail->Username   = 'lguportal2026@gmail.com';
+        $mail->Password   = 'krdatioghgqriruh';
         $mail->SMTPSecure = 'tls';
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
@@ -634,7 +634,7 @@ function sendValidationEmail(
         $mail->SMTPAutoTLS   = true;
         $mail->SMTPKeepAlive = false;
 
-        $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Request {$reqLabel} Has Been Approved — LGU Portal";

@@ -308,8 +308,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
                                 $mail->isSMTP();
                                 $mail->Host       = 'smtp.gmail.com';
                                 $mail->SMTPAuth   = true;
-                                $mail->Username   = 'lguportalph@gmail.com';
-                                $mail->Password   = 'zsozvbpsggclkcno';
+                                $mail->Username   = 'lguportal2026@gmail.com';
+                                $mail->Password   = 'krdatioghgqriruh';
                                 $mail->SMTPSecure = 'tls';
                                 $mail->Port       = 587;
                                 $mail->CharSet    = 'UTF-8';
@@ -320,7 +320,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
                                 $mail->SMTPKeepAlive = false;
                                 $mail->WordWrap = 0;
 
-                                $mail->setFrom('lguportalph@gmail.com', 'LGU Portal', false);
+                                $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
                                 $mail->addAddress($emailNormalized, htmlspecialchars($firstName . ' ' . $lastName));
                                 $mail->isHTML(true);
                                 $mail->Subject = 'Verify Your Email Address - LGU Portal Account Creation';
