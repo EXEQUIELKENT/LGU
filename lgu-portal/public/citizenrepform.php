@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
-                    $max_files = 4;
+                    $max_files = 10;
                     $files = [];
 
                     foreach ($_FILES['evidence']['name'] as $i => $ename) {
@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $delete_stmt->execute();
                         $delete_stmt->close();
 
-                        setNotification('error', 'Maximum of 4 images allowed.');
+                        setNotification('error', 'Maximum of 10 images allowed.');
                         header("Location: citizenrepform.php");
                         exit;
                     }
@@ -1738,14 +1738,14 @@ input[type="file"] {
                 </div>
 
                 <div class="input-group full-width">
-                    <label data-i18n="form_evidence_label">Evidence Photos <span class="optional">(up to 4 images)</span></label>
+                    <label data-i18n="form_evidence_label">Evidence Photos</label>
                     <div class="evidence-upload-wrapper">
                         <input type="file" id="evidence" name="evidence[]" accept="image/*" multiple style="display:none;">
                         <input type="file" id="evidence-camera" accept="image/*" capture="environment" style="display:none;">
                         <div class="custom-file-wrapper" id="customFileWrapper" onclick="document.getElementById('evidence').click()">
                             <div class="photo-drop-icon"><i class="fas fa-cloud-upload-alt" style="font-size:2.4rem;color:var(--accent-secondary);"></i></div>
                             <div class="photo-drop-text" id="customFileText" data-i18n="form_upload_label">Click or drag to upload images</div>
-                            <div class="photo-drop-hint" data-i18n="form_upload_hint">JPG, PNG, WEBP · Max 4 files</div>
+                            <div class="photo-drop-hint" data-i18n="form_upload_hint">JPG, PNG, WEBP</div>
                         </div>
                         <button type="button" id="cameraBtn" title="Capture using camera">📷</button>
                     </div>
@@ -1856,7 +1856,7 @@ input[type="file"] {
             en: {
                 alert_consent_required: 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.',
                 alert_contact_invalid: 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.',
-                alert_max_images: 'Maximum of 4 images allowed.',
+                alert_max_images: 'Maximum of 10 images allowed.',
                 alert_image_required: 'At least one evidence image is required. Please upload or capture an image before submitting.',
                 alert_location_outside_qc: 'Please select a location within Quezon City only.',
                 alert_location_outside_gps: 'Your current location is outside Quezon City. Please select a location within QC.',
@@ -1893,7 +1893,7 @@ input[type="file"] {
             tl: {
                 alert_consent_required: 'Dapat kang sumang-ayon sa Mga Tuntunin at Kondisyon at Patakaran sa Privacy bago magsumite ng iyong kahilingan.',
                 alert_contact_invalid: 'Ang numero ng kontak ay dapat 11 digits at nagsisimula sa 09.',
-                alert_max_images: 'Hanggang 4 na larawan lamang ang pinapayagan.',
+                alert_max_images: 'Hanggang 10 na larawan lamang ang pinapayagan.',
                 alert_image_required: 'Kailangan ng kahit isang larawan ng ebidensya. Mangyaring mag-upload o kumuha ng larawan bago magsumite.',
                 alert_location_outside_qc: 'Mangyaring pumili ng lokasyon sa loob lamang ng Lungsod Quezon.',
                 alert_location_outside_gps: 'Ang iyong kasalukuyang lokasyon ay nasa labas ng Lungsod Quezon. Mangyaring pumili ng lokasyon sa loob ng QC.',
@@ -2224,7 +2224,7 @@ input[type="file"] {
     const cameraInput   = document.getElementById('evidence-camera');
     const previewDiv    = document.getElementById('image-preview');
     const cameraBtn     = document.getElementById('cameraBtn');
-    const MAX_FILES     = 4;
+    const MAX_FILES     = 10;
     let selectedFiles   = [];
 
     function updateUploadButton() {
@@ -2432,7 +2432,6 @@ input[type="file"] {
             const saved = localStorage.getItem(input.name);
             if (saved !== null) {
                 input.value = saved;
-            }
             }
             input.addEventListener('input', () => {
                 localStorage.setItem(input.name, input.value);
