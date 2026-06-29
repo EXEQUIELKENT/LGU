@@ -90,17 +90,6 @@ if ($report_result) {
             $dispStatus = 'Scheduled';
         }
 
-        // ── Delayed override: if today is strictly past the estimated end date ──
-        if ($dispStatus !== 'Completed' && !empty($rRow['end_date'])) {
-            try {
-                $todayDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
-                $endDt   = new DateTime($rRow['end_date'], new DateTimeZone('Asia/Manila'));
-                if ($todayDt > $endDt) {
-                    $dispStatus = 'Delayed';
-                }
-            } catch (Exception $e) {}
-        }
-
         $evImgs = [];
         if (!empty($rRow['evidence_images'])) {
             $evImgs = array_values(array_filter(explode(',', $rRow['evidence_images'])));
@@ -132,13 +121,11 @@ $maintenance_data = array_slice($maintenance_data, 0, 10);
 // ── Tally counts directly from the combined table data ───────────────────────
 $count_scheduled = 0;
 $count_ongoing   = 0;
-$count_delayed   = 0;
 $count_completed = 0;
 foreach ($maintenance_data as $_item) {
     switch ($_item['status']) {
         case 'Completed':   $count_completed++; break;
         case 'In Progress': $count_ongoing++;   break;
-        case 'Delayed':     $count_delayed++;   break;
         default:            $count_scheduled++; break; // Scheduled / Pending
     }
 }
@@ -249,9 +236,10 @@ foreach ($maintenance_data as $_item) {
         /* STAT CARDS */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 50px;
+            justify-items: stretch;
         }
         .stat-card {
             display: flex;
@@ -289,20 +277,16 @@ foreach ($maintenance_data as $_item) {
         /* Per-status icon tint */
         .stat-card.stat-scheduled .stat-icon { background: rgba(21,101,192,0.22); }
         .stat-card.stat-ongoing   .stat-icon { background: rgba(245,158,11,0.22); }
-        .stat-card.stat-delayed   .stat-icon { background: rgba(198,40,40,0.22);  }
         .stat-card.stat-completed .stat-icon { background: rgba(46,125,50,0.22);  }
         [data-theme="dark"] .stat-card.stat-scheduled .stat-icon { background: rgba(21,101,192,0.30); }
         [data-theme="dark"] .stat-card.stat-ongoing   .stat-icon { background: rgba(245,158,11,0.28); }
-        [data-theme="dark"] .stat-card.stat-delayed   .stat-icon { background: rgba(198,40,40,0.30);  }
         [data-theme="dark"] .stat-card.stat-completed .stat-icon { background: rgba(46,125,50,0.30);  }
         /* Per-status number colour */
         .stat-card.stat-scheduled .number { color: #1565c0; }
         .stat-card.stat-ongoing   .number { color: #f57f17; }
-        .stat-card.stat-delayed   .number { color: #c62828; }
         .stat-card.stat-completed .number { color: #2e7d32; }
         [data-theme="dark"] .stat-card.stat-scheduled .number { color: #90caf9; }
         [data-theme="dark"] .stat-card.stat-ongoing   .number { color: #fdd835; }
-        [data-theme="dark"] .stat-card.stat-delayed   .number { color: #e57373; }
         [data-theme="dark"] .stat-card.stat-completed .number { color: #81c784; }
         .stat-card h3 {
             font-size: 12px;
@@ -396,8 +380,7 @@ foreach ($maintenance_data as $_item) {
         col.col-date     { width: 11%; }   /* Mar 23, 2026 */
         col.col-type     { width: 21%; }   /* task — truncated */
         col.col-location { width: 24%; }   /* location — truncated */
-        col.col-budget   { width: 10%; }   /* ₱XX,XXX.XX */
-        col.col-status   { width: 19%; }   /* longest: "Isinasagawa" ~11 chars */
+        col.col-status   { width: 29%; }   /* longest: "Isinasagawa" ~11 chars */
         col.col-action   { width: 8%;  }   /* View btn */
 
         /* MODERN TABLE HEADER */
@@ -448,14 +431,13 @@ foreach ($maintenance_data as $_item) {
         /* Columns that should NOT wrap (short fixed values) */
         td:nth-child(1),   /* Sched # */
         td:nth-child(2),   /* Date    */
-        td:nth-child(5),   /* Budget  */
-        td:nth-child(7)    /* Action  */
+        td:nth-child(6)    /* Action  */
         {
             white-space: nowrap;
         }
 
         /* Status — allow wrapping so Filipino labels fit */
-        td:nth-child(6) {
+        td:nth-child(5) {
             white-space: normal;
         }
 
@@ -548,12 +530,10 @@ foreach ($maintenance_data as $_item) {
         .status-pending  { background: #e3f2fd; color: #1565c0; }   /* Scheduled/Pending → blue */
         .status-fixed    { background: #e8f5e9; color: #2e7d32; }   /* Completed         → green */
         .status-progress { background: #fff8e1; color: #f57f17; }   /* In Progress        → amber */
-        .status-delayed  { background: #ffebee; color: #c62828; }   /* Delayed            → red */
 
         [data-theme="dark"] .status-pending  { background: rgba(21,101,192,0.2);   color: #90caf9; }
         [data-theme="dark"] .status-fixed    { background: rgba(76,175,80,0.2);    color: #81c784; }
         [data-theme="dark"] .status-progress { background: rgba(245,158,11,0.18);  color: #fdd835; }
-        [data-theme="dark"] .status-delayed  { background: rgba(244,67,54,0.2);    color: #e57373; }
 
         /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
         .search-toolbar {
@@ -719,31 +699,26 @@ foreach ($maintenance_data as $_item) {
         }
         .legend-upcoming  { background: #1565c0; }
         .legend-ongoing   { background: #f59e0b; }
-        .legend-delayed   { background: #c62828; }
         .legend-completed { background: #2e7d32; }
 
         /* Pill border accent per status */
         .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.22); }
         .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.28); }
-        .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.22); }
         .legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.22); }
 
         [data-theme="dark"] .legend-item:has(.legend-upcoming)  { border-color: rgba(21,101,192,0.40); }
         [data-theme="dark"] .legend-item:has(.legend-ongoing)   { border-color: rgba(245,158,11,0.40); }
-        [data-theme="dark"] .legend-item:has(.legend-delayed)   { border-color: rgba(198,40,40,0.40); }
         [data-theme="dark"] .legend-item:has(.legend-completed) { border-color: rgba(46,125,50,0.40); }
 
         /* Active (selected) state */
         .legend-item.legend-active { box-shadow: 0 2px 10px rgba(0,0,0,0.13); font-weight: 700; }
         .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.13);  border-color: #1565c0; color: #1565c0; }
         .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.13);  border-color: #f59e0b; color: #b45309; }
-        .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.13);   border-color: #c62828; color: #c62828; }
         .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.13);   border-color: #2e7d32; color: #2e7d32; }
         .legend-item.legend-dimmed { opacity: 0.42; }
 
         [data-theme="dark"] .legend-item[data-filter="upcoming"].legend-active  { background: rgba(21,101,192,0.25);  border-color: #90caf9; color: #90caf9; }
         [data-theme="dark"] .legend-item[data-filter="ongoing"].legend-active   { background: rgba(245,158,11,0.22);  border-color: #fdd835; color: #fdd835; }
-        [data-theme="dark"] .legend-item[data-filter="delayed"].legend-active   { background: rgba(198,40,40,0.25);   border-color: #ef9a9a; color: #ef9a9a; }
         [data-theme="dark"] .legend-item[data-filter="completed"].legend-active { background: rgba(46,125,50,0.25);   border-color: #a5d6a7; color: #a5d6a7; }
 
         /* Clear-filter badge */
@@ -910,6 +885,14 @@ foreach ($maintenance_data as $_item) {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
             }
+            /* Center the lone 3rd card so it doesn't sit left-aligned */
+            .stats-grid .stat-card:last-child:nth-child(odd) {
+                grid-column: 1 / -1;
+                max-width: calc(50% - 6px); /* match the column width (half grid minus half gap) */
+                margin-left: auto;
+                margin-right: auto;
+                width: 100%;
+            }
             .welcome-section h1 {
                 text-align: center;
                 font-size: 2rem;
@@ -976,6 +959,10 @@ foreach ($maintenance_data as $_item) {
 
         @media (max-width: 500px) {
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            /* Adjust centered 3rd card for the tighter gap */
+            .stats-grid .stat-card:last-child:nth-child(odd) {
+                max-width: calc(50% - 5px); /* match column width (half grid minus half gap) */
+            }
             .stat-card { padding: 16px 10px; }
             .stat-icon { font-size: 22px; padding: 8px; }
             .stat-card .number { font-size: 26px; }
@@ -1026,7 +1013,6 @@ foreach ($maintenance_data as $_item) {
         .sched-modal-band { height: 8px; border-radius: 20px 20px 0 0; width: 100%; flex-shrink: 0; }
         .sched-modal-band.sched-completed  { background: linear-gradient(90deg,#2e7d32,#66bb6a); }
         .sched-modal-band.sched-inprogress { background: linear-gradient(90deg,#f57f17,#ffd54f); }
-        .sched-modal-band.sched-delayed    { background: linear-gradient(90deg,#c62828,#ef5350); }
         .sched-modal-band.sched-pending    { background: linear-gradient(90deg,#1565c0,#42a5f5); }
 
         .sched-modal-header {
@@ -1065,11 +1051,9 @@ foreach ($maintenance_data as $_item) {
         }
         .sched-status-pill.sched-completed  { background: #e8f5e9; color: #2e7d32; }   /* green  */
         .sched-status-pill.sched-inprogress { background: #fff8e1; color: #f57f17; }   /* amber  */
-        .sched-status-pill.sched-delayed    { background: #ffebee; color: #c62828; }   /* red    */
         .sched-status-pill.sched-pending    { background: #e3f2fd; color: #1565c0; }   /* blue   */
         [data-theme="dark"] .sched-status-pill.sched-completed  { background: rgba(76,175,80,0.2);   color: #81c784; }
         [data-theme="dark"] .sched-status-pill.sched-inprogress { background: rgba(245,158,11,0.18); color: #fdd835; }
-        [data-theme="dark"] .sched-status-pill.sched-delayed    { background: rgba(244,67,54,0.2);   color: #e57373; }
         [data-theme="dark"] .sched-status-pill.sched-pending    { background: rgba(21,101,192,0.2);  color: #90caf9; }
 
         /* Fields */
@@ -1285,13 +1269,6 @@ foreach ($maintenance_data as $_item) {
             <div class="number"><?= $count_ongoing ?></div>
         </div>
     </div>
-    <div class="stat-card stat-delayed" onclick="filterByLegend('delayed')" data-i18n-title="reports_stat_title_delayed" title="Filter: Delayed">
-        <div class="stat-icon">⚠️</div>
-        <div>
-            <h3 data-i18n="reports_stat_delayed">Delayed</h3>
-            <div class="number"><?= $count_delayed ?></div>
-        </div>
-    </div>
     <div class="stat-card stat-completed" onclick="filterByLegend('completed')" data-i18n-title="reports_stat_title_completed" title="Filter: Completed">
         <div class="stat-icon">✅</div>
         <div>
@@ -1318,7 +1295,7 @@ foreach ($maintenance_data as $_item) {
             id="requestSearch"
             type="text"
             data-i18n-placeholder="reports_search_placeholder"
-            placeholder="Search by Date, Type, Location, Budget, or Status..."
+            placeholder="Search by Date, Type, Location, or Status..."
         >
     </div>
     <div class="sort-dropdown-wrap" id="schedSortWrap">
@@ -1348,9 +1325,6 @@ foreach ($maintenance_data as $_item) {
         <span class="legend-item" data-filter="ongoing" data-i18n-title="reports_legend_filter_title_ongoing" title="Click to filter: In Progress">
             <span class="legend-dot legend-ongoing"></span><span data-i18n="reports_legend_ongoing">In Progress</span>
         </span>
-        <span class="legend-item" data-filter="delayed" data-i18n-title="reports_legend_filter_title_delayed" title="Click to filter: Delayed">
-            <span class="legend-dot legend-delayed"></span><span data-i18n="reports_legend_delayed">Delayed</span>
-        </span>
         <span class="legend-item" data-filter="completed" data-i18n-title="reports_legend_filter_title_completed" title="Click to filter: Completed">
             <span class="legend-dot legend-completed"></span><span data-i18n="reports_legend_completed">Completed</span>
         </span>
@@ -1370,7 +1344,6 @@ foreach ($maintenance_data as $_item) {
                 <col class="col-date">
                 <col class="col-type">
                 <col class="col-location">
-                <col class="col-budget">
                 <col class="col-status">
                 <col class="col-action">
             </colgroup>
@@ -1380,7 +1353,6 @@ foreach ($maintenance_data as $_item) {
                     <th data-i18n="reports_table_date">Date</th>
                     <th data-i18n="reports_table_type">Type</th>
                     <th data-i18n="reports_table_location">Location</th>
-                    <th data-i18n="reports_table_budget">Budget</th>
                     <th data-i18n="reports_table_status">Status</th>
                     <th data-i18n="reports_table_action">Action</th>
                 </tr>
@@ -1400,10 +1372,6 @@ foreach ($maintenance_data as $_item) {
                             $status_class = 'status-progress';
                             $status_key = 'reports_status_in_progress';
                             $status_filter_key = 'ongoing';
-                        } elseif ($item['status'] === 'Delayed') {
-                            $status_class = 'status-delayed';
-                            $status_key = 'reports_status_delayed';
-                            $status_filter_key = 'delayed';
                         }
                         $date = !empty($item['starting_date']) ? date('M d, Y', strtotime($item['starting_date'])) : '—';
                         $task_escaped     = htmlspecialchars($item['task']);
@@ -1417,7 +1385,6 @@ foreach ($maintenance_data as $_item) {
                     <td class="searchable"><?php echo $date; ?></td>
                     <td class="searchable" title="<?php echo $task_escaped; ?>"><?php echo $task_escaped; ?></td>
                     <td class="searchable" title="<?php echo $location_escaped; ?>"><?php echo $location_escaped; ?></td>
-                    <td class="searchable">₱<?php echo number_format($item['budget'], 2); ?></td>
                     <td class="searchable"><span class="status-pill <?php echo $status_class; ?>" data-i18n="<?php echo $status_key; ?>"><?php echo htmlspecialchars($item['status']); ?></span></td>
                     <td><a href="#" class="link" onclick="openSchedModal(<?= (int)$item['modal_id'] ?>);return false;" data-i18n="reports_view_button">View</a></td>
                 </tr>
@@ -1426,11 +1393,11 @@ foreach ($maintenance_data as $_item) {
                 } else {
                 ?>
                 <tr>
-                    <td colspan="7" style="text-align: center; color: #999;" data-i18n="reports_no_data">No maintenance schedules available</td>
+                    <td colspan="6" style="text-align: center; color: #999;" data-i18n="reports_no_data">No maintenance schedules available</td>
                 </tr>
                 <?php } ?>
                 <tr id="noRequestResult" style="display:none;">
-                    <td colspan="7" style="text-align:center; padding:20px; font-weight:500;" data-i18n="reports_no_match">
+                    <td colspan="6" style="text-align:center; padding:20px; font-weight:500;" data-i18n="reports_no_match">
                         No matching data
                     </td>
                 </tr>
@@ -1454,10 +1421,6 @@ foreach ($maintenance_data as $_item) {
                     $status_class = 'status-progress';
                     $status_key = 'reports_status_in_progress';
                     $status_filter_key = 'ongoing';
-                } elseif ($item['status'] === 'Delayed') {
-                    $status_class = 'status-delayed';
-                    $status_key = 'reports_status_delayed';
-                    $status_filter_key = 'delayed';
                 }
             ?>
                 <div class="report-card" data-status="<?= $status_filter_key ?>"
@@ -1479,10 +1442,6 @@ foreach ($maintenance_data as $_item) {
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_start_date">Start Date:</span>
                         <span class="value searchable"><?= !empty($item['starting_date']) ? date('M d, Y', strtotime($item['starting_date'])) : '—' ?></span>
-                    </div>
-                    <div class="report-row">
-                        <span class="label" data-i18n="reports_mobile_budget">Budget:</span>
-                        <span class="value searchable">₱<?= number_format($item['budget'], 2) ?></span>
                     </div>
                     <div class="report-row">
                         <span class="label" data-i18n="reports_mobile_status">Status:</span>
@@ -1527,7 +1486,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const LEGEND_LABELS = {
         upcoming:  'Scheduled',
         ongoing:   'In Progress',
-        delayed:   'Delayed',
         completed: 'Completed',
     };
 
@@ -1695,10 +1653,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="sched-field-value" id="schedModalPriority"></div>
                 </div>
                 <div class="sched-field">
-                    <div class="sched-field-label" id="lbl-budget">💰 Budget</div>
-                    <div class="sched-field-value" id="schedModalBudget"></div>
-                </div>
-                <div class="sched-field">
                     <div class="sched-field-label" id="lbl-start">📅 Start Date</div>
                     <div class="sched-field-value" id="schedModalStart"></div>
                 </div>
@@ -1733,7 +1687,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 'end'             => !empty($m['end_date'])
                                        ? date('M d, Y', strtotime($m['end_date']))
                                        : '—',
-                'budget'          => '₱' . number_format((float)$m['budget'], 2),
                 'priority'        => $m['priority'] ?? '',
                 'issue'           => $m['issue'] ?? '',
                 'evidence_images' => $m['evidence_images'] ?? [],
@@ -1755,7 +1708,6 @@ document.addEventListener("DOMContentLoaded", () => {
             priority : '🚦 Priority',
             start    : '📅 Start Date',
             end      : '🏁 Est. Completion',
-            budget   : '💰 Budget',
             evidence : '🖼️ Evidence Photos',
             noDate   : 'Not set',
             noPriority: 'Not specified',
@@ -1766,7 +1718,6 @@ document.addEventListener("DOMContentLoaded", () => {
             priority : '🚦 Priyoridad',
             start    : '📅 Petsa ng Pagsisimula',
             end      : '🏁 Tinatayang Tapusin',
-            budget   : '💰 Badyet',
             evidence : '🖼️ Mga Larawan ng Ebidensya',
             noDate   : 'Hindi pa natakda',
             noPriority: 'Hindi tinukoy',
@@ -1777,7 +1728,6 @@ document.addEventListener("DOMContentLoaded", () => {
     var STATUS_MAP = {
         'Completed'  : { cls: 'sched-completed',  en: '✅ Completed',   tl: '✅ Natapos'      },
         'In Progress': { cls: 'sched-inprogress', en: '🔄 In Progress', tl: '🔄 Isinasagawa'  },
-        'Delayed'    : { cls: 'sched-delayed',    en: '⚠️ Delayed',     tl: '⚠️ Naantala'     },
         'Pending'    : { cls: 'sched-pending',    en: '⏳ Pending',     tl: '⏳ Nakabinbin'   },
         'Scheduled'  : { cls: 'sched-pending',    en: '📅 Scheduled',   tl: '📅 Nakaplanong'  },
     };
@@ -1794,7 +1744,6 @@ document.addEventListener("DOMContentLoaded", () => {
     var priorityEl       = document.getElementById('schedModalPriority');
     var startEl          = document.getElementById('schedModalStart');
     var endEl            = document.getElementById('schedModalEnd');
-    var budgetEl         = document.getElementById('schedModalBudget');
     var evidenceEl       = document.getElementById('schedModalEvidence');
     var evidenceFld      = document.getElementById('sched-evidence-field');
     var evidenceDivider  = document.getElementById('sched-evidence-divider');
@@ -1809,7 +1758,6 @@ document.addEventListener("DOMContentLoaded", () => {
     var lblPriority = document.getElementById('lbl-priority');
     var lblStart    = document.getElementById('lbl-start');
     var lblEnd      = document.getElementById('lbl-end');
-    var lblBudget   = document.getElementById('lbl-budget');
     var lblEvidence = document.getElementById('lbl-evidence');
 
     /* ── Priority badge helper ── */
@@ -1850,7 +1798,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (lblPriority) lblPriority.textContent = lbl.priority;
         lblStart.textContent    = lbl.start;
         lblEnd.textContent      = lbl.end;
-        lblBudget.textContent   = lbl.budget;
         if (lblEvidence) lblEvidence.textContent = lbl.evidence;
 
         /* Band colour */
@@ -1866,7 +1813,6 @@ document.addEventListener("DOMContentLoaded", () => {
         locEl.innerHTML      = (rec.location ? rec.location.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '—') + makeDistrictBadge(rec.district || '');
         startEl.textContent  = rec.start    || lbl.noDate;
         endEl.textContent    = rec.end      || lbl.noDate;
-        budgetEl.textContent = rec.budget   || '—';
 
         /* Issue / Notes — only for reports */
         if (issueFld) {
@@ -2176,11 +2122,9 @@ document.addEventListener("DOMContentLoaded", () => {
             /* ── stat cards ── */
             reports_stat_scheduled:              'Scheduled',
             reports_stat_ongoing:                'On-Going',
-            reports_stat_delayed:                'Delayed',
             reports_stat_completed:              'Completed',
             reports_stat_title_scheduled:        'Filter: Scheduled',
             reports_stat_title_ongoing:          'Filter: On-Going',
-            reports_stat_title_delayed:          'Filter: Delayed',
             reports_stat_title_completed:        'Filter: Completed',
             /* ── sort ── */
             sort_btn_label:                      'Sort',
@@ -2193,15 +2137,13 @@ document.addEventListener("DOMContentLoaded", () => {
             sort_alpha_desc:                     'Type Z → A',
             /* ── main card ── */
             reports_page_title:                  'Recent Maintenance Reports',
-            reports_search_placeholder:          'Search by Date, Type, Location, Budget, or Status...',
+            reports_search_placeholder:          'Search by Date, Type, Location, or Status...',
             /* ── legend ── */
             reports_legend_scheduled:            'Scheduled',
             reports_legend_ongoing:              'In Progress',
-            reports_legend_delayed:              'Delayed',
             reports_legend_completed:            'Completed',
             reports_legend_filter_title_scheduled:  'Click to filter: Scheduled',
             reports_legend_filter_title_ongoing:    'Click to filter: In Progress',
-            reports_legend_filter_title_delayed:    'Click to filter: Delayed',
             reports_legend_filter_title_completed:  'Click to filter: Completed',
             reports_legend_clear:                'Click to clear filter',
             /* ── table headers ── */
@@ -2209,14 +2151,12 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_table_date:                  'Date',
             reports_table_type:                  'Type',
             reports_table_location:              'Location',
-            reports_table_budget:                'Budget',
             reports_table_status:                'Status',
             reports_table_action:                'Action',
             /* ── status pills ── */
             reports_status_scheduled:            'Scheduled',
             reports_status_completed:            'Completed',
             reports_status_in_progress:          'In Progress',
-            reports_status_delayed:              'Delayed',
             /* ── misc ── */
             reports_view_button:                 'View',
             reports_no_data:                     'No maintenance schedules available',
@@ -2227,7 +2167,6 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_mobile_task:                 'Task:',
             reports_mobile_location:             'Location:',
             reports_mobile_start_date:           'Start Date:',
-            reports_mobile_budget:               'Budget:',
             reports_mobile_status:               'Status:',
             /* ── footer ── */
             footer_desc:         'Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.',
@@ -2260,11 +2199,9 @@ document.addEventListener("DOMContentLoaded", () => {
             /* ── stat cards ── */
             reports_stat_scheduled:              'Nakaplanong',
             reports_stat_ongoing:                'Isinasagawa',
-            reports_stat_delayed:                'Naantala',
             reports_stat_completed:              'Natapos',
             reports_stat_title_scheduled:        'I-filter: Nakaplanong',
             reports_stat_title_ongoing:          'I-filter: Isinasagawa',
-            reports_stat_title_delayed:          'I-filter: Naantala',
             reports_stat_title_completed:        'I-filter: Natapos',
             /* ── sort ── */
             sort_btn_label:                      'Ayusin',
@@ -2277,15 +2214,13 @@ document.addEventListener("DOMContentLoaded", () => {
             sort_alpha_desc:                     'Uri Z → A',
             /* ── main card ── */
             reports_page_title:                  'Kamakailang Ulat ng Pagpapanatili',
-            reports_search_placeholder:          'Maghanap ayon sa Petsa, Uri, Lokasyon, Badyet, o Katayuan...',
+            reports_search_placeholder:          'Maghanap ayon sa Petsa, Uri, Lokasyon, o Katayuan...',
             /* ── legend ── */
             reports_legend_scheduled:            'Nakaplanong',
             reports_legend_ongoing:              'Isinasagawa',
-            reports_legend_delayed:              'Naantala',
             reports_legend_completed:            'Natapos',
             reports_legend_filter_title_scheduled:  'I-click para i-filter: Nakaplanong',
             reports_legend_filter_title_ongoing:    'I-click para i-filter: Isinasagawa',
-            reports_legend_filter_title_delayed:    'I-click para i-filter: Naantala',
             reports_legend_filter_title_completed:  'I-click para i-filter: Natapos',
             reports_legend_clear:                'I-click para alisin ang filter',
             /* ── table headers ── */
@@ -2293,14 +2228,12 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_table_date:                  'Petsa',
             reports_table_type:                  'Uri',
             reports_table_location:              'Lokasyon',
-            reports_table_budget:                'Badyet',
             reports_table_status:                'Katayuan',
             reports_table_action:                'Aksyon',
             /* ── status pills ── */
             reports_status_scheduled:            'Nakaplanong',
             reports_status_completed:            'Natapos',
             reports_status_in_progress:          'Isinasagawa',
-            reports_status_delayed:              'Naantala',
             /* ── misc ── */
             reports_view_button:                 'Tingnan',
             reports_no_data:                     'Walang available na iskedyul ng pagpapanatili',
@@ -2311,7 +2244,6 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_mobile_task:                 'Gawain:',
             reports_mobile_location:             'Lokasyon:',
             reports_mobile_start_date:           'Petsa ng Pagsisimula:',
-            reports_mobile_budget:               'Badyet:',
             reports_mobile_status:               'Katayuan:',
             /* ── footer ── */
             footer_desc:         'Sistema ng Pamamahala ng Pagpapanatili ng Imprastraktura ng Komunidad para sa Lungsod Quezon. Nakatuon sa pagbibigay ng mahusay, malinaw, at matuging mga serbisyong pang-imprastraktura para sa lahat ng residente.',

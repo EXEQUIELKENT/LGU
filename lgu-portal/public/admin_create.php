@@ -2,50 +2,9 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-session_start();
+require_once __DIR__ . '/session_guard.php';
 
-// --- SERVER TIMEZONE SYNC ---
-date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-// 🔐 Strict session check
-if (
-    !isset($_SESSION['employee_logged_in']) ||
-    $_SESSION['employee_logged_in'] !== true
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
 
 // 🔐 Role guard — Admin and Super Admin only
 if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
@@ -1693,7 +1652,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                             <input class="prof-combobox-search" type="text" placeholder="Search…" autocomplete="off">
                         </div>
                         <div class="prof-combobox-list">
-                            <div class="prof-combobox-option<?= $role === 'Manager'      ? ' selected-opt' : '' ?>" data-value="Manager"><i class="fas fa-user-tie" style="width:16px;opacity:.75;"></i> Manager</div>
+                            <div class="prof-combobox-option<?= $role === 'Head Engineer' ? ' selected-opt' : '' ?>" data-value="Head Engineer"><i class="fas fa-user-tie" style="width:16px;opacity:.75;"></i> Head Engineer</div>
                             <div class="prof-combobox-option<?= $role === 'Engineer'     ? ' selected-opt' : '' ?>" data-value="Engineer"><i class="fas fa-hard-hat" style="width:16px;opacity:.75;"></i> Engineer</div>
                             <div class="prof-combobox-option<?= $role === 'Office Staff' ? ' selected-opt' : '' ?>" data-value="Office Staff"><i class="fas fa-user-clock" style="width:16px;opacity:.75;"></i> Office Staff</div>
                             <div class="prof-combobox-option<?= $role === 'Admin'        ? ' selected-opt' : '' ?>" data-value="Admin"><i class="fas fa-user-shield" style="width:16px;opacity:.75;"></i> Admin</div>

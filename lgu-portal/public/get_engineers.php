@@ -16,11 +16,13 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
 }
 
 // Office staff, manager, and admins can fetch the full list.
+// Head engineers fetch only engineers within their own district.
 // Engineers may only fetch their own profile (must pass ?id= matching their session).
-$userRole   = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$sessionId  = (int)($_SESSION['employee_id'] ?? 0);
-$isEngineer = $userRole === 'engineer';
-$allowed    = ['office staff', 'manager', 'admin', 'super admin'];
+$userRole       = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$sessionId      = (int)($_SESSION['employee_id'] ?? 0);
+$isEngineer     = $userRole === 'engineer';
+$isHeadEngineer = $userRole === 'head engineer';
+$allowed        = ['office staff', 'manager', 'admin', 'super admin'];
 
 $singleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -29,11 +31,30 @@ if ($isEngineer) {
     if ($singleId <= 0 || $singleId !== $sessionId) {
         jsonOut(false, 'Permission denied. Engineers may only view their own profile.');
     }
-} elseif (!in_array($userRole, $allowed)) {
+} elseif (!$isHeadEngineer && !in_array($userRole, $allowed)) {
     jsonOut(false, 'Permission denied.');
 }
 
 require __DIR__ . '/db.php';
+
+// ── Head Engineer: resolve their district from DB and enforce it ──────────────
+$heDistrict     = '';
+$districtClause = '';
+if ($isHeadEngineer) {
+    $hdStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
+    $hdStmt->bind_param('i', $sessionId);
+    $hdStmt->execute();
+    $hdRow      = $hdStmt->get_result()->fetch_assoc();
+    $hdStmt->close();
+    $heDistrict = trim($hdRow['district'] ?? '');
+
+    if ($heDistrict === '') {
+        jsonOut(false, 'No district is assigned to your profile.', ['engineers' => []]);
+    }
+    // Case-insensitive match — handles any capitalisation difference between tables
+    $districtClause = ' AND LOWER(ep.district) = LOWER(?)';
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Optional single-engineer lookup
 $idClause = $singleId > 0 ? ' AND e.user_id = ?' : '';
@@ -61,7 +82,7 @@ $stmt = $conn->prepare(
         ep.district
      FROM employees e
      INNER JOIN engineer_profiles ep ON ep.user_id = e.user_id
-     WHERE e.role = 'Engineer'{$idClause}
+     WHERE e.role = 'Engineer'{$idClause}{$districtClause}
      ORDER BY e.first_name ASC, e.last_name ASC"
 );
 
@@ -69,9 +90,15 @@ if (!$stmt) {
     jsonOut(false, 'DB prepare error: ' . $conn->error);
 }
 
-if ($singleId > 0) {
+// Bind params based on which WHERE clauses are active
+if ($singleId > 0 && $isHeadEngineer) {
+    $stmt->bind_param('is', $singleId, $heDistrict);
+} elseif ($singleId > 0) {
     $stmt->bind_param('i', $singleId);
+} elseif ($isHeadEngineer) {
+    $stmt->bind_param('s', $heDistrict);
 }
+// else: no dynamic params — WHERE clause is fully static
 
 $stmt->execute();
 $result    = $stmt->get_result();

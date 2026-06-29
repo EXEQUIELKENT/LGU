@@ -1508,7 +1508,7 @@ body {
                 </div>
 
                 <!-- ── SECTION: Photo Evidence ── -->
-                <div class="fbk-section-label"><span data-i18n="fbk_section_photos">Photo Evidence</span> <span style="font-size:10px;font-weight:400;color:#94a3b8;" data-i18n="fbk_photos_note">(optional — max 5 photos)</span></div>
+                <div class="fbk-section-label"><span data-i18n="fbk_section_photos">Photo Evidence</span> <span style="font-size:10px;font-weight:400;color:#94a3b8;" data-i18n="fbk_photos_note">(optional)</span></div>
 
                 <div class="fbk-group full">
                     <div class="photo-drop-zone" id="photoDropZone">
@@ -1516,7 +1516,7 @@ body {
                                accept="image/*" multiple>
                         <div class="photo-drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
                         <div class="photo-drop-text" data-i18n="fbk_photo_drop_text">Click or drag photos here</div>
-                        <div class="photo-drop-hint" data-i18n="fbk_photo_drop_hint">JPG, PNG, WEBP — max 5 photos, 5 MB each</div>
+                        <div class="photo-drop-hint" data-i18n="fbk_photo_drop_hint">JPG, PNG, WEBP — 5 MB each</div>
                     </div>
                     <div class="photo-preview-grid" id="photoPreviewGrid"></div>
                 </div>
@@ -2158,7 +2158,7 @@ function clearRefSelect() {}
     const input   = document.getElementById('photoInput');
     const grid    = document.getElementById('photoPreviewGrid');
     const zone    = document.getElementById('photoDropZone');
-    const MAX     = 5;
+    const MAX     = 10;
     let fileList  = [];
 
     function renderPreviews() {

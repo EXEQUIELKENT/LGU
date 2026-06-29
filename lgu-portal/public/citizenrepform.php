@@ -1862,10 +1862,7 @@ input[type="file"] {
                 alert_location_outside_gps: 'Your current location is outside Quezon City. Please select a location within QC.',
                 alert_location_qc_only: 'Location must be within Quezon City.',
                 alert_select_location: 'Please select or enter a location.',
-                alert_dpwh_road: '⚠️ DPWH-maintained road — not under LGU jurisdiction',
-                alert_nonlgu_zone: '⚠️ Not under LGU jurisdiction. {road} is maintained by DPWH. Please select a nearby local road or report directly to DPWH.',
-                alert_dpwh_cannot_save: '⚠️ Cannot save this location. This road is maintained by DPWH, not the LGU. Please select a nearby local road instead.',
-                alert_dpwh_cannot_save_named: '⚠️ Cannot save this location. {road} is maintained by DPWH. Please move your pin to a nearby local road.',
+
                 map_fetching_address: 'Fetching address...',
                 map_save_location_wait: 'Please wait — fetching address…',
                 map_barangay_placeholder: 'Select Barangay (Quezon City)',
@@ -1902,10 +1899,7 @@ input[type="file"] {
                 alert_location_outside_gps: 'Ang iyong kasalukuyang lokasyon ay nasa labas ng Lungsod Quezon. Mangyaring pumili ng lokasyon sa loob ng QC.',
                 alert_location_qc_only: 'Ang lokasyon ay dapat nasa loob ng Lungsod Quezon.',
                 alert_select_location: 'Mangyaring pumili o magpasok ng lokasyon.',
-                alert_dpwh_road: '⚠️ Kalsadang pinananatili ng DPWH — hindi nasa ilalim ng nasasakupan ng LGU',
-                alert_nonlgu_zone: '⚠️ Hindi nasa ilalim ng nasasakupan ng LGU. Ang {road} ay pinananatili ng DPWH. Mangyaring pumili ng malapit na lokal na kalsada o mag-ulat direkta sa DPWH.',
-                alert_dpwh_cannot_save: '⚠️ Hindi ma-save ang lokasyong ito. Ang kalsadang ito ay pinananatili ng DPWH, hindi ng LGU. Mangyaring pumili ng malapit na lokal na kalsada.',
-                alert_dpwh_cannot_save_named: '⚠️ Hindi ma-save ang lokasyong ito. Ang {road} ay pinananatili ng DPWH. Mangyaring ilipat ang iyong pin sa malapit na lokal na kalsada.',
+
                 map_fetching_address: 'Kinukuha ang address...',
                 map_save_location_wait: 'Mangyaring maghintay — kinukuha ang address…',
                 map_barangay_placeholder: 'Pumili ng Barangay (Lungsod Quezon)',
@@ -2437,12 +2431,8 @@ input[type="file"] {
         inputs.forEach(input => {
             const saved = localStorage.getItem(input.name);
             if (saved !== null) {
-                // Never restore DPWH warning placeholder text into any field
-                if (saved.includes('DPWH-maintained road') || saved.includes('not under LGU jurisdiction')) {
-                    localStorage.removeItem(input.name);
-                } else {
-                    input.value = saved;
-                }
+                input.value = saved;
+            }
             }
             input.addEventListener('input', () => {
                 localStorage.setItem(input.name, input.value);
@@ -3141,8 +3131,6 @@ input[type="file"] {
         manualAddressInput.value = ''; locationSource = null;
         barangaySelect.value = ''; districtInfo.style.display = 'none';
         lastUpdatePosition = null;
-        // Reset non-LGU toast state on each modal open
-        _nonLguActive = false;
 
         if (addressCache && addressCache.size > 50) addressCache.clear();
 
@@ -3153,7 +3141,6 @@ input[type="file"] {
             if (!map) {
                 // Fallback: init now if eager init somehow didn't fire
                 initializeMap();
-                loadNonLguOverlays();
             }
             map.invalidateSize(false);
             if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
@@ -3181,21 +3168,12 @@ input[type="file"] {
                     map.setView([lat, lng], 18); marker.setLatLng([lat, lng]);
                     if (accuracyCircle) map.removeLayer(accuracyCircle);
                     accuracyCircle = L.circle([lat, lng], { radius: accuracy, color: '#2b6cb0', fillColor: '#2b6cb0', fillOpacity: 0.15 }).addTo(map);
-                    // ── Check DPWH zone first ────────────────────────
-                    const nonLguGps = isNonLguArea(latlng);
-                    checkNonLguZone(latlng);
 
                     const nearest = findNearestBarangay(latlng);
                     if (nearest) {
                         barangaySelect.value = nearest.name;
                         updateDistrictInfo(nearest.district);
-                        if (!nonLguGps.isNonLgu) {
-                            // Only fetch address when it is LGU-managed
-                            fetchDetailedAddress(latlng, nearest.name);
-                        } else {
-                            manualAddressInput.classList.remove('loading');
-                            manualAddressInput.value = getTranslation('alert_dpwh_road');
-                        }
+                        fetchDetailedAddress(latlng, nearest.name);
                     }
                     gpsBtn.textContent = '📍';
                 },
@@ -3263,9 +3241,6 @@ input[type="file"] {
         });
         addLocationLabels(); updateLocationLabelsVisibility(); updateLabelToggleButton();
         syncMapLayerToggleButton();
-        // Eagerly load DPWH overlays — polyline lat/lng coords don't require a
-        // correctly-sized container, so we can draw them immediately.
-        loadNonLguOverlays();
         // Pre-load barangay GeoJSON so borders are ready on first pin drop
         loadBarangayGeoJSON();
     }
@@ -3282,23 +3257,6 @@ input[type="file"] {
         lastUpdatePosition = selectedLatLng;
         if (updateLocationTimeout) clearTimeout(updateLocationTimeout);
         updateLocationTimeout = setTimeout(() => {
-            // ── Check DPWH zone BEFORE anything else ─────────────────
-            const nonLgu = isNonLguArea(selectedLatLng);
-            checkNonLguZone(selectedLatLng); // shows warning if needed
-
-            if (nonLgu.isNonLgu) {
-                // Abort any in-progress Nominatim / Overpass fetch
-                if (abortController) { abortController.abort(); abortController = null; }
-                if (fetchAddressTimeout) { clearTimeout(fetchAddressTimeout); fetchAddressTimeout = null; }
-                manualAddressInput.classList.remove('loading');
-                // Show a clear, neutral placeholder instead of an address
-                manualAddressInput.value = getTranslation('alert_dpwh_road');
-                // Still find the nearest barangay for district info / UI consistency
-                const nearest = findNearestBarangay(selectedLatLng);
-                if (nearest) { barangaySelect.value = nearest.name; updateDistrictInfo(nearest.district); highlightBarangayBoundary(nearest.name, false); }
-                return; // ← skip address fetch
-            }
-
             // Normal LGU road — proceed as before
             const nearest = findNearestBarangay(selectedLatLng);
             if (nearest) {
@@ -3715,29 +3673,6 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
         let finalValue = manualAddressInput.value.trim();
         if (!finalValue) { showJsNotification('warning', 'Please select or enter a location.'); return; }
 
-        // Block saving if address is the DPWH warning placeholder
-        // AFTER
-        if (
-            finalValue.includes('DPWH-maintained road') ||
-            finalValue.includes('not under LGU jurisdiction') ||
-            finalValue.includes('Kalsadang pinananatili ng DPWH')        // covers TL cached value
-        ) {
-            showJsNotification('error', getTranslation('alert_dpwh_cannot_save'));
-            return;
-        }
-
-        // Block saving if the pinned coordinates fall within a DPWH road buffer
-        if (selectedLatLng) {
-            const nonLgu = isNonLguArea(selectedLatLng);
-            if (nonLgu.isNonLgu) {
-            // AFTER
-            showJsNotification('warning',
-                getTranslation('alert_nonlgu_zone').replace('{road}', result.roadName)
-            );
-                return;
-            }
-        }
-
         locationInput.value = finalValue; localStorage.setItem('location', finalValue);
         if (selectedLatLng) {
             const lat = typeof selectedLatLng.lat === 'function' ? selectedLatLng.lat() : selectedLatLng.lat;
@@ -3756,422 +3691,6 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
     }
     window.closeMapModal = closeMapModal;
     window.saveLocation  = saveLocation;
-
-    // ============================================
-    // ============================================
-    // NON-LGU (DPWH) ZONE — LIVE OSM ROAD DATA
-    // Road geometries are fetched at runtime from
-    // the Overpass API — the exact same source as
-    // the Leaflet OSM tile layer — so overlays are
-    // always pixel-perfect regardless of zoom level.
-    // ============================================
-
-    let nonLguRoadLayer = null;
-
-    // Tighter buffer — 20 m keeps detection to the road corridor only
-    const DPWH_BUFFER_METERS = 20;
-
-    // Live segments store (clipped to QC). Each entry: { name, coords }
-    let _dpwhRoadSegments = [];
-    let _dpwhLoaded = false;
-
-    // ── Background prefetch — started immediately on page load ───────────
-    // Stores the Promise while in-flight, the resolved segment array when done.
-    let _dpwhPrefetchPromise = null;
-    let _dpwhPrefetchResult  = null; // null = not started/done, [] = done (empty), [...] = ready
-
-    // ── DPWH / nationally-maintained road names (OSM canonical) ──────────
-    // NOTE: Katipunan Avenue removed — it is LGU-managed within QC.
-    const DPWH_ROAD_NAMES = [
-        "Commonwealth Avenue",
-        "EDSA",
-        "Epifanio delos Santos Avenue",
-        "Epifanio de los Santos Avenue",
-        "Quezon Avenue",
-        "Aurora Boulevard",
-        "C-5 Road",
-        "Mindanao Avenue",
-        "Visayas Avenue",
-        "North Avenue",
-        "East Avenue",
-        "España Boulevard",
-        "Congressional Avenue",
-        "Congressional Avenue Extension",
-        "Elliptical Road",
-        "Quirino Highway",
-        "Regalado Avenue",
-        "Regalado Highway",
-        "Tandang Sora Avenue",
-        "Luzon Avenue",
-        "Timog Avenue",
-        "West Avenue",
-        "Skyway",
-        "Metro Skyway",
-        "Andres Bonifacio Avenue",
-        "E. Rodriguez Jr. Avenue",
-        "C. P. Garcia Avenue",
-        "Marcos Highway",
-        "Batasan Road",
-        "San Mateo Road",
-        "Payatas Road",
-        "B. Soliven Street",
-        "General Luis Street",
-        "Colonel Bonny Serrano Avenue",
-        "Col. Bonny Serrano Avenue",
-        "Bonny Serrano Avenue",
-        "Ortigas Avenue",
-        "N. Domingo Street",
-        "Nicanor Domingo Street",
-        "Dona Hemady Avenue",
-        "Doña Hemady Avenue",
-        "Hemady Avenue",
-        // ── New batch ──
-        "Gilmore Avenue",
-        "Sarmiento Street",
-        "Buenamar Street",
-        "Magsaysay Boulevard",
-        "Senator Jose O. Vera Street",
-        "Sen. Jose O. Vera Street",
-        "Jose O. Vera Street",
-        "Dona Hemady Street",
-        "Doña Hemady Street",
-        "Katipunan Avenue"
-    ];
-
-    // ── OSM highway types considered national / DPWH-maintained ─────────
-    const DPWH_HIGHWAY_TYPES = "motorway|trunk|primary|motorway_link|trunk_link|primary_link";
-
-    // ── User-friendly display names ───────────────────────────────────────
-    const DPWH_DISPLAY_NAMES = {
-        "Commonwealth Avenue":              "Commonwealth Avenue (DPWH)",
-        "EDSA":                             "EDSA — Epifanio de los Santos Ave (DPWH)",
-        "Epifanio delos Santos Avenue":     "EDSA — Epifanio de los Santos Ave (DPWH)",
-        "Epifanio de los Santos Avenue":    "EDSA — Epifanio de los Santos Ave (DPWH)",
-        "Quezon Avenue":                    "Quezon Avenue (DPWH)",
-        "Aurora Boulevard":                 "Aurora Boulevard (DPWH)",
-        "C-5 Road":                         "C-5 Road (DPWH)",
-        "Mindanao Avenue":                  "Mindanao Avenue (DPWH)",
-        "Visayas Avenue":                   "Visayas Avenue (DPWH)",
-        "North Avenue":                     "North Avenue (DPWH)",
-        "East Avenue":                      "East Avenue (DPWH)",
-        "España Boulevard":                 "España Boulevard (DPWH)",
-        "Congressional Avenue":             "Congressional Avenue (DPWH)",
-        "Congressional Avenue Extension":   "Congressional Avenue Extension (DPWH)",
-        "Elliptical Road":                  "Elliptical Road / Quezon Memorial Circle (DPWH)",
-        "Quirino Highway":                  "Quirino Highway (DPWH)",
-        "Regalado Avenue":                  "Regalado Avenue / Highway (DPWH)",
-        "Regalado Highway":                 "Regalado Highway (DPWH)",
-        "Tandang Sora Avenue":              "Tandang Sora Avenue (DPWH)",
-        "Luzon Avenue":                     "Luzon Avenue (DPWH)",
-        "Timog Avenue":                     "Timog Avenue (DPWH)",
-        "West Avenue":                      "West Avenue (DPWH)",
-        "Skyway":                           "Metro Skyway (DPWH/PNCC)",
-        "Metro Skyway":                     "Metro Skyway (DPWH/PNCC)",
-        "Andres Bonifacio Avenue":          "Andres Bonifacio Avenue (DPWH)",
-        "E. Rodriguez Jr. Avenue":          "E. Rodriguez Jr. Avenue / C-5 (DPWH)",
-        "C. P. Garcia Avenue":              "C.P. Garcia Avenue / C-5 (DPWH)",
-        "Marcos Highway":                   "Marcos Highway (DPWH)",
-        "Batasan Road":                     "Batasan Road (DPWH)",
-        "San Mateo Road":                   "San Mateo Road (DPWH)",
-        "Payatas Road":                     "Payatas Road (DPWH)",
-        "B. Soliven Street":                "B. Soliven Street (DPWH)",
-        "General Luis Street":              "General Luis Street (DPWH)",
-        "Colonel Bonny Serrano Avenue":     "Col. Bonny Serrano Avenue (DPWH)",
-        "Col. Bonny Serrano Avenue":        "Col. Bonny Serrano Avenue (DPWH)",
-        "Bonny Serrano Avenue":             "Col. Bonny Serrano Avenue (DPWH)",
-        "Ortigas Avenue":                   "Ortigas Avenue (DPWH)",
-        "N. Domingo Street":                "N. Domingo Street (DPWH)",
-        "Nicanor Domingo Street":           "N. Domingo Street (DPWH)",
-        "Dona Hemady Avenue":               "Doña Hemady Avenue (DPWH)",
-        "Doña Hemady Avenue":               "Doña Hemady Avenue (DPWH)",
-        "Hemady Avenue":                    "Doña Hemady Avenue (DPWH)",
-        // New batch
-        "Gilmore Avenue":                   "Gilmore Avenue (DPWH)",
-        "Sarmiento Street":                 "Sarmiento Street (DPWH)",
-        "Buenamar Street":                  "Buenamar Street (DPWH)",
-        "Magsaysay Boulevard":              "Magsaysay Boulevard (DPWH)",
-        "Senator Jose O. Vera Street":      "Sen. Jose O. Vera Street (DPWH)",
-        "Sen. Jose O. Vera Street":         "Sen. Jose O. Vera Street (DPWH)",
-        "Jose O. Vera Street":              "Sen. Jose O. Vera Street (DPWH)",
-        "Dona Hemady Street":               "Doña Hemady Street (DPWH)",
-        "Doña Hemady Street":               "Doña Hemady Street (DPWH)",
-        "Katipunan Avenue": "Katipunan Avenue / C-5 Extension (DPWH)"
-    };
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // QC BOUNDARY CLIPPING
-    // Clips any raw road polyline to the QC boundary polygon so that
-    // red indicators are drawn ONLY inside Quezon City.
-    // ═══════════════════════════════════════════════════════════════════════
-
-    function _segSegIntersect(p1, p2, q1, q2) {
-        const d1lat = p2[0] - p1[0], d1lng = p2[1] - p1[1];
-        const d2lat = q2[0] - q1[0], d2lng = q2[1] - q1[1];
-        const denom = d1lat * d2lng - d1lng * d2lat;
-        if (Math.abs(denom) < 1e-12) return null;
-        const dlat = q1[0] - p1[0], dlng = q1[1] - p1[1];
-        const t = (dlat * d2lng - dlng * d2lat) / denom;
-        const u = (dlat * d1lng - dlng * d1lat) / denom;
-        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            return [p1[0] + t * d1lat, p1[1] + t * d1lng];
-        }
-        return null;
-    }
-
-    function _firstQCCrossing(p1, p2) {
-        const poly = QC_BOUNDARY_LEAFLET;
-        let best = null, bestDist = Infinity;
-        for (let i = 0; i < poly.length - 1; i++) {
-            const hit = _segSegIntersect(p1, p2, poly[i], poly[i + 1]);
-            if (hit) {
-                const d = (hit[0] - p1[0]) ** 2 + (hit[1] - p1[1]) ** 2;
-                if (d < bestDist) { bestDist = d; best = hit; }
-            }
-        }
-        return best;
-    }
-
-    function _allQCCrossings(p1, p2) {
-        const poly = QC_BOUNDARY_LEAFLET;
-        const hits = [];
-        for (let i = 0; i < poly.length - 1; i++) {
-            const hit = _segSegIntersect(p1, p2, poly[i], poly[i + 1]);
-            if (hit) hits.push({ pt: hit, d: (hit[0] - p1[0]) ** 2 + (hit[1] - p1[1]) ** 2 });
-        }
-        hits.sort((a, b) => a.d - b.d);
-        return hits.map(h => h.pt);
-    }
-
-    function _clipToQCBoundary(coords) {
-        const result = [];
-        let current = [];
-
-        for (let i = 0; i < coords.length; i++) {
-            const pt = coords[i];
-            const inside = isPointInPolygon({ lat: pt[0], lng: pt[1] }, QC_BOUNDARY_LEAFLET);
-
-            if (i === 0) {
-                if (inside) current.push(pt);
-                continue;
-            }
-
-            const prev = coords[i - 1];
-            const prevInside = isPointInPolygon({ lat: prev[0], lng: prev[1] }, QC_BOUNDARY_LEAFLET);
-
-            if (prevInside && inside) {
-                current.push(pt);
-            } else if (prevInside && !inside) {
-                const cross = _firstQCCrossing(prev, pt);
-                if (cross) current.push(cross);
-                if (current.length >= 2) result.push(current);
-                current = [];
-            } else if (!prevInside && inside) {
-                const cross = _firstQCCrossing(prev, pt);
-                current = [];
-                if (cross) current.push(cross);
-                current.push(pt);
-            } else {
-                const crosses = _allQCCrossings(prev, pt);
-                if (crosses.length >= 2) result.push([crosses[0], crosses[1]]);
-            }
-        }
-
-        if (current.length >= 2) result.push(current);
-        return result;
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-
-    function _drawRoadWay(coords) {
-        if (!coords || coords.length < 2) return;
-        L.polyline(coords, {
-            color: '#ef4444',
-            weight: 9,
-            opacity: 0.14,
-            interactive: false,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(nonLguRoadLayer);
-        L.polyline(coords, {
-            color: '#dc2626',
-            weight: 2,
-            opacity: 0.65,
-            dashArray: '9, 7',
-            interactive: false,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(nonLguRoadLayer);
-    }
-
-    function _processAndDrawRoad(name, rawCoords) {
-        const clippedChunks = _clipToQCBoundary(rawCoords);
-        for (const chunk of clippedChunks) {
-            _dpwhRoadSegments.push({ name, coords: chunk });
-            _drawRoadWay(chunk);
-        }
-    }
-
-    // ── Cache keys & TTL ────────────────────────────────────────────────────
-    const DPWH_CACHE_KEY = 'cimms_dpwh_v4';
-    const DPWH_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-    // ── Layer 1: in-memory session cache (survives page-to-page within tab,
-    //    costs zero parse time, works in private/incognito mode) ────────────
-    // Stored on window so it survives PHP redirects in the same tab.
-    if (!window._dpwhSessionCache) window._dpwhSessionCache = null;
-
-    function _dpwhLoadFromCache() {
-        // 1. In-memory first — zero cost
-        if (window._dpwhSessionCache && window._dpwhSessionCache.length > 0) {
-            return window._dpwhSessionCache;
-        }
-        // 2. localStorage fallback
-        try {
-            const raw = localStorage.getItem(DPWH_CACHE_KEY);
-            if (!raw) return null;
-            const { ts, segs } = JSON.parse(raw);
-            if (Date.now() - ts > DPWH_CACHE_TTL) { localStorage.removeItem(DPWH_CACHE_KEY); return null; }
-            window._dpwhSessionCache = segs; // warm in-memory cache
-            return segs;
-        } catch(e) { return null; }
-    }
-
-    function _dpwhSaveToCache(segs) {
-        window._dpwhSessionCache = segs; // always warm memory
-        try {
-            localStorage.setItem(DPWH_CACHE_KEY, JSON.stringify({ ts: Date.now(), segs }));
-        } catch(e) { /* quota exceeded — memory cache still works */ }
-    }
-
-    function _dpwhDrawSegments(segs) {
-        segs.forEach(s => {
-            _dpwhRoadSegments.push({ name: s.name, coords: s.coords });
-            _drawRoadWay(s.coords);
-        });
-    }
-
-    // ── Parse raw Overpass elements into clipped segments ────────────────
-    function _dpwhParseElements(elements) {
-        const segs = [], drawn = new Set();
-        (elements || []).forEach(way => {
-            if (!way.geometry || !way.tags?.name || drawn.has(way.id)) return;
-            // Client-side name filter — only keep known DPWH roads
-            const name = way.tags.name;
-            if (!DPWH_ROAD_NAMES.some(n => name.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(name.toLowerCase()))) return;
-            drawn.add(way.id);
-            const raw = way.geometry.map(n => [n.lat, n.lon]);
-            if (raw.length < 2) return;
-            _clipToQCBoundary(raw).forEach(chunk => {
-                segs.push({ name, coords: chunk });
-            });
-        });
-        return segs;
-    }
-
-    // ── Fetch from PHP proxy (same-server, fast) with Overpass fallback ──
-    async function _dpwhFetchRoads() {
-        // Try local PHP proxy first — served from same server after first call
-        const proxyUrl = 'dpwh_roads.php';
-        let data = null;
-        try {
-            const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 8000); // 8s timeout
-            const res = await fetch(proxyUrl, { signal: ctrl.signal });
-            clearTimeout(tid);
-            if (res.ok) {
-                data = await res.json();
-            }
-        } catch(e) { /* proxy unavailable — fall through to direct Overpass */ }
-
-        // Fallback: direct Overpass with single optimised query (52x smaller)
-        if (!data || data.error) {
-            const q = '[out:json][timeout:25];'
-                    + 'way["highway"~"^(motorway|trunk|primary|motorway_link|trunk_link|primary_link)$"]'
-                    + '(14.575,120.990,14.755,121.130);'
-                    + 'out geom;';
-            const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 28000);
-            try {
-                const res = await fetch('https://overpass-api.de/api/interpreter', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'data=' + encodeURIComponent(q),
-                    signal: ctrl.signal
-                });
-                clearTimeout(tid);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                data = await res.json();
-            } catch(e) {
-                clearTimeout(tid);
-                throw e;
-            }
-        }
-
-        return _dpwhParseElements(data.elements);
-    }
-
-    function loadNonLguOverlays() {
-        if (!map) return;
-        nonLguRoadLayer = L.layerGroup().addTo(map);
-
-        function drawSegs(segs) {
-            _dpwhRoadSegments = [];
-            _dpwhDrawSegments(segs);
-            _dpwhLoaded = true;
-        }
-
-        // ── Case 1: data already in memory — draw synchronously, zero delay ──
-        if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-            drawSegs(_dpwhPrefetchResult);
-            return;
-        }
-
-        // ── Case 2: prefetch in-flight — draw the moment it lands ────────────
-        if (_dpwhPrefetchPromise) {
-            _dpwhPrefetchPromise.then(() => {
-                if (_dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-                    nonLguRoadLayer.clearLayers();
-                    _dpwhRoadSegments = [];
-                    drawSegs(_dpwhPrefetchResult);
-                }
-            }).catch(() => {});
-            return;
-        }
-
-        // ── Case 3: nothing started (shouldn't happen) — fetch now ───────────
-        _dpwhFetchRoads().then(segs => {
-            if (segs && segs.length > 0) {
-                _dpwhSaveToCache(segs);
-                _dpwhPrefetchResult = segs;
-                nonLguRoadLayer.clearLayers();
-                _dpwhRoadSegments = [];
-                drawSegs(segs);
-            }
-        }).catch(err => console.warn('[DPWH] Roads unavailable:', err));
-        _dpwhLoaded = true;
-    }
-
-    // ── Background prefetch — fires immediately on script evaluation ─────
-    // Cache hierarchy: memory → localStorage → PHP proxy → Overpass
-    function _startDpwhPrefetch() {
-        // Check all cache layers synchronously first
-        const cached = _dpwhLoadFromCache();
-        if (cached && cached.length > 0) {
-            _dpwhPrefetchResult = cached;
-            return; // instant — no network
-        }
-        // Nothing cached — fetch in background so it's ready before modal opens
-        _dpwhPrefetchPromise = _dpwhFetchRoads()
-            .then(segs => {
-                if (segs && segs.length > 0) {
-                    _dpwhSaveToCache(segs);
-                    _dpwhPrefetchResult = segs;
-                } else {
-                    _dpwhPrefetchResult = [];
-                }
-            })
-            .catch(() => { _dpwhPrefetchResult = []; });
-    }
 
     // ══════════════════════════════════════════════════════════════════
     //  MAP LOCATION SEARCH — real-time address search via Nominatim
@@ -4267,8 +3786,6 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
                 updateDistrictInfo(nearest.district);
             }
 
-            // Check DPWH zone and trigger full address fetch
-            checkNonLguZone(latlng);
             handleMapLocationUpdate();
 
             // Clear and close search
@@ -4329,13 +3846,12 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
                     selectedLatLng = latlng;
                     locationSource = 'map';
 
-                    // Update barangay + DPWH check + address fetch
+                    // Update barangay + address fetch
                     const nearest = findNearestBarangay(latlng);
                     if (nearest) {
                         barangaySelect.value = nearest.name;
                         updateDistrictInfo(nearest.district);
                     }
-                    checkNonLguZone(latlng);
                     handleMapLocationUpdate();
 
                     // Populate address field with raw coordinates as placeholder
@@ -4453,78 +3969,10 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
         });
     })();
 
-    _startDpwhPrefetch(); // runs immediately on script evaluation
-
-    // ── Point-to-segment distance (metres) ───────────────────────────────
-    function _ptSegDist(px, py, ax, ay, bx, by, cosLat) {
-        const M = 111320;
-        const toM = (dLat, dLng) => {
-            const dy = dLat * M, dx = dLng * M * cosLat;
-            return Math.sqrt(dx * dx + dy * dy);
-        };
-        const len = toM(bx - ax, by - ay);
-        if (len < 0.001) return toM(px - ax, py - ay);
-        const t = Math.max(0, Math.min(1,
-            ((px - ax) * (bx - ax) * M * M + (py - ay) * (by - ay) * M * M * cosLat * cosLat)
-            / (len * len)
-        ));
-        return toM(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay)));
-    }
-
-    // ── Check if latlng is within any DPWH road buffer ───────────────────
-    function isNonLguArea(latlng) {
-        // Use drawn segments if ready; fall back to the prefetch result so that
-        // DPWH detection works immediately even before visual drawing completes.
-        let segments = _dpwhRoadSegments;
-        if (!segments.length && _dpwhPrefetchResult && _dpwhPrefetchResult.length > 0) {
-            segments = _dpwhPrefetchResult;
-        }
-        if (!segments.length) return { isNonLgu: false };
-        const lat = typeof latlng.lat === 'function' ? latlng.lat() : latlng.lat;
-        const lng = typeof latlng.lng === 'function' ? latlng.lng() : latlng.lng;
-        const cosLat = Math.cos(lat * Math.PI / 180);
-        for (const road of segments) {
-            const c = road.coords;
-            const displayName = DPWH_DISPLAY_NAMES[road.name] || road.name + ' (DPWH)';
-            for (let i = 0; i < c.length - 1; i++) {
-                if (_ptSegDist(lat, lng, c[i][0], c[i][1], c[i+1][0], c[i+1][1], cosLat) <= DPWH_BUFFER_METERS) {
-                    return { isNonLgu: true, roadName: displayName };
-                }
-            }
-        }
-        return { isNonLgu: false };
-    }
-
-    // ── Non-LGU state — single flag, reset on each modal open ────────────
-    let _nonLguActive = false;
-
-    // ── Check zone and show / clear toast notification ────────────────────
-    function checkNonLguZone(latlng) {
-        const result = isNonLguArea(latlng);
-        if (result.isNonLgu) {
-            if (!_nonLguActive) {
-                _nonLguActive = true;
-                // AFTER
-                showJsNotification('warning',
-                    getTranslation('alert_nonlgu_zone').replace('{road}', result.roadName)
-                );
-            }
-        } else {
-            _nonLguActive = false;
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
         const prevLoc = localStorage.getItem('location');
         if (prevLoc && locationInput) {
-            // Purge any previously saved DPWH warning text from localStorage
-            if (prevLoc.includes('DPWH-maintained road') || prevLoc.includes('not under LGU jurisdiction')) {
-                localStorage.removeItem('location');
-                localStorage.removeItem('coord_lat');
-                localStorage.removeItem('coord_lng');
-            } else {
-                locationInput.value = prevLoc;
-            }
+            locationInput.value = prevLoc;
         }
         syncMapLayerToggleButton();
         const savedLat = localStorage.getItem('coord_lat'), savedLng = localStorage.getItem('coord_lng');
@@ -4533,11 +3981,10 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
             if (latEl) latEl.value = savedLat; if (lngEl) lngEl.value = savedLng;
         }
 
-        // ── Eager map + DPWH overlay initialisation ──────────────────────────
+        // ── Eager map initialisation ──────────────────────────────────────────
         // Because the backdrop is now visibility:hidden (not display:none), the
         // map container already has real pixel dimensions on load. We init the
-        // map and draw DPWH segments here so they are ready the instant the user
-        // taps the location field — no delay, no flash.
+        // map here so it is ready the instant the user taps the location field.
         if (!map) {
             initializeMap();
             // One rAF so Leaflet has committed its tile grid before we force a
@@ -4568,10 +4015,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
         var locationInput = document.getElementById('locationInput'); if (locationInput) locationInput.value = '';
         var manualInput = document.getElementById('manualAddressInput'); if (manualInput) manualInput.value = '';
         var barangaySelect = document.getElementById('barangaySelect'); if (barangaySelect) barangaySelect.value = '';
-        // Preserve DPWH road cache across form submissions
-        const _dpwhCacheBackup = localStorage.getItem('cimms_dpwh_v4');
         localStorage.clear();
-        if (_dpwhCacheBackup) localStorage.setItem('cimms_dpwh_v4', _dpwhCacheBackup);
         var coordLat = document.getElementById('coord_lat'), coordLng = document.getElementById('coord_lng');
         if (coordLat) coordLat.value = ''; if (coordLng) coordLng.value = '';
     });

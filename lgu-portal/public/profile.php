@@ -1,54 +1,14 @@
 <?php
-session_start();
+require_once __DIR__ . '/session_guard.php';
 
-// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
-date_default_timezone_set('Asia/Manila');
+// Server timestamp for the live clock widget
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-// 🚫 Cache control for protected pages
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-// 🔐 Strict session presence check
-if (
-    !isset($_SESSION['employee_logged_in']) ||
-    $_SESSION['employee_logged_in'] !== true
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
 
 require __DIR__ . '/db.php';
 
 // --- Engineer role detection ---
-$isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isEngineer     = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
 
 // Auto-create engineer_profiles table if it doesn't exist
 $conn->query("
@@ -116,7 +76,7 @@ if ($employeeId) {
 
 // Fetch engineer profile data if applicable
 $engineerProfile = [];
-if ($isEngineer && $employeeId) {
+if (($isEngineer || $isHeadEngineer) && $employeeId) {
     $epStmt = $conn->prepare("SELECT * FROM engineer_profiles WHERE user_id = ?");
     $epStmt->bind_param("i", $employeeId);
     $epStmt->execute();
@@ -470,6 +430,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 $engineerProfileUpdated = true;
             }
             $epStmt->close();
+        }
+
+        // ── Head Engineer district-only save ─────────────────────────────────────────
+        if ($isHeadEngineer) {
+            $ep_district     = trim($_POST['he_district'] ?? '');
+            $validDistricts  = ['District 1','District 2','District 3','District 4','District 5','District 6',''];
+            if (in_array($ep_district, $validDistricts)) {
+                $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
+                $epCheck->bind_param("i", $employeeId);
+                $epCheck->execute();
+                $epExists = $epCheck->get_result()->num_rows > 0;
+                $epCheck->close();
+
+                if ($epExists) {
+                    $epStmt = $conn->prepare("UPDATE engineer_profiles SET district = ?, updated_at = NOW() WHERE user_id = ?");
+                    $epStmt->bind_param("si", $ep_district, $employeeId);
+                } else {
+                    $epStmt = $conn->prepare("INSERT INTO engineer_profiles (user_id, district) VALUES (?, ?)");
+                    $epStmt->bind_param("is", $employeeId, $ep_district);
+                }
+                if ($epStmt->execute()) {
+                    $engineerProfileUpdated = true;
+                    // Refresh cached profile so the badge renders the new district immediately
+                    $engineerProfile['district'] = $ep_district;
+                }
+                $epStmt->close();
+            }
         }
 
         // ── Step 3: Stamp last_profile_update if engineer fields changed but employees table wasn't touched ──
@@ -2999,6 +2986,73 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
             </div><!-- end .eng-profile-wrapper -->
             <?php endif; ?>
 
+            <?php if ($isHeadEngineer): ?>
+            <!-- ═══════════════════════════════════════
+                 HEAD ENGINEER — DISTRICT ASSIGNMENT
+            ═══════════════════════════════════════ -->
+            <div class="eng-section-divider" id="heDistrictSection">
+                <span>🗺️ District Assignment</span>
+                <?php if (empty($engineerProfile['district'] ?? '')): ?>
+                <span class="eng-required-badge"><i class="fas fa-exclamation-circle"></i> Not Set</span>
+                <?php endif; ?>
+            </div>
+            <div class="eng-profile-wrapper">
+                <div class="eng-section">
+                    <div class="eng-section-header">
+                        <div class="eng-section-icon">🗺️</div>
+                        <div>
+                            <div class="eng-section-title">Assigned District</div>
+                            <div class="eng-section-desc">Select the Quezon City district you oversee. This filters the reports visible to you in Current Reports and determines which engineers you can assign to those reports.</div>
+                        </div>
+                    </div>
+                    <div class="eng-section-body">
+                        <div class="eng-form-group" style="max-width:420px;">
+                            <label><span class="lbl-icon">🗺️</span> District (Quezon City)</label>
+                            <?php
+                                $heCurrentDistrict = $engineerProfile['district'] ?? '';
+                                $districtOpts      = ['District 1','District 2','District 3','District 4','District 5','District 6'];
+                            ?>
+                            <input type="hidden" name="he_district" id="heDistrictVal"
+                                   value="<?= htmlspecialchars($heCurrentDistrict) ?>">
+                            <div class="prof-combobox" id="cbHeDistrict">
+                                <div class="prof-combobox-display" id="cbHeDistrictDisplay">
+                                    <span class="prof-combobox-label<?= $heCurrentDistrict ? ' selected' : '' ?>"
+                                          id="cbHeDistrictLabel">
+                                        <?= $heCurrentDistrict ? htmlspecialchars($heCurrentDistrict) : '— Select district —' ?>
+                                    </span>
+                                    <span class="prof-combobox-arrow">▾</span>
+                                </div>
+                                <div class="prof-combobox-dropdown" id="cbHeDistrictDropdown">
+                                    <input class="prof-combobox-search" type="text"
+                                           placeholder="🔍 Search district…" autocomplete="off">
+                                    <div class="prof-combobox-list">
+                                        <?php foreach ($districtOpts as $dist): ?>
+                                        <div class="prof-combobox-option<?= $heCurrentDistrict === $dist ? ' selected-opt' : '' ?>"
+                                             data-value="<?= $dist ?>">
+                                            <?= htmlspecialchars($dist) ?>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
+                                Your assigned district controls which reports appear in Current Reports and which engineers you can assign.
+                            </small>
+                            <?php if (!empty($heCurrentDistrict)): ?>
+                            <div style="margin-top:10px;">
+                                <?php $dNum = (int)filter_var($heCurrentDistrict, FILTER_SANITIZE_NUMBER_INT); ?>
+                                <span class="district-badge d<?= $dNum ?>">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    Currently assigned: <?= htmlspecialchars($heCurrentDistrict) ?>
+                                </span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Password Change Section -->
             <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border-color);">
                 <h3 style="color: var(--text-primary); margin-bottom: 20px; font-size: 18px;">Change Password</h3>
@@ -3726,7 +3780,8 @@ document.addEventListener('DOMContentLoaded', function() {
         { display: 'cbGenderDisplay', dropdown: 'cbGenderDropdown', hidden: 'epGenderVal', label: 'cbGenderLabel' },
         { display: 'cbDiscDisplay',   dropdown: 'cbDiscDropdown',   hidden: 'epDiscVal',   label: 'cbDiscLabel'   },
         { display: 'cbDeptDisplay',   dropdown: 'cbDeptDropdown',   hidden: 'epDeptVal',   label: 'cbDeptLabel'   },
-        { display: 'cbDistrictDisplay', dropdown: 'cbDistrictDropdown', hidden: 'epDistrictVal', label: 'cbDistrictLabel' },
+        { display: 'cbDistrictDisplay',   dropdown: 'cbDistrictDropdown',   hidden: 'epDistrictVal',  label: 'cbDistrictLabel'   },
+        { display: 'cbHeDistrictDisplay', dropdown: 'cbHeDistrictDropdown', hidden: 'heDistrictVal',  label: 'cbHeDistrictLabel' },
     ];
 
     function positionDropdown(displayEl, dropdownEl) {
@@ -4412,6 +4467,27 @@ if (saveAlertBackdrop) {
     cursor: pointer; font-weight: 600; transition: all .2s; z-index: 10;
 }
 #epMapLayerToggle:hover { background: #245a96; }
+
+/* ── District badge (shared with requests.php / sched.php) ──── */
+.district-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 12px;
+    font-weight: 600; letter-spacing: .3px; cursor: default;
+    transition: transform .15s, filter .15s;
+}
+.district-badge i { font-size: 10px; }
+.district-badge.d1 { background:linear-gradient(135deg,#3762c8,#5b8aff);color:#fff; }
+.district-badge.d2 { background:linear-gradient(135deg,#1a7a42,#34c774);color:#fff; }
+.district-badge.d3 { background:linear-gradient(135deg,#b85c00,#f59033);color:#fff; }
+.district-badge.d4 { background:linear-gradient(135deg,#ad1457,#ec4899);color:#fff; }
+.district-badge.d5 { background:linear-gradient(135deg,#512da8,#8b5cf6);color:#fff; }
+.district-badge.d6 { background:linear-gradient(135deg,#00607a,#0ea5c9);color:#fff; }
+[data-theme="dark"] .district-badge.d1 { background:linear-gradient(135deg,#2851b3,#5b8aff); }
+[data-theme="dark"] .district-badge.d2 { background:linear-gradient(135deg,#156335,#34c774); }
+[data-theme="dark"] .district-badge.d3 { background:linear-gradient(135deg,#a04f00,#f59033); }
+[data-theme="dark"] .district-badge.d4 { background:linear-gradient(135deg,#9b1050,#ec4899); }
+[data-theme="dark"] .district-badge.d5 { background:linear-gradient(135deg,#47259a,#8b5cf6); }
+[data-theme="dark"] .district-badge.d6 { background:linear-gradient(135deg,#00526a,#0ea5c9); }
 
 /* ── District info banner ────────────────────────────── */
 #epMapDistrictInfo {

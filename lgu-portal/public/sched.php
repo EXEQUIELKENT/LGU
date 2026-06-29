@@ -35,49 +35,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_evidence') {
 }
 // ── End inline AJAX ───────────────────────────────────────────────────────────
 
-// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
-date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/session_guard.php';
+
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-/* 🚫 Prevent browser caching of protected pages */
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-/* 🔐 Strict session check */
-if (
-    !isset($_SESSION['employee_logged_in']) ||
-    $_SESSION['employee_logged_in'] !== true
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
 
 require __DIR__ . '/db.php';
 
@@ -230,6 +190,20 @@ $isAdmin = in_array(
 $isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
 
+// Head Engineer detection and district-based filtering
+$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$heDistrict     = '';
+$heHasDistrict  = false;
+if ($isHeadEngineer) {
+    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $heStmt->bind_param("i", $sessionUserId);
+    $heStmt->execute();
+    $heRow        = $heStmt->get_result()->fetch_assoc();
+    $heStmt->close();
+    $heDistrict   = trim($heRow['district'] ?? '');
+    $heHasDistrict = $heDistrict !== '';
+}
+
 // ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
 $conn->query("
     ALTER TABLE request_resolutions
@@ -320,10 +294,20 @@ if ($result && $result->num_rows > 0) {
 // ── Pull in Pending Reports (Scheduled / In Progress / Delayed) ──────────────
 // ── and Archive Reports (Completed) into the same $schedules array ───────────
 
-// Engineers only see their own reports; admins/others see all
-$engineerFilter = $isEngineer && $sessionUserId > 0
-    ? "AND r.engineer_id = {$sessionUserId}"
-    : "";
+// Engineers only see their own reports; Head Engineers see only their district;
+// admins/others see all
+$engineerFilter = '';
+if ($isEngineer && $sessionUserId > 0) {
+    $engineerFilter = "AND r.engineer_id = {$sessionUserId}";
+} elseif ($isHeadEngineer) {
+    if ($heHasDistrict) {
+        $safeHEDist     = $conn->real_escape_string($heDistrict);
+        // req is already JOINed in $reportSql below, so this is safe
+        $engineerFilter = "AND COALESCE(req.district, '') = '{$safeHEDist}'";
+    } else {
+        $engineerFilter = "AND 1=0"; // No district set — show nothing
+    }
+}
 
 $reportSql = "
     SELECT
@@ -675,6 +659,25 @@ usort($schedules, function($a, $b) {
 }
 
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
+
+/* ── Head Engineer: no-district warning banner ────────────────────────────── */
+.he-no-district-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    padding: 14px 18px;
+}
+.he-no-district-banner i { color: #ea580c; font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.he-no-district-banner strong { display: block; font-size: 14px; margin-bottom: 2px; color: #ea580c; }
+.he-no-district-banner span { font-size: 13px; color: var(--text-secondary); }
+.he-no-district-banner a { color: #ea580c; font-weight: 600; text-decoration: underline; }
+[data-theme="dark"] .he-no-district-banner {
+    background: rgba(234,92,12,.10);
+    border-color: rgba(234,92,12,.35);
+}
 
 .main-content {
     margin-left: calc(var(--sidebar-expanded) + 20px);
@@ -4775,6 +4778,23 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <div class="card">
 
+        <?php if ($isHeadEngineer && !$heHasDistrict): ?>
+        <div class="he-no-district-banner">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>
+                <strong>No district assigned</strong>
+                <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view schedules in your area.</span>
+            </div>
+        </div>
+        <?php elseif ($isHeadEngineer && $heHasDistrict): ?>
+        <div style="display:inline-flex;align-items:center;gap:8px;
+                    background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
+                    border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;color:#3762c8;">
+            <span>📍</span>
+            <span>Showing schedules &amp; reports for <strong><?= htmlspecialchars($heDistrict) ?></strong> only</span>
+        </div>
+        <?php endif; ?>
+
         <!-- MOBILE CONTROLS (MOBILE ONLY, INSIDE CARD) -->
 
         <!-- Mobile: List view toolbar -->
@@ -6041,9 +6061,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
-window.scheduleData   = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-window.IS_ENGINEER    = <?= $isEngineer ? 'true' : 'false' ?>;
-window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
+window.scheduleData      = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.IS_ENGINEER       = <?= $isEngineer    ? 'true' : 'false' ?>;
+window.IS_HEAD_ENGINEER  = <?= $isHeadEngineer ? 'true' : 'false' ?>;
+window.HE_DISTRICT       = <?= json_encode($heDistrict) ?>;
+window.CURRENT_EMP_ID    = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
 <script>
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function makeDistrictBadge(district) {

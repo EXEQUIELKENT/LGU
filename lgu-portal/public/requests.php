@@ -1,37 +1,7 @@
 <?php
-session_start();
-date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/session_guard.php';
+
 $serverTimestamp = time();
-
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60;
-
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-$_SESSION['last_activity'] = time();
-
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
 
 require __DIR__ . '/db.php';
 

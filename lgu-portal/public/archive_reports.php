@@ -1,41 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/session_guard.php';
 
-date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    session_unset(); session_destroy();
-    header("Location: login.php"); exit;
-}
 
 require __DIR__ . '/db.php';
 
@@ -89,6 +55,20 @@ $isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'enginee
 $engineerId    = (int)($_SESSION['employee_id'] ?? 0);
 $userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
+
+// ── Head Engineer: detect role and load their assigned district ──────────────
+$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$heDistrict    = '';
+$heHasDistrict = false;
+if ($isHeadEngineer) {
+    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $heStmt->bind_param("i", $engineerId);
+    $heStmt->execute();
+    $heRow         = $heStmt->get_result()->fetch_assoc();
+    $heStmt->close();
+    $heDistrict    = trim($heRow['district'] ?? '');
+    $heHasDistrict = $heDistrict !== '';
+}
 
 // ── AJAX: engineer average rating from valid citizen feedbacks ────────────────
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'engineer_rating') {
@@ -149,6 +129,16 @@ $conn->query("
         INDEX idx_rdi (rep_id, log_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
+// Head Engineers: restrict to their assigned district only
+$df = '';
+if ($isHeadEngineer) {
+    if ($heHasDistrict) {
+        $safeDistrict = $conn->real_escape_string($heDistrict);
+        $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";
+    } else {
+        $df = "AND 1=0"; // No district set — show nothing
+    }
+}
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
@@ -169,7 +159,7 @@ $sql = "
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
     LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
     LEFT JOIN report_progress_images rpi ON rpi.rep_id  = r.rep_id
-    WHERE res.status IN ('Completed','Cancelled')
+    WHERE res.status IN ('Completed','Cancelled') {$df}
     GROUP BY r.rep_id
     ORDER BY r.rep_id DESC
 ";
@@ -292,6 +282,22 @@ foreach ($rows as $row) {
     transition: margin-left 0.3s ease;
 }
 .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px); }
+/* ── Head Engineer: no-district warning banner ────────────── */
+.he-no-district-banner {
+    display:flex; align-items:center; gap:14px;
+    background:linear-gradient(135deg,rgba(234,88,12,.12),rgba(251,146,60,.08));
+    border:1.5px solid rgba(234,88,12,.35); border-radius:10px;
+    padding:14px 18px; margin-bottom:16px; color:var(--text-primary);
+}
+.he-no-district-banner i { color:#ea580c; font-size:20px; flex-shrink:0; }
+.he-no-district-banner strong { display:block; font-size:14px; margin-bottom:2px; color:#ea580c; }
+.he-no-district-banner span { font-size:13px; color:var(--text-secondary); }
+.he-no-district-banner a { color:#ea580c; font-weight:600; text-decoration:underline; }
+[data-theme="dark"] .he-no-district-banner {
+    background:linear-gradient(135deg,rgba(234,88,12,.18),rgba(251,146,60,.10));
+    border-color:rgba(234,88,12,.45);
+}
+
 .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 /* ── Engineer self-profile button in page header ── */
 .eng-self-profile-wrap {
@@ -1420,6 +1426,16 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 <?php endif; ?>
     </div>
 
+    <?php if ($isHeadEngineer && !$heHasDistrict): ?>
+    <div class="he-no-district-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>No district assigned</strong>
+            <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view archived reports in your area.</span>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="search-toolbar">
     <div class="search-bar-wrapper">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2131,6 +2147,9 @@ const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
 const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
 
 const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
+const IS_HEAD_ENGINEER = <?= $isHeadEngineer ? 'true' : 'false' ?>;
+const HE_HAS_DISTRICT  = <?= $heHasDistrict  ? 'true' : 'false' ?>;
+const HE_DISTRICT      = <?= json_encode($heDistrict) ?>;
 const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer ? 'true' : 'false' ?>;
 let engineersCache = null;
 

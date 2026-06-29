@@ -1,55 +1,14 @@
 <?php
-session_start();
+require_once __DIR__ . '/session_guard.php';
 
-// Check if we should show welcome animation
+// Read welcome-animation flag — session is already active from session_guard.php
 $showWelcomeAnimation = isset($_SESSION['show_welcome_animation']) && $_SESSION['show_welcome_animation'] === true;
 if ($showWelcomeAnimation) {
     unset($_SESSION['show_welcome_animation']); // Clear flag after reading
 }
 
-// --- SERVER TIMEZONE SYNC FOR CLOCK ENHANCEMENT ---
-date_default_timezone_set('Asia/Manila');
+// Server timestamp for the live clock widget
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-/* 🚫 Prevent browser caching of protected pages */
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-/* 🔐 Strict session check: Enforce presence and validity of employee ID */
-if (
-    !isset($_SESSION['employee_logged_in']) ||
-    $_SESSION['employee_logged_in'] !== true
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
 
 require __DIR__ . '/db.php';
 
@@ -179,6 +138,34 @@ $engFilter = $isEngineer && $sessionUserId > 0
     ? "AND r.engineer_id = {$sessionUserId}"
     : "";
 
+// Head Engineer detection and district-based filtering
+$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$heDistrict     = '';
+$heHasDistrict  = false;
+if ($isHeadEngineer) {
+    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $heStmt->bind_param("i", $sessionUserId);
+    $heStmt->execute();
+    $heRow        = $heStmt->get_result()->fetch_assoc();
+    $heStmt->close();
+    $heDistrict   = trim($heRow['district'] ?? '');
+    $heHasDistrict = $heDistrict !== '';
+}
+
+// District filter for queries that JOIN the requests table (Head Engineer only)
+$districtFilter = '';
+if ($isHeadEngineer) {
+    if ($heHasDistrict) {
+        $safeHEDist     = $conn->real_escape_string($heDistrict);
+        $districtFilter = "AND COALESCE(req.district, '') = '{$safeHEDist}'";
+    } else {
+        $districtFilter = "AND 1=0"; // No district set — show nothing
+    }
+}
+
+// Convenience flag: any role-personalised view (engineer OR head engineer)
+$isPersonalized = $isEngineer || $isHeadEngineer;
+
 // ===== DASHBOARD METRICS =====
 
 // Total Requests
@@ -192,14 +179,27 @@ $pendingRequestsResult = $conn->query($pendingRequestsQuery);
 $pendingRequests = $pendingRequestsResult->fetch_assoc()['total'] ?? 0;
 
 // Completed Tasks — sourced from archive_reports (same as archive_reports.php),
-// personalised per engineer when the logged-in user is an engineer
-$completedTasksQuery = "
-    SELECT COUNT(*) as total
-    FROM reports r
-    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
-    WHERE res.status IN ('Completed','Cancelled')
-    {$engFilter}
-";
+// personalised per engineer when the logged-in user is an engineer;
+// for Head Engineers, filters by their assigned district
+if ($isHeadEngineer) {
+    // Need requests JOIN to access req.district
+    $completedTasksQuery = "
+        SELECT COUNT(*) as total
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+        LEFT JOIN requests req ON res.req_id = req.req_id
+        WHERE res.status IN ('Completed','Cancelled')
+        {$districtFilter}
+    ";
+} else {
+    $completedTasksQuery = "
+        SELECT COUNT(*) as total
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+        WHERE res.status IN ('Completed','Cancelled')
+        {$engFilter}
+    ";
+}
 $completedTasksResult = $conn->query($completedTasksQuery);
 $completedTasks = $completedTasksResult->fetch_assoc()['total'] ?? 0;
 
@@ -233,6 +233,7 @@ $recentReportsQuery = "SELECT
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
     WHERE res.status = 'Approved'
     {$engFilter}
+    {$districtFilter}
     ORDER BY r.rep_id DESC
     LIMIT 5";
 $recentReportsResult = $conn->query($recentReportsQuery);
@@ -260,6 +261,7 @@ $recentPendingQuery = "SELECT
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
     WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
     {$engFilter}
+    {$districtFilter}
     ORDER BY r.starting_date ASC
     LIMIT 5";
 $recentPendingResult = $conn->query($recentPendingQuery);
@@ -287,6 +289,7 @@ $recentArchiveQuery = "SELECT
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
     WHERE res.status IN ('Completed','Cancelled')
     {$engFilter}
+    {$districtFilter}
     ORDER BY r.rep_id DESC
     LIMIT 5";
 $recentArchiveResult = $conn->query($recentArchiveQuery);
@@ -471,7 +474,7 @@ if ($schedRes) {
     }
 }
 
-// ── 2. reports (with engineer filter for engineers) ───────────────────────────
+// ── 2. reports (with engineer filter for engineers / district filter for head engineers) ──
 $rptUpSql = "
     SELECT r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
            r.priority_lvl, r.budget,
@@ -485,6 +488,7 @@ $rptUpSql = "
     WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
       AND r.starting_date IS NOT NULL
     {$engFilter}
+    {$districtFilter}
     ORDER BY r.starting_date ASC
 ";
 $rptUpRes = $conn->query($rptUpSql);
@@ -554,15 +558,28 @@ if ($msChartRes) {
     }
 }
 
-// ── B. reports (engineer-filtered) ──────────────────────────────────────────
-$rpChartSql = "
-    SELECT r.estimated_end_date, res.status AS resolution_status, res.res_note
-    FROM reports r
-    LEFT JOIN request_resolutions res ON r.res_id = res.res_id
-    WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
-      AND r.starting_date IS NOT NULL
-    {$engFilter}
-";
+// ── B. reports (engineer-filtered / head-engineer district-filtered) ─────────
+if ($isHeadEngineer) {
+    // Needs requests JOIN to access req.district
+    $rpChartSql = "
+        SELECT r.estimated_end_date, res.status AS resolution_status, res.res_note
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+        LEFT JOIN requests req ON res.req_id = req.req_id
+        WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+          AND r.starting_date IS NOT NULL
+        {$districtFilter}
+    ";
+} else {
+    $rpChartSql = "
+        SELECT r.estimated_end_date, res.status AS resolution_status, res.res_note
+        FROM reports r
+        LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+        WHERE res.status IN ('Scheduled','Pending','In Progress','Completed','Pending Completion','')
+          AND r.starting_date IS NOT NULL
+        {$engFilter}
+    ";
+}
 $rpChartRes = $conn->query($rpChartSql);
 if ($rpChartRes) {
     while ($rpRow = $rpChartRes->fetch_assoc()) {
@@ -2962,6 +2979,18 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <span>👷</span>
                     <span>Engineer view — reports &amp; tasks are filtered to your assignments only</span>
                 </div>
+                <?php elseif ($isHeadEngineer): ?>
+                <div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;
+                            background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
+                            border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;
+                            color:#3762c8;">
+                    <span>📍</span>
+                    <?php if ($heHasDistrict): ?>
+                        <span>Head Engineer view — showing data for <strong><?= htmlspecialchars($heDistrict) ?></strong> only</span>
+                    <?php else: ?>
+                        <span style="color:#ea580c;">No district assigned — <a href="profile.php#heDistrictSection" style="color:#ea580c;text-decoration:underline;font-weight:700;">set your district</a> to see your data</span>
+                    <?php endif; ?>
+                </div>
                 <?php endif; ?>
             </div>
 
@@ -2997,7 +3026,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <div class="metric-card green"    data-href="archive_reports.php" tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
-                            <div class="metric-title">Completed Tasks<?= $isEngineer ? ' (Mine)' : '' ?></div>
+                            <div class="metric-title">Completed Tasks<?= $isPersonalized ? ' (Mine)' : '' ?></div>
                         </div>
                         <div class="metric-icon"><i class="fas fa-check"></i></div>
                     </div>
@@ -3066,13 +3095,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 HTML;
             ?>
             <div class="charts-grid">
-                <?php if ($isEngineer): ?>
-                <!-- Schedule Status Breakdown Doughnut (top row for engineers) -->
+                <?php if ($isPersonalized): ?>
+                <!-- Schedule Status Breakdown Doughnut (top row for engineers / head engineers) -->
                 <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
                     <div class="chart-header sched-status-header">
                         <div style="min-width:0;flex:1;">
-                            <div class="chart-title">Schedule Status (Mine)</div>
-                            <div class="chart-subtitle">Your schedule breakdown — Scheduled, In Progress, Delayed &amp; Completed</div>
+                            <div class="chart-title">Schedule Status<?= $isHeadEngineer && $heHasDistrict ? ' (' . htmlspecialchars($heDistrict) . ')' : ' (Mine)' ?></div>
+                            <div class="chart-subtitle"><?= $isHeadEngineer ? 'Schedule breakdown for your district' : 'Your schedule breakdown' ?> — Scheduled, In Progress, Delayed &amp; Completed</div>
                         </div>
                         <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
                     </div>
@@ -3100,13 +3129,13 @@ HTML;
                 </div>
 HTML;
                 ?>
-                <!-- Row A second slot: Upcoming Maintenance for engineers, Status Breakdown for others -->
-                <?php if ($isEngineer): ob_start(); ?>
+                <!-- Row A second slot: Upcoming Maintenance for engineers/head engineers, Status Breakdown for others -->
+                <?php if ($isPersonalized): ob_start(); ?>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
-                            <div class="chart-title">Upcoming Maintenance (Mine)</div>
-                            <div class="chart-subtitle">Next scheduled tasks assigned to you</div>
+                            <div class="chart-title">Upcoming Maintenance<?= $isHeadEngineer && $heHasDistrict ? ' (' . htmlspecialchars($heDistrict) . ')' : ' (Mine)' ?></div>
+                            <div class="chart-subtitle"><?= $isHeadEngineer ? 'Next scheduled tasks in your district' : 'Next scheduled tasks assigned to you' ?></div>
                         </div>
                         <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
@@ -3195,8 +3224,8 @@ HTML;
                     </div>
                 </div>
 
-                <!-- Right slot: Status Breakdown for engineers (swapped), Upcoming Maintenance for others -->
-                <?php if ($isEngineer): ?>
+                <!-- Right slot: Status Breakdown for engineers/head engineers (swapped), Upcoming Maintenance for others -->
+                <?php if ($isPersonalized): ?>
                 <?= $statusBreakdownCard ?>
                 <?php else: ?>
                 <div class="chart-card">
@@ -3278,8 +3307,8 @@ HTML;
                     </div>
                 </div><!-- end Active Reports card -->
 
-                <?php if ($isEngineer): ?>
-                <!-- Request Trends (bottom row for engineers) -->
+                <?php if ($isPersonalized): ?>
+                <!-- Request Trends (bottom row for engineers / head engineers) -->
                 <?= $requestTrendsCard ?>
                 <?php else: ?>
                 <!-- Schedule Status Breakdown Doughnut (bottom row for non-engineers) -->
@@ -3303,8 +3332,8 @@ HTML;
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
-                        <div class="chart-subtitle">Active in-progress repair reports<?= $isEngineer ? ' assigned to you' : '' ?></div>
+                        <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Active in-progress repair reports<?= $isPersonalized ? ' assigned to you' : '' ?></div>
                     </div>
                     <a href="current_reports.php" class="view-all-link">View all →</a>
                 </div>
@@ -3361,8 +3390,8 @@ HTML;
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='pending_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
-                        <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isEngineer ? ' assigned to you' : '' ?></div>
+                        <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isPersonalized ? ' assigned to you' : '' ?></div>
                     </div>
                     <a href="pending_reports.php" class="view-all-link">View all →</a>
                 </div>
@@ -3429,7 +3458,7 @@ HTML;
                         <?php $pIdx++; endforeach; ?>
                     <?php else: ?>
                         <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
-                            ⏳ No pending reports<?= $isEngineer ? ' assigned to you' : '' ?> at this time.
+                            ⏳ No pending reports<?= $isPersonalized ? ' assigned to you' : '' ?> at this time.
                         </p>
                     <?php endif; ?>
                 </div>
@@ -3439,8 +3468,8 @@ HTML;
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='archive_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isEngineer ? ' (Mine)' : '' ?></a></div>
-                        <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isEngineer ? ' you handled' : '' ?></div>
+                        <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isPersonalized ? ' you handled' : '' ?></div>
                     </div>
                     <a href="archive_reports.php" class="view-all-link">View all →</a>
                 </div>
@@ -3489,7 +3518,7 @@ HTML;
                         <?php $aIdx++; endforeach; ?>
                     <?php else: ?>
                         <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
-                            ✅ No archived reports<?= $isEngineer ? ' for you' : '' ?> yet.
+                            ✅ No archived reports<?= $isPersonalized ? ' for you' : '' ?> yet.
                         </p>
                     <?php endif; ?>
                 </div>

@@ -212,18 +212,35 @@ const InfraAI = (() => {
     let _loadPromise = null;
 
     async function loadModels(onProgress) {
+        // Skip if models are already loaded and healthy
         if (_mobilenet) return;
-        if (_loadPromise) return _loadPromise;
-        _loadPromise = (async () => {
-            onProgress?.('Loading AI model (1/2)…');
-            _mobilenet = await mobilenet.load({ version: 2, alpha: 1.0 });
-            if (typeof cocoSsd !== 'undefined') {
-                onProgress?.('Loading AI model (2/2)…');
-                try { _cocoSsd = await cocoSsd.load({ base: 'mobilenet_v2' }); }
-                catch (e) { console.warn('[InfraAI] COCO-SSD skipped:', e); }
-            }
-        })().catch(err => { _loadPromise = null; throw err; });
-        return _loadPromise;
+        // If a load is already in flight, wait for it instead of starting a second one
+        if (_loadPromise) { await _loadPromise; return; }
+
+        try {
+            _loadPromise = (async () => {
+                onProgress?.('Loading AI model (1/2)…');
+                _mobilenet = await mobilenet.load({ version: 2, alpha: 1.0 });
+                if (typeof cocoSsd !== 'undefined') {
+                    onProgress?.('Loading AI model (2/2)…');
+                    try { _cocoSsd = await cocoSsd.load({ base: 'mobilenet_v2' }); }
+                    catch (e) { console.warn('[InfraAI] COCO-SSD skipped:', e); }
+                }
+            })();
+            await _loadPromise;
+        } catch (err) {
+            // Ensure models are fully reset so the next call can retry cleanly
+            _mobilenet = null;
+            _cocoSsd   = null;
+            throw err;
+        } finally {
+            // ALWAYS clear _loadPromise after the attempt (success or failure).
+            // Without this, a stale resolved Promise remains here forever.
+            // When _mobilenet is later reset to null (see classifyImage fix below),
+            // the stale _loadPromise would short-circuit loadModels and skip the
+            // reload entirely — leaving _mobilenet null and crashing on classify().
+            _loadPromise = null;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -462,7 +479,17 @@ const InfraAI = (() => {
         try {
             mobilenetPreds = await _mobilenet.classify(canvas, 20);
         } catch(e) {
-            console.warn('[InfraAI] MobileNet classify failed:', e);
+            console.warn('[InfraAI] MobileNet classify failed — resetting models for next call:', e);
+            // Reset ALL model state so loadModels() reloads cleanly on the next
+            // analyzeImages() call. Without this, _mobilenet stays non-null (broken
+            // model reference) and every subsequent call silently fails the same way.
+            // _loadPromise must also be cleared here — Fix 1's finally{} clears it
+            // after a load attempt, but if a prior successful load left it as a stale
+            // resolved Promise it would short-circuit the next loadModels() call and
+            // skip the reload even though _mobilenet is now null.
+            _mobilenet   = null;
+            _cocoSsd     = null;
+            _loadPromise = null;
             mobilenetPreds = [];
         }
 
@@ -473,6 +500,7 @@ const InfraAI = (() => {
                 cocoDetections = await _cocoSsd.detect(cocoCanvas);
             } catch(e) {
                 console.warn('[InfraAI] COCO-SSD detect failed:', e);
+                _cocoSsd = null;  // Reset so it reloads with the model on the next call
             }
         }
 

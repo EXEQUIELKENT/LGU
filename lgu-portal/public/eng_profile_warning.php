@@ -5,14 +5,15 @@
  * Reusable include for any page that has a sidebar with #profileIconBtn.
  *
  * What it does:
- *  • Queries engineer_profiles to detect an incomplete profile
- *  • Renders the CSS (red dot + warning popup)
- *  • Renders the warning popup HTML div
- *  • Renders the JS that:
- *      – injects the red pulse dot into #profileIconBtn
+ *  • [Engineer]      Queries engineer_profiles to detect an incomplete profile
+ *                    → red pulse dot + red popup until profile is filled in
+ *  • [Head Engineer] Queries engineer_profiles to detect a missing district
+ *                    → amber pulse dot + amber popup until district is set
+ *  • Renders CSS, popup HTML, and the JS that:
+ *      – injects the correct pulse dot into #profileIconBtn
  *      – shows the popup permanently (always visible, not hover-only)
  *      – repositions on sidebar toggle / window resize
- *      – falls back to the normal tooltip when the profile is complete
+ *      – falls back to the normal tooltip when everything is set
  *
  * Usage — add ONE line right after <div id="sidebarNavTooltip"> on any page:
  *   <?php include 'eng_profile_warning.php'; ?>
@@ -25,9 +26,11 @@
  */
 
 // ── 1. Detect incomplete engineer profile ────────────────────────
-$_engIsEngineer  = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
-$_engUserId      = (int)($_SESSION['employee_id'] ?? 0);
-$_engIncomplete  = false;
+$_engIsEngineer     = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$_engIsHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$_engUserId         = (int)($_SESSION['employee_id'] ?? 0);
+$_engIncomplete     = false;
+$_heDistrictMissing = false;
 
 if ($_engIsEngineer && $_engUserId > 0) {
     $epChk = $conn->prepare(
@@ -52,9 +55,27 @@ if ($_engIsEngineer && $_engUserId > 0) {
     }
     $epChk->close();
 }
+
+// ── 2. Detect missing district (Head Engineer) ───────────────────
+if ($_engIsHeadEngineer && $_engUserId > 0) {
+    $heChk = $conn->prepare(
+        "SELECT district FROM engineer_profiles WHERE user_id = ?"
+    );
+    $heChk->bind_param("i", $_engUserId);
+    $heChk->execute();
+    $heChkResult = $heChk->get_result();
+
+    if ($heChkResult->num_rows === 0) {
+        $_heDistrictMissing = true;
+    } else {
+        $heRow = $heChkResult->fetch_assoc();
+        $_heDistrictMissing = empty(trim($heRow['district'] ?? ''));
+    }
+    $heChk->close();
+}
 ?>
 
-<?php if ($_engIsEngineer): ?>
+<?php if ($_engIsEngineer || $_engIsHeadEngineer): ?>
 <!-- ═══════════════════════════════════════════════════════
      Engineer Profile Warning — eng_profile_warning.php
 ════════════════════════════════════════════════════════ -->
@@ -83,13 +104,25 @@ if ($_engIsEngineer && $_engUserId > 0) {
     100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   }
 }
 
-/* ── Warning popup ── */
-#engProfileWarningPop {
+/* ── Amber pulse dot variant (Head Engineer district missing) ── */
+.profile-incomplete-dot.amber {
+    background: #f59e0b;
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+    animation: he-dot-pulse 1.6s infinite;
+}
+@keyframes he-dot-pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0.7); }
+    70%  { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0);   }
+    100% { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0);   }
+}
+
+/* ── Warning popup (shared base) ── */
+#engProfileWarningPop,
+#heDistrictWarningPop {
     position: fixed;
     z-index: 6000;
     left: 0;
     top: 0;
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
     color: #fff;
     border-radius: 8px;
     padding: 7px 11px;
@@ -100,19 +133,24 @@ if ($_engIsEngineer && $_engUserId > 0) {
     max-width: 175px;
     white-space: normal;
     word-wrap: break-word;
-    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
     pointer-events: none;
     opacity: 0;
     display: none;
     transform: scale(0.97);
     transition: opacity 0.22s, transform 0.22s;
 }
-#engProfileWarningPop.visible {
+#engProfileWarningPop.visible,
+#heDistrictWarningPop.visible {
     opacity: 1;
     display: block;
     transform: scale(1);
 }
-/* Upward-pointing arrow (popup sits below the button) */
+
+/* ── Red theme (Engineer incomplete profile) ── */
+#engProfileWarningPop {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+}
 #engProfileWarningPop::before {
     content: "";
     position: absolute;
@@ -122,7 +160,26 @@ if ($_engIsEngineer && $_engUserId > 0) {
     border-style: solid;
     border-color: transparent transparent #ef4444 transparent;
 }
-#engProfileWarningPop .eng-warn-title {
+
+/* ── Amber theme (Head Engineer missing district) ── */
+#heDistrictWarningPop {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+    pointer-events: auto; /* allow the profile link inside to be clicked */
+}
+#heDistrictWarningPop::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 16px;
+    border-width: 0 7px 8px 7px;
+    border-style: solid;
+    border-color: transparent transparent #f59e0b transparent;
+}
+
+/* ── Popup inner elements (shared) ── */
+#engProfileWarningPop .eng-warn-title,
+#heDistrictWarningPop .eng-warn-title {
     font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
@@ -132,7 +189,8 @@ if ($_engIsEngineer && $_engUserId > 0) {
     align-items: center;
     gap: 5px;
 }
-#engProfileWarningPop .eng-warn-body {
+#engProfileWarningPop .eng-warn-body,
+#heDistrictWarningPop .eng-warn-body {
     font-size: 10px;
     font-weight: 500;
     opacity: 0.93;
@@ -149,10 +207,22 @@ if ($_engIsEngineer && $_engUserId > 0) {
     </div>
 </div>
 
+<!-- Head Engineer district warning popup -->
+<div id="heDistrictWarningPop">
+    <div class="eng-warn-title">
+        <i class="fas fa-map-marker-alt"></i> No District Set
+    </div>
+    <div class="eng-warn-body">
+        Set your district in your <a href="profile.php#heDistrictSection" style="color:#fff;text-decoration:underline;pointer-events:auto;">profile</a> to view and manage reports in your area.
+    </div>
+</div>
+
 <script>
 (function () {
     // ── Config ────────────────────────────────────────────────────
-    var INCOMPLETE = <?= $_engIncomplete ? 'true' : 'false' ?>;
+    var INCOMPLETE          = <?= $_engIncomplete      ? 'true' : 'false' ?>;
+    var HE_DISTRICT_MISSING = <?= $_heDistrictMissing  ? 'true' : 'false' ?>;
+    var IS_HEAD_ENGINEER    = <?= $_engIsHeadEngineer  ? 'true' : 'false' ?>;
 
     // ── Wait for DOM ready ────────────────────────────────────────
     function onReady(fn) {
@@ -161,17 +231,27 @@ if ($_engIsEngineer && $_engUserId > 0) {
     }
 
     onReady(function () {
-        var profileBtn  = document.getElementById('profileIconBtn');
-        var warningPop  = document.getElementById('engProfileWarningPop');
-        var sidebarEl   = document.getElementById('sidebarNav');
-        var toggleBtn   = document.getElementById('sidebarToggle');
+        var profileBtn       = document.getElementById('profileIconBtn');
+        var warningPop       = document.getElementById('engProfileWarningPop');
+        var heDistrictPop    = document.getElementById('heDistrictWarningPop');
+        var sidebarEl        = document.getElementById('sidebarNav');
+        var toggleBtn        = document.getElementById('sidebarToggle');
 
-        if (!profileBtn || !warningPop) return;
+        if (!profileBtn) return;
 
-        // ── Always inject the red dot into the profile button ─────
-        if (INCOMPLETE) {
+        // ── Determine active popup and dot colour ─────────────────
+        // Only one role is ever active; HE_DISTRICT_MISSING only
+        // fires when IS_HEAD_ENGINEER is true.
+        var needsWarning = IS_HEAD_ENGINEER ? HE_DISTRICT_MISSING : INCOMPLETE;
+        var activePop    = IS_HEAD_ENGINEER ? heDistrictPop : warningPop;
+
+        if (!activePop) return;
+
+        // ── Inject pulse dot into the profile button ──────────────
+        if (needsWarning) {
             var dot = document.createElement('span');
-            dot.className = 'profile-incomplete-dot visible';
+            dot.className = 'profile-incomplete-dot visible' +
+                            (IS_HEAD_ENGINEER ? ' amber' : '');
             dot.id = 'engIncompleteDot';
             profileBtn.appendChild(dot);
         }
@@ -179,24 +259,24 @@ if ($_engIsEngineer && $_engUserId > 0) {
         // ── Position popup directly below the profile button ──────
         function positionPopup() {
             var rect = profileBtn.getBoundingClientRect();
-            warningPop.style.left = rect.left + 'px';
-            warningPop.style.top  = (rect.bottom + 10 + window.scrollY) + 'px';
+            activePop.style.left = rect.left + 'px';
+            activePop.style.top  = (rect.bottom + 10 + window.scrollY) + 'px';
         }
 
         // ── Show / hide helpers ───────────────────────────────────
         function showPopup() {
             positionPopup();
-            warningPop.classList.add('visible');
+            activePop.classList.add('visible');
         }
         function hidePopup() {
-            warningPop.classList.remove('visible');
+            activePop.classList.remove('visible');
         }
 
         function isMobile() {
             return window.innerWidth <= 900;
         }
 
-        if (INCOMPLETE) {
+        if (needsWarning) {
 
             function update() {
                 if (isMobile()) {
@@ -204,15 +284,15 @@ if ($_engIsEngineer && $_engUserId > 0) {
                         // Wait for the slide-in CSS transition to finish (transition: left .35s)
                         setTimeout(function () {
                             positionPopup();
-                            warningPop.classList.add('visible');
+                            activePop.classList.add('visible');
                         }, 380);
                     } else {
-                        warningPop.classList.remove('visible');
+                        activePop.classList.remove('visible');
                     }
                 } else {
                     // Desktop — always shown, reposition
                     positionPopup();
-                    warningPop.classList.add('visible');
+                    activePop.classList.add('visible');
                 }
             }
 
@@ -242,7 +322,7 @@ if ($_engIsEngineer && $_engUserId > 0) {
             update();
 
         } else {
-            // Profile is complete — restore the normal collapsed-sidebar tooltip
+            // Profile/district is set — restore the normal collapsed-sidebar tooltip
             var sidebarNavTooltip = document.getElementById('sidebarNavTooltip');
 
             function showNormalTooltip() {

@@ -1,42 +1,8 @@
 <?php
 ob_start();
-session_start();
+require_once __DIR__ . '/session_guard.php';
 
-date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
-
-// AFTER
-// Detect localhost — disable inactivity timeout during local development
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
-$INACTIVITY_LIMIT = 2 * 60; // seconds (2 minutes)
-
-// If last activity is set and timeout exceeded (skipped on localhost)
-if (
-    !$isLocalhost &&
-    isset($_SESSION['last_activity']) &&
-    (time() - $_SESSION['last_activity']) > $INACTIVITY_LIMIT
-) {
-    session_unset();
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
-
-// Update last activity time
-$_SESSION['last_activity'] = time();
-
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-
-if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
-    session_unset(); session_destroy();
-    header("Location: login.php"); exit;
-}
 
 require __DIR__ . '/db.php';
 
@@ -56,6 +22,8 @@ $conn->query("
 $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
 // ── Add highlight_days column (JSON array of ISO dates admin flags for revision) ─
 $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_days TEXT DEFAULT NULL");
+// ── Track which admin gave feedback (rejected completion) ──────────────────────
+$conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_feedback_by INT DEFAULT NULL");
 // ── Auto-add requester email column to requests table ─────────────────────────
 $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
 // Create report_progress_images table if it does not exist
@@ -97,6 +65,20 @@ $engineerId = (int)($_SESSION['employee_id'] ?? 0);
 $isAdmin    = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 $userRole   = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
+
+// ── Head Engineer: detect role and load their assigned district ──────────────
+$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$heDistrict    = '';
+$heHasDistrict = false;
+if ($isHeadEngineer) {
+    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $heStmt->bind_param("i", $engineerId);
+    $heStmt->execute();
+    $heRow         = $heStmt->get_result()->fetch_assoc();
+    $heStmt->close();
+    $heDistrict    = trim($heRow['district'] ?? '');
+    $heHasDistrict = $heDistrict !== '';
+}
 
 // ── AJAX POST handler ─────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -337,14 +319,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($repId <= 0) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'Invalid report ID.']); exit; }
         $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_return_note TEXT DEFAULT NULL");
         $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS highlight_days TEXT DEFAULT NULL");
+        $conn->query("ALTER TABLE request_resolutions ADD COLUMN IF NOT EXISTS admin_feedback_by INT DEFAULT NULL");
+        $adminFeedbackById = (int)($_SESSION['employee_id'] ?? 0);
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN reports r ON r.res_id = rr.res_id
-             SET rr.status = 'In Progress', rr.admin_return_note = ?, rr.highlight_days = ?
+             SET rr.status = 'In Progress', rr.admin_return_note = ?, rr.highlight_days = ?, rr.admin_feedback_by = ?
              WHERE r.rep_id = ? AND rr.status = 'Pending Completion'"
         );
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
-        $stmt->bind_param('ssi', $returnNote, $highlightDays, $repId);
+        $stmt->bind_param('ssii', $returnNote, $highlightDays, $adminFeedbackById, $repId);
         $ok = $stmt->execute(); $err = $stmt->error; $stmt->close();
         while(ob_get_level()>0)ob_end_clean();
         echo json_encode($ok ? ['success'=>true] : ['success'=>false,'message'=>$err]);
@@ -454,6 +438,16 @@ $isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin'
 // ─── FETCH: Pending/Scheduled reports only ───────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
+// Head Engineers: restrict to their assigned district only
+$df = '';
+if ($isHeadEngineer) {
+    if ($heHasDistrict) {
+        $safeDistrict = $conn->real_escape_string($heDistrict);
+        $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";
+    } else {
+        $df = "AND 1=0"; // No district set — show nothing
+    }
+}
 $sql = "
     SELECT
         r.rep_id, r.res_id, r.starting_date, r.estimated_end_date,
@@ -466,6 +460,8 @@ $sql = "
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
+        CONCAT(adm.first_name, ' ', adm.last_name) AS admin_name,
+        adm.profile_picture AS admin_pic,
         GROUP_CONCAT(DISTINCT ev.img_path  ORDER BY ev.uploaded_at  ASC SEPARATOR ',') AS evidence_images,
         GROUP_CONCAT(DISTINCT rpi.img_path ORDER BY rpi.uploaded_at ASC SEPARATOR ',') AS progress_images
     FROM reports r
@@ -475,13 +471,14 @@ $sql = "
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
     LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
     LEFT JOIN report_progress_images rpi ON rpi.rep_id  = r.rep_id
+    LEFT JOIN employees            adm ON COALESCE(res.admin_feedback_by, res.resolved_by) = adm.user_id
     WHERE (
           res.status = 'Scheduled'
        OR res.status = 'Pending'
        OR res.status = 'In Progress'
        OR res.status = 'Pending Completion'
        OR res.status = ''
-    ) {$ef}
+    ) {$ef} {$df}
     GROUP BY r.rep_id
     ORDER BY r.starting_date ASC
 ";
@@ -582,6 +579,8 @@ foreach ($rows as $row) {
         'issue'               => $row['issue'] ?? '',
         'res_note'            => $row['res_note'] ?? '',
         'admin_return_note'   => $row['admin_return_note'] ?? '',
+        'admin_name'          => $row['admin_name'] ?? '',
+        'admin_pic'           => $row['admin_pic']  ?? '',
         'highlight_days'      => $row['highlight_days']    ?? '',
         'engineer_name'       => $row['engineer_name'] ?? '',
         'engineer_pic'        => $row['engineer_pic'] ?? '',
@@ -633,6 +632,22 @@ foreach ($rows as $row) {
     transition: margin-left 0.3s ease;
 }
 .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px); }
+/* ── Head Engineer: no-district warning banner ────────────── */
+.he-no-district-banner {
+    display:flex; align-items:center; gap:14px;
+    background:linear-gradient(135deg,rgba(234,88,12,.12),rgba(251,146,60,.08));
+    border:1.5px solid rgba(234,88,12,.35); border-radius:10px;
+    padding:14px 18px; margin-bottom:16px; color:var(--text-primary);
+}
+.he-no-district-banner i { color:#ea580c; font-size:20px; flex-shrink:0; }
+.he-no-district-banner strong { display:block; font-size:14px; margin-bottom:2px; color:#ea580c; }
+.he-no-district-banner span { font-size:13px; color:var(--text-secondary); }
+.he-no-district-banner a { color:#ea580c; font-weight:600; text-decoration:underline; }
+[data-theme="dark"] .he-no-district-banner {
+    background:linear-gradient(135deg,rgba(234,88,12,.18),rgba(251,146,60,.10));
+    border-color:rgba(234,88,12,.45);
+}
+
 .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 /* ── Engineer self-profile button in page header ── */
 .eng-self-profile-wrap {
@@ -1486,12 +1501,28 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     color: #fff;
     font-size: 11px;
     font-weight: 700;
-    padding: 4px 12px;
+    padding: 4px 10px 4px 12px;
     border-radius: 20px;
     letter-spacing: .04em;
     text-transform: uppercase;
     box-shadow: 0 3px 10px rgba(239,68,68,.4);
     width: fit-content;
+}
+.rep-admin-feedback-badge .afb-sep {
+    width: 1px; height: 14px;
+    background: rgba(255,255,255,.4);
+    flex-shrink: 0; margin: 0 2px;
+}
+.rep-admin-feedback-badge .afb-avatar {
+    width: 20px; height: 20px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 1.5px solid rgba(255,255,255,.7);
+    display: block;
+}
+.rep-admin-feedback-badge .afb-name {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .01em; text-transform: none;
+    white-space: nowrap;
 }
 .rep-admin-feedback-text {
     font-size: 13px;
@@ -1499,6 +1530,26 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     font-weight: 500;
     line-height: 1.5;
 }
+.rep-admin-feedback-who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rep-admin-feedback-who-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 1.5px solid rgba(239,68,68,.45);
+    background: rgba(239,68,68,.08);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.rep-admin-feedback-who-avatar img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
+}
+.rep-admin-feedback-who-name {
+    font-size: 12px; font-weight: 700; color: #b91c1c;
+}
+[data-theme="dark"] .rep-admin-feedback-who-name { color: #fca5a5; }
 [data-theme="dark"] .rep-admin-return-banner {
     background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(185,28,28,.07));
     border-color: rgba(239,68,68,.35);
@@ -1835,7 +1886,10 @@ window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
 const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
 
-const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
+const IS_ADMIN         = <?= $isAdmin        ? 'true' : 'false' ?>;
+const IS_HEAD_ENGINEER = <?= $isHeadEngineer ? 'true' : 'false' ?>;
+const HE_HAS_DISTRICT  = <?= $heHasDistrict  ? 'true' : 'false' ?>;
+const HE_DISTRICT      = <?= json_encode($heDistrict) ?>;
 
 (function() {
     try {
@@ -1998,6 +2052,16 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
     </div>
 <?php endif; ?>
     </div>
+
+    <?php if ($isHeadEngineer && !$heHasDistrict): ?>
+    <div class="he-no-district-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            <strong>No district assigned</strong>
+            <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view and manage pending reports in your area.</span>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="search-toolbar">
     <div class="search-bar-wrapper">
@@ -2164,7 +2228,10 @@ const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
             <div class="rep-status-row"><span class="rep-status-pill" id="repModalStatus"></span></div>
             <!-- Admin return reason — shown to engineer above Location/Issue -->
             <div class="rep-admin-return-banner" id="repAdminReturnBanner" style="display:none;">
-                <div class="rep-admin-feedback-badge"><i class="fas fa-shield-alt"></i> Admin Feedback</div>
+                <div class="rep-admin-feedback-badge">
+                    <i class="fas fa-shield-alt"></i> Admin Feedback
+                    <span id="repAdminFeedbackWho" style="display:none;align-items:center;gap:5px;"></span>
+                </div>
                 <div class="rep-admin-feedback-text" id="repAdminReturnNote"></div>
             </div>
             <div class="rep-divider"></div>
@@ -2769,6 +2836,19 @@ function openRepModal(repId) {
     if (IS_ENGINEER && data.admin_return_note && data.admin_return_note.trim()) {
         returnBanner.style.display = '';
         returnNote.textContent = data.admin_return_note;
+        // ── Show admin avatar + name inside the badge ────────────────────────
+        const whoEl = document.getElementById('repAdminFeedbackWho');
+        if (whoEl) {
+            const ADMIN_FALLBACK_SVG = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23fee2e2%22/%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2236%22%20r%3D%2220%22%20fill%3D%22%23ef4444%22/%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2280%22%20rx%3D%2230%22%20ry%3D%2224%22%20fill%3D%22%23ef4444%22/%3E%3C/svg%3E';
+            const adminPic  = (data.admin_pic && data.admin_pic !== 'profile.png') ? escH(data.admin_pic) : '';
+            const adminName = escH(data.admin_name || 'Admin');
+            whoEl.innerHTML =
+                '<span class="afb-sep"></span>' +
+                '<img class="afb-avatar" src="' + (adminPic || ADMIN_FALLBACK_SVG) + '" alt="" ' +
+                     'onerror="this.src=\'' + ADMIN_FALLBACK_SVG + '\'">' +
+                '<span class="afb-name">' + adminName + '</span>';
+            whoEl.style.display = 'inline-flex';
+        }
     } else {
         returnBanner.style.display = 'none';
     }
