@@ -3518,8 +3518,39 @@ async function imagePathToFile(path) {
     return new File([blob], filename, { type: blob.type || 'image/jpeg' });
 }
 
+// ── Helper: run the AI analysis pipeline with one automatic retry. ─────
+// Root cause of "AI works on the 1st validate, silently skipped on the
+// 2nd+ until a full page reload": any error thrown while fetching the
+// evidence images (imagePathToFile) or while InfraAI.analyzeImages() ran
+// was caught by a bare `catch(aiErr)` that only did a console.warn — the
+// request still validated successfully, so nothing on screen showed that
+// AI had failed. Retrying once here also gives the TF.js layer a fresh
+// chance to reload its models if the first attempt left them in a bad
+// state, which is the same effect a full page reload had — just without
+// needing the reload.
+async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts = 2) {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis');
+            const files = await Promise.all(evidencePaths.map(imagePathToFile));
+            return await InfraAI.analyzeImages(files, infraType, onProgress);
+        } catch (err) {
+            lastErr = err;
+            console.error(`[InfraAI] Attempt ${attempt}/${maxAttempts} failed:`, err);
+        }
+    }
+    throw lastErr;
+}
+
 document.getElementById('validateConfirmBtn').addEventListener('click', async () => {
     if (!currentRequestData) return;
+    // Snapshot now: currentRequestData is one shared global, and the modals that
+    // feed it are closed a few lines below — if the user opens a different request
+    // while this handler is still awaiting the network, the shared global must not
+    // be allowed to change underneath this in-flight validation.
+    const reqSnapshot = currentRequestData;
+
     const confirmBtn = document.getElementById('validateConfirmBtn');
     const cancelBtn  = document.getElementById('validateCancelBtn');
     confirmBtn.disabled = true; confirmBtn.textContent = 'Processing…'; cancelBtn.disabled = true;
@@ -3534,7 +3565,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         // ── 1. Validate request ──────────────────────────────────────────
         const response = await fetch('validate_request.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
-            body: JSON.stringify({ req_id: parseInt(currentRequestData.reqId, 10) })
+            body: JSON.stringify({ req_id: parseInt(reqSnapshot.reqId, 10) })
         });
         let data;
         try { data = await response.json(); } catch(pe) {
@@ -3543,36 +3574,41 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         }
 
         if (data.success) {
-            const reqId = currentRequestData.reqId;
+            const reqId = reqSnapshot.reqId;
+            let aiWarning = '';
 
-            // ── 2. Run AI analysis (non-blocking) ────────────────────────
-            if (typeof InfraAI !== 'undefined' && currentRequestData.evidence && currentRequestData.evidence.length > 0) {
+            // ── 2. Run AI analysis (retries once; never blocks validation) ────
+            if (typeof InfraAI !== 'undefined' && reqSnapshot.evidence && reqSnapshot.evidence.length > 0) {
                 try {
-                    updateOverlayText('Analyzing evidence images');
-                    const files    = await Promise.all(currentRequestData.evidence.map(imagePathToFile));
-                    const aiResult = await InfraAI.analyzeImages(
-                        files,
-                        currentRequestData.infrastructure,
+                    const aiResult = await runAiAnalysis(
+                        reqSnapshot.evidence,
+                        reqSnapshot.infrastructure,
                         (msg) => updateOverlayText(msg)
                     );
                     aiResult.req_id = reqId;
-                    fetch('save_ai_analysis.php', {
+                    const saveResp = await fetch('save_ai_analysis.php', {
                         method: 'POST', headers: {'Content-Type':'application/json'},
                         body: JSON.stringify(aiResult)
-                    }).then(r => r.json())
-                      .then(d => console.log('[InfraAI] Saved:', d))
-                      .catch(e => console.warn('[InfraAI] Save failed (non-fatal):', e));
+                    });
+                    const saveData = await saveResp.json();
+                    console.log('[InfraAI] Saved:', saveData);
+                    if (!saveData || saveData.success === false) {
+                        console.error('[InfraAI] save_ai_analysis.php reported failure:', saveData);
+                        aiWarning = ' ⚠️ AI analysis ran but could not be saved — see console.';
+                    }
                 } catch(aiErr) {
-                    console.warn('[InfraAI] Analysis failed (non-fatal):', aiErr);
+                    console.error('[InfraAI] Analysis failed after retry:', aiErr);
+                    aiWarning = ' ⚠️ AI analysis did not complete for this request — see console.';
                 }
             }
 
             // ── 3. Update UI ─────────────────────────────────────────────
             updateRowStatus(reqId, 'Approved', 'completed');
             updateGisMarker(reqId, 'Approved');
-            showInlineNotif('success',
+            showInlineNotif(aiWarning ? 'error' : 'success',
                 `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
-                `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.`
+                `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.` +
+                aiWarning
             );
         } else {
             showInlineNotif('error', `❌ ${data.message}`);
