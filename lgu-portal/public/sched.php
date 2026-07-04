@@ -8043,29 +8043,54 @@ document.addEventListener('DOMContentLoaded', function() {
         function applySchedSort(mode) {
             const noMsg = document.getElementById('noResultMsg');
             const items = Array.from(holder.querySelectorAll('.schedule-item'));
+            const searchVal = (scheduleSearch && scheduleSearch.value.trim().toLowerCase()) || '';
 
-            // CPRF mode = FILTER: show only shared items, hide the rest
+            // Same matching rules used by the search-input handler, so sorting
+            // never un-hides items that the active search would otherwise filter out.
+            function matchesSearch(item) {
+                if (!searchVal) return true;
+                const task   = item.getAttribute('data-task') || '';
+                const loc    = item.getAttribute('data-location') || '';
+                const date   = item.getAttribute('data-date') || '';
+                const cat    = item.getAttribute('data-category') || '';
+                const stat   = item.getAttribute('data-status') || '';
+                const prio   = item.getAttribute('data-priority') || '';
+                const rep    = item.getAttribute('data-rep') || '';
+                const budget = item.getAttribute('data-budget') || '';
+                const shared = item.getAttribute('data-shared') || '';
+                return task.includes(searchVal)   || loc.includes(searchVal)    || date.includes(searchVal)  ||
+                       cat.includes(searchVal)    || stat.includes(searchVal)   || prio.includes(searchVal)  ||
+                       rep.includes(searchVal)    || budget.includes(searchVal) || shared.includes(searchVal);
+            }
+
+            // CPRF mode = FILTER: show only shared items (that also satisfy legend + search), hide the rest
             if (mode === 'cprf') {
                 let shownCount = 0;
                 items.forEach(item => {
                     const isShared = (item.dataset.shared || '') === 'cprf';
-                    item.classList.toggle('filter-hidden', !isShared);
-                    if (isShared) shownCount++;
+                    const stat = item.getAttribute('data-status') || '';
+                    const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
+                    const show = isShared && legendOk && matchesSearch(item);
+                    item.classList.toggle('filter-hidden', !show);
+                    if (show) shownCount++;
                 });
                 if (noMsg) {
+                    noMsg.textContent = 'No CPRF-shared schedules found.';
                     noMsg.style.display = shownCount === 0 ? '' : 'none';
-                    if (shownCount === 0) noMsg.textContent = 'No CPRF-shared schedules found.';
                 }
                 return;
             }
 
-            // All other modes: restore any cprf-hidden items first
+            // All other modes: recompute visibility from the current legend + search
+            // filters (not just "was it hidden by cprf"), so the count driving the
+            // no-results message always matches what's actually on screen.
+            let shownCount = 0;
             items.forEach(item => {
-                // Only remove filter-hidden if it was set by a previous cprf filter
-                // (legend filter and search filter manage their own hidden states separately)
                 const stat = item.getAttribute('data-status') || '';
                 const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
-                if (legendOk) item.classList.remove('filter-hidden');
+                const show = legendOk && matchesSearch(item);
+                item.classList.toggle('filter-hidden', !show);
+                if (show) shownCount++;
             });
 
             // Then sort
@@ -8088,6 +8113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             items.forEach(item => holder.appendChild(item));
             if (noMsg) {
                 noMsg.textContent = 'No matching data or result.';
+                noMsg.style.display = shownCount === 0 ? '' : 'none';
                 holder.appendChild(noMsg);
             }
         }

@@ -341,7 +341,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN   reports r ON r.res_id = rr.res_id
-             SET    rr.status = 'Scheduled'
+             SET    rr.status = 'Scheduled',
+                    rr.admin_return_note = NULL,
+                    rr.highlight_fields = NULL,
+                    rr.admin_feedback_by = NULL
              WHERE  r.rep_id  = ?
                AND  rr.status = 'Pending Admin Approval'"
         );

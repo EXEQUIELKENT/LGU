@@ -268,7 +268,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN reports r ON r.res_id = rr.res_id
-             SET rr.status = 'Completed'
+             SET rr.status = 'Completed',
+                 rr.admin_return_note = NULL,
+                 rr.highlight_days = NULL,
+                 rr.admin_feedback_by = NULL
              WHERE r.rep_id = ? AND rr.status = 'Pending Completion'"
         );
         if (!$stmt) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'DB error: '.$conn->error]); exit; }
