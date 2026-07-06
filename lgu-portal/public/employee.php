@@ -138,33 +138,33 @@ $engFilter = $isEngineer && $sessionUserId > 0
     ? "AND r.engineer_id = {$sessionUserId}"
     : "";
 
-// Head Engineer detection and district-based filtering
-$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
-$heDistrict     = '';
-$heHasDistrict  = false;
-if ($isHeadEngineer) {
-    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
-    $heStmt->bind_param("i", $sessionUserId);
-    $heStmt->execute();
-    $heRow        = $heStmt->get_result()->fetch_assoc();
-    $heStmt->close();
-    $heDistrict   = trim($heRow['district'] ?? '');
-    $heHasDistrict = $heDistrict !== '';
+// Area Engineer detection and district-based filtering
+$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$aeDistrict     = '';
+$aeHasDistrict  = false;
+if ($isAreaEngineer) {
+    $aeStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $aeStmt->bind_param("i", $sessionUserId);
+    $aeStmt->execute();
+    $aeRow        = $aeStmt->get_result()->fetch_assoc();
+    $aeStmt->close();
+    $aeDistrict   = trim($aeRow['district'] ?? '');
+    $aeHasDistrict = $aeDistrict !== '';
 }
 
-// District filter for queries that JOIN the requests table (Head Engineer only)
+// District filter for queries that JOIN the requests table (Area Engineer only)
 $districtFilter = '';
-if ($isHeadEngineer) {
-    if ($heHasDistrict) {
-        $safeHEDist     = $conn->real_escape_string($heDistrict);
-        $districtFilter = "AND COALESCE(req.district, '') = '{$safeHEDist}'";
+if ($isAreaEngineer) {
+    if ($aeHasDistrict) {
+        $safeAEDist     = $conn->real_escape_string($aeDistrict);
+        $districtFilter = "AND COALESCE(req.district, '') = '{$safeAEDist}'";
     } else {
         $districtFilter = "AND 1=0"; // No district set — show nothing
     }
 }
 
-// Convenience flag: any role-personalised view (engineer OR head engineer)
-$isPersonalized = $isEngineer || $isHeadEngineer;
+// Convenience flag: any role-personalised view (engineer OR area engineer)
+$isPersonalized = $isEngineer || $isAreaEngineer;
 
 // ===== DASHBOARD METRICS =====
 
@@ -180,8 +180,8 @@ $pendingRequests = $pendingRequestsResult->fetch_assoc()['total'] ?? 0;
 
 // Completed Tasks — sourced from archive_reports (same as archive_reports.php),
 // personalised per engineer when the logged-in user is an engineer;
-// for Head Engineers, filters by their assigned district
-if ($isHeadEngineer) {
+// for Area Engineers, filters by their assigned district
+if ($isAreaEngineer) {
     // Need requests JOIN to access req.district
     $completedTasksQuery = "
         SELECT COUNT(*) as total
@@ -474,7 +474,7 @@ if ($schedRes) {
     }
 }
 
-// ── 2. reports (with engineer filter for engineers / district filter for head engineers) ──
+// ── 2. reports (with engineer filter for engineers / district filter for area engineers) ──
 $rptUpSql = "
     SELECT r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
            r.priority_lvl, r.budget,
@@ -558,8 +558,8 @@ if ($msChartRes) {
     }
 }
 
-// ── B. reports (engineer-filtered / head-engineer district-filtered) ─────────
-if ($isHeadEngineer) {
+// ── B. reports (engineer-filtered / area-engineer district-filtered) ─────────
+if ($isAreaEngineer) {
     // Needs requests JOIN to access req.district
     $rpChartSql = "
         SELECT r.estimated_end_date, res.status AS resolution_status, res.res_note
@@ -2979,16 +2979,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <span>👷</span>
                     <span>Engineer view — reports &amp; tasks are filtered to your assignments only</span>
                 </div>
-                <?php elseif ($isHeadEngineer): ?>
+                <?php elseif ($isAreaEngineer): ?>
                 <div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;
                             background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
                             border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;
                             color:#3762c8;">
                     <span>📍</span>
-                    <?php if ($heHasDistrict): ?>
-                        <span>Head Engineer view — showing data for <strong><?= htmlspecialchars($heDistrict) ?></strong> only</span>
+                    <?php if ($aeHasDistrict): ?>
+                        <span>Area Engineer view — showing data for <strong><?= htmlspecialchars($aeDistrict) ?></strong> only</span>
                     <?php else: ?>
-                        <span style="color:#ea580c;">No district assigned — <a href="profile.php#heDistrictSection" style="color:#ea580c;text-decoration:underline;font-weight:700;">set your district</a> to see your data</span>
+                        <span style="color:#ea580c;">No district assigned — <a href="profile.php#aeDistrictSection" style="color:#ea580c;text-decoration:underline;font-weight:700;">set your district</a> to see your data</span>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
@@ -3096,12 +3096,12 @@ HTML;
             ?>
             <div class="charts-grid">
                 <?php if ($isPersonalized): ?>
-                <!-- Schedule Status Breakdown Doughnut (top row for engineers / head engineers) -->
+                <!-- Schedule Status Breakdown Doughnut (top row for engineers / area engineers) -->
                 <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
                     <div class="chart-header sched-status-header">
                         <div style="min-width:0;flex:1;">
-                            <div class="chart-title">Schedule Status<?= $isHeadEngineer && $heHasDistrict ? ' (' . htmlspecialchars($heDistrict) . ')' : ' (Mine)' ?></div>
-                            <div class="chart-subtitle"><?= $isHeadEngineer ? 'Schedule breakdown for your district' : 'Your schedule breakdown' ?> — Scheduled, In Progress, Delayed &amp; Completed</div>
+                            <div class="chart-title">Schedule Status<?= $isAreaEngineer && $aeHasDistrict ? ' (' . htmlspecialchars($aeDistrict) . ')' : ' (Mine)' ?></div>
+                            <div class="chart-subtitle"><?= $isAreaEngineer ? 'Schedule breakdown for your district' : 'Your schedule breakdown' ?> — Scheduled, In Progress, Delayed &amp; Completed</div>
                         </div>
                         <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
                     </div>
@@ -3129,13 +3129,13 @@ HTML;
                 </div>
 HTML;
                 ?>
-                <!-- Row A second slot: Upcoming Maintenance for engineers/head engineers, Status Breakdown for others -->
+                <!-- Row A second slot: Upcoming Maintenance for engineers/area engineers, Status Breakdown for others -->
                 <?php if ($isPersonalized): ob_start(); ?>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div>
-                            <div class="chart-title">Upcoming Maintenance<?= $isHeadEngineer && $heHasDistrict ? ' (' . htmlspecialchars($heDistrict) . ')' : ' (Mine)' ?></div>
-                            <div class="chart-subtitle"><?= $isHeadEngineer ? 'Next scheduled tasks in your district' : 'Next scheduled tasks assigned to you' ?></div>
+                            <div class="chart-title">Upcoming Maintenance<?= $isAreaEngineer && $aeHasDistrict ? ' (' . htmlspecialchars($aeDistrict) . ')' : ' (Mine)' ?></div>
+                            <div class="chart-subtitle"><?= $isAreaEngineer ? 'Next scheduled tasks in your district' : 'Next scheduled tasks assigned to you' ?></div>
                         </div>
                         <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
@@ -3224,7 +3224,7 @@ HTML;
                     </div>
                 </div>
 
-                <!-- Right slot: Status Breakdown for engineers/head engineers (swapped), Upcoming Maintenance for others -->
+                <!-- Right slot: Status Breakdown for engineers/area engineers (swapped), Upcoming Maintenance for others -->
                 <?php if ($isPersonalized): ?>
                 <?= $statusBreakdownCard ?>
                 <?php else: ?>
@@ -3308,7 +3308,7 @@ HTML;
                 </div><!-- end Active Reports card -->
 
                 <?php if ($isPersonalized): ?>
-                <!-- Request Trends (bottom row for engineers / head engineers) -->
+                <!-- Request Trends (bottom row for engineers / area engineers) -->
                 <?= $requestTrendsCard ?>
                 <?php else: ?>
                 <!-- Schedule Status Breakdown Doughnut (bottom row for non-engineers) -->

@@ -8,7 +8,7 @@ require __DIR__ . '/db.php';
 
 // --- Engineer role detection ---
 $isEngineer     = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
-$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
 
 // Auto-create engineer_profiles table if it doesn't exist
 $conn->query("
@@ -76,7 +76,7 @@ if ($employeeId) {
 
 // Fetch engineer profile data if applicable
 $engineerProfile = [];
-if (($isEngineer || $isHeadEngineer) && $employeeId) {
+if (($isEngineer || $isAreaEngineer) && $employeeId) {
     $epStmt = $conn->prepare("SELECT * FROM engineer_profiles WHERE user_id = ?");
     $epStmt->bind_param("i", $employeeId);
     $epStmt->execute();
@@ -432,9 +432,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $epStmt->close();
         }
 
-        // ── Head Engineer district-only save ─────────────────────────────────────────
-        if ($isHeadEngineer) {
-            $ep_district     = trim($_POST['he_district'] ?? '');
+        // ── Area Engineer district-only save ─────────────────────────────────────────
+        if ($isAreaEngineer) {
+            $ep_district     = trim($_POST['ae_district'] ?? '');
             $validDistricts  = ['District 1','District 2','District 3','District 4','District 5','District 6',''];
             if (in_array($ep_district, $validDistricts)) {
                 $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
@@ -2986,11 +2986,11 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
             </div><!-- end .eng-profile-wrapper -->
             <?php endif; ?>
 
-            <?php if ($isHeadEngineer): ?>
+            <?php if ($isAreaEngineer): ?>
             <!-- ═══════════════════════════════════════
-                 HEAD ENGINEER — DISTRICT ASSIGNMENT
+                 AREA ENGINEER — DISTRICT ASSIGNMENT
             ═══════════════════════════════════════ -->
-            <div class="eng-section-divider" id="heDistrictSection">
+            <div class="eng-section-divider" id="aeDistrictSection">
                 <span>🗺️ District Assignment</span>
                 <?php if (empty($engineerProfile['district'] ?? '')): ?>
                 <span class="eng-required-badge"><i class="fas fa-exclamation-circle"></i> Not Set</span>
@@ -3009,25 +3009,25 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                         <div class="eng-form-group" style="max-width:420px;">
                             <label><span class="lbl-icon">🗺️</span> District (Quezon City)</label>
                             <?php
-                                $heCurrentDistrict = $engineerProfile['district'] ?? '';
+                                $aeCurrentDistrict = $engineerProfile['district'] ?? '';
                                 $districtOpts      = ['District 1','District 2','District 3','District 4','District 5','District 6'];
                             ?>
-                            <input type="hidden" name="he_district" id="heDistrictVal"
-                                   value="<?= htmlspecialchars($heCurrentDistrict) ?>">
-                            <div class="prof-combobox" id="cbHeDistrict">
-                                <div class="prof-combobox-display" id="cbHeDistrictDisplay">
-                                    <span class="prof-combobox-label<?= $heCurrentDistrict ? ' selected' : '' ?>"
-                                          id="cbHeDistrictLabel">
-                                        <?= $heCurrentDistrict ? htmlspecialchars($heCurrentDistrict) : '— Select district —' ?>
+                            <input type="hidden" name="ae_district" id="aeDistrictVal"
+                                   value="<?= htmlspecialchars($aeCurrentDistrict) ?>">
+                            <div class="prof-combobox" id="cbAeDistrict">
+                                <div class="prof-combobox-display" id="cbAeDistrictDisplay">
+                                    <span class="prof-combobox-label<?= $aeCurrentDistrict ? ' selected' : '' ?>"
+                                          id="cbAeDistrictLabel">
+                                        <?= $aeCurrentDistrict ? htmlspecialchars($aeCurrentDistrict) : '— Select district —' ?>
                                     </span>
                                     <span class="prof-combobox-arrow">▾</span>
                                 </div>
-                                <div class="prof-combobox-dropdown" id="cbHeDistrictDropdown">
+                                <div class="prof-combobox-dropdown" id="cbAeDistrictDropdown">
                                     <input class="prof-combobox-search" type="text"
                                            placeholder="🔍 Search district…" autocomplete="off">
                                     <div class="prof-combobox-list">
                                         <?php foreach ($districtOpts as $dist): ?>
-                                        <div class="prof-combobox-option<?= $heCurrentDistrict === $dist ? ' selected-opt' : '' ?>"
+                                        <div class="prof-combobox-option<?= $aeCurrentDistrict === $dist ? ' selected-opt' : '' ?>"
                                              data-value="<?= $dist ?>">
                                             <?= htmlspecialchars($dist) ?>
                                         </div>
@@ -3038,12 +3038,12 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                             <small style="color:var(--text-secondary);font-size:12px;margin-top:4px;display:block;">
                                 Your assigned district controls which reports appear in Current Reports and which engineers you can assign.
                             </small>
-                            <?php if (!empty($heCurrentDistrict)): ?>
+                            <?php if (!empty($aeCurrentDistrict)): ?>
                             <div style="margin-top:10px;">
-                                <?php $dNum = (int)filter_var($heCurrentDistrict, FILTER_SANITIZE_NUMBER_INT); ?>
+                                <?php $dNum = (int)filter_var($aeCurrentDistrict, FILTER_SANITIZE_NUMBER_INT); ?>
                                 <span class="district-badge d<?= $dNum ?>">
                                     <i class="fas fa-map-marker-alt"></i>
-                                    Currently assigned: <?= htmlspecialchars($heCurrentDistrict) ?>
+                                    Currently assigned: <?= htmlspecialchars($aeCurrentDistrict) ?>
                                 </span>
                             </div>
                             <?php endif; ?>
@@ -3781,7 +3781,7 @@ document.addEventListener('DOMContentLoaded', function() {
         { display: 'cbDiscDisplay',   dropdown: 'cbDiscDropdown',   hidden: 'epDiscVal',   label: 'cbDiscLabel'   },
         { display: 'cbDeptDisplay',   dropdown: 'cbDeptDropdown',   hidden: 'epDeptVal',   label: 'cbDeptLabel'   },
         { display: 'cbDistrictDisplay',   dropdown: 'cbDistrictDropdown',   hidden: 'epDistrictVal',  label: 'cbDistrictLabel'   },
-        { display: 'cbHeDistrictDisplay', dropdown: 'cbHeDistrictDropdown', hidden: 'heDistrictVal',  label: 'cbHeDistrictLabel' },
+        { display: 'cbAeDistrictDisplay', dropdown: 'cbAeDistrictDropdown', hidden: 'aeDistrictVal',  label: 'cbAeDistrictLabel' },
     ];
 
     function positionDropdown(displayEl, dropdownEl) {

@@ -190,18 +190,18 @@ $isAdmin = in_array(
 $isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
 
-// Head Engineer detection and district-based filtering
-$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
-$heDistrict     = '';
-$heHasDistrict  = false;
-if ($isHeadEngineer) {
-    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
-    $heStmt->bind_param("i", $sessionUserId);
-    $heStmt->execute();
-    $heRow        = $heStmt->get_result()->fetch_assoc();
-    $heStmt->close();
-    $heDistrict   = trim($heRow['district'] ?? '');
-    $heHasDistrict = $heDistrict !== '';
+// Area Engineer detection and district-based filtering
+$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$aeDistrict     = '';
+$aeHasDistrict  = false;
+if ($isAreaEngineer) {
+    $aeStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $aeStmt->bind_param("i", $sessionUserId);
+    $aeStmt->execute();
+    $aeRow        = $aeStmt->get_result()->fetch_assoc();
+    $aeStmt->close();
+    $aeDistrict   = trim($aeRow['district'] ?? '');
+    $aeHasDistrict = $aeDistrict !== '';
 }
 
 // ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
@@ -294,16 +294,16 @@ if ($result && $result->num_rows > 0) {
 // ── Pull in Pending Reports (Scheduled / In Progress / Delayed) ──────────────
 // ── and Archive Reports (Completed) into the same $schedules array ───────────
 
-// Engineers only see their own reports; Head Engineers see only their district;
+// Engineers only see their own reports; Area Engineers see only their district;
 // admins/others see all
 $engineerFilter = '';
 if ($isEngineer && $sessionUserId > 0) {
     $engineerFilter = "AND r.engineer_id = {$sessionUserId}";
-} elseif ($isHeadEngineer) {
-    if ($heHasDistrict) {
-        $safeHEDist     = $conn->real_escape_string($heDistrict);
+} elseif ($isAreaEngineer) {
+    if ($aeHasDistrict) {
+        $safeAEDist     = $conn->real_escape_string($aeDistrict);
         // req is already JOINed in $reportSql below, so this is safe
-        $engineerFilter = "AND COALESCE(req.district, '') = '{$safeHEDist}'";
+        $engineerFilter = "AND COALESCE(req.district, '') = '{$safeAEDist}'";
     } else {
         $engineerFilter = "AND 1=0"; // No district set — show nothing
     }
@@ -660,8 +660,8 @@ usort($schedules, function($a, $b) {
 
 /* --- END: Desktop/mobile blur + stacking + mobile-top-nav visibility fixes --- */
 
-/* ── Head Engineer: no-district warning banner ────────────────────────────── */
-.he-no-district-banner {
+/* ── Area Engineer: no-district warning banner ────────────────────────────── */
+.ae-no-district-banner {
     display: flex;
     align-items: flex-start;
     gap: 12px;
@@ -670,11 +670,11 @@ usort($schedules, function($a, $b) {
     border-radius: 12px;
     padding: 14px 18px;
 }
-.he-no-district-banner i { color: #ea580c; font-size: 20px; flex-shrink: 0; margin-top: 2px; }
-.he-no-district-banner strong { display: block; font-size: 14px; margin-bottom: 2px; color: #ea580c; }
-.he-no-district-banner span { font-size: 13px; color: var(--text-secondary); }
-.he-no-district-banner a { color: #ea580c; font-weight: 600; text-decoration: underline; }
-[data-theme="dark"] .he-no-district-banner {
+.ae-no-district-banner i { color: #ea580c; font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.ae-no-district-banner strong { display: block; font-size: 14px; margin-bottom: 2px; color: #ea580c; }
+.ae-no-district-banner span { font-size: 13px; color: var(--text-secondary); }
+.ae-no-district-banner a { color: #ea580c; font-weight: 600; text-decoration: underline; }
+[data-theme="dark"] .ae-no-district-banner {
     background: rgba(234,92,12,.10);
     border-color: rgba(234,92,12,.35);
 }
@@ -4778,20 +4778,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <div class="card">
 
-        <?php if ($isHeadEngineer && !$heHasDistrict): ?>
-        <div class="he-no-district-banner">
+        <?php if ($isAreaEngineer && !$aeHasDistrict): ?>
+        <div class="ae-no-district-banner">
             <i class="fas fa-triangle-exclamation"></i>
             <div>
                 <strong>No district assigned</strong>
-                <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view schedules in your area.</span>
+                <span>Set your district in your <a href="profile.php#aeDistrictSection">profile</a> to view schedules in your area.</span>
             </div>
         </div>
-        <?php elseif ($isHeadEngineer && $heHasDistrict): ?>
+        <?php elseif ($isAreaEngineer && $aeHasDistrict): ?>
         <div style="display:inline-flex;align-items:center;gap:8px;
                     background:rgba(55,98,200,0.08);border:1px solid rgba(55,98,200,0.2);
                     border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;color:#3762c8;">
             <span>📍</span>
-            <span>Showing schedules &amp; reports for <strong><?= htmlspecialchars($heDistrict) ?></strong> only</span>
+            <span>Showing schedules &amp; reports for <strong><?= htmlspecialchars($aeDistrict) ?></strong> only</span>
         </div>
         <?php endif; ?>
 
@@ -6063,8 +6063,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <script>
 window.scheduleData      = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 window.IS_ENGINEER       = <?= $isEngineer    ? 'true' : 'false' ?>;
-window.IS_HEAD_ENGINEER  = <?= $isHeadEngineer ? 'true' : 'false' ?>;
-window.HE_DISTRICT       = <?= json_encode($heDistrict) ?>;
+window.IS_AREA_ENGINEER  = <?= $isAreaEngineer ? 'true' : 'false' ?>;
+window.AE_DISTRICT       = <?= json_encode($aeDistrict) ?>;
 window.CURRENT_EMP_ID    = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
 <script>
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

@@ -30,19 +30,19 @@ $isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
 $isAdmin    = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
-$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
 
-// Head Engineer district — queried from DB only when role matches
-$heDistrict    = '';
-$heHasDistrict = false;
-if ($isHeadEngineer) {
-    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
-    $heStmt->bind_param("i", $engineerId);
-    $heStmt->execute();
-    $heRow         = $heStmt->get_result()->fetch_assoc();
-    $heStmt->close();
-    $heDistrict    = trim($heRow['district'] ?? '');
-    $heHasDistrict = $heDistrict !== '';
+// Area Engineer district — queried from DB only when role matches
+$aeDistrict    = '';
+$aeHasDistrict = false;
+if ($isAreaEngineer) {
+    $aeStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $aeStmt->bind_param("i", $engineerId);
+    $aeStmt->execute();
+    $aeRow         = $aeStmt->get_result()->fetch_assoc();
+    $aeStmt->close();
+    $aeDistrict    = trim($aeRow['district'] ?? '');
+    $aeHasDistrict = $aeDistrict !== '';
 }
 
 // AJAX/POST handler
@@ -507,17 +507,17 @@ $displayName = getDisplayName();
 $isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
 $userRole          = strtolower(trim($_SESSION['employee_role'] ?? ''));
-// Head Engineers can assign only when they have a district set in their profile
+// Area Engineers can assign only when they have a district set in their profile
 $canAssignEngineer = in_array($userRole, ['office staff']) ||
-                     ($isHeadEngineer && $heHasDistrict);
+                     ($isAreaEngineer && $aeHasDistrict);
 
 $conn->query("SET SESSION group_concat_max_len = 4096");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
-// Head Engineers: restrict to their assigned district only
+// Area Engineers: restrict to their assigned district only
 $df = '';
-if ($isHeadEngineer) {
-    if ($heHasDistrict) {
-        $safeDistrict = $conn->real_escape_string($heDistrict);
+if ($isAreaEngineer) {
+    if ($aeHasDistrict) {
+        $safeDistrict = $conn->real_escape_string($aeDistrict);
         $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";
     } else {
         $df = "AND 1=0"; // No district set — show nothing
@@ -694,7 +694,7 @@ foreach ($rows as $row) {
     --text-primary: #ffffff; --text-secondary: #e0e0e0;
     --border-color: rgba(255,255,255,0.1); --shadow-color: rgba(0,0,0,0.5);
 }
-/* ── Head Engineer: no-district warning banner ────────────── */
+/* ── Area Engineer: no-district warning banner ────────────── */
 .he-no-district-banner {
     display:flex; align-items:center; gap:14px;
     background:linear-gradient(135deg,rgba(234,88,12,.12),rgba(251,146,60,.08));
@@ -2515,9 +2515,9 @@ const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? 
 
 const IS_ADMIN     = <?= $isAdmin    ? 'true' : 'false' ?>;
 const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer  ? 'true' : 'false' ?>;
-const IS_HEAD_ENGINEER     = <?= $isHeadEngineer    ? 'true' : 'false' ?>;
-const HE_HAS_DISTRICT      = <?= $heHasDistrict     ? 'true' : 'false' ?>;
-const HE_DISTRICT          = <?= json_encode($heDistrict) ?>;
+const IS_AREA_ENGINEER     = <?= $isAreaEngineer    ? 'true' : 'false' ?>;
+const AE_HAS_DISTRICT      = <?= $aeHasDistrict     ? 'true' : 'false' ?>;
+const AE_DISTRICT          = <?= json_encode($aeDistrict) ?>;
 // Clear any stale notification from a previous session
 try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 (function() {
@@ -2721,12 +2721,12 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 <?php endif; ?>
     </div>
 
-    <?php if ($isHeadEngineer && !$heHasDistrict): ?>
+    <?php if ($isAreaEngineer && !$aeHasDistrict): ?>
     <div class="he-no-district-banner">
         <i class="fas fa-exclamation-triangle"></i>
         <div>
             <strong>No district assigned</strong>
-            <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view and manage reports in your area.</span>
+            <span>Set your district in your <a href="profile.php#aeDistrictSection">profile</a> to view and manage reports in your area.</span>
         </div>
     </div>
     <?php endif; ?>
@@ -3313,10 +3313,10 @@ function engineerMatchesInfrastructure(eng, infrastructure) {
 async function loadEngineers() {
     if (engineersCache !== null) return engineersCache;
     try {
-        // For Head Engineers, pass their district so get_engineers.php can pre-filter if it supports it
+        // For Area Engineers, pass their district so get_engineers.php can pre-filter if it supports it
         let url = 'get_engineers.php';
-        if (IS_HEAD_ENGINEER && HE_HAS_DISTRICT && HE_DISTRICT) {
-            url += '?district=' + encodeURIComponent(HE_DISTRICT);
+        if (IS_AREA_ENGINEER && AE_HAS_DISTRICT && AE_DISTRICT) {
+            url += '?district=' + encodeURIComponent(AE_DISTRICT);
         }
         const res  = await fetch(url);
         const data = await res.json();

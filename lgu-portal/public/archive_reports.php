@@ -56,18 +56,18 @@ $engineerId    = (int)($_SESSION['employee_id'] ?? 0);
 $userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
 
-// ── Head Engineer: detect role and load their assigned district ──────────────
-$isHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
-$heDistrict    = '';
-$heHasDistrict = false;
-if ($isHeadEngineer) {
-    $heStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
-    $heStmt->bind_param("i", $engineerId);
-    $heStmt->execute();
-    $heRow         = $heStmt->get_result()->fetch_assoc();
-    $heStmt->close();
-    $heDistrict    = trim($heRow['district'] ?? '');
-    $heHasDistrict = $heDistrict !== '';
+// ── Area Engineer: detect role and load their assigned district ──────────────
+$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$aeDistrict    = '';
+$aeHasDistrict = false;
+if ($isAreaEngineer) {
+    $aeStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ?");
+    $aeStmt->bind_param("i", $engineerId);
+    $aeStmt->execute();
+    $aeRow         = $aeStmt->get_result()->fetch_assoc();
+    $aeStmt->close();
+    $aeDistrict    = trim($aeRow['district'] ?? '');
+    $aeHasDistrict = $aeDistrict !== '';
 }
 
 // ── AJAX: engineer average rating from valid citizen feedbacks ────────────────
@@ -129,11 +129,11 @@ $conn->query("
         INDEX idx_rdi (rep_id, log_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
-// Head Engineers: restrict to their assigned district only
+// Area Engineers: restrict to their assigned district only
 $df = '';
-if ($isHeadEngineer) {
-    if ($heHasDistrict) {
-        $safeDistrict = $conn->real_escape_string($heDistrict);
+if ($isAreaEngineer) {
+    if ($aeHasDistrict) {
+        $safeDistrict = $conn->real_escape_string($aeDistrict);
         $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";
     } else {
         $df = "AND 1=0"; // No district set — show nothing
@@ -282,7 +282,7 @@ foreach ($rows as $row) {
     transition: margin-left 0.3s ease;
 }
 .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px); }
-/* ── Head Engineer: no-district warning banner ────────────── */
+/* ── Area Engineer: no-district warning banner ────────────── */
 .he-no-district-banner {
     display:flex; align-items:center; gap:14px;
     background:linear-gradient(135deg,rgba(234,88,12,.12),rgba(251,146,60,.08));
@@ -1426,12 +1426,12 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
 <?php endif; ?>
     </div>
 
-    <?php if ($isHeadEngineer && !$heHasDistrict): ?>
+    <?php if ($isAreaEngineer && !$aeHasDistrict): ?>
     <div class="he-no-district-banner">
         <i class="fas fa-exclamation-triangle"></i>
         <div>
             <strong>No district assigned</strong>
-            <span>Set your district in your <a href="profile.php#heDistrictSection">profile</a> to view archived reports in your area.</span>
+            <span>Set your district in your <a href="profile.php#aeDistrictSection">profile</a> to view archived reports in your area.</span>
         </div>
     </div>
     <?php endif; ?>
@@ -2147,9 +2147,9 @@ const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
 const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
 
 const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
-const IS_HEAD_ENGINEER = <?= $isHeadEngineer ? 'true' : 'false' ?>;
-const HE_HAS_DISTRICT  = <?= $heHasDistrict  ? 'true' : 'false' ?>;
-const HE_DISTRICT      = <?= json_encode($heDistrict) ?>;
+const IS_AREA_ENGINEER = <?= $isAreaEngineer ? 'true' : 'false' ?>;
+const AE_HAS_DISTRICT  = <?= $aeHasDistrict  ? 'true' : 'false' ?>;
+const AE_DISTRICT      = <?= json_encode($aeDistrict) ?>;
 const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer ? 'true' : 'false' ?>;
 let engineersCache = null;
 

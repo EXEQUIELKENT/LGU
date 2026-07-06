@@ -7,7 +7,7 @@
  * What it does:
  *  • [Engineer]      Queries engineer_profiles to detect an incomplete profile
  *                    → red pulse dot + red popup until profile is filled in
- *  • [Head Engineer] Queries engineer_profiles to detect a missing district
+ *  • [Area Engineer] Queries engineer_profiles to detect a missing district
  *                    → amber pulse dot + amber popup until district is set
  *  • Renders CSS, popup HTML, and the JS that:
  *      – injects the correct pulse dot into #profileIconBtn
@@ -27,10 +27,10 @@
 
 // ── 1. Detect incomplete engineer profile ────────────────────────
 $_engIsEngineer     = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
-$_engIsHeadEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'head engineer';
+$_engIsAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
 $_engUserId         = (int)($_SESSION['employee_id'] ?? 0);
 $_engIncomplete     = false;
-$_heDistrictMissing = false;
+$_aeDistrictMissing = false;
 
 if ($_engIsEngineer && $_engUserId > 0) {
     $epChk = $conn->prepare(
@@ -56,26 +56,26 @@ if ($_engIsEngineer && $_engUserId > 0) {
     $epChk->close();
 }
 
-// ── 2. Detect missing district (Head Engineer) ───────────────────
-if ($_engIsHeadEngineer && $_engUserId > 0) {
-    $heChk = $conn->prepare(
+// ── 2. Detect missing district (Area Engineer) ───────────────────
+if ($_engIsAreaEngineer && $_engUserId > 0) {
+    $aeChk = $conn->prepare(
         "SELECT district FROM engineer_profiles WHERE user_id = ?"
     );
-    $heChk->bind_param("i", $_engUserId);
-    $heChk->execute();
-    $heChkResult = $heChk->get_result();
+    $aeChk->bind_param("i", $_engUserId);
+    $aeChk->execute();
+    $aeChkResult = $aeChk->get_result();
 
-    if ($heChkResult->num_rows === 0) {
-        $_heDistrictMissing = true;
+    if ($aeChkResult->num_rows === 0) {
+        $_aeDistrictMissing = true;
     } else {
-        $heRow = $heChkResult->fetch_assoc();
-        $_heDistrictMissing = empty(trim($heRow['district'] ?? ''));
+        $aeRow = $aeChkResult->fetch_assoc();
+        $_aeDistrictMissing = empty(trim($aeRow['district'] ?? ''));
     }
-    $heChk->close();
+    $aeChk->close();
 }
 ?>
 
-<?php if ($_engIsEngineer || $_engIsHeadEngineer): ?>
+<?php if ($_engIsEngineer || $_engIsAreaEngineer): ?>
 <!-- ═══════════════════════════════════════════════════════
      Engineer Profile Warning — eng_profile_warning.php
 ════════════════════════════════════════════════════════ -->
@@ -104,13 +104,13 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   }
 }
 
-/* ── Amber pulse dot variant (Head Engineer district missing) ── */
+/* ── Amber pulse dot variant (Area Engineer district missing) ── */
 .profile-incomplete-dot.amber {
     background: #f59e0b;
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
-    animation: he-dot-pulse 1.6s infinite;
+    animation: ae-dot-pulse 1.6s infinite;
 }
-@keyframes he-dot-pulse {
+@keyframes ae-dot-pulse {
     0%   { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0.7); }
     70%  { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0);   }
     100% { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0);   }
@@ -118,7 +118,7 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
 
 /* ── Warning popup (shared base) ── */
 #engProfileWarningPop,
-#heDistrictWarningPop {
+#aeDistrictWarningPop {
     position: fixed;
     z-index: 6000;
     left: 0;
@@ -140,7 +140,7 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     transition: opacity 0.22s, transform 0.22s;
 }
 #engProfileWarningPop.visible,
-#heDistrictWarningPop.visible {
+#aeDistrictWarningPop.visible {
     opacity: 1;
     display: block;
     transform: scale(1);
@@ -161,13 +161,13 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     border-color: transparent transparent #ef4444 transparent;
 }
 
-/* ── Amber theme (Head Engineer missing district) ── */
-#heDistrictWarningPop {
+/* ── Amber theme (Area Engineer missing district) ── */
+#aeDistrictWarningPop {
     background: linear-gradient(135deg, #f59e0b, #d97706);
     box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
     pointer-events: auto; /* allow the profile link inside to be clicked */
 }
-#heDistrictWarningPop::before {
+#aeDistrictWarningPop::before {
     content: "";
     position: absolute;
     top: -8px;
@@ -179,7 +179,7 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
 
 /* ── Popup inner elements (shared) ── */
 #engProfileWarningPop .eng-warn-title,
-#heDistrictWarningPop .eng-warn-title {
+#aeDistrictWarningPop .eng-warn-title {
     font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
@@ -190,7 +190,7 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     gap: 5px;
 }
 #engProfileWarningPop .eng-warn-body,
-#heDistrictWarningPop .eng-warn-body {
+#aeDistrictWarningPop .eng-warn-body {
     font-size: 10px;
     font-weight: 500;
     opacity: 0.93;
@@ -207,13 +207,13 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     </div>
 </div>
 
-<!-- Head Engineer district warning popup -->
-<div id="heDistrictWarningPop">
+<!-- Area Engineer district warning popup -->
+<div id="aeDistrictWarningPop">
     <div class="eng-warn-title">
         <i class="fas fa-map-marker-alt"></i> No District Set
     </div>
     <div class="eng-warn-body">
-        Set your district in your <a href="profile.php#heDistrictSection" style="color:#fff;text-decoration:underline;pointer-events:auto;">profile</a> to view and manage reports in your area.
+        Set your district in your <a href="profile.php#aeDistrictSection" style="color:#fff;text-decoration:underline;pointer-events:auto;">profile</a> to view and manage reports in your area.
     </div>
 </div>
 
@@ -221,8 +221,8 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
 (function () {
     // ── Config ────────────────────────────────────────────────────
     var INCOMPLETE          = <?= $_engIncomplete      ? 'true' : 'false' ?>;
-    var HE_DISTRICT_MISSING = <?= $_heDistrictMissing  ? 'true' : 'false' ?>;
-    var IS_HEAD_ENGINEER    = <?= $_engIsHeadEngineer  ? 'true' : 'false' ?>;
+    var AE_DISTRICT_MISSING = <?= $_aeDistrictMissing  ? 'true' : 'false' ?>;
+    var IS_AREA_ENGINEER    = <?= $_engIsAreaEngineer  ? 'true' : 'false' ?>;
 
     // ── Wait for DOM ready ────────────────────────────────────────
     function onReady(fn) {
@@ -233,17 +233,17 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
     onReady(function () {
         var profileBtn       = document.getElementById('profileIconBtn');
         var warningPop       = document.getElementById('engProfileWarningPop');
-        var heDistrictPop    = document.getElementById('heDistrictWarningPop');
+        var aeDistrictPop    = document.getElementById('aeDistrictWarningPop');
         var sidebarEl        = document.getElementById('sidebarNav');
         var toggleBtn        = document.getElementById('sidebarToggle');
 
         if (!profileBtn) return;
 
         // ── Determine active popup and dot colour ─────────────────
-        // Only one role is ever active; HE_DISTRICT_MISSING only
-        // fires when IS_HEAD_ENGINEER is true.
-        var needsWarning = IS_HEAD_ENGINEER ? HE_DISTRICT_MISSING : INCOMPLETE;
-        var activePop    = IS_HEAD_ENGINEER ? heDistrictPop : warningPop;
+        // Only one role is ever active; AE_DISTRICT_MISSING only
+        // fires when IS_AREA_ENGINEER is true.
+        var needsWarning = IS_AREA_ENGINEER ? AE_DISTRICT_MISSING : INCOMPLETE;
+        var activePop    = IS_AREA_ENGINEER ? aeDistrictPop : warningPop;
 
         if (!activePop) return;
 
@@ -251,7 +251,7 @@ if ($_engIsHeadEngineer && $_engUserId > 0) {
         if (needsWarning) {
             var dot = document.createElement('span');
             dot.className = 'profile-incomplete-dot visible' +
-                            (IS_HEAD_ENGINEER ? ' amber' : '');
+                            (IS_AREA_ENGINEER ? ' amber' : '');
             dot.id = 'engIncompleteDot';
             profileBtn.appendChild(dot);
         }

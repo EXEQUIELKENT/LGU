@@ -1652,7 +1652,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                             <input class="prof-combobox-search" type="text" placeholder="Search…" autocomplete="off">
                         </div>
                         <div class="prof-combobox-list">
-                            <div class="prof-combobox-option<?= $role === 'Head Engineer' ? ' selected-opt' : '' ?>" data-value="Head Engineer"><i class="fas fa-user-tie" style="width:16px;opacity:.75;"></i> Head Engineer</div>
+                            <div class="prof-combobox-option<?= $role === 'Area Engineer' ? ' selected-opt' : '' ?>" data-value="Area Engineer"><i class="fas fa-user-tie" style="width:16px;opacity:.75;"></i> Area Engineer</div>
                             <div class="prof-combobox-option<?= $role === 'Engineer'     ? ' selected-opt' : '' ?>" data-value="Engineer"><i class="fas fa-hard-hat" style="width:16px;opacity:.75;"></i> Engineer</div>
                             <div class="prof-combobox-option<?= $role === 'Office Staff' ? ' selected-opt' : '' ?>" data-value="Office Staff"><i class="fas fa-user-clock" style="width:16px;opacity:.75;"></i> Office Staff</div>
                             <div class="prof-combobox-option<?= $role === 'Admin'        ? ' selected-opt' : '' ?>" data-value="Admin"><i class="fas fa-user-shield" style="width:16px;opacity:.75;"></i> Admin</div>
