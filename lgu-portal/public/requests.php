@@ -41,6 +41,7 @@ $displayName = getDisplayName();
 $userRole    = $_SESSION['employee_role'] ?? '';
 $isAdmin     = in_array(strtolower(trim($userRole)), ['admin', 'super admin']);
 $canValidate = in_array(strtolower(trim($userRole)), ['engineer', 'admin', 'super admin']);
+$isOfficeStaff = strtolower(trim($userRole)) === 'office staff';
 
 // ── Notification helpers ─────────────────────────────────────────────────
 function setNotification($type, $message) {
@@ -92,6 +93,11 @@ ORDER BY r.created_at DESC";
 $result = $conn->query($sql);
 
 // ── Compute the live report workflow status from joined columns ───────────────
+// Maps the raw approval_status value to what should be shown to the user (Approved → Validated)
+function statusDisplayLabel(string $status): string {
+    return $status === 'Approved' ? 'Validated' : $status;
+}
+
 function computeReportStatus(array $row): string {
     $resSt       = $row['resolution_status'] ?? '';
     $engId       = (int)($row['engineer_id']       ?? 0);
@@ -169,6 +175,7 @@ const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
 const USER_CAN_VALIDATE = <?= $canValidate ? 'true' : 'false' ?>;
 const USER_ROLE         = '<?= htmlspecialchars($userRole, ENT_QUOTES) ?>';
 const USER_DISPLAY_NAME = '<?= htmlspecialchars($displayName, ENT_QUOTES) ?>';
+const IS_OFFICE_STAFF   = <?= $isOfficeStaff ? 'true' : 'false' ?>;
 const USER_EMPLOYEE_ID  = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 (function () {
     try {
@@ -1103,6 +1110,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .btn-reject  { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg,#ef5350,#e53935); color: #fff; border: none; padding: 11px 22px; border-radius: 11px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .25s; box-shadow: 0 4px 14px rgba(229,57,53,.30); letter-spacing: .02em; flex-shrink: 0; }
 .btn-reject:hover  { background: linear-gradient(135deg,#e53935,#c62828); transform: translateY(-2px); box-shadow: 0 7px 20px rgba(229,57,53,.42); }
 .btn-reject:active { transform: translateY(0); }
+.btn-create-report { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg,#2b6cb0,#2c5282); color: #fff; border: none; padding: 11px 22px; border-radius: 11px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .25s; box-shadow: 0 4px 14px rgba(43,108,176,.30); letter-spacing: .02em; flex-shrink: 0; }
+.btn-create-report:hover  { background: linear-gradient(135deg,#2c5282,#1f3d63); transform: translateY(-2px); box-shadow: 0 7px 20px rgba(43,108,176,.42); }
+.btn-create-report:active { transform: translateY(0); }
+.btn-create-report:disabled { opacity: .7; cursor: default; transform: none; }
 
 /* ═══════════════════════════════════════════════════════
    CONFIRM ALERT MODALS (validate / reject)
@@ -1185,6 +1196,23 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 .alert-modal .alert-btn.confirm-reject:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4); }
+
+/* ── Create Report modal — blue theme (matches current_reports.php "Create report document?" modal) ── */
+.alert-modal .icon-wrap.create-report-icon {
+    background: linear-gradient(135deg, rgba(55,98,200,.12), rgba(55,98,200,.08));
+    border-color: rgba(55, 98, 200, 0.2);
+}
+[data-theme="dark"] .alert-modal .icon-wrap.create-report-icon {
+    background: linear-gradient(135deg, rgba(55,98,200,.22), rgba(55,98,200,.12));
+}
+.alert-modal .alert-btn.create-report-confirm-btn {
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.3);
+}
+.alert-modal .alert-btn.create-report-confirm-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(55, 98, 200, 0.4);
+}
 
 /* ── Required Reject Reason Field ─────────────────────────────────────── */
 .reject-reason-field {
@@ -2325,7 +2353,7 @@ tbody td {
                         <div class="gis-dd-menu" id="gisStatusMenu">
                             <div class="gis-dd-item active" data-val="all"      onclick="setStatusFilter('all')"><i class="fas fa-folder"></i> All</div>
                             <div class="gis-dd-item"        data-val="Pending"  onclick="setStatusFilter('Pending')"><i class="fas fa-hourglass-half" style="color:#ff9800"></i> Pending</div>
-                            <div class="gis-dd-item"        data-val="Approved" onclick="setStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Approved</div>
+                            <div class="gis-dd-item"        data-val="Approved" onclick="setStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Validated</div>
                             <div class="gis-dd-item"        data-val="Rejected" onclick="setStatusFilter('Rejected')"><i class="fas fa-times-circle" style="color:#f44336"></i> Rejected</div>
                         </div>
                     </div>
@@ -2346,6 +2374,26 @@ tbody td {
                             <div class="gis-dd-item infra-item" data-val="water supply"      onclick="setInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</div>
                             <div class="gis-dd-item infra-item" data-val="electrical"        onclick="setInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</div>
                             <div class="gis-dd-item infra-item" data-val="others"            onclick="setInfraFilter('others')"><i class="fas fa-file"></i> Others</div>
+                        </div>
+                    </div>
+                    <!-- District -->
+                    <div class="gis-dd-wrap" id="gisDistrictWrap">
+                        <button class="gis-dd-btn district" id="gisDistrictBtn">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="gisDistrictLabel">All Districts</span>
+                            <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                        </button>
+                        <div class="gis-dd-menu" id="gisDistrictMenu">
+                            <div class="gis-dd-item district-item active" data-val="all"        onclick="setDistrictFilter('all')"><i class="fas fa-globe-asia"></i> All Districts</div>
+                            <div class="gis-dd-divider"></div>
+                            <div class="gis-dd-item district-item" data-val="district 1" onclick="setDistrictFilter('district 1')"><i class="fas fa-location-dot"></i> District 1</div>
+                            <div class="gis-dd-item district-item" data-val="district 2" onclick="setDistrictFilter('district 2')"><i class="fas fa-location-dot"></i> District 2</div>
+                            <div class="gis-dd-item district-item" data-val="district 3" onclick="setDistrictFilter('district 3')"><i class="fas fa-location-dot"></i> District 3</div>
+                            <div class="gis-dd-item district-item" data-val="district 4" onclick="setDistrictFilter('district 4')"><i class="fas fa-location-dot"></i> District 4</div>
+                            <div class="gis-dd-item district-item" data-val="district 5" onclick="setDistrictFilter('district 5')"><i class="fas fa-location-dot"></i> District 5</div>
+                            <div class="gis-dd-item district-item" data-val="district 6" onclick="setDistrictFilter('district 6')"><i class="fas fa-location-dot"></i> District 6</div>
+                            <div class="gis-dd-divider"></div>
+                            <div class="gis-dd-item district-item" data-val="other"      onclick="setDistrictFilter('other')"><i class="fas fa-question-circle"></i> Other / Unspecified</div>
                         </div>
                     </div>
                     <!-- Period -->
@@ -2443,7 +2491,7 @@ tbody td {
                 <div class="legend-row">
                     <span class="legend-section-label">Status:</span>
                     <div class="legend-item"><div class="legend-dot pending"></div>Pending</div>
-                    <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
+                    <div class="legend-item"><div class="legend-dot approved"></div>Validated</div>
                     <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
                 </div>
                 <div class="legend-row">
@@ -2497,6 +2545,13 @@ tbody td {
                 <div class="sort-dropdown-divider"></div>
                 <div class="sort-option" data-sort="alpha-asc"><i class="fas fa-sort-alpha-up"></i> Infrastructure A → Z</div>
                 <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Infrastructure Z → A</div>
+                <div class="sort-dropdown-divider"></div>
+                <div class="sort-option" data-sort="district-1"><i class="fas fa-location-dot"></i> District 1</div>
+                <div class="sort-option" data-sort="district-2"><i class="fas fa-location-dot"></i> District 2</div>
+                <div class="sort-option" data-sort="district-3"><i class="fas fa-location-dot"></i> District 3</div>
+                <div class="sort-option" data-sort="district-4"><i class="fas fa-location-dot"></i> District 4</div>
+                <div class="sort-option" data-sort="district-5"><i class="fas fa-location-dot"></i> District 5</div>
+                <div class="sort-option" data-sort="district-6"><i class="fas fa-location-dot"></i> District 6</div>
             </div>
         </div>
         <!-- Mobile: button sits beside the search input -->
@@ -2588,7 +2643,7 @@ tbody td {
                             default    => 'pending',
                         };
                         ?>
-                        <span class="status <?= $statusClass ?> searchable"><?= htmlspecialchars($status) ?></span>
+                        <span class="status <?= $statusClass ?> searchable"><?= htmlspecialchars(statusDisplayLabel($status)) ?></span>
                     </td>
                     <td><button class="btn-view" onclick="openRequestDetail(this)">View</button></td>
                 </tr>
@@ -2645,7 +2700,7 @@ tbody td {
                 $status = $row['approval_status'];
                 $statusClass = match ($status) { 'Pending' => 'pending', 'Approved' => 'completed', 'Rejected' => 'rejected', default => 'pending' };
                 ?>
-                <span class="searchable status <?= $statusClass ?>"><?= htmlspecialchars($status) ?></span>
+                <span class="searchable status <?= $statusClass ?>"><?= htmlspecialchars(statusDisplayLabel($status)) ?></span>
             </div>
             <div>
                 <?php if (!empty($images)): ?>
@@ -2744,6 +2799,7 @@ tbody td {
             <div class="detail-footer-inner">
                 <button class="btn-reject" id="reqRejectBtn"><i class="fas fa-times-circle"></i> Reject Request</button>
                 <button class="btn-validate" id="reqValidateBtn"><i class="fas fa-check-circle"></i> Validate Request</button>
+                <button class="btn-create-report" id="reqCreateReportBtn" type="button" style="display:none;"><i class="fas fa-file-word"></i> Create Report</button>
             </div>
         </div>
     </div>
@@ -2804,6 +2860,7 @@ tbody td {
             <div class="detail-footer-inner">
                 <button class="btn-reject"   id="gisRejectBtn"><i class="fas fa-times-circle"></i> Reject Request</button>
                 <button class="btn-validate" id="gisValidateBtn"><i class="fas fa-check-circle"></i> Validate Request</button>
+                <button class="btn-create-report" id="gisCreateReportBtn" type="button" style="display:none;"><i class="fas fa-file-word"></i> Create Report</button>
             </div>
         </div>
     </div>
@@ -2852,6 +2909,19 @@ tbody td {
     </div>
 </div>
 
+<!-- CREATE REPORT CONFIRMATION MODAL -->
+<div id="createReportConfirmBackdrop" class="modal-backdrop">
+    <div id="createReportConfirmModal" class="alert-modal">
+        <div class="icon-wrap success-icon create-report-icon"><i class="fas fa-file-word" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="alert-title">Create report document?</div>
+        <div class="alert-desc" style="margin-top:0;">This will generate a Word (.docx) document for this request for download.</div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel"  id="createReportCancelBtn">Cancel</button>
+            <button class="alert-btn confirm create-report-confirm-btn" id="createReportConfirmBtn"><i class="fas fa-file-word" style="margin-right:5px;"></i>Create Report</button>
+        </div>
+    </div>
+</div>
+
 <!-- FULLSCREEN GIS MAP MODAL -->
 <div id="gisFullMapBackdrop" class="gis-fullmap-backdrop">
     <div class="gis-fullmap-modal">
@@ -2877,7 +2947,7 @@ tbody td {
                     <div class="gis-dd-menu" id="mStatusMenu">
                         <div class="gis-dd-item active" data-val="all"      onclick="setModalStatusFilter('all')"><i class="fas fa-folder"></i> All</div>
                         <div class="gis-dd-item"        data-val="Pending"  onclick="setModalStatusFilter('Pending')"><i class="fas fa-hourglass-half" style="color:#ff9800"></i> Pending</div>
-                        <div class="gis-dd-item"        data-val="Approved" onclick="setModalStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Approved</div>
+                        <div class="gis-dd-item"        data-val="Approved" onclick="setModalStatusFilter('Approved')"><i class="fas fa-check-circle" style="color:#4caf50"></i> Validated</div>
                         <div class="gis-dd-item"        data-val="Rejected" onclick="setModalStatusFilter('Rejected')"><i class="fas fa-times-circle" style="color:#f44336"></i> Rejected</div>
                     </div>
                 </div>
@@ -2897,6 +2967,25 @@ tbody td {
                         <div class="gis-dd-item infra-item" data-val="water supply"      onclick="setModalInfraFilter('water supply')"><i class="fas fa-water"></i> Water Supply</div>
                         <div class="gis-dd-item infra-item" data-val="electrical"        onclick="setModalInfraFilter('electrical')"><i class="fas fa-bolt"></i> Electrical</div>
                         <div class="gis-dd-item infra-item" data-val="others"            onclick="setModalInfraFilter('others')"><i class="fas fa-file"></i> Others</div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="mDistrictWrap">
+                    <button class="gis-dd-btn district" id="mDistrictBtn">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="mDistrictLabel">All Districts</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="mDistrictMenu">
+                        <div class="gis-dd-item district-item active" data-val="all"        onclick="setModalDistrictFilter('all')"><i class="fas fa-globe-asia"></i> All Districts</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item district-item" data-val="district 1" onclick="setModalDistrictFilter('district 1')"><i class="fas fa-location-dot"></i> District 1</div>
+                        <div class="gis-dd-item district-item" data-val="district 2" onclick="setModalDistrictFilter('district 2')"><i class="fas fa-location-dot"></i> District 2</div>
+                        <div class="gis-dd-item district-item" data-val="district 3" onclick="setModalDistrictFilter('district 3')"><i class="fas fa-location-dot"></i> District 3</div>
+                        <div class="gis-dd-item district-item" data-val="district 4" onclick="setModalDistrictFilter('district 4')"><i class="fas fa-location-dot"></i> District 4</div>
+                        <div class="gis-dd-item district-item" data-val="district 5" onclick="setModalDistrictFilter('district 5')"><i class="fas fa-location-dot"></i> District 5</div>
+                        <div class="gis-dd-item district-item" data-val="district 6" onclick="setModalDistrictFilter('district 6')"><i class="fas fa-location-dot"></i> District 6</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item district-item" data-val="other"      onclick="setModalDistrictFilter('other')"><i class="fas fa-question-circle"></i> Other / Unspecified</div>
                     </div>
                 </div>
                 <div class="gis-dd-wrap" id="mPeriodWrap">
@@ -2962,7 +3051,7 @@ tbody td {
             <div class="legend-row">
                 <span class="legend-section-label">Status:</span>
                 <div class="legend-item"><div class="legend-dot pending"></div>Pending</div>
-                <div class="legend-item"><div class="legend-dot approved"></div>Approved</div>
+                <div class="legend-item"><div class="legend-dot approved"></div>Validated</div>
                 <div class="legend-item"><div class="legend-dot rejected"></div>Rejected</div>
                 <span class="legend-section-label" style="margin-left:16px;">Types:</span>
                 <div class="legend-item"><i class="fas fa-road"></i> Roads</div>
@@ -3167,6 +3256,11 @@ function detailStatusClass(status) {
 }
 const STATUS_ICON = { pending:'⏳', approved:'✅', rejected:'❌', unknown:'❔' };
 
+// ── Maps the raw status value to what should be shown to the user (Approved → Validated) ──
+function statusDisplayLabel(status) {
+    return status === 'Approved' ? 'Validated' : status;
+}
+
 // ── Maps a live report_status string to a CSS modifier class ─────────────────
 function reportStatusClass(rs) {
     if (!rs) return 'rsp-none';
@@ -3284,7 +3378,7 @@ function openRequestDetail(button) {
     document.getElementById('detailInfra').textContent   = infrastructure;
 
     const pill = document.getElementById('detailStatus');
-    pill.textContent = `${STATUS_ICON[sc] || ''} ${status || 'Unknown'}`;
+    pill.textContent = `${STATUS_ICON[sc] || ''} ${statusDisplayLabel(status) || 'Unknown'}`;
     pill.className   = `detail-status-pill ${sc}`;
 
     const detailDistrict = row.dataset.district || '';
@@ -3317,8 +3411,11 @@ function openRequestDetail(button) {
     }
 
     const isPending = status.toLowerCase() === 'pending';
-    const footer    = document.getElementById('detailModalFooter');
-    footer.style.display = (USER_CAN_VALIDATE && isPending) ? 'block' : 'none';
+    const showValidateReject = USER_CAN_VALIDATE && isPending;
+    document.getElementById('detailModalFooter').style.display = (showValidateReject || IS_OFFICE_STAFF) ? 'block' : 'none';
+    document.getElementById('reqRejectBtn').style.display       = showValidateReject ? '' : 'none';
+    document.getElementById('reqValidateBtn').style.display     = showValidateReject ? '' : 'none';
+    document.getElementById('reqCreateReportBtn').style.display = IS_OFFICE_STAFF ? '' : 'none';
 
     document.getElementById('requestDetailBackdrop').classList.add('active');
 }
@@ -3418,7 +3515,11 @@ function openGisDetailModal(reqId) {
 
     // Show validate/reject footer for pending requests
     const isPending = (req.approval_status || '').toLowerCase() === 'pending';
-    document.getElementById('gisDetailModalFooter').style.display = (USER_CAN_VALIDATE && isPending) ? 'block' : 'none';
+    const showValidateReject = USER_CAN_VALIDATE && isPending;
+    document.getElementById('gisDetailModalFooter').style.display = (showValidateReject || IS_OFFICE_STAFF) ? 'block' : 'none';
+    document.getElementById('gisRejectBtn').style.display       = showValidateReject ? '' : 'none';
+    document.getElementById('gisValidateBtn').style.display     = showValidateReject ? '' : 'none';
+    document.getElementById('gisCreateReportBtn').style.display = IS_OFFICE_STAFF ? '' : 'none';
 
     document.getElementById('gisModalBackdrop').classList.add('active');
 }
@@ -3437,6 +3538,146 @@ document.getElementById('gisValidateBtn').addEventListener('click', () => {
 });
 document.getElementById('gisRejectBtn').addEventListener('click', () => {
     openRejectModal();
+});
+
+// ═══════════════════════════════════════════════════════
+//  OFFICE STAFF — "Create Report" (export modal to Word)
+// ═══════════════════════════════════════════════════════
+const REPORT_DOC_COLOR = '2563EB'; // blue theme for Requests page exports
+function cleanFieldText(el) {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    const badge = clone.querySelector('.district-badge');
+    if (badge) {
+        const badgeText = badge.textContent.trim();
+        badge.remove();
+        const baseText = clone.textContent.trim();
+        return baseText + (badgeText ? ' (' + badgeText + ')' : '');
+    }
+    return clone.textContent.trim();
+}
+function isVisibleEl(el) { return !!el && el.offsetParent !== null; }
+
+function buildRequestReportPayload(view) {
+    // view: 'detail' = list-view modal (id prefix "detail…"), 'gis' = map-view modal (id prefix "modal…")
+    const ids = view === 'detail'
+        ? { reqId: 'detailReqId', infra: 'detailInfra', status: 'detailStatus', location: 'detailLocation',
+            coords: 'detailCoordinates', issue: 'detailIssue', date: 'detailDate',
+            requester: 'detailRequester', contact: 'detailContact', email: null,
+            evidence: 'detailEvidenceContainer' }
+        : { reqId: 'modalReqId', infra: 'modalInfra', status: 'modalStatusPill', location: 'modalLocation',
+            coords: 'modalCoordinates', issue: 'modalIssue', date: 'modalDate',
+            requester: 'modalRequester', contact: 'modalContact', email: 'modalEmail',
+            evidence: 'modalEvidence' };
+
+    const reqIdEl   = document.getElementById(ids.reqId);
+    const infraEl   = document.getElementById(ids.infra);
+    const reqIdText = (reqIdEl ? reqIdEl.textContent.trim() : '') || 'Request';
+    const infraText = infraEl ? infraEl.textContent.trim() : '';
+
+    const rows1 = [
+        { label: 'Request ID',     value: reqIdText },
+        { label: 'Infrastructure', value: infraText },
+        { label: 'Status',         value: cleanFieldText(document.getElementById(ids.status)) },
+        { label: 'Location',       value: cleanFieldText(document.getElementById(ids.location)) },
+        { label: 'Coordinates',    value: cleanFieldText(document.getElementById(ids.coords)) },
+        { label: 'Issue / Damage', value: cleanFieldText(document.getElementById(ids.issue)) },
+        { label: 'Date Submitted', value: cleanFieldText(document.getElementById(ids.date)) },
+    ];
+
+    const rows2 = [
+        { label: 'Requester', value: cleanFieldText(document.getElementById(ids.requester)) },
+        { label: 'Contact',   value: cleanFieldText(document.getElementById(ids.contact)) },
+    ];
+    if (ids.email) {
+        rows2.push({ label: 'Email', value: cleanFieldText(document.getElementById(ids.email)) });
+    }
+
+    const evidenceEl  = document.getElementById(ids.evidence);
+    const evidenceSrcs = evidenceEl
+        ? Array.from(evidenceEl.querySelectorAll('img')).map(img => img.getAttribute('src')).filter(Boolean)
+        : [];
+    const rows3 = [
+        evidenceSrcs.length
+            ? { label: 'Evidence Images', images: evidenceSrcs }
+            : { label: 'Evidence Images', value: 'No evidence images' }
+    ];
+
+    return {
+        filename: reqIdText.replace('#', ''),
+        title: reqIdText + (infraText ? ' — ' + infraText : ''),
+        subtitle: 'Generated ' + new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }) + ' by ' + (USER_DISPLAY_NAME || 'Office Staff'),
+        color: REPORT_DOC_COLOR,
+        sections: [
+            { heading: 'Request Details', rows: rows1 },
+            { heading: 'Requester Info',  rows: rows2 },
+            { heading: 'Evidence',        rows: rows3 },
+        ],
+        footerNote: 'Generated from the CIMM LGU Requests system.'
+    };
+}
+
+async function exportRequestReport(view, btnEl) {
+    const payload = buildRequestReportPayload(view);
+    const originalHtml = btnEl.innerHTML;
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+    try {
+        const res = await fetch('export_report_docx.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            let msg = 'Failed to generate the report.';
+            try { const err = await res.json(); if (err && err.error) msg = err.error; } catch (_e) {}
+            throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = (payload.filename || 'Report') + '.docx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showInlineNotif('success', 'Report document created.');
+    } catch (e) {
+        showInlineNotif('error', e.message || 'Something went wrong creating the report.');
+    } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalHtml;
+    }
+}
+
+let pendingCreateReportView = null;
+let pendingCreateReportBtnEl = null;
+function openCreateReportConfirm(view, btnEl) {
+    pendingCreateReportView  = view;
+    pendingCreateReportBtnEl = btnEl;
+    document.getElementById('createReportConfirmBackdrop').classList.add('active');
+}
+function closeCreateReportConfirm() {
+    document.getElementById('createReportConfirmBackdrop').classList.remove('active');
+    pendingCreateReportView  = null;
+    pendingCreateReportBtnEl = null;
+}
+document.getElementById('reqCreateReportBtn').addEventListener('click', function () {
+    openCreateReportConfirm('detail', this);
+});
+document.getElementById('gisCreateReportBtn').addEventListener('click', function () {
+    openCreateReportConfirm('gis', this);
+});
+document.getElementById('createReportCancelBtn').addEventListener('click', closeCreateReportConfirm);
+document.getElementById('createReportConfirmBackdrop').addEventListener('click', function (e) {
+    if (e.target === this) closeCreateReportConfirm();
+});
+document.getElementById('createReportConfirmBtn').addEventListener('click', function () {
+    const view  = pendingCreateReportView;
+    const btnEl = pendingCreateReportBtnEl;
+    closeCreateReportConfirm();
+    if (view && btnEl) exportRequestReport(view, btnEl);
 });
 
 // ── Shared: configure and open the reject modal based on whether requester has email ──
@@ -3709,19 +3950,20 @@ document.getElementById('rejectReasonInput').addEventListener('input', function(
 //  SHARED DOM HELPERS
 // ═══════════════════════════════════════════════════════
 function updateRowStatus(reqId, statusText, cssClass) {
+    const displayText = statusDisplayLabel(statusText);
     // Desktop table
     const row = document.querySelector(`tr.request-row[data-req-id="${reqId}"]`);
     if (row) {
         row.dataset.status = statusText;
         const span = row.querySelector('.status.searchable');
-        if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = statusText; }
+        if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = displayText; }
     }
     // Mobile card
     const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
     if (card) {
         card.dataset.status = statusText;
         const span = card.querySelector('.status.searchable');
-        if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = statusText; }
+        if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = displayText; }
     }
     // Update in ALL_REQUESTS array for GIS
     const req = ALL_REQUESTS.find(r => r.req_id == reqId);
@@ -3815,10 +4057,17 @@ let savedGisBounds = null;
 let map, satelliteLayer, streetLayer;
 let currentLayer = 'street';
 let markersMap   = {};
-let activeStatus = 'all', activeInfra = 'all', activeSearch = '', activeDateFilter = 'all';
+let activeStatus = 'all', activeInfra = 'all', activeSearch = '', activeDateFilter = 'all', activeDistrict = 'all';
 
 const QC_CENTER = [14.6760, 121.0437];
 const QC_BOUNDS = [[14.5890, 120.9600], [14.7900, 121.1300]];
+
+function normalizeDistrict(raw) {
+    if (!raw) return 'other';
+    const t = raw.toLowerCase().trim();
+    if (['district 1','district 2','district 3','district 4','district 5','district 6'].includes(t)) return t;
+    return 'other';
+}
 
 function normalizeInfraType(raw) {
     if (!raw) return 'others';
@@ -3905,7 +4154,7 @@ function placeAllMarkers() {
             .on('mouseout',  function() { this.closePopup(); })
             .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
         marker.addTo(map);
-        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req), createdAt: req.created_at || '' };
+        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown', infraType: normalizeInfraType(req.infrastructure), district: normalizeDistrict(req.district), searchText: buildSearchText(req), createdAt: req.created_at || '' };
     });
     const latlngs = Object.values(markersMap).map(m => m.marker.getLatLng());
     if (latlngs.length > 0) {
@@ -3999,7 +4248,7 @@ document.addEventListener('click', () => _closeAllGisDd(null));
     const w = document.getElementById(id);
     if (w) w.addEventListener('click', e => e.stopPropagation());
 });
-['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => _initGisDd(id));
+['gisStatusWrap','gisTypeWrap','gisDistrictWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mDistrictWrap','mPeriodWrap'].forEach(id => _initGisDd(id));
 
 function setDateFilter(filter) {
     activeDateFilter = filter;
@@ -4019,7 +4268,7 @@ function setDateFilter(filter) {
 
 function setStatusFilter(filter) {
     activeStatus = filter;
-    const statusLabels = {all:'All Status', Pending:'Pending', Approved:'Approved', Rejected:'Rejected'};
+    const statusLabels = {all:'All Status', Pending:'Pending', Approved:'Validated', Rejected:'Rejected'};
     const lbl = document.getElementById('gisStatusLabel');
     if (lbl) lbl.textContent = statusLabels[filter] || 'All Status';
     const btn = document.getElementById('gisStatusBtn');
@@ -4045,6 +4294,20 @@ function setInfraFilter(infra) {
     applyVisibility();
 }
 
+function setDistrictFilter(district) {
+    activeDistrict = district;
+    const districtLabels = {all:'All Districts','district 1':'District 1','district 2':'District 2','district 3':'District 3','district 4':'District 4','district 5':'District 5','district 6':'District 6',other:'Other / Unspecified'};
+    const lbl = document.getElementById('gisDistrictLabel');
+    if (lbl) lbl.textContent = districtLabels[district] || 'All Districts';
+    const btn = document.getElementById('gisDistrictBtn');
+    if (btn) { btn.classList.toggle('has-filter', district !== 'all'); btn.classList.toggle('district', true); }
+    document.querySelectorAll('#gisDistrictMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === district));
+    const w = document.getElementById('gisDistrictWrap'); if(w) w.classList.remove('open');
+    applyVisibility();
+    // Also filter the requests table/card list
+    if (window._applyRequestListFilter) window._applyRequestListFilter();
+}
+
 function applyVisibility() {
     const keyword   = activeSearch.toLowerCase().trim();
     const noResults = document.getElementById('gisNoResultsOverlay');
@@ -4052,7 +4315,7 @@ function applyVisibility() {
     const countEl   = document.getElementById('gisResultsCount');
     const dateRange = getDateFilterRange(activeDateFilter);
     let visible = 0;
-    Object.values(markersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
+    Object.values(markersMap).forEach(({marker, status, infraType, district, searchText, createdAt}) => {
         let dateOk = true;
         if (dateRange && createdAt) {
             // Parse MySQL datetime string safely. Append explicit local-time
@@ -4064,6 +4327,7 @@ function applyVisibility() {
         }
         const show = (activeStatus === 'all' || status === activeStatus) &&
                      (activeInfra  === 'all' || infraType === activeInfra) &&
+                     (activeDistrict === 'all' || district === activeDistrict) &&
                      dateOk &&
                      (!keyword || searchText.includes(keyword));
         if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
@@ -4074,7 +4338,7 @@ function applyVisibility() {
         countEl.textContent = visible;
         const totalEl = document.getElementById('gisTotalCount'); if (totalEl) totalEl.textContent = Object.keys(markersMap).length;
     } else { badge.classList.remove('visible'); }
-    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDateFilter !== 'all' || keyword;
+    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDistrict !== 'all' || activeDateFilter !== 'all' || keyword;
     if (anyFilter && visible === 0 && Object.keys(markersMap).length > 0) noResults.classList.add('visible');
     else noResults.classList.remove('visible');
 }
@@ -4157,7 +4421,7 @@ function initMap() {
 //  FULLSCREEN MAP MODAL
 // ═══════════════════════════════════════════════════════
 let modalMap = null, modalMarkersMap = {};
-let modalActiveStatus = 'all', modalActiveInfra = 'all', modalActiveSearch = '', modalActiveDateFilter = 'all';
+let modalActiveStatus = 'all', modalActiveInfra = 'all', modalActiveSearch = '', modalActiveDateFilter = 'all', modalActiveDistrict = 'all';
 let modalCurrentLayer = 'street', modalSatelliteLayer, modalStreetLayer;
 
 function openGisMapModal() {
@@ -4172,6 +4436,7 @@ function openGisMapModal() {
     requestAnimationFrame(() => { requestAnimationFrame(() => { modal.style.transition = ''; }); });
     modalActiveStatus = activeStatus; modalActiveInfra = activeInfra;
     modalActiveSearch = activeSearch; modalActiveDateFilter = activeDateFilter;
+    modalActiveDistrict = activeDistrict;
     syncModalFilterButtons();
     const modalInput = document.getElementById('gisModalSearch');
     if (modalInput) { modalInput.value = activeSearch; document.getElementById('gisModalSearchClear').classList.toggle('visible', activeSearch.length > 0); }
@@ -4215,7 +4480,7 @@ function placeModalMarkers() {
             .on('mouseout',  function() { this.closePopup(); })
             .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
         marker.addTo(modalMap);
-        modalMarkersMap[req.req_id] = { marker, status: req.approval_status||'unknown', infraType: normalizeInfraType(req.infrastructure), searchText: buildSearchText(req), createdAt: req.created_at||'' };
+        modalMarkersMap[req.req_id] = { marker, status: req.approval_status||'unknown', infraType: normalizeInfraType(req.infrastructure), district: normalizeDistrict(req.district), searchText: buildSearchText(req), createdAt: req.created_at||'' };
     });
 }
 function applyModalVisibility() {
@@ -4226,7 +4491,7 @@ function applyModalVisibility() {
     const totalEl   = document.getElementById('gisModalTotalCount');
     const dateRange = getDateFilterRange(modalActiveDateFilter);
     let visible = 0;
-    Object.values(modalMarkersMap).forEach(({marker, status, infraType, searchText, createdAt}) => {
+    Object.values(modalMarkersMap).forEach(({marker, status, infraType, district, searchText, createdAt}) => {
         let dateOk = true;
         if (dateRange && createdAt) {
             const normalized = createdAt.replace(' ', 'T');
@@ -4236,19 +4501,20 @@ function applyModalVisibility() {
         }
         const show = (modalActiveStatus === 'all' || status === modalActiveStatus) &&
                      (modalActiveInfra  === 'all' || infraType === modalActiveInfra) &&
+                     (modalActiveDistrict === 'all' || district === modalActiveDistrict) &&
                      dateOk && (!keyword || searchText.includes(keyword));
         if (show) { if (!modalMap.hasLayer(marker)) marker.addTo(modalMap); visible++; }
         else       { if (modalMap.hasLayer(marker)) modalMap.removeLayer(marker); }
     });
     if (keyword) { badge.classList.add('visible'); badge.classList.toggle('no-results', visible===0); countEl.textContent=visible; if (totalEl) totalEl.textContent=Object.keys(modalMarkersMap).length; }
     else badge.classList.remove('visible');
-    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || modalActiveDateFilter !== 'all' || keyword;
+    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || modalActiveDistrict !== 'all' || modalActiveDateFilter !== 'all' || keyword;
     if (anyFilter && visible===0 && Object.keys(modalMarkersMap).length>0) noRes.classList.add('visible');
     else noRes.classList.remove('visible');
 }
 function setModalStatusFilter(filter) {
     modalActiveStatus = filter;
-    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Approved',Rejected:'Rejected'};
+    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Validated',Rejected:'Rejected'};
     const lbl=document.getElementById('mStatusLabel'); if(lbl) lbl.textContent = statusLabels[filter]||'All Status';
     const btn=document.getElementById('mStatusBtn'); if(btn) btn.classList.toggle('has-filter', filter!=='all');
     document.querySelectorAll('#mStatusMenu .gis-dd-item').forEach(i=>i.classList.toggle('active', i.dataset.val===filter));
@@ -4266,6 +4532,15 @@ function setModalInfraFilter(infra) {
     const btn=document.getElementById('mTypeBtn'); if(btn) { btn.classList.toggle('has-filter',infra!=='all'); btn.classList.add('infra'); }
     document.querySelectorAll('#mTypeMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===infra));
     const w=document.getElementById('mTypeWrap'); if(w) w.classList.remove('open');
+    applyModalVisibility();
+}
+function setModalDistrictFilter(district) {
+    modalActiveDistrict = district;
+    const districtLabels = {all:'All Districts','district 1':'District 1','district 2':'District 2','district 3':'District 3','district 4':'District 4','district 5':'District 5','district 6':'District 6',other:'Other / Unspecified'};
+    const lbl=document.getElementById('mDistrictLabel'); if(lbl) lbl.textContent = districtLabels[district]||'All Districts';
+    const btn=document.getElementById('mDistrictBtn'); if(btn) { btn.classList.toggle('has-filter', district!=='all'); btn.classList.add('district'); }
+    document.querySelectorAll('#mDistrictMenu .gis-dd-item').forEach(i=>i.classList.toggle('active', i.dataset.val===district));
+    const w=document.getElementById('mDistrictWrap'); if(w) w.classList.remove('open');
     applyModalVisibility();
 }
 function setModalDateFilter(filter) {
@@ -4286,7 +4561,7 @@ function toggleModalLayer() {
 }
 function syncModalFilterButtons() {
     // Sync status dropdown
-    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Approved',Rejected:'Rejected'};
+    const statusLabels = {all:'All Status',Pending:'Pending',Approved:'Validated',Rejected:'Rejected'};
     const sLbl=document.getElementById('mStatusLabel'); if(sLbl) sLbl.textContent=statusLabels[modalActiveStatus]||'All Status';
     const sBtn=document.getElementById('mStatusBtn'); if(sBtn) sBtn.classList.toggle('has-filter',modalActiveStatus!=='all');
     document.querySelectorAll('#mStatusMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveStatus));
@@ -4295,6 +4570,11 @@ function syncModalFilterButtons() {
     const tLbl=document.getElementById('mTypeLabel'); if(tLbl) tLbl.textContent=infraLabels[modalActiveInfra]||'All Types';
     const tBtn=document.getElementById('mTypeBtn'); if(tBtn) { tBtn.classList.toggle('has-filter',modalActiveInfra!=='all'); tBtn.classList.add('infra'); }
     document.querySelectorAll('#mTypeMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveInfra));
+    // Sync district dropdown
+    const districtLabels = {all:'All Districts','district 1':'District 1','district 2':'District 2','district 3':'District 3','district 4':'District 4','district 5':'District 5','district 6':'District 6',other:'Other / Unspecified'};
+    const dLbl=document.getElementById('mDistrictLabel'); if(dLbl) dLbl.textContent=districtLabels[modalActiveDistrict]||'All Districts';
+    const dBtn=document.getElementById('mDistrictBtn'); if(dBtn) { dBtn.classList.toggle('has-filter',modalActiveDistrict!=='all'); dBtn.classList.add('district'); }
+    document.querySelectorAll('#mDistrictMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===modalActiveDistrict));
     // Sync period dropdown
     const pLbl=document.getElementById('mPeriodLabel'); if(pLbl) pLbl.textContent=_periodLabel(modalActiveDateFilter);
     const pBtn=document.getElementById('mPeriodBtn'); if(pBtn) { pBtn.classList.toggle('has-filter',modalActiveDateFilter!=='all'); pBtn.classList.add('period'); }
@@ -4336,6 +4616,15 @@ function initRequestSort() {
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
             wrap.classList.remove('open');
+            // District-specific sort options double as a filter: show only that district.
+            if (currentSort.startsWith('district-')) {
+                const target = currentSort.replace('district-', 'district ');
+                if (typeof setDistrictFilter === 'function') setDistrictFilter(target);
+            } else if (activeDistrict !== 'all') {
+                // Switching to a non-district sort clears any district-only filter
+                // that a previous district sort selection may have applied.
+                if (typeof setDistrictFilter === 'function') setDistrictFilter('all');
+            }
             applyRequestSort(currentSort);
         });
     });
@@ -4354,19 +4643,29 @@ function initRequestSort() {
         return new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
     }
 
+    function _districtMismatch(rawDistrict) {
+        if (activeDistrict === 'all') return false;
+        return normalizeDistrict(rawDistrict) !== activeDistrict;
+    }
+
     function applyRequestListFilter() {
         const dateRange = getDateFilterRange(activeDateFilter);
         const tbody = document.querySelector('#requestsView table tbody');
         if (tbody) {
             const noResult = document.getElementById('noRequestResult');
             tbody.querySelectorAll('tr.request-row').forEach(row => {
-                if (!dateRange) { row.dataset.dateHidden = ''; return; }
-                const dt  = _parseDateStr(row.dataset.createdIso || '');
-                const hide = dt && (
-                    (dateRange.from && dt < dateRange.from) ||
-                    (dateRange.to   && dt >= dateRange.to)
-                );
-                row.dataset.dateHidden = hide ? '1' : '';
+                let dateHide = false;
+                if (dateRange) {
+                    const dt = _parseDateStr(row.dataset.createdIso || '');
+                    dateHide = dt && (
+                        (dateRange.from && dt < dateRange.from) ||
+                        (dateRange.to   && dt >= dateRange.to)
+                    );
+                }
+                const districtHide = _districtMismatch(row.dataset.district || '');
+                row.dataset.dateHidden     = dateHide ? '1' : '';
+                row.dataset.districtHidden = districtHide ? '1' : '';
+                const hide = dateHide || districtHide;
                 // Respect current search visibility too
                 if (hide) row.style.display = 'none';
                 else if (row.style.display === 'none' && !row.dataset.searchHidden) row.style.display = '';
@@ -4380,13 +4679,18 @@ function initRequestSort() {
         if (mList) {
             const noMob = document.getElementById('noMobileRequestResult');
             mList.querySelectorAll('.request-card').forEach(card => {
-                if (!dateRange) { card.dataset.dateHidden = ''; return; }
-                const dt  = _parseDateStr(card.dataset.createdIso || '');
-                const hide = dt && (
-                    (dateRange.from && dt < dateRange.from) ||
-                    (dateRange.to   && dt >= dateRange.to)
-                );
-                card.dataset.dateHidden = hide ? '1' : '';
+                let dateHide = false;
+                if (dateRange) {
+                    const dt = _parseDateStr(card.dataset.createdIso || '');
+                    dateHide = dt && (
+                        (dateRange.from && dt < dateRange.from) ||
+                        (dateRange.to   && dt >= dateRange.to)
+                    );
+                }
+                const districtHide = _districtMismatch(card.dataset.district || '');
+                card.dataset.dateHidden     = dateHide ? '1' : '';
+                card.dataset.districtHidden = districtHide ? '1' : '';
+                const hide = dateHide || districtHide;
                 if (hide) card.style.display = 'none';
                 else if (card.style.display === 'none' && !card.dataset.searchHidden) card.style.display = '';
             });
@@ -4395,6 +4699,24 @@ function initRequestSort() {
 
     // Expose so setDateFilter can call it
     window._applyRequestListFilter = applyRequestListFilter;
+
+    function _districtRank(rawDistrict) {
+        const order = {'district 1':1,'district 2':2,'district 3':3,'district 4':4,'district 5':5,'district 6':6,'other':7};
+        return order[normalizeDistrict(rawDistrict)] || 7;
+    }
+
+    function _districtSortCompare(mode, a, b) {
+        // mode like 'district-1'..'district-6' -> bring matching district to the top,
+        // keep the rest grouped by district order, newest first within each group.
+        const target = mode.replace('district-', 'district ');
+        const aMatch = normalizeDistrict(a.dataset.district) === target ? 0 : 1;
+        const bMatch = normalizeDistrict(b.dataset.district) === target ? 0 : 1;
+        if (aMatch !== bMatch) return aMatch - bMatch;
+        const aRank = _districtRank(a.dataset.district);
+        const bRank = _districtRank(b.dataset.district);
+        if (aRank !== bRank) return aRank - bRank;
+        return parseRequestDate(b) - parseRequestDate(a);
+    }
 
     function applyRequestSort(mode) {
         // ── Desktop table rows ──
@@ -4407,6 +4729,7 @@ function initRequestSort() {
                 if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
+                if (mode.startsWith('district-')) return _districtSortCompare(mode, a, b);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
                 const bT = (b.dataset.infrastructure||'').toLowerCase();
                 if (mode === 'alpha-asc')  return aT.localeCompare(bT);
@@ -4427,6 +4750,7 @@ function initRequestSort() {
                 if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
+                if (mode.startsWith('district-')) return _districtSortCompare(mode, a, b);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
                 const bT = (b.dataset.infrastructure||'').toLowerCase();
                 if (mode === 'alpha-asc')  return aT.localeCompare(bT);

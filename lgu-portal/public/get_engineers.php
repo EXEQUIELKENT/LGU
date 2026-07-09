@@ -16,12 +16,14 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
 }
 
 // Office staff, manager, and admins can fetch the full list.
-// Head engineers fetch only engineers within their own district.
+// Head engineers and area engineers fetch only engineers within their own district.
 // Engineers may only fetch their own profile (must pass ?id= matching their session).
 $userRole       = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $sessionId      = (int)($_SESSION['employee_id'] ?? 0);
 $isEngineer     = $userRole === 'engineer';
 $isHeadEngineer = $userRole === 'head engineer';
+$isAreaEngineer = $userRole === 'area engineer';
+$isDistrictScoped = $isHeadEngineer || $isAreaEngineer;
 $allowed        = ['office staff', 'manager', 'admin', 'super admin'];
 
 $singleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -31,16 +33,19 @@ if ($isEngineer) {
     if ($singleId <= 0 || $singleId !== $sessionId) {
         jsonOut(false, 'Permission denied. Engineers may only view their own profile.');
     }
-} elseif (!$isHeadEngineer && !in_array($userRole, $allowed)) {
+} elseif (!$isDistrictScoped && !in_array($userRole, $allowed)) {
     jsonOut(false, 'Permission denied.');
 }
 
 require __DIR__ . '/db.php';
 
-// ── Head Engineer: resolve their district from DB and enforce it ──────────────
+// ── Head Engineer / Area Engineer: resolve their district from DB and enforce it ──
+// District is always resolved server-side from the actor's own profile — the
+// ?district= query param some frontends send is only a display hint and is
+// never trusted for scoping.
 $heDistrict     = '';
 $districtClause = '';
-if ($isHeadEngineer) {
+if ($isDistrictScoped) {
     $hdStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
     $hdStmt->bind_param('i', $sessionId);
     $hdStmt->execute();
@@ -91,11 +96,11 @@ if (!$stmt) {
 }
 
 // Bind params based on which WHERE clauses are active
-if ($singleId > 0 && $isHeadEngineer) {
+if ($singleId > 0 && $isDistrictScoped) {
     $stmt->bind_param('is', $singleId, $heDistrict);
 } elseif ($singleId > 0) {
     $stmt->bind_param('i', $singleId);
-} elseif ($isHeadEngineer) {
+} elseif ($isDistrictScoped) {
     $stmt->bind_param('s', $heDistrict);
 }
 // else: no dynamic params — WHERE clause is fully static

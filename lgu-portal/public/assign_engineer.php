@@ -14,9 +14,10 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
     jsonOut(false, 'Unauthorized');
 }
 
-// Office staff, manager, admin, super admin, and head engineer (with a district) can assign
+// Manager, admin, super admin, and area engineer (with a district) can assign.
+// Office staff can no longer assign — read-only, same as admin/super admin.
 $userRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$allowed  = ['office staff', 'manager', 'admin', 'super admin', 'head engineer'];
+$allowed  = ['manager', 'admin', 'super admin', 'area engineer'];
 if (!in_array($userRole, $allowed)) jsonOut(false, 'Permission denied.');
 
 $input      = json_decode(file_get_contents('php://input'), true) ?: $_POST;
@@ -40,32 +41,32 @@ $ec->close();
 if (!$engRow) jsonOut(false, 'Engineer not found.');
 if (strcasecmp($engRow['role'], 'Engineer') !== 0) jsonOut(false, 'Selected employee is not an Engineer.');
 
-// ── Head Engineer: ensure assigned engineer belongs to the same district ──────
-if ($userRole === 'head engineer') {
+// ── Area Engineer: ensure assigned engineer belongs to the same district ──────
+if ($userRole === 'area engineer') {
     $actorUserId = (int)($_SESSION['employee_id'] ?? 0);
 
-    // Fetch head engineer's own district
-    $hdStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
-    $hdStmt->bind_param('i', $actorUserId);
-    $hdStmt->execute();
-    $hdRow      = $hdStmt->get_result()->fetch_assoc();
-    $hdStmt->close();
-    $heDistrict = trim($hdRow['district'] ?? '');
+    // Fetch the area engineer's own district
+    $aeStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
+    $aeStmt->bind_param('i', $actorUserId);
+    $aeStmt->execute();
+    $aeRow      = $aeStmt->get_result()->fetch_assoc();
+    $aeStmt->close();
+    $aeDistrict = trim($aeRow['district'] ?? '');
 
-    if ($heDistrict === '') {
+    if ($aeDistrict === '') {
         jsonOut(false, 'Your profile has no district set. Please update your profile before assigning engineers.');
     }
 
     // Fetch the target engineer's district
-    $edStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
-    $edStmt->bind_param('i', $engineerId);
-    $edStmt->execute();
-    $edRow       = $edStmt->get_result()->fetch_assoc();
-    $edStmt->close();
-    $engDistrict = trim($edRow['district'] ?? '');
+    $targetStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
+    $targetStmt->bind_param('i', $engineerId);
+    $targetStmt->execute();
+    $targetRow   = $targetStmt->get_result()->fetch_assoc();
+    $targetStmt->close();
+    $engDistrict = trim($targetRow['district'] ?? '');
 
-    if (strcasecmp($heDistrict, $engDistrict) !== 0) {
-        jsonOut(false, "You can only assign engineers within your district ({$heDistrict}).");
+    if (strcasecmp($aeDistrict, $engDistrict) !== 0) {
+        jsonOut(false, "You can only assign engineers within your district ({$aeDistrict}).");
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────

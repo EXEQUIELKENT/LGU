@@ -55,6 +55,7 @@ $isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'enginee
 $engineerId    = (int)($_SESSION['employee_id'] ?? 0);
 $userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
+$isOfficeStaff = $userRole === 'office staff';
 
 // ── Area Engineer: detect role and load their assigned district ──────────────
 $isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
@@ -770,6 +771,17 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-modal-close { background:none;border:none;font-size:26px;color:var(--text-secondary);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s;flex-shrink:0; }
 .rep-modal-close:hover { background:rgba(46,125,50,.1);color:#2e7d32; }
 .rep-modal-body { padding:0 24px 20px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#43a047 rgba(0,0,0,.07); }
+.rep-modal-footer { padding:14px 24px;border-top:1px solid var(--border-color);background:var(--bg-secondary);border-radius:0 0 20px 20px;flex-shrink:0; }
+.rep-footer-inner { display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap; }
+.btn-create-report {
+    display:inline-flex; align-items:center; gap:8px;
+    background: linear-gradient(135deg, #2b6cb0, #2c5282);
+    color:#fff; border:none; padding:11px 22px; border-radius:11px;
+    font-size:14px; font-weight:700; cursor:pointer; transition:all .25s;
+    box-shadow:0 4px 14px rgba(43,108,176,.35); letter-spacing:.02em;
+}
+.btn-create-report:hover    { transform:translateY(-2px); box-shadow:0 7px 20px rgba(43,108,176,.5); }
+.btn-create-report:disabled { opacity:.7; cursor:default; transform:none; }
 .rep-modal-body::-webkit-scrollbar { width:6px; }
 .rep-modal-body::-webkit-scrollbar-thumb { background:#43a047;border-radius:3px; }
 .rep-field { margin-bottom:13px; }
@@ -787,6 +799,26 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
 .btn-view-rep { background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;padding:5px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;white-space:nowrap;box-shadow:0 2px 8px rgba(46,125,50,.3); }
 .btn-view-rep:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(46,125,50,.45); }
+.rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }
+.rep-confirm-backdrop.active { display:flex; }
+.rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }
+@keyframes repConfirmPop { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+[data-theme="dark"] .rep-confirm-modal { background:rgba(24,24,30,.98);box-shadow:0 25px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07); }
+.rep-confirm-icon { width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px; }
+.rep-confirm-icon.save-icon { background:linear-gradient(135deg,rgba(55,98,200,.12),rgba(55,98,200,.08));border:1px solid rgba(55,98,200,.2); }
+[data-theme="dark"] .rep-confirm-icon.save-icon { background:linear-gradient(135deg,rgba(55,98,200,.22),rgba(55,98,200,.12)); }
+.rep-confirm-title { font-size:1.05rem;font-weight:700;color:var(--text-primary,#1a1a2e);margin-bottom:8px; }
+[data-theme="dark"] .rep-confirm-title { color:#e2e8f0; }
+.rep-confirm-desc { font-size:.92rem;color:var(--text-secondary,#64748b);margin-bottom:22px;line-height:1.5; }
+[data-theme="dark"] .rep-confirm-desc { color:#94a3b8; }
+.rep-confirm-btns { display:flex;gap:10px;width:100%; }
+.rep-confirm-btn { flex:1;padding:10px 0;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;transition:all .18s ease;font-family:inherit; }
+.rep-confirm-cancel { background:var(--bg-secondary,#f1f5f9);color:var(--text-primary,#374151);border:1px solid var(--border-color,#e2e8f0)!important; }
+.rep-confirm-cancel:hover { background:var(--border-color,#e2e8f0); }
+[data-theme="dark"] .rep-confirm-cancel { background:rgba(255,255,255,.06);color:#e2e8f0;border-color:rgba(255,255,255,.1)!important; }
+[data-theme="dark"] .rep-confirm-cancel:hover { background:rgba(255,255,255,.11); }
+.rep-confirm-ok-save { background:linear-gradient(135deg,#3762c8,#2851b3);color:#fff;box-shadow:0 4px 12px rgba(55,98,200,.3); }
+.rep-confirm-ok-save:hover { transform:translateY(-1px);box-shadow:0 6px 16px rgba(55,98,200,.4); }
 .rep-img-lightbox { position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;flex-direction:column; }
 .rep-img-lightbox.active { display:flex; }
 .rep-img-lightbox img { max-width:88vw;max-height:80vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-in;user-select:none; }
@@ -799,7 +831,7 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-lb-nav.right { right:20px; }
 .rep-lb-nav.hidden { display:none; }
 .rep-lb-counter { position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:13px;font-weight:600;pointer-events:none; }
-@media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}}
+@media(max-width:768px){.rep-detail-modal{width:95%;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-lb-nav{display:none!important;}.rep-footer-inner{flex-direction:row;}}
 /* ── Engineer description & progress images display in archive ── */
 /* ── Day navigator (read-only in archive) ── */
 .rep-day-nav {
@@ -1655,8 +1687,27 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence">No evidence images</span></div>
             </div>
         </div>
+        <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
+            <div class="rep-footer-inner">
+                <!-- Office Staff: create Word report -->
+                <button class="btn-create-report" id="repCreateReportBtn" type="button"><i class="fas fa-file-word"></i> Create Report</button>
+            </div>
+        </div>
     </div>
 </div>
+<!-- Create Report Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repCreateReportConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon save-icon"><i class="fas fa-file-word" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Create report document?</div>
+        <div class="rep-confirm-desc">This will generate a Word (.docx) document of this report for download.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" id="repCreateReportCancelBtn">Cancel</button>
+            <button class="rep-confirm-btn rep-confirm-ok-save" id="repCreateReportConfirmBtn"><i class="fas fa-file-word"></i> Create Report</button>
+        </div>
+    </div>
+</div>
+
 <div class="rep-img-lightbox" id="repImgLightbox">
     <button class="rep-lb-close" id="repLbClose" onclick="closeRepLightbox()">&times;</button>
     <button class="rep-lb-nav left hidden" id="repLbPrev" onclick="repLbPrev()">&#10094;</button>
@@ -1913,6 +1964,175 @@ function makeDistrictBadge(district) {
     return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${district}</span>`;
 }
 
+function showRepNotif(type, msg) {
+    const e = document.getElementById('notifPopup'); if (e) e.remove();
+    const d = document.createElement('div'); d.id = 'notifPopup'; d.className = `notif-popup notif-${type}`;
+    d.style.cssText += 'z-index:9900!important;';
+    d.innerHTML = `<span class="notif-message">${msg}</span><button class="notif-close" onclick="this.parentElement.remove()">&times;</button>`;
+    document.body.appendChild(d);
+    setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 400); }, 4500);
+}
+
+// ═══════════════════════════════════════════════════════
+//  OFFICE STAFF — "Create Report" (export modal to Word)
+// ═══════════════════════════════════════════════════════
+const REPORT_DOC_COLOR = '2E7D32'; // green theme for Archive Reports page exports
+function cleanFieldText(el) {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    const badge = clone.querySelector('.district-badge');
+    if (badge) {
+        const badgeText = badge.textContent.trim();
+        badge.remove();
+        const baseText = clone.textContent.trim();
+        return baseText + (badgeText ? ' (' + badgeText + ')' : '');
+    }
+    return clone.textContent.trim();
+}
+function isVisibleEl(el) { return !!el && el.offsetParent !== null; }
+
+function buildRepReportPayload() {
+    const repIdText = cleanFieldText(document.getElementById('repModalId')) || 'Report';
+    const infraText = cleanFieldText(document.getElementById('repModalInfra'));
+
+    const rows1 = [
+        { label: 'Report ID',      value: repIdText },
+        { label: 'Infrastructure', value: infraText },
+        { label: 'Status',         value: cleanFieldText(document.getElementById('repModalStatus')) },
+        { label: 'Location',       value: cleanFieldText(document.getElementById('repModalLocation')) },
+        { label: 'Issue (Original)', value: cleanFieldText(document.getElementById('repModalIssue')) },
+    ];
+    if (isVisibleEl(document.getElementById('repEngField'))) {
+        rows1.push({ label: 'Engineer', value: cleanFieldText(document.getElementById('repModalEngineer')) });
+    }
+    rows1.push(
+        { label: 'Reported By',   value: cleanFieldText(document.getElementById('repModalReporter')) },
+        { label: 'Start Date',    value: cleanFieldText(document.getElementById('repModalStart')) },
+        { label: 'Est. End Date', value: cleanFieldText(document.getElementById('repModalEnd')) },
+        { label: 'Priority',      value: cleanFieldText(document.getElementById('repModalPriority')) },
+        { label: 'Budget',        value: cleanFieldText(document.getElementById('repModalBudget')) }
+    );
+
+    const sections = [{ heading: 'Report Details', rows: rows1 }];
+
+    if (isVisibleEl(document.getElementById('repAdminReturnBanner'))) {
+        sections.push({
+            heading: 'Admin Feedback',
+            rows: [{ label: 'Note', value: cleanFieldText(document.getElementById('repAdminReturnNote')) }]
+        });
+    }
+
+    if (isVisibleEl(document.getElementById('repRequesterSection'))) {
+        sections.push({
+            heading: 'Requester Info',
+            rows: [
+                { label: 'Requester',      value: cleanFieldText(document.getElementById('repModalRequester')) },
+                { label: 'Contact Number', value: cleanFieldText(document.getElementById('repModalContact')) },
+                { label: 'Email',          value: cleanFieldText(document.getElementById('repModalEmail')) },
+                { label: 'Coordinates',    value: cleanFieldText(document.getElementById('repModalCoords')) },
+                { label: 'Date Submitted', value: cleanFieldText(document.getElementById('repModalReqDate')) },
+            ]
+        });
+    }
+
+    // Daily log / description — whichever day is currently shown in the modal
+    if (isVisibleEl(document.getElementById('repDayNav'))) {
+        const dayLabel = cleanFieldText(document.getElementById('repDayNum')) + ' — ' + cleanFieldText(document.getElementById('repDayDate'));
+        const descRows = [
+            { label: 'Description', value: cleanFieldText(document.getElementById('repModalDesc')) || 'No entry for this day.' }
+        ];
+        if (isVisibleEl(document.getElementById('repProgressImgsSection'))) {
+            const pStrip = document.getElementById('repProgressStrip');
+            const pSrcs  = pStrip
+                ? Array.from(pStrip.querySelectorAll('img')).map(img => img.getAttribute('src')).filter(Boolean)
+                : [];
+            descRows.push(
+                pSrcs.length
+                    ? { label: 'Progress Images', images: pSrcs }
+                    : { label: 'Progress Images', value: 'No progress images' }
+            );
+        }
+        sections.push({ heading: 'Daily Log — ' + dayLabel, rows: descRows });
+    }
+
+    const evidenceEl   = document.getElementById('repEvidenceContainer');
+    const evidenceSrcs = evidenceEl
+        ? Array.from(evidenceEl.querySelectorAll('img')).map(img => img.getAttribute('src')).filter(Boolean)
+        : [];
+    sections.push({
+        heading: 'Evidence',
+        rows: [
+            evidenceSrcs.length
+                ? { label: 'Evidence Images', images: evidenceSrcs }
+                : { label: 'Evidence Images', value: 'No evidence images' }
+        ]
+    });
+
+    return {
+        filename: repIdText.replace(/[#·]/g, '').trim().replace(/\s+/g, '_'),
+        title: repIdText + (infraText ? ' — ' + infraText : ''),
+        subtitle: 'Generated ' + new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }) + ' by ' + (CURRENT_USER_NAME || 'Office Staff'),
+        color: REPORT_DOC_COLOR,
+        sections: sections,
+        footerNote: 'Generated from the CIMM LGU Archive system.'
+    };
+}
+
+async function exportRepReport(btnEl) {
+    const payload = buildRepReportPayload();
+    const originalHtml = btnEl.innerHTML;
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+    try {
+        const res = await fetch('export_report_docx.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            let msg = 'Failed to generate the report.';
+            try { const err = await res.json(); if (err && err.error) msg = err.error; } catch (_e) {}
+            throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = (payload.filename || 'Report') + '.docx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showRepNotif('success', 'Report document created.');
+    } catch (e) {
+        showRepNotif('error', e.message || 'Something went wrong creating the report.');
+    } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalHtml;
+    }
+}
+
+let repCreateReportBtnEl = null;
+document.getElementById('repCreateReportBtn').addEventListener('click', function () {
+    repCreateReportBtnEl = this;
+    document.getElementById('repCreateReportConfirmBackdrop').classList.add('active');
+});
+document.getElementById('repCreateReportCancelBtn').addEventListener('click', function () {
+    document.getElementById('repCreateReportConfirmBackdrop').classList.remove('active');
+    repCreateReportBtnEl = null;
+});
+document.getElementById('repCreateReportConfirmBackdrop').addEventListener('click', function (e) {
+    if (e.target === this) {
+        this.classList.remove('active');
+        repCreateReportBtnEl = null;
+    }
+});
+document.getElementById('repCreateReportConfirmBtn').addEventListener('click', function () {
+    document.getElementById('repCreateReportConfirmBackdrop').classList.remove('active');
+    if (repCreateReportBtnEl) exportRepReport(repCreateReportBtnEl);
+    repCreateReportBtnEl = null;
+});
+
 function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
@@ -1998,6 +2218,9 @@ function openRepModal(repId) {
             ec.appendChild(img);
         });
     } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
+
+    document.getElementById('repModalFooter').style.display     = IS_OFFICE_STAFF ? '' : 'none';
+    document.getElementById('repCreateReportBtn').style.display  = IS_OFFICE_STAFF ? '' : 'none';
     repBackdrop.classList.add('active');
 }
 function closeRepModal(){
@@ -2151,6 +2374,8 @@ const IS_AREA_ENGINEER = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 const AE_HAS_DISTRICT  = <?= $aeHasDistrict  ? 'true' : 'false' ?>;
 const AE_DISTRICT      = <?= json_encode($aeDistrict) ?>;
 const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer ? 'true' : 'false' ?>;
+const IS_OFFICE_STAFF      = <?= $isOfficeStaff ? 'true' : 'false' ?>;
+const CURRENT_USER_NAME    = <?= json_encode($displayName) ?>;
 let engineersCache = null;
 
 async function loadEngineers() {

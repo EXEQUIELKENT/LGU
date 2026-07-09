@@ -507,9 +507,10 @@ $displayName = getDisplayName();
 $isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
 
 $userRole          = strtolower(trim($_SESSION['employee_role'] ?? ''));
-// Area Engineers can assign only when they have a district set in their profile
-$canAssignEngineer = in_array($userRole, ['office staff']) ||
-                     ($isAreaEngineer && $aeHasDistrict);
+// Area Engineers can assign only when they have a district set in their profile.
+// Office Staff, like Admin/Super Admin, can no longer assign engineers — they only view (⚠ Unassigned when none is set).
+$canAssignEngineer = ($isAreaEngineer && $aeHasDistrict);
+$isOfficeStaff = $userRole === 'office staff';
 
 $conn->query("SET SESSION group_concat_max_len = 4096");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
@@ -572,7 +573,8 @@ function statusPill(string $status): string {
         'Pending Admin Approval' => 'pending-admin-st',
     ];
     $cls = $map[$status] ?? 'on-going';
-    $label = $status === 'Pending Admin Approval' ? 'Pending Approval' : htmlspecialchars($status);
+    $label = $status === 'Pending Admin Approval' ? 'Pending Approval'
+           : ($status === 'Approved' ? 'Validated' : htmlspecialchars($status));
     return "<span class=\"status {$cls}\">{$label}</span>";
 }
 
@@ -1729,6 +1731,18 @@ tr.notif-highlight > td:first-child {
     transition: all .18s ease;
 }
 .btn-decline-rep:hover { background: rgba(239,68,68,.08); border-color: #ef4444; }
+
+/* Office Staff: create Word report */
+.btn-create-report {
+    display:inline-flex; align-items:center; gap:8px;
+    background: linear-gradient(135deg, #2b6cb0, #2c5282);
+    color:#fff; border:none; padding:11px 22px; border-radius:11px;
+    font-size:14px; font-weight:700; cursor:pointer; transition:all .25s;
+    box-shadow:0 4px 14px rgba(43,108,176,.35); letter-spacing:.02em;
+}
+.btn-create-report:hover    { transform:translateY(-2px); box-shadow:0 7px 20px rgba(43,108,176,.5); }
+.btn-create-report:disabled { opacity:.7; cursor:default; transform:none; }
+
 .rep-editable-field { background:var(--bg-secondary);border:1.5px solid var(--border-color);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text-primary);outline:none;width:100%;box-sizing:border-box;transition:border-color .2s,box-shadow .2s; }
 .rep-editable-field:focus { border-color:#ff9800;box-shadow:0 0 0 3px rgba(255,152,0,.15); }
 select.rep-editable-field { cursor:pointer; }
@@ -2518,6 +2532,8 @@ const CAN_ASSIGN_ENGINEER  = <?= $canAssignEngineer  ? 'true' : 'false' ?>;
 const IS_AREA_ENGINEER     = <?= $isAreaEngineer    ? 'true' : 'false' ?>;
 const AE_HAS_DISTRICT      = <?= $aeHasDistrict     ? 'true' : 'false' ?>;
 const AE_DISTRICT          = <?= json_encode($aeDistrict) ?>;
+const IS_OFFICE_STAFF      = <?= $isOfficeStaff ? 'true' : 'false' ?>;
+const CURRENT_USER_NAME    = <?= json_encode($displayName) ?>;
 // Clear any stale notification from a previous session
 try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 (function() {
@@ -2977,6 +2993,8 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <button class="btn-accept-rep"  id="repAcceptBtn"  style="display:none;" onclick="confirmAccept()"><i class="fas fa-check-circle"></i> Accept Assignment</button>
                 <!-- Shown to manager/office staff when engineer has a pending decline -->
                 <button class="btn-admin-return-rep" id="repReviewDeclineBtn" style="display:none;background:linear-gradient(135deg,#f97316,#ea580c);border-color:#f97316;" onclick="openReviewDeclineModal()"><i class="fas fa-clipboard-check"></i> Review Decline</button>
+                <!-- Office Staff: create Word report (always available, independent of workflow state) -->
+                <button class="btn-create-report" id="repCreateReportBtn" type="button" style="display:none;"><i class="fas fa-file-word"></i> Create Report</button>
             </div>
         </div>
     </div>
@@ -2990,6 +3008,19 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <button class="rep-lb-nav right hidden" id="repLbNext" onclick="repLbNext()">&#10095;</button>
     <div class="rep-lb-counter" id="repLbCounter"></div>
     <div class="rep-lb-counter" id="repLbSwipe" style="opacity:0;transition:opacity .4s;font-size:12px;bottom:46px;">&#8646; Swipe to navigate</div>
+</div>
+
+<!-- Create Report Confirmation Modal -->
+<div class="rep-confirm-backdrop" id="repCreateReportConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon save-icon"><i class="fas fa-file-word" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Create report document?</div>
+        <div class="rep-confirm-desc">This will generate a Word (.docx) document of this report for download.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" id="repCreateReportCancelBtn">Cancel</button>
+            <button class="rep-confirm-btn rep-confirm-ok-save" id="repCreateReportConfirmBtn"><i class="fas fa-file-word"></i> Create Report</button>
+        </div>
+    </div>
 </div>
 
 <!-- Accept Assignment Confirmation Modal -->
@@ -4395,7 +4426,8 @@ function openRepModal(repId) {
         });
     } else { ec.innerHTML = '<span class="rep-no-evidence">No evidence images</span>'; }
 
-    document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN || CAN_ASSIGN_ENGINEER) ? '' : 'none';
+    document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN || CAN_ASSIGN_ENGINEER || IS_OFFICE_STAFF) ? '' : 'none';
+    document.getElementById('repCreateReportBtn').style.display = IS_OFFICE_STAFF ? '' : 'none';
     repBackdrop.classList.add('active');
 }
 
@@ -4930,6 +4962,159 @@ function showRepNotif(type,msg){
     document.body.appendChild(d);
     setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),400);},4500);
 }
+
+// ═══════════════════════════════════════════════════════
+//  OFFICE STAFF — "Create Report" (export modal to Word)
+// ═══════════════════════════════════════════════════════
+const REPORT_DOC_COLOR = 'E65100'; // orange theme for Current Reports page exports
+function cleanFieldText(el) {
+    if (!el) return '';
+    const clone = el.cloneNode(true);
+    const badge = clone.querySelector('.district-badge');
+    if (badge) {
+        const badgeText = badge.textContent.trim();
+        badge.remove();
+        const baseText = clone.textContent.trim();
+        return baseText + (badgeText ? ' (' + badgeText + ')' : '');
+    }
+    return clone.textContent.trim();
+}
+function isVisibleEl(el) { return !!el && el.offsetParent !== null; }
+
+function buildRepReportPayload() {
+    const repIdText = cleanFieldText(document.getElementById('repModalId')) || 'Report';
+    const infraText = cleanFieldText(document.getElementById('repModalInfra'));
+
+    const rows1 = [
+        { label: 'Report ID',      value: repIdText },
+        { label: 'Infrastructure', value: infraText },
+        { label: 'Status',         value: cleanFieldText(document.getElementById('repModalStatus')) },
+        { label: 'Location',       value: cleanFieldText(document.getElementById('repModalLocation')) },
+        { label: 'Issue',          value: cleanFieldText(document.getElementById('repModalIssue')) },
+    ];
+    if (isVisibleEl(document.getElementById('repEngField'))) {
+        rows1.push({ label: 'Engineer', value: cleanFieldText(document.getElementById('repModalEngineer')) });
+    }
+    rows1.push(
+        { label: 'Reported By',   value: cleanFieldText(document.getElementById('repModalReporter')) },
+        { label: 'Start Date',    value: cleanFieldText(document.getElementById('repModalStart')) },
+        { label: 'Est. End Date', value: cleanFieldText(document.getElementById('repModalEnd')) }
+    );
+
+    const sections = [{ heading: 'Report Details', rows: rows1 }];
+
+    if (isVisibleEl(document.getElementById('repAdminReturnBanner'))) {
+        sections.push({
+            heading: 'Admin Feedback',
+            rows: [{ label: 'Note', value: cleanFieldText(document.getElementById('repAdminReturnNote')) }]
+        });
+    }
+
+    if (isVisibleEl(document.getElementById('repRequesterSection'))) {
+        sections.push({
+            heading: 'Requester Info',
+            rows: [
+                { label: 'Requester',      value: cleanFieldText(document.getElementById('repModalRequester')) },
+                { label: 'Contact Number', value: cleanFieldText(document.getElementById('repModalContact')) },
+                { label: 'Email',          value: cleanFieldText(document.getElementById('repModalEmail')) },
+                { label: 'Coordinates',    value: cleanFieldText(document.getElementById('repModalCoords')) },
+                { label: 'Date Submitted', value: cleanFieldText(document.getElementById('repModalReqDate')) },
+            ]
+        });
+    }
+
+    sections.push({
+        heading: 'Priority & Budget',
+        rows: [
+            { label: 'Priority', value: cleanFieldText(document.getElementById('repModalPriority')) },
+            { label: 'Budget',   value: cleanFieldText(document.getElementById('repModalBudget')) },
+        ]
+    });
+
+    if (isVisibleEl(document.getElementById('repAiSection'))) {
+        sections.push({
+            heading: 'AI Analysis',
+            rows: [{ label: 'Summary', value: cleanFieldText(document.getElementById('repAiContent')) }]
+        });
+    }
+
+    const evidenceEl   = document.getElementById('repEvidenceContainer');
+    const evidenceSrcs = evidenceEl
+        ? Array.from(evidenceEl.querySelectorAll('img')).map(img => img.getAttribute('src')).filter(Boolean)
+        : [];
+    sections.push({
+        heading: 'Evidence',
+        rows: [
+            evidenceSrcs.length
+                ? { label: 'Evidence Images', images: evidenceSrcs }
+                : { label: 'Evidence Images', value: 'No evidence images' }
+        ]
+    });
+
+    return {
+        filename: repIdText.replace(/[#·]/g, '').trim().replace(/\s+/g, '_'),
+        title: repIdText + (infraText ? ' — ' + infraText : ''),
+        subtitle: 'Generated ' + new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }) + ' by ' + (CURRENT_USER_NAME || 'Office Staff'),
+        color: REPORT_DOC_COLOR,
+        sections: sections,
+        footerNote: 'Generated from the CIMM LGU Current Reports system.'
+    };
+}
+
+async function exportRepReport(btnEl) {
+    const payload = buildRepReportPayload();
+    const originalHtml = btnEl.innerHTML;
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+    try {
+        const res = await fetch('export_report_docx.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            let msg = 'Failed to generate the report.';
+            try { const err = await res.json(); if (err && err.error) msg = err.error; } catch (_e) {}
+            throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = (payload.filename || 'Report') + '.docx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showRepNotif('success', 'Report document created.');
+    } catch (e) {
+        showRepNotif('error', e.message || 'Something went wrong creating the report.');
+    } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalHtml;
+    }
+}
+
+let repCreateReportBtnEl = null;
+document.getElementById('repCreateReportBtn').addEventListener('click', function () {
+    repCreateReportBtnEl = this;
+    document.getElementById('repCreateReportConfirmBackdrop').classList.add('active');
+});
+document.getElementById('repCreateReportCancelBtn').addEventListener('click', function () {
+    document.getElementById('repCreateReportConfirmBackdrop').classList.remove('active');
+    repCreateReportBtnEl = null;
+});
+document.getElementById('repCreateReportConfirmBackdrop').addEventListener('click', function (e) {
+    if (e.target === this) {
+        this.classList.remove('active');
+        repCreateReportBtnEl = null;
+    }
+});
+document.getElementById('repCreateReportConfirmBtn').addEventListener('click', function () {
+    document.getElementById('repCreateReportConfirmBackdrop').classList.remove('active');
+    if (repCreateReportBtnEl) exportRepReport(repCreateReportBtnEl);
+    repCreateReportBtnEl = null;
+});
 
 // ════════════════════════════════════════════════════════════════
 // LIVE SEARCH WITH HIGHLIGHT

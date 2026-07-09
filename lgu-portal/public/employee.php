@@ -78,6 +78,12 @@ $isAdmin = in_array(
     ['admin', 'super admin']
 );
 
+// Report Generation access: Admin, Super Admin, and Office Staff
+$canGenerateReports = in_array(
+    strtolower(trim($_SESSION['employee_role'] ?? '')),
+    ['admin', 'super admin', 'office staff']
+);
+
 // ── Feedback widget data (Admin / Super Admin only) ───────────────────────────
 $feedbackWidget = null;
 if ($isAdmin) {
@@ -3564,9 +3570,10 @@ HTML;
             </div>
             <!-- end Recent Activity chart-card -->
 
-            <?php if ($feedbackWidget !== null): ?>
-            <!-- Citizen Feedback -->
+            <?php if ($feedbackWidget !== null || $canGenerateReports): ?>
+            <!-- Citizen Feedback / Report Generation -->
             <div class="chart-card" style="margin-top: 20px;">
+                <?php if ($feedbackWidget !== null): ?>
                 <div class="chart-header">
                     <div>
                         <div class="chart-title" style="display:flex;align-items:center;gap:8px;">
@@ -3662,13 +3669,14 @@ HTML;
                     <?php endif; ?>
 
                 </div><!-- /fb-widget-wrapper -->
+                <?php endif; ?>
 
-                <?php if ($isAdmin): ?>
-                <!-- ADMIN: Report Generation Section -->
+                <?php if ($canGenerateReports): ?>
+                <!-- OFFICE STAFF / ADMIN: Report Generation Section -->
                 <div class="report-gen-section">
                     <div class="report-gen-header">
                         <h3>📊 Report Generation</h3>
-                        <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+                        <span class="admin-badge"><i class="fas fa-shield-alt"></i> Office Staff &amp; Admin Only</span>
                     </div>
                     <div class="report-type-grid">
                         <button class="report-type-btn" onclick="openReportModal('requests')">
@@ -3706,14 +3714,14 @@ HTML;
                 <?php endif; ?>
 
             </div>
-            <!-- end Citizen Feedback chart-card -->
+            <!-- end Citizen Feedback / Report Generation chart-card -->
             <?php endif; ?>
 
         </div>
     </div>
 </div>
 
-<?php if ($isAdmin): ?>
+<?php if ($canGenerateReports): ?>
 <div id="pwModalBackdrop">
     <div class="pw-modal">
         <div class="pw-modal-header">
@@ -4166,7 +4174,7 @@ if (activeReportsCtx) {
 <!-- =====================================================================
      REPORT MODAL HTML  — replace your existing #reportModalBackdrop block
      ===================================================================== -->
-     <?php if ($isAdmin): ?>
+     <?php if ($canGenerateReports): ?>
 <div id="reportModalBackdrop">
     <div class="report-modal">
         <div class="report-modal-header">
@@ -4230,7 +4238,7 @@ if (activeReportsCtx) {
 <?php endif; ?>
 
 <!-- Report custom date picker overlays -->
-<?php if ($isAdmin): ?>
+<?php if ($canGenerateReports): ?>
 <div class="rdt-picker-overlay" id="rptFromPickerOverlay">
     <div class="rdt-dp-header">
         <button class="rdt-dp-nav" id="rptFromPrev" type="button">&#8592;</button>
@@ -4287,7 +4295,7 @@ if (activeReportsCtx) {
 <!-- =====================================================================
      REPORT JS  — replace your existing report <script> block entirely
      ===================================================================== -->
-     <?php if ($isAdmin): ?>
+     <?php if ($canGenerateReports): ?>
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
 let _rptType   = 'requests';
