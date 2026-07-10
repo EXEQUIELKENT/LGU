@@ -2894,13 +2894,13 @@ body:has(#resetPasswordModal) {
                     <button type="submit" name="otp_submit" title="Verify OTP code" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
                 </div>
             </form>
-            <form method="post" action="">
+            <form method="post" action="" style="margin-top: 12px;">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_SESSION['login_email'] ?? '', ENT_QUOTES); ?>">
                 <div class="btn-container">
                     <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
                 </div>
             </form>
-            <form method="post" action="">
+            <form method="post" action="" style="margin-top: 12px;">
                 <div class="btn-container">
                     <button type="submit" name="cancel_otp" title="Cancel and return to login" class="btn-primary">&larr; Back to Login</button>
                 </div>
