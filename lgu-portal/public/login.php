@@ -1653,6 +1653,12 @@ body {
     box-shadow: 0 0 0 3px rgba(99, 132, 210, 0.15);
 }
 
+.otp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .verify-code-btn,
 .resend-code-btn {
     width: 100%;
@@ -1668,10 +1674,6 @@ body {
     box-shadow: 0 4px 16px rgba(43,108,176,.35);
     margin: 0 auto;
     display: block;
-}
-
-.verify-code-btn {
-    margin-bottom: 12px;
 }
 
 .verify-code-btn:hover,
@@ -2880,6 +2882,7 @@ body:has(#resetPasswordModal) {
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
+            <div class="otp-actions">
             <form method="post" id="otpForm" action="">
                 <div class="otp-inputs-container">
                     <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="off" required>
@@ -2894,17 +2897,18 @@ body:has(#resetPasswordModal) {
                     <button type="submit" name="otp_submit" title="Verify OTP code" class="verify-code-btn" <?php if($expired || $attempts_left <= 0): ?>disabled<?php endif; ?>>Verify Code</button>
                 </div>
             </form>
-            <form method="post" action="" style="margin-top: 12px;">
+            <form method="post" action="">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($_SESSION['login_email'] ?? '', ENT_QUOTES); ?>">
                 <div class="btn-container">
                     <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
                 </div>
             </form>
-            <form method="post" action="" style="margin-top: 12px;">
+            <form method="post" action="">
                 <div class="btn-container">
                     <button type="submit" name="cancel_otp" title="Cancel and return to login" class="btn-primary">&larr; Back to Login</button>
                 </div>
             </form>
+            </div>
             <script>
                 // ... [unchanged OTP input handling JavaScript] ...
                 const otpInputs = document.querySelectorAll('.otp-input');
@@ -3169,7 +3173,7 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-primary" id="cancelResetPassword">Back to Login</button>
+                    <button type="button" class="btn-primary" id="cancelResetPassword" title="Cancel and return to login">Back to Login</button>
                     <button type="submit" name="reset_password_submit" class="btn-reset-password" id="resetPasswordBtn">Reset Password</button>
                 </div>
             </form>
@@ -3341,7 +3345,7 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-primary" id="cancelChangePassword">Back to Login</button>
+                    <button type="button" class="btn-primary" id="cancelChangePassword" title="Cancel and return to login">Back to Login</button>
                     <button type="submit" title="Change your password" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
                 </div>
             </form>
