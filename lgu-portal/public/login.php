@@ -1984,13 +1984,14 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .modal-footer {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     margin-top: 10px;
 }
 
 #changePasswordModal .btn-change-password {
-    width: auto;
-    flex: 1;
+    width: 100%;
+    flex: none;
     padding: 13px;
     background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
@@ -2007,8 +2008,8 @@ body:has(#changePasswordModal) {
 }
 
 #changePasswordModal .modal-footer .btn-primary {
-    flex: 1;
-    width: auto;
+    flex: none;
+    width: 100%;
     margin: 0;
 }
 
@@ -2416,13 +2417,14 @@ body:has(#resetPasswordModal) {
 
 #resetPasswordModal .modal-footer {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     margin-top: 10px;
 }
 
 #resetPasswordModal .btn-reset-password {
-    width: auto;
-    flex: 1;
+    width: 100%;
+    flex: none;
     padding: 13px;
     background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
@@ -2437,8 +2439,8 @@ body:has(#resetPasswordModal) {
 }
 
 #resetPasswordModal .modal-footer .btn-primary {
-    flex: 1;
-    width: auto;
+    flex: none;
+    width: 100%;
     margin: 0;
 }
 
