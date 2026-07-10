@@ -3175,8 +3175,8 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-primary" id="cancelResetPassword" title="Cancel and return to login">Back to Login</button>
                     <button type="submit" name="reset_password_submit" class="btn-reset-password" id="resetPasswordBtn">Reset Password</button>
+                    <button type="button" class="btn-primary" id="cancelResetPassword" title="Cancel and return to login">Back to Login</button>
                 </div>
             </form>
             <form method="post" action="" id="cancelResetPasswordForm" style="display:none;">
@@ -3347,8 +3347,8 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-primary" id="cancelChangePassword" title="Cancel and return to login">Back to Login</button>
                     <button type="submit" title="Change your password" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
+                    <button type="button" class="btn-primary" id="cancelChangePassword" title="Cancel and return to login">Back to Login</button>
                 </div>
             </form>
             <form method="post" action="" id="cancelChangePasswordForm" style="display:none;">
