@@ -12,11 +12,17 @@ require_once __DIR__ . '/../db.php';
 // ══════════════════════════════════════════════════════════════════
 define('FACILITY_RADIUS_M', 200);
 
+// --- Integration config (override via server env when deployed) ---
+$CPRF_FACILITIES_API_URL = getenv('CPRF_FACILITIES_API_URL') ?: 'https://cprf.infragovservices.com/public/api/facilities-share.php?key=FACILITIES_SECURE_KEY_2025';
+$CPRF_WEBHOOK_URL = getenv('CPRF_WEBHOOK_URL') ?: 'https://cprf.infragovservices.com/public/api/maintenance-webhook.php';
+$CPRF_WEBHOOK_KEY = getenv('CPRF_WEBHOOK_KEY') ?: 'LGU_TO_FACILITIES_KEY_2025';
+$CIMM_API_KEY = getenv('CIMM_API_KEY') ?: 'CIMM_SECURE_KEY_2025';
+$WEBHOOK_STATE_FILE = __DIR__ . '/cimm_webhook_state.json';
+
 // Try to fetch facilities from facilities reservation system
 $CULIAT_FACILITIES = [];
 try {
-    $facilitiesApiUrl = 'https://cprf.infragovservices.com/public/api/facilities-share.php?key=FACILITIES_SECURE_KEY_2025';
-    $ch = curl_init($facilitiesApiUrl);
+    $ch = curl_init($CPRF_FACILITIES_API_URL);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -30,6 +36,7 @@ try {
             foreach ($facilitiesData['data'] as $facility) {
                 if ($facility['latitude'] && $facility['longitude']) {
                     $CULIAT_FACILITIES[] = [
+                        'facility_id' => (int)($facility['facility_id'] ?? 0),
                         'name' => $facility['name'],
                         'lat' => (float)$facility['latitude'],
                         'lng' => (float)$facility['longitude'],
@@ -51,14 +58,14 @@ try {
 // Fallback hardcoded facilities if API fails or returns empty
 if (empty($CULIAT_FACILITIES)) {
     $CULIAT_FACILITIES = [
-        ['name' => 'Cassanova Multi-Purpose Building',                 'lat' => 14.69679995, 'lng' => 121.07769286, 'keywords' => ['cassanova', 'cassanova multi', 'cassanova bldg']],
-        ['name' => 'Bernardo Court',                                   'lat' => 14.64406945, 'lng' => 121.04843732, 'keywords' => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo']],
-        ['name' => 'Pael Multipurpose Building',                       'lat' => 14.65472125, 'lng' => 121.06631024, 'keywords' => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road']],
-        ['name' => 'Sanville Covered Court & Multipurpose Building',   'lat' => 14.67100400, 'lng' => 121.04766600, 'keywords' => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle']],
+        ['facility_id' => 0, 'name' => 'Cassanova Multi-Purpose Building',                 'lat' => 14.69679995, 'lng' => 121.07769286, 'keywords' => ['cassanova', 'cassanova multi', 'cassanova bldg']],
+        ['facility_id' => 0, 'name' => 'Bernardo Court',                                   'lat' => 14.64406945, 'lng' => 121.04843732, 'keywords' => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo']],
+        ['facility_id' => 0, 'name' => 'Pael Multipurpose Building',                       'lat' => 14.65472125, 'lng' => 121.06631024, 'keywords' => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road']],
+        ['facility_id' => 0, 'name' => 'Sanville Covered Court & Multipurpose Building',   'lat' => 14.67100400, 'lng' => 121.04766600, 'keywords' => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle']],
     ];
 }
 
-function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): string {
+function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): array {
     global $CULIAT_FACILITIES;
     $locLower = strtolower($locationText);
     foreach ($CULIAT_FACILITIES as $facility) {
@@ -66,13 +73,17 @@ function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): st
             $dLat = deg2rad($facility['lat'] - $lat);
             $dLng = deg2rad($facility['lng'] - $lng);
             $a    = sin($dLat/2)**2 + cos(deg2rad($lat)) * cos(deg2rad($facility['lat'])) * sin($dLng/2)**2;
-            if (6371000 * 2 * asin(sqrt($a)) <= FACILITY_RADIUS_M) return $facility['name'];
+            if (6371000 * 2 * asin(sqrt($a)) <= FACILITY_RADIUS_M) {
+                return ['facility_id' => (int)($facility['facility_id'] ?? 0), 'name' => $facility['name']];
+            }
         }
         foreach ($facility['keywords'] as $kw) {
-            if (str_contains($locLower, $kw)) return $facility['name'];
+            if ($kw !== '' && str_contains($locLower, $kw)) {
+                return ['facility_id' => (int)($facility['facility_id'] ?? 0), 'name' => $facility['name']];
+            }
         }
     }
-    return '';
+    return ['facility_id' => 0, 'name' => ''];
 }
 
 
@@ -90,8 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // --- API Key Validation ---
-$API_KEY = 'CIMM_SECURE_KEY_2025';
-if (!isset($_GET['key']) || $_GET['key'] !== $API_KEY) {
+if (!isset($_GET['key']) || $_GET['key'] !== $CIMM_API_KEY) {
     http_response_code(401);
     echo json_encode([
         'success' => false,
@@ -103,34 +113,63 @@ if (!isset($_GET['key']) || $_GET['key'] !== $API_KEY) {
 // ══════════════════════════════════════════════════════════════════
 //  FACILITIES INTEGRATION - Send status updates to facilities system
 // ══════════════════════════════════════════════════════════════════
-function sendFacilityStatusUpdate(string $facilityName, string $action, string $maintenanceStatus): bool {
-    $webhookUrl = 'https://cprf.infragovservices.com/public/api/maintenance-webhook.php';
-    $apiKey = 'LGU_TO_FACILITIES_KEY_2025';
-    
+function cimmLoadWebhookState(string $path): array
+{
+    if (!is_file($path)) {
+        return [];
+    }
+    $raw = file_get_contents($path);
+    $data = is_string($raw) ? json_decode($raw, true) : null;
+    return is_array($data) ? $data : [];
+}
+
+function cimmSaveWebhookState(string $path, array $state): void
+{
+    file_put_contents($path, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+function sendFacilityStatusUpdate(string $scheduleKey, int $facilityId, string $facilityName, string $action, string $maintenanceStatus): bool
+{
+    global $CPRF_WEBHOOK_URL, $CPRF_WEBHOOK_KEY, $WEBHOOK_STATE_FILE;
+
+    $state = cimmLoadWebhookState($WEBHOOK_STATE_FILE);
+    $stateKey = $scheduleKey . '|' . $action;
+    if (($state[$stateKey] ?? '') === $maintenanceStatus) {
+        return true;
+    }
+
     $payload = [
+        'facility_id' => $facilityId > 0 ? $facilityId : null,
         'facility_name' => $facilityName,
         'maintenance_status' => $maintenanceStatus,
-        'action' => $action
+        'action' => $action,
     ];
-    
-    $ch = curl_init($webhookUrl);
+
+    $ch = curl_init($CPRF_WEBHOOK_URL);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey
+        'Authorization: Bearer ' . $CPRF_WEBHOOK_KEY,
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
-    // Log result (non-blocking)
-    error_log("Facility status update sent: {$facilityName} - {$action} - HTTP {$httpCode}");
-    
-    return $httpCode >= 200 && $httpCode < 300;
+
+    error_log("CIMM webhook {$action} for {$facilityName}: HTTP {$httpCode} response=" . substr((string)$response, 0, 200));
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        $state[$stateKey] = $maintenanceStatus;
+        cimmSaveWebhookState($WEBHOOK_STATE_FILE, $state);
+        return true;
+    }
+
+    return false;
 }
 
 date_default_timezone_set('Asia/Manila');
@@ -227,13 +266,14 @@ while ($row = $result->fetch_assoc()) {
     }
     
     // ── Send status update to facilities system if facility matched ─────────
-    $facilityName = getMatchingFacility($row['location'] ?? '', null, null);
-    if ($facilityName && in_array($statusLabel, ['In Progress', 'Delayed'])) {
-        // Send maintenance start/update notification
-        sendFacilityStatusUpdate($facilityName, 'start_maintenance', $statusLabel);
-    } elseif ($facilityName && $statusLabel === 'Completed') {
-        // Send maintenance completion notification
-        sendFacilityStatusUpdate($facilityName, 'end_maintenance', 'completed');
+    $facilityMatch = getMatchingFacility($row['location'] ?? '', null, null);
+    $facilityName = $facilityMatch['name'] ?? '';
+    $facilityId = (int)($facilityMatch['facility_id'] ?? 0);
+    $scheduleKey = 'S-' . (string)($row['sched_id'] ?? '0');
+    if ($facilityName !== '' && in_array($statusLabel, ['In Progress', 'Delayed'], true)) {
+        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
+    } elseif ($facilityName !== '' && $statusLabel === 'Completed') {
+        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
     }
 
     $data[] = [
@@ -242,7 +282,8 @@ while ($row = $result->fetch_assoc()) {
         'rep_id'                     => null,
         'task'                       => $row['task'],
         'location'                   => $row['location'],
-        'facility_name'              => getMatchingFacility($row['location'] ?? '', null, null),
+        'facility_name'              => $facilityName,
+        'facility_id'                => $facilityId > 0 ? $facilityId : null,
         'category'                   => $row['category'],
         'priority'                   => $priorityLabel,
         'status'                     => $statusLabel,
@@ -330,13 +371,14 @@ if ($result2) {
         }
 
         // ── Send status update to facilities system if facility matched ─────────
-        $facilityName = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
-        if ($facilityName && in_array($statusLabel, ['In Progress', 'Scheduled'])) {
-            // Send maintenance start/update notification
-            sendFacilityStatusUpdate($facilityName, 'start_maintenance', $statusLabel);
-        } elseif ($facilityName && $statusLabel === 'Completed') {
-            // Send maintenance completion notification
-            sendFacilityStatusUpdate($facilityName, 'end_maintenance', 'completed');
+        $facilityMatch = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
+        $facilityName = $facilityMatch['name'] ?? '';
+        $facilityId = (int)($facilityMatch['facility_id'] ?? 0);
+        $scheduleKey = 'R-' . (string)($rRow['rep_id'] ?? '0');
+        if ($facilityName !== '' && in_array($statusLabel, ['In Progress', 'Scheduled', 'Delayed'], true)) {
+            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
+        } elseif ($facilityName !== '' && $statusLabel === 'Completed') {
+            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
         }
 
         $data[] = [
@@ -345,7 +387,8 @@ if ($result2) {
             'rep_id'                    => (int)$rRow['rep_id'],
             'task'                      => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'                  => $rRow['location'] ?? '',
-            'facility_name'             => getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng),
+            'facility_name'             => $facilityName,
+            'facility_id'               => $facilityId > 0 ? $facilityId : null,
             'category'                  => 'Infrastructure Report',
             'priority'                  => $priority,
             'status'                    => $statusLabel,
