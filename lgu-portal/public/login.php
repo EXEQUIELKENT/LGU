@@ -1687,27 +1687,6 @@ body {
     transform: none;
 }
 
-.back-to-login-btn {
-    width: 100%;
-    background: transparent;
-    color: var(--text-secondary, #667085);
-    border: 1.5px solid rgba(148,163,184,.4);
-    border-radius: 12px;
-    padding: 11px 38px;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all .25s;
-    margin: 4px auto 0;
-    display: block;
-}
-
-.back-to-login-btn:hover {
-    background: rgba(148,163,184,.12);
-    border-color: rgba(148,163,184,.6);
-    color: var(--text-primary, #344054);
-}
-
 /* Change Password Modal Styles */
 #changePasswordModal {
     position: fixed;
@@ -2025,33 +2004,10 @@ body:has(#changePasswordModal) {
     overflow: hidden;
 }
 
-#changePasswordModal .btn-cancel {
+#changePasswordModal .modal-footer .btn-primary {
     flex: 1;
-    padding: 13px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1.5px solid var(--border-color);
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .25s ease;
-    font-family: 'Poppins', Arial, sans-serif;
-}
-
-[data-theme="dark"] #changePasswordModal .btn-cancel {
-    background: rgba(255,255,255,.08);
-    color: var(--text-primary);
-    border-color: rgba(255,255,255,.12);
-}
-
-#changePasswordModal .btn-cancel:hover {
-    background: var(--border-color);
-    transform: translateY(-2px);
-}
-
-[data-theme="dark"] #changePasswordModal .btn-cancel:hover {
-    background: rgba(255,255,255,.13);
+    width: auto;
+    margin: 0;
 }
 
 #changePasswordModal .btn-change-password::before {
@@ -2478,33 +2434,10 @@ body:has(#resetPasswordModal) {
     font-family: 'Poppins', Arial, sans-serif;
 }
 
-#resetPasswordModal .btn-cancel {
+#resetPasswordModal .modal-footer .btn-primary {
     flex: 1;
-    padding: 13px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1.5px solid var(--border-color);
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .25s ease;
-    font-family: 'Poppins', Arial, sans-serif;
-}
-
-[data-theme="dark"] #resetPasswordModal .btn-cancel {
-    background: rgba(255,255,255,.08);
-    color: var(--text-primary);
-    border-color: rgba(255,255,255,.12);
-}
-
-#resetPasswordModal .btn-cancel:hover {
-    background: var(--border-color);
-    transform: translateY(-2px);
-}
-
-[data-theme="dark"] #resetPasswordModal .btn-cancel:hover {
-    background: rgba(255,255,255,.13);
+    width: auto;
+    margin: 0;
 }
 
 #resetPasswordModal .btn-reset-password:hover {
@@ -2969,7 +2902,7 @@ body:has(#resetPasswordModal) {
             </form>
             <form method="post" action="">
                 <div class="btn-container">
-                    <button type="submit" name="cancel_otp" title="Cancel and return to login" class="back-to-login-btn">&larr; Back to Login</button>
+                    <button type="submit" name="cancel_otp" title="Cancel and return to login" class="btn-primary">&larr; Back to Login</button>
                 </div>
             </form>
             <script>
@@ -3236,7 +3169,7 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-cancel" id="cancelResetPassword">Back to Login</button>
+                    <button type="button" class="btn-primary" id="cancelResetPassword">Back to Login</button>
                     <button type="submit" name="reset_password_submit" class="btn-reset-password" id="resetPasswordBtn">Reset Password</button>
                 </div>
             </form>
@@ -3408,7 +3341,7 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-cancel" id="cancelChangePassword">Back to Login</button>
+                    <button type="button" class="btn-primary" id="cancelChangePassword">Back to Login</button>
                     <button type="submit" title="Change your password" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
                 </div>
             </form>
