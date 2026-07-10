@@ -9,7 +9,7 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     http_response_code(403); die('Unauthorized');
 }
 $role = strtolower(trim($_SESSION['employee_role'] ?? ''));
-if (!in_array($role, ['admin', 'super admin'])) {
+if (!in_array($role, ['admin', 'super admin', 'office staff'])) {
     http_response_code(403); die('Admin access required');
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -67,6 +67,7 @@ if (!$tokenValid) {
 // ── End token validation ──────────────────────────────────────────────────────
 
 require __DIR__ . '/db.php';
+require __DIR__ . '/notif_helper.php';
 
 // ── Input validation ──────────────────────────────────────────────────────────
 $format     = in_array($_POST['format'] ?? '', ['excel','pdf']) ? $_POST['format'] : 'excel';
@@ -88,6 +89,26 @@ $reportTitle = $reportTitles[$reportType];
 $generatedBy = trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? '')) ?: 'Admin';
 $generatedAt = date('d/m/Y H:i');
 $periodStr   = date('F d, Y', strtotime($dateFrom)) . ' – ' . date('F d, Y', strtotime($dateTo));
+
+// ── Notify Admins / Super Admins that a report was exported ────────────────────
+// Fired right before the file is streamed to the browser (i.e. only once the
+// export has actually been built), from whichever branch (XLSX or PDF) runs.
+function notifyReportExported(mysqli $conn, string $reportType, string $format, string $reportTitle, string $periodStr, string $generatedBy, int $actorId): void {
+    $formatLabel = ($format === 'pdf') ? 'PDF' : 'Excel';
+    $icon        = ($format === 'pdf') ? '📄' : '📊';
+
+    $title = "{$icon} Report Exported: {$reportTitle}";
+    $description = "{$generatedBy} downloaded the \"{$reportTitle}\" report as {$formatLabel} for {$periodStr}.";
+
+    notifyAdminsOnly(
+        $conn,
+        $title,
+        $description,
+        'employee.php',
+        'Report Export',
+        $actorId
+    );
+}
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 function fetchRequests($conn, $from, $to) {
@@ -1130,6 +1151,10 @@ if ($format === 'excel') {
     $xlsxData = file_get_contents($xlsxFile);
     @unlink($xlsxFile);
     $filename = 'CIMM_' . str_replace(['_',' '], '-', ucwords($reportType, '_')) . '_' . date('Ymd') . '.xlsx';
+
+    // Export succeeded — let Admins / Super Admins know.
+    notifyReportExported($conn, $reportType, 'excel', $reportTitle, $periodStr, $generatedBy, (int)($_SESSION['employee_id'] ?? 0));
+
     ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1150,6 +1175,10 @@ if ($format === 'excel') {
         'archive_reports' => fetchArchiveReports($conn, $dateFrom, $dateTo),
         default           => fetchRequests($conn, $dateFrom, $dateTo),
     };
+
+    // Export succeeded — let Admins / Super Admins know.
+    notifyReportExported($conn, $reportType, 'pdf', $reportTitle, $periodStr, $generatedBy, (int)($_SESSION['employee_id'] ?? 0));
+
     ob_end_clean();
     header('Content-Type: text/html; charset=UTF-8');
     echo buildPDFHtml($reportTitle, $reportType, $dateFrom, $dateTo, $data, $generatedBy, $generatedAt, $periodStr);

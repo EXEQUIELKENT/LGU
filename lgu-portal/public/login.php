@@ -684,6 +684,36 @@ if (isset($_POST['change_password_submit'])) {
     }
 }
 
+// ==================== BACK TO LOGIN / CANCEL HANDLERS ====================
+// These let the user escape the OTP, reset-password, and forced change-password
+// screens instead of being stuck there until they succeed.
+if (isset($_POST['cancel_otp'])) {
+    unset(
+        $_SESSION['otp'], $_SESSION['otp_time'], $_SESSION['show_otp_form'],
+        $_SESSION['otp_attempts'], $_SESSION['otp_verified'], $_SESSION['login_email'],
+        $_SESSION['otp_resend_count'], $_SESSION['otp_last_sent_time'], $_SESSION['otp_total_resends']
+    );
+    header("Location: " . $loginUrl);
+    exit;
+}
+
+if (isset($_POST['cancel_reset_password'])) {
+    unset(
+        $_SESSION['show_reset_password_modal'], $_SESSION['reset_token_valid'],
+        $_SESSION['reset_email'], $_SESSION['reset_user_id'], $_SESSION['reset_token']
+    );
+    header("Location: " . $loginUrl);
+    exit;
+}
+
+if (isset($_POST['cancel_change_password'])) {
+    unset(
+        $_SESSION['show_change_password_modal'], $_SESSION['otp_verified'], $_SESSION['login_email']
+    );
+    header("Location: " . $loginUrl);
+    exit;
+}
+
 // Reset OTP/session state logic - FIXED: Don't clear reset password sessions
 if ($_SERVER["REQUEST_METHOD"] === "GET" && 
     !isset($_SESSION['show_change_password_modal']) && 
@@ -1657,6 +1687,27 @@ body {
     transform: none;
 }
 
+.back-to-login-btn {
+    width: 100%;
+    background: transparent;
+    color: var(--text-secondary, #667085);
+    border: 1.5px solid rgba(148,163,184,.4);
+    border-radius: 12px;
+    padding: 11px 38px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .25s;
+    margin: 4px auto 0;
+    display: block;
+}
+
+.back-to-login-btn:hover {
+    background: rgba(148,163,184,.12);
+    border-color: rgba(148,163,184,.6);
+    color: var(--text-primary, #344054);
+}
+
 /* Change Password Modal Styles */
 #changePasswordModal {
     position: fixed;
@@ -1952,12 +2003,13 @@ body:has(#changePasswordModal) {
 
 #changePasswordModal .modal-footer {
     display: flex;
-    gap: 0;
+    gap: 10px;
     margin-top: 10px;
 }
 
 #changePasswordModal .btn-change-password {
-    width: 100%;
+    width: auto;
+    flex: 1;
     padding: 13px;
     background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
@@ -1971,6 +2023,35 @@ body:has(#changePasswordModal) {
     box-shadow: 0 4px 16px rgba(43,108,176,.35);
     position: relative;
     overflow: hidden;
+}
+
+#changePasswordModal .btn-cancel {
+    flex: 1;
+    padding: 13px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .25s ease;
+    font-family: 'Poppins', Arial, sans-serif;
+}
+
+[data-theme="dark"] #changePasswordModal .btn-cancel {
+    background: rgba(255,255,255,.08);
+    color: var(--text-primary);
+    border-color: rgba(255,255,255,.12);
+}
+
+#changePasswordModal .btn-cancel:hover {
+    background: var(--border-color);
+    transform: translateY(-2px);
+}
+
+[data-theme="dark"] #changePasswordModal .btn-cancel:hover {
+    background: rgba(255,255,255,.13);
 }
 
 #changePasswordModal .btn-change-password::before {
@@ -2375,8 +2456,15 @@ body:has(#resetPasswordModal) {
 #resetPasswordModal .strength-good { background: #3b82f6; }
 #resetPasswordModal .strength-strong { background: #10b759; }
 
+#resetPasswordModal .modal-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 #resetPasswordModal .btn-reset-password {
-    width: 100%;
+    width: auto;
+    flex: 1;
     padding: 13px;
     background: linear-gradient(135deg, #2b6cb0, #2563eb);
     border: none;
@@ -2388,6 +2476,35 @@ body:has(#resetPasswordModal) {
     transition: all .25s ease;
     box-shadow: 0 4px 16px rgba(43,108,176,.35);
     font-family: 'Poppins', Arial, sans-serif;
+}
+
+#resetPasswordModal .btn-cancel {
+    flex: 1;
+    padding: 13px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .25s ease;
+    font-family: 'Poppins', Arial, sans-serif;
+}
+
+[data-theme="dark"] #resetPasswordModal .btn-cancel {
+    background: rgba(255,255,255,.08);
+    color: var(--text-primary);
+    border-color: rgba(255,255,255,.12);
+}
+
+#resetPasswordModal .btn-cancel:hover {
+    background: var(--border-color);
+    transform: translateY(-2px);
+}
+
+[data-theme="dark"] #resetPasswordModal .btn-cancel:hover {
+    background: rgba(255,255,255,.13);
 }
 
 #resetPasswordModal .btn-reset-password:hover {
@@ -2850,6 +2967,11 @@ body:has(#resetPasswordModal) {
                     <button type="submit" name="resend_otp" title="Resend OTP code" class="resend-code-btn" <?php if ($attempts_left <= 0): ?>disabled<?php endif; ?>>Resend Code</button>
                 </div>
             </form>
+            <form method="post" action="">
+                <div class="btn-container">
+                    <button type="submit" name="cancel_otp" title="Cancel and return to login" class="back-to-login-btn">&larr; Back to Login</button>
+                </div>
+            </form>
             <script>
                 // ... [unchanged OTP input handling JavaScript] ...
                 const otpInputs = document.querySelectorAll('.otp-input');
@@ -3114,8 +3236,12 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-cancel" id="cancelResetPassword">Back to Login</button>
                     <button type="submit" name="reset_password_submit" class="btn-reset-password" id="resetPasswordBtn">Reset Password</button>
                 </div>
+            </form>
+            <form method="post" action="" id="cancelResetPasswordForm" style="display:none;">
+                <input type="hidden" name="cancel_reset_password" value="1">
             </form>
         </div>
     </div>
@@ -3219,6 +3345,12 @@ body:has(#resetPasswordModal) {
 
         resetPasswordBtn.disabled = true;
         updateStrength();
+
+        const cancelResetBtn  = document.getElementById('cancelResetPassword');
+        const cancelResetForm = document.getElementById('cancelResetPasswordForm');
+        if (cancelResetBtn && cancelResetForm) {
+            cancelResetBtn.addEventListener('click', () => cancelResetForm.submit());
+        }
     })();
     </script>
 <?php endif; ?>
@@ -3276,8 +3408,12 @@ body:has(#resetPasswordModal) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-cancel" id="cancelChangePassword">Back to Login</button>
                     <button type="submit" title="Change your password" name="change_password_submit" class="btn-change-password" id="changePasswordBtn">Change Password</button>
                 </div>
+            </form>
+            <form method="post" action="" id="cancelChangePasswordForm" style="display:none;">
+                <input type="hidden" name="cancel_change_password" value="1">
             </form>
         </div>
     </div>
@@ -3389,6 +3525,12 @@ body:has(#resetPasswordModal) {
         if (!newPasswordInput.value || !confirmPasswordInput.value) e.preventDefault();
     });
     updatePasswordStrength();
+
+    const cancelChangeBtn  = document.getElementById('cancelChangePassword');
+    const cancelChangeForm = document.getElementById('cancelChangePasswordForm');
+    if (cancelChangeBtn && cancelChangeForm) {
+        cancelChangeBtn.addEventListener('click', () => cancelChangeForm.submit());
+    }
     </script>
 <?php endif; ?>
 

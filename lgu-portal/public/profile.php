@@ -2396,8 +2396,38 @@ textarea:-webkit-autofill:active {
     background: rgba(99,84,210,0.15);
 }
 @media (max-width: 520px) {
-    .profile-locked-banner { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
-    .profile-locked-chip { align-self: flex-start; }
+    .profile-locked-banner {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 10px 12px;
+        padding: 16px;
+    }
+    .profile-locked-icon-wrap {
+        order: 1;
+        width: 40px;
+        height: 40px;
+    }
+    .profile-locked-icon {
+        width: 20px;
+        height: 20px;
+    }
+    .profile-locked-chip {
+        order: 2;
+        margin-left: auto;
+    }
+    .profile-locked-body {
+        order: 3;
+        flex: 1 1 100%;
+        width: 100%;
+    }
+    .profile-locked-title {
+        font-size: 14.5px;
+        line-height: 1.35;
+    }
+    .profile-locked-msg {
+        font-size: 12.5px;
+        line-height: 1.55;
+    }
 }
 </style>
 <script>

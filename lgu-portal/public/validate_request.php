@@ -148,9 +148,9 @@ $notifLocation = $notifReqInfo['location']       ?? '';
 $notifName     = $notifReqInfo['name']           ?? 'Citizen';
 $notifReqLabel = '#REQ-' . str_pad($reqId, 3, '0', STR_PAD_LEFT);
 $notifRepLabel = '#REP-' . str_pad($repId, 3, '0', STR_PAD_LEFT);
-$notifTitle    = "Request {$notifReqLabel} Approved ✅";
-$notifDesc     = "{$actorLabel} approved {$notifInfra} at {$notifLocation} (by {$notifName}). Report {$notifRepLabel} created." . ($engineerName ? " Assigned to {$engineerName}." : ' Engineer to be assigned.');
-$notifUrl      = buildRepUrl('pending_reports.php', $repId);
+$notifTitle    = "Request {$notifReqLabel} Validated ✅";
+$notifDesc     = "{$actorLabel} validated {$notifInfra} at {$notifLocation} (by {$notifName}). Report {$notifRepLabel} created." . ($engineerName ? " Assigned to {$engineerName}." : ' Engineer to be assigned.');
+$notifUrl      = buildRepUrl('current_reports.php', $repId);
 $allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
 if ($allEmployees) {
     while ($empRow = $allEmployees->fetch_assoc()) {
