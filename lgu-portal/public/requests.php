@@ -85,7 +85,15 @@ $sql = "SELECT
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
 LEFT JOIN evidence_images e        ON e.req_id      = r.req_id
-LEFT JOIN request_resolutions res  ON res.req_id    = r.req_id
+LEFT JOIN (
+    SELECT rr.*
+    FROM request_resolutions rr
+    INNER JOIN (
+        SELECT req_id, MAX(res_id) AS latest_res_id
+        FROM request_resolutions
+        GROUP BY req_id
+    ) latest ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+) res                               ON res.req_id    = r.req_id
 LEFT JOIN reports rp               ON rp.res_id     = res.res_id
 LEFT JOIN employees eng            ON eng.user_id   = rp.engineer_id
 GROUP BY r.req_id
@@ -2611,6 +2619,7 @@ tbody td {
                     data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
                     data-email="<?= htmlspecialchars($row['email'] ?? '') ?>"
                     data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
+                    data-resolution-status="<?= htmlspecialchars($row['resolution_status'] ?? '') ?>"
                     data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
                     data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
                     data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
@@ -2686,6 +2695,7 @@ tbody td {
             data-coordinates="<?= htmlspecialchars($row['coordinates'] ?? '') ?>"
             data-contact="<?= htmlspecialchars($row['contact_number'] ?? '') ?>"
             data-report-status="<?= htmlspecialchars(computeReportStatus($row)) ?>"
+            data-resolution-status="<?= htmlspecialchars($row['resolution_status'] ?? '') ?>"
             data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
             data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
             data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
@@ -3290,18 +3300,26 @@ const REPORT_STATUS_ICON = {
     'Delayed':            '⚠️',
 };
 
-// ── Maps a report_status to the correct report page ───────────────────────────
-function reportPageForStatus(rs) {
-    if (!rs) return null;
-    if (rs === 'Pending Approval') return 'pending_reports.php';
-    if (rs === 'Completed' || rs === 'Cancelled') return 'archive_reports.php';
-    // Awaiting Engineer, Pending Acceptance, In Progress, Scheduled, Pending Completion, Delayed
-    return 'current_reports.php';
+// ── Maps a report's RAW resolution_status (request_resolutions.status) to the
+// correct report page. This must mirror the WHERE clause each page actually
+// queries with, NOT the human-friendly display label — the display label
+// collapses several raw statuses together (e.g. a raw 'Scheduled' status is
+// shown with the same kind of label as an 'Approved' one), which previously
+// caused "Open Report" to redirect to a page that doesn't contain the report.
+//   current_reports.php  WHERE res.status IN ('Approved','Pending Admin Approval')
+//   pending_reports.php  WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+//   archive_reports.php  WHERE res.status IN ('Completed','Cancelled')
+function reportPageForStatus(rawStatus) {
+    if (rawStatus === null || rawStatus === undefined) return null;
+    if (rawStatus === 'Completed' || rawStatus === 'Cancelled') return 'archive_reports.php';
+    if (rawStatus === 'Approved' || rawStatus === 'Pending Admin Approval') return 'current_reports.php';
+    // '', 'Scheduled', 'Pending', 'In Progress', 'Pending Completion'
+    return 'pending_reports.php';
 }
 
 // ── Fills/hides the Report Status section in a modal ─────────────────────────
 // pillId, sectionId, repBadgeId, engWrapId, engNameId, viewBtnId are element IDs
-function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId, repBadgeId, engWrapId, engNameId, viewBtnId, engineerId) {
+function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId, repBadgeId, engWrapId, engNameId, viewBtnId, engineerId, rawStatus) {
     const section = document.getElementById(sectionId);
     if (!section) return;
     if (!reportStatus) { section.style.display = 'none'; return; }
@@ -3335,7 +3353,7 @@ function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId,
     if (viewBtnId) {
         const viewBtn = document.getElementById(viewBtnId);
         if (viewBtn) {
-            const page = reportPageForStatus(reportStatus);
+            const page = reportPageForStatus(rawStatus);
             const isEngineerRole = USER_ROLE.toLowerCase() === 'engineer';
             // Engineers can only see the button if they are the assigned engineer
             const assignedEngId = parseInt(engineerId) || 0;
@@ -3395,7 +3413,7 @@ function openRequestDetail(button) {
     applyReportStatus(reportStatus, repId, engineerName,
         'detailReportStatusPill', 'detailReportStatusSection',
         'detailRepIdBadge', 'detailReportEngineer', 'detailReportEngineerName',
-        'detailViewReportBtn', row.dataset.engineerId || '');
+        'detailViewReportBtn', row.dataset.engineerId || '', row.dataset.resolutionStatus || '');
 
     const strip = document.getElementById('detailEvidenceContainer');
     strip.innerHTML = '';
@@ -3497,7 +3515,7 @@ function openGisDetailModal(reqId) {
     applyReportStatus(req.report_status || '', req.rep_id || '', req.engineer_name || '',
         'gisReportStatusPill', 'gisReportStatusSection',
         'gisRepIdBadge', 'gisReportEngineer', 'gisReportEngineerName',
-        'gisViewReportBtn', req.engineer_id || '');
+        'gisViewReportBtn', req.engineer_id || '', req.resolution_status || '');
 
     const evidenceWrap = document.getElementById('modalEvidence');
     evidenceWrap.innerHTML = '';
