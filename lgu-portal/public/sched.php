@@ -40,83 +40,28 @@ require_once __DIR__ . '/session_guard.php';
 $serverTimestamp = time();
 
 require __DIR__ . '/db.php';
+require_once __DIR__ . '/api/cimm_cprf_facilities.php';
 
-// ══════════════════════════════════════════════════════════════════
-//  CULIAT FACILITIES — proximity & keyword matching
-//  Returns the facility name if a schedule's location/coordinates
-//  fall within FACILITY_RADIUS_M metres of a known facility.
-// ══════════════════════════════════════════════════════════════════
-define('FACILITY_RADIUS_M', 200); // metres — adjust as needed
+$cprfCatalog = cimm_fetch_cprf_facility_catalog();
+cimm_ensure_cprf_facility_columns($conn);
+cimm_backfill_schedule_facility_ids($conn, $cprfCatalog);
 
-const CULIAT_FACILITIES = [
-    [
-        'name'        => 'Cassanova Multi-Purpose Building',
-        'lat'         => 14.69679995,
-        'lng'         => 121.07769286,
-        'keywords'    => ['cassanova', 'cassanova multi', 'cassanova bldg'],
-    ],
-    [
-        'name'        => 'Bernardo Court',
-        'lat'         => 14.64406945,
-        'lng'         => 121.04843732,
-        'keywords'    => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo'],
-    ],
-    [
-        'name'        => 'Pael Multipurpose Building',
-        'lat'         => 14.65472125,
-        'lng'         => 121.06631024,
-        'keywords'    => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road'],
-    ],
-    [
-        'name'        => 'Sanville Covered Court & Multipurpose Building',
-        'lat'         => 14.67100400,
-        'lng'         => 121.04766600,
-        'keywords'    => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle'],
-    ],
-];
-
-/**
- * Returns facility name if coords are within radius, or if location text
- * contains a keyword for that facility. Returns '' if no match.
- */
-
-/**
- * Returns true if this schedule record is exposed via the CPRF API integration.
- * Mirrors the location filter used in maintenance-schedules.php.
- */
-function isSharedWithCPRF(string $location): bool {
-    $loc = strtolower($location);
-    $patterns = [
-        'culiat', 'cassanova', 'nagkaisang nayon',
-        'bernardo court', 'sitio mabilog',
-        'pael', 'cebu rd', 'cebu road',
-        'sanville', 'cenacle',
+function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
+{
+    global $cprfCatalog;
+    $match = cimm_resolve_facility($cprfFacilityId, $locationText, $taskText, $cprfCatalog);
+    return [
+        'facility_id' => (int)($match['facility_id'] ?? 0),
+        'name' => (string)($match['name'] ?? ''),
+        'score' => (int)($match['score'] ?? 0),
+        'method' => (string)($match['method'] ?? ''),
     ];
-    foreach ($patterns as $p) {
-        if (str_contains($loc, $p)) return true;
-    }
-    return false;
 }
 
-function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): string {
-    $locLower = strtolower($locationText);
-
-    foreach (CULIAT_FACILITIES as $facility) {
-        // 1. Coordinate proximity check
-        if ($lat !== null && $lng !== null) {
-            $dLat = deg2rad($facility['lat'] - $lat);
-            $dLng = deg2rad($facility['lng'] - $lng);
-            $a    = sin($dLat/2)**2 + cos(deg2rad($lat)) * cos(deg2rad($facility['lat'])) * sin($dLng/2)**2;
-            $dist = 6371000 * 2 * asin(sqrt($a)); // metres
-            if ($dist <= FACILITY_RADIUS_M) return $facility['name'];
-        }
-
-        // 2. Keyword match on location text
-        foreach ($facility['keywords'] as $kw) {
-            if (str_contains($locLower, $kw)) return $facility['name'];
-        }
-    }
-    return '';
+function isSharedWithCPRF(?int $cprfFacilityId, string $location): bool
+{
+    global $cprfCatalog;
+    return cimm_is_shared_with_cprf($cprfFacilityId, $location, $cprfCatalog);
 }
 
 
@@ -277,13 +222,16 @@ if ($result && $result->num_rows > 0) {
         $row['priority'] = $priority_label;
         // Add schedule_date alias for backward compatibility with JavaScript
         $row['schedule_date'] = date('Y-m-d', strtotime($row['starting_date']));
+        $row['estimated_end_date'] = $row['estimated_completion_date'] ?? '';
         $row['source']        = 'schedule';
         $row['engineer_name'] = '';
-        $row['budget_raw']    = 0;
-        $row['budget_display']= '';
-        // Facility matching for maintenance_schedule rows (no coordinates — keyword only)
-        $row['facility_name'] = getMatchingFacility($row['location'] ?? '', null, null);
-        $row['is_shared']     = isSharedWithCPRF($row['location'] ?? '');
+        $row['budget_raw']    = (float)($row['budget'] ?? 0);
+        $row['budget_display']= '₱' . number_format((float)($row['budget'] ?? 0), 2);
+        $storedCprfId = isset($row['cprf_facility_id']) ? (int)$row['cprf_facility_id'] : 0;
+        $facilityMatch = getMatchingFacility($storedCprfId > 0 ? $storedCprfId : null, $row['location'] ?? '', $row['task'] ?? '');
+        $row['cprf_facility_id'] = $facilityMatch['facility_id'] > 0 ? $facilityMatch['facility_id'] : $storedCprfId;
+        $row['facility_name'] = $facilityMatch['name'] !== '' ? $facilityMatch['name'] : trim((string)($row['cprf_facility_name'] ?? ''));
+        $row['is_shared'] = isSharedWithCPRF($row['cprf_facility_id'] > 0 ? $row['cprf_facility_id'] : null, $row['location'] ?? '');
         $row['rep_id']        = 0;
         $row['district']      = '';
 
@@ -360,17 +308,10 @@ if ($reportResult && $reportResult->num_rows > 0) {
         $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
         $priority = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
 
-        // Resolve coordinates for facility matching
-        $rLat = null; $rLng = null;
-        if (!empty($rRow['coordinates'])) {
-            $coordParts = explode(',', $rRow['coordinates']);
-            if (count($coordParts) === 2) {
-                $rLat = (float)trim($coordParts[0]);
-                $rLng = (float)trim($coordParts[1]);
-            }
-        }
-        $rFacility = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
-        $rShared   = isSharedWithCPRF($rRow['location'] ?? '');
+        $reportTaskText = trim(($rRow['infrastructure'] ?? '') . ' ' . $resNote);
+        $rFacilityMatch = getMatchingFacility(null, $rRow['location'] ?? '', $reportTaskText);
+        $rFacility = $rFacilityMatch['name'] ?? '';
+        $rShared   = isSharedWithCPRF(null, $rRow['location'] ?? '');
 
         $schedules[] = [
             'id'              => 0,
@@ -403,6 +344,12 @@ if ($reportResult && $reportResult->num_rows > 0) {
 usort($schedules, function($a, $b) {
     return strcmp($a['schedule_date'] ?? '', $b['schedule_date'] ?? '');
 });
+
+$cprfFacilitiesForJs = array_map(static fn($f) => [
+    'facility_id' => (int)$f['facility_id'],
+    'name' => (string)$f['name'],
+    'location' => (string)($f['location'] ?? ''),
+], $cprfCatalog);
 ?>
 
 <!DOCTYPE html>
@@ -4619,6 +4566,119 @@ Sidebar (250px) takes the most relative space here.
         max-height: calc(3 * 42px);
     }
 }
+
+/* ── Admin schedule form + CPRF facility bar ── */
+.sched-admin-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: rgba(55, 98, 200, 0.06);
+    border: 1px solid rgba(55, 98, 200, 0.18);
+    border-radius: 12px;
+}
+.sched-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3762c8, #254aa8);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(55, 98, 200, 0.25);
+}
+.sched-add-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.sched-add-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.sched-catalog-info { font-size: 13px; color: #3762c8; font-weight: 500; }
+.sched-catalog-warn { font-size: 13px; color: #c62828; font-weight: 500; }
+.sched-form-modal { max-width: 560px; width: 96%; }
+.sched-form-body { padding: 20px 22px 22px; }
+.sched-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 520px) { .sched-form-row { grid-template-columns: 1fr; } }
+.sched-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.sched-form-group-full { grid-column: 1 / -1; }
+.sched-form-group label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+.sched-form-group label .req { color: #c62828; }
+.sched-form-group input,
+.sched-form-group select {
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: #1e293b;
+}
+[data-theme="dark"] .sched-form-group input,
+[data-theme="dark"] .sched-form-group select {
+    background: #1e293b;
+    border-color: #475569;
+    color: #f1f5f9;
+}
+.sched-form-hint { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.sched-form-error {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 13px;
+    margin-bottom: 12px;
+    border: 1px solid #fecaca;
+}
+.sched-form-error.hidden { display: none; }
+.sched-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+}
+.sched-form-cancel {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 600;
+}
+.sched-form-save {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #3762c8;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sched-form-save:disabled { opacity: 0.6; cursor: wait; }
+.modal-cprf-facility-row .cprf-id-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(55, 98, 200, 0.12);
+    color: #3762c8;
+}
+.sched-modal-edit-btn {
+    margin-top: 16px;
+    width: 100%;
+    padding: 11px;
+    border-radius: 10px;
+    border: 1px dashed #3762c8;
+    background: rgba(55, 98, 200, 0.06);
+    color: #3762c8;
+    font-weight: 600;
+    cursor: pointer;
+}
+.sched-modal-edit-btn:hover { background: rgba(55, 98, 200, 0.12); }
 </style>
 <script>
 // --- Server time for server-synced clock ---
@@ -4792,6 +4852,19 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;color:#3762c8;">
             <span>📍</span>
             <span>Showing schedules &amp; reports for <strong><?= htmlspecialchars($aeDistrict) ?></strong> only</span>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($isAdmin): ?>
+        <div class="sched-admin-bar">
+            <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : '' ?>>
+                <i class="fas fa-plus"></i> Add Schedule
+            </button>
+            <?php if (empty($cprfFacilitiesForJs)): ?>
+            <span class="sched-catalog-warn"><i class="fas fa-exclamation-triangle"></i> CPRF facilities could not be loaded — check <code>CPRF_FACILITIES_API_URL</code> on the CIMM server.</span>
+            <?php else: ?>
+            <span class="sched-catalog-info"><i class="fas fa-link"></i> <?= count($cprfFacilitiesForJs) ?> CPRF facilities linked by ID</span>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -5268,6 +5341,93 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <button class="modal-close-btn" onclick="closeTaskChooser()" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body" id="taskChooserBody"></div>
+    </div>
+</div>
+
+<!-- Admin: Create / Edit Schedule Modal -->
+<div id="scheduleFormModal" class="modal hidden">
+    <div class="modal-content sched-form-modal">
+        <div class="modal-header">
+            <div class="modal-header-icon"><i class="fas fa-calendar-plus"></i></div>
+            <div class="modal-header-text">
+                <span class="modal-label">CPRF Integration</span>
+                <h3 class="modal-title" id="scheduleFormTitle">Add Maintenance Schedule</h3>
+            </div>
+            <button type="button" class="modal-close-btn" id="scheduleFormClose" aria-label="Close">&times;</button>
+        </div>
+        <form id="scheduleForm" class="modal-body sched-form-body" autocomplete="off">
+            <input type="hidden" id="sfSchedId" name="sched_id" value="">
+            <div class="sched-form-group sched-form-group-full">
+                <label for="sfCprfFacility">CPRF Facility <span class="req">*</span></label>
+                <select id="sfCprfFacility" name="cprf_facility_id" required>
+                    <option value="">— Select facility from CPRF —</option>
+                </select>
+                <small class="sched-form-hint">Linked by exact CPRF facility ID — no GPS needed.</small>
+            </div>
+            <div class="sched-form-group sched-form-group-full">
+                <label for="sfTask">Task / Work Description <span class="req">*</span></label>
+                <input type="text" id="sfTask" name="task" required placeholder="e.g. Aircon unit repair">
+            </div>
+            <div class="sched-form-group sched-form-group-full">
+                <label for="sfLocation">Location</label>
+                <input type="text" id="sfLocation" name="location" placeholder="Auto-filled from CPRF facility">
+            </div>
+            <div class="sched-form-row">
+                <div class="sched-form-group">
+                    <label for="sfStartDate">Start Date <span class="req">*</span></label>
+                    <input type="date" id="sfStartDate" name="starting_date" required>
+                </div>
+                <div class="sched-form-group">
+                    <label for="sfEndDate">Est. Completion</label>
+                    <input type="date" id="sfEndDate" name="estimated_completion_date">
+                </div>
+            </div>
+            <div class="sched-form-row">
+                <div class="sched-form-group">
+                    <label for="sfCategory">Category</label>
+                    <select id="sfCategory" name="category">
+                        <option>General Maintenance</option>
+                        <option>HVAC / Cooling</option>
+                        <option>Power &amp; Electrical</option>
+                        <option>Roads &amp; Pavements</option>
+                        <option>Safety &amp; Compliance</option>
+                    </select>
+                </div>
+                <div class="sched-form-group">
+                    <label for="sfPriority">Priority</label>
+                    <select id="sfPriority" name="priority">
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                        <option>Critical</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sched-form-row">
+                <div class="sched-form-group">
+                    <label for="sfStatus">Status</label>
+                    <select id="sfStatus" name="status">
+                        <option>Scheduled</option>
+                        <option>In Progress</option>
+                        <option>Completed</option>
+                        <option>Delayed</option>
+                    </select>
+                </div>
+                <div class="sched-form-group">
+                    <label for="sfBudget">Budget (₱)</label>
+                    <input type="number" id="sfBudget" name="budget" min="0" step="0.01" placeholder="0.00">
+                </div>
+            </div>
+            <div class="sched-form-group sched-form-group-full">
+                <label for="sfAssignedTeam">Assigned Team</label>
+                <input type="text" id="sfAssignedTeam" name="assigned_team" placeholder="e.g. Electrical Team A">
+            </div>
+            <div id="scheduleFormError" class="sched-form-error hidden"></div>
+            <div class="sched-form-actions">
+                <button type="button" class="sched-form-cancel" id="scheduleFormCancel">Cancel</button>
+                <button type="submit" class="sched-form-save" id="scheduleFormSave"><i class="fas fa-save"></i> Save Schedule</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -6062,6 +6222,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>
 window.scheduleData      = <?= json_encode($schedules ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.IS_ADMIN          = <?= $isAdmin ? 'true' : 'false' ?>;
+window.cprfFacilities    = <?= json_encode($cprfFacilitiesForJs ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 window.IS_ENGINEER       = <?= $isEngineer    ? 'true' : 'false' ?>;
 window.IS_AREA_ENGINEER  = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 window.AE_DISTRICT       = <?= json_encode($aeDistrict) ?>;
@@ -6580,6 +6742,22 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
+        const cprfFacilityRow = (t.cprf_facility_id || t.facility_name)
+            ? `<div class="modal-task-row modal-cprf-facility-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-building"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">CPRF Facility</div>
+                        <div class="modal-task-row-value">${escH(t.facility_name || '—')}${t.cprf_facility_id ? `<span class="cprf-id-badge">ID ${escH(t.cprf_facility_id)}</span>` : ''}</div>
+                    </div>
+               </div>`
+            : '';
+
+        const editScheduleBtn = (window.IS_ADMIN && t.source === 'schedule' && t.sched_id)
+            ? `<button type="button" class="sched-modal-edit-btn" onclick="schedOpenEditForm(${parseInt(t.sched_id, 10)})">
+                    <i class="fas fa-pen"></i> Edit Schedule / CPRF Facility
+               </button>`
+            : '';
+
         modalBody.innerHTML = `
             <div class="modal-task-item theme-${key}">
                 <div class="modal-task-row">
@@ -6589,6 +6767,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
+                ${cprfFacilityRow}
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="modal-task-row-content">
@@ -6625,6 +6804,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${engineerRow}
                 ${budgetRow}
                 ${evidenceRow}
+                ${editScheduleBtn}
             </div>`;
 
         // Async fetch evidence for report-sourced items
@@ -8173,6 +8353,160 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Restore saved view — must be LAST so all functions and wireViewSwitcher are ready
     switchToView(currentView);
+
+    // ── CPRF facility schedule form (admin) ─────────────────────────────
+    if (window.IS_ADMIN) {
+        const sfModal = document.getElementById('scheduleFormModal');
+        const sfForm = document.getElementById('scheduleForm');
+        const sfFacility = document.getElementById('sfCprfFacility');
+        const sfError = document.getElementById('scheduleFormError');
+        const facilities = window.cprfFacilities || [];
+
+        function facilityLabel(f) {
+            const loc = f.location ? ' — ' + f.location : '';
+            return '#' + f.facility_id + ' · ' + f.name + loc;
+        }
+
+        function facilityDefaultLocation(f) {
+            if (!f) return '';
+            return f.location ? (f.name + ', ' + f.location) : f.name;
+        }
+
+        function populateFacilitySelect(selectedId) {
+            if (!sfFacility) return;
+            sfFacility.innerHTML = '<option value="">— Select facility from CPRF —</option>';
+            facilities.forEach(function(f) {
+                const opt = document.createElement('option');
+                opt.value = String(f.facility_id);
+                opt.textContent = facilityLabel(f);
+                sfFacility.appendChild(opt);
+            });
+            if (selectedId) sfFacility.value = String(selectedId);
+        }
+
+        function showFormError(msg) {
+            if (!sfError) return;
+            if (msg) {
+                sfError.textContent = msg;
+                sfError.classList.remove('hidden');
+            } else {
+                sfError.textContent = '';
+                sfError.classList.add('hidden');
+            }
+        }
+
+        function closeScheduleFormModal() {
+            if (sfModal) sfModal.classList.add('hidden');
+            showFormError('');
+        }
+
+        function openScheduleForm(data) {
+            if (!sfForm || !sfModal) return;
+            populateFacilitySelect(data && data.cprf_facility_id ? data.cprf_facility_id : '');
+            document.getElementById('scheduleFormTitle').textContent = (data && data.sched_id) ? 'Edit Maintenance Schedule' : 'Add Maintenance Schedule';
+            document.getElementById('sfSchedId').value = (data && data.sched_id) ? String(data.sched_id) : '';
+            document.getElementById('sfTask').value = (data && data.task) || '';
+            const sfLocation = document.getElementById('sfLocation');
+            if (sfLocation) {
+                sfLocation.value = (data && data.location) || '';
+                sfLocation.dataset.auto = data ? '0' : '1';
+            }
+            const startVal = (data && (data.schedule_date || data.starting_date)) ? String(data.schedule_date || data.starting_date).slice(0, 10) : '';
+            document.getElementById('sfStartDate').value = startVal;
+            const endVal = (data && (data.estimated_end_date || data.estimated_completion_date)) ? String(data.estimated_end_date || data.estimated_completion_date).slice(0, 10) : '';
+            document.getElementById('sfEndDate').value = endVal;
+            document.getElementById('sfCategory').value = (data && data.category) || 'General Maintenance';
+            document.getElementById('sfPriority').value = (data && data.priority) || 'Low';
+            document.getElementById('sfStatus').value = (data && data.status) || 'Scheduled';
+            document.getElementById('sfBudget').value = (data && data.budget_raw != null) ? data.budget_raw : ((data && data.budget) ? data.budget : '');
+            document.getElementById('sfAssignedTeam').value = (data && data.assigned_team) || '';
+            showFormError('');
+            if (typeof taskModal !== 'undefined' && taskModal) taskModal.classList.add('hidden');
+            sfModal.classList.remove('hidden');
+        }
+
+        window.schedOpenEditForm = function(schedId) {
+            const row = (window.scheduleData || []).find(function(t) {
+                return t.source === 'schedule' && parseInt(t.sched_id, 10) === parseInt(schedId, 10);
+            });
+            if (!row) { alert('Schedule not found'); return; }
+            openScheduleForm(row);
+        };
+
+        if (sfFacility) {
+            sfFacility.addEventListener('change', function() {
+                const id = parseInt(sfFacility.value, 10);
+                const f = facilities.find(function(x) { return x.facility_id === id; });
+                const locInput = document.getElementById('sfLocation');
+                if (f && locInput && locInput.dataset.auto === '1') {
+                    locInput.value = facilityDefaultLocation(f);
+                }
+            });
+        }
+        const sfLocationEl = document.getElementById('sfLocation');
+        if (sfLocationEl) {
+            sfLocationEl.addEventListener('input', function() {
+                sfLocationEl.dataset.auto = '0';
+            });
+        }
+
+        const btnAdd = document.getElementById('btnAddSchedule');
+        if (btnAdd) btnAdd.addEventListener('click', function() { openScheduleForm(null); });
+
+        ['scheduleFormClose', 'scheduleFormCancel'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', closeScheduleFormModal);
+        });
+
+        if (sfModal) {
+            sfModal.addEventListener('click', function(e) {
+                if (e.target === sfModal) closeScheduleFormModal();
+            });
+        }
+
+        if (sfForm) {
+            sfForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                showFormError('');
+                const saveBtn = document.getElementById('scheduleFormSave');
+                if (saveBtn) saveBtn.disabled = true;
+
+                const payload = {
+                    sched_id: parseInt(document.getElementById('sfSchedId').value, 10) || 0,
+                    cprf_facility_id: parseInt(sfFacility.value, 10),
+                    task: document.getElementById('sfTask').value.trim(),
+                    location: document.getElementById('sfLocation').value.trim(),
+                    starting_date: document.getElementById('sfStartDate').value,
+                    estimated_completion_date: document.getElementById('sfEndDate').value,
+                    category: document.getElementById('sfCategory').value,
+                    priority: document.getElementById('sfPriority').value,
+                    status: document.getElementById('sfStatus').value,
+                    budget: parseFloat(document.getElementById('sfBudget').value) || 0,
+                    assigned_team: document.getElementById('sfAssignedTeam').value.trim()
+                };
+
+                try {
+                    const res = await fetch('api/schedule-crud.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (!data.success) {
+                        showFormError(data.error || 'Save failed');
+                        return;
+                    }
+                    window.location.reload();
+                } catch (err) {
+                    showFormError('Network error — please try again.');
+                } finally {
+                    if (saveBtn) saveBtn.disabled = false;
+                }
+            });
+        }
+
+        populateFacilitySelect('');
+    }
 
 }); // --- END DOMContentLoaded ---
 </script>
