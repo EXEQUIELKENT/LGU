@@ -3,14 +3,10 @@
 
 // --- CIMM Maintenance Schedules API Endpoint ---
 // Provides maintenance schedule data to CPRF via secure API key.
-// Only records whose location contains "Culiat" are returned.
+// Facility matching uses live CPRF facilities-share API (all facilities, with or without GPS).
 
 require_once __DIR__ . '/../db.php';
-
-// ══════════════════════════════════════════════════════════════════
-//  CULIAT FACILITIES — proximity & keyword matching
-// ══════════════════════════════════════════════════════════════════
-define('FACILITY_RADIUS_M', 200);
+require_once __DIR__ . '/cimm_cprf_facilities.php';
 
 // --- Integration config (override via server env when deployed) ---
 $CPRF_FACILITIES_API_URL = getenv('CPRF_FACILITIES_API_URL') ?: 'https://cprf.infragovservices.com/public/api/facilities-share.php?key=FACILITIES_SECURE_KEY_2025';
@@ -19,74 +15,23 @@ $CPRF_WEBHOOK_KEY = getenv('CPRF_WEBHOOK_KEY') ?: 'LGU_TO_FACILITIES_KEY_2025';
 $CIMM_API_KEY = getenv('CIMM_API_KEY') ?: 'CIMM_SECURE_KEY_2025';
 $WEBHOOK_STATE_FILE = __DIR__ . '/cimm_webhook_state.json';
 
-// Try to fetch facilities from facilities reservation system
-$CULIAT_FACILITIES = [];
-try {
-    $ch = curl_init($CPRF_FACILITIES_API_URL);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    if ($response) {
-        $facilitiesData = json_decode($response, true);
-        if ($facilitiesData && isset($facilitiesData['success']) && $facilitiesData['success']) {
-            foreach ($facilitiesData['data'] as $facility) {
-                if ($facility['latitude'] && $facility['longitude']) {
-                    $CULIAT_FACILITIES[] = [
-                        'facility_id' => (int)($facility['facility_id'] ?? 0),
-                        'name' => $facility['name'],
-                        'lat' => (float)$facility['latitude'],
-                        'lng' => (float)$facility['longitude'],
-                        'keywords' => [
-                            strtolower($facility['name']),
-                            strtolower(preg_replace('/[^a-z0-9\s]/', '', $facility['name'])),
-                            strtolower($facility['location'])
-                        ]
-                    ];
-                }
-            }
-        }
-    }
-} catch (Exception $e) {
-    // Fallback to hardcoded facilities if fetch fails
-    error_log("Failed to fetch facilities: " . $e->getMessage());
-}
+$CULIAT_FACILITIES = cimm_fetch_cprf_facility_catalog();
+$locationFilters = cimm_build_location_filters($CULIAT_FACILITIES);
 
-// Fallback hardcoded facilities if API fails or returns empty
-if (empty($CULIAT_FACILITIES)) {
-    $CULIAT_FACILITIES = [
-        ['facility_id' => 0, 'name' => 'Cassanova Multi-Purpose Building',                 'lat' => 14.69679995, 'lng' => 121.07769286, 'keywords' => ['cassanova', 'cassanova multi', 'cassanova bldg']],
-        ['facility_id' => 0, 'name' => 'Bernardo Court',                                   'lat' => 14.64406945, 'lng' => 121.04843732, 'keywords' => ['bernardo court', 'sitio mabilog', 'central ave', 'bernardo']],
-        ['facility_id' => 0, 'name' => 'Pael Multipurpose Building',                       'lat' => 14.65472125, 'lng' => 121.06631024, 'keywords' => ['pael', 'pael multipurpose', 'cebu rd', 'cebu road']],
-        ['facility_id' => 0, 'name' => 'Sanville Covered Court & Multipurpose Building',   'lat' => 14.67100400, 'lng' => 121.04766600, 'keywords' => ['sanville', 'sanville covered', 'sanville subdivision', 'cenacle']],
+cimm_ensure_cprf_facility_columns($conn);
+cimm_backfill_schedule_facility_ids($conn, $CULIAT_FACILITIES);
+
+function resolveScheduleFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
+{
+    global $CULIAT_FACILITIES;
+    $match = cimm_resolve_facility($cprfFacilityId, $locationText, $taskText, $CULIAT_FACILITIES);
+    return [
+        'facility_id' => (int)($match['facility_id'] ?? 0),
+        'name' => (string)($match['name'] ?? ''),
+        'score' => (int)($match['score'] ?? 0),
+        'method' => (string)($match['method'] ?? ''),
     ];
 }
-
-function getMatchingFacility(string $locationText, ?float $lat, ?float $lng): array {
-    global $CULIAT_FACILITIES;
-    $locLower = strtolower($locationText);
-    foreach ($CULIAT_FACILITIES as $facility) {
-        if ($lat !== null && $lng !== null) {
-            $dLat = deg2rad($facility['lat'] - $lat);
-            $dLng = deg2rad($facility['lng'] - $lng);
-            $a    = sin($dLat/2)**2 + cos(deg2rad($lat)) * cos(deg2rad($facility['lat'])) * sin($dLng/2)**2;
-            if (6371000 * 2 * asin(sqrt($a)) <= FACILITY_RADIUS_M) {
-                return ['facility_id' => (int)($facility['facility_id'] ?? 0), 'name' => $facility['name']];
-            }
-        }
-        foreach ($facility['keywords'] as $kw) {
-            if ($kw !== '' && str_contains($locLower, $kw)) {
-                return ['facility_id' => (int)($facility['facility_id'] ?? 0), 'name' => $facility['name']];
-            }
-        }
-    }
-    return ['facility_id' => 0, 'name' => ''];
-}
-
-
 
 // --- CORS & Content Headers ---
 header('Content-Type: application/json; charset=utf-8');
@@ -180,27 +125,18 @@ $data = [];
 // ══════════════════════════════════════════════════════════════════
 //  SOURCE 1 — maintenance_schedule table (Culiat locations only)
 // ══════════════════════════════════════════════════════════════════
-// Location filter covers Culiat barangay + all known facility keywords/addresses
-$locationFilters = [
-    '%Culiat%',
-    '%Cassanova%',
-    '%Nagkaisang Nayon%',
-    '%Bernardo Court%',
-    '%Sitio Mabilog%',
-    '%Pael%',
-    '%Cebu Rd%',
-    '%Cebu Road%',
-    '%Sanville%',
-    '%Cenacle%',
-];
+// Location filter: dynamic from live CPRF catalog + Culiat anchors
 $placeholders = implode(',', array_fill(0, count($locationFilters), '?'));
 $types        = str_repeat('s', count($locationFilters));
 
+$locationWhere = implode(' OR ', array_fill(0, count($locationFilters), 'location LIKE ?'));
 $stmt = $conn->prepare("
     SELECT
         sched_id,
         task,
         location,
+        cprf_facility_id,
+        cprf_facility_name,
         category,
         priority,
         status,
@@ -210,7 +146,8 @@ $stmt = $conn->prepare("
         estimated_completion_date,
         created_at
     FROM maintenance_schedule
-    WHERE " . implode(' OR ', array_fill(0, count($locationFilters), 'location LIKE ?')) . "
+    WHERE (cprf_facility_id IS NOT NULL AND cprf_facility_id > 0)
+       OR ({$locationWhere})
     ORDER BY starting_date ASC
 ");
 
@@ -265,14 +202,19 @@ while ($row = $result->fetch_assoc()) {
         } catch (Exception $e) {}
     }
     
-    // ── Send status update to facilities system if facility matched ─────────
-    $facilityMatch = getMatchingFacility($row['location'] ?? '', null, null);
-    $facilityName = $facilityMatch['name'] ?? '';
+    $storedCprfId = isset($row['cprf_facility_id']) ? (int)$row['cprf_facility_id'] : 0;
+    $facilityMatch = resolveScheduleFacility($storedCprfId > 0 ? $storedCprfId : null, $row['location'] ?? '', $row['task'] ?? '');
+    $facilityName = $facilityMatch['name'] !== '' ? $facilityMatch['name'] : trim((string)($row['cprf_facility_name'] ?? ''));
     $facilityId = (int)($facilityMatch['facility_id'] ?? 0);
+
+    if ($facilityId > 0 && $storedCprfId !== $facilityId) {
+        cimm_save_schedule_facility_link($conn, (int)$row['sched_id'], $facilityId, $facilityName);
+    }
+
     $scheduleKey = 'S-' . (string)($row['sched_id'] ?? '0');
-    if ($facilityName !== '' && in_array($statusLabel, ['In Progress', 'Delayed'], true)) {
+    if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Delayed'], true)) {
         sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
-    } elseif ($facilityName !== '' && $statusLabel === 'Completed') {
+    } elseif ($facilityId > 0 && $statusLabel === 'Completed') {
         sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
     }
 
@@ -282,8 +224,12 @@ while ($row = $result->fetch_assoc()) {
         'rep_id'                     => null,
         'task'                       => $row['task'],
         'location'                   => $row['location'],
+        'cprf_facility_id'           => $facilityId > 0 ? $facilityId : null,
+        'cprf_facility_name'         => $facilityName !== '' ? $facilityName : null,
         'facility_name'              => $facilityName,
         'facility_id'                => $facilityId > 0 ? $facilityId : null,
+        'match_score'                => (int)($facilityMatch['score'] ?? 0),
+        'match_method'               => (string)($facilityMatch['method'] ?? ''),
         'category'                   => $row['category'],
         'priority'                   => $priorityLabel,
         'status'                     => $statusLabel,
@@ -363,21 +309,14 @@ if ($result2) {
         $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
         $priority    = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
 
-        // Parse coordinates for facility matching
-        $rLat = null; $rLng = null;
-        if (!empty($rRow['coordinates'])) {
-            $cp = explode(',', $rRow['coordinates']);
-            if (count($cp) === 2) { $rLat = (float)trim($cp[0]); $rLng = (float)trim($cp[1]); }
-        }
-
-        // ── Send status update to facilities system if facility matched ─────────
-        $facilityMatch = getMatchingFacility($rRow['location'] ?? '', $rLat, $rLng);
+        $reportTaskText = trim(($rRow['infrastructure'] ?? '') . ' ' . ($rRow['res_note'] ?? ''));
+        $facilityMatch = resolveScheduleFacility(null, $rRow['location'] ?? '', $reportTaskText);
         $facilityName = $facilityMatch['name'] ?? '';
         $facilityId = (int)($facilityMatch['facility_id'] ?? 0);
         $scheduleKey = 'R-' . (string)($rRow['rep_id'] ?? '0');
-        if ($facilityName !== '' && in_array($statusLabel, ['In Progress', 'Scheduled', 'Delayed'], true)) {
+        if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Scheduled', 'Delayed'], true)) {
             sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
-        } elseif ($facilityName !== '' && $statusLabel === 'Completed') {
+        } elseif ($facilityId > 0 && $statusLabel === 'Completed') {
             sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
         }
 
@@ -387,8 +326,12 @@ if ($result2) {
             'rep_id'                    => (int)$rRow['rep_id'],
             'task'                      => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'                  => $rRow['location'] ?? '',
+            'cprf_facility_id'          => $facilityId > 0 ? $facilityId : null,
+            'cprf_facility_name'        => $facilityName !== '' ? $facilityName : null,
             'facility_name'             => $facilityName,
             'facility_id'               => $facilityId > 0 ? $facilityId : null,
+            'match_score'               => (int)($facilityMatch['score'] ?? 0),
+            'match_method'              => (string)($facilityMatch['method'] ?? ''),
             'category'                  => 'Infrastructure Report',
             'priority'                  => $priority,
             'status'                    => $statusLabel,
@@ -412,6 +355,16 @@ echo json_encode([
     'success'         => true,
     'filter'          => 'Brgy. Culiat, Quezon City',
     'count'           => count($data),
+    'cprf_catalog'    => [
+        'loaded' => count($CULIAT_FACILITIES),
+        'source' => $CPRF_FACILITIES_API_URL,
+        'match_mode' => 'facility_id_first',
+        'facilities' => array_map(static fn($f) => [
+            'facility_id' => (int)$f['facility_id'],
+            'name' => (string)$f['name'],
+            'location' => (string)($f['location'] ?? ''),
+        ], $CULIAT_FACILITIES),
+    ],
     'generated_at'    => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s T'),
     'data'            => $data,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
