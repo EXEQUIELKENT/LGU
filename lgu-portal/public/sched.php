@@ -43,7 +43,7 @@ require __DIR__ . '/db.php';
 require_once __DIR__ . '/api/cimm_cprf_facilities.php';
 
 $cprfCatalog = cimm_fetch_cprf_facility_catalog();
-cimm_ensure_cprf_facility_columns($conn);
+cimm_ensure_maintenance_schedule_schema($conn);
 cimm_backfill_schedule_facility_ids($conn, $cprfCatalog);
 
 function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array

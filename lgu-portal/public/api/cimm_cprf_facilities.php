@@ -783,6 +783,31 @@ function cimm_ensure_cprf_facility_columns(mysqli $conn): void
     }
 }
 
+/**
+ * Safe schema fixes for maintenance_schedule (CPRF columns + optional engineer_id).
+ */
+function cimm_ensure_maintenance_schedule_schema(mysqli $conn): void
+{
+    cimm_ensure_cprf_facility_columns($conn);
+
+    $result = $conn->query("SHOW COLUMNS FROM maintenance_schedule WHERE Field IN ('engineer_id', 'estimated_completion_date')");
+    $colInfo = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $colInfo[strtolower((string)$row['Field'])] = $row;
+        }
+        $result->free();
+    }
+
+    if (isset($colInfo['engineer_id']) && strtoupper((string)($colInfo['engineer_id']['Null'] ?? '')) !== 'YES') {
+        $conn->query('ALTER TABLE maintenance_schedule MODIFY COLUMN engineer_id INT UNSIGNED NULL DEFAULT NULL');
+    }
+
+    if (isset($colInfo['estimated_completion_date']) && strtoupper((string)($colInfo['estimated_completion_date']['Null'] ?? '')) !== 'YES') {
+        $conn->query('ALTER TABLE maintenance_schedule MODIFY COLUMN estimated_completion_date DATETIME NULL DEFAULT NULL');
+    }
+}
+
 
 
 /**
