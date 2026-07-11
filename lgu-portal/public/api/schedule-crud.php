@@ -31,7 +31,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/cimm_cprf_facilities.php';
 
 $catalog = cimm_fetch_cprf_facility_catalog(true);
-cimm_ensure_cprf_facility_columns($conn);
+cimm_ensure_maintenance_schedule_schema($conn);
 
 $raw = file_get_contents('php://input');
 $data = is_string($raw) ? json_decode($raw, true) : null;
@@ -103,6 +103,15 @@ if (!in_array($category, $allowedCategory, true)) {
 }
 
 $endDateDb = ($endDate !== '' && $endDate !== '0000-00-00') ? $endDate : null;
+if ($endDateDb === null) {
+    $endDateDb = $startingDate;
+}
+
+$engineerId = (int)($data['engineer_id'] ?? 0);
+if ($engineerId <= 0) {
+    $engineerId = (int)($_SESSION['employee_id'] ?? 0);
+}
+$engineerIdBind = $engineerId > 0 ? $engineerId : null;
 
 try {
     if ($schedId > 0) {
@@ -160,15 +169,15 @@ try {
         $stmt = $conn->prepare("
             INSERT INTO maintenance_schedule (
                 task, location, cprf_facility_id, cprf_facility_name,
-                category, priority, status, assigned_team, budget,
+                category, priority, status, engineer_id, assigned_team, budget,
                 starting_date, estimated_completion_date, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         if (!$stmt) {
             throw new RuntimeException('Prepare failed: ' . $conn->error);
         }
         $stmt->bind_param(
-            'ssisssssdss',
+            'ssissssisdss',
             $task,
             $location,
             $cprfFacilityId,
@@ -176,6 +185,7 @@ try {
             $category,
             $priority,
             $status,
+            $engineerIdBind,
             $assignedTeam,
             $budget,
             $startingDate,
