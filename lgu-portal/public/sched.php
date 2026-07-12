@@ -510,7 +510,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 
 /* Additional Modal Elements */
 [data-theme="dark"] .modal {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(8, 8, 10, 0.78) !important;
 }
 
 [data-theme="dark"] #taskChooserBody .task-btn,
@@ -2117,7 +2117,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 
 /* ── Dark Mode ── */
 [data-theme="dark"] .modal-content {
-    background: #1e2235;
+    background: #191b24;
     box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3);
 }
 [data-theme="dark"] .modal-task-item {
@@ -2697,7 +2697,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
     border-radius: 14px;
     border: 1px solid rgba(55, 98, 200, 0.13);
     background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
-    margin-bottom: 0px;
+    margin-bottom: -8px;
     gap: 8px;
     align-items: center;
 }
@@ -4571,42 +4571,103 @@ Sidebar (250px) takes the most relative space here.
 .sched-admin-bar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 12px 14px;
-    background: rgba(55, 98, 200, 0.06);
+    gap: 14px;
+    margin-bottom: -8px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f7ff 100%);
     border: 1px solid rgba(55, 98, 200, 0.18);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(55, 98, 200, 0.06);
+}
+[data-theme="dark"] .sched-admin-bar {
+    background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
+    border-color: rgba(95, 140, 255, 0.18);
+}
+.sched-admin-bar-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+.sched-admin-bar-icon {
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    box-shadow: 0 3px 10px rgba(55, 98, 200, 0.3);
+}
+.sched-admin-bar-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.sched-admin-bar-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #3762c8;
+    opacity: 0.85;
 }
 .sched-add-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 10px 18px;
     border: none;
     border-radius: 10px;
-    background: linear-gradient(135deg, #3762c8, #254aa8);
+    background: linear-gradient(135deg, #3762c8, #2851b3);
     color: #fff;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
+    flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(55, 98, 200, 0.25);
+    transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
-.sched-add-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.sched-add-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55, 98, 200, 0.35); }
 .sched-add-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.sched-catalog-info { font-size: 13px; color: #3762c8; font-weight: 500; }
+.sched-catalog-info {
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.sched-catalog-info::before {
+    content: '\f0c1';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    color: #3762c8;
+    margin-right: 6px;
+    font-size: 11px;
+}
 .sched-catalog-warn { font-size: 13px; color: #c62828; font-weight: 500; }
+@media (max-width: 560px) {
+    .sched-admin-bar { flex-direction: column; align-items: stretch; }
+    .sched-add-btn { justify-content: center; }
+}
 .sched-form-modal { max-width: 560px; width: 96%; }
-.sched-form-body { padding: 20px 22px 22px; }
-.sched-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sched-form-body { padding: 20px 22px 22px; overflow-x: hidden; }
+.sched-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
 @media (max-width: 520px) { .sched-form-row { grid-template-columns: 1fr; } }
 .sched-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .sched-form-group-full { grid-column: 1 / -1; }
 .sched-form-group label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
 .sched-form-group label .req { color: #c62828; }
 .sched-form-group input,
-.sched-form-group select {
+.sched-form-group select,
+.sfr-content input,
+.sfr-content select {
+    width: 100%;
+    box-sizing: border-box;
     padding: 10px 12px;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
@@ -4615,8 +4676,10 @@ Sidebar (250px) takes the most relative space here.
     color: #1e293b;
 }
 [data-theme="dark"] .sched-form-group input,
-[data-theme="dark"] .sched-form-group select {
-    background: #1e293b;
+[data-theme="dark"] .sched-form-group select,
+[data-theme="dark"] .sfr-content input,
+[data-theme="dark"] .sfr-content select {
+    background: #23262f;
     border-color: #475569;
     color: #f1f5f9;
 }
@@ -4657,6 +4720,489 @@ Sidebar (250px) takes the most relative space here.
     cursor: pointer;
 }
 .sched-form-save:disabled { opacity: 0.6; cursor: wait; }
+
+/* ═══════════════════════════════════════════
+   CPRF INTEGRATION MODAL — icon-row field design
+   (matches the Task Details modal reference: .modal-task-row)
+═══════════════════════════════════════════ */
+.sched-form-card {
+    background: #f7f9ff;
+    border: 1px solid rgba(55, 98, 200, 0.12);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+    min-width: 0;
+}
+[data-theme="dark"] .sched-form-card {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+}
+/* Icon sits inline with the label on its own header row; the input/select
+   below spans the FULL width of the row (no icon-column indentation), so
+   fields are no longer squeezed narrow by the icon gutter. */
+.sfr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.sfr-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.sfr-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: rgba(55, 98, 200, 0.1);
+    color: #3762c8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .sfr-icon { background: rgba(55,98,200,0.2); color: #8ab4f8; }
+.sfr-content { flex: 1; min-width: 0; width: 100%; }
+.sfr-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0;
+    line-height: 1;
+}
+[data-theme="dark"] .sfr-label { color: #9ca3af; }
+.sfr-label .req { color: #c62828; }
+.sched-form-row .sfr-row { min-width: 0; }
+@media (max-width: 520px) { .sched-form-card { padding: 14px; gap: 12px; } }
+
+/* ── Budget peso-prefixed input w/ spin arrows — ported from current_reports.php .rep-budget-wrap ── */
+.sfr-budget-wrap { display:flex;align-items:center;background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden; }
+.sfr-budget-wrap:focus-within { border-color:#3762c8;box-shadow:0 0 0 3px rgba(55,98,200,.15); }
+[data-theme="dark"] .sfr-budget-wrap { background:#23262f;border-color:#475569; }
+[data-theme="dark"] .sfr-budget-wrap:focus-within { border-color:#8ab4f8;box-shadow:0 0 0 3px rgba(138,180,248,.18); }
+.sfr-peso-prefix { padding:0 8px 0 12px;font-size:14px;font-weight:700;color:#3762c8;background:transparent;border:none;pointer-events:none;flex-shrink:0; }
+[data-theme="dark"] .sfr-peso-prefix { color:#8ab4f8; }
+.sfr-budget-input-inner { border:none!important;outline:none!important;box-shadow:none!important;background:transparent!important;padding:10px 0!important;flex:1;min-width:0;font-size:14px;color:#1e293b!important; }
+[data-theme="dark"] .sfr-budget-input-inner { color:#f1f5f9!important; }
+.sfr-budget-input-inner::-webkit-inner-spin-button,
+.sfr-budget-input-inner::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
+.sfr-budget-input-inner[type="number"] { -moz-appearance:textfield;appearance:textfield; }
+.sfr-budget-spinners { display:flex;flex-direction:column;border-left:1px solid #cbd5e1;flex-shrink:0; }
+[data-theme="dark"] .sfr-budget-spinners { border-left-color:#475569; }
+.sfr-budget-spin-btn {
+    background:none;border:none;cursor:pointer;padding:0 8px;
+    font-size:8px;line-height:1;color:#64748b;height:15px;
+    display:flex;align-items:center;justify-content:center;
+}
+.sfr-budget-spin-btn:hover { background:rgba(55,98,200,.12);color:#3762c8; }
+.sfr-budget-spin-btn:active { background:rgba(55,98,200,.22); }
+[data-theme="dark"] .sfr-budget-spin-btn:hover { background:rgba(138,180,248,.16);color:#8ab4f8; }
+[data-theme="dark"] .sfr-budget-spin-btn:active { background:rgba(138,180,248,.26); }
+.sfr-budget-spin-btn:first-child { border-bottom:1px solid #cbd5e1; }
+[data-theme="dark"] .sfr-budget-spin-btn:first-child { border-bottom-color:#475569; }
+[data-theme="dark"] .sfr-budget-spin-btn { color:#94a3b8; }
+
+/* ── Action buttons — matches current_reports.php confirmation-modal buttons ── */
+.sched-form-actions.rep-confirm-btns {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+}
+[data-theme="dark"] .sched-form-actions.rep-confirm-btns { border-top-color: rgba(255,255,255,0.1); }
+.rep-confirm-btn {
+    flex: 1;
+    max-width: 220px;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.rep-confirm-cancel { background: var(--bg-secondary, #f1f5f9); color: var(--text-primary, #374151); border: 1px solid var(--border-color, #e2e8f0) !important; }
+.rep-confirm-cancel:hover { background: var(--border-color, #e2e8f0); }
+[data-theme="dark"] .rep-confirm-cancel { background: rgba(255,255,255,.06); color: #e2e8f0; border-color: rgba(255,255,255,.1) !important; }
+[data-theme="dark"] .rep-confirm-cancel:hover { background: rgba(255,255,255,.11); }
+.rep-confirm-ok-save { background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff; box-shadow: 0 4px 12px rgba(55,98,200,.3); }
+.rep-confirm-ok-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(55,98,200,.4); }
+.rep-confirm-ok-save:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+/* ── Save-schedule confirmation prompt — ported from current_reports.php #repSaveConfirmBackdrop ── */
+.rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }
+.rep-confirm-backdrop.active { display:flex; }
+.rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }
+@keyframes repConfirmPop { from { opacity:0; transform:scale(.92) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+[data-theme="dark"] .rep-confirm-modal { background:#191b24;box-shadow:0 25px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07); }
+.rep-confirm-icon { width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px; }
+.rep-confirm-icon.save-icon { background:linear-gradient(135deg,rgba(55,98,200,.12),rgba(55,98,200,.08));border:1px solid rgba(55,98,200,.2); }
+[data-theme="dark"] .rep-confirm-icon.save-icon { background:linear-gradient(135deg,rgba(55,98,200,.22),rgba(55,98,200,.12)); }
+.rep-confirm-title { font-size:1.05rem;font-weight:700;color:var(--text-primary,#1a1a2e);margin-bottom:8px; }
+[data-theme="dark"] .rep-confirm-title { color:#e2e8f0; }
+.rep-confirm-desc { font-size:.92rem;color:var(--text-secondary,#64748b);margin-bottom:22px;line-height:1.5; }
+[data-theme="dark"] .rep-confirm-desc { color:#94a3b8; }
+.rep-confirm-modal .rep-confirm-btns { display:flex;gap:10px;width:100%; }
+
+/* ═══════════════════════════════════════════
+   SCHEDULE FORM — SEARCHABLE COMBOBOX
+   (ported from profile.php .prof-combobox)
+═══════════════════════════════════════════ */
+.sf-combobox { position: relative; width: 100%; min-width: 0; }
+.sf-combobox-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-height: 40px;
+    box-sizing: border-box;
+    font-family: inherit;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+.sf-combobox-display:hover { border-color: #3762c8; }
+.sf-combobox-display.open {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.15);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.sf-combobox-display.disabled { background: #f1f5f9; cursor: not-allowed; opacity: .7; }
+[data-theme="dark"] .sf-combobox-display {
+    background: #23262f;
+    border-color: #475569;
+    color: #f1f5f9;
+}
+.sf-combobox-label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #94a3b8;
+    opacity: .85;
+    transition: color .15s;
+}
+.sf-combobox-label.selected { color: inherit; opacity: 1; font-weight: 500; }
+.sf-combobox-arrow {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: 8px;
+    transition: transform .2s;
+    flex-shrink: 0;
+}
+.sf-combobox-display.open .sf-combobox-arrow { transform: rotate(180deg); }
+
+.sf-combobox-dropdown {
+    position: fixed;
+    background: #fff;
+    border: 2px solid #3762c8;
+    border-radius: 9px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.22);
+    z-index: 100000;
+    overflow: hidden;
+    display: none;
+}
+.sf-combobox-dropdown.open { display: block; }
+[data-theme="dark"] .sf-combobox-dropdown {
+    background: #23262f;
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.sf-combobox-search {
+    width: 100%;
+    padding: 9px 13px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+    color: #1e293b;
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.sf-combobox-search::placeholder { color: #94a3b8; opacity: .8; }
+[data-theme="dark"] .sf-combobox-search { background: #23262f; color: #f1f5f9; border-bottom-color: #475569; }
+.sf-combobox-list { max-height: 196px; overflow-y: auto; overscroll-behavior: contain; }
+.sf-combobox-list::-webkit-scrollbar { width: 5px; }
+.sf-combobox-list::-webkit-scrollbar-track { background: transparent; }
+.sf-combobox-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.sf-combobox-option {
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background .12s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+[data-theme="dark"] .sf-combobox-option { color: #f1f5f9; border-bottom-color: #334155; }
+.sf-combobox-option:last-child { border-bottom: none; }
+.sf-combobox-option:hover,
+.sf-combobox-option.highlighted { background: rgba(55,98,200,.09); }
+.sf-combobox-option.selected-opt { background: rgba(55,98,200,.14); font-weight: 600; color: #3762c8; }
+[data-theme="dark"] .sf-combobox-option.selected-opt { color: #7aa3f5; }
+.sf-combobox-no-results { padding: 13px 14px; text-align: center; font-size: 13px; color: #94a3b8; }
+/* Yellow highlight for search matches inside dropdown options (matches current_reports.php .eng-combo-hl) */
+.sf-combobox-option-text { flex: 1; min-width: 0; }
+.sf-combo-hl {
+    background: #fff176; color: #000;
+    border-radius: 2px; padding: 0 1px;
+    font-weight: 800;
+}
+[data-theme="dark"] .sf-combo-hl { background: #f9a825; color: #000; }
+
+/* ═══════════════════════════════════════════
+   SCHEDULE FORM — CALENDAR DATE PICKER
+   (ported from profile.php .dob-* picker)
+═══════════════════════════════════════════ */
+.sf-date-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-height: 40px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.sf-date-display:hover { border-color: #3762c8; }
+.sf-date-display.open {
+    border-color: #3762c8;
+    box-shadow: 0 0 0 3px rgba(55,98,200,.15);
+}
+[data-theme="dark"] .sf-date-display { background: #23262f; border-color: #475569; color: #f1f5f9; }
+.sf-date-display .sf-date-text { flex: 1; }
+.sf-date-display .sf-date-text.placeholder { color: #94a3b8; opacity: .85; }
+.sf-date-display .sf-date-icon { font-size: 14px; margin-left: 8px; flex-shrink: 0; color: #3762c8; }
+.sf-date-clear-btn {
+    background: none; border: none; cursor: pointer;
+    color: #94a3b8; font-size: 13px;
+    padding: 0 2px 0 6px; line-height: 1; opacity: .7;
+    transition: opacity .15s;
+}
+.sf-date-clear-btn:hover { opacity: 1; color: #ef4444; }
+
+#sfDatePickerOverlay {
+    position: fixed;
+    z-index: 100000;
+    display: none;
+    visibility: hidden;
+    top: -9999px; left: -9999px;
+    width: 288px;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.10);
+    border: 1px solid rgba(55,98,200,.13);
+    font-family: inherit;
+    scroll-behavior: smooth;
+}
+#sfDatePickerOverlay::-webkit-scrollbar { width: 5px; }
+#sfDatePickerOverlay::-webkit-scrollbar-track { background: transparent; }
+#sfDatePickerOverlay::-webkit-scrollbar-thumb { background: rgba(55,98,200,.25); border-radius: 4px; }
+[data-theme="dark"] #sfDatePickerOverlay {
+    background: #1e2235;
+    border-color: rgba(95,140,255,.2);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.3);
+}
+.sf-dp-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 10px;
+    background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%);
+    gap: 6px;
+}
+@keyframes sfDpPopIn {
+    from { opacity: 0; transform: scale(0.94) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+.sf-dp-nav {
+    width: 28px; height: 28px;
+    border-radius: 8px; border: none;
+    background: rgba(255,255,255,.18); color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .12s; flex-shrink: 0;
+}
+.sf-dp-nav:hover  { background: rgba(255,255,255,.32); transform: scale(1.08); }
+.sf-dp-nav:active { transform: scale(0.95); }
+.sf-dp-nav:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.sf-dp-header-center { display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+.sf-dp-month-btn, .sf-dp-year-btn {
+    background: rgba(255,255,255,.15);
+    border: none; color: #fff;
+    font-size: 13.5px; font-weight: 700;
+    padding: 4px 9px; border-radius: 7px;
+    cursor: pointer; letter-spacing: .02em;
+    transition: background .15s;
+    font-family: inherit;
+}
+.sf-dp-month-btn:hover, .sf-dp-year-btn:hover { background: rgba(255,255,255,.3); }
+.sf-dp-month-btn.active, .sf-dp-year-btn.active {
+    background: rgba(255,255,255,.4);
+    box-shadow: 0 0 0 2px rgba(255,255,255,.5);
+}
+.sf-dp-year-dropdown {
+    display: none;
+    padding: 6px 8px;
+    background: var(--bg-secondary, #fff);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    max-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.sf-dp-year-dropdown::-webkit-scrollbar { width: 5px; }
+.sf-dp-year-dropdown::-webkit-scrollbar-track { background: transparent; }
+.sf-dp-year-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.sf-dp-year-dropdown.open { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.sf-dp-year-opt {
+    padding: 6px 4px;
+    border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary, #1e293b);
+    font-size: 12.5px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.sf-dp-year-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.sf-dp-year-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.sf-dp-month-dropdown {
+    display: none;
+    padding: 6px 8px;
+    background: var(--bg-secondary, #fff);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    max-height: 180px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.sf-dp-month-dropdown::-webkit-scrollbar { width: 5px; }
+.sf-dp-month-dropdown::-webkit-scrollbar-track { background: transparent; }
+.sf-dp-month-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.sf-dp-month-dropdown.open { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+.sf-dp-month-opt {
+    padding: 7px 4px;
+    border-radius: 7px; border: none;
+    background: transparent; color: var(--text-primary, #1e293b);
+    font-size: 12px; cursor: pointer; text-align: center;
+    transition: background .12s; font-family: inherit;
+}
+.sf-dp-month-opt:hover    { background: rgba(55,98,200,.1); color: #3762c8; }
+.sf-dp-month-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.sf-dp-weekdays {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    padding: 8px 10px 2px; gap: 2px;
+}
+.sf-dp-weekdays span {
+    text-align: center; font-size: 10px; font-weight: 700;
+    color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; padding: 2px 0;
+}
+.sf-dp-weekdays span:first-child,
+.sf-dp-weekdays span:last-child { color: #f87171; }
+.sf-dp-grid { display: grid; grid-template-columns: repeat(7,1fr); padding: 2px 10px 8px; gap: 3px; }
+.sf-dp-day {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 12.5px; font-weight: 500;
+    cursor: pointer; color: #1e293b; border: none;
+    background: transparent;
+    transition: background .13s, color .13s, transform .1s;
+    padding: 0; line-height: 1;
+}
+.sf-dp-day:hover  { background: #eef2ff; color: #3762c8; transform: scale(1.12); }
+.sf-dp-day:active { transform: scale(0.95); }
+.sf-dp-day.sf-dp-empty   { cursor: default; pointer-events: none; }
+.sf-dp-day.sf-dp-weekend { color: #ef4444; }
+.sf-dp-day.sf-dp-weekend:hover { background: #fff0f0; color: #dc2626; }
+.sf-dp-day.sf-dp-today {
+    background: rgba(55,98,200,.1); color: #3762c8; font-weight: 700; position: relative;
+}
+.sf-dp-day.sf-dp-today::after {
+    content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:#3762c8;
+}
+.sf-dp-day.sf-dp-selected {
+    background: linear-gradient(135deg, #3762c8, #2851b3) !important;
+    color: #fff !important; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35); transform: scale(1.05);
+}
+.sf-dp-day.sf-dp-selected::after { display: none; }
+.sf-dp-day.sf-dp-disabled { opacity: .3; pointer-events: none; cursor: default; }
+.sf-dp-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 12px; border-top: 1px solid rgba(55,98,200,.08); gap: 8px;
+}
+.sf-dp-clear {
+    flex: 1; padding: 7px 0; border-radius: 9px;
+    border: 1.5px solid rgba(239,68,68,.3);
+    background: transparent; color: #ef4444;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: background .15s; letter-spacing: .03em; font-family: inherit;
+}
+.sf-dp-clear:hover { background: #fff0f0; border-color: #ef4444; }
+.sf-dp-close {
+    flex: 1; padding: 7px 0; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: opacity .15s; letter-spacing: .03em; font-family: inherit;
+}
+.sf-dp-close:hover { opacity: .88; }
+[data-theme="dark"] .sf-dp-day { color: #e2e8f0; }
+[data-theme="dark"] .sf-dp-day:hover { background: rgba(55,98,200,.2); color: #8ab4f8; }
+[data-theme="dark"] .sf-dp-day.sf-dp-weekend { color: #f87171; }
+[data-theme="dark"] .sf-dp-day.sf-dp-today   { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .sf-dp-day.sf-dp-today::after { background: #8ab4f8; }
+[data-theme="dark"] .sf-dp-footer { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .sf-dp-weekdays span { color: #64748b; }
+[data-theme="dark"] .sf-dp-weekdays span:first-child,
+[data-theme="dark"] .sf-dp-weekdays span:last-child { color: #f87171; }
+[data-theme="dark"] .sf-dp-year-dropdown,
+[data-theme="dark"] .sf-dp-month-dropdown { background: #1e2235; border-bottom-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .sf-dp-year-opt,
+[data-theme="dark"] .sf-dp-month-opt { color: #e2e8f0; }
+[data-theme="dark"] .sf-dp-year-opt:hover,
+[data-theme="dark"] .sf-dp-month-opt:hover { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .sf-dp-clear { color: #f87171; border-color: rgba(239,68,68,.4); }
+[data-theme="dark"] .sf-dp-clear:hover { background: rgba(239,68,68,.1); }
+
 .modal-cprf-facility-row .cprf-id-badge {
     display: inline-block;
     margin-left: 8px;
@@ -4857,14 +5403,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
         <?php if ($isAdmin): ?>
         <div class="sched-admin-bar">
+            <div class="sched-admin-bar-info">
+                <div class="sched-admin-bar-icon"><i class="fas fa-link"></i></div>
+                <div class="sched-admin-bar-text">
+                    <span class="sched-admin-bar-label">CPRF Integration</span>
+                    <?php if (empty($cprfFacilitiesForJs)): ?>
+                    <span class="sched-catalog-warn"><i class="fas fa-exclamation-triangle"></i> CPRF facilities could not be loaded — check <code>CPRF_FACILITIES_API_URL</code> on the CIMM server.</span>
+                    <?php else: ?>
+                    <span class="sched-catalog-info"><?= count($cprfFacilitiesForJs) ?> facilities linked by ID</span>
+                    <?php endif; ?>
+                </div>
+            </div>
             <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : '' ?>>
                 <i class="fas fa-plus"></i> Add Schedule
             </button>
-            <?php if (empty($cprfFacilitiesForJs)): ?>
-            <span class="sched-catalog-warn"><i class="fas fa-exclamation-triangle"></i> CPRF facilities could not be loaded — check <code>CPRF_FACILITIES_API_URL</code> on the CIMM server.</span>
-            <?php else: ?>
-            <span class="sched-catalog-info"><i class="fas fa-link"></i> <?= count($cprfFacilitiesForJs) ?> CPRF facilities linked by ID</span>
-            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -5357,77 +5909,234 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         </div>
         <form id="scheduleForm" class="modal-body sched-form-body" autocomplete="off">
             <input type="hidden" id="sfSchedId" name="sched_id" value="">
-            <div class="sched-form-group sched-form-group-full">
-                <label for="sfCprfFacility">CPRF Facility <span class="req">*</span></label>
-                <select id="sfCprfFacility" name="cprf_facility_id" required>
-                    <option value="">— Select facility from CPRF —</option>
-                </select>
-                <small class="sched-form-hint">Linked by exact CPRF facility ID — no GPS needed.</small>
-            </div>
-            <div class="sched-form-group sched-form-group-full">
-                <label for="sfTask">Task / Work Description <span class="req">*</span></label>
-                <input type="text" id="sfTask" name="task" required placeholder="e.g. Aircon unit repair">
-            </div>
-            <div class="sched-form-group sched-form-group-full">
-                <label for="sfLocation">Location</label>
-                <input type="text" id="sfLocation" name="location" placeholder="Auto-filled from CPRF facility">
-            </div>
-            <div class="sched-form-row">
-                <div class="sched-form-group">
-                    <label for="sfStartDate">Start Date <span class="req">*</span></label>
-                    <input type="date" id="sfStartDate" name="starting_date" required>
+
+            <div class="sched-form-card">
+
+                <!-- CPRF Facility — searchable combobox -->
+                <div class="sfr-row">
+                    <div class="sfr-label-row">
+                        <div class="sfr-icon"><i class="fas fa-building"></i></div>
+                        <label class="sfr-label" for="sfCprfFacilityDisplay">CPRF Facility <span class="req">*</span></label>
+                    </div>
+                    <div class="sfr-content">
+                        <input type="hidden" id="sfCprfFacility" name="cprf_facility_id" value="" required>
+                        <div class="sf-combobox" id="sfCprfFacilityBox">
+                            <div class="sf-combobox-display" id="sfCprfFacilityDisplay" tabindex="0">
+                                <span class="sf-combobox-label" id="sfCprfFacilityLabel">— Select facility from CPRF —</span>
+                                <span class="sf-combobox-arrow">▾</span>
+                            </div>
+                            <div class="sf-combobox-dropdown" id="sfCprfFacilityDropdown">
+                                <input class="sf-combobox-search" type="text" placeholder="🔍 Search facility by name or ID…" autocomplete="off">
+                                <div class="sf-combobox-list" id="sfCprfFacilityList"></div>
+                            </div>
+                        </div>
+                        <small class="sched-form-hint">Linked by exact CPRF facility ID — no GPS needed.</small>
+                    </div>
                 </div>
-                <div class="sched-form-group">
-                    <label for="sfEndDate">Est. Completion</label>
-                    <input type="date" id="sfEndDate" name="estimated_completion_date">
+
+                <div class="sfr-row">
+                    <div class="sfr-label-row">
+                        <div class="sfr-icon"><i class="fas fa-file-alt"></i></div>
+                        <label class="sfr-label" for="sfTask">Task / Work Description <span class="req">*</span></label>
+                    </div>
+                    <div class="sfr-content">
+                        <input type="text" id="sfTask" name="task" required placeholder="e.g. Aircon unit repair">
+                    </div>
                 </div>
-            </div>
-            <div class="sched-form-row">
-                <div class="sched-form-group">
-                    <label for="sfCategory">Category</label>
-                    <select id="sfCategory" name="category">
-                        <option>General Maintenance</option>
-                        <option>HVAC / Cooling</option>
-                        <option>Power &amp; Electrical</option>
-                        <option>Roads &amp; Pavements</option>
-                        <option>Safety &amp; Compliance</option>
-                    </select>
+
+                <div class="sfr-row">
+                    <div class="sfr-label-row">
+                        <div class="sfr-icon"><i class="fas fa-map-marker-alt"></i></div>
+                        <label class="sfr-label" for="sfLocation">Location</label>
+                    </div>
+                    <div class="sfr-content">
+                        <input type="text" id="sfLocation" name="location" placeholder="Auto-filled from CPRF facility">
+                    </div>
                 </div>
-                <div class="sched-form-group">
-                    <label for="sfPriority">Priority</label>
-                    <select id="sfPriority" name="priority">
-                        <option>Low</option>
-                        <option>Medium</option>
-                        <option>High</option>
-                        <option>Critical</option>
-                    </select>
+
+                <!-- Start / End dates — calendar date picker -->
+                <div class="sched-form-row">
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="far fa-calendar-alt"></i></div>
+                            <label class="sfr-label" for="sfStartDateDisplay">Start Date <span class="req">*</span></label>
+                        </div>
+                        <div class="sfr-content">
+                            <input type="hidden" id="sfStartDate" name="starting_date" value="" required>
+                            <div class="sf-date-display" id="sfStartDateDisplay" tabindex="0">
+                                <span class="sf-date-text placeholder" id="sfStartDateText">Select start date</span>
+                                <span class="sf-date-icon">📅</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="fas fa-flag-checkered"></i></div>
+                            <label class="sfr-label" for="sfEndDateDisplay">Est. Completion</label>
+                        </div>
+                        <div class="sfr-content">
+                            <input type="hidden" id="sfEndDate" name="estimated_completion_date" value="">
+                            <div class="sf-date-display" id="sfEndDateDisplay" tabindex="0">
+                                <span class="sf-date-text placeholder" id="sfEndDateText">Select end date</span>
+                                <span class="sf-date-icon">📅</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="sched-form-row">
-                <div class="sched-form-group">
-                    <label for="sfStatus">Status</label>
-                    <select id="sfStatus" name="status">
-                        <option>Scheduled</option>
-                        <option>In Progress</option>
-                        <option>Completed</option>
-                        <option>Delayed</option>
-                    </select>
+
+                <!-- Category / Priority — searchable comboboxes -->
+                <div class="sched-form-row">
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="fas fa-layer-group"></i></div>
+                            <label class="sfr-label" for="sfCategoryDisplay">Category</label>
+                        </div>
+                        <div class="sfr-content">
+                            <input type="hidden" id="sfCategory" name="category" value="General Maintenance">
+                            <div class="sf-combobox" id="sfCategoryBox">
+                                <div class="sf-combobox-display" id="sfCategoryDisplay" tabindex="0">
+                                    <span class="sf-combobox-label selected" id="sfCategoryLabel">General Maintenance</span>
+                                    <span class="sf-combobox-arrow">▾</span>
+                                </div>
+                                <div class="sf-combobox-dropdown" id="sfCategoryDropdown">
+                                    <div class="sf-combobox-list">
+                                        <?php foreach (['General Maintenance','HVAC / Cooling','Power & Electrical','Roads & Pavements','Safety & Compliance'] as $catOpt): ?>
+                                        <div class="sf-combobox-option<?= $catOpt === 'General Maintenance' ? ' selected-opt' : '' ?>" data-value="<?= htmlspecialchars($catOpt) ?>"><?= htmlspecialchars($catOpt) ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="fas fa-fire-alt"></i></div>
+                            <label class="sfr-label" for="sfPriorityDisplay">Priority</label>
+                        </div>
+                        <div class="sfr-content">
+                            <input type="hidden" id="sfPriority" name="priority" value="Low">
+                            <div class="sf-combobox" id="sfPriorityBox">
+                                <div class="sf-combobox-display" id="sfPriorityDisplay" tabindex="0">
+                                    <span class="sf-combobox-label selected" id="sfPriorityLabel">Low</span>
+                                    <span class="sf-combobox-arrow">▾</span>
+                                </div>
+                                <div class="sf-combobox-dropdown" id="sfPriorityDropdown">
+                                    <div class="sf-combobox-list">
+                                        <?php foreach (['Low','Medium','High','Critical'] as $prOpt): ?>
+                                        <div class="sf-combobox-option<?= $prOpt === 'Low' ? ' selected-opt' : '' ?>" data-value="<?= $prOpt ?>"><?= $prOpt ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="sched-form-group">
-                    <label for="sfBudget">Budget (₱)</label>
-                    <input type="number" id="sfBudget" name="budget" min="0" step="0.01" placeholder="0.00">
+
+                <div class="sched-form-row">
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="fas fa-compass"></i></div>
+                            <label class="sfr-label" for="sfStatusDisplay">Status</label>
+                        </div>
+                        <div class="sfr-content">
+                            <input type="hidden" id="sfStatus" name="status" value="Scheduled">
+                            <div class="sf-combobox" id="sfStatusBox">
+                                <div class="sf-combobox-display" id="sfStatusDisplay" tabindex="0">
+                                    <span class="sf-combobox-label selected" id="sfStatusLabel">Scheduled</span>
+                                    <span class="sf-combobox-arrow">▾</span>
+                                </div>
+                                <div class="sf-combobox-dropdown" id="sfStatusDropdown">
+                                    <div class="sf-combobox-list">
+                                        <?php foreach (['Scheduled','In Progress','Completed','Delayed'] as $stOpt): ?>
+                                        <div class="sf-combobox-option<?= $stOpt === 'Scheduled' ? ' selected-opt' : '' ?>" data-value="<?= $stOpt ?>"><?= $stOpt ?></div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sfr-row">
+                        <div class="sfr-label-row">
+                            <div class="sfr-icon"><i class="fas fa-wallet"></i></div>
+                            <label class="sfr-label" for="sfBudget">Budget (₱)</label>
+                        </div>
+                        <div class="sfr-content">
+                            <div class="sfr-budget-wrap">
+                                <span class="sfr-peso-prefix">₱</span>
+                                <input type="number" id="sfBudget" class="sfr-budget-input-inner" name="budget" min="0" step="0.01" placeholder="0.00">
+                                <div class="sfr-budget-spinners">
+                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)+1));i.dispatchEvent(new Event('input'))" tabindex="-1">▲</button>
+                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)-1));i.dispatchEvent(new Event('input'))" tabindex="-1">▼</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="sched-form-group sched-form-group-full">
-                <label for="sfAssignedTeam">Assigned Team</label>
-                <input type="text" id="sfAssignedTeam" name="assigned_team" placeholder="e.g. Electrical Team A">
-            </div>
+
+                <div class="sfr-row">
+                    <div class="sfr-label-row">
+                        <div class="sfr-icon"><i class="fas fa-users"></i></div>
+                        <label class="sfr-label" for="sfAssignedTeam">Assigned Team</label>
+                    </div>
+                    <div class="sfr-content">
+                        <input type="text" id="sfAssignedTeam" name="assigned_team" placeholder="e.g. Electrical Team A">
+                    </div>
+                </div>
+
+            </div><!-- /.sched-form-card -->
+
             <div id="scheduleFormError" class="sched-form-error hidden"></div>
-            <div class="sched-form-actions">
-                <button type="button" class="sched-form-cancel" id="scheduleFormCancel">Cancel</button>
-                <button type="submit" class="sched-form-save" id="scheduleFormSave"><i class="fas fa-save"></i> Save Schedule</button>
+            <div class="sched-form-actions rep-confirm-btns">
+                <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel">Cancel</button>
+                <button type="submit" class="rep-confirm-btn rep-confirm-ok-save" id="scheduleFormSave"><i class="fas fa-save"></i> Save Schedule</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Save Schedule Confirmation Modal — ported from current_reports.php #repSaveConfirmBackdrop -->
+<div class="rep-confirm-backdrop" id="schedSaveConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon save-icon"><i class="fas fa-save" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="rep-confirm-title" id="schedSaveConfirmTitle">Save this schedule?</div>
+        <div class="rep-confirm-desc" id="schedSaveConfirmDesc">This will save the maintenance schedule for the selected CPRF facility. The changes will be saved immediately.</div>
+        <div class="rep-confirm-btns">
+            <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="schedSaveConfirmCancel">Cancel</button>
+            <button type="button" class="rep-confirm-btn rep-confirm-ok-save" id="schedSaveConfirmOk"><i class="fas fa-save"></i> Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCHEDULE FORM — SHARED CALENDAR DATE PICKER OVERLAY
+     (ported from profile.php DOB picker; shared by Start / End date fields)
+═══════════════════════════════════════════ -->
+<div id="sfDatePickerOverlay">
+    <div class="sf-dp-header">
+        <button class="sf-dp-nav" id="sfDpPrevMonth" type="button">&#8592;</button>
+        <div class="sf-dp-header-center">
+            <button class="sf-dp-month-btn" id="sfDpMonthBtn" type="button"></button>
+            <button class="sf-dp-year-btn"  id="sfDpYearBtn"  type="button"></button>
+        </div>
+        <button class="sf-dp-nav" id="sfDpNextMonth" type="button">&#8594;</button>
+    </div>
+    <div class="sf-dp-year-dropdown" id="sfDpYearDropdown"></div>
+    <div class="sf-dp-month-dropdown" id="sfDpMonthDropdown">
+        <?php
+        $sfMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        foreach ($sfMonths as $smi => $smn):
+        ?>
+        <button class="sf-dp-month-opt" data-month="<?= $smi ?>" type="button"><?= $smn ?></button>
+        <?php endforeach; ?>
+    </div>
+    <div class="sf-dp-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span>
+        <span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div class="sf-dp-grid" id="sfDpGrid"></div>
+    <div class="sf-dp-footer">
+        <button class="sf-dp-clear" id="sfDpClear" type="button">Clear</button>
+        <button class="sf-dp-close" id="sfDpClose" type="button">Done</button>
     </div>
 </div>
 
@@ -8362,6 +9071,138 @@ document.addEventListener('DOMContentLoaded', function() {
         const sfError = document.getElementById('scheduleFormError');
         const facilities = window.cprfFacilities || [];
 
+        // ═══════════════════════════════════════════════════════════
+        // Generic searchable-combobox engine (ported from profile.php)
+        // Reused for CPRF Facility (dynamic list) + Category / Priority / Status (static)
+        // ═══════════════════════════════════════════════════════════
+        const sfCombos = [];
+        function sfInitCombo(cfg) {
+            const displayEl  = document.getElementById(cfg.displayId);
+            const dropdownEl = document.getElementById(cfg.dropdownId);
+            const hiddenEl   = document.getElementById(cfg.hiddenId);
+            const labelEl    = document.getElementById(cfg.labelId);
+            const listEl     = (cfg.listId && document.getElementById(cfg.listId)) || dropdownEl.querySelector('.sf-combobox-list');
+            const searchEl   = dropdownEl.querySelector('.sf-combobox-search');
+            if (!displayEl || !dropdownEl || !listEl || !hiddenEl || !labelEl) return null;
+
+            let isOpen = false;
+
+            function getOptions() { return Array.from(listEl.querySelectorAll('.sf-combobox-option')); }
+
+            function positionDropdown() {
+                const rect = displayEl.getBoundingClientRect();
+                const vw = window.innerWidth, vh = window.innerHeight;
+                dropdownEl.style.width = rect.width + 'px';
+                dropdownEl.style.visibility = 'hidden';
+                dropdownEl.style.display = 'block';
+                const dh = dropdownEl.offsetHeight || 220;
+                dropdownEl.style.display = '';
+                dropdownEl.style.visibility = '';
+                let top = rect.bottom + 4;
+                let left = rect.left;
+                if (top + dh > vh - 12 && rect.top > dh + 12) top = rect.top - dh - 4;
+                left = Math.max(8, Math.min(left, vw - rect.width - 8));
+                dropdownEl.style.top = top + 'px';
+                dropdownEl.style.left = left + 'px';
+            }
+
+            function sfEscapeHtml(s) {
+                return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            function sfEscapeRegExp(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+            function sfHighlightText(text, term) {
+                const safe = sfEscapeHtml(text);
+                if (!term) return safe;
+                const re = new RegExp('(' + sfEscapeRegExp(term) + ')', 'gi');
+                return safe.replace(re, '<mark class="sf-combo-hl">$1</mark>');
+            }
+            function filter(q) {
+                const ql = q.toLowerCase().trim();
+                let visible = 0;
+                getOptions().forEach(function(o) {
+                    if (!o.dataset.origText) o.dataset.origText = o.textContent;
+                    const raw = o.dataset.origText;
+                    const match = !ql || raw.toLowerCase().includes(ql);
+                    o.style.display = match ? '' : 'none';
+                    o.innerHTML = '<span class="sf-combobox-option-text">' + (match ? sfHighlightText(raw, q.trim()) : sfEscapeHtml(raw)) + '</span>';
+                    if (match) visible++;
+                });
+                let noRes = listEl.querySelector('.sf-combobox-no-results');
+                if (!visible) {
+                    if (!noRes) {
+                        noRes = document.createElement('div');
+                        noRes.className = 'sf-combobox-no-results';
+                        noRes.textContent = 'No results found';
+                        listEl.appendChild(noRes);
+                    }
+                } else if (noRes) { noRes.remove(); }
+            }
+
+            function open() {
+                sfCombos.forEach(function(c) { if (c !== api) c.close(); });
+                sfCloseAllDatePickers();
+                isOpen = true;
+                positionDropdown();
+                displayEl.classList.add('open');
+                dropdownEl.classList.add('open');
+                if (searchEl) {
+                    searchEl.value = '';
+                    filter('');
+                    setTimeout(function() { searchEl.focus(); }, 30);
+                }
+                setTimeout(function() {
+                    const sel = listEl.querySelector('.selected-opt');
+                    if (sel) sel.scrollIntoView({ block: 'nearest' });
+                }, 30);
+            }
+
+            function close() {
+                isOpen = false;
+                displayEl.classList.remove('open');
+                dropdownEl.classList.remove('open');
+                if (searchEl) { searchEl.value = ''; filter(''); }
+            }
+
+            function setValue(value, text, silent) {
+                hiddenEl.value = value || '';
+                labelEl.textContent = text || cfg.placeholder;
+                labelEl.classList.toggle('selected', !!value);
+                getOptions().forEach(function(o) { o.classList.toggle('selected-opt', o.dataset.value === value); });
+                if (!silent && cfg.onChange) cfg.onChange(value, text);
+            }
+
+            displayEl.addEventListener('click', function(e) {
+                e.stopPropagation();
+                isOpen ? close() : open();
+            });
+            listEl.addEventListener('mousedown', function(e) {
+                const opt = e.target.closest('.sf-combobox-option');
+                if (!opt) return;
+                e.preventDefault();
+                setValue(opt.dataset.value, opt.textContent.trim());
+                close();
+            });
+            if (searchEl) {
+                searchEl.addEventListener('click', function(e) { e.stopPropagation(); });
+                searchEl.addEventListener('input', function() { filter(searchEl.value); });
+                searchEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') close();
+                });
+            }
+            window.addEventListener('resize', function() { if (isOpen) positionDropdown(); });
+            document.addEventListener('scroll', function() { if (isOpen) positionDropdown(); }, true);
+
+            const api = { close: close, open: open, setValue: setValue, boxEl: displayEl, dropdownEl: dropdownEl };
+            sfCombos.push(api);
+            return api;
+        }
+
+        document.addEventListener('click', function(e) {
+            sfCombos.forEach(function(c) {
+                if (!c.boxEl.contains(e.target) && !c.dropdownEl.contains(e.target)) c.close();
+            });
+        });
+
         function facilityLabel(f) {
             const loc = f.location ? ' — ' + f.location : '';
             return '#' + f.facility_id + ' · ' + f.name + loc;
@@ -8372,16 +9213,298 @@ document.addEventListener('DOMContentLoaded', function() {
             return f.location ? (f.name + ', ' + f.location) : f.name;
         }
 
-        function populateFacilitySelect(selectedId) {
-            if (!sfFacility) return;
-            sfFacility.innerHTML = '<option value="">— Select facility from CPRF —</option>';
-            facilities.forEach(function(f) {
-                const opt = document.createElement('option');
-                opt.value = String(f.facility_id);
-                opt.textContent = facilityLabel(f);
-                sfFacility.appendChild(opt);
+        // Build the facility option list once (data is fixed at page load)
+        const sfFacilityListEl = document.getElementById('sfCprfFacilityList');
+        if (sfFacilityListEl) {
+            sfFacilityListEl.innerHTML = facilities.map(function(f) {
+                return '<div class="sf-combobox-option" data-value="' + f.facility_id + '">' +
+                       facilityLabel(f).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>';
+            }).join('');
+        }
+
+        const sfFacilityCombo = sfInitCombo({
+            displayId: 'sfCprfFacilityDisplay',
+            dropdownId: 'sfCprfFacilityDropdown',
+            hiddenId: 'sfCprfFacility',
+            labelId: 'sfCprfFacilityLabel',
+            listId: 'sfCprfFacilityList',
+            placeholder: '— Select facility from CPRF —',
+            onChange: function(value) {
+                const id = parseInt(value, 10);
+                const f = facilities.find(function(x) { return x.facility_id === id; });
+                const locInput = document.getElementById('sfLocation');
+                if (f && locInput && locInput.dataset.auto === '1') {
+                    locInput.value = facilityDefaultLocation(f);
+                }
+            }
+        });
+
+        const sfCategoryCombo = sfInitCombo({
+            displayId: 'sfCategoryDisplay', dropdownId: 'sfCategoryDropdown',
+            hiddenId: 'sfCategory', labelId: 'sfCategoryLabel',
+            placeholder: 'General Maintenance'
+        });
+        const sfPriorityCombo = sfInitCombo({
+            displayId: 'sfPriorityDisplay', dropdownId: 'sfPriorityDropdown',
+            hiddenId: 'sfPriority', labelId: 'sfPriorityLabel',
+            placeholder: 'Low'
+        });
+        const sfStatusCombo = sfInitCombo({
+            displayId: 'sfStatusDisplay', dropdownId: 'sfStatusDropdown',
+            hiddenId: 'sfStatus', labelId: 'sfStatusLabel',
+            placeholder: 'Scheduled'
+        });
+
+        function setFacilitySelection(id) {
+            if (!sfFacilityCombo) return;
+            if (!id) { sfFacilityCombo.setValue('', '', true); return; }
+            const f = facilities.find(function(x) { return x.facility_id === parseInt(id, 10); });
+            sfFacilityCombo.setValue(String(id), f ? facilityLabel(f) : ('#' + id), true);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // Shared calendar date-picker (ported from profile.php DOB picker)
+        // Used by both Start Date and Est. Completion fields
+        // ═══════════════════════════════════════════════════════════
+        const sfDpOverlay   = document.getElementById('sfDatePickerOverlay');
+        const sfDpMonthBtn  = document.getElementById('sfDpMonthBtn');
+        const sfDpYearBtn   = document.getElementById('sfDpYearBtn');
+        const sfDpPrev      = document.getElementById('sfDpPrevMonth');
+        const sfDpNext      = document.getElementById('sfDpNextMonth');
+        const sfDpYearDrop  = document.getElementById('sfDpYearDropdown');
+        const sfDpMonthDrop = document.getElementById('sfDpMonthDropdown');
+        const sfDpGrid      = document.getElementById('sfDpGrid');
+        const sfDpClearBtn  = document.getElementById('sfDpClear');
+        const sfDpCloseBtn  = document.getElementById('sfDpClose');
+
+        const SF_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        let sfDpActiveField = null; // { hiddenId, textId, displayId, minDateOf }
+        let sfDpViewYear = new Date().getFullYear();
+        let sfDpViewMonth = new Date().getMonth();
+        let sfDpSelDate = null;
+
+        function sfPad2(n) { return String(n).padStart(2, '0'); }
+        function sfFmtISO(d) { return d.getFullYear() + '-' + sfPad2(d.getMonth() + 1) + '-' + sfPad2(d.getDate()); }
+        function sfFmtDisplay(d) { return SF_MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+        function sfParseISO(s) {
+            if (!s) return null;
+            const p = String(s).slice(0, 10).split('-');
+            if (p.length !== 3) return null;
+            return new Date(+p[0], +p[1] - 1, +p[2]);
+        }
+
+        function sfCloseAllDatePickers() {
+            if (sfDpOverlay) sfDpOverlay.style.display = 'none';
+            document.querySelectorAll('.sf-date-display.open').forEach(function(el) { el.classList.remove('open'); });
+            sfDpActiveField = null;
+        }
+
+        function sfSetFieldDisplay(field, d) {
+            const textEl = document.getElementById(field.textId);
+            const hiddenEl = document.getElementById(field.hiddenId);
+            if (!textEl || !hiddenEl) return;
+            if (d) {
+                hiddenEl.value = sfFmtISO(d);
+                textEl.textContent = sfFmtDisplay(d);
+                textEl.classList.remove('placeholder');
+            } else {
+                hiddenEl.value = '';
+                textEl.textContent = field.placeholder;
+                textEl.classList.add('placeholder');
+            }
+        }
+
+        function sfDpRenderGrid() {
+            sfDpYearDrop.classList.remove('open');
+            sfDpMonthDrop.classList.remove('open');
+            sfDpYearBtn.classList.remove('active');
+            sfDpMonthBtn.classList.remove('active');
+
+            sfDpMonthBtn.textContent = SF_MONTHS[sfDpViewMonth].slice(0, 3);
+            sfDpYearBtn.textContent = sfDpViewYear;
+
+            const firstDay = new Date(sfDpViewYear, sfDpViewMonth, 1).getDay();
+            const daysInMonth = new Date(sfDpViewYear, sfDpViewMonth + 1, 0).getDate();
+            const today = new Date();
+            const todayStr = sfFmtISO(today);
+            const selStr = sfDpSelDate ? sfFmtISO(sfDpSelDate) : '';
+
+            // Optional lower bound (used by the End Date field: can't be before Start Date)
+            let minDate = null;
+            if (sfDpActiveField && sfDpActiveField.minDateOf) {
+                const startVal = document.getElementById(sfDpActiveField.minDateOf).value;
+                minDate = sfParseISO(startVal);
+            }
+
+            sfDpGrid.innerHTML = '';
+            for (let i = 0; i < firstDay; i++) {
+                const emp = document.createElement('div');
+                emp.className = 'sf-dp-day sf-dp-empty';
+                sfDpGrid.appendChild(emp);
+            }
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(sfDpViewYear, sfDpViewMonth, d);
+                const dateStr = sfFmtISO(dateObj);
+                const dow = dateObj.getDay();
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'sf-dp-day';
+                btn.textContent = d;
+                btn.dataset.date = dateStr;
+                if (dow === 0 || dow === 6) btn.classList.add('sf-dp-weekend');
+                if (dateStr === todayStr) btn.classList.add('sf-dp-today');
+                if (dateStr === selStr) btn.classList.add('sf-dp-selected');
+                if (minDate && dateObj < minDate) btn.classList.add('sf-dp-disabled');
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const parts = this.dataset.date.split('-');
+                    sfDpSelDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+                    if (sfDpActiveField) sfSetFieldDisplay(sfDpActiveField, sfDpSelDate);
+                    sfDpRenderGrid();
+                });
+                sfDpGrid.appendChild(btn);
+            }
+        }
+
+        function sfDpBuildYearGrid() {
+            sfDpYearDrop.innerHTML = '';
+            const centerY = new Date().getFullYear();
+            const startY = centerY - 5;
+            const endY = centerY + 15;
+            for (let y = endY; y >= startY; y--) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'sf-dp-year-opt' + (y === sfDpViewYear ? ' selected' : '');
+                b.textContent = y;
+                b.dataset.year = y;
+                b.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    sfDpViewYear = +this.dataset.year;
+                    sfDpRenderGrid();
+                });
+                sfDpYearDrop.appendChild(b);
+            }
+            setTimeout(function() {
+                const sel = sfDpYearDrop.querySelector('.selected');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            }, 30);
+        }
+
+        function sfDpPositionOverlay(displayEl) {
+            const rect = displayEl.getBoundingClientRect();
+            const vw = window.innerWidth, vh = window.innerHeight;
+            sfDpOverlay.style.visibility = 'hidden';
+            sfDpOverlay.style.display = 'block';
+            const ow = sfDpOverlay.offsetWidth || 288;
+            const oh = Math.min(sfDpOverlay.scrollHeight || 380, vh * 0.8);
+            sfDpOverlay.style.visibility = '';
+            let top = rect.bottom + 6;
+            let left = rect.left + rect.width / 2 - ow / 2;
+            left = Math.max(8, Math.min(left, vw - ow - 8));
+            if (top + oh > vh - 10 && rect.top > oh + 10) top = rect.top - oh - 6;
+            if (top < 8) top = 8;
+            sfDpOverlay.style.top = top + 'px';
+            sfDpOverlay.style.left = left + 'px';
+            sfDpOverlay.style.display = 'none';
+        }
+
+        function sfOpenDatePicker(field, displayEl) {
+            sfCombos.forEach(function(c) { c.close(); });
+            sfDpActiveField = field;
+            const curVal = document.getElementById(field.hiddenId).value;
+            sfDpSelDate = sfParseISO(curVal);
+            sfDpViewYear = sfDpSelDate ? sfDpSelDate.getFullYear() : new Date().getFullYear();
+            sfDpViewMonth = sfDpSelDate ? sfDpSelDate.getMonth() : new Date().getMonth();
+            document.querySelectorAll('.sf-date-display.open').forEach(function(el) { el.classList.remove('open'); });
+            displayEl.classList.add('open');
+            sfDpRenderGrid();
+            sfDpPositionOverlay(displayEl);
+            sfDpOverlay.style.removeProperty('animation');
+            sfDpOverlay.style.display = 'block';
+            sfDpOverlay.style.visibility = 'visible';
+            void sfDpOverlay.offsetWidth;
+            sfDpOverlay.style.animation = 'sfDpPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+        }
+
+        const sfDateFields = [
+            { hiddenId: 'sfStartDate', textId: 'sfStartDateText', displayId: 'sfStartDateDisplay', placeholder: 'Select start date' },
+            { hiddenId: 'sfEndDate',   textId: 'sfEndDateText',   displayId: 'sfEndDateDisplay',   placeholder: 'Select end date', minDateOf: 'sfStartDate' }
+        ];
+        sfDateFields.forEach(function(field) {
+            const displayEl = document.getElementById(field.displayId);
+            if (!displayEl) return;
+            displayEl.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isThisOpen = displayEl.classList.contains('open') && sfDpOverlay.style.display === 'block';
+                if (isThisOpen) { sfCloseAllDatePickers(); }
+                else { sfOpenDatePicker(field, displayEl); }
             });
-            if (selectedId) sfFacility.value = String(selectedId);
+        });
+
+        if (sfDpPrev) sfDpPrev.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfDpViewMonth--; if (sfDpViewMonth < 0) { sfDpViewMonth = 11; sfDpViewYear--; }
+            sfDpRenderGrid();
+        });
+        if (sfDpNext) sfDpNext.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfDpViewMonth++; if (sfDpViewMonth > 11) { sfDpViewMonth = 0; sfDpViewYear++; }
+            sfDpRenderGrid();
+        });
+        if (sfDpYearBtn) sfDpYearBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfDpMonthDrop.classList.remove('open'); sfDpMonthBtn.classList.remove('active');
+            const nowOpen = sfDpYearDrop.classList.toggle('open');
+            sfDpYearBtn.classList.toggle('active', nowOpen);
+            if (nowOpen) sfDpBuildYearGrid();
+        });
+        if (sfDpMonthBtn) sfDpMonthBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfDpYearDrop.classList.remove('open'); sfDpYearBtn.classList.remove('active');
+            const nowOpen = sfDpMonthDrop.classList.toggle('open');
+            sfDpMonthBtn.classList.toggle('active', nowOpen);
+            Array.from(sfDpMonthDrop.querySelectorAll('.sf-dp-month-opt')).forEach(function(b) {
+                b.classList.toggle('selected', +b.dataset.month === sfDpViewMonth);
+            });
+        });
+        if (sfDpMonthDrop) sfDpMonthDrop.addEventListener('click', function(e) {
+            const b = e.target.closest('.sf-dp-month-opt');
+            if (!b) return;
+            e.stopPropagation();
+            sfDpViewMonth = +b.dataset.month;
+            sfDpRenderGrid();
+        });
+        if (sfDpClearBtn) sfDpClearBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfDpSelDate = null;
+            if (sfDpActiveField) sfSetFieldDisplay(sfDpActiveField, null);
+            sfDpRenderGrid();
+        });
+        if (sfDpCloseBtn) sfDpCloseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sfCloseAllDatePickers();
+        });
+        document.addEventListener('click', function(e) {
+            if (sfDpOverlay && sfDpOverlay.style.display === 'block' &&
+                !sfDpOverlay.contains(e.target) &&
+                !e.target.closest('.sf-date-display')) {
+                sfCloseAllDatePickers();
+            }
+        });
+        window.addEventListener('resize', function() {
+            if (sfDpOverlay && sfDpOverlay.style.display === 'block' && sfDpActiveField) {
+                sfDpPositionOverlay(document.getElementById(sfDpActiveField.displayId));
+            }
+        });
+        document.addEventListener('scroll', function(e) {
+            if (sfDpOverlay && sfDpOverlay.style.display === 'block' && sfDpActiveField &&
+                !sfDpOverlay.contains(e.target)) {
+                sfDpPositionOverlay(document.getElementById(sfDpActiveField.displayId));
+            }
+        }, true);
+        if (sfDpOverlay) {
+            sfDpOverlay.addEventListener('wheel', function(e) { e.stopPropagation(); }, { passive: true });
+            sfDpOverlay.addEventListener('scroll', function(e) { e.stopPropagation(); }, true);
         }
 
         function showFormError(msg) {
@@ -8397,12 +9520,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function closeScheduleFormModal() {
             if (sfModal) sfModal.classList.add('hidden');
+            sfCloseAllDatePickers();
             showFormError('');
         }
 
         function openScheduleForm(data) {
             if (!sfForm || !sfModal) return;
-            populateFacilitySelect(data && data.cprf_facility_id ? data.cprf_facility_id : '');
+            setFacilitySelection(data && data.cprf_facility_id ? data.cprf_facility_id : '');
             document.getElementById('scheduleFormTitle').textContent = (data && data.sched_id) ? 'Edit Maintenance Schedule' : 'Add Maintenance Schedule';
             document.getElementById('sfSchedId').value = (data && data.sched_id) ? String(data.sched_id) : '';
             document.getElementById('sfTask').value = (data && data.task) || '';
@@ -8412,12 +9536,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 sfLocation.dataset.auto = data ? '0' : '1';
             }
             const startVal = (data && (data.schedule_date || data.starting_date)) ? String(data.schedule_date || data.starting_date).slice(0, 10) : '';
-            document.getElementById('sfStartDate').value = startVal;
+            sfSetFieldDisplay(sfDateFields[0], sfParseISO(startVal));
             const endVal = (data && (data.estimated_end_date || data.estimated_completion_date)) ? String(data.estimated_end_date || data.estimated_completion_date).slice(0, 10) : '';
-            document.getElementById('sfEndDate').value = endVal;
-            document.getElementById('sfCategory').value = (data && data.category) || 'General Maintenance';
-            document.getElementById('sfPriority').value = (data && data.priority) || 'Low';
-            document.getElementById('sfStatus').value = (data && data.status) || 'Scheduled';
+            sfSetFieldDisplay(sfDateFields[1], sfParseISO(endVal));
+            if (sfCategoryCombo) sfCategoryCombo.setValue((data && data.category) || 'General Maintenance', (data && data.category) || 'General Maintenance', true);
+            if (sfPriorityCombo) sfPriorityCombo.setValue((data && data.priority) || 'Low', (data && data.priority) || 'Low', true);
+            if (sfStatusCombo) sfStatusCombo.setValue((data && data.status) || 'Scheduled', (data && data.status) || 'Scheduled', true);
             document.getElementById('sfBudget').value = (data && data.budget_raw != null) ? data.budget_raw : ((data && data.budget) ? data.budget : '');
             document.getElementById('sfAssignedTeam').value = (data && data.assigned_team) || '';
             showFormError('');
@@ -8433,16 +9557,6 @@ document.addEventListener('DOMContentLoaded', function() {
             openScheduleForm(row);
         };
 
-        if (sfFacility) {
-            sfFacility.addEventListener('change', function() {
-                const id = parseInt(sfFacility.value, 10);
-                const f = facilities.find(function(x) { return x.facility_id === id; });
-                const locInput = document.getElementById('sfLocation');
-                if (f && locInput && locInput.dataset.auto === '1') {
-                    locInput.value = facilityDefaultLocation(f);
-                }
-            });
-        }
         const sfLocationEl = document.getElementById('sfLocation');
         if (sfLocationEl) {
             sfLocationEl.addEventListener('input', function() {
@@ -8464,12 +9578,66 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        const schedSaveConfirmBackdrop = document.getElementById('schedSaveConfirmBackdrop');
+        const schedSaveConfirmTitle    = document.getElementById('schedSaveConfirmTitle');
+        const schedSaveConfirmDesc     = document.getElementById('schedSaveConfirmDesc');
+        const schedSaveConfirmCancel   = document.getElementById('schedSaveConfirmCancel');
+        const schedSaveConfirmOk       = document.getElementById('schedSaveConfirmOk');
+        let sfPendingPayload = null;
+
+        function openSchedSaveConfirm(payload) {
+            sfPendingPayload = payload;
+            const isEdit = payload.sched_id > 0;
+            schedSaveConfirmTitle.textContent = isEdit ? 'Save changes to this schedule?' : 'Add this maintenance schedule?';
+            schedSaveConfirmDesc.textContent  = isEdit
+                ? 'This will update the maintenance schedule for the selected CPRF facility. The changes will be saved immediately.'
+                : 'This will create a new maintenance schedule for the selected CPRF facility. The changes will be saved immediately.';
+            schedSaveConfirmBackdrop.classList.add('active');
+        }
+        function closeSchedSaveConfirm() {
+            schedSaveConfirmBackdrop.classList.remove('active');
+            sfPendingPayload = null;
+        }
+        if (schedSaveConfirmCancel) schedSaveConfirmCancel.addEventListener('click', closeSchedSaveConfirm);
+        if (schedSaveConfirmBackdrop) {
+            schedSaveConfirmBackdrop.addEventListener('click', function(e) {
+                if (e.target === schedSaveConfirmBackdrop) closeSchedSaveConfirm();
+            });
+        }
+        if (schedSaveConfirmOk) {
+            schedSaveConfirmOk.addEventListener('click', async function() {
+                if (!sfPendingPayload) return;
+                const payload = sfPendingPayload;
+                const saveBtn = document.getElementById('scheduleFormSave');
+                schedSaveConfirmOk.disabled = true;
+                if (saveBtn) saveBtn.disabled = true;
+                try {
+                    const res = await fetch('api/schedule-crud.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (!data.success) {
+                        closeSchedSaveConfirm();
+                        showFormError(data.error || 'Save failed');
+                        return;
+                    }
+                    window.location.reload();
+                } catch (err) {
+                    closeSchedSaveConfirm();
+                    showFormError('Network error — please try again.');
+                } finally {
+                    schedSaveConfirmOk.disabled = false;
+                    if (saveBtn) saveBtn.disabled = false;
+                }
+            });
+        }
+
         if (sfForm) {
             sfForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 showFormError('');
-                const saveBtn = document.getElementById('scheduleFormSave');
-                if (saveBtn) saveBtn.disabled = true;
 
                 const payload = {
                     sched_id: parseInt(document.getElementById('sfSchedId').value, 10) || 0,
@@ -8485,27 +9653,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     assigned_team: document.getElementById('sfAssignedTeam').value.trim()
                 };
 
-                try {
-                    const res = await fetch('api/schedule-crud.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const data = await res.json();
-                    if (!data.success) {
-                        showFormError(data.error || 'Save failed');
-                        return;
-                    }
-                    window.location.reload();
-                } catch (err) {
-                    showFormError('Network error — please try again.');
-                } finally {
-                    if (saveBtn) saveBtn.disabled = false;
-                }
+                openSchedSaveConfirm(payload);
             });
         }
-
-        populateFacilitySelect('');
     }
 
 }); // --- END DOMContentLoaded ---

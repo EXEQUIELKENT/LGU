@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 01, 2026 at 12:21 PM
+-- Generation Time: Jul 12, 2026 at 08:25 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -45,6 +45,8 @@ CREATE TABLE `citizen_feedback` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `employees`
@@ -193,6 +195,8 @@ CREATE TABLE `login_logs` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
 -- Table structure for table `maintenance_schedule`
 --
@@ -201,14 +205,16 @@ CREATE TABLE `maintenance_schedule` (
   `sched_id` int(10) UNSIGNED NOT NULL,
   `task` varchar(255) NOT NULL,
   `location` varchar(255) NOT NULL,
+  `cprf_facility_id` int(10) UNSIGNED DEFAULT NULL,
+  `cprf_facility_name` varchar(150) DEFAULT NULL,
   `category` varchar(100) DEFAULT NULL,
   `priority` enum('Low','Medium','High','Critical') NOT NULL,
   `status` enum('Scheduled','In Progress','Completed','Delayed') NOT NULL DEFAULT 'Scheduled',
-  `engineer_id` int(10) UNSIGNED NOT NULL,
+  `engineer_id` int(10) UNSIGNED DEFAULT NULL,
   `assigned_team` varchar(255) DEFAULT NULL,
   `budget` decimal(15,2) NOT NULL DEFAULT 0.00,
   `starting_date` datetime NOT NULL,
-  `estimated_completion_date` datetime NOT NULL,
+  `estimated_completion_date` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -556,9 +562,9 @@ CREATE TABLE `request_resolutions` (
   `resolved_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `admin_return_note` text DEFAULT NULL,
   `highlight_fields` text DEFAULT NULL,
-  `highlight_days` text DEFAULT NULL
+  `highlight_days` text DEFAULT NULL,
+  `admin_feedback_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 
 --
 -- Indexes for dumped tables
@@ -614,7 +620,8 @@ ALTER TABLE `login_logs`
 --
 ALTER TABLE `maintenance_schedule`
   ADD PRIMARY KEY (`sched_id`),
-  ADD KEY `fk_sched_engineer` (`engineer_id`);
+  ADD KEY `fk_sched_engineer` (`engineer_id`),
+  ADD KEY `idx_cprf_facility_id` (`cprf_facility_id`);
 
 --
 -- Indexes for table `materials_equipment_costs`

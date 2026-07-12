@@ -7,6 +7,48 @@ $serverTimestamp = time();
 require_once 'auth_config.php';
 require_once 'db.php';
 
+// --- CPRF Facilities Catalog (dynamic, shared with CIMM) -------------------
+// Previously the map's "Known QC Facilities" list (used to auto-name a pin
+// dropped near a public facility) was a hardcoded 4-entry array baked into
+// the JS below. That array never picked up new/renamed/relocated facilities.
+// It now reuses the same live catalog CIMM's maintenance/schedule modules
+// already pull from CPRF's facilities-share API, so this page always shows
+// the current facility_id/name/coordinates without any manual edits here.
+require_once __DIR__ . '/api/cimm_cprf_facilities.php';
+$cprfFacilitiesCatalog = cimm_fetch_cprf_facility_catalog();
+
+// Last-resort fallback: only used if the live facilities-share fetch comes
+// back completely empty (e.g. CPRF API unreachable), so the "Public
+// Facilities" map-detection feature degrades gracefully instead of going
+// dark. Under normal operation $cprfFacilitiesCatalog is fully dynamic.
+if ($cprfFacilitiesCatalog === []) {
+    error_log('citizenrepform.php: live CPRF facility catalog empty — falling back to static facility list.');
+    $cprfFacilitiesCatalog = [
+        ['facility_id' => 0, 'name' => 'Cassanova Multi-Purpose Building', 'location' => '', 'lat' => 14.69679995, 'lng' => 121.07769286, 'keywords' => []],
+        ['facility_id' => 0, 'name' => 'Bernardo Court', 'location' => '', 'lat' => 14.64406945, 'lng' => 121.04843732, 'keywords' => []],
+        ['facility_id' => 0, 'name' => 'Pael Multipurpose Building', 'location' => '', 'lat' => 14.65472125, 'lng' => 121.06631024, 'keywords' => []],
+        ['facility_id' => 0, 'name' => 'Sanville Covered Court & Multipurpose Building', 'location' => '', 'lat' => 14.67100400, 'lng' => 121.04766600, 'keywords' => []],
+    ];
+}
+
+// JS-ready projection for the map widget: only facilities with known
+// coordinates are usable for proximity matching. Radius stays a constant
+// default since facilities-share doesn't publish a per-facility match
+// radius; adjust here (or source it from the catalog) if that changes.
+define('CPRF_MAP_MATCH_RADIUS_METERS', 25);
+$cprfMapFacilities = array_values(array_filter(array_map(static function ($f) {
+    if (!isset($f['lat'], $f['lng']) || $f['lat'] === null || $f['lng'] === null) {
+        return null;
+    }
+    return [
+        'facility_id' => (int)$f['facility_id'],
+        'name'        => (string)$f['name'],
+        'lat'         => (float)$f['lat'],
+        'lng'         => (float)$f['lng'],
+        'radius'      => CPRF_MAP_MATCH_RADIUS_METERS,
+    ];
+}, $cprfFacilitiesCatalog)));
+
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
@@ -75,9 +117,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $coord_lng = isset($_POST['coord_lng']) ? trim($_POST['coord_lng']) : '';
     $coordinates = ($coord_lat !== '' && $coord_lng !== '') ? $coord_lat . ',' . $coord_lng : null;
 
+    // CPRF facility link — set client-side by matchKnownFacility() when the
+    // pin lands inside a known facility's radius. Re-validated here against
+    // the live catalog so a stale/tampered id can never be trusted as-is.
+    $cprfFacilityId = isset($_POST['cprf_facility_id']) ? (int)$_POST['cprf_facility_id'] : 0;
+    $cprfFacilityName = '';
+    if ($cprfFacilityId > 0) {
+        $matchedCprfFacility = cimm_get_facility_by_id($cprfFacilityId, $cprfFacilitiesCatalog);
+        if ($matchedCprfFacility !== null) {
+            $cprfFacilityName = (string)$matchedCprfFacility['name'];
+        } else {
+            $cprfFacilityId = 0;
+        }
+    }
+
     $district = isset($_POST['district']) ? trim($_POST['district']) : '';
     // Ensure district column exists in requests table
     $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS district VARCHAR(50) DEFAULT NULL");
+    // Ensure CPRF facility link columns exist (same pattern used on maintenance_schedule)
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_id INT UNSIGNED DEFAULT NULL");
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_name VARCHAR(150) DEFAULT NULL");
 
     $consent_agree = isset($_POST['consent_agree']) ? $_POST['consent_agree'] : '';
     $pure_number = preg_replace('/\D/', '', $contact_number);
@@ -123,10 +182,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         else {
             $stmt = $conn->prepare(
-                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, district, created_at)
-                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, ?, NOW())"
+                "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, district, cprf_facility_id, cprf_facility_name, created_at)
+                 VALUES (?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, ?, NOW())"
             );
-            $stmt->bind_param("ssssssss", $infrastructure, $location, $issue, $pure_number, $name, $coordinates, $req_email, $district);
+            $stmt->bind_param("ssssssssis", $infrastructure, $location, $issue, $pure_number, $name, $coordinates, $req_email, $district, $cprfFacilityId, $cprfFacilityName);
 
             if ($stmt->execute()) {
                 $request_id = $conn->insert_id;
@@ -1767,6 +1826,7 @@ input[type="file"] {
 
                 <input type="hidden" id="coord_lat" name="coord_lat">
                 <input type="hidden" id="coord_lng" name="coord_lng">
+                <input type="hidden" id="cprf_facility_id" name="cprf_facility_id">
                 <input type="hidden" id="district_field" name="district">
 
                 <div class="btn-container">
@@ -3396,7 +3456,13 @@ input[type="file"] {
         // re-fetches with the correct priority for the same coordinates.
         const mode = getAddressMode();
         const cacheKey = getCacheKey(latlng) + ':' + mode;
-        if (addressCache.has(cacheKey)) { manualAddressInput.value = addressCache.get(cacheKey); manualAddressInput.classList.remove('loading'); return; }
+        if (addressCache.has(cacheKey)) {
+            const cached = addressCache.get(cacheKey);
+            manualAddressInput.value = cached.address;
+            manualAddressInput.classList.remove('loading');
+            setCprfFacilityId(cached.facilityId);
+            return;
+        }
         if (fetchAddressTimeout) clearTimeout(fetchAddressTimeout);
         if (abortController) abortController.abort();
         const now = Date.now(), delay = Math.max(0, FETCH_DELAY - (now - lastFetchTime));
@@ -3412,14 +3478,16 @@ input[type="file"] {
         // ── Known facility shortcut (facility mode only) ───────────────────
         // If the pin is within the facility's radius, use the known name
         // immediately — no need to wait for Nominatim or Overpass.
+        setCprfFacilityId(null); // reset on every fetch; only set again on a real match below
         if (mode === 'facility') {
-            const facilityName = matchKnownFacility(latlng.lat, latlng.lng);
-            if (facilityName) {
-                const addr = `${facilityName}, Brgy. ${toTitleCase(barangayName)}, Quezon City`;
+            const facilityMatch = matchKnownFacility(latlng.lat, latlng.lng);
+            if (facilityMatch) {
+                const addr = `${facilityMatch.name}, Brgy. ${toTitleCase(barangayName)}, Quezon City`;
                 manualAddressInput.value = addr;
                 manualAddressInput.classList.remove('loading');
-                addressCache.set(cacheKey, addr);
+                addressCache.set(cacheKey, { address: addr, facilityId: facilityMatch.facility_id });
                 setSaveLocationBtnState(false);
+                setCprfFacilityId(facilityMatch.facility_id);
                 if (abortController) { abortController.abort(); abortController = null; }
                 return;
             }
@@ -3428,6 +3496,7 @@ input[type="file"] {
         Promise.all([fetchNominatimAddress(latlng, signal, mode), fetchNearbyLandmarks(latlng.lat, latlng.lng, 150, mode).catch(() => [])])
             .then(([nominatimData, landmarks]) => {
                 let fullAddress;
+                let matchedFacilityId = null;
                 if (!nominatimData) { fullAddress = buildFallbackAddress(barangayName, landmarks); }
                 else {
                     const addressParts = processAddressDataEnhanced(nominatimData, barangayName, mode);
@@ -3435,18 +3504,24 @@ input[type="file"] {
                     // After Nominatim resolves, still check known facility — it may not be
                     // in OSM or may have a different name there.
                     if (mode === 'facility') {
-                        const fName = matchKnownFacility(latlng.lat, latlng.lng);
-                        if (fName) addressParts.poi = fName;
+                        const facMatch = matchKnownFacility(latlng.lat, latlng.lng);
+                        if (facMatch) {
+                            addressParts.poi = facMatch.name;
+                            matchedFacilityId = facMatch.facility_id;
+                            setCprfFacilityId(facMatch.facility_id);
+                        }
                     }
                     fullAddress = formatAddressEnhanced(addressParts, barangayName, landmarks, mode);
                 }
-                manualAddressInput.value = fullAddress; manualAddressInput.classList.remove('loading'); addressCache.set(cacheKey, fullAddress);
+                manualAddressInput.value = fullAddress; manualAddressInput.classList.remove('loading');
+                addressCache.set(cacheKey, { address: fullAddress, facilityId: matchedFacilityId });
                 setSaveLocationBtnState(false);  // ← re-enable once address is ready
             })
             .catch((error) => {
                 if (error.name === 'AbortError') return;
                 const fb = `${barangayName}, Quezon City`;
-                manualAddressInput.value = fb; manualAddressInput.classList.remove('loading'); addressCache.set(cacheKey, fb);
+                manualAddressInput.value = fb; manualAddressInput.classList.remove('loading');
+                addressCache.set(cacheKey, { address: fb, facilityId: null });
                 setSaveLocationBtnState(false);  // ← re-enable on error too
             });
     }
@@ -3519,14 +3594,13 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
     // Returns 'road'     → Roads, Drainage, Street Lights, Electrical
     //         'facility' → Public Facilities, Water Supply
     //         'auto'     → nothing selected yet
-    // ── Known QC Facilities — exact name shown when pin is near one ────────
-    // Used when infrastructure type is "Public Facilities"
-    const KNOWN_QC_FACILITIES = [
-        { name: 'Cassanova Multi-Purpose Building', lat: 14.69679995, lng: 121.07769286, radius: 20 },
-        { name: 'Bernardo Court',                   lat: 14.64406945, lng: 121.04843732, radius: 20 },
-        { name: 'Pael Multipurpose Building',        lat: 14.65472125, lng: 121.06631024, radius: 20 },
-        { name: 'Sanville Covered Court & Multipurpose Building', lat: 14.67100400, lng: 121.04766600, radius: 25 },
-    ];
+    // ── Known QC Facilities — loaded dynamically from the live CPRF catalog ──
+    // Used when infrastructure type is "Public Facilities". This used to be a
+    // hardcoded 4-entry list; it's now generated server-side (see top of file)
+    // from cimm_fetch_cprf_facility_catalog(), the same live facility_id/name/
+    // lat/lng source CIMM's maintenance & schedule modules already use — so
+    // new, renamed, or relocated facilities show up here automatically.
+    const KNOWN_QC_FACILITIES = <?php echo json_encode($cprfMapFacilities, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
     function matchKnownFacility(lat, lng) {
         const cosLat = Math.cos(lat * Math.PI / 180);
@@ -3534,9 +3608,14 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
             const dy = (lat - f.lat) * 111320;
             const dx = (lng - f.lng) * 111320 * cosLat;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist <= f.radius) return f.name;
+            if (dist <= f.radius) return f; // { facility_id, name, lat, lng, radius }
         }
         return null;
+    }
+
+    function setCprfFacilityId(facilityId) {
+        const el = document.getElementById('cprf_facility_id');
+        if (el) el.value = facilityId ? facilityId : '';
     }
 
     function getAddressMode() {
