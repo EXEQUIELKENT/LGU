@@ -5414,7 +5414,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <?php endif; ?>
                 </div>
             </div>
-            <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : '' ?>>
+            <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : 'title="Add a new maintenance schedule"' ?>>
                 <i class="fas fa-plus"></i> Add Schedule
             </button>
         </div>
@@ -5905,7 +5905,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 <span class="modal-label">CPRF Integration</span>
                 <h3 class="modal-title" id="scheduleFormTitle">Add Maintenance Schedule</h3>
             </div>
-            <button type="button" class="modal-close-btn" id="scheduleFormClose" aria-label="Close">&times;</button>
+            <button type="button" class="modal-close-btn" id="scheduleFormClose" aria-label="Close" title="Close">&times;</button>
         </div>
         <form id="scheduleForm" class="modal-body sched-form-body" autocomplete="off">
             <input type="hidden" id="sfSchedId" name="sched_id" value="">
@@ -5921,12 +5921,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <div class="sfr-content">
                         <input type="hidden" id="sfCprfFacility" name="cprf_facility_id" value="" required>
                         <div class="sf-combobox" id="sfCprfFacilityBox">
-                            <div class="sf-combobox-display" id="sfCprfFacilityDisplay" tabindex="0">
+                            <div class="sf-combobox-display" id="sfCprfFacilityDisplay" tabindex="0" title="Select CPRF facility">
                                 <span class="sf-combobox-label" id="sfCprfFacilityLabel">— Select facility from CPRF —</span>
                                 <span class="sf-combobox-arrow">▾</span>
                             </div>
                             <div class="sf-combobox-dropdown" id="sfCprfFacilityDropdown">
-                                <input class="sf-combobox-search" type="text" placeholder="🔍 Search facility by name or ID…" autocomplete="off">
+                                <input class="sf-combobox-search" type="text" placeholder="🔍 Search facility by name or ID…" autocomplete="off" title="Search CPRF facilities">
                                 <div class="sf-combobox-list" id="sfCprfFacilityList"></div>
                             </div>
                         </div>
@@ -5940,7 +5940,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <label class="sfr-label" for="sfTask">Task / Work Description <span class="req">*</span></label>
                     </div>
                     <div class="sfr-content">
-                        <input type="text" id="sfTask" name="task" required placeholder="e.g. Aircon unit repair">
+                        <input type="text" id="sfTask" name="task" required placeholder="e.g. Aircon unit repair" title="Enter task or work description">
                     </div>
                 </div>
 
@@ -5950,7 +5950,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <label class="sfr-label" for="sfLocation">Location</label>
                     </div>
                     <div class="sfr-content">
-                        <input type="text" id="sfLocation" name="location" placeholder="Auto-filled from CPRF facility">
+                        <input type="text" id="sfLocation" name="location" placeholder="Auto-filled from CPRF facility" title="Location (auto-filled from CPRF facility)">
                     </div>
                 </div>
 
@@ -5963,7 +5963,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         </div>
                         <div class="sfr-content">
                             <input type="hidden" id="sfStartDate" name="starting_date" value="" required>
-                            <div class="sf-date-display" id="sfStartDateDisplay" tabindex="0">
+                            <div class="sf-date-display" id="sfStartDateDisplay" tabindex="0" title="Select start date">
                                 <span class="sf-date-text placeholder" id="sfStartDateText">Select start date</span>
                                 <span class="sf-date-icon">📅</span>
                             </div>
@@ -5976,7 +5976,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         </div>
                         <div class="sfr-content">
                             <input type="hidden" id="sfEndDate" name="estimated_completion_date" value="">
-                            <div class="sf-date-display" id="sfEndDateDisplay" tabindex="0">
+                            <div class="sf-date-display" id="sfEndDateDisplay" tabindex="0" title="Select estimated completion date">
                                 <span class="sf-date-text placeholder" id="sfEndDateText">Select end date</span>
                                 <span class="sf-date-icon">📅</span>
                             </div>
@@ -5994,7 +5994,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sfr-content">
                             <input type="hidden" id="sfCategory" name="category" value="General Maintenance">
                             <div class="sf-combobox" id="sfCategoryBox">
-                                <div class="sf-combobox-display" id="sfCategoryDisplay" tabindex="0">
+                                <div class="sf-combobox-display" id="sfCategoryDisplay" tabindex="0" title="Select category">
                                     <span class="sf-combobox-label selected" id="sfCategoryLabel">General Maintenance</span>
                                     <span class="sf-combobox-arrow">▾</span>
                                 </div>
@@ -6016,7 +6016,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sfr-content">
                             <input type="hidden" id="sfPriority" name="priority" value="Low">
                             <div class="sf-combobox" id="sfPriorityBox">
-                                <div class="sf-combobox-display" id="sfPriorityDisplay" tabindex="0">
+                                <div class="sf-combobox-display" id="sfPriorityDisplay" tabindex="0" title="Select priority">
                                     <span class="sf-combobox-label selected" id="sfPriorityLabel">Low</span>
                                     <span class="sf-combobox-arrow">▾</span>
                                 </div>
@@ -6041,7 +6041,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sfr-content">
                             <input type="hidden" id="sfStatus" name="status" value="Scheduled">
                             <div class="sf-combobox" id="sfStatusBox">
-                                <div class="sf-combobox-display" id="sfStatusDisplay" tabindex="0">
+                                <div class="sf-combobox-display" id="sfStatusDisplay" tabindex="0" title="Select status">
                                     <span class="sf-combobox-label selected" id="sfStatusLabel">Scheduled</span>
                                     <span class="sf-combobox-arrow">▾</span>
                                 </div>
@@ -6063,10 +6063,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sfr-content">
                             <div class="sfr-budget-wrap">
                                 <span class="sfr-peso-prefix">₱</span>
-                                <input type="number" id="sfBudget" class="sfr-budget-input-inner" name="budget" min="0" step="0.01" placeholder="0.00">
+                                <input type="number" id="sfBudget" class="sfr-budget-input-inner" name="budget" min="0" step="0.01" placeholder="0.00" title="Enter budget amount">
                                 <div class="sfr-budget-spinners">
-                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)+1));i.dispatchEvent(new Event('input'))" tabindex="-1">▲</button>
-                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)-1));i.dispatchEvent(new Event('input'))" tabindex="-1">▼</button>
+                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)+1));i.dispatchEvent(new Event('input'))" tabindex="-1" title="Increase budget">▲</button>
+                                    <button type="button" class="sfr-budget-spin-btn" onclick="var i=document.getElementById('sfBudget');i.value=Math.max(0,(parseFloat(i.value||0)-1));i.dispatchEvent(new Event('input'))" tabindex="-1" title="Decrease budget">▼</button>
                                 </div>
                             </div>
                         </div>
@@ -6079,7 +6079,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <label class="sfr-label" for="sfAssignedTeam">Assigned Team</label>
                     </div>
                     <div class="sfr-content">
-                        <input type="text" id="sfAssignedTeam" name="assigned_team" placeholder="e.g. Electrical Team A">
+                        <input type="text" id="sfAssignedTeam" name="assigned_team" placeholder="e.g. Electrical Team A" title="Enter assigned team">
                     </div>
                 </div>
 
@@ -6087,8 +6087,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
             <div id="scheduleFormError" class="sched-form-error hidden"></div>
             <div class="sched-form-actions rep-confirm-btns">
-                <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel">Cancel</button>
-                <button type="submit" class="rep-confirm-btn rep-confirm-ok-save" id="scheduleFormSave"><i class="fas fa-save"></i> Save Schedule</button>
+                <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel" title="Cancel and close">Cancel</button>
+                <button type="submit" class="rep-confirm-btn rep-confirm-ok-save" id="scheduleFormSave" title="Save this schedule"><i class="fas fa-save"></i> Save Schedule</button>
             </div>
         </form>
     </div>
@@ -6101,8 +6101,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <div class="rep-confirm-title" id="schedSaveConfirmTitle">Save this schedule?</div>
         <div class="rep-confirm-desc" id="schedSaveConfirmDesc">This will save the maintenance schedule for the selected CPRF facility. The changes will be saved immediately.</div>
         <div class="rep-confirm-btns">
-            <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="schedSaveConfirmCancel">Cancel</button>
-            <button type="button" class="rep-confirm-btn rep-confirm-ok-save" id="schedSaveConfirmOk"><i class="fas fa-save"></i> Save</button>
+            <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="schedSaveConfirmCancel" title="Cancel">Cancel</button>
+            <button type="button" class="rep-confirm-btn rep-confirm-ok-save" id="schedSaveConfirmOk" title="Confirm save"><i class="fas fa-save"></i> Save</button>
         </div>
     </div>
 </div>
@@ -6113,12 +6113,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 ═══════════════════════════════════════════ -->
 <div id="sfDatePickerOverlay">
     <div class="sf-dp-header">
-        <button class="sf-dp-nav" id="sfDpPrevMonth" type="button">&#8592;</button>
+        <button class="sf-dp-nav" id="sfDpPrevMonth" type="button" title="Previous month">&#8592;</button>
         <div class="sf-dp-header-center">
-            <button class="sf-dp-month-btn" id="sfDpMonthBtn" type="button"></button>
-            <button class="sf-dp-year-btn"  id="sfDpYearBtn"  type="button"></button>
+            <button class="sf-dp-month-btn" id="sfDpMonthBtn" type="button" title="Select month"></button>
+            <button class="sf-dp-year-btn"  id="sfDpYearBtn"  type="button" title="Select year"></button>
         </div>
-        <button class="sf-dp-nav" id="sfDpNextMonth" type="button">&#8594;</button>
+        <button class="sf-dp-nav" id="sfDpNextMonth" type="button" title="Next month">&#8594;</button>
     </div>
     <div class="sf-dp-year-dropdown" id="sfDpYearDropdown"></div>
     <div class="sf-dp-month-dropdown" id="sfDpMonthDropdown">
@@ -6135,8 +6135,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
     <div class="sf-dp-grid" id="sfDpGrid"></div>
     <div class="sf-dp-footer">
-        <button class="sf-dp-clear" id="sfDpClear" type="button">Clear</button>
-        <button class="sf-dp-close" id="sfDpClose" type="button">Done</button>
+        <button class="sf-dp-clear" id="sfDpClear" type="button" title="Clear selected date">Clear</button>
+        <button class="sf-dp-close" id="sfDpClose" type="button" title="Confirm date and close">Done</button>
     </div>
 </div>
 
