@@ -4,6 +4,7 @@ require_once __DIR__ . '/session_guard.php';
 $serverTimestamp = time();
 
 require __DIR__ . '/db.php';
+require_once __DIR__ . '/activity_log.php';
 
 function getProfilePicture($employeeId, $conn) {
     if (!$employeeId) return 'profile.png';
@@ -69,6 +70,69 @@ if ($isAreaEngineer) {
     $aeStmt->close();
     $aeDistrict    = trim($aeRow['district'] ?? '');
     $aeHasDistrict = $aeDistrict !== '';
+}
+
+// ── AJAX POST handler (view logging + real-time activity feed) ──────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+    $action = $input['action'] ?? '';
+
+    // ── Log: someone clicked "View" on an archived report row ────────────────
+    if ($action === 'log_view') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId > 0) {
+            log_report_activity($conn, 'archive_reports', $repId, 'viewed',
+                activity_actor_name() . " viewed Report #REP-{$repId}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Log: someone opened the image gallery for an archived report ─────────
+    if ($action === 'log_image_view') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId > 0) {
+            log_report_activity($conn, 'archive_reports', $repId, 'images_viewed',
+                activity_actor_name() . " viewed images for Report #REP-{$repId}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Log: office staff downloaded the Word (.docx) report ─────────────────
+    if ($action === 'log_word_download') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        if ($repId > 0) {
+            log_report_activity($conn, 'archive_reports', $repId, 'downloaded',
+                activity_actor_name() . " downloaded the Word report for Report #REP-{$repId}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Real-time refresh: return the latest activity log entries for the
+    //    report/request ids currently visible on this page ────────────────
+    if ($action === 'fetch_activity_log') {
+        if (!$isAdmin) {
+            echo json_encode(['success' => false, 'message' => 'Not authorized.']);
+            exit;
+        }
+        $repIds = array_values(array_filter(array_map('intval', (array)($input['report_ids'] ?? [])), fn($v) => $v > 0));
+        $reqIds = array_values(array_filter(array_map('intval', (array)($input['request_ids'] ?? [])), fn($v) => $v > 0));
+        $entries = fetch_activity_log($conn, ['report' => $repIds, 'request' => $reqIds], 40, 'archive_reports');
+        $latestId = !empty($entries) ? (int)$entries[0]['log_id'] : 0;
+        echo json_encode([
+            'success'   => true,
+            'html'      => activity_log_items_html($entries),
+            'count'     => count($entries),
+            'latest_id' => $latestId,
+        ]);
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+    exit;
 }
 
 // ── AJAX: engineer average rating from valid citizen feedbacks ────────────────
@@ -193,6 +257,12 @@ function engProfileBtn(int $engineerId, ?string $picPath): string {
 
 $rows = [];
 if ($result && $result->num_rows > 0) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
+
+// ── Activity History: gather the report/request ids currently on this page ────
+$actReportIds  = array_values(array_filter(array_map(fn($r) => (int)($r['rep_id'] ?? 0), $rows)));
+$actRequestIds = array_values(array_filter(array_map(fn($r) => (int)($r['req_id'] ?? 0), $rows)));
+$activityEntries = fetch_activity_log($conn, ['report' => $actReportIds, 'request' => $actRequestIds], 40, 'archive_reports');
+$actLatestLogId  = !empty($activityEntries) ? (int)$activityEntries[0]['log_id'] : 0;
 
 // ── Fetch per-day logs and images ────────────────────────────────────────────
 $allDailyLogs = [];
@@ -549,7 +619,7 @@ tr.notif-highlight > td:first-child {
 [data-theme="dark"] .sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 .card {
     align-self: start; background: var(--bg-secondary); backdrop-filter: blur(12px);
-    border-radius: 18px; padding: 30px 35px; margin-bottom: 30px; margin-top: 28px;
+    border-radius: 18px; padding: 30px 35px; margin-bottom: 14px; margin-top: 28px;
     box-shadow: 0 6px 20px var(--shadow-color); display: flex; flex-direction: column;
     gap: 18px; width: 100%; box-sizing: border-box; border: 1px solid var(--border-color);
 }
@@ -559,15 +629,26 @@ tr.notif-highlight > td:first-child {
 .table-wrapper {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
     background: var(--bg-secondary); overflow-x: auto; -webkit-overflow-scrolling: touch;
+    max-height: 560px; overflow-y: auto;
+    /* Thin, glowing branded scrollbar — matches requests.php's .table-scroll-wrap */
+    scrollbar-width: thin;
+    scrollbar-color: #43a047 transparent;
 }
-/* Thin, subtle horizontal scrollbar */
-.table-wrapper::-webkit-scrollbar { height: 5px; }
+.table-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
 .table-wrapper::-webkit-scrollbar-track { background: transparent; }
-.table-wrapper::-webkit-scrollbar-thumb { background: rgba(46,125,50,.30); border-radius: 3px; }
-[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb { background: rgba(76,175,80,.35); }
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #66bb6a, #2e7d32);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(46,125,50,.65);
+}
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #81c784, #43a047);
+    box-shadow: 0 0 12px 2px rgba(46,125,50,.85);
+}
+[data-theme="dark"] .table-wrapper::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(76,175,80,.55); }
 table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; min-width: 920px; }
 thead { background: linear-gradient(135deg, #2e7d32, #43a047); }
-thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; }
+thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: left; color: #fff; white-space: nowrap; position: sticky; top: 0; z-index: 2; background: linear-gradient(135deg, #2e7d32, #43a047); }
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; text-align: center; }
 td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -612,7 +693,7 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
     .page-title { font-size: 22px; }
     .table-wrapper { display: none !important; }
-    .mobile-report-list { display: flex !important; flex-direction: column; gap: 14px; }
+    .mobile-report-list { display: flex !important; flex-direction: column; gap: 14px; max-height: 560px; overflow-y: auto; padding-right: 6px; }
     .report-card { background: var(--bg-secondary); border-radius: 14px; padding: 16px 18px; box-shadow: 0 6px 18px var(--shadow-color); border: 1px solid var(--border-color); font-size: 14px; display: flex; flex-direction: column; gap: 9px; }
     .report-card .rc-row { display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; }
     .report-card .rc-label { font-weight: 600; color: #2e7d32; flex-shrink: 0; min-width: 110px; }
@@ -1291,10 +1372,117 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 [data-theme="dark"] .district-badge.d6     { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other{ background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 
+/* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
+.activity-log-card { gap: 14px; margin-top: 10px; }
+.activity-log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+}
+.activity-log-title {
+    margin: 0; font-size: 19px; color: var(--text-primary);
+    display: flex; align-items: center; gap: 9px;
+}
+.activity-log-title i { color: #2e7d32; font-size: 16px; }
+.activity-log-title > i:first-child { margin-right: 6px; }
+.activity-log-title .admin-badge i { color: #fff; font-size: inherit; }
+.activity-log-title .admin-badge { margin-left: 8px; }
+/* Admin-only badge — exact style/markup ported from employee.php's .admin-badge */
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
+}
+.activity-log-count-badge {
+    font-size: 11.5px; font-weight: 700; color: var(--text-secondary);
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    padding: 4px 11px; border-radius: 20px; white-space: nowrap;
+}
+/* Scrollable log body — header row (title/badge) above stays fixed and always visible */
+.activity-log-list {
+    display: flex; flex-direction: column;
+    max-height: 560px; overflow-y: auto; padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #43a047 transparent;
+}
+.activity-log-list::-webkit-scrollbar { width: 6px; }
+.activity-log-list::-webkit-scrollbar-track { background: transparent; }
+.activity-log-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #66bb6a, #2e7d32);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(46,125,50,.65);
+}
+.activity-log-list::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #81c784, #43a047);
+    box-shadow: 0 0 12px 2px rgba(46,125,50,.85);
+}
+[data-theme="dark"] .activity-log-list::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(76,175,80,.55); }
+.activity-log-item {
+    display: flex; gap: 12px; padding: 12px 2px;
+    border-bottom: 1px solid var(--border-color);
+}
+.activity-log-item:last-child { border-bottom: none; }
+.act-log-icon {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; background: rgba(46,125,50,.12); color: #2e7d32;
+}
+.act-log-icon-success { background: rgba(46,125,50,.14);  color: #2e7d32; }
+.act-log-icon-warning { background: rgba(230,145,0,.15);  color: #b16a00; }
+.act-log-icon-danger  { background: rgba(198,40,40,.14);  color: #c62828; }
+.act-log-icon-info    { background: rgba(46,125,50,.12);  color: #2e7d32; }
+.act-log-body { flex: 1; min-width: 0; }
+.act-log-message { font-size: 13.5px; line-height: 1.5; color: var(--text-primary); }
+.act-log-meta { margin-top: 3px; font-size: 11.5px; color: var(--text-secondary); }
+.activity-log-empty {
+    text-align: center; padding: 34px 20px; color: var(--text-secondary); font-size: 13.5px;
+}
+.activity-log-empty i { display: block; font-size: 28px; opacity: .4; margin-bottom: 8px; }
+@keyframes actLogFlashIn {
+    0%   { background: rgba(46,125,50,.22); }
+    100% { background: transparent; }
+}
+.activity-log-item.act-log-item-new { animation: actLogFlashIn 2.2s ease-out; }
+.activity-log-live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 6px; vertical-align: middle;
+    animation: actLogLivePulse 1.6s ease-in-out infinite;
+}
+@keyframes actLogLivePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+    50%      { opacity: .55; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+.activity-log-more-wrap, .card-limit-more-wrap {
+    display: flex; justify-content: center; padding-top: 4px;
+}
+.activity-log-more-btn, .card-limit-more-btn {
+    border: 1.5px solid rgba(46,125,50,.35); background: rgba(46,125,50,.07);
+    color: #2e7d32; font-weight: 700; font-size: 12.5px; padding: 8px 18px;
+    border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center;
+    gap: 6px; transition: background .15s, border-color .15s;
+}
+.activity-log-more-btn:hover, .card-limit-more-btn:hover { background: rgba(46,125,50,.16); border-color: #2e7d32; }
+[data-theme="dark"] .act-log-icon { background: rgba(76,175,80,.2); color: #81c784; }
+[data-theme="dark"] .act-log-icon-success { background: rgba(76,175,80,.2); color: #81c784; }
+[data-theme="dark"] .act-log-icon-warning { background: rgba(255,213,79,.2); color: #ffd54f; }
+[data-theme="dark"] .act-log-icon-danger  { background: rgba(239,83,80,.2); color: #ef5350; }
+[data-theme="dark"] .activity-log-count-badge { background: var(--bg-primary); }
+[data-theme="dark"] .activity-log-more-btn, [data-theme="dark"] .card-limit-more-btn { background: rgba(76,175,80,.16); color: #81c784; }
+.card-limit-more-wrap { margin-top: 4px; }
+@media (min-width: 769px) { .card-limit-more-wrap { display: none !important; } }
+
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+// ── Activity log real-time polling ───────────────────────────────────────────
+const ACT_REPORT_IDS   = <?= json_encode($actReportIds) ?>;
+const ACT_REQUEST_IDS  = <?= json_encode($actRequestIds) ?>;
+const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
 
 (function() {
     try {
@@ -1610,7 +1798,32 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
     <?php endif; ?>
         <div id="noMobileResult" class="report-card" style="display:none;text-align:center;opacity:.7;font-weight:600;">No matching reports</div>
     </div>
+    <div class="card-limit-more-wrap" id="repCardMoreWrap" style="display:none;">
+        <button type="button" class="card-limit-more-btn" id="repCardMoreBtn">
+            <i class="fas fa-chevron-down"></i> <span id="repCardMoreLabel">Show more</span>
+        </button>
+    </div>
 </div>
+
+<!-- ══════════ HISTORY LOGS (admin / super admin only) ══════════ -->
+<?php if ($isAdmin): ?>
+<div class="card activity-log-card">
+    <div class="activity-log-header">
+        <h2 class="activity-log-title"><i class="fas fa-clock-rotate-left"></i> History Logs
+            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+        </h2>
+        <span class="activity-log-count-badge" id="activityLogCountBadge"><span class="activity-log-live-dot" title="Live"></span><span id="activityLogCountText"><?= count($activityEntries) ?> <?= count($activityEntries) === 1 ? 'entry' : 'entries' ?></span></span>
+    </div>
+    <div class="activity-log-list" id="activityLogList">
+        <?= activity_log_items_html($activityEntries) ?>
+    </div>
+    <div class="activity-log-more-wrap" id="activityLogMoreWrap" style="display:none;">
+        <button type="button" class="activity-log-more-btn" id="activityLogMoreBtn">
+            <i class="fas fa-chevron-down"></i> <span id="activityLogMoreLabel">Show more</span>
+        </button>
+    </div>
+</div>
+<?php endif; ?>
 </div>
 
 
@@ -1852,6 +2065,7 @@ const ALL_REPORTS = <?= json_encode($rowsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSO
     </div>
 </div>
 
+<script src="card_limit.js"></script>
 <script>
 
 
@@ -2104,6 +2318,17 @@ async function exportRepReport(btnEl) {
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showRepNotif('success', 'Report document created.');
+
+        // Fire-and-forget: record this download in the Archive Reports History Logs.
+        const repId = currentArchiveData ? parseInt(currentArchiveData.rep_id) : null;
+        if (repId) {
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'log_word_download', rep_id: repId }),
+                keepalive: true
+            }).then(() => pokeActivityLog()).catch(() => {});
+        }
     } catch (e) {
         showRepNotif('error', e.message || 'Something went wrong creating the report.');
     } finally {
@@ -2137,6 +2362,17 @@ function openRepModal(repId) {
     const data = ALL_REPORTS.find(r => r.rep_id == repId);
     if (!data) return;
     currentArchiveData = data;
+
+    // Fire-and-forget: record this view in the Archive Reports activity log.
+    // keepalive lets it survive a modal close/navigation, and we poke the
+    // poller afterward so the entry shows up right away instead of waiting
+    // for the next tick.
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log_view', rep_id: parseInt(repId) }),
+        keepalive: true
+    }).then(() => pokeActivityLog()).catch(() => {});
 
     document.getElementById('repModalId').textContent    = '#REP-' + data.rep_id + (data.req_id ? '  ·  REQ-' + String(data.req_id).padStart(3,'0') : '');
     document.getElementById('repModalInfra').textContent = data.infrastructure || '—';
@@ -2242,7 +2478,20 @@ document.addEventListener('keydown', e => {
 
 // Gallery lightbox
 let repLbZoomed=false, repLbDragging=false, repLbStartX=0, repLbStartY=0, repLbTX=0, repLbTY=0, repLbScale=1;
-function openRepLightbox(idx){ repGalleryIndex=idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); }
+function openRepLightbox(idx){
+    repGalleryIndex=idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active');
+
+    // Fire-and-forget: record this image view in the Archive Reports History Logs.
+    const repId = currentArchiveData ? parseInt(currentArchiveData.rep_id) : null;
+    if (repId) {
+        fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'log_image_view', rep_id: repId }),
+            keepalive: true
+        }).then(() => pokeActivityLog()).catch(() => {});
+    }
+}
 function closeRepLightbox(){ document.getElementById('repImgLightbox').classList.remove('active'); repLbResetZoom(); }
 function repLbUpdateImg(){
     const img=document.getElementById('repLightboxImg'); img.src=repActiveLbImages[repGalleryIndex]||'';
@@ -2280,6 +2529,103 @@ function priBadge(l){
     const st={Critical:'background:#fce7f3;color:#831843;',High:'background:#fde8e8;color:#9b1c1c;',Medium:'background:#fef3c7;color:#92400e;',Low:'background:#d1fae5;color:#065f46;'};
     l=l||'Low'; const s=st[l]||'background:#e5e7eb;color:#374151;';
     return `<span style="${s}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;">${escH(l)}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CARD LIMIT + ACTIVITY HISTORY LIMIT
+//  (declared here so applySort() further down can re-invoke the same
+//  limiter after it re-orders the cards)
+// ═══════════════════════════════════════════════════════
+let applyRepCardLimit = function () {};
+let applyActLogLimit  = function () {};
+document.addEventListener('DOMContentLoaded', function () {
+    applyRepCardLimit = initProgressiveList({
+        listSelector: '.mobile-report-list',
+        itemSelector: '.report-card',
+        exclude: el => el.id === 'noMobileResult' || !!el.querySelector('.empty-state'),
+        moreBtnSelector: '#repCardMoreBtn',
+        moreWrapSelector: '#repCardMoreWrap',
+        moreLabelSelector: '#repCardMoreLabel',
+        pageSize: 12
+    });
+    applyRepCardLimit();
+
+    applyActLogLimit = initProgressiveList({
+        listSelector: '#activityLogList',
+        itemSelector: '.activity-log-item',
+        moreBtnSelector: '#activityLogMoreBtn',
+        moreWrapSelector: '#activityLogMoreWrap',
+        moreLabelSelector: '#activityLogMoreLabel',
+        pageSize: 8
+    });
+    applyActLogLimit();
+
+    initActivityLogPolling();
+});
+
+// ═══════════════════════════════════════════════════════
+//  ACTIVITY LOG — REAL-TIME POLLING (no page refresh needed)
+// ═══════════════════════════════════════════════════════
+function initActivityLogPolling() {
+    const listEl = document.getElementById('activityLogList');
+    if (!listEl || typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
+
+    let knownLatestId = (typeof ACT_LATEST_LOG_ID !== 'undefined') ? ACT_LATEST_LOG_ID : 0;
+    let inFlight = false;
+    const POLL_MS = 8000;
+
+    function refreshActivityLog() {
+        if (inFlight || document.hidden) return;
+        inFlight = true;
+        fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'fetch_activity_log',
+                report_ids: (typeof ACT_REPORT_IDS !== 'undefined') ? ACT_REPORT_IDS : [],
+                request_ids: (typeof ACT_REQUEST_IDS !== 'undefined') ? ACT_REQUEST_IDS : []
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.success) return;
+            if (data.latest_id === knownLatestId) return; // nothing new
+
+            const previousKnownId = knownLatestId;
+            knownLatestId = data.latest_id;
+
+            listEl.innerHTML = data.html;
+
+            // Flash-highlight any entries newer than what we had before
+            listEl.querySelectorAll('.activity-log-item').forEach(item => {
+                const id = parseInt(item.getAttribute('data-log-id') || '0', 10);
+                if (id > previousKnownId) item.classList.add('act-log-item-new');
+            });
+
+            const countTextEl = document.getElementById('activityLogCountText');
+            if (countTextEl) countTextEl.textContent = data.count + (data.count === 1 ? ' entry' : ' entries');
+
+            applyActLogLimit();
+        })
+        .catch(() => {})
+        .finally(() => { inFlight = false; });
+    }
+
+    setInterval(refreshActivityLog, POLL_MS);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refreshActivityLog();
+    });
+
+    // Expose so fire-and-forget loggers (view report, etc.) can pull the new
+    // entry in immediately instead of waiting for the next poll tick.
+    window.refreshActivityLog = refreshActivityLog;
+}
+
+// Small helper so callers don't need to guard against the widget being
+// absent (non-admin pages never call initActivityLogPolling, so
+// window.refreshActivityLog is never set there).
+function pokeActivityLog() {
+    if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -2332,6 +2678,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (noDesk) noDesk.style.display = "none";
             mCards.forEach(c => { c.style.display = ""; mList.appendChild(c); });
             if (noMobile) noMobile.style.display = "none";
+            applyRepCardLimit();
             return;
         }
 
@@ -2356,6 +2703,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
         mHits.forEach(c => mList.insertBefore(c, mList.firstChild));
         if (noMobile) noMobile.style.display = mHits.length ? "none" : "";
+        applyRepCardLimit();
     });
 });
 
@@ -2370,6 +2718,57 @@ const SELF_ENG_PIC = <?= json_encode($profilePictureSrc) ?>;
 const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? ''))) ?>;
 
 const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
+
+// ═══════════════════════════════════════════════════════
+//  ACTIVITY LOG — REAL-TIME PUSH (SSE)
+//  The 8s poll above is just a safety-net fallback. validate_request.php,
+//  reject_request.php, assign_engineer.php, etc. already push a live
+//  notification to every other employee the moment an action happens
+//  (via insertNotification), and notification-stream.php streams those
+//  out over Server-Sent Events. We piggyback on that same stream here —
+//  same as requests.php, pending_reports.php, and current_reports.php —
+//  so the Activity History panel updates within a second or two of ANY
+//  employee's action, instead of waiting for the next poll tick.
+//
+//  NOTE: this block must run AFTER `const IS_ADMIN` above is declared.
+//  It used to sit further up the file (right after the report-search
+//  DOMContentLoaded handler) and ran as soon as the parser reached it,
+//  which is BEFORE `const IS_ADMIN` further down was ever initialized.
+//  Referencing a `const` before its declaration is a temporal-dead-zone
+//  ReferenceError in JS — even `typeof IS_ADMIN` throws instead of
+//  quietly returning 'undefined' — so this IIFE crashed immediately on
+//  every page load and the EventSource connection was never made. That's
+//  why Archive Reports' History Logs never updated live while
+//  requests.php (which declares IS_ADMIN before using it) worked fine.
+// ═══════════════════════════════════════════════════════
+(function () {
+    if (typeof EventSource === 'undefined') return;
+    if (typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
+
+    let refreshTimer = null;
+    function scheduleActivityRefresh() {
+        // Debounce: if several notifications land at once (e.g. bulk
+        // actions), only refresh once shortly after the burst settles.
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(function () {
+            if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
+        }, 400);
+    }
+
+    function connect() {
+        const es = new EventSource('api/notification-stream.php?last_id=0');
+        es.addEventListener('notification', scheduleActivityRefresh);
+        es.onerror = () => {
+            // EventSource retries on its own, but if the browser gives up
+            // (connection closed), reconnect after a short delay.
+            if (es.readyState === EventSource.CLOSED) {
+                setTimeout(connect, 3000);
+            }
+        };
+    }
+    connect();
+})();
+
 const IS_AREA_ENGINEER = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 const AE_HAS_DISTRICT  = <?= $aeHasDistrict  ? 'true' : 'false' ?>;
 const AE_DISTRICT      = <?= json_encode($aeDistrict) ?>;
@@ -2714,6 +3113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cards.forEach(c => mList.appendChild(c));
             if (noCard) mList.appendChild(noCard);
         }
+        applyRepCardLimit();
     }
 
     function compare(a, b, mode) {

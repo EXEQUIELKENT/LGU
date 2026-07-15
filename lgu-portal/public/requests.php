@@ -1,9 +1,11 @@
 <?php
+ob_start();
 require_once __DIR__ . '/session_guard.php';
 
 $serverTimestamp = time();
 
 require __DIR__ . '/db.php';
+require_once __DIR__ . '/activity_log.php';
 
 // ── Profile Picture ──────────────────────────────────────────────────────
 function getProfilePicture($employeeId, $conn) {
@@ -42,6 +44,58 @@ $userRole    = $_SESSION['employee_role'] ?? '';
 $isAdmin     = in_array(strtolower(trim($userRole)), ['admin', 'super admin']);
 $canValidate = in_array(strtolower(trim($userRole)), ['engineer', 'admin', 'super admin']);
 $isOfficeStaff = strtolower(trim($userRole)) === 'office staff';
+
+// ── AJAX/POST handler ───────────────────────────────────────────────────
+// Currently only used to record "who viewed this request" for the History
+// Logs panel — mirrors the log_view action on current_reports.php.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+    $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+    $action = $input['action'] ?? '';
+
+    // ── Log: someone opened a request's detail view, either from the
+    //    Requests table/cards or from a marker on the GIS map ──────────────
+    if ($action === 'log_view') {
+        $reqId  = (int)($input['req_id'] ?? 0);
+        $source = trim((string)($input['source'] ?? ''));
+        if ($reqId > 0) {
+            $reqLabel = '#REQ-' . str_pad((string)$reqId, 3, '0', STR_PAD_LEFT);
+            $srcLabel = $source === 'gis_map' ? ' via the GIS map' : ($source === 'table' ? ' via the requests table' : '');
+            log_request_activity($conn, 'requests', $reqId, 'viewed',
+                activity_actor_name() . " viewed Request {$reqLabel}{$srcLabel}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Log: someone opened the evidence image gallery for a request ─────────
+    if ($action === 'log_image_view') {
+        $reqId = (int)($input['req_id'] ?? 0);
+        if ($reqId > 0) {
+            $reqLabel = '#REQ-' . str_pad((string)$reqId, 3, '0', STR_PAD_LEFT);
+            log_request_activity($conn, 'requests', $reqId, 'images_viewed',
+                activity_actor_name() . " viewed evidence images for Request {$reqLabel}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Log: office staff downloaded the Word (.docx) report for a request ───
+    if ($action === 'log_word_download') {
+        $reqId = (int)($input['req_id'] ?? 0);
+        if ($reqId > 0) {
+            $reqLabel = '#REQ-' . str_pad((string)$reqId, 3, '0', STR_PAD_LEFT);
+            log_request_activity($conn, 'requests', $reqId, 'downloaded',
+                activity_actor_name() . " downloaded the Word report for Request {$reqLabel}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+    exit;
+}
 
 // ── Notification helpers ─────────────────────────────────────────────────
 function setNotification($type, $message) {
@@ -159,6 +213,19 @@ if ($result && $result->num_rows > 0) {
     }
     mysqli_data_seek($result, 0); // reset for table loop
 }
+
+// ── Activity History: gather the request/report ids currently on this page ────
+$actRequestIds = [];
+$actReportIds  = [];
+foreach ($requests as $__r) {
+    if (!empty($__r['req_id'])) $actRequestIds[] = (int)$__r['req_id'];
+    if (!empty($__r['rep_id'])) $actReportIds[]  = (int)$__r['rep_id'];
+}
+unset($__r);
+// Activity History is admin/super-admin only — skip the query entirely for other roles.
+$activityEntries = $isAdmin
+    ? fetch_activity_log($conn, ['request' => $actRequestIds, 'report' => $actReportIds], 40, 'requests')
+    : [];
 
 function format_datetime_ampm($datetime) {
     if (!$datetime) return "";
@@ -357,15 +424,54 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 /* ── Scrollable table wrapper — fixes cramped layout in desktop mode on phones ── */
 .table-scroll-wrap {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 560px;
     -webkit-overflow-scrolling: touch;
     border-radius: 12px;
-    /* Thin, branded scrollbar */
+    /* Thin, glowing branded scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
 }
-.table-scroll-wrap::-webkit-scrollbar { height: 5px; }
+.table-scroll-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 .table-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
-.table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(55,98,200,.30); border-radius: 3px; }
-[data-theme="dark"] .table-scroll-wrap::-webkit-scrollbar-thumb { background: rgba(95,140,255,.35); }
+.table-scroll-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.table-scroll-wrap::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .table-scroll-wrap::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
 .table-scroll-wrap table { min-width: 760px; }
+
+/* Same glowing scrollbar on the mobile card list */
+.mobile-request-list {
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
+}
+.mobile-request-list::-webkit-scrollbar { width: 6px; }
+.mobile-request-list::-webkit-scrollbar-track { background: transparent; }
+.mobile-request-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.mobile-request-list::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .mobile-request-list::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
+
+
+/* Requests page has two swappable views (#gisView / #requestsView) plus the
+   persistent Activity History card as direct children of .main-content.
+   Force them to stack in a single column (rather than side-by-side, which is
+   what this element does by default in emp-global.css) so Activity History
+   always renders as a full-width section underneath whichever view is active. */
+.main-content { display: flex; flex-direction: column; }
+
 .table-card {
     background: var(--bg-secondary); backdrop-filter: blur(12px);
     border-radius: 18px; padding: 30px 35px; margin-bottom: 30px;
@@ -385,7 +491,11 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 
 table { width: 100%; border-collapse: separate; border-spacing: 0; min-height: 120px; }
 thead { background: #3762c8; color: #fff; }
-thead th { padding: 14px; font-size: 14px; text-align: left; }
+thead th {
+    padding: 14px; font-size: 14px; text-align: left;
+    position: sticky; top: 0; z-index: 2;
+    background: #3762c8;
+}
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; }
 th, td { padding: 14px; font-size: 14px; text-align: left; }
@@ -418,14 +528,14 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 
 /* dark mobile cards */
-[data-theme="dark"] .request-card { background: var(--bg-tertiary); color: var(--text-primary); box-shadow: 0 6px 18px var(--shadow-color); }
-[data-theme="dark"] .request-card strong { color: #5f8cff; }
-[data-theme="dark"] .request-card .status.pending  { background: rgba(255,224,130,.2); color: #ffd54f; }
-[data-theme="dark"] .request-card .status.completed { background: rgba(76,175,80,.2); color: #81c784; }
-[data-theme="dark"] .request-card .status.rejected  { background: rgba(239,154,154,.2); color: #ef5350; }
+[data-theme="dark"] .cimmReqCard { background: var(--bg-tertiary); color: var(--text-primary); box-shadow: 0 6px 18px var(--shadow-color); }
+[data-theme="dark"] .cimmReqCard .cimmReqLabel { color: #5f8cff; }
+[data-theme="dark"] .cimmReqCard .status.pending  { background: rgba(255,224,130,.2); color: #ffd54f; }
+[data-theme="dark"] .cimmReqCard .status.completed { background: rgba(76,175,80,.2); color: #81c784; }
+[data-theme="dark"] .cimmReqCard .status.rejected  { background: rgba(239,154,154,.2); color: #ef5350; }
 [data-theme="dark"] .no-evidence { color: var(--text-secondary); }
-[data-theme="dark"] .request-card .btn-view { background: #3762c8; color: #fff; }
-[data-theme="dark"] .request-card .btn-view:hover { background: #2851b3; }
+[data-theme="dark"] .cimmReqCard .btn-view { background: #3762c8; color: #fff; }
+[data-theme="dark"] .cimmReqCard .btn-view:hover { background: #2851b3; }
 /* Modal label icons: white in dark mode; blue label text stays unchanged */
 [data-theme="dark"] .detail-field-label i,
 [data-theme="dark"] .gis-field-label i { color: #ffffff; }
@@ -1615,7 +1725,6 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     }
 
     /* Request item cards */
-    .request-card,
     .request-item,
     [class*="request"] {
         width: 100% !important;
@@ -1837,11 +1946,58 @@ tbody td {
     /* Requests mobile cards */
     table { display: none !important; }
     h2 { display: none; }
-    .mobile-request-list { display: flex !important; flex-direction: column; gap: 16px; width: 100%; }
-    .request-card { width: 100%; background: rgba(255,255,255,.96); border-radius: 16px; padding: 16px 18px; box-shadow: 0 6px 18px rgba(0,0,0,.18); font-size: 14px; }
-    .request-card div { margin-bottom: 8px; line-height: 1.4; }
-    .request-card strong { color: #3762c8; font-weight: 600; }
-    .request-card .status { display: inline-block; margin-left: 6px; }
+    .mobile-request-list { display: flex !important; flex-direction: column; gap: 16px; width: 100%; max-height: 560px; overflow-y: auto !important; overflow-x: visible !important; padding-right: 6px; }
+
+    /* Notification "page" pill (e.g. .notif-page-requests) gets caught by the
+       [class*="request"] catch-all above — its class name contains "request" —
+       which force-stretches it to width:100%. Restore its intended
+       content-sized pill shape. */
+    .notif-page-pill {
+        width: auto !important;
+        max-width: fit-content !important;
+        display: inline-flex !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+    }
+
+    /* ── Mobile request card ───────────────────────────────────────────
+       Same structure/approach as the working .report-card on
+       citizenreports.php: a flex column card containing flex-row
+       "label : value" entries, laid out normally (no absolute
+       positioning, no reliance on generic ancestor rules). The class is
+       named .cimmReqCard (not "request-card") on purpose — it avoids any
+       chance of collision with a generic [class*="card"] rule elsewhere
+       in emp-global.css that isn't meant for this component. */
+    .cimmReqCard {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgba(255,255,255,.96);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 6px 18px rgba(0,0,0,.18);
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .cimmReqRow {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 6px;
+        line-height: 1.4;
+    }
+    .cimmReqLabel {
+        font-weight: 600;
+        color: #3762c8;
+        flex-shrink: 0;
+    }
+    .cimmReqValue {
+        flex: 1 1 auto;
+        word-break: break-word;
+        white-space: normal;
+    }
+    .cimmReqCard .status { display: inline-block; margin-left: 0; }
     .no-evidence { font-size: 12px; color: #777; }
     .req-title-row { display: none; }
 
@@ -2200,6 +2356,104 @@ tbody td {
     color: rgba(255,255,255,.2) !important;
     background: rgba(26,26,26,.5) !important;
 }
+
+/* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
+.activity-log-card { gap: 14px; }
+.activity-log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+}
+.activity-log-title {
+    margin: 0; font-size: 19px; color: var(--text-primary);
+    display: flex; align-items: center; gap: 9px;
+}
+.activity-log-title i { color: #3762c8; font-size: 16px; }
+.activity-log-title > i:first-child { margin-right: 6px; }
+.activity-log-title .admin-badge i { color: #fff; font-size: inherit; }
+.activity-log-title .admin-badge { margin-left: 8px; }
+/* Admin-only badge — exact style/markup ported from employee.php's .admin-badge */
+.admin-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    letter-spacing: .04em; text-transform: uppercase;
+    box-shadow: 0 3px 12px rgba(245,158,11,0.4);
+}
+.activity-log-count-badge {
+    font-size: 11.5px; font-weight: 700; color: var(--text-secondary);
+    background: var(--bg-primary); border: 1px solid var(--border-color);
+    padding: 4px 11px; border-radius: 20px; white-space: nowrap;
+}
+.activity-log-list {
+    display: flex; flex-direction: column;
+    max-height: 560px; overflow-y: auto; padding-right: 4px;
+    /* Thin, glowing branded scrollbar — same design/color as .table-scroll-wrap */
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
+}
+.activity-log-list::-webkit-scrollbar { width: 6px; }
+.activity-log-list::-webkit-scrollbar-track { background: transparent; }
+.activity-log-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.activity-log-list::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .activity-log-list::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
+.activity-log-live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 6px; vertical-align: middle;
+    animation: actLogLivePulse 1.6s ease-in-out infinite;
+}
+@keyframes actLogLivePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+    50%      { opacity: .55; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+.activity-log-item {
+    display: flex; gap: 12px; padding: 12px 2px;
+    border-bottom: 1px solid var(--border-color);
+}
+.activity-log-item:last-child { border-bottom: none; }
+.act-log-icon {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; background: rgba(55,98,200,.12); color: #3762c8;
+}
+.act-log-icon-success { background: rgba(46,125,50,.14);  color: #2e7d32; }
+.act-log-icon-warning { background: rgba(230,145,0,.15);  color: #b16a00; }
+.act-log-icon-danger  { background: rgba(198,40,40,.14);  color: #c62828; }
+.act-log-icon-info    { background: rgba(55,98,200,.12);  color: #3762c8; }
+.act-log-body { flex: 1; min-width: 0; }
+.act-log-message { font-size: 13.5px; line-height: 1.5; color: var(--text-primary); }
+.act-log-meta { margin-top: 3px; font-size: 11.5px; color: var(--text-secondary); }
+.activity-log-empty {
+    text-align: center; padding: 34px 20px; color: var(--text-secondary); font-size: 13.5px;
+}
+.activity-log-empty i { display: block; font-size: 28px; opacity: .4; margin-bottom: 8px; }
+.activity-log-more-wrap, .card-limit-more-wrap {
+    display: flex; justify-content: center; padding-top: 4px;
+}
+.activity-log-more-btn, .card-limit-more-btn {
+    border: 1.5px solid rgba(55,98,200,.3); background: rgba(55,98,200,.06);
+    color: #3762c8; font-weight: 700; font-size: 12.5px; padding: 8px 18px;
+    border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center;
+    gap: 6px; transition: background .15s, border-color .15s;
+}
+.activity-log-more-btn:hover, .card-limit-more-btn:hover { background: rgba(55,98,200,.14); border-color: #3762c8; }
+[data-theme="dark"] .act-log-icon { background: rgba(55,98,200,.2); }
+[data-theme="dark"] .act-log-icon-success { background: rgba(76,175,80,.2); color: #81c784; }
+[data-theme="dark"] .act-log-icon-warning { background: rgba(255,213,79,.2); color: #ffd54f; }
+[data-theme="dark"] .act-log-icon-danger  { background: rgba(239,83,80,.2); color: #ef5350; }
+[data-theme="dark"] .activity-log-count-badge { background: var(--bg-primary); }
+[data-theme="dark"] .activity-log-more-btn, [data-theme="dark"] .card-limit-more-btn { background: rgba(55,98,200,.16); }
+.card-limit-more-wrap { margin-top: 4px; }
+@media (min-width: 769px) { .card-limit-more-wrap { display: none !important; } }
 </style>
 <div id="loadingOverlay">
     <div class="loading-content">
@@ -2666,6 +2920,13 @@ tbody td {
 
         <!-- MOBILE CARDS -->
         <div class="mobile-request-list">
+        <div id="noMobileRequestResult" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching results found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or type filter</div>
+            </div>
+        </div>
         <?php
         if ($result && $result->num_rows > 0) {
             mysqli_data_seek($result, 0);
@@ -2675,14 +2936,7 @@ tbody td {
                 if (!empty($evidenceImages))
                     $images = array_values(array_filter(explode(',', $evidenceImages)));
         ?>
-        <div id="noMobileRequestResult" style="display:none;text-align:center;padding:48px 20px;">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
-                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
-                <div style="font-size:15px;font-weight:700;">No matching results found</div>
-                <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or type filter</div>
-            </div>
-        </div>
-        <div class="request-card"
+        <div class="cimmReqCard"
             data-req-id="<?= $row['req_id'] ?>"
             data-infrastructure="<?= htmlspecialchars($row['infrastructure']) ?>"
             data-location="<?= htmlspecialchars($row['location']) ?>"
@@ -2700,32 +2954,59 @@ tbody td {
             data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
             data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
             data-district="<?= htmlspecialchars($row['district'] ?? '') ?>">
-            <div><strong>Request ID:</strong> <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
-            <div><strong>Infrastructure:</strong> <span class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
-            <div><strong>Location:</strong> <span class="searchable"><?= htmlspecialchars($row['location']) ?></span></div>
-            <div><strong>Issue:</strong> <span class="searchable"><?= htmlspecialchars($row['issue']) ?></span></div>
-            <div><strong>Date Submitted:</strong> <span class="searchable"><?= format_datetime_ampm($row['created_at']) ?></span></div>
-            <div><strong>Status:</strong>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Request ID:</span> <span class="cimmReqValue searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Infrastructure:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Location:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['location']) ?></span></div>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Issue:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['issue']) ?></span></div>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Date Submitted:</span> <span class="cimmReqValue searchable"><?= format_datetime_ampm($row['created_at']) ?></span></div>
+            <div class="cimmReqRow">
+                <span class="cimmReqLabel">Status:</span>
                 <?php
                 $status = $row['approval_status'];
                 $statusClass = match ($status) { 'Pending' => 'pending', 'Approved' => 'completed', 'Rejected' => 'rejected', default => 'pending' };
                 ?>
-                <span class="searchable status <?= $statusClass ?>"><?= htmlspecialchars(statusDisplayLabel($status)) ?></span>
+                <span class="cimmReqValue searchable status <?= $statusClass ?>"><?= htmlspecialchars(statusDisplayLabel($status)) ?></span>
             </div>
-            <div>
+            <div class="cimmReqRow">
                 <?php if (!empty($images)): ?>
                     <button class="btn-view" onclick='openGalleryModal(<?= json_encode($images) ?>, 0, <?= $row["req_id"] ?>)'>View Evidence (<?= count($images) ?>)</button>
                 <?php else: ?>
                     <span class="no-evidence">No Evidence</span>
                 <?php endif; ?>
             </div>
-            <div style="margin-top:10px;"><button class="btn-view" onclick="openRequestDetail(this)">View Details</button></div>
+            <div class="cimmReqRow" style="margin-top:2px;"><button class="btn-view" onclick="openRequestDetail(this)">View Details</button></div>
         </div>
-        <?php endwhile; } else { echo '<div class="request-card mobile-no-requests">No requests found</div>'; } ?>
+        <?php endwhile; } else { echo '<div class="cimmReqCard mobile-no-requests">No requests found</div>'; } ?>
+        </div>
+        <div class="card-limit-more-wrap" id="reqCardMoreWrap" style="display:none;">
+            <button type="button" class="card-limit-more-btn" id="reqCardMoreBtn">
+                <i class="fas fa-chevron-down"></i> <span id="reqCardMoreLabel">Show more</span>
+            </button>
         </div>
 
     </div>
     </div><!-- #requestsView -->
+
+    <!-- ══════════ ACTIVITY HISTORY (persistent — shown under the GIS Map, List, and Card views alike) ══════════ -->
+    <!-- Admin / Super Admin only -->
+    <?php if ($isAdmin): ?>
+    <div class="table-card activity-log-card">
+        <div class="activity-log-header">
+            <h2 class="activity-log-title"><i class="fas fa-clock-rotate-left"></i> History Logs
+                <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+            </h2>
+            <span class="activity-log-count-badge" id="activityLogCountBadge"><span class="activity-log-live-dot" title="Live"></span><span id="activityLogCountText"><?= count($activityEntries) ?> <?= count($activityEntries) === 1 ? 'entry' : 'entries' ?></span></span>
+        </div>
+        <div class="activity-log-list" id="activityLogList">
+            <?= activity_log_items_html($activityEntries) ?>
+        </div>
+        <div class="activity-log-more-wrap" id="activityLogMoreWrap" style="display:none;">
+            <button type="button" class="activity-log-more-btn" id="activityLogMoreBtn">
+                <i class="fas fa-chevron-down"></i> <span id="activityLogMoreLabel">Show more</span>
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
 
 </div><!-- .main-content -->
 
@@ -3078,6 +3359,7 @@ tbody td {
 
 <?php include 'admin_scripts.php'; ?>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="card_limit.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -3151,6 +3433,16 @@ function openGalleryModal(images, index, requestId) {
     imageModal.classList.add('active');
     updateGalleryImage();
     showSwipeIndicator();
+
+    // Fire-and-forget: record this image view in the Requests History Logs.
+    if (requestId) {
+        fetch('requests.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'log_image_view', req_id: parseInt(requestId) }),
+            keepalive: true
+        }).then(() => pokeActivityLog()).catch(() => {});
+    }
 }
 function closeImageModal() {
     imageModal.classList.remove('active');
@@ -3369,10 +3661,20 @@ function applyReportStatus(reportStatus, repId, engineerName, pillId, sectionId,
 }
 
 function openRequestDetail(button) {
-    const row = button.closest('tr.request-row') || button.closest('.request-card');
+    const row = button.closest('tr.request-row') || button.closest('.cimmReqCard');
     if (!row) return;
 
     const reqId         = row.dataset.reqId;
+
+    // Fire-and-forget: record this view in the Requests History Logs.
+    // keepalive lets it survive a modal close/navigation.
+    fetch('requests.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'table' }),
+        keepalive: true
+    }).then(() => pokeActivityLog()).catch(() => {});
+
     const infrastructure= row.dataset.infrastructure;
     const location      = row.dataset.location;
     const issue         = row.dataset.issue;
@@ -3468,6 +3770,15 @@ function formatDate(dt) {
 function openGisDetailModal(reqId) {
     const req = ALL_REQUESTS.find(r => r.req_id == reqId);
     if (!req) return;
+
+    // Fire-and-forget: record this view in the Requests History Logs.
+    // keepalive lets it survive a modal close/navigation.
+    fetch('requests.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'gis_map' }),
+        keepalive: true
+    }).then(() => pokeActivityLog()).catch(() => {});
 
     const sc  = detailStatusClass(req.approval_status);
     currentRequestData = {
@@ -3661,6 +3972,17 @@ async function exportRequestReport(view, btnEl) {
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showInlineNotif('success', 'Report document created.');
+
+        // Fire-and-forget: record this download in the Requests History Logs.
+        const reqIdMatch = (payload.filename || '').match(/(\d+)/);
+        if (reqIdMatch) {
+            fetch('requests.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'log_word_download', req_id: parseInt(reqIdMatch[1], 10) }),
+                keepalive: true
+            }).then(() => pokeActivityLog()).catch(() => {});
+        }
     } catch (e) {
         showInlineNotif('error', e.message || 'Something went wrong creating the report.');
     } finally {
@@ -3864,6 +4186,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
             // ── 3. Update UI ─────────────────────────────────────────────
             updateRowStatus(reqId, 'Approved', 'completed');
             updateGisMarker(reqId, 'Approved');
+            refreshActivityLog();
             showInlineNotif(aiWarning ? 'error' : 'success',
                 `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
                 `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.` +
@@ -3938,6 +4261,7 @@ document.getElementById('rejectConfirmBtn').addEventListener('click', async () =
             const reqId = currentRequestData.reqId;
             updateRowStatus(reqId, 'Rejected', 'rejected');
             updateGisMarker(reqId, 'Rejected');
+            refreshActivityLog();
             if (hasEmail) {
                 const notifParts = ['❌ Request #REQ-' + String(reqId).padStart(3,'0') + ' has been rejected.'];
                 if (data.email_sent) notifParts.push('📧 Rejection email sent.');
@@ -3977,7 +4301,7 @@ function updateRowStatus(reqId, statusText, cssClass) {
         if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = displayText; }
     }
     // Mobile card
-    const card = document.querySelector(`.request-card[data-req-id="${reqId}"]`);
+    const card = document.querySelector(`.cimmReqCard[data-req-id="${reqId}"]`);
     if (card) {
         card.dataset.status = statusText;
         const span = card.querySelector('.status.searchable');
@@ -4023,6 +4347,115 @@ function showInlineNotif(type, message) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  CARD LIMIT + ACTIVITY HISTORY LIMIT
+//  (declared here so the sort/filter functions further down can re-invoke
+//  the same limiter after they change which cards are visible)
+// ═══════════════════════════════════════════════════════
+let applyReqCardLimit = function () {};
+let applyActLogLimit  = function () {};
+document.addEventListener('DOMContentLoaded', () => {
+    applyReqCardLimit = initProgressiveList({
+        listSelector: '.mobile-request-list',
+        itemSelector: '.cimmReqCard',
+        exclude: el => el.classList.contains('mobile-no-requests'),
+        moreBtnSelector: '#reqCardMoreBtn',
+        moreWrapSelector: '#reqCardMoreWrap',
+        moreLabelSelector: '#reqCardMoreLabel',
+        pageSize: 12
+    });
+    applyReqCardLimit();
+
+    applyActLogLimit = initProgressiveList({
+        listSelector: '#activityLogList',
+        itemSelector: '.activity-log-item',
+        moreBtnSelector: '#activityLogMoreBtn',
+        moreWrapSelector: '#activityLogMoreWrap',
+        moreLabelSelector: '#activityLogMoreLabel',
+        pageSize: 8
+    });
+    applyActLogLimit();
+});
+
+// ═══════════════════════════════════════════════════════
+//  ACTIVITY LOG REFRESH
+//  The Activity History panel is rendered once, server-side, on initial
+//  page load (fetch_activity_log() → activity_log_items_html()). Validating
+//  or rejecting a request creates a new log entry in the database, but
+//  nothing was re-pulling this panel afterward — so the new entry only
+//  ever showed up after a manual page reload. This re-fetches the current
+//  page (same PHP that renders the panel on load) and swaps in the fresh
+//  activity list + count badge, without a full page reload.
+// ═══════════════════════════════════════════════════════
+async function refreshActivityLog() {
+    try {
+        const resp = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const doc  = new DOMParser().parseFromString(html, 'text/html');
+
+        const newList = doc.getElementById('activityLogList');
+        const curList = document.getElementById('activityLogList');
+        if (newList && curList) curList.innerHTML = newList.innerHTML;
+
+        const newBadge = doc.getElementById('activityLogCountText');
+        const curBadge = document.getElementById('activityLogCountText');
+        if (newBadge && curBadge) curBadge.textContent = newBadge.textContent;
+
+        // Re-apply the "show first N, then Show more" limiter now that the
+        // list has new items in it.
+        applyActLogLimit();
+    } catch (e) {
+        console.error('Failed to refresh Activity History:', e);
+    }
+}
+
+// Small helper so fire-and-forget loggers (view request, etc.) can pull the
+// new entry in immediately instead of waiting for the SSE-triggered refresh.
+// No-ops for roles that don't have the History Logs panel on the page.
+function pokeActivityLog() {
+    if (document.getElementById('activityLogList')) refreshActivityLog();
+}
+
+// ═══════════════════════════════════════════════════════
+//  REAL-TIME ACTIVITY LOG
+//  refreshActivityLog() above only fires for the employee who personally
+//  validated/rejected a request — everyone else still had to reload the
+//  page to see it. validate_request.php and reject_request.php already
+//  push a live notification to every other employee (via insertNotification)
+//  the moment an action happens, and notification-stream.php streams those
+//  out over Server-Sent Events in real time. We piggyback on that same
+//  stream here — no new backend endpoint needed — so that whenever ANY
+//  employee validates or rejects a request, everyone else's Activity
+//  History panel updates live, within a second or two, with no reload.
+// ═══════════════════════════════════════════════════════
+<?php if ($isAdmin): ?>
+(function () {
+    if (typeof EventSource === 'undefined') return;
+
+    let refreshTimer = null;
+    function scheduleActivityRefresh() {
+        // Debounce: if several notifications land at once (e.g. bulk
+        // actions), only refresh once shortly after the burst settles.
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refreshActivityLog, 400);
+    }
+
+    function connect() {
+        const es = new EventSource('api/notification-stream.php?last_id=0');
+        es.addEventListener('notification', scheduleActivityRefresh);
+        es.onerror = () => {
+            // EventSource retries on its own, but if the browser gives up
+            // (connection closed), reconnect after a short delay.
+            if (es.readyState === EventSource.CLOSED) {
+                setTimeout(connect, 3000);
+            }
+        };
+    }
+    connect();
+})();
+<?php endif; ?>
+
+// ═══════════════════════════════════════════════════════
 //  REQUEST TABLE SEARCH
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -4050,7 +4483,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (match && keyword) { searchable.forEach(el => highlight(el, keyword)); found++; }
         });
         document.getElementById('noRequestResult').style.display = keyword && found === 0 ? '' : 'none';
-        document.querySelectorAll('.request-card').forEach(card => {
+        document.querySelectorAll('.cimmReqCard').forEach(card => {
             const searchable = card.querySelectorAll('.searchable');
             let cardText = '';
             searchable.forEach(el => { storeOriginal(el); reset(el); cardText += el.textContent.toLowerCase() + ' '; });
@@ -4062,9 +4495,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const noMob = document.getElementById('noMobileRequestResult');
         if (noMob) {
-            const visibleCards = document.querySelectorAll('.request-card:not([style*="display: none"]):not([style*="display:none"])').length;
+            const visibleCards = document.querySelectorAll('.cimmReqCard:not([style*="display: none"]):not([style*="display:none"])').length;
             noMob.style.display = keyword && visibleCards === 0 ? '' : 'none';
         }
+        applyReqCardLimit();
     });
 });
 
@@ -4696,7 +5130,7 @@ function initRequestSort() {
         const mList = document.querySelector('.mobile-request-list');
         if (mList) {
             const noMob = document.getElementById('noMobileRequestResult');
-            mList.querySelectorAll('.request-card').forEach(card => {
+            mList.querySelectorAll('.cimmReqCard').forEach(card => {
                 let dateHide = false;
                 if (dateRange) {
                     const dt = _parseDateStr(card.dataset.createdIso || '');
@@ -4713,6 +5147,7 @@ function initRequestSort() {
                 else if (card.style.display === 'none' && !card.dataset.searchHidden) card.style.display = '';
             });
         }
+        applyReqCardLimit();
     }
 
     // Expose so setDateFilter can call it
@@ -4762,7 +5197,7 @@ function initRequestSort() {
         const mList = document.querySelector('.mobile-request-list');
         if (mList) {
             const noMob = document.getElementById('noMobileRequestResult');
-            const cards = Array.from(mList.querySelectorAll('.request-card'));
+            const cards = Array.from(mList.querySelectorAll('.cimmReqCard'));
             cards.sort((a, b) => {
                 if (mode === 'date-desc') return parseRequestDate(b) - parseRequestDate(a);
                 if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
@@ -4778,6 +5213,7 @@ function initRequestSort() {
             cards.forEach(c => mList.appendChild(c));
             if (noMob) mList.appendChild(noMob);
         }
+        applyReqCardLimit();
     }
 }
 

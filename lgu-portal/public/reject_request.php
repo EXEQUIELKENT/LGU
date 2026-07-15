@@ -104,6 +104,11 @@ $notifTitle    = "Request {$notifReqLabel} Rejected ❌";
 $notifDesc     = "{$actorLabel} rejected {$infrastructure} at {$location} (by {$requesterName})." . ($reason !== '' ? " Reason: {$reason}" : ' No email on file — requester not notified.');
 $notifUrl      = buildReqUrl($reqId);
 $actorId       = (int)($_SESSION['employee_id'] ?? 0);
+
+// ── Activity History: record the rejection against the request ──────────────
+require_once __DIR__ . '/activity_log.php';
+log_request_activity($conn, 'requests', $reqId, 'rejected', $notifDesc);
+
 $allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
 if ($allEmployees) {
     while ($empRow = $allEmployees->fetch_assoc()) {

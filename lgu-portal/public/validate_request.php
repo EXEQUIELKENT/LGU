@@ -151,6 +151,11 @@ $notifRepLabel = '#REP-' . str_pad($repId, 3, '0', STR_PAD_LEFT);
 $notifTitle    = "Request {$notifReqLabel} Validated ✅";
 $notifDesc     = "{$actorLabel} validated {$notifInfra} at {$notifLocation} (by {$notifName}). Report {$notifRepLabel} created." . ($engineerName ? " Assigned to {$engineerName}." : ' Engineer to be assigned.');
 $notifUrl      = buildRepUrl('current_reports.php', $repId);
+
+// ── Activity History: record the validation against the request ─────────────
+require_once __DIR__ . '/activity_log.php';
+log_request_activity($conn, 'requests', $reqId, 'validated', $notifDesc);
+
 $allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
 if ($allEmployees) {
     while ($empRow = $allEmployees->fetch_assoc()) {
