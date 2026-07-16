@@ -106,26 +106,30 @@ function log_request_activity(mysqli $conn, string $page, int $reqId, string $ac
 
 // ── Read entries for a set of ref ids ───────────────────────────────────────
 // $refFilters = ['report' => [1,2,3], 'request' => [4,5]]  — either key optional/empty.
-// $page: when provided, restricts results to entries whose `page` column matches
-// exactly — i.e. only activity that actually happened on that page, rather than
-// a ref id's full cross-page trail (Current → Pending → Archive). Pass null
-// (default) to keep the old cross-page behavior.
+// $page: when provided, this is the *sole* scope — every entry logged with
+// page = $page is returned, regardless of whether the underlying report/request
+// is still visible on that page right now (a report that moved from Pending to
+// Current still keeps its Pending-page history on the Pending page). $refFilters
+// is ignored in this mode; pass an empty array. Pass $page = null to fall back
+// to the old cross-page behavior, which requires $refFilters and returns a
+// ref id's full trail across every page it ever touched.
 function fetch_activity_log(mysqli $conn, array $refFilters, int $limit = 40, ?string $page = null): array {
     try {
         ensure_activity_log_table($conn);
-        $clauses = [];
-        foreach ($refFilters as $type => $ids) {
-            $ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids), fn($v) => $v > 0)));
-            if (empty($ids)) continue;
-            $typeSafe  = $conn->real_escape_string((string)$type);
-            $clauses[] = "(ref_type = '{$typeSafe}' AND ref_id IN (" . implode(',', $ids) . "))";
-        }
-        if (empty($clauses)) return [];
 
-        $where = '(' . implode(' OR ', $clauses) . ')';
         if ($page !== null && trim($page) !== '') {
             $pageSafe = $conn->real_escape_string(trim($page));
-            $where .= " AND page = '{$pageSafe}'";
+            $where = "page = '{$pageSafe}'";
+        } else {
+            $clauses = [];
+            foreach ($refFilters as $type => $ids) {
+                $ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids), fn($v) => $v > 0)));
+                if (empty($ids)) continue;
+                $typeSafe  = $conn->real_escape_string((string)$type);
+                $clauses[] = "(ref_type = '{$typeSafe}' AND ref_id IN (" . implode(',', $ids) . "))";
+            }
+            if (empty($clauses)) return [];
+            $where = '(' . implode(' OR ', $clauses) . ')';
         }
         $limit = max(1, min(300, $limit));
         $sql   = "SELECT log_id, page, ref_type, ref_id, action, message, actor_name, created_at

@@ -50,6 +50,16 @@ $isSuperAdmin = false;
 $cooldownActive = false;
 $nextAllowedDate = null;
 
+// Dev/local environment detection — the 7-day cooldown lock should never
+// apply while working on localhost, so devs can re-test the form freely.
+$serverHost   = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+$serverHostNoPort = preg_replace('/:\d+$/', '', $serverHost);
+$remoteAddr   = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+$serverAddr   = (string)($_SERVER['SERVER_ADDR'] ?? '');
+$isLocalhost  = in_array($serverHostNoPort, ['localhost', '127.0.0.1', '::1'], true)
+                || in_array($remoteAddr, ['127.0.0.1', '::1'], true)
+                || in_array($serverAddr, ['127.0.0.1', '::1'], true);
+
 if ($employeeId) {
     // Pull last_profile_update AND role at once
     $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password, profile_picture, last_profile_update, role FROM employees WHERE user_id = ?");
@@ -62,8 +72,8 @@ if ($employeeId) {
     }
     $stmt->close();
 
-    // Only restrict if not Super Admin
-    if (!$isSuperAdmin && isset($currentUser['last_profile_update']) && $currentUser['last_profile_update']) {
+    // Only restrict if not Super Admin and not running locally
+    if (!$isSuperAdmin && !$isLocalhost && isset($currentUser['last_profile_update']) && $currentUser['last_profile_update']) {
         $now = new DateTime();
         $lastUpdate = new DateTime($currentUser['last_profile_update']);
         $daysPassed = (int) $lastUpdate->diff($now)->days;
@@ -3069,12 +3079,29 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                                 Your assigned district controls which reports appear in Current Reports and which engineers you can assign.
                             </small>
                             <?php if (!empty($aeCurrentDistrict)): ?>
-                            <div style="margin-top:10px;">
-                                <?php $dNum = (int)filter_var($aeCurrentDistrict, FILTER_SANITIZE_NUMBER_INT); ?>
-                                <span class="district-badge d<?= $dNum ?>">
+                            <?php
+                                $dNum = (int)filter_var($aeCurrentDistrict, FILTER_SANITIZE_NUMBER_INT);
+                                $dColors = [
+                                    1 => ['#3762c8', '#5b8aff'],
+                                    2 => ['#1a7a42', '#34c774'],
+                                    3 => ['#b85c00', '#f59033'],
+                                    4 => ['#ad1457', '#ec4899'],
+                                    5 => ['#512da8', '#8b5cf6'],
+                                    6 => ['#00607a', '#0ea5c9'],
+                                ];
+                                [$dC1, $dC2] = $dColors[$dNum] ?? ['#3762c8', '#5b8aff'];
+                            ?>
+                            <div style="display:flex;align-items:center;gap:14px;margin-top:12px;padding:14px 16px;border-radius:14px;background:var(--bg-tertiary,rgba(255,255,255,0.06));border:1px solid var(--border-color,rgba(255,255,255,0.12));border-left:4px solid <?= $dC1 ?>;">
+                                <div style="flex-shrink:0;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;background:linear-gradient(135deg,<?= $dC1 ?>,<?= $dC2 ?>);">
                                     <i class="fas fa-map-marker-alt"></i>
-                                    Currently assigned: <?= htmlspecialchars($aeCurrentDistrict) ?>
-                                </span>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+                                    <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-secondary,#9ca3af);opacity:.85;">Currently Assigned</span>
+                                    <span style="font-size:16px;font-weight:700;color:var(--text-primary,#fff);"><?= htmlspecialchars($aeCurrentDistrict) ?></span>
+                                </div>
+                                <div style="flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px;background:rgba(52,199,89,0.16);color:#34c774;" title="Active assignment">
+                                    <i class="fas fa-check-circle"></i> Active
+                                </div>
                             </div>
                             <?php endif; ?>
                         </div>
