@@ -301,6 +301,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt_mgr->close();
                 }
 
+                // Push to RGMAO verification monitoring (non-blocking for citizen UX)
+                require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+                cimm_rgmap_sync_request_async($conn, (int)$request_id, 'created');
+
                 $_SESSION['notification'] = [
                     'type' => 'success',
                     'message' => 'Your request has been submitted successfully with ' . $uploaded_count . ' evidence image(s).'

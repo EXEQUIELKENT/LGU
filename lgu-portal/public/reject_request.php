@@ -134,5 +134,8 @@ if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 
 
+require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+cimm_rgmap_sync_request_async($conn, $reqId, 'rejected');
+
 ob_end_clean();
 echo json_encode(['success' => true, 'req_id' => $reqId, 'email_sent' => $emailSent]);

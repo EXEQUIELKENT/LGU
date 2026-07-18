@@ -191,6 +191,9 @@ if ($reqInfo) {
     }
 }
 
+require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+cimm_rgmap_sync_request_async($conn, $reqId, 'validated');
+
 jsonOut(true, 'Request validated successfully.', [
     'rep_id'        => $repId,
     'res_id'        => $resId,
