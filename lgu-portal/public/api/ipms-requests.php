@@ -28,9 +28,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     exit;
 }
 
-$API_KEY = getenv('CIMM_IPMS_API_KEY') ?: 'CHANGE_ME_SHARED_SECRET';
+$API_KEY = getenv('CIMM_IPMS_API_KEY') ?: 'CIMM_IPMS_SHARED_KEY_2026';
 $provided = $_SERVER['HTTP_X_API_KEY'] ?? '';
-if ($API_KEY === '' || $API_KEY === 'CHANGE_ME_SHARED_SECRET' || !hash_equals($API_KEY, $provided)) {
+if ($API_KEY === '' || !hash_equals($API_KEY, $provided)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
