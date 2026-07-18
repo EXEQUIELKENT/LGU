@@ -675,6 +675,7 @@ function statusPill(string $status): string {
         'Pending'                => 'pending-st',
         'Cancelled'              => 'cancelled-st',
         'Pending Admin Approval' => 'pending-admin-st',
+        'Approved'               => 'validated-st',
     ];
     $cls = $map[$status] ?? 'on-going';
     $label = $status === 'Pending Admin Approval' ? 'Pending Approval'
@@ -684,14 +685,17 @@ function statusPill(string $status): string {
 
 function priorityBadge(?string $lvl): string {
     $styles = [
-        'Critical' => 'background:#fce7f3;color:#831843;border:1.5px solid #f9a8d4;',
-        'High'     => 'background:#fde8e8;color:#9b1c1c;border:1.5px solid #fca5a5;',
-        'Medium'   => 'background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;',
-        'Low'      => 'background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;',
+        'Critical' => ['bg' => '#fce7f3', 'fg' => '#831843', 'bd' => '#f472b6', 'dot' => '#db2777'],
+        'High'     => ['bg' => '#fde8e8', 'fg' => '#9b1c1c', 'bd' => '#f87171', 'dot' => '#dc2626'],
+        'Medium'   => ['bg' => '#fef3c7', 'fg' => '#92400e', 'bd' => '#fbbf24', 'dot' => '#d97706'],
+        'Low'      => ['bg' => '#d1fae5', 'fg' => '#065f46', 'bd' => '#34d399', 'dot' => '#059669'],
     ];
-    $lvl   = $lvl ?? 'Low';
-    $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
-    return "<span style=\"{$style}padding:3px 7px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;\">{$lvl}</span>";
+    $lvl = $lvl ?? 'Low';
+    $s   = $styles[$lvl] ?? ['bg' => '#e5e7eb', 'fg' => '#374151', 'bd' => '#9ca3af', 'dot' => '#6b7280'];
+    return "<span style=\"display:inline-flex;align-items:center;gap:5px;background:{$s['bg']};color:{$s['fg']};"
+         . "border:1px solid {$s['bd']};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;"
+         . "font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;\">"
+         . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
 
 function engProfileBtn(int $engineerId, ?string $picPath): string {
@@ -1002,12 +1006,12 @@ table colgroup col:nth-child(9)  { width: 7%;  }  /* End Date       */
 table colgroup col:nth-child(10) { width: 8%;  }  /* Priority       */
 table colgroup col:nth-child(11) { width: 12%; }  /* Budget         */
 table colgroup col:nth-child(12) { width: 9%;  }  /* Status         */
-thead { background: #ff9800; }
+thead { background: linear-gradient(135deg, #e65100, #ff9800); }
 thead th {
     padding: 11px 7px; font-size: 11.5px; font-weight: 600; text-align: left;
     color: #fff; white-space: nowrap;
     position: sticky; top: 0; z-index: 2;
-    background: #ff9800;
+    background: linear-gradient(135deg, #e65100, #ff9800);
 }
 thead th:last-child { text-align: center; }
 tbody tr td:last-child { text-align: center; }
@@ -1814,6 +1818,15 @@ tr.notif-highlight > td:first-child {
 }
 [data-theme="dark"] .status.pending-admin-st { background: rgba(139,92,246,.22); color: #c4b5fd; border-color: rgba(139,92,246,.4); }
 
+/* Validated (Approved) status badge */
+.validated-st {
+    background: rgba(46,125,50,.12);
+    color: #1b5e20;
+    border: 1px solid rgba(46,125,50,.28);
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: normal; word-break: break-word;
+}
+[data-theme="dark"] .status.validated-st { background: rgba(76,175,80,.22); color: #a5d6a7; border-color: rgba(76,175,80,.4); }
+
 /* Admin Approve to Schedule button */
 .btn-admin-approve-rep {
     display:inline-flex; align-items:center; gap:8px;
@@ -1951,6 +1964,8 @@ select.rep-editable-field { cursor:pointer; }
 .rep-budget-spin-btn:first-child { border-bottom:1px solid var(--border-color); }
 .rep-status-pill.pending-admin { background:rgba(139,92,246,.12);color:#4c1d95;border:1px solid rgba(139,92,246,.3); }
 [data-theme="dark"] .rep-status-pill.pending-admin { background:rgba(139,92,246,.22);color:#c4b5fd;border-color:rgba(139,92,246,.4); }
+.rep-status-pill.validated { background:rgba(46,125,50,.12);color:#1b5e20;border:1px solid rgba(46,125,50,.3); }
+[data-theme="dark"] .rep-status-pill.validated { background:rgba(76,175,80,.22);color:#a5d6a7;border-color:rgba(76,175,80,.4); }
 @media(max-width:768px){.rep-detail-modal{width:95%;max-height:90vh;}.rep-modal-header,.rep-modal-body,.rep-modal-footer{padding-left:16px;padding-right:16px;}.rep-grid-2{grid-template-columns:1fr;}.rep-footer-inner{flex-direction:row;}}
 
 /* ── Sidebar preload: suppress transition only, state applied by width ── */
@@ -4364,11 +4379,13 @@ function openRepModal(repId) {
     let displaySt;
     if (st === 'Pending Admin Approval') {
         displaySt = 'Pending Approval';
+    } else if (st === 'Approved') {
+        displaySt = 'Validated';
     } else {
         displaySt = !hasEng ? 'Awaiting Engineer' : (data.engineer_accepted ? st : 'Pending Acceptance');
     }
     statusEl.textContent = displaySt;
-    const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending Approval'?'pending-admin':displaySt==='Pending'?'pending':'on-going';
+    const stClass = displaySt==='Completed'?'completed':displaySt==='Pending Acceptance'?'pending-accept':displaySt==='Pending Approval'?'pending-admin':displaySt==='Validated'?'validated':displaySt==='Pending'?'pending':'on-going';
     statusEl.className = 'rep-status-pill ' + stClass;
 
     document.getElementById('repModalLocation').innerHTML =
@@ -5235,9 +5252,14 @@ document.getElementById('repLightboxImg').addEventListener('dragstart',e=>e.prev
 function fmtDate(s){ if(!s)return'—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function priBadge(l){
-    const st={Critical:'background:#fce7f3;color:#831843;border:1.5px solid #f9a8d4;',High:'background:#fde8e8;color:#9b1c1c;border:1.5px solid #fca5a5;',Medium:'background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;',Low:'background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;'};
-    l=l||'Low'; const s=st[l]||'background:#e5e7eb;color:#374151;';
-    return `<span style="${s}padding:3px 7px;border-radius:999px;font-size:11px;font-weight:600;display:inline-block;">${escH(l)}</span>`;
+    const st={
+        Critical:{bg:'#fce7f3',fg:'#831843',bd:'#f472b6',dot:'#db2777'},
+        High:{bg:'#fde8e8',fg:'#9b1c1c',bd:'#f87171',dot:'#dc2626'},
+        Medium:{bg:'#fef3c7',fg:'#92400e',bd:'#fbbf24',dot:'#d97706'},
+        Low:{bg:'#d1fae5',fg:'#065f46',bd:'#34d399',dot:'#059669'},
+    };
+    l=l||'Low'; const s=st[l]||{bg:'#e5e7eb',fg:'#374151',bd:'#9ca3af',dot:'#6b7280'};
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};color:${s.fg};border:1px solid ${s.bd};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:${s.dot};display:inline-block;flex-shrink:0;"></span>${escH(l)}</span>`;
 }
 function showRepNotif(type,msg){
     const e=document.getElementById('notifPopup');if(e)e.remove();

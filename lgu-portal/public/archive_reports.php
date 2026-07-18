@@ -237,10 +237,18 @@ function statusPill(string $status): string {
 }
 
 function priorityBadge(?string $lvl): string {
-    $styles = ['High' => 'background:#fde8e8;color:#9b1c1c;', 'Medium' => 'background:#fef3c7;color:#92400e;', 'Low' => 'background:#d1fae5;color:#065f46;'];
-    $lvl   = $lvl ?? 'Low';
-    $style = $styles[$lvl] ?? 'background:#e5e7eb;color:#374151;';
-    return "<span style=\"{$style}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;\">{$lvl}</span>";
+    $styles = [
+        'Critical' => ['bg' => '#fce7f3', 'fg' => '#831843', 'bd' => '#f472b6', 'dot' => '#db2777'],
+        'High'     => ['bg' => '#fde8e8', 'fg' => '#9b1c1c', 'bd' => '#f87171', 'dot' => '#dc2626'],
+        'Medium'   => ['bg' => '#fef3c7', 'fg' => '#92400e', 'bd' => '#fbbf24', 'dot' => '#d97706'],
+        'Low'      => ['bg' => '#d1fae5', 'fg' => '#065f46', 'bd' => '#34d399', 'dot' => '#059669'],
+    ];
+    $lvl = $lvl ?? 'Low';
+    $s   = $styles[$lvl] ?? ['bg' => '#e5e7eb', 'fg' => '#374151', 'bd' => '#9ca3af', 'dot' => '#6b7280'];
+    return "<span style=\"display:inline-flex;align-items:center;gap:5px;background:{$s['bg']};color:{$s['fg']};"
+         . "border:1px solid {$s['bd']};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;"
+         . "font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;\">"
+         . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
 
 function engProfileBtn(int $engineerId, ?string $picPath): string {
@@ -2526,9 +2534,14 @@ document.getElementById('repLightboxImg').addEventListener('dragstart',e=>e.prev
 function fmtDate(s){ if(!s)return'—'; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'}); }
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function priBadge(l){
-    const st={Critical:'background:#fce7f3;color:#831843;',High:'background:#fde8e8;color:#9b1c1c;',Medium:'background:#fef3c7;color:#92400e;',Low:'background:#d1fae5;color:#065f46;'};
-    l=l||'Low'; const s=st[l]||'background:#e5e7eb;color:#374151;';
-    return `<span style="${s}padding:3px 6px;border-radius:999px;font-size:10px;font-weight:600;display:inline-block;">${escH(l)}</span>`;
+    const st={
+        Critical:{bg:'#fce7f3',fg:'#831843',bd:'#f472b6',dot:'#db2777'},
+        High:{bg:'#fde8e8',fg:'#9b1c1c',bd:'#f87171',dot:'#dc2626'},
+        Medium:{bg:'#fef3c7',fg:'#92400e',bd:'#fbbf24',dot:'#d97706'},
+        Low:{bg:'#d1fae5',fg:'#065f46',bd:'#34d399',dot:'#059669'},
+    };
+    l=l||'Low'; const s=st[l]||{bg:'#e5e7eb',fg:'#374151',bd:'#9ca3af',dot:'#6b7280'};
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};color:${s.fg};border:1px solid ${s.bd};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:${s.dot};display:inline-block;flex-shrink:0;"></span>${escH(l)}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════
