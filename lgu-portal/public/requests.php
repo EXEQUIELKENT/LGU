@@ -326,17 +326,10 @@ const USER_EMPLOYEE_ID  = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
     .view-toggle-btn i { font-size: 16px; }
 }
 
-/* Desktop: show GIS button in title row, hide from search row */
-@media (min-width: 769px) {
-    .req-gis-btn-desktop { display: inline-flex; }
-    .req-gis-btn-mobile  { display: none !important; }
-}
-
-/* Mobile: hide GIS button from title row, show in search row */
-@media (max-width: 768px) {
-    .req-gis-btn-desktop { display: none !important; }
-    .req-gis-btn-mobile  { display: inline-flex; }
-}
+/* Card view is used at every screen size now, so the GIS toggle button
+   always lives in the title row, top-right of the card view. */
+.req-gis-btn-desktop { display: inline-flex; }
+.req-gis-btn-mobile  { display: none !important; }
 
 /* Requests view: search + toggle on same row */
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
@@ -384,7 +377,10 @@ const USER_EMPLOYEE_ID  = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
 /* ═══════════════════════════════════════════════════════
    REQUESTS TABLE VIEW
 ═══════════════════════════════════════════════════════ */
-.page-title { font-size: 28px; color: var(--text-primary); }
+/* Matches current_reports.php's .page-title sizing exactly: 28px by
+   default, shrinking only on real mobile widths (see mobile media query
+   below), not at medium/tablet widths. */
+.page-title { font-size: 28px; color: var(--text-primary); margin: 0; }
 
 #requestSearch {
     width: 100%;
@@ -465,6 +461,48 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 }
 [data-theme="dark"] .mobile-request-list::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
 
+/* Card view is only shown on mobile (same pattern as current_reports.php);
+   the desktop table remains the primary view at desktop widths. */
+.mobile-request-list { display: none; }
+
+/* ── Request card — same structure/sizing/spacing as current_reports.php's
+   .report-card, so both pages present a matching card view on mobile: a
+   flex column card containing flex-row "label : value" entries. Named
+   .cimmReqCard (not "request-card") on purpose — it avoids any
+   chance of collision with a generic [class*="card"] rule elsewhere
+   in emp-global.css that isn't meant for this component. */
+.cimmReqCard {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,.96);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 6px 18px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.cimmReqRow {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.4;
+}
+.cimmReqLabel {
+    font-weight: 600;
+    color: #3762c8;
+    flex-shrink: 0;
+}
+.cimmReqValue {
+    flex: 1 1 auto;
+    word-break: break-word;
+    white-space: normal;
+}
+.cimmReqCard .status { display: inline-block; margin-left: 0; }
+.no-evidence { font-size: 12px; color: #777; }
 
 /* Requests page has two swappable views (#gisView / #requestsView) plus the
    persistent Activity History card as direct children of .main-content.
@@ -525,6 +563,48 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 }
 /* Stacked variant — sits above the Request ID text in the desktop table cell */
 .badge-source-ipms.stacked { display: inline-flex; margin-bottom: 4px; }
+
+/* ═══════════════════════════════════════════════════════
+   CIMM ⇄ IPMS CONNECTION/SYNC BADGE
+   Sits to the right of the page title on both the GIS Request Map
+   and Infrastructure Repair Requests headers, indicating the two
+   systems are linked. Solid green "connected" pill with a soft glow
+   and a pulsing dot to read as live/active, not just static.
+═══════════════════════════════════════════════════════ */
+.page-title-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ipms-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #34d977, #16a34a);
+    color: #fff; border: none;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .04em; cursor: default;
+    box-shadow: 0 3px 10px rgba(22,163,74,.45), 0 0 0 1px rgba(255,255,255,.15) inset;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+    animation: ipmsBadgeGlow 2.6s ease-in-out infinite;
+}
+.ipms-sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #fff;
+    box-shadow: 0 0 0 0 rgba(255,255,255,.75);
+    animation: ipmsSyncPulse 2s infinite;
+}
+@keyframes ipmsSyncPulse {
+    0%   { box-shadow: 0 0 0 0   rgba(255,255,255,.75); }
+    70%  { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0   rgba(255,255,255,0); }
+}
+@keyframes ipmsBadgeGlow {
+    0%, 100% { box-shadow: 0 3px 10px rgba(22,163,74,.45), 0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 4px 18px rgba(22,163,74,.80), 0 0 0 1px rgba(255,255,255,.22) inset; }
+}
+[data-theme="dark"] .ipms-sync-badge {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 3px 12px rgba(34,197,94,.5), 0 0 0 1px rgba(255,255,255,.1) inset;
+}
+@media (max-width: 480px) { .ipms-sync-label-full { display: none; } }
+
+
 
 .btn-view {
     background: #3762c8; color: #fff; border: none;
@@ -1884,7 +1964,6 @@ tbody td {
     .evidence-thumb-wrapper { width: 50px !important; height: 50px !important; }
     .status { padding: 4px 8px !important; font-size: 10px !important; white-space: nowrap !important; }
     .btn-view { padding: 5px 8px !important; font-size: 11px !important; white-space: nowrap !important; }
-    .page-title { font-size: 20px !important; }
     #requestSearch { font-size: 12.5px !important; padding: 0 12px 0 34px !important; height: 36px !important; }
     .gis-search-wrap { flex: 0 0 200px; width: 200px; }
     .gis-filter-btn { font-size: 11px; padding: 4px 9px; }
@@ -1984,8 +2063,9 @@ tbody td {
 
     /* Requests mobile cards */
     table { display: none !important; }
-    h2 { display: none; }
-    .mobile-request-list { display: flex !important; flex-direction: column; gap: 16px; width: 100%; max-height: 560px; overflow-y: auto !important; overflow-x: visible !important; padding-right: 6px; }
+    .table-card { padding: 18px 14px !important; border-radius: 16px !important; gap: 12px !important; }
+    .mobile-request-list { display: flex !important; flex-direction: column; gap: 14px; width: 100%; max-height: 560px; overflow-y: auto !important; overflow-x: visible !important; padding-right: 6px; }
+    .page-title { font-size: 22px; }
 
     /* Notification "page" pill (e.g. .notif-page-requests) gets caught by the
        [class*="request"] catch-all above — its class name contains "request" —
@@ -1999,52 +2079,23 @@ tbody td {
         flex-grow: 0 !important;
     }
 
-    /* ── Mobile request card ───────────────────────────────────────────
-       Same structure/approach as the working .report-card on
-       citizenreports.php: a flex column card containing flex-row
-       "label : value" entries, laid out normally (no absolute
-       positioning, no reliance on generic ancestor rules). The class is
-       named .cimmReqCard (not "request-card") on purpose — it avoids any
-       chance of collision with a generic [class*="card"] rule elsewhere
-       in emp-global.css that isn't meant for this component. */
-    .cimmReqCard {
-        width: 100%;
-        box-sizing: border-box;
-        background: rgba(255,255,255,.96);
-        border-radius: 16px;
-        padding: 16px 18px;
-        box-shadow: 0 6px 18px rgba(0,0,0,.18);
-        font-size: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-    .cimmReqRow {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 6px;
-        line-height: 1.4;
-    }
-    .cimmReqLabel {
-        font-weight: 600;
-        color: #3762c8;
-        flex-shrink: 0;
-    }
-    .cimmReqValue {
-        flex: 1 1 auto;
-        word-break: break-word;
-        white-space: normal;
-    }
-    .cimmReqCard .status { display: inline-block; margin-left: 0; }
+    /* Card sizing/spacing now lives in the global card-view rules
+       above main-content (see .cimmReqCard block), since the card
+       view renders at every screen size, not just mobile. */
     .no-evidence { font-size: 12px; color: #777; }
-    .req-title-row { display: none; }
 
     /* GIS mobile */
     .gis-page { padding: 0 0 24px; }
     .gis-page > * { }  /* already inherits main-content padding */
     .gis-header-card { flex-direction: row; align-items: flex-start; }
     .gis-header-left { flex: 1; min-width: 0; }
+    /* Fix IPMS badge positioning when it wraps under the title: pull it
+       closer to the title (tighter row-gap than the default 10px, which
+       compounded with the h1's own margin to push the badge too far
+       down) and add a small margin below it so it doesn't sit flush
+       against the paragraph underneath. */
+    .gis-header-left h1 { margin: 0; }
+    .page-title-inline { row-gap: 6px; margin-bottom: 8px; }
     .gis-map-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 6px; align-items: center; }
     .gis-map-title { display: none; }
     /* Row 1: search + satellite side by side */
@@ -2617,7 +2668,13 @@ tbody td {
         <!-- Header -->
         <div class="gis-header-card">
             <div class="gis-header-left">
-                <h1>🗺️ GIS Request Map</h1>
+                <div class="page-title-inline">
+                    <h1>🗺️ GIS Request Map</h1>
+                    <span class="ipms-sync-badge" title="CIMM is connected and syncing with the IPMS citizen portal">
+                        <span class="ipms-sync-dot"></span>
+                        <span class="ipms-sync-label"><span class="ipms-sync-label-full">CIMM ⇄ </span>IPMS Synced</span>
+                    </span>
+                </div>
                 <p>Live geographic overview of all infrastructure repair requests</p>
             </div>
             <button class="view-toggle-btn" onclick="switchView('requests')" title="View Requests">
@@ -2815,7 +2872,13 @@ tbody td {
     <div id="requestsView" style="display:none;">
     <div class="table-card">
         <div class="req-title-row">
-        <h2 class="page-title">Infrastructure Repair Requests</h2>
+        <div class="page-title-inline">
+            <h2 class="page-title">Repair Requests</h2>
+            <span class="ipms-sync-badge" title="CIMM is connected and syncing with the IPMS citizen portal">
+                <span class="ipms-sync-dot"></span>
+                <span class="ipms-sync-label"><span class="ipms-sync-label-full">CIMM ⇄ </span>IPMS Synced</span>
+            </span>
+        </div>
         <!-- Desktop: button sits beside the title -->
         <button class="view-toggle-btn req-gis-btn-desktop" onclick="switchView('gis')" title="View GIS Map">
             <i class="fas fa-map-marked-alt"></i>
@@ -2857,11 +2920,6 @@ tbody td {
                 <div class="sort-option" data-sort="district-6"><i class="fas fa-location-dot"></i> District 6</div>
             </div>
         </div>
-        <!-- Mobile: button sits beside the search input -->
-        <button class="view-toggle-btn req-gis-btn-mobile" onclick="switchView('gis')" title="View GIS Map">
-            <i class="fas fa-map-marked-alt"></i>
-            <span class="btn-text">View GIS Map</span>
-        </button>
     </div>
     </div>
 
