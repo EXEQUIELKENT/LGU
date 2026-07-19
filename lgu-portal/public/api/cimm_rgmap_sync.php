@@ -256,6 +256,13 @@ function cimm_rgmap_push_payload(array $payload, string $event = 'upsert'): arra
             'Content-Type: application/json',
             'Accept: application/json',
             'Authorization: Bearer ' . $cfg['webhook_key'],
+            // Sent redundantly alongside Authorization: on stock Apache +
+            // mod_php (XAMPP's default), $_SERVER['HTTP_AUTHORIZATION'] is
+            // stripped before it reaches PHP unless the host is explicitly
+            // configured to forward it. The webhook already accepts this
+            // header as a fallback, so sending both means the sync keeps
+            // working even when Authorization gets silently dropped.
+            'X-API-Key: ' . $cfg['webhook_key'],
             'X-CIMM-Event: ' . $event,
         ],
         CURLOPT_RETURNTRANSFER => true,
