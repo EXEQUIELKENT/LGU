@@ -5466,98 +5466,75 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     applyActLogLimit();
 
-    initActivityLogPolling();
 });
 
 // ═══════════════════════════════════════════════════════
-//  ACTIVITY LOG — REAL-TIME POLLING (no page refresh needed)
+//  ACTIVITY LOG REFRESH
+//  Was previously a JSON-POST + client-side `IS_ADMIN` gated poller — that
+//  required the JS `IS_ADMIN` const to already be assigned by the time this
+//  ran, and depended on ACT_REPORT_IDS/ACT_REQUEST_IDS staying in sync with
+//  what the server considers "on this page". Whenever any of that didn't
+//  line up, window.refreshActivityLog was silently never set, so neither the
+//  poll fallback nor the fire-and-forget "pokeActivityLog()" calls after the
+//  user's own actions (view report, assign engineer, etc.) could ever update
+//  the panel — only a manual page reload would. Swapped to the same simple,
+//  proven approach requests.php already uses live: re-fetch this exact page
+//  (same PHP that renders the panel on load) and swap in the fresh activity
+//  list + count badge, without a full page reload.
 // ═══════════════════════════════════════════════════════
-function initActivityLogPolling() {
-    const listEl = document.getElementById('activityLogList');
-    if (!listEl || typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
+async function refreshActivityLog() {
+    try {
+        const resp = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const doc  = new DOMParser().parseFromString(html, 'text/html');
 
-    let knownLatestId = (typeof ACT_LATEST_LOG_ID !== 'undefined') ? ACT_LATEST_LOG_ID : 0;
-    let inFlight = false;
-    const POLL_MS = 8000;
+        const newList = doc.getElementById('activityLogList');
+        const curList = document.getElementById('activityLogList');
+        if (newList && curList) curList.innerHTML = newList.innerHTML;
 
-    function refreshActivityLog() {
-        if (inFlight || document.hidden) return;
-        inFlight = true;
-        fetch(window.location.pathname, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'fetch_activity_log',
-                report_ids: (typeof ACT_REPORT_IDS !== 'undefined') ? ACT_REPORT_IDS : [],
-                request_ids: (typeof ACT_REQUEST_IDS !== 'undefined') ? ACT_REQUEST_IDS : []
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data || !data.success) return;
-            if (data.latest_id === knownLatestId) return; // nothing new
+        const newBadge = doc.getElementById('activityLogCountText');
+        const curBadge = document.getElementById('activityLogCountText');
+        if (newBadge && curBadge) curBadge.textContent = newBadge.textContent;
 
-            const previousKnownId = knownLatestId;
-            knownLatestId = data.latest_id;
-
-            listEl.innerHTML = data.html;
-
-            // Flash-highlight any entries newer than what we had before
-            listEl.querySelectorAll('.activity-log-item').forEach(item => {
-                const id = parseInt(item.getAttribute('data-log-id') || '0', 10);
-                if (id > previousKnownId) item.classList.add('act-log-item-new');
-            });
-
-            const countTextEl = document.getElementById('activityLogCountText');
-            if (countTextEl) countTextEl.textContent = data.count + (data.count === 1 ? ' entry' : ' entries');
-
-            applyActLogLimit();
-        })
-        .catch(() => {})
-        .finally(() => { inFlight = false; });
+        // Re-apply the "show first N, then Show more" limiter now that the
+        // list has new items in it.
+        applyActLogLimit();
+    } catch (e) {
+        console.error('Failed to refresh Activity History:', e);
     }
-
-    setInterval(refreshActivityLog, POLL_MS);
-    document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) refreshActivityLog();
-    });
-
-    // Expose so fire-and-forget loggers (view report, assign engineer, etc.)
-    // can pull the new entry in immediately instead of waiting for the next
-    // 8s poll tick.
-    window.refreshActivityLog = refreshActivityLog;
 }
 
-// Small helper so callers don't need to guard against the widget being
-// absent (non-admin pages never call initActivityLogPolling, so
-// window.refreshActivityLog is never set there).
+// Small helper so fire-and-forget loggers (view report, assign engineer,
+// etc.) can pull the new entry in immediately instead of waiting for the
+// SSE-triggered refresh. No-op if the History Logs panel isn't on the page
+// (non-admin roles never get the panel rendered).
 function pokeActivityLog() {
-    if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
+    if (document.getElementById('activityLogList')) refreshActivityLog();
 }
 
 // ═══════════════════════════════════════════════════════
-//  ACTIVITY LOG — REAL-TIME PUSH (SSE)
-//  The 8s poll above is just a safety-net fallback. validate_request.php,
-//  reject_request.php, assign_engineer.php, etc. already push a live
-//  notification to every other employee the moment an action happens
-//  (via insertNotification), and notification-stream.php streams those
-//  out over Server-Sent Events. We piggyback on that same stream here —
-//  same as requests.php — so the Activity History panel updates within
-//  a second or two of ANY employee's action, instead of waiting for the
-//  next poll tick.
+//  REAL-TIME ACTIVITY LOG
+//  refreshActivityLog() above only fires for the employee who personally
+//  triggered an action — everyone else still had to reload the page to see
+//  it. validate_request.php, reject_request.php, assign_engineer.php, etc.
+//  already push a live notification to every other employee (via
+//  insertNotification) the moment an action happens, and
+//  notification-stream.php streams those out over Server-Sent Events in
+//  real time. We piggyback on that same stream here — same as requests.php —
+//  so that whenever ANY employee acts, everyone else's Activity History
+//  panel updates live, within a second or two, with no reload.
 // ═══════════════════════════════════════════════════════
+<?php if ($isAdmin): ?>
 (function () {
     if (typeof EventSource === 'undefined') return;
-    if (typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
 
     let refreshTimer = null;
     function scheduleActivityRefresh() {
         // Debounce: if several notifications land at once (e.g. bulk
         // actions), only refresh once shortly after the burst settles.
         clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(function () {
-            if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
-        }, 400);
+        refreshTimer = setTimeout(refreshActivityLog, 400);
     }
 
     function connect() {
@@ -5573,6 +5550,7 @@ function pokeActivityLog() {
     }
     connect();
 })();
+<?php endif; ?>
 
 document.addEventListener("DOMContentLoaded", function() {
     if (CAN_ASSIGN_ENGINEER) initAllComboboxes();

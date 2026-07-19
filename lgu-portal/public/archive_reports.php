@@ -90,11 +90,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ── Log: someone opened the image gallery for an archived report ─────────
+    // Distinguishes the citizen's original evidence photos from the engineer's
+    // day-by-day progress photos, and for progress photos records which day of
+    // the timeline was being viewed.
     if ($action === 'log_image_view') {
-        $repId = (int)($input['rep_id'] ?? 0);
+        $repId       = (int)($input['rep_id'] ?? 0);
+        $galleryType = ($input['gallery_type'] ?? '') === 'progress' ? 'progress' : 'evidence';
+        $dayDate     = (string)($input['day_date'] ?? '');
+        $dayNumber   = (int)($input['day_number'] ?? 0);
         if ($repId > 0) {
-            log_report_activity($conn, 'archive_reports', $repId, 'images_viewed',
-                activity_actor_name() . " viewed images for Report #REP-{$repId}.");
+            if ($galleryType === 'progress' && $dayDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayDate)) {
+                $dayLabel = $dayNumber > 0 ? "Day {$dayNumber}" : 'a day';
+                $prettyDate = date('M j, Y', strtotime($dayDate));
+                log_report_activity($conn, 'archive_reports', $repId, 'images_viewed',
+                    activity_actor_name() . " viewed {$dayLabel} ({$prettyDate}) progress images for Report #REP-{$repId}.");
+            } elseif ($galleryType === 'progress') {
+                log_report_activity($conn, 'archive_reports', $repId, 'images_viewed',
+                    activity_actor_name() . " viewed progress images for Report #REP-{$repId}.");
+            } else {
+                log_report_activity($conn, 'archive_reports', $repId, 'images_viewed',
+                    activity_actor_name() . " viewed evidence images for Report #REP-{$repId}.");
+            }
         }
         echo json_encode(['success' => true]);
         exit;
@@ -2081,6 +2097,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
 const repBackdrop  = document.getElementById('repModalBackdrop');
 const repModalClose= document.getElementById('repModalClose');
 let repGalleryImages = [], repProgressImages = [], repActiveLbImages = [], repGalleryIndex = 0;
+let repGalleryType = 'evidence'; // 'evidence' | 'progress' — which gallery openRepLightbox() was opened from
 let currentArchiveData = null;
 
 // ── Day navigation state ──────────────────────────────────────────────────────
@@ -2154,7 +2171,7 @@ function renderArchiveDayView() {
         dayImages.forEach((src, idx) => {
             const img = document.createElement('img');
             img.src = src; img.className = 'rep-progress-thumb'; img.alt = 'Progress';
-            img.onclick = () => { repActiveLbImages = dayImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
+            img.onclick = () => { repGalleryType = 'progress'; openRepLightbox(idx, dayImages); };
             pStrip.appendChild(img);
         });
     } else { pSection.style.display = 'none'; }
@@ -2458,7 +2475,7 @@ function openRepModal(repId) {
         repGalleryImages.forEach((src, idx) => {
             const img = document.createElement('img');
             img.src=src; img.className='rep-evidence-thumb'; img.alt='Evidence';
-            img.onclick=()=>{ repActiveLbImages = repGalleryImages; repGalleryIndex = idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active'); };
+            img.onclick=()=>{ repGalleryType = 'evidence'; openRepLightbox(idx, repGalleryImages); };
             ec.appendChild(img);
         });
     } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
@@ -2486,16 +2503,28 @@ document.addEventListener('keydown', e => {
 
 // Gallery lightbox
 let repLbZoomed=false, repLbDragging=false, repLbStartX=0, repLbStartY=0, repLbTX=0, repLbTY=0, repLbScale=1;
-function openRepLightbox(idx){
-    repGalleryIndex=idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active');
+function openRepLightbox(idx, imgArray){
+    repActiveLbImages = imgArray || repGalleryImages; repGalleryIndex=idx; repLbUpdateImg(); document.getElementById('repImgLightbox').classList.add('active');
 
     // Fire-and-forget: record this image view in the Archive Reports History Logs.
+    // Distinguishes the citizen's original evidence photos from the engineer's
+    // day-by-day progress photos, and for progress photos records which day of
+    // the timeline was being viewed — read straight off the day navigator so it
+    // always matches what's on screen.
     const repId = currentArchiveData ? parseInt(currentArchiveData.rep_id) : null;
     if (repId) {
+        const payload = { action: 'log_image_view', rep_id: repId, gallery_type: repGalleryType };
+        if (repGalleryType === 'progress') {
+            const dayDate = document.getElementById('repCurrentLogDate')?.value || null;
+            if (dayDate) {
+                payload.day_date   = dayDate;
+                payload.day_number = currentDayDates.indexOf(dayDate) + 1;
+            }
+        }
         fetch(window.location.pathname, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'log_image_view', rep_id: repId }),
+            body: JSON.stringify(payload),
             keepalive: true
         }).then(() => pokeActivityLog()).catch(() => {});
     }
@@ -2573,73 +2602,94 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     applyActLogLimit();
 
-    initActivityLogPolling();
 });
 
 // ═══════════════════════════════════════════════════════
-//  ACTIVITY LOG — REAL-TIME POLLING (no page refresh needed)
+//  ACTIVITY LOG REFRESH
+//  Was previously a JSON-POST + client-side `IS_ADMIN` gated poller. That
+//  depended on the JS `IS_ADMIN` const (declared much further down this
+//  file) already being assigned by the time this ran; whenever that didn't
+//  line up, window.refreshActivityLog was silently never set, so neither
+//  the poll fallback nor the fire-and-forget "pokeActivityLog()" calls after
+//  the user's own actions (view report, Word download, etc.) could ever
+//  update the panel — only a manual page reload would. This is exactly why
+//  Archive Reports' History Logs never updated live while requests.php
+//  (whose equivalent code never depends on a client-side IS_ADMIN check at
+//  all) worked fine. Swapped to that same simple, proven approach: re-fetch
+//  this exact page (same PHP that renders the panel on load) and swap in
+//  the fresh activity list + count badge, without a full page reload. The
+//  admin-only gate is applied server-side (<?php if ($isAdmin) ?>) instead
+//  of via a client-side constant, so there's no ordering dependency at all.
 // ═══════════════════════════════════════════════════════
-function initActivityLogPolling() {
-    const listEl = document.getElementById('activityLogList');
-    if (!listEl || typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
+async function refreshActivityLog() {
+    try {
+        const resp = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const doc  = new DOMParser().parseFromString(html, 'text/html');
 
-    let knownLatestId = (typeof ACT_LATEST_LOG_ID !== 'undefined') ? ACT_LATEST_LOG_ID : 0;
-    let inFlight = false;
-    const POLL_MS = 8000;
+        const newList = doc.getElementById('activityLogList');
+        const curList = document.getElementById('activityLogList');
+        if (newList && curList) curList.innerHTML = newList.innerHTML;
 
-    function refreshActivityLog() {
-        if (inFlight || document.hidden) return;
-        inFlight = true;
-        fetch(window.location.pathname, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'fetch_activity_log',
-                report_ids: (typeof ACT_REPORT_IDS !== 'undefined') ? ACT_REPORT_IDS : [],
-                request_ids: (typeof ACT_REQUEST_IDS !== 'undefined') ? ACT_REQUEST_IDS : []
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data || !data.success) return;
-            if (data.latest_id === knownLatestId) return; // nothing new
+        const newBadge = doc.getElementById('activityLogCountText');
+        const curBadge = document.getElementById('activityLogCountText');
+        if (newBadge && curBadge) curBadge.textContent = newBadge.textContent;
 
-            const previousKnownId = knownLatestId;
-            knownLatestId = data.latest_id;
+        // Re-apply the "show first N, then Show more" limiter now that the
+        // list has new items in it.
+        applyActLogLimit();
+    } catch (e) {
+        console.error('Failed to refresh Activity History:', e);
+    }
+}
 
-            listEl.innerHTML = data.html;
+// Small helper so fire-and-forget loggers (view report, Word download, etc.)
+// can pull the new entry in immediately instead of waiting for the
+// SSE-triggered refresh. No-op if the History Logs panel isn't on the page
+// (non-admin roles never get the panel rendered).
+function pokeActivityLog() {
+    if (document.getElementById('activityLogList')) refreshActivityLog();
+}
 
-            // Flash-highlight any entries newer than what we had before
-            listEl.querySelectorAll('.activity-log-item').forEach(item => {
-                const id = parseInt(item.getAttribute('data-log-id') || '0', 10);
-                if (id > previousKnownId) item.classList.add('act-log-item-new');
-            });
+// ═══════════════════════════════════════════════════════
+//  REAL-TIME ACTIVITY LOG
+//  refreshActivityLog() above only fires for the employee who personally
+//  triggered an action — everyone else still had to reload the page to see
+//  it. validate_request.php, reject_request.php, assign_engineer.php, etc.
+//  already push a live notification to every other employee (via
+//  insertNotification) the moment an action happens, and
+//  notification-stream.php streams those out over Server-Sent Events in
+//  real time. We piggyback on that same stream here — same as requests.php —
+//  so that whenever ANY employee acts, everyone else's Activity History
+//  panel updates live, within a second or two, with no reload.
+// ═══════════════════════════════════════════════════════
+<?php if ($isAdmin): ?>
+(function () {
+    if (typeof EventSource === 'undefined') return;
 
-            const countTextEl = document.getElementById('activityLogCountText');
-            if (countTextEl) countTextEl.textContent = data.count + (data.count === 1 ? ' entry' : ' entries');
-
-            applyActLogLimit();
-        })
-        .catch(() => {})
-        .finally(() => { inFlight = false; });
+    let refreshTimer = null;
+    function scheduleActivityRefresh() {
+        // Debounce: if several notifications land at once (e.g. bulk
+        // actions), only refresh once shortly after the burst settles.
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refreshActivityLog, 400);
     }
 
-    setInterval(refreshActivityLog, POLL_MS);
-    document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) refreshActivityLog();
-    });
-
-    // Expose so fire-and-forget loggers (view report, etc.) can pull the new
-    // entry in immediately instead of waiting for the next poll tick.
-    window.refreshActivityLog = refreshActivityLog;
-}
-
-// Small helper so callers don't need to guard against the widget being
-// absent (non-admin pages never call initActivityLogPolling, so
-// window.refreshActivityLog is never set there).
-function pokeActivityLog() {
-    if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
-}
+    function connect() {
+        const es = new EventSource('api/notification-stream.php?last_id=0');
+        es.addEventListener('notification', scheduleActivityRefresh);
+        es.onerror = () => {
+            // EventSource retries on its own, but if the browser gives up
+            // (connection closed), reconnect after a short delay.
+            if (es.readyState === EventSource.CLOSED) {
+                setTimeout(connect, 3000);
+            }
+        };
+    }
+    connect();
+})();
+<?php endif; ?>
 
 document.addEventListener("DOMContentLoaded", function() {
     const input    = document.getElementById("reportSearch");
@@ -2732,55 +2782,11 @@ const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? 
 
 const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
 
-// ═══════════════════════════════════════════════════════
-//  ACTIVITY LOG — REAL-TIME PUSH (SSE)
-//  The 8s poll above is just a safety-net fallback. validate_request.php,
-//  reject_request.php, assign_engineer.php, etc. already push a live
-//  notification to every other employee the moment an action happens
-//  (via insertNotification), and notification-stream.php streams those
-//  out over Server-Sent Events. We piggyback on that same stream here —
-//  same as requests.php, pending_reports.php, and current_reports.php —
-//  so the Activity History panel updates within a second or two of ANY
-//  employee's action, instead of waiting for the next poll tick.
-//
-//  NOTE: this block must run AFTER `const IS_ADMIN` above is declared.
-//  It used to sit further up the file (right after the report-search
-//  DOMContentLoaded handler) and ran as soon as the parser reached it,
-//  which is BEFORE `const IS_ADMIN` further down was ever initialized.
-//  Referencing a `const` before its declaration is a temporal-dead-zone
-//  ReferenceError in JS — even `typeof IS_ADMIN` throws instead of
-//  quietly returning 'undefined' — so this IIFE crashed immediately on
-//  every page load and the EventSource connection was never made. That's
-//  why Archive Reports' History Logs never updated live while
-//  requests.php (which declares IS_ADMIN before using it) worked fine.
-// ═══════════════════════════════════════════════════════
-(function () {
-    if (typeof EventSource === 'undefined') return;
-    if (typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
-
-    let refreshTimer = null;
-    function scheduleActivityRefresh() {
-        // Debounce: if several notifications land at once (e.g. bulk
-        // actions), only refresh once shortly after the burst settles.
-        clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(function () {
-            if (typeof window.refreshActivityLog === 'function') window.refreshActivityLog();
-        }, 400);
-    }
-
-    function connect() {
-        const es = new EventSource('api/notification-stream.php?last_id=0');
-        es.addEventListener('notification', scheduleActivityRefresh);
-        es.onerror = () => {
-            // EventSource retries on its own, but if the browser gives up
-            // (connection closed), reconnect after a short delay.
-            if (es.readyState === EventSource.CLOSED) {
-                setTimeout(connect, 3000);
-            }
-        };
-    }
-    connect();
-})();
+// (Real-time Activity History SSE listener now lives earlier in this file,
+// right next to refreshActivityLog()/pokeActivityLog() — see the comment
+// block above them. It's gated server-side via <?php if ($isAdmin) ?> so it
+// no longer needs to wait on this IS_ADMIN const, and having it declared
+// only once here avoids opening a second, duplicate EventSource connection.)
 
 const IS_AREA_ENGINEER = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 const AE_HAS_DISTRICT  = <?= $aeHasDistrict  ? 'true' : 'false' ?>;
