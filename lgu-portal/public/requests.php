@@ -126,10 +126,11 @@ function showNotification() {
 // ── DB Queries ───────────────────────────────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 4096");
 $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT NULL");
+$conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'citizen'");
 
 $sql = "SELECT
     r.req_id, r.infrastructure, r.location, r.issue, r.approval_status,
-    r.created_at, r.name, r.contact_number, r.coordinates, r.email, r.district,
+    r.created_at, r.name, r.contact_number, r.coordinates, r.email, r.district, r.source,
     res.res_id, res.status AS resolution_status,
     rp.rep_id,
     rp.engineer_id,
@@ -509,6 +510,22 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .completed   { background: #a5d6a7; color: #1b5e20; }
 .rejected    { background: #ef9a9a; color: #7f1d1d; }
 
+/* IPMS-origin badge — same design language as sched.php's CPRF badge */
+.badge-source-ipms {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(8,145,178,.1); color: #0e7490;
+    border: 1px solid rgba(8,145,178,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .badge-source-ipms {
+    background: rgba(34,211,238,.12); color: #67e8f9;
+    border-color: rgba(34,211,238,.28);
+}
+/* Stacked variant — sits above the Request ID text in the desktop table cell */
+.badge-source-ipms.stacked { display: inline-flex; margin-bottom: 4px; }
+
 .btn-view {
     background: #3762c8; color: #fff; border: none;
     padding: 7px 14px; border-radius: 8px; cursor: pointer;
@@ -563,12 +580,33 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .sort-btn-label { display: inline; }
 @media (max-width: 520px) { .sort-btn-label { display: none; } }
 .sort-dropdown {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    display: none; position: fixed; /* fixed so ancestor stacking contexts (e.g. .table-card's
+        backdrop-filter, which traps absolutely-positioned z-index children inside it) cannot
+        bury this behind a later card, such as the History Logs panel */
     background: var(--bg-secondary,#fff); border: 1.5px solid rgba(55,98,200,.18);
     border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
-    z-index: 9999; min-width: 190px; overflow: hidden;
+    z-index: 99999; min-width: 190px; max-height: 70vh; overflow-y: auto;
     animation: sortDropIn .18s ease;
+    /* Forces its own compositing layer — works around a WebKit/iOS bug where a
+       freshly-shown position:fixed element can fail to paint on first toggle. */
+    -webkit-transform: translateZ(0); transform: translateZ(0);
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    /* Same thin, glowing branded scrollbar as .table-scroll-wrap / .mobile-request-list */
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
 }
+.sort-dropdown::-webkit-scrollbar { width: 6px; }
+.sort-dropdown::-webkit-scrollbar-track { background: transparent; }
+.sort-dropdown::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.sort-dropdown::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .sort-dropdown::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
 .sort-dropdown-wrap.open .sort-dropdown { display: block; }
 @keyframes sortDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
 .sort-option {
@@ -864,10 +902,11 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .gis-search-clear:hover { opacity: 1; }
 .gis-search-clear.visible { display: flex; }
 .gis-search-results-badge {
-    position: absolute; top: calc(100% + 6px); left: 0;
+    position: fixed; /* fixed so Leaflet's internal panes (markerPane/popupPane can reach
+        z-index ~600-700) can never paint over this, and scrolling/resizing can't misplace it */
     display: none; align-items: center; gap: 6px; padding: 5px 12px;
     background: #dce6f8; border: 1.5px solid #3762c8; border-radius: 8px;
-    font-size: 12px; font-weight: 600; color: #3762c8; white-space: nowrap; z-index: 200;
+    font-size: 12px; font-weight: 600; color: #3762c8; white-space: nowrap; z-index: 99999;
     pointer-events: none; box-shadow: 0 2px 8px rgba(55,98,200,.2); min-width: 120px;
 }
 .gis-search-results-badge.visible { display: flex; }
@@ -2802,6 +2841,8 @@ tbody td {
                 <div class="sort-option active" data-sort="date-desc"><i class="fas fa-calendar-minus"></i> Date (Newest)</div>
                 <div class="sort-option" data-sort="date-asc"><i class="fas fa-calendar-plus"></i> Date (Oldest)</div>
                 <div class="sort-dropdown-divider"></div>
+                <div class="sort-option" data-sort="ipms-first"><i class="fas fa-tower-broadcast"></i> Request from IPMS</div>
+                <div class="sort-dropdown-divider"></div>
                 <div class="sort-option" data-sort="id-asc"><i class="fas fa-sort-numeric-up-alt"></i> ID (Ascending)</div>
                 <div class="sort-option" data-sort="id-desc"><i class="fas fa-sort-numeric-down-alt"></i> ID (Descending)</div>
                 <div class="sort-dropdown-divider"></div>
@@ -2877,8 +2918,14 @@ tbody td {
                     data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
                     data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
                     data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
-                    data-district="<?= htmlspecialchars($row['district'] ?? '') ?>">
-                    <td class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></td>
+                    data-district="<?= htmlspecialchars($row['district'] ?? '') ?>"
+                    data-source="<?= htmlspecialchars($row['source'] ?? 'citizen') ?>">
+                    <td>
+                        <?php if (($row['source'] ?? '') === 'ipms'): ?>
+                            <span class="badge-source-ipms stacked" title="This request was forwarded from the IPMS citizen portal">🌐 IPMS</span><br>
+                        <?php endif; ?>
+                        <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span>
+                    </td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location']) ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['issue']) ?></td>
@@ -2953,8 +3000,9 @@ tbody td {
             data-rep-id="<?= $row['rep_id'] ? (int)$row['rep_id'] : '' ?>"
             data-engineer-id="<?= $row['engineer_id'] ? (int)$row['engineer_id'] : '' ?>"
             data-engineer-name="<?= htmlspecialchars(trim($row['engineer_name'] ?? '')) ?>"
-            data-district="<?= htmlspecialchars($row['district'] ?? '') ?>">
-            <div class="cimmReqRow"><span class="cimmReqLabel">Request ID:</span> <span class="cimmReqValue searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span></div>
+            data-district="<?= htmlspecialchars($row['district'] ?? '') ?>"
+            data-source="<?= htmlspecialchars($row['source'] ?? 'citizen') ?>">
+            <div class="cimmReqRow"><span class="cimmReqLabel">Request ID:</span> <span class="cimmReqValue searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span><?php if (($row['source'] ?? '') === 'ipms'): ?> <span class="badge-source-ipms" title="This request was forwarded from the IPMS citizen portal">🌐 IPMS</span><?php endif; ?></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Infrastructure:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Location:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['location']) ?></span></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Issue:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['issue']) ?></span></div>
@@ -3045,7 +3093,10 @@ tbody td {
         <div class="detail-modal-band" id="detailModalBand"></div>
         <div class="detail-modal-header">
             <div class="detail-modal-header-left">
-                <div class="detail-modal-req-id" id="detailReqId"></div>
+                <div class="detail-modal-req-id-row" style="display:flex;align-items:center;gap:6px;">
+                    <div class="detail-modal-req-id" id="detailReqId"></div>
+                    <span class="badge-source-ipms" id="detailReqIdIpmsBadge" style="display:none;" title="This request was forwarded from the IPMS citizen portal">🌐 IPMS</span>
+                </div>
                 <div class="detail-modal-infra"  id="detailInfra"></div>
             </div>
             <button class="detail-modal-close" id="detailModalClose">&#215;</button>
@@ -3103,7 +3154,10 @@ tbody td {
             <div class="gis-modal-header-band" id="modalHeaderBand"></div>
             <div class="gis-modal-header-content">
                 <div>
-                    <div class="gis-modal-req-id" id="modalReqId"></div>
+                    <div class="gis-modal-req-id-row" style="display:flex;align-items:center;gap:6px;">
+                        <div class="gis-modal-req-id" id="modalReqId"></div>
+                        <span class="badge-source-ipms" id="modalReqIdIpmsBadge" style="display:none;" title="This request was forwarded from the IPMS citizen portal">🌐 IPMS</span>
+                    </div>
                     <div class="gis-modal-infra"  id="modalInfra"></div>
                 </div>
                 <button class="gis-modal-close" id="gisModalClose">&#215;</button>
@@ -3696,6 +3750,8 @@ function openRequestDetail(button) {
     document.getElementById('detailModalBand').className = `detail-modal-band ${sc}`;
     document.getElementById('detailReqId').textContent   = `#REQ-${String(reqId).padStart(3,'0')}`;
     document.getElementById('detailInfra').textContent   = infrastructure;
+    const detailIpmsBadge = document.getElementById('detailReqIdIpmsBadge');
+    if (detailIpmsBadge) detailIpmsBadge.style.display = (row.dataset.source === 'ipms') ? 'inline-flex' : 'none';
 
     const pill = document.getElementById('detailStatus');
     pill.textContent = `${STATUS_ICON[sc] || ''} ${statusDisplayLabel(status) || 'Unknown'}`;
@@ -3798,6 +3854,8 @@ function openGisDetailModal(reqId) {
 
     document.getElementById('modalHeaderBand').className = `gis-modal-header-band ${sc}`;
     document.getElementById('modalReqId').textContent    = `#REQ-${String(req.req_id).padStart(3,'0')}`;
+    const modalIpmsBadge = document.getElementById('modalReqIdIpmsBadge');
+    if (modalIpmsBadge) modalIpmsBadge.style.display = (req.source === 'ipms') ? 'inline-flex' : 'none';
 
     const normalLabel = {
         'roads':'Roads','street lights':'Street Lights','drainage':'Drainage',
@@ -4478,25 +4536,28 @@ document.addEventListener('DOMContentLoaded', () => {
             searchable.forEach(el => { storeOriginal(el); reset(el); rowText += el.textContent.toLowerCase() + ' '; });
             const match = rowText.includes(keyword);
             const dateHidden = row.dataset.dateHidden === '1';
+            const ipmsHidden = row.dataset.ipmsHidden === '1';
             row.dataset.searchHidden = (!match && keyword) ? '1' : '';
-            row.style.display = (dateHidden || (!match && keyword)) ? 'none' : '';
+            row.style.display = (dateHidden || ipmsHidden || (!match && keyword)) ? 'none' : '';
             if (match && keyword) { searchable.forEach(el => highlight(el, keyword)); found++; }
         });
-        document.getElementById('noRequestResult').style.display = keyword && found === 0 ? '' : 'none';
+        const visibleRows = document.querySelectorAll('table tbody tr.request-row:not([style*="display: none"]):not([style*="display:none"])').length;
+        document.getElementById('noRequestResult').style.display = visibleRows === 0 ? '' : 'none';
         document.querySelectorAll('.cimmReqCard').forEach(card => {
             const searchable = card.querySelectorAll('.searchable');
             let cardText = '';
             searchable.forEach(el => { storeOriginal(el); reset(el); cardText += el.textContent.toLowerCase() + ' '; });
             const match = cardText.includes(keyword);
             const dateHidden = card.dataset.dateHidden === '1';
+            const ipmsHidden = card.dataset.ipmsHidden === '1';
             card.dataset.searchHidden = (!match && keyword) ? '1' : '';
-            card.style.display = (dateHidden || (!match && keyword)) ? 'none' : '';
+            card.style.display = (dateHidden || ipmsHidden || (!match && keyword)) ? 'none' : '';
             if (match && keyword) searchable.forEach(el => highlight(el, keyword));
         });
         const noMob = document.getElementById('noMobileRequestResult');
         if (noMob) {
             const visibleCards = document.querySelectorAll('.cimmReqCard:not([style*="display: none"]):not([style*="display:none"])').length;
-            noMob.style.display = keyword && visibleCards === 0 ? '' : 'none';
+            noMob.style.display = visibleCards === 0 ? '' : 'none';
         }
         applyReqCardLimit();
     });
@@ -4789,10 +4850,27 @@ function applyVisibility() {
         badge.classList.add('visible'); badge.classList.toggle('no-results', visible === 0);
         countEl.textContent = visible;
         const totalEl = document.getElementById('gisTotalCount'); if (totalEl) totalEl.textContent = Object.keys(markersMap).length;
+        positionGisResultsBadge();
     } else { badge.classList.remove('visible'); }
     const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDistrict !== 'all' || activeDateFilter !== 'all' || keyword;
     if (anyFilter && visible === 0 && Object.keys(markersMap).length > 0) noResults.classList.add('visible');
     else noResults.classList.remove('visible');
+}
+
+// Position the (fixed-position) GIS search results badge directly under the
+// search input, in viewport coordinates — keeps it above the Leaflet map's
+// own high-z-index panes and correctly placed if the page scrolls/resizes.
+function positionGisResultsBadge() {
+    const badge = document.getElementById('gisResultsBadge');
+    const input = document.getElementById('gisSearch');
+    if (!badge || !input || !badge.classList.contains('visible')) return;
+    const rect = input.getBoundingClientRect();
+    const vw = window.innerWidth;
+    let left = rect.left;
+    const bw = badge.offsetWidth || 120;
+    if (left + bw > vw - 8) left = vw - bw - 8;
+    badge.style.top  = (rect.bottom + 6) + 'px';
+    badge.style.left = left + 'px';
 }
 
 function toggleLayer() {
@@ -4807,6 +4885,8 @@ function initSearch() {
     input.addEventListener('input', () => { activeSearch = input.value; clearBtn.classList.toggle('visible', activeSearch.length > 0); applyVisibility(); });
     clearBtn.addEventListener('click', () => { input.value = ''; activeSearch = ''; clearBtn.classList.remove('visible'); applyVisibility(); input.focus(); });
     input.addEventListener('keydown', e => { if (e.key === 'Escape') clearBtn.click(); });
+    window.addEventListener('resize', positionGisResultsBadge);
+    window.addEventListener('scroll', positionGisResultsBadge, true);
 }
 
 const QC_POLY = [[14.7646242,121.1095933],[14.7639251,121.1093054],[14.7631436,121.1090833],[14.7627981,121.1073723],[14.7622963,121.105793],[14.7618357,121.104773],[14.7638675,121.1025355],[14.7655348,121.1016249],[14.7654178,121.1012409],[14.7651862,121.0997995],[14.7640376,121.0997537],[14.7626015,121.0990606],[14.7623292,121.0984063],[14.7615898,121.0964583],[14.7615413,121.0956111],[14.7609386,121.0948137],[14.7598163,121.0934468],[14.7591997,121.0925497],[14.7585362,121.091745],[14.7579449,121.0907068],[14.7582575,121.0896539],[14.7582657,121.089366],[14.7579696,121.0887985],[14.758085,121.0857106],[14.7578089,121.0856433],[14.7566921,121.0853354],[14.7558102,121.0851033],[14.7556543,121.08507],[14.7552569,121.0850078],[14.753781,121.0849007],[14.7533543,121.0848696],[14.7520288,121.0847854],[14.7421927,121.0663291],[14.7421837,121.0587677],[14.742157,121.0531742],[14.7422036,121.0464397],[14.7421201,121.0404931],[14.740294,121.0385103],[14.7380574,121.0362582],[14.732682,121.0308457],[14.7298826,121.0280557],[14.7292097,121.0273872],[14.7275181,121.0257601],[14.7243718,121.0224236],[14.7225911,121.0205352],[14.7204784,121.0183472],[14.7159085,121.0136441],[14.708755,121.0161294],[14.7033858,121.0179631],[14.6884807,121.0223396],[14.6851812,121.0192022],[14.6806545,121.014895],[14.6710675,121.0058529],[14.667334,121.0022246],[14.6653244,121.0003125],[14.664741,120.9997577],[14.6643627,120.9994174],[14.663877,120.9994138],[14.6634339,120.9994033],[14.661943,120.9993861],[14.6581224,120.999302],[14.6551673,120.9976659],[14.6543814,120.9972619],[14.6539536,120.9970642],[14.6528858,120.9965706],[14.6521912,120.9962495],[14.6507248,120.9955689],[14.6497136,120.9951615],[14.6480502,120.9945753],[14.6374219,120.9925993],[14.6362678,120.9921888],[14.6359804,120.9930436],[14.6305282,120.9912426],[14.6262495,120.9898201],[14.6245355,120.9913147],[14.6235329,120.9926137],[14.6226129,120.9938057],[14.6217104,120.9949749],[14.6200392,120.997134],[14.6193355,120.9978929],[14.6170829,121.0009647],[14.6150944,121.003646],[14.6139723,121.0052731],[14.6125167,121.0069471],[14.6115939,121.0081408],[14.6107331,121.0092936],[14.6098411,121.0104299],[14.607205,121.0139822],[14.6061298,121.0153858],[14.6053799,121.0163648],[14.6044948,121.0175128],[14.6029514,121.0193839],[14.607049,121.0510734],[14.6063175,121.0513718],[14.6048031,121.051977],[14.6065867,121.0567956],[14.602265,121.0590045],[14.5986502,121.0597438],[14.5983444,121.0597432],[14.5896463,121.0582621],[14.5900235,121.0596451],[14.5904899,121.0614237],[14.5919521,121.0680469],[14.5930667,121.0695316],[14.5923335,121.07788],[14.5905369,121.0826503],[14.5921634,121.0827285],[14.5951453,121.0823165],[14.5989494,121.082531],[14.6017929,121.0823531],[14.6033745,121.083786],[14.6022288,121.0863878],[14.6003282,121.0874234],[14.599318,121.0879024],[14.599072,121.0895263],[14.6001564,121.0904543],[14.6024379,121.0900155],[14.6054058,121.0883546],[14.6138249,121.079012],[14.6155269,121.0784392],[14.616765,121.0784541],[14.6177381,121.0788822],[14.6195429,121.0758218],[14.6208781,121.0765039],[14.6218147,121.0764557],[14.6228017,121.0759409],[14.6237732,121.0750915],[14.6264184,121.0747689],[14.6279073,121.0744536],[14.6286421,121.074425],[14.628847,121.0751483],[14.6296256,121.0769013],[14.6309563,121.0774626],[14.6322159,121.0776147],[14.6333002,121.0787821],[14.6336149,121.0795619],[14.6345357,121.0802379],[14.6362589,121.0806885],[14.636861,121.0813323],[14.6379116,121.0819219],[14.6383388,121.0816883],[14.6391565,121.0814591],[14.6400111,121.0817834],[14.640833,121.0823068],[14.6413518,121.0824574],[14.6424372,121.0823549],[14.6433858,121.0831803],[14.6439511,121.0835988],[14.6436446,121.084572],[14.6437206,121.0853712],[14.6444918,121.0855999],[14.6448987,121.0876123],[14.6458583,121.0874867],[14.6464517,121.0889727],[14.6468726,121.0896603],[14.6485394,121.0877901],[14.6493282,121.0868934],[14.6514982,121.0865934],[14.651506,121.0874307],[14.652202,121.0866746],[14.6527812,121.0858927],[14.6545518,121.0861472],[14.6554682,121.0857081],[14.6562612,121.0859908],[14.6566853,121.0867891],[14.6573361,121.0874608],[14.6566672,121.0882081],[14.6596216,121.0912009],[14.6609324,121.0914765],[14.6617729,121.0920319],[14.6634173,121.0935248],[14.6643486,121.0936995],[14.6646918,121.0941136],[14.6649347,121.0948585],[14.6652424,121.0956829],[14.6648805,121.0961861],[14.6642299,121.0967374],[14.6637413,121.0979213],[14.664832,121.0983915],[14.667012,121.0987996],[14.6678005,121.0987592],[14.66828,121.0989231],[14.6692092,121.0993176],[14.6700618,121.1002379],[14.6723195,121.103246],[14.6744874,121.1050187],[14.6752513,121.105877],[14.6757895,121.1066178],[14.6772824,121.1079596],[14.6787885,121.1088846],[14.6808973,121.1101685],[14.6834048,121.1116706],[14.6844409,121.1119916],[14.6852978,121.1121855],[14.6892498,121.1113444],[14.6912424,121.1113873],[14.6930258,121.1115295],[14.6957288,121.1114141],[14.6964194,121.1121743],[14.6973898,121.112502],[14.6979009,121.1134183],[14.6980488,121.1139303],[14.7208067,121.1171018],[14.7298888,121.1183676],[14.7327323,121.118638],[14.7332343,121.1176351],[14.7340306,121.1166812],[14.7343126,121.1160177],[14.7344121,121.1157523],[14.7350341,121.1148897],[14.735565,121.1144336],[14.7372321,121.1137369],[14.7376302,121.1141598],[14.7379454,121.1151634],[14.7385508,121.1157523],[14.7396788,121.1166398],[14.7398421,121.1167681],[14.7406808,121.1175255],[14.7413675,121.117651],[14.7420636,121.1178619],[14.7428784,121.1180428],[14.7434952,121.1183029],[14.74502,121.1181852],[14.745882,121.1176944],[14.7462763,121.1177004],[14.7464168,121.1177821],[14.7475179,121.1186965],[14.7495936,121.1181479],[14.7509132,121.1196186],[14.7520088,121.1206314],[14.7527807,121.1208202],[14.7539178,121.1210519],[14.7550217,121.1207944],[14.7559513,121.1213609],[14.7568643,121.1211807],[14.7578437,121.1215498],[14.7579018,121.123069],[14.7598938,121.1235239],[14.7608898,121.1253091],[14.7626983,121.125776],[14.7631133,121.1251752],[14.764273,121.1246215],[14.7645778,121.1239254],[14.7658129,121.1247996],[14.7668581,121.1259981],[14.7681074,121.1269178],[14.7693315,121.1272269],[14.7700103,121.1278939],[14.7714835,121.1290096],[14.7713221,121.1297934],[14.7714603,121.1308227],[14.771775,121.1322758],[14.7720049,121.132411],[14.7741422,121.1327295],[14.7752992,121.1337681],[14.7756687,121.1331762],[14.7764137,121.1332033],[14.7764085,121.1317064],[14.7758509,121.1311391],[14.7751283,121.1309266],[14.7762065,121.1289228],[14.7760592,121.1272065],[14.7757419,121.126301],[14.7733002,121.123635],[14.774863,121.1204059],[14.7740299,121.1191841],[14.7723201,121.1175027],[14.772087,121.116914],[14.7712492,121.1139187],[14.7693916,121.1134127],[14.7679537,121.112593],[14.7673232,121.112048],[14.7665244,121.1113289],[14.7651342,121.1099963],[14.7646242,121.1095933]];
@@ -5057,17 +5137,79 @@ function initRequestSort() {
     if (!wrap || !btn || !dropdown) return;
 
     let currentSort = 'date-desc';
+    // Whether the "Request from IPMS" sort option is active. Unlike the other
+    // sort modes, this one also acts as a filter — only IPMS-sourced requests
+    // should be shown while it's selected, and if there are none, the list
+    // should render empty (not silently fall back to showing everything).
+    let ipmsOnlyActive = false;
+
+    // Move the dropdown out of .table-card and onto <body>. .table-card has
+    // `backdrop-filter`, which — per spec — creates a new containing block for
+    // any `position: fixed` descendant, the same way `transform`/`filter` do.
+    // That silently hijacked our "fixed" dropdown so it was positioned relative
+    // to .table-card instead of the viewport, while positionSortDropdown()
+    // below computes coordinates via getBoundingClientRect() (viewport-relative).
+    // The mismatch is what made the dropdown render off-position/off-screen in
+    // the table view and slightly misaligned in the mobile card view.
+    // Re-parenting it to <body> gives it a true fixed-to-viewport containing
+    // block again, so the math below lines up with where it actually renders.
+    if (dropdown.parentNode !== document.body) {
+        document.body.appendChild(dropdown);
+    }
+
+    // Position the (now fixed-position) dropdown relative to the sort button,
+    // keeping it right-aligned to the button and within the viewport.
+    function positionSortDropdown() {
+        const rect = btn.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const dw = dropdown.offsetWidth  || 190;
+        const dh = dropdown.offsetHeight || 0;
+        let left = rect.right - dw;
+        let top  = rect.bottom + 6;
+        if (left < 8) left = 8;
+        if (left + dw > vw - 8) left = vw - dw - 8;
+        if (top + dh > vh - 8 && rect.top > dh + 6) top = rect.top - dh - 6;
+        dropdown.style.left = left + 'px';
+        dropdown.style.top  = top  + 'px';
+    }
+
+    function openSortDropdown() {
+        wrap.classList.add('open');
+        // Drive visibility explicitly via inline style rather than only the
+        // ".open .sort-dropdown{display:block}" CSS rule — some WebKit/iOS
+        // builds fail to paint a freshly-toggled position:fixed element on
+        // the very first show, leaving it invisible even though the class
+        // (and chevron) flipped correctly.
+        dropdown.style.display = 'block';
+        positionSortDropdown();
+        // Force a synchronous reflow/repaint so the fixed-position element
+        // is guaranteed to actually paint before the user can interact again.
+        void dropdown.offsetHeight;
+        window.addEventListener('resize', positionSortDropdown);
+        window.addEventListener('scroll', positionSortDropdown, true);
+    }
+
+    function closeSortDropdown() {
+        wrap.classList.remove('open');
+        dropdown.style.display = 'none';
+        window.removeEventListener('resize', positionSortDropdown);
+        window.removeEventListener('scroll', positionSortDropdown, true);
+    }
 
     // Toggle open/close
-    btn.addEventListener('click', e => { e.stopPropagation(); wrap.classList.toggle('open'); });
-    document.addEventListener('click', e => { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (wrap.classList.contains('open')) closeSortDropdown();
+        else openSortDropdown();
+    });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target) && !dropdown.contains(e.target)) closeSortDropdown(); });
 
     dropdown.querySelectorAll('.sort-option').forEach(opt => {
         opt.addEventListener('click', () => {
             currentSort = opt.dataset.sort;
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
-            wrap.classList.remove('open');
+            closeSortDropdown();
             // District-specific sort options double as a filter: show only that district.
             if (currentSort.startsWith('district-')) {
                 const target = currentSort.replace('district-', 'district ');
@@ -5077,7 +5219,12 @@ function initRequestSort() {
                 // that a previous district sort selection may have applied.
                 if (typeof setDistrictFilter === 'function') setDistrictFilter('all');
             }
+            // "Request from IPMS" doubles as a filter: only show IPMS-sourced
+            // requests while it's active; leaving it un-hides everything again
+            // (subject to whatever other filters are still active).
+            ipmsOnlyActive = (currentSort === 'ipms-first');
             applyRequestSort(currentSort);
+            applyRequestListFilter();
         });
     });
 
@@ -5115,9 +5262,11 @@ function initRequestSort() {
                     );
                 }
                 const districtHide = _districtMismatch(row.dataset.district || '');
+                const ipmsHide     = ipmsOnlyActive && row.dataset.source !== 'ipms';
                 row.dataset.dateHidden     = dateHide ? '1' : '';
                 row.dataset.districtHidden = districtHide ? '1' : '';
-                const hide = dateHide || districtHide;
+                row.dataset.ipmsHidden     = ipmsHide ? '1' : '';
+                const hide = dateHide || districtHide || ipmsHide;
                 // Respect current search visibility too
                 if (hide) row.style.display = 'none';
                 else if (row.style.display === 'none' && !row.dataset.searchHidden) row.style.display = '';
@@ -5140,12 +5289,18 @@ function initRequestSort() {
                     );
                 }
                 const districtHide = _districtMismatch(card.dataset.district || '');
+                const ipmsHide     = ipmsOnlyActive && card.dataset.source !== 'ipms';
                 card.dataset.dateHidden     = dateHide ? '1' : '';
                 card.dataset.districtHidden = districtHide ? '1' : '';
-                const hide = dateHide || districtHide;
+                card.dataset.ipmsHidden     = ipmsHide ? '1' : '';
+                const hide = dateHide || districtHide || ipmsHide;
                 if (hide) card.style.display = 'none';
                 else if (card.style.display === 'none' && !card.dataset.searchHidden) card.style.display = '';
             });
+            if (noMob) {
+                const visibleCards = mList.querySelectorAll('.cimmReqCard:not([style*="display: none"]):not([style*="display:none"])').length;
+                noMob.style.display = visibleCards === 0 ? '' : 'none';
+            }
         }
         applyReqCardLimit();
     }
@@ -5182,6 +5337,12 @@ function initRequestSort() {
                 if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
+                if (mode === 'ipms-first') {
+                    const aIpms = a.dataset.source === 'ipms' ? 0 : 1;
+                    const bIpms = b.dataset.source === 'ipms' ? 0 : 1;
+                    if (aIpms !== bIpms) return aIpms - bIpms;
+                    return parseRequestDate(b) - parseRequestDate(a);
+                }
                 if (mode.startsWith('district-')) return _districtSortCompare(mode, a, b);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
                 const bT = (b.dataset.infrastructure||'').toLowerCase();
@@ -5203,6 +5364,12 @@ function initRequestSort() {
                 if (mode === 'date-asc')  return parseRequestDate(a) - parseRequestDate(b);
                 if (mode === 'id-asc')    return parseInt(a.dataset.reqId||0) - parseInt(b.dataset.reqId||0);
                 if (mode === 'id-desc')   return parseInt(b.dataset.reqId||0) - parseInt(a.dataset.reqId||0);
+                if (mode === 'ipms-first') {
+                    const aIpms = a.dataset.source === 'ipms' ? 0 : 1;
+                    const bIpms = b.dataset.source === 'ipms' ? 0 : 1;
+                    if (aIpms !== bIpms) return aIpms - bIpms;
+                    return parseRequestDate(b) - parseRequestDate(a);
+                }
                 if (mode.startsWith('district-')) return _districtSortCompare(mode, a, b);
                 const aT = (a.dataset.infrastructure||'').toLowerCase();
                 const bT = (b.dataset.infrastructure||'').toLowerCase();
