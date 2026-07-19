@@ -5,8 +5,13 @@
  * Pushes citizen maintenance requests to RGMAO verification monitoring
  * via webhook POST. Also used by cimm-reports-export.php for pull sync.
  *
- * Env overrides (recommended on production):
- *   CIMM_RGMAP_WEBHOOK_URL  — RGMAO inbound endpoint
+ * Env overrides (recommended on production, and STRONGLY recommended for
+ * local dev too — see note on CIMM_RGMAP_WEBHOOK_URL below):
+ *   CIMM_RGMAP_WEBHOOK_URL  — RGMAO inbound endpoint. If your local Road
+ *                             Monitoring checkout isn't in a folder named
+ *                             "lg-road-monitoring" next to this one, set this
+ *                             explicitly, e.g.:
+ *                             http://localhost/<your-folder>/lgu_staff/pages/api/cimm-reports-webhook.php
  *   CIMM_RGMAP_WEBHOOK_KEY  — shared secret (Authorization: Bearer …)
  *   CIMM_RGMAP_API_KEY      — key RGMAO uses to pull from CIMM export API
  *   CIMM_PUBLIC_BASE_URL    — absolute base for evidence image URLs
@@ -22,8 +27,7 @@ function cimm_rgmap_config(): array
     }
 
     $cfg = [
-        'webhook_url' => getenv('CIMM_RGMAP_WEBHOOK_URL')
-            ?: 'https://rgmap.infragovservices.com/lgu_staff/api/cimm-reports-webhook.php',
+        'webhook_url' => getenv('CIMM_RGMAP_WEBHOOK_URL') ?: cimm_rgmap_detect_webhook_url(),
         'webhook_key' => getenv('CIMM_RGMAP_WEBHOOK_KEY') ?: 'CIMM_RGMAP_SHARED_KEY_2026',
         'api_key' => getenv('CIMM_RGMAP_API_KEY') ?: 'CIMM_RGMAP_SHARED_KEY_2026',
         'public_base_url' => getenv('CIMM_PUBLIC_BASE_URL') ?: cimm_rgmap_detect_public_base_url(),
@@ -31,6 +35,34 @@ function cimm_rgmap_config(): array
     ];
 
     return $cfg;
+}
+
+/**
+ * Fixed: the previous hardcoded default pointed at
+ * '.../lgu_staff/api/cimm-reports-webhook.php' (production domain only,
+ * and missing the "/pages/" segment — the endpoint actually lives at
+ * lgu_staff/pages/api/cimm-reports-webhook.php on the Road Monitoring side).
+ * That meant local validations silently POSTed nowhere useful and were
+ * never logged as reaching the right place.
+ *
+ * This now mirrors cimm_rgmap_detect_public_base_url(): on local dev it
+ * targets a same-host sibling folder (best-effort guess based on the
+ * Road Monitoring repo's default folder name), and only falls back to the
+ * production URL when the host isn't local. Always prefer setting
+ * CIMM_RGMAP_WEBHOOK_URL explicitly if your local folder name differs.
+ */
+function cimm_rgmap_detect_webhook_url(): string
+{
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $hostOnly = explode(':', $host)[0];
+    $isLocal = in_array($hostOnly, ['localhost', '127.0.0.1', '::1'], true);
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+
+    if ($isLocal) {
+        return $protocol . '://' . $host . '/lg-road-monitoring/lgu_staff/pages/api/cimm-reports-webhook.php';
+    }
+
+    return 'https://rgmap.infragovservices.com/lgu_staff/pages/api/cimm-reports-webhook.php';
 }
 
 function cimm_rgmap_detect_public_base_url(): string
