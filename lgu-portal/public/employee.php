@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 // Read welcome-animation flag — session is already active from session_guard.php
 $showWelcomeAnimation = isset($_SESSION['show_welcome_animation']) && $_SESSION['show_welcome_animation'] === true;
@@ -10,7 +10,7 @@ if ($showWelcomeAnimation) {
 // Server timestamp for the live clock widget
 $serverTimestamp = time();
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // Get user profile picture
 function getProfilePicture($employeeId, $conn) {
@@ -620,8 +620,8 @@ $schedChartData   = array_values($schedStatusCounts);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>LGU Employee Portal - Dashboard</title>
 <style>
@@ -2955,7 +2955,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <!-- Logout Confirmation Alert Modal -->
 <div id="logoutAlertBackdrop">
@@ -3762,7 +3762,7 @@ HTML;
 </div>
 <?php endif; ?>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <script>
 // ===== WELCOME ANIMATION TRIGGER =====

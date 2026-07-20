@@ -26,7 +26,7 @@ $engineerId = (int)($input['engineer_id'] ?? 0);
 
 if ($repId <= 0 || $engineerId <= 0) jsonOut(false, 'Invalid parameters.');
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // Verify engineer exists and has correct role
 $ec = $conn->prepare(
@@ -78,7 +78,7 @@ if (!$upd->execute()) { $e = $upd->error; $upd->close(); jsonOut(false, "DB erro
 $upd->close();
 
 // ── Notifications ─────────────────────────────────────────────────────────
-require_once __DIR__ . '/notif_helper.php';
+require_once __DIR__ . '/../includes/core/notif_helper.php';
 
 // Get report info for request_type
 $info = getRepInfo($conn, $repId);

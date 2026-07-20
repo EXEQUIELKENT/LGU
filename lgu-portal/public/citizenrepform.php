@@ -4,8 +4,8 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-require_once 'auth_config.php';
-require_once 'db.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
+require_once __DIR__ . '/../includes/config/db.php';
 
 // --- CPRF Facilities Catalog (dynamic, shared with CIMM) -------------------
 // Previously the map's "Known QC Facilities" list (used to auto-name a pin
@@ -14,7 +14,7 @@ require_once 'db.php';
 // It now reuses the same live catalog CIMM's maintenance/schedule modules
 // already pull from CPRF's facilities-share API, so this page always shows
 // the current facility_id/name/coordinates without any manual edits here.
-require_once __DIR__ . '/api/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../includes/api/cimm_cprf_facilities.php';
 $cprfFacilitiesCatalog = cimm_fetch_cprf_facility_catalog();
 
 // Last-resort fallback: only used if the live facilities-share fetch comes
@@ -302,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Push to RGMAO verification monitoring (non-blocking for citizen UX)
-                require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+                require_once __DIR__ . '/../includes/api/cimm_rgmap_sync.php';
                 cimm_rgmap_sync_request_async($conn, (int)$request_id, 'created');
 
                 $_SESSION['notification'] = [
@@ -327,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
     <title>Submit Maintenance Request - InfraGovServices</title>
-    <link rel="stylesheet" href="citizen_global.css">
+    <link rel="stylesheet" href="assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
     (function() {
@@ -394,7 +394,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
     position: relative;
     transition: background 0.3s ease;
 }
@@ -1644,7 +1644,7 @@ input[type="file"] {
 </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <?php include 'citizen_rendering.php'; ?>
+    <?php include __DIR__ . '/../includes/partials/citizen_rendering.php'; ?>
 </head>
 <body>
     <?php showNotification(); ?>
@@ -1907,7 +1907,7 @@ input[type="file"] {
         </div>
     </div>
 
-    <?php include 'citizen_global.php'; ?>
+    <?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 
     <script>
     function getTranslation(key) {
@@ -4160,7 +4160,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
 </footer>
 
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
-<?php include 'chatbot-widget.php'; ?>
+<?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
 
 </body>
 </html>

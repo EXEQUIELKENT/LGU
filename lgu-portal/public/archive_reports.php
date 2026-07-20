@@ -1,10 +1,10 @@
 <?php
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
-require __DIR__ . '/db.php';
-require_once __DIR__ . '/activity_log.php';
+require __DIR__ . '/../includes/config/db.php';
+require_once __DIR__ . '/../includes/core/activity_log.php';
 
 function getProfilePicture($employeeId, $conn) {
     if (!$employeeId) return 'profile.png';
@@ -354,8 +354,8 @@ foreach ($rows as $row) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Archive Reports — Completed</title>
 <style>
@@ -1671,7 +1671,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
@@ -1997,7 +1997,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     <div class="rep-lb-counter" id="repLbCounter"></div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <script>
 /* ═══════════════════════════════════════════════════════

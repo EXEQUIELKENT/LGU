@@ -16,7 +16,7 @@ if (!in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'POST'], true)) {
     exit;
 }
 
-require_once __DIR__ . '/cimm_rgmap_sync.php';
+require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
 
 $cfg = cimm_rgmap_config();
 $provided = trim((string)($_GET['key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ''));
@@ -26,7 +26,7 @@ if ($provided === '' || !hash_equals($cfg['api_key'], $provided)) {
     exit;
 }
 
-require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../../includes/config/db.php';
 
 $force = isset($_GET['force']) && (string)$_GET['force'] === '1';
 $since = trim((string)($_GET['since'] ?? ''));

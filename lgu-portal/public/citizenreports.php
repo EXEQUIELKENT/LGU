@@ -5,8 +5,8 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-require_once 'auth_config.php';
-require_once 'db.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
+require_once __DIR__ . '/../includes/config/db.php';
 
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
@@ -137,7 +137,7 @@ foreach ($maintenance_data as $_item) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Citizen Reports - LGU Portal</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
@@ -187,7 +187,7 @@ foreach ($maintenance_data as $_item) {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative;
             transition: background 0.3s ease;
         }
@@ -1154,7 +1154,7 @@ foreach ($maintenance_data as $_item) {
         [data-theme="dark"] .district-badge.d6     { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
         [data-theme="dark"] .district-badge.d-other{ background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
     </style>
-    <?php include 'citizen_rendering.php'; ?>
+    <?php include __DIR__ . '/../includes/partials/citizen_rendering.php'; ?>
 </head>
 <body>
 
@@ -2316,7 +2316,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener('i18nReady', applyPageFallbacks);
 })();
 </script>
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';
 // ═══════════════════════════════════════════════════════
 //  SORT — Citizen Reports / Schedule Table
@@ -2379,7 +2379,7 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 
 </script>
-<?php include 'chatbot-widget.php'; ?>
+<?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
 
 </body>
 </html>

@@ -18,7 +18,7 @@
  *
  * Usage:
  *   <?php
- *   require_once __DIR__ . '/session_guard.php';
+ *   require_once __DIR__ . '/../includes/core/session_guard.php';
  *   $serverTimestamp = time(); // only if you need the server clock variable
  *   // ... rest of page
  */

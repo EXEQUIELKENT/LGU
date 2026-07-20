@@ -6,7 +6,7 @@ header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // ── Base URLs (mirrors login.php) ─────────────────────────────────────────
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
@@ -187,7 +187,7 @@ if ($token !== '') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>LGU Portal · Email Verification</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Apply saved theme before first paint -->
@@ -221,7 +221,7 @@ if ($token !== '') {
 
     body {
         font-family:'Poppins',Arial,sans-serif;
-        background:url("cityhall.jpeg") center/cover no-repeat fixed;
+        background:url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
         min-height:100vh;
         display:flex;
         flex-direction:column;
@@ -469,7 +469,7 @@ if ($token !== '') {
     </div>
 </div>
 
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 
 <script>
 // ── Dark Mode ─────────────────────────────────────────────────────────────

@@ -29,8 +29,8 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-require_once __DIR__ . '/session_guard.php';
-require_once __DIR__ . '/docx_lib.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
+require_once __DIR__ . '/../includes/core/docx_lib.php';
 
 header('X-Content-Type-Options: nosniff');
 
@@ -240,8 +240,8 @@ try {
 // ── Notify all Admins & Super Admins that a Word document was exported ─────
 // Wrapped defensively so any notification error never blocks the download.
 try {
-    require_once __DIR__ . '/db.php';
-    require_once __DIR__ . '/notif_helper.php';
+    require_once __DIR__ . '/../includes/config/db.php';
+    require_once __DIR__ . '/../includes/core/notif_helper.php';
 
     $actorName = function_exists('getActorName')
         ? getActorName()

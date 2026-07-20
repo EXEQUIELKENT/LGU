@@ -2,7 +2,7 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
@@ -12,7 +12,7 @@ if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'sup
     exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
@@ -453,8 +453,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Create Employee Account | LGU Portal</title>
 <style>
@@ -1718,7 +1718,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     </div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <script>
 // ─────────────────────────────────────────────────

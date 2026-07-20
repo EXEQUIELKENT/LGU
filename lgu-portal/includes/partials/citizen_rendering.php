@@ -24,7 +24,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     if (currentLang === 'tl') {
         const BASE = '<?= $BASE_URL ?>';
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', BASE + 'translations.json', false);
+        xhr.open('GET', BASE + 'assets/data/translations.json', false);
         
         try {
             xhr.send();

@@ -24,7 +24,7 @@ if (!$canReject) {
     exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 $input   = json_decode(file_get_contents('php://input'), true);
 $reqId   = isset($input['req_id'])  ? intval($input['req_id'])   : 0;
@@ -96,7 +96,7 @@ if (!$update->execute()) {
 $update->close();
 
 // ── Notify ALL employees about the rejected request ──────────────────────────
-require_once __DIR__ . '/notif_helper.php';
+require_once __DIR__ . '/../includes/core/notif_helper.php';
 
 $actorLabel    = getActorName();
 $notifReqLabel = '#REQ-' . str_pad($reqId, 3, '0', STR_PAD_LEFT);
@@ -106,7 +106,7 @@ $notifUrl      = buildReqUrl($reqId);
 $actorId       = (int)($_SESSION['employee_id'] ?? 0);
 
 // ── Activity History: record the rejection against the request ──────────────
-require_once __DIR__ . '/activity_log.php';
+require_once __DIR__ . '/../includes/core/activity_log.php';
 log_request_activity($conn, 'requests', $reqId, 'rejected', $notifDesc);
 
 $allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
@@ -134,7 +134,7 @@ if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 
 
-require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+require_once __DIR__ . '/../includes/api/cimm_rgmap_sync.php';
 cimm_rgmap_sync_request_async($conn, $reqId, 'rejected');
 
 ob_end_clean();

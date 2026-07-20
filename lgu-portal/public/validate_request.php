@@ -38,7 +38,7 @@ $engineerId = isset($input['engineer_id']) ? (int)$input['engineer_id'] : null;
 
 if ($reqId <= 0) jsonOut(false, 'Invalid request ID.');
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // Verify request exists and is Pending — also fetch issue text for res_note
 $chk = $conn->prepare("SELECT approval_status, issue FROM requests WHERE req_id = ? LIMIT 1");
@@ -135,7 +135,7 @@ $upd->execute();
 $upd->close();
 
 // ── Notify ALL employees about the validated request ─────────────────────────
-require_once __DIR__ . '/notif_helper.php';
+require_once __DIR__ . '/../includes/core/notif_helper.php';
 
 $actorLabel    = getActorName();
 
@@ -153,7 +153,7 @@ $notifDesc     = "{$actorLabel} validated {$notifInfra} at {$notifLocation} (by 
 $notifUrl      = buildRepUrl('current_reports.php', $repId);
 
 // ── Activity History: record the validation against the request ─────────────
-require_once __DIR__ . '/activity_log.php';
+require_once __DIR__ . '/../includes/core/activity_log.php';
 log_request_activity($conn, 'requests', $reqId, 'validated', $notifDesc);
 
 $allEmployees  = $conn->query("SELECT user_id FROM employees WHERE account_locked = 0 OR account_locked IS NULL");
@@ -191,7 +191,7 @@ if ($reqInfo) {
     }
 }
 
-require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+require_once __DIR__ . '/../includes/api/cimm_rgmap_sync.php';
 cimm_rgmap_sync_request_async($conn, $reqId, 'validated');
 
 jsonOut(true, 'Request validated successfully.', [

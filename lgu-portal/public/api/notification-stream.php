@@ -11,7 +11,7 @@ $employeeId = $_SESSION['employee_id'];
 $role       = $_SESSION['employee_role'] ?? ($_SESSION['role'] ?? '');
 
 session_write_close();
-require '../db.php';
+require __DIR__ . '/../../includes/config/db.php';
 
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');

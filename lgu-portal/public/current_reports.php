@@ -1,12 +1,12 @@
 <?php
 ob_start();
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
-require __DIR__ . '/db.php';
-require_once __DIR__ . '/activity_log.php';
-require_once __DIR__ . '/api/cimm_rgmap_sync.php';
+require __DIR__ . '/../includes/config/db.php';
+require_once __DIR__ . '/../includes/core/activity_log.php';
+require_once __DIR__ . '/../includes/api/cimm_rgmap_sync.php';
 
 // ── Safe migration: add Pending Admin Approval to the status enum ────────────
 $conn->query("
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
             // Notify after flushing response — any error here never affects the client
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
                 notifySuperAdmins($conn,
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
         if ($affected > 0) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'Admin');
                 notifyAssigners($conn,
@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
         if ($affected > 0) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info       = getRepInfo($conn, $repId);
                 $actorName  = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
                 $reasonText = $declineReason ? " Reason: \"{$declineReason}\"" : ' No reason provided.';
@@ -250,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
         if ($affected > 0) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
                 $noteText  = $reviewNote ? " Note: \"{$reviewNote}\"" : '';
@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
         if ($affected > 0) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $actorName = function_exists('getActorName') ? getActorName() : ($_SESSION['employee_first_name'] ?? 'System');
                 $noteText  = $reviewNote ? " Manager's note: \"{$reviewNote}\"" : '';
@@ -382,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Send notification — wrapped so any error here never corrupts the JSON response
         if ($ok && $aff >= 1) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $actorName = getActorName();
                 // Inline engineer lookup so we never depend on a potentially missing helper function
@@ -449,7 +449,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
         if ($ok && $aff >= 1) {
             try {
-                require_once __DIR__ . '/notif_helper.php';
+                require_once __DIR__ . '/../includes/core/notif_helper.php';
                 $info      = getRepInfo($conn, $repId);
                 $engId = 0;
                 if (function_exists('getRepEngineer')) {
@@ -798,8 +798,8 @@ foreach ($rows as $row) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Current Reports — In Progress</title>
 <style>
@@ -2944,7 +2944,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <div id="logoutAlertBackdrop">
     <div id="logoutAlertModal">
@@ -3449,7 +3449,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     </div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <script>
 /* ═══════════════════════════════════════════════════════

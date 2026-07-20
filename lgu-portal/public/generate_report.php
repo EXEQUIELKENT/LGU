@@ -66,8 +66,8 @@ if (!$tokenValid) {
 }
 // ── End token validation ──────────────────────────────────────────────────────
 
-require __DIR__ . '/db.php';
-require __DIR__ . '/notif_helper.php';
+require __DIR__ . '/../includes/config/db.php';
+require __DIR__ . '/../includes/core/notif_helper.php';
 
 // ── Input validation ──────────────────────────────────────────────────────────
 $format     = in_array($_POST['format'] ?? '', ['excel','pdf']) ? $_POST['format'] : 'excel';

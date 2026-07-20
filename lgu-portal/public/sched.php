@@ -7,7 +7,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_evidence') {
     if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
         echo json_encode(['success' => false, 'error' => 'Unauthorized']); exit;
     }
-    require __DIR__ . '/db.php';
+    require __DIR__ . '/../includes/config/db.php';
     $repId = (int)($_GET['rep_id'] ?? 0);
     if ($repId <= 0) { echo json_encode(['success' => false, 'error' => 'Invalid rep_id']); exit; }
     $stmt = $conn->prepare("
@@ -35,12 +35,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_evidence') {
 }
 // ── End inline AJAX ───────────────────────────────────────────────────────────
 
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
-require __DIR__ . '/db.php';
-require_once __DIR__ . '/api/cimm_cprf_facilities.php';
+require __DIR__ . '/../includes/config/db.php';
+require_once __DIR__ . '/../includes/api/cimm_cprf_facilities.php';
 
 $cprfCatalog = cimm_fetch_cprf_facility_catalog();
 cimm_ensure_maintenance_schedule_schema($conn);
@@ -359,8 +359,8 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 /* =========================
@@ -5421,7 +5421,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <div class="main-content">
 
@@ -6975,7 +6975,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
     </div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <!-- =============== SCHEDULE DATA PATCH =============== -->
 <script>

@@ -6,7 +6,7 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     echo json_encode(['success' => false, 'message' => 'Unauthorized']); exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 $engineerId = (int)($_GET['id'] ?? 0);
 if ($engineerId <= 0) {

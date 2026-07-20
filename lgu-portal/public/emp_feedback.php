@@ -4,7 +4,7 @@
  * Employee / Admin feedback monitoring dashboard.
  * Mirrors the style and structure of requests.php.
  */
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
@@ -14,7 +14,7 @@ if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'sup
     exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getProfilePicture($employeeId, $conn) {
@@ -254,8 +254,8 @@ $avgRating = $totalFeedback > 0 ? number_format(array_sum(array_column($feedback
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Citizen Feedback — Employee Portal</title>
 <script>
@@ -1683,7 +1683,7 @@ tr.notif-highlight > td:first-child {
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
 <!-- Sidebar mobile overlay -->
 <div class="sidebar-mobile-overlay" id="sidebarMobileOverlay"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <!-- Logout modal -->
 <div id="logoutAlertBackdrop">
@@ -2080,7 +2080,7 @@ const ALL_FEEDBACK = <?= json_encode(array_map(function($fb){
 }, $feedbackRows), JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;
 </script>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 
 <script>
 /* ═══════════════════════════════════════════════════════

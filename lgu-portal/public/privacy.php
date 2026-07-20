@@ -5,7 +5,7 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-require_once 'auth_config.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
 // Same base path logic as other public pages (no DB required)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL = '/LGU/lgu-portal/public/';
@@ -22,7 +22,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Privacy Policy - InfraGovServices | LGU Portal</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 
@@ -72,7 +72,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: url("cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative;
         }
 
@@ -341,7 +341,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
             }
         }
     </style>
-    <?php include 'citizen_rendering.php'; ?>
+    <?php include __DIR__ . '/../includes/partials/citizen_rendering.php'; ?>
 </head>
 <body>
 
@@ -616,9 +616,9 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     </div>
 </footer>
 
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
-<?php include 'chatbot-widget.php'; ?>
+<?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
 
 </body>
 </html>

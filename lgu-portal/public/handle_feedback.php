@@ -7,9 +7,9 @@
 session_start();
 date_default_timezone_set('Asia/Manila');
 
-require_once 'auth_config.php';
-require_once 'db.php';
-require_once 'notif_helper.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
+require_once __DIR__ . '/../includes/config/db.php';
+require_once __DIR__ . '/../includes/core/notif_helper.php';
 
 function setNotification($type, $message) {
     $_SESSION['notification'] = ['type' => $type, 'message' => $message];

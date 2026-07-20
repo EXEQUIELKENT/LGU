@@ -6,7 +6,7 @@
     'use strict';
 
     const BASE = '<?= $BASE_URL ?>';
-    const JSON_PATH = BASE + 'translations.json';
+    const JSON_PATH = BASE + 'assets/data/translations.json';
 
     // Use preloaded translations if available — but verify they're not stale.
     // citizen_rendering.php embeds translations inline; if translations.json was

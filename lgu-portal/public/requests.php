@@ -1,11 +1,11 @@
 <?php
 ob_start();
-require_once __DIR__ . '/session_guard.php';
+require_once __DIR__ . '/../includes/core/session_guard.php';
 
 $serverTimestamp = time();
 
-require __DIR__ . '/db.php';
-require_once __DIR__ . '/activity_log.php';
+require __DIR__ . '/../includes/config/db.php';
+require_once __DIR__ . '/../includes/core/activity_log.php';
 
 // ── Profile Picture ──────────────────────────────────────────────────────
 function getProfilePicture($employeeId, $conn) {
@@ -241,8 +241,8 @@ function format_datetime_ampm($datetime) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="emp-global.css">
-<link rel="stylesheet" href="sidebar_dropdown_additions.css">
+<link rel="stylesheet" href="assets/css/emp-global.css">
+<link rel="stylesheet" href="assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <title>Requests &amp; GIS Map</title>
@@ -2239,7 +2239,7 @@ tbody td {
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-<script src="ai_tfjs_analysis.js"></script>
+<script src="assets/js/ai_tfjs_analysis.js"></script>
 </head>
 <body>
 
@@ -2660,7 +2660,7 @@ tbody td {
 </div>
 
 <div id="sidebarNavTooltip" class="sidebar-tooltip-pop"></div>
-<?php include 'eng_profile_warning.php'; ?>
+<?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
 
 <!-- ═══════════════════════════════════════════════════════
      MAIN CONTENT — two swappable views
@@ -3475,7 +3475,7 @@ tbody td {
     </div>
 </div>
 
-<?php include 'admin_scripts.php'; ?>
+<?php include __DIR__ . '/../includes/partials/admin_scripts.php'; ?>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="card_limit.js"></script>
 

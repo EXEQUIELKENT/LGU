@@ -37,7 +37,7 @@ if ($isEngineer) {
     jsonOut(false, 'Permission denied.');
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // ── Head Engineer / Area Engineer: resolve their district from DB and enforce it ──
 // District is always resolved server-side from the actor's own profile — the

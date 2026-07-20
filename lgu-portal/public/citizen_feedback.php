@@ -7,8 +7,8 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-require_once 'auth_config.php';
-require_once 'db.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
+require_once __DIR__ . '/../includes/config/db.php';
 
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
     $BASE_URL     = '/LGU/lgu-portal/public/';
@@ -131,7 +131,7 @@ $infraOptions = [
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
 <title>Submit Feedback — CIMM LGU</title>
-<link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+<link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script>
@@ -191,7 +191,7 @@ $infraOptions = [
 }
 
 body {
-    background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("<?= $BASE_URL ?>assets/img/cityhall.jpeg") center/cover no-repeat fixed;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -2520,7 +2520,7 @@ window.addEventListener('scroll', function(){
 /* SERVER_TIME — required by citizen_global.php clock engine */
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </script>
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 
 <footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
@@ -2574,7 +2574,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 </footer>
 
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
-<?php include 'chatbot-widget.php'; ?>
+<?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
 
 </body>
 </html>

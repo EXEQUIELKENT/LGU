@@ -7,7 +7,7 @@
  *
  * Include AFTER db.php (needs $conn) and after session_guard.php (needs $_SESSION).
  *
- *   require_once __DIR__ . '/activity_log.php';
+ *   require_once __DIR__ . '/../includes/core/activity_log.php';
  *
  * Public functions:
  *   ensure_activity_log_table($conn)                                   — idempotent migration

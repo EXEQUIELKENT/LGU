@@ -51,7 +51,7 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 require __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../vendor/PHPMailer/Exception.php';
@@ -1139,7 +1139,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
@@ -1203,7 +1203,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 }
 
 body {
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("assets/img/cityhall.jpeg") center/cover no-repeat fixed;
     min-height: 100vh;  /* ← CHANGED */
     display: flex;
     flex-direction: column;
@@ -2743,7 +2743,7 @@ body:has(#resetPasswordModal) {
 }
 </style>
 
-<?php include 'citizen_rendering.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_rendering.php'; ?>
 </head>
 <body>
 
@@ -3097,7 +3097,7 @@ body:has(#resetPasswordModal) {
     </div>
 </div>
 
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 
 <!-- Forgot Password Modal remains unchanged -->
 <div id="forgotPasswordModal">

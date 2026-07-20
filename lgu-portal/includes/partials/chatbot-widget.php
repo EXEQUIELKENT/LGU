@@ -7,7 +7,7 @@
  *  2. Mic: manual toggle off — click again to stop recording
  *  3. Text-only messaging
  *
- * Usage: <?php include 'chatbot-widget.php'; ?>
+ * Usage: <?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
  */
 ?>
 

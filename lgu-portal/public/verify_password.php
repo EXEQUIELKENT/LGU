@@ -57,7 +57,7 @@ if (empty($password)) {
     exit;
 }
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../includes/config/db.php';
 
 // ── Fetch the stored hash for the logged-in user ──────────────────────────────
 $userId = $_SESSION['employee_id'] ?? null;

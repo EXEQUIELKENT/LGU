@@ -5,8 +5,8 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 $serverTimestamp = time();
 
-require_once 'auth_config.php';
-require_once 'db.php';
+require_once __DIR__ . '/../includes/config/auth_config.php';
+require_once __DIR__ . '/../includes/config/db.php';
 
 // For local development and domain (show correct path for logo)
 if ($_SERVER['HTTP_HOST'] === 'localhost') {
@@ -105,7 +105,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>InfraGovServices - Community Infrastructure Maintenance</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
@@ -120,7 +120,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
     
     <style>
         body {
-            background: url("<?= $BASE_URL ?>cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("<?= $BASE_URL ?>assets/img/cityhall.jpeg") center/cover no-repeat fixed;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -1225,7 +1225,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             .guide-dot          { width: 6px; height: 6px; }
         }
     </style>
-<?php include 'citizen_rendering.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_rendering.php'; ?>
 </head>
 <body>
 
@@ -1754,9 +1754,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.__PAGE_TRANSLATIONS_REF = PAGE_TRANSLATIONS;
 })();
 </script>
-<?php include 'citizen_global.php'; ?>
+<?php include __DIR__ . '/../includes/partials/citizen_global.php'; ?>
 <script>window.CHATBOT_ENDPOINT = '<?= $BASE_URL ?>chatbot.php';</script>
-<?php include 'chatbot-widget.php'; ?>
+<?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
 
 <!-- ═══════════════════════════════════════════════════════════════
      INTERACTIVE PAGE GUIDE — overlay + spotlight + card

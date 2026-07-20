@@ -8,7 +8,7 @@
 }
 
 body {
-    background: url("cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("../img/cityhall.jpeg") center/cover no-repeat fixed;
     height: 100vh;
     display: flex;
     flex-direction: column;
