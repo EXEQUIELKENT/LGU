@@ -111,20 +111,51 @@ function cimm_rgmap_absolute_url(string $relativePath, ?string $baseUrl = null):
  * none of those pages has run yet, the columns don't exist, so the SELECT in
  * cimm_rgmap_fetch_report() below fails to prepare and silently returns null
  * for every row — the export/webhook endpoints report success with 0 reports
- * instead of surfacing the error. Ensure the columns exist here too, the same
- * way the rest of this codebase defensively migrates this table.
+ * instead of surfacing the error. Try to migrate them here too, the same way
+ * the rest of this codebase defensively migrates this table.
+ *
+ * The ALTER TABLE calls need ALTER privilege on `requests`, which some
+ * shared-hosting DB users are provisioned without — if that happens, query()
+ * just returns false here and the columns stay missing. Rather than let that
+ * take down the whole SELECT again, cimm_rgmap_requests_columns() below
+ * checks (once, cached) which of these columns actually exist and the SELECT
+ * is built to only reference real ones, substituting NULL for the rest. So
+ * even with zero ALTER privilege, sync degrades to "missing that one field"
+ * instead of "reports 0 rows for everything".
+ *
+ * @return array<string,bool> column name => exists
  */
-function cimm_rgmap_ensure_requests_columns(mysqli $conn): void
+function cimm_rgmap_requests_columns(mysqli $conn): array
 {
-    static $done = false;
-    if ($done) {
-        return;
+    static $columns = null;
+    if ($columns !== null) {
+        return $columns;
     }
-    $done = true;
+
+    $optional = ['cprf_facility_id', 'cprf_facility_name', 'rejection_reason'];
 
     $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_id INT UNSIGNED NULL DEFAULT NULL AFTER location");
     $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_name VARCHAR(150) NULL DEFAULT NULL AFTER cprf_facility_id");
     $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL");
+
+    $columns = array_fill_keys($optional, false);
+    $res = $conn->query("SHOW COLUMNS FROM requests");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $name = (string)($row['Field'] ?? '');
+            if (isset($columns[$name])) {
+                $columns[$name] = true;
+            }
+        }
+    }
+
+    foreach ($optional as $col) {
+        if (!$columns[$col]) {
+            error_log("CIMM→RGMAO sync: requests.$col is missing and could not be added (likely missing ALTER privilege) — that field will sync as null until a DB admin adds it manually.");
+        }
+    }
+
+    return $columns;
 }
 
 /**
@@ -136,7 +167,10 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
         return null;
     }
 
-    cimm_rgmap_ensure_requests_columns($conn);
+    $optionalColumns = cimm_rgmap_requests_columns($conn);
+    $cprfFacilityIdSelect = $optionalColumns['cprf_facility_id'] ? 'r.cprf_facility_id' : 'NULL AS cprf_facility_id';
+    $cprfFacilityNameSelect = $optionalColumns['cprf_facility_name'] ? 'r.cprf_facility_name' : 'NULL AS cprf_facility_name';
+    $rejectionReasonSelect = $optionalColumns['rejection_reason'] ? 'r.rejection_reason' : 'NULL AS rejection_reason';
 
     $stmt = $conn->prepare("
         SELECT
@@ -150,10 +184,10 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
             r.approval_status,
             r.coordinates,
             r.district,
-            r.cprf_facility_id,
-            r.cprf_facility_name,
+            $cprfFacilityIdSelect,
+            $cprfFacilityNameSelect,
             r.created_at,
-            r.rejection_reason,
+            $rejectionReasonSelect,
             rr.res_id,
             rr.status AS resolution_status,
             rr.res_note,
