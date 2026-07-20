@@ -1,20 +1,29 @@
 <?php
 /**
- * RGMAO inbound webhook — receive CIMM citizen reports for verification monitoring.
+ * RGMAO inbound webhook — receives CIMM citizen reports for verification
+ * monitoring.
  *
- * Deploy on RGMAO host as:
- *   /lgu_staff/api/cimm-reports-webhook.php
+ * CIMM's cimm_rgmap_sync.php calls this automatically whenever a request is
+ * created, validated, or rejected (see ipms-requests.php, validate_request.php,
+ * reject_request.php, citizenrepform.php in the CIMM repo). cimm-reports-pull.php
+ * in this same folder can also replay reports into this endpoint as a
+ * catch-up mechanism.
  *
- * verification_monitoring.php should query table `cimm_verification_reports`
- * (see cimm_verification_data.php in this folder).
+ * Auth: Authorization: Bearer <CIMM_RGMAP_WEBHOOK_KEY>  (or header X-API-Key)
+ * Body: JSON payload from CIMM — see cimm_rgmap_fetch_report() in the CIMM repo
+ *       for the exact shape.
  *
- * Auth: Authorization: Bearer CIMM_RGMAP_WEBHOOK_KEY
- * Body: JSON payload from CIMM (see cimm_rgmap_sync.php)
+ * IMPORTANT: the shared key below defaults to the same placeholder CIMM
+ * ships with (CIMM_RGMAP_SHARED_KEY_2026), so the two systems talk to each
+ * other out of the box in local dev. Override CIMM_RGMAP_WEBHOOK_KEY as a
+ * real environment variable on both sides before deploying anywhere public.
  */
 declare(strict_types=1);
 
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/cimm_verification_data.php';
+
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: https://cimm.infragovservices.com');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, X-CIMM-Event');
 
@@ -32,13 +41,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 $WEBHOOK_KEY = getenv('CIMM_RGMAP_WEBHOOK_KEY') ?: 'CIMM_RGMAP_SHARED_KEY_2026';
 
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-if (!preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $auth, $m) || !hash_equals($WEBHOOK_KEY, $m[1])) {
+$authorized = false;
+if (preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $auth, $m) && hash_equals($WEBHOOK_KEY, $m[1])) {
+    $authorized = true;
+} else {
     $alt = $_SERVER['HTTP_X_API_KEY'] ?? '';
-    if ($alt === '' || !hash_equals($WEBHOOK_KEY, $alt)) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-        exit;
+    if ($alt !== '' && hash_equals($WEBHOOK_KEY, $alt)) {
+        $authorized = true;
     }
+}
+if (!$authorized) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
 }
 
 $raw = file_get_contents('php://input');
@@ -56,66 +71,9 @@ if ($cimmReqId <= 0) {
     exit;
 }
 
-// ── Database config (override via env on RGMAO server) ─────────────────────
-$DB_HOST = getenv('RGMAP_DB_HOST') ?: 'localhost';
-$DB_NAME = getenv('RGMAP_DB_NAME') ?: 'rgmap_lgu';
-$DB_USER = getenv('RGMAP_DB_USER') ?: 'root';
-$DB_PASS = getenv('RGMAP_DB_PASS') !== false ? getenv('RGMAP_DB_PASS') : '';
-
 try {
-    $pdo = new PDO(
-        sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', $DB_HOST, $DB_NAME),
-        $DB_USER,
-        $DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-    );
-
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS cimm_verification_reports (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            cimm_req_id INT UNSIGNED NOT NULL,
-            cimm_rep_id INT UNSIGNED NULL,
-            reference_code VARCHAR(32) NOT NULL,
-            report_reference VARCHAR(32) NULL,
-            infrastructure VARCHAR(120) NOT NULL,
-            location VARCHAR(255) NOT NULL,
-            issue TEXT NOT NULL,
-            reporter_name VARCHAR(120) NULL,
-            contact_number VARCHAR(30) NOT NULL,
-            email VARCHAR(180) NULL,
-            district VARCHAR(80) NULL,
-            coord_lat DECIMAL(10,7) NULL,
-            coord_lng DECIMAL(10,7) NULL,
-            cprf_facility_id INT UNSIGNED NULL,
-            cprf_facility_name VARCHAR(150) NULL,
-            approval_status VARCHAR(32) NOT NULL DEFAULT 'Pending',
-            rejection_reason TEXT NULL,
-            resolution_status VARCHAR(64) NULL,
-            resolution_note TEXT NULL,
-            resolved_at DATETIME NULL,
-            priority VARCHAR(32) NULL,
-            budget DECIMAL(15,2) NULL,
-            starting_date DATE NULL,
-            estimated_end_date DATE NULL,
-            submitted_at DATETIME NOT NULL,
-            evidence_json LONGTEXT NULL,
-            ai_json LONGTEXT NULL,
-            portal_url VARCHAR(500) NULL,
-            verification_status ENUM('Pending Review','Verified','Flagged','Dismissed') NOT NULL DEFAULT 'Pending Review',
-            verification_note TEXT NULL,
-            verified_by INT UNSIGNED NULL,
-            verified_at DATETIME NULL,
-            payload_json LONGTEXT NULL,
-            last_event VARCHAR(32) NOT NULL DEFAULT 'upsert',
-            synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_cimm_req (cimm_req_id),
-            INDEX idx_verification_status (verification_status),
-            INDEX idx_approval_status (approval_status),
-            INDEX idx_submitted (submitted_at),
-            INDEX idx_infrastructure (infrastructure)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ");
+    $pdo = rgmap_verification_pdo();
+    rgmap_ensure_cimm_verification_table($pdo);
 
     $reference = (string)($data['reference'] ?? ('REQ-' . str_pad((string)$cimmReqId, 3, '0', STR_PAD_LEFT)));
     $cimmRepId = isset($data['cimm_rep_id']) ? (int)$data['cimm_rep_id'] : null;
@@ -210,12 +168,9 @@ try {
         $event,
     ]);
 
-    $localId = (int)$pdo->lastInsertId();
-    if ($localId === 0) {
-        $idStmt = $pdo->prepare('SELECT id FROM cimm_verification_reports WHERE cimm_req_id = ? LIMIT 1');
-        $idStmt->execute([$cimmReqId]);
-        $localId = (int)($idStmt->fetchColumn() ?: 0);
-    }
+    $localIdStmt = $pdo->prepare('SELECT id FROM cimm_verification_reports WHERE cimm_req_id = ? LIMIT 1');
+    $localIdStmt->execute([$cimmReqId]);
+    $localId = (int)($localIdStmt->fetchColumn() ?: 0);
 
     echo json_encode([
         'success' => true,
@@ -224,7 +179,7 @@ try {
         'cimm_req_id' => $cimmReqId,
         'reference' => $reference,
     ]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     error_log('RGMAO CIMM webhook error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Server error storing report']);
