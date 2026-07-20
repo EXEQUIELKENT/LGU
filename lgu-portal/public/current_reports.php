@@ -6,6 +6,7 @@ $serverTimestamp = time();
 
 require __DIR__ . '/db.php';
 require_once __DIR__ . '/activity_log.php';
+require_once __DIR__ . '/api/cimm_rgmap_sync.php';
 
 // ── Safe migration: add Pending Admin Approval to the status enum ────────────
 $conn->query("
@@ -146,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Throwable $notifErr) {
                 error_log('[approve_report] Notif error: ' . $notifErr->getMessage());
             }
+            cimm_rgmap_sync_by_rep_id($conn, $repId, 'updated');
             exit;
         } catch (Exception $ex) {
             $conn->rollback();
@@ -405,6 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             log_report_activity($conn, 'current_reports', $repId, 'approved_schedule',
                 activity_actor_name() . " approved Report #REP-{$repId} and moved it to Pending Reports as Scheduled.");
+            cimm_rgmap_sync_by_rep_id($conn, $repId, 'updated');
         }
         exit;
     }
@@ -471,6 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_report_activity($conn, 'current_reports', $repId, 'returned',
                 activity_actor_name() . " returned Report #REP-{$repId} to the engineer for revision."
                 . ($returnNote !== '' ? ' Reason: "' . $returnNote . '"' : ''));
+            cimm_rgmap_sync_by_rep_id($conn, $repId, 'updated');
         }
         exit;
     }
@@ -833,7 +837,7 @@ foreach ($rows as $row) {
     transition: margin-left 0.3s ease;
 }
 .main-content.expanded { margin-left: calc(var(--sidebar-collapsed) + 20px); }
-.page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; flex-wrap: wrap; }
 /* ── Engineer self-profile button in page header ── */
 .eng-self-profile-wrap {
     margin-left: auto;
@@ -894,6 +898,46 @@ foreach ($rows as $row) {
     color: #fff; font-size: 11px; font-weight: 700;
     padding: 4px 12px; border-radius: 20px; letter-spacing: .04em;
 }
+
+/* CIMM ⇄ RGMAP integration badge — same animated-pill language as the
+   CIMM⇄IPMS badge on requests.php. Color sourced from Main LGU's own
+   department directory (infragovservices.com → .db-svc3-orange / .db-svc3-orb,
+   public/styles.css) — Road & Transportation Management's actual brand
+   color, not this app's internal blue UI accent. */
+.rgmap-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #fb923c, #8b3000);
+    color: #fff; border: none;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .04em; cursor: default;
+    box-shadow: 0 3px 10px rgba(251,146,60,.45), 0 0 0 1px rgba(255,255,255,.15) inset;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+    animation: rgmapBadgeGlow 2.6s ease-in-out infinite;
+}
+.rgmap-sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #fff;
+    box-shadow: 0 0 0 0 rgba(255,255,255,.75);
+    animation: rgmapSyncPulse 2s infinite;
+}
+@keyframes rgmapSyncPulse {
+    0%   { box-shadow: 0 0 0 0   rgba(255,255,255,.75); }
+    70%  { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0   rgba(255,255,255,0); }
+}
+@keyframes rgmapBadgeGlow {
+    0%, 100% { box-shadow: 0 3px 10px rgba(251,146,60,.45), 0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 4px 18px rgba(251,146,60,.80), 0 0 0 1px rgba(255,255,255,.22) inset; }
+}
+[data-theme="dark"] .rgmap-sync-badge {
+    /* Same saturation as light mode — a lighter/pastel fill here would wash
+       out the white label text, which is exactly what broke before. The
+       "dark mode" difference is a stronger glow, not a lighter pill. */
+    background: linear-gradient(135deg, #ea580c, #6b2400);
+    box-shadow: 0 3px 14px rgba(251,146,60,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
+}
+@media (max-width: 480px) { .rgmap-sync-label-full { display: none; } }
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
 .search-toolbar {
     display: flex;
@@ -2962,6 +3006,10 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <div class="page-header">
         <h2 class="page-title">Current Reports</h2>
         <span class="page-badge">In Progress</span>
+        <span class="rgmap-sync-badge" title="CIMM is connected and syncing with the Road Monitoring (RGMAP) system">
+            <span class="rgmap-sync-dot"></span>
+            <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
+        </span>
 <?php if ($isEngineer): ?>
     <div class="eng-self-profile-wrap" id="engSelfProfileWrap">
         <button class="eng-self-profile-btn" id="engSelfProfileBtn" title="View My Profile">

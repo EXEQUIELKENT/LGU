@@ -1188,6 +1188,57 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
     border-color: rgba(129,140,248,.28);
 }
 
+/* ═══════════════════════════════════════════════════════
+   CPRF INTEGRATION BADGE — same animated-pill language as the
+   CIMM⇄IPMS badge (requests.php) and CIMM⇄RGMAP badge (Road Monitoring
+   pages). Color sourced from Main LGU's own department directory
+   (infragovservices.com → .db-svc3-purple / .db-svc3-orb, public/styles.css)
+   — CPRF's actual brand purple, not an arbitrary indigo.
+═══════════════════════════════════════════════════════ */
+.cprf-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #a78bfa, #4c1f8f);
+    color: #fff; border: none;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .04em; cursor: default;
+    box-shadow: 0 3px 10px rgba(167,139,250,.4), 0 0 0 1px rgba(255,255,255,.15) inset;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+    animation: cprfBadgeGlow 2.6s ease-in-out infinite;
+}
+.cprf-sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #fff;
+    box-shadow: 0 0 0 0 rgba(255,255,255,.75);
+    animation: cprfSyncPulse 2s infinite;
+}
+@keyframes cprfSyncPulse {
+    0%   { box-shadow: 0 0 0 0   rgba(255,255,255,.75); }
+    70%  { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0   rgba(255,255,255,0); }
+}
+@keyframes cprfBadgeGlow {
+    /* Kept tight (small blur, near-zero vertical offset) — this badge sits
+       directly above the "N facilities linked by ID" line with almost no
+       gap, and a wider/downward-pushed glow was visually bleeding into it. */
+    0%, 100% { box-shadow: 0 2px 6px rgba(167,139,250,.4),  0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 2px 9px rgba(167,139,250,.65), 0 0 0 1px rgba(255,255,255,.22) inset; }
+}
+[data-theme="dark"] .cprf-sync-badge {
+    /* Same saturation as light mode — a lighter/pastel fill here would wash
+       out the white label text, which is exactly what broke before. The
+       "dark mode" difference is a stronger glow, not a lighter pill. */
+    background: linear-gradient(135deg, #7c3aed, #35155d);
+    box-shadow: 0 3px 14px rgba(167,139,250,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
+}
+/* Modal-header variant — sits where the plain .modal-label eyebrow used to,
+   above the modal title, so it needs a touch less padding + a bottom gap. */
+.cprf-sync-badge-modal {
+    padding: 3px 10px;
+    font-size: 10px;
+    margin-bottom: 3px;
+}
+
 .cal-facility-tag {
     display: inline-flex;
     align-items: center;
@@ -4607,16 +4658,8 @@ Sidebar (250px) takes the most relative space here.
 .sched-admin-bar-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
     min-width: 0;
-}
-.sched-admin-bar-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    color: #3762c8;
-    opacity: 0.85;
 }
 .sched-add-btn {
     display: inline-flex;
@@ -5406,7 +5449,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="sched-admin-bar-info">
                 <div class="sched-admin-bar-icon"><i class="fas fa-link"></i></div>
                 <div class="sched-admin-bar-text">
-                    <span class="sched-admin-bar-label">CPRF Integration</span>
+                    <span class="cprf-sync-badge" title="CIMM is connected and syncing with the CPRF facility catalog">
+                        <span class="cprf-sync-dot"></span>
+                        <span class="cprf-sync-label">CPRF Integration</span>
+                    </span>
                     <?php if (empty($cprfFacilitiesForJs)): ?>
                     <span class="sched-catalog-warn"><i class="fas fa-exclamation-triangle"></i> CPRF facilities could not be loaded — check <code>CPRF_FACILITIES_API_URL</code> on the CIMM server.</span>
                     <?php else: ?>
@@ -5902,7 +5948,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <div class="modal-header">
             <div class="modal-header-icon"><i class="fas fa-calendar-plus"></i></div>
             <div class="modal-header-text">
-                <span class="modal-label">CPRF Integration</span>
+                <span class="cprf-sync-badge cprf-sync-badge-modal" title="This schedule is linked through the CPRF facility catalog">
+                    <span class="cprf-sync-dot"></span>
+                    <span class="cprf-sync-label">CPRF Integration</span>
+                </span>
                 <h3 class="modal-title" id="scheduleFormTitle">Add Maintenance Schedule</h3>
             </div>
             <button type="button" class="modal-close-btn" id="scheduleFormClose" aria-label="Close" title="Close">&times;</button>

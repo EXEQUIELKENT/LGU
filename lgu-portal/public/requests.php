@@ -572,14 +572,17 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
    and a pulsing dot to read as live/active, not just static.
 ═══════════════════════════════════════════════════════ */
 .page-title-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Colors sourced from Main LGU's own department directory
+   (infragovservices.com → .db-svc3-blue / .db-svc3-orb, public/styles.css)
+   so this badge reads as "IPMS's actual brand color", not an arbitrary green. */
 .ipms-sync-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    background: linear-gradient(135deg, #34d977, #16a34a);
+    background: linear-gradient(135deg, #3b82f6, #1a3a8a);
     color: #fff; border: none;
     border-radius: 20px; padding: 4px 12px;
     font-size: 11px; font-weight: 700; white-space: nowrap;
     letter-spacing: .04em; cursor: default;
-    box-shadow: 0 3px 10px rgba(22,163,74,.45), 0 0 0 1px rgba(255,255,255,.15) inset;
+    box-shadow: 0 3px 10px rgba(59,130,246,.45), 0 0 0 1px rgba(255,255,255,.15) inset;
     text-shadow: 0 1px 1px rgba(0,0,0,.12);
     animation: ipmsBadgeGlow 2.6s ease-in-out infinite;
 }
@@ -595,12 +598,15 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     100% { box-shadow: 0 0 0 0   rgba(255,255,255,0); }
 }
 @keyframes ipmsBadgeGlow {
-    0%, 100% { box-shadow: 0 3px 10px rgba(22,163,74,.45), 0 0 0 1px rgba(255,255,255,.15) inset; }
-    50%      { box-shadow: 0 4px 18px rgba(22,163,74,.80), 0 0 0 1px rgba(255,255,255,.22) inset; }
+    0%, 100% { box-shadow: 0 3px 10px rgba(59,130,246,.45), 0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 4px 18px rgba(59,130,246,.80), 0 0 0 1px rgba(255,255,255,.22) inset; }
 }
 [data-theme="dark"] .ipms-sync-badge {
-    background: linear-gradient(135deg, #22c55e, #15803d);
-    box-shadow: 0 3px 12px rgba(34,197,94,.5), 0 0 0 1px rgba(255,255,255,.1) inset;
+    /* Same saturation as light mode — a lighter/pastel fill here would wash
+       out the white label text, which is exactly what broke before. The
+       "dark mode" difference is a stronger glow, not a lighter pill. */
+    background: linear-gradient(135deg, #2563eb, #16326b);
+    box-shadow: 0 3px 14px rgba(59,130,246,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
 }
 @media (max-width: 480px) { .ipms-sync-label-full { display: none; } }
 

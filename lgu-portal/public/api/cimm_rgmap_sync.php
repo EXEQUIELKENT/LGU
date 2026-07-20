@@ -466,3 +466,42 @@ function cimm_rgmap_sync_request_async(mysqli $conn, int $reqId, string $event =
         error_log('CIMM→RGMAO async sync failed for req ' . $reqId . ': ' . $e->getMessage());
     }
 }
+
+/**
+ * current_reports.php / pending_reports.php key everything off reports.rep_id,
+ * not requests.req_id — this resolves rep_id -> req_id (via
+ * request_resolutions) and syncs. Fire-and-forget, same as
+ * cimm_rgmap_sync_request_async(); safe to call from those pages' status
+ * transitions (Pending Admin Approval, Scheduled, In Progress, Pending
+ * Completion, Completed, ...) so RGMAO's copy of the report stays current as
+ * it moves through the CIMM lifecycle, not just at creation/validate/reject.
+ */
+function cimm_rgmap_sync_by_rep_id(mysqli $conn, int $repId, string $event = 'updated'): void
+{
+    if ($repId <= 0) {
+        return;
+    }
+    try {
+        $stmt = $conn->prepare(
+            "SELECT r.req_id
+             FROM reports rep
+             JOIN request_resolutions r ON r.res_id = rep.res_id
+             WHERE rep.rep_id = ?
+             LIMIT 1"
+        );
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('i', $repId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $reqId = (int)($row['req_id'] ?? 0);
+        if ($reqId > 0) {
+            cimm_rgmap_sync_request_async($conn, $reqId, $event);
+        }
+    } catch (Throwable $e) {
+        error_log('CIMM→RGMAO async sync (by rep_id) failed for rep ' . $repId . ': ' . $e->getMessage());
+    }
+}
