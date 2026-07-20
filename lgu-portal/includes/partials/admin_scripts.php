@@ -340,7 +340,7 @@ logoutCancelBtn.addEventListener('click', (e) => {
 
 logoutConfirmBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    window.location.href = 'logout.php';
+    window.location.href = '../functionality/logout.php';
 });
 
 logoutAlertBackdrop.addEventListener('mousedown', (e) => {
@@ -401,7 +401,7 @@ let inactivityTimer;
 function resetInactivityTimer() {
     clearTimeout(inactivityTimer);
     if (!_isLocalhost) {
-        inactivityTimer = setTimeout(() => { window.location.href = 'logout.php'; }, inactivityTime);
+        inactivityTimer = setTimeout(() => { window.location.href = '../functionality/logout.php'; }, inactivityTime);
     }
 }
 
@@ -559,7 +559,7 @@ startClock();
     const clearNotifBtn    = document.getElementById('clearNotifBtn');
     if ((!notifBtn && !mobileNotifBtn) || !notifDropdown) return;
 
-    const NOTIF_API      = 'api/notifications.php';
+    const NOTIF_API      = '../api/notifications.php';
     let notifications    = [];
     let unreadCount      = 0;
     const NOTIF_SEEN_KEY = 'notif_seen_ids';

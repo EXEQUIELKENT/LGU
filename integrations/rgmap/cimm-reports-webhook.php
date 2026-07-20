@@ -3,9 +3,10 @@
  * RGMAO inbound webhook — receives CIMM citizen reports for verification
  * monitoring.
  *
- * CIMM's cimm_rgmap_sync.php calls this automatically whenever a request is
- * created, validated, or rejected (see ipms-requests.php, validate_request.php,
- * reject_request.php, citizenrepform.php in the CIMM repo). cimm-reports-pull.php
+ * CIMM's includes/api/cimm_rgmap_sync.php calls this automatically whenever a
+ * request is created, validated, or rejected (see public/api/ipms-requests.php,
+ * public/functionality/validate_request.php, public/functionality/reject_request.php,
+ * public/citizen/citizenrepform.php in the CIMM repo). cimm-reports-pull.php
  * in this same folder can also replay reports into this endpoint as a
  * catch-up mechanism.
  *

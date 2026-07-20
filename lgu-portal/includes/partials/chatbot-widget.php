@@ -7,7 +7,7 @@
  *  2. Mic: manual toggle off — click again to stop recording
  *  3. Text-only messaging
  *
- * Usage: <?php include __DIR__ . '/../includes/partials/chatbot-widget.php'; ?>
+ * Usage: <?php include __DIR__ . '/../../includes/partials/chatbot-widget.php'; ?>
  */
 ?>
 
@@ -586,7 +586,7 @@
         STORAGE_STATE_KEY: 'chatbot_state_v4',
         MAX_MESSAGES:      60,
         AUTO_HIDE_CHIPS:   7000,
-        ENDPOINT: (window.CHATBOT_ENDPOINT || 'chatbot.php')
+        ENDPOINT: (window.CHATBOT_ENDPOINT || '../functionality/chatbot.php')
     };
 
     /* ══════════════════════════════════════════════════════

@@ -3,7 +3,7 @@
  * Centralized Authentication Configuration
  * Include this file at the top of any public page that needs IP whitelisting
  * 
- * Usage: require_once __DIR__ . '/../includes/config/auth_config.php';
+ * Usage: require_once __DIR__ . '/../../includes/config/auth_config.php';
  */
 
 if (!isset($_SESSION)) {

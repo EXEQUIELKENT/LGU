@@ -287,7 +287,7 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
             'declared_infrastructure' => $row['declared_infrastructure'] !== null ? (string)$row['declared_infrastructure'] : null,
             'detected_infrastructure' => $row['detected_infrastructure'] !== null ? (string)$row['detected_infrastructure'] : null,
         ],
-        'portal_url' => cimm_rgmap_absolute_url('requests.php?req_id=' . $reqIdInt, $baseUrl),
+        'portal_url' => cimm_rgmap_absolute_url('admin/requests.php?req_id=' . $reqIdInt, $baseUrl),
     ];
 }
 

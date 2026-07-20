@@ -16,7 +16,7 @@
  *      – falls back to the normal tooltip when everything is set
  *
  * Usage — add ONE line right after <div id="sidebarNavTooltip"> on any page:
- *   <?php include __DIR__ . '/../includes/partials/eng_profile_warning.php'; ?>
+ *   <?php include __DIR__ . '/../../includes/partials/eng_profile_warning.php'; ?>
  *
  * Prerequisites (already present on every sidebar page):
  *   • session_start() called

@@ -18,7 +18,7 @@
  *
  * Usage:
  *   <?php
- *   require_once __DIR__ . '/../includes/core/session_guard.php';
+ *   require_once __DIR__ . '/../../includes/core/session_guard.php';
  *   $serverTimestamp = time(); // only if you need the server clock variable
  *   // ... rest of page
  */
@@ -48,7 +48,7 @@ if (
 ) {
     session_unset();
     session_destroy();
-    header('Location: login.php');
+    header('Location: ../citizen/login.php');
     exit;
 }
 
@@ -70,6 +70,6 @@ if (
 ) {
     session_unset();
     session_destroy();
-    header('Location: login.php');
+    header('Location: ../citizen/login.php');
     exit;
 }

@@ -7,9 +7,9 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require_once __DIR__ . '/../vendor/PHPMailer/PHPMailer.php';
-require_once __DIR__ . '/../vendor/PHPMailer/SMTP.php';
-require_once __DIR__ . '/../vendor/PHPMailer/Exception.php';
+require_once __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
+require_once __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
+require_once __DIR__ . '/../../vendor/PHPMailer/Exception.php';
 
 /**
  * Build the absolute base URL, matching login.php logic.
@@ -185,7 +185,7 @@ function sendReportUpdateEmail(
     <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
         <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Share Your Feedback</p>
         <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">We value your experience. Let us know how we\'re doing by submitting a feedback, suggestion, or concern about our services.</p>
-        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+        <a href="' . getBaseUrl() . '/citizen/citizen_feedback.php" target="_blank"
            style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
                   padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
             &#128203; Submit Feedback — CIMM LGU
@@ -201,7 +201,7 @@ function sendReportUpdateEmail(
             . ($isComplete ? "Your report #REP-{$repId} has been COMPLETED.\n\n" : "Progress update on your report #REP-{$repId}.\n\n")
             . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
             . ($desc ? "\nEngineer Notes:\n{$descRaw}\n" : '')
-            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen_feedback.php\n"
+            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen/citizen_feedback.php\n"
             . "\n© " . date('Y') . " LGU Portal";
 
         $mail->send();
@@ -559,7 +559,7 @@ function sendFeedbackStatusEmail(
     <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
         <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Submit Another Feedback</p>
         <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">Have more suggestions or concerns? We always welcome your input to help us improve our services.</p>
-        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+        <a href="' . getBaseUrl() . '/citizen/citizen_feedback.php" target="_blank"
            style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
                   padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
             &#128203; Submit Feedback — CIMM LGU
@@ -584,7 +584,7 @@ function sendFeedbackStatusEmail(
         if (!empty($engTrimmed) && $engTrimmed !== ' ') $plainParts[] = "Assigned Engineer: {$engTrimmed}";
         if (!empty($descTrimmed)) $plainParts[] = "\nYour Description:\n{$descTrimmed}";
         $plainParts[] = "\nCIMM LGU replied:\n{$adminReply}";
-        $plainParts[] = "\n---\nHave more suggestions or concerns? Submit feedback here:\n" . getBaseUrl() . "/citizen_feedback.php";
+        $plainParts[] = "\n---\nHave more suggestions or concerns? Submit feedback here:\n" . getBaseUrl() . "/citizen/citizen_feedback.php";
         $plainParts[] = "\n© " . date('Y') . " LGU Portal";
         $mail->AltBody = implode("\n", $plainParts);
 
@@ -689,7 +689,7 @@ function sendValidationEmail(
     <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
         <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Share Your Feedback</p>
         <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">We value your experience. Let us know how we\'re doing by submitting a feedback, suggestion, or concern about our services.</p>
-        <a href="' . getBaseUrl() . '/citizen_feedback.php" target="_blank"
+        <a href="' . getBaseUrl() . '/citizen/citizen_feedback.php" target="_blank"
            style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
                   padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
             &#128203; Submit Feedback — CIMM LGU
@@ -708,7 +708,7 @@ function sendValidationEmail(
             . "Your request {$reqLabel} has been APPROVED. Report {$repLabel} has been created.\n\n"
             . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
             . "\nYou will receive progress updates as work proceeds.\n"
-            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen_feedback.php\n"
+            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen/citizen_feedback.php\n"
             . "\n© " . date('Y') . " LGU Portal";
 
         $mail->send();
