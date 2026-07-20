@@ -105,6 +105,29 @@ function cimm_rgmap_absolute_url(string $relativePath, ?string $baseUrl = null):
 }
 
 /**
+ * requests.cprf_facility_id/cprf_facility_name and requests.rejection_reason
+ * are added lazily by other pages (citizenrepform.php, ipms-requests.php,
+ * reject_request.php, ...) the first time they run. On an environment where
+ * none of those pages has run yet, the columns don't exist, so the SELECT in
+ * cimm_rgmap_fetch_report() below fails to prepare and silently returns null
+ * for every row — the export/webhook endpoints report success with 0 reports
+ * instead of surfacing the error. Ensure the columns exist here too, the same
+ * way the rest of this codebase defensively migrates this table.
+ */
+function cimm_rgmap_ensure_requests_columns(mysqli $conn): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_id INT UNSIGNED NULL DEFAULT NULL AFTER location");
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS cprf_facility_name VARCHAR(150) NULL DEFAULT NULL AFTER cprf_facility_id");
+    $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT DEFAULT NULL");
+}
+
+/**
  * @return array<string, mixed>|null
  */
 function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = null): ?array
@@ -112,6 +135,8 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
     if ($reqId <= 0) {
         return null;
     }
+
+    cimm_rgmap_ensure_requests_columns($conn);
 
     $stmt = $conn->prepare("
         SELECT
