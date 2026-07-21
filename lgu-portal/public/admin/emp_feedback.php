@@ -554,7 +554,23 @@ body { overflow: hidden; height: 100vh; }
 [data-theme="dark"] .sort-option.active { background: rgba(95,140,255,.18); color: #8fb4ff; border-left-color: #5f8cff; }
 
 /* ── Mobile feedback cards ── */
-.mobile-feedback-list { display: none; }
+.mobile-feedback-list {
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
+}
+.mobile-feedback-list::-webkit-scrollbar { width: 6px; }
+.mobile-feedback-list::-webkit-scrollbar-track { background: transparent; }
+.mobile-feedback-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.mobile-feedback-list::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .mobile-feedback-list::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
 @media (max-width: 768px) {
     .desktop-feedback-table { display: none !important; }
     .mobile-feedback-list { display: block; }
@@ -653,11 +669,36 @@ th {
     padding: 14px; text-align: left;
     font-size: 13px; font-weight: 700; color: #fff;
     white-space: nowrap;
+    position: sticky; top: 0; z-index: 2; background: #3762c8;
 }
+[data-theme="dark"] th { background: #2851b3; }
 th:first-child { border-top-left-radius: 12px; }
 th:last-child  { border-top-right-radius: 12px; }
 td { padding: 14px; vertical-align: middle; border-bottom: 1px solid var(--border-color); font-size: 13.5px; }
 tr:last-child td { border-bottom: none; }
+
+/* ── Scrollable table wrapper — caps height so a large feedback list doesn't
+   push the rest of the page down (matches requests.php's .table-scroll-wrap) ── */
+.desktop-feedback-table {
+    max-height: 560px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #5f8cff transparent;
+}
+.desktop-feedback-table::-webkit-scrollbar { width: 6px; height: 6px; }
+.desktop-feedback-table::-webkit-scrollbar-track { background: transparent; }
+.desktop-feedback-table::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #7ba3ff, #3762c8);
+    border-radius: 999px;
+    box-shadow: 0 0 8px 1px rgba(95,140,255,.65);
+}
+.desktop-feedback-table::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #9cbaff, #5f8cff);
+    box-shadow: 0 0 12px 2px rgba(95,140,255,.85);
+}
+[data-theme="dark"] .desktop-feedback-table::-webkit-scrollbar-thumb { box-shadow: 0 0 10px 1px rgba(95,140,255,.55); }
 tbody tr { transition: background .15s; }
 tbody tr:hover { background: rgba(55,98,200,.08); }
 [data-theme="dark"] tbody tr:hover { background: rgba(95,140,255,.08); }
@@ -1325,7 +1366,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
     /* Hide desktop table, show mobile cards */
     .desktop-feedback-table { display: none !important; }
-    .mobile-feedback-list { display: block !important; }
+    .mobile-feedback-list {
+        display: block !important; max-height: 560px !important;
+        overflow-y: auto !important; padding-right: 6px;
+    }
 
     /* Detail modal — centered style matching requests.php (no bottom-sheet) */
     #detailBackdrop {
@@ -1666,6 +1710,13 @@ tr.notif-highlight > td:first-child {
                    class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'admin_create.php') ? 'active' : '' ?>"
                    data-tooltip="Create Account">
                     <i class="fas fa-user-plus"></i><span>Create Account</span>
+                </a>
+            </li>
+            <li>
+                <a href="user_management.php"
+                   class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'user_management.php') ? 'active' : '' ?>"
+                   data-tooltip="User Management">
+                    <i class="fas fa-users-cog"></i><span>User Management</span>
                 </a>
             </li>
             <?php endif; ?>

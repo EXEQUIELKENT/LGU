@@ -4664,21 +4664,40 @@ Sidebar (250px) takes the most relative space here.
 .sched-add-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
+    gap: 10px;
+    padding: 6px 22px 6px 6px;
     border: none;
-    border-radius: 10px;
+    border-radius: 999px;
     background: linear-gradient(135deg, #3762c8, #2851b3);
     color: #fff;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(55, 98, 200, 0.25);
-    transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 14px rgba(55, 98, 200, 0.35);
+    transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease, filter 0.2s ease;
 }
-.sched-add-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55, 98, 200, 0.35); }
+.sched-add-btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+.sched-add-btn:hover:not(:disabled) {
+    filter: brightness(1.06);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 22px rgba(55, 98, 200, 0.45);
+}
+.sched-add-btn:hover:not(:disabled) .sched-add-btn-icon { transform: rotate(90deg); }
+.sched-add-btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
 .sched-add-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-theme="dark"] .sched-add-btn-icon { background: rgba(255, 255, 255, 0.16); }
 .sched-catalog-info {
     font-size: 13px;
     color: var(--text-primary);
@@ -4695,7 +4714,15 @@ Sidebar (250px) takes the most relative space here.
 .sched-catalog-warn { font-size: 13px; color: #c62828; font-weight: 500; }
 @media (max-width: 560px) {
     .sched-admin-bar { flex-direction: column; align-items: stretch; }
-    .sched-add-btn { justify-content: center; }
+    .sched-add-btn {
+        justify-content: center;
+        align-self: center;
+        width: auto;
+        max-width: 100%;
+        padding: 8px 20px 8px 8px;
+        font-size: 13px;
+    }
+    .sched-add-btn-icon { width: 26px; height: 26px; font-size: 12px; }
 }
 .sched-form-modal { max-width: 560px; width: 96%; }
 .sched-form-body { padding: 20px 22px 22px; overflow-x: hidden; }
@@ -5408,6 +5435,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <?php if ($isAdmin): ?>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>
@@ -5461,7 +5491,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                 </div>
             </div>
             <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : 'title="Add a new maintenance schedule"' ?>>
-                <i class="fas fa-plus"></i> Add Schedule
+                <span class="sched-add-btn-icon"><i class="fas fa-plus"></i></span>
+                <span class="sched-add-btn-label">Add Schedule</span>
             </button>
         </div>
         <?php endif; ?>
@@ -5815,7 +5846,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     </div>
                 </div>
             <?php endforeach; ?>
-                <p id="noResultMsg" style="display:none; text-align:center; padding:20px; color:var(--text-secondary);">No matching data or result.</p>
+                <div id="noResultMsg" class="list-empty-state" style="display:none;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".4"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <p id="noResultMsgText">No matching data or result.</p>
+                </div>
             <?php endif; ?>
             </div>
         </div>
@@ -9015,7 +9049,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (show) shownCount++;
                 });
                 if (noMsg) {
-                    noMsg.textContent = 'No CPRF-shared schedules found.';
+                    const noMsgText = noMsg.querySelector('#noResultMsgText');
+                    if (noMsgText) noMsgText.textContent = 'No CPRF-shared schedules found.';
                     noMsg.style.display = shownCount === 0 ? '' : 'none';
                 }
                 return;
@@ -9052,7 +9087,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             items.forEach(item => holder.appendChild(item));
             if (noMsg) {
-                noMsg.textContent = 'No matching data or result.';
+                const noMsgText = noMsg.querySelector('#noResultMsgText');
+                if (noMsgText) noMsgText.textContent = 'No matching data or result.';
                 noMsg.style.display = shownCount === 0 ? '' : 'none';
                 holder.appendChild(noMsg);
             }

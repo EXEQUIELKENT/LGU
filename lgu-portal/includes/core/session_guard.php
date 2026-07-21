@@ -56,6 +56,29 @@ if (
 // This is what keeps the user logged in as long as they keep navigating.
 $_SESSION['last_activity'] = time();
 
+// ── 3b. Persist a "last seen" heartbeat to the DB (throttled) ─────────────────
+// employees.last_activity powers the live "Active" / "Active X ago" status on
+// user_management.php. $_SESSION['last_activity'] above is per-browser-session
+// and invisible to other admins, so it needs to land in the DB to be queryable
+// across users. Throttled to once per 60s so this doesn't fire a write on every
+// single page load. Uses its own short-lived connection — session_guard.php
+// runs before pages set up their own $conn, and this must not interfere with it.
+if (
+    isset($_SESSION['employee_logged_in'], $_SESSION['employee_id']) &&
+    $_SESSION['employee_logged_in'] === true &&
+    (time() - ($_SESSION['_last_activity_db_write'] ?? 0)) > 60
+) {
+    $_hbConn = @new mysqli('localhost', 'root', '', 'cimm_lgu');
+    if ($_hbConn && !$_hbConn->connect_error) {
+        $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
+        $_hbEmpId = (int)$_SESSION['employee_id'];
+        $_hbConn->query("UPDATE employees SET last_activity = NOW() WHERE user_id = {$_hbEmpId}");
+        $_hbConn->close();
+        $_SESSION['_last_activity_db_write'] = time();
+    }
+    unset($_hbConn, $_hbEmpId);
+}
+
 // ── 4. Cache-control headers ──────────────────────────────────────────────────
 // Prevent the browser from serving stale protected pages from its cache.
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

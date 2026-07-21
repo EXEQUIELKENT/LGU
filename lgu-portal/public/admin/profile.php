@@ -2564,6 +2564,9 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
             <?php if ($isAdmin): ?>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <?php endif; ?>
             <!-- Remove profile link ONLY on profile page -->
             <?php if (!$isProfilePage): ?>
             <li>

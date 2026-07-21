@@ -1528,6 +1528,12 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <span>Create Account</span>
                 </a>
             </li>
+            <li>
+                <a href="user_management.php" class="nav-link" data-tooltip="User Management">
+                    <i class="fas fa-users-cog"></i>
+                    <span>User Management</span>
+                </a>
+            </li>
         </ul>
         <div style="flex-grow:1;"></div>
     </div>

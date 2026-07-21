@@ -271,6 +271,14 @@ function resetFailedLoginAttempts(mysqli $conn, string $email): void {
     $stmt->close();
 }
 
+function updateLastLogin(mysqli $conn, ?int $userId): void {
+    if (!$userId) return;
+    $stmt = $conn->prepare("UPDATE employees SET last_login = NOW() WHERE user_id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function sendUnlockEmail(mysqli $conn, string $email, string $firstName): bool {
     global $loginUrl;
     
@@ -772,6 +780,7 @@ if (isset($_POST['otp_submit'])) {
 
                 // 🔥 CHANGE #2: Reset failed login attempts on successful login
                 resetFailedLoginAttempts($conn, $email);
+                updateLastLogin($conn, $_SESSION['employee_id']);
 
                 if ($isFirstLogin == 1) {
                     $_SESSION['show_change_password_modal'] = true;
@@ -954,6 +963,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
                     $_SESSION['employee_id']         = isset($userData['user_id']) ? (int)$userData['user_id'] : null;
                     $_SESSION['employee_first_name'] = $userData['first_name'] ?? '';
                     resetFailedLoginAttempts($conn, $email);
+                    updateLastLogin($conn, $_SESSION['employee_id']);
                     $checkStmt->close();
 
                     if (($userData['is_first_login'] ?? 0) == 1) {

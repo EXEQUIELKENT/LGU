@@ -1,5 +1,33 @@
 /**
- * ai_tfjs_analysis.js — InfraGovServices v4.0
+ * ai_tfjs_analysis.js — InfraGovServices v4.1
+ *
+ * FIXES in v4.1 (severity/description no longer matched the actual photo):
+ *  ! BUG — roadDamageScore (drives "Major road failure — structural collapse"
+ *    verdicts) was driven almost entirely by darkVoidRatio: dark, low-saturation
+ *    pixels in the lower ~55% of the frame. That test also fires on a dark pole
+ *    shaft, wiring bundle, hydrant body, or shadow sitting in front of pavement —
+ *    none of which are pavement damage. A photo of a traffic light against open
+ *    sky could reach "severity 9 / major collapse" purely from shadow/pole pixels.
+ *    Fixed by requiring concreteRatio (flat, low-saturation pavement texture) to
+ *    corroborate the dark/grey area before roadDamageScore can reach full weight;
+ *    without it, the score is capped at 35% of its raw value. See analyzePixels().
+ *
+ *  ! BUG — scoreClassifications() forced detectedType = 'Roads' whenever rds > 20,
+ *    unconditionally — even when the model confidently detected a specific
+ *    non-road object (e.g. "traffic light" 84%) and/or the citizen declared a
+ *    non-Roads category. Now only overrides when the model signal is weak/absent
+ *    or the declared type is already 'Roads'/'Other'.
+ *
+ *  ! BUG — COCO-SSD's COCO_INFRA map had 'traffic light' → 'Street Lights', while
+ *    MobileNet's CLASS_MAP had the same label → 'Roads'. When both detectors fired
+ *    on one photo they voted for two different infrastructure types, and whichever
+ *    ran last could silently flip detectedType. Aligned both to 'Roads'.
+ *
+ *  ! BUG — buildDescription() recomputed its own infrastructure type from a single
+ *    image's "most model matches" pick, which could disagree with the consensus-
+ *    voted `detected_infrastructure` actually returned/stored. The description text
+ *    (and its severity tier) could describe a different type than the badge shown
+ *    next to it. Now always describes the same `bestType` used everywhere else.
  *
  * FIXES in v3.4 (road-image misclassification):
  *  ! BUG — CLASS_MAP: 'dam' had type:'Drainage'. MobileNet frequently hallucinates
@@ -488,6 +516,19 @@ const InfraAI = (() => {
         const darkVoidRatio = _totalDarkVoid / BOT_AREA;
 
         const landscapePenalty = Math.min(1.0, globalColourVar / 35.0);
+        const pixels = W * H;
+
+        // Computed here (moved ahead of roadDamageScore) so it can corroborate
+        // that heuristic below — see BUG note.
+        let concreteC = 0;
+        for (let i=0; i<data.length; i+=4) {
+            const l = getL(i);
+            const s = getSat(i);
+            if (l>85 && l<175 && s<0.12 &&
+                Math.abs(data[i]-data[i+1])<18 && Math.abs(data[i+1]-data[i+2])<18) concreteC++;
+        }
+        const concreteRatio = concreteC / pixels;
+
         let roadDamageScore = 0;
         if (greyCoverage > 0.10) {
             // Primary driver: dark void coverage.
@@ -503,19 +544,21 @@ const InfraAI = (() => {
         }
         roadDamageScore *= (1.0 - landscapePenalty * 0.7);
 
-        const pixels = W * H;
+        // ! BUG FIX — roadDamageScore was driven almost entirely by darkVoidRatio,
+        // which is just "dark, low-saturation pixels in the lower ~55% of frame".
+        // That test also matches a dark pole shaft, wiring bundle, hydrant body, or
+        // shadow sitting in front of pavement — none of which are pavement damage.
+        // This produced false "Major road failure — structural collapse" verdicts
+        // on photos whose actual subject was a traffic light / pole / other fixture.
+        // concreteRatio (flat, low-saturation, near-grey texture) corroborates that
+        // the dark/grey area really is a paved surface; without it, cap the score at
+        // 35% so a lone dark object can't reach "major collapse" severity on its own.
+        const concreteCorroboration = Math.min(1.0, concreteRatio / 0.12);
+        roadDamageScore *= (0.35 + 0.65 * concreteCorroboration);
+
         const rustRatio  = rustC  / pixels;
         const waterRatio = waterC / pixels;
         const burnRatio  = burnC  / pixels;
-
-        let concreteC = 0;
-        for (let i=0; i<data.length; i+=4) {
-            const l = getL(i);
-            const s = getSat(i);
-            if (l>85 && l<175 && s<0.12 &&
-                Math.abs(data[i]-data[i+1])<18 && Math.abs(data[i+1]-data[i+2])<18) concreteC++;
-        }
-        const concreteRatio = concreteC / pixels;
 
         let darkRoadC = 0;
         for (let py = BOT_START; py < H; py++) {
@@ -787,7 +830,13 @@ const InfraAI = (() => {
             'bicycle':       { type: 'Roads',             sv: 1 },  // v4.0
             // Signs & signals
             'stop sign':     { type: 'Roads',             sv: 4 },
-            'traffic light': { type: 'Street Lights',     sv: 4 },  // v4.0
+            // ! BUG FIX — this disagreed with CLASS_MAP's 'traffic light' → 'Roads'
+            // (used for MobileNet's own "traffic light" label). When both MobileNet
+            // and COCO-SSD detected the same object in one photo, they voted for two
+            // different infrastructure types, and whichever ran last could silently
+            // flip detectedType. Traffic signals are road/traffic-control infrastructure
+            // in this app's categories, not street illumination — aligned to 'Roads'.
+            'traffic light': { type: 'Roads',             sv: 4 },
             'parking meter': { type: 'Roads',             sv: 2 },  // v4.0
             // Water infrastructure
             'fire hydrant':  { type: 'Water Supply',      sv: 5 },
@@ -817,9 +866,14 @@ const InfraAI = (() => {
             if (greyCov > 0.10 && rds > 2) {
                 if      (rds > 20) {
                     pixelSeverityBonus += 3;
-                    // Strong structural damage signal always overrides a model-assigned type —
-                    // pixel evidence is more reliable than MobileNet label hallucinations.
-                    detectedType = 'Roads';
+                    // ! BUG FIX — this used to override detectedType unconditionally, even
+                    // when the model confidently detected a specific non-road object (e.g.
+                    // "traffic light" 84%) and/or the citizen declared a non-Roads category.
+                    // Pixel evidence should only override a *weak or absent* model signal,
+                    // not silently replace a confident, unguarded classification.
+                    if (!detectedType || declaredType === 'Roads' || declaredType === 'Other' || maxWeighted < 1.5) {
+                        detectedType = 'Roads';
+                    }
                 }
                 else if (rds > 12) {
                     pixelSeverityBonus += 2;
@@ -1173,11 +1227,18 @@ const InfraAI = (() => {
         },
     };
 
-    function buildDescription(scoreResults, severity, declaredType, bestTypePixels, qualityResults) {
-        // Pick the result with the most model matches to extract top detected keys.
+    function buildDescription(scoreResults, severity, declaredType, bestTypePixels, qualityResults, bestType) {
+        // Pick the result with the most model matches to extract top detected keys
+        // (used only for notes/keywords below — NOT for the infra type; see next line).
         const best = scoreResults.reduce((b, r) =>
             r.score.matched.length > b.score.matched.length ? r : b, scoreResults[0]);
-        const infra = best.score.detectedType || declaredType;
+        // ! BUG FIX — this used to recompute its own type from a single image's top
+        // match ("most matches" pick), which could disagree with the consensus-voted
+        // `detected_infrastructure` returned by analyzeImages(). That produced reports
+        // where the badge said one infrastructure type but the description text (and
+        // its severity tier) described a different one. Always describe the same type
+        // that's actually reported as detected.
+        const infra = bestType || best.score.detectedType || declaredType;
         const tierKey = severity >= 8 ? 8 : severity >= 6 ? 6 : severity >= 4 ? 4 : severity >= 2 ? 2 : 0;
         const typeMap = DAMAGE_DESCRIPTIONS[infra] || DAMAGE_DESCRIPTIONS['Other'];
         let desc = typeMap[tierKey];
@@ -1286,7 +1347,7 @@ const InfraAI = (() => {
                 qualityResults.push(quality);
                 scoreResults.push({ pixels, mobilenetPreds, cocoDetections, score, quality, typePixels });
             } catch (e) {
-                console.warn(`[InfraAI v4.0] Image ${idx + 1} failed:`, e);
+                console.warn(`[InfraAI v4.1] Image ${idx + 1} failed:`, e);
                 const fallbackQ = { blurScore: 0, isBlurry: false, isSomewhatBlurry: false, qualityPenalty: 0 };
                 qualityResults.push(fallbackQ);
                 scoreResults.push({
@@ -1382,7 +1443,7 @@ const InfraAI = (() => {
             legitimacy_notes:            buildLegitimacyNotes(avgConf, scoreResults, avgTypePixelScore, qualityResults),
             damage_severity:             severity,
             priority_recommendation:     priority,
-            damage_description:          buildDescription(scoreResults, severity, declaredType, bestTypePixels, qualityResults),
+            damage_description:          buildDescription(scoreResults, severity, declaredType, bestTypePixels, qualityResults, bestType),
             confidence_score:            confidenceScore,
             anomaly_flags:               JSON.stringify(buildAnomalyFlags(scoreResults, severity, qualityResults, consensus)),
             combined_assessment:         topPreds,
@@ -1390,12 +1451,12 @@ const InfraAI = (() => {
             requires_immediate_action:   severity >= 8 ? 1 : 0,
             images_analyzed:             files.length,
             analysis_status:             'completed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v4.0',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v4.1',
             ai_cost_estimation:          costEstimation,
         };
 
-        console.log('[InfraAI v4.0] Analysis complete:', result);
-        console.log('[InfraAI v4.0] Consensus:', consensus);
+        console.log('[InfraAI v4.1] Analysis complete:', result);
+        console.log('[InfraAI v4.1] Consensus:', consensus);
         onProgress?.('Analysis complete.');
         return result;
     }
@@ -1428,7 +1489,7 @@ const InfraAI = (() => {
             requires_immediate_action:   0,
             images_analyzed:             0,
             analysis_status:             'failed',
-            analysis_engine:             'tfjs-mobilenet-v2+pixel-v4.0',
+            analysis_engine:             'tfjs-mobilenet-v2+pixel-v4.1',
             // ── NEW: sensible fallback when AI engine is unavailable ──
             ai_cost_estimation:          'N/A – manual assessment required',
         };

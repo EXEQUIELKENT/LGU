@@ -1930,12 +1930,40 @@ select.rep-editable-field { cursor:pointer; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(255,152,0,.3); }
 .rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
-.ai-badge-strip { display:flex;gap:8px;flex-wrap:wrap;margin-top:8px; }
-.ai-badge { padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600; }
-.ai-badge.sev-low  { background:#d1fae5;color:#065f46; }
-.ai-badge.sev-med  { background:#fef3c7;color:#92400e; }
-.ai-badge.sev-high { background:#fde8e8;color:#9b1c1c; }
-.ai-badge.sev-crit { background:#fce7f3;color:#831843; }
+.ai-badge-strip { display:flex;gap:9px;flex-wrap:wrap;margin-top:8px; }
+.ai-badge {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:5px 14px 5px 5px; border-radius:20px; font-size:12px; font-weight:700;
+    border:1px solid transparent; box-shadow:0 2px 6px rgba(0,0,0,.07);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.ai-badge:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.12); }
+.ai-badge-icon {
+    width:21px; height:21px; border-radius:50%; flex-shrink:0; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:11px;
+}
+.ai-badge.sev-low  { background:#d1fae5; color:#065f46; border-color:rgba(6,95,70,.15); }
+.ai-badge.sev-low  .ai-badge-icon { background:#10b981; }
+.ai-badge.sev-med  { background:#fef3c7; color:#92400e; border-color:rgba(146,64,14,.15); }
+.ai-badge.sev-med  .ai-badge-icon { background:#f59e0b; }
+.ai-badge.sev-high { background:#fde8e8; color:#9b1c1c; border-color:rgba(155,28,28,.15); }
+.ai-badge.sev-high .ai-badge-icon { background:#ef4444; }
+.ai-badge.sev-crit { background:#fce7f3; color:#831843; border-color:rgba(131,24,67,.15); }
+.ai-badge.sev-crit .ai-badge-icon { background:#db2777; }
+.ai-badge.info     { background:#e0e7ff; color:#3730a3; border-color:rgba(55,48,163,.15); }
+.ai-badge.info     .ai-badge-icon { background:#6366f1; }
+.ai-badge.urgent   { background:#fee2e2; color:#991b1b; border-color:rgba(153,27,27,.2); animation: aiUrgentPulse 1.8s infinite; }
+.ai-badge.urgent   .ai-badge-icon { background:#dc2626; }
+[data-theme="dark"] .ai-badge.sev-low  { background:rgba(16,185,129,.16);  color:#6ee7b7; }
+[data-theme="dark"] .ai-badge.sev-med  { background:rgba(245,158,11,.16); color:#fcd34d; }
+[data-theme="dark"] .ai-badge.sev-high { background:rgba(239,68,68,.18);  color:#fca5a5; }
+[data-theme="dark"] .ai-badge.sev-crit { background:rgba(219,39,119,.18); color:#f9a8d4; }
+[data-theme="dark"] .ai-badge.info     { background:rgba(99,102,241,.18); color:#a5b4fc; }
+[data-theme="dark"] .ai-badge.urgent   { background:rgba(220,38,38,.22);  color:#fca5a5; }
+@keyframes aiUrgentPulse {
+    0%, 100% { box-shadow:0 2px 6px rgba(0,0,0,.07), 0 0 0 0 rgba(220,38,38,.35); }
+    50%      { box-shadow:0 2px 6px rgba(0,0,0,.07), 0 0 0 5px rgba(220,38,38,0); }
+}
 .rep-modal-footer { padding:14px 24px;border-top:1px solid var(--border-color);background:var(--bg-secondary);border-radius:0 0 20px 20px;flex-shrink:0; }
 .rep-footer-inner { display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap; }
 .btn-approve-rep { display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#ff9800,#e65100);color:#fff;border:none;padding:11px 22px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 4px 14px rgba(255,152,0,.35);letter-spacing:.02em; }
@@ -2930,6 +2958,9 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <?php endif; ?>
+            <?php if ($isAdmin): ?>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -4737,12 +4768,25 @@ function openRepModal(repId) {
     const hasAi = data.ai_severity || data.ai_description || data.ai_priority || data.ai_cost || data.ai_combined || data.ai_complexity;
     if (hasAi) {
         aiSec.style.display = ''; aiDiv.style.display = '';
+        // AI Priority is a label (Low/Medium/High/Critical) — sevMap keys match directly.
         const sevMap = {Low:'sev-low',Medium:'sev-med',High:'sev-high',Critical:'sev-crit'};
+        // ! BUG FIX — ai_severity is a raw 1–10 number, not a label, so `sevMap[data.ai_severity]`
+        // never matched anything and the badge silently always fell back to the green
+        // "low" colour — a severity-9 report showed the same colour as a severity-1 one.
+        // Map the number through the same tiers InfraAI uses for priority (8/6/4 cutoffs).
+        function sevNumClass(n) {
+            n = parseInt(n, 10);
+            if (isNaN(n)) return 'sev-low';
+            if (n >= 8) return 'sev-crit';
+            if (n >= 6) return 'sev-high';
+            if (n >= 4) return 'sev-med';
+            return 'sev-low';
+        }
         let html = '<div class="ai-badge-strip">';
-        if (data.ai_severity) html += `<span class="ai-badge ${sevMap[data.ai_severity]||'sev-low'}">&#127919; Severity: ${escH(data.ai_severity)}</span>`;
-        if (data.ai_priority) html += `<span class="ai-badge sev-med">&#129302; AI Priority: ${escH(data.ai_priority)}</span>`;
-        if (data.ai_cost)     html += `<span class="ai-badge sev-low">&#128176; Est. Cost: ${escH(data.ai_cost)}</span>`;
-        if (data.ai_immediate) html += `<span class="ai-badge sev-crit">&#9889; Immediate Action Required</span>`;
+        if (data.ai_severity) html += `<span class="ai-badge ${sevNumClass(data.ai_severity)}"><span class="ai-badge-icon">&#127919;</span>Severity: ${escH(data.ai_severity)}</span>`;
+        if (data.ai_priority) html += `<span class="ai-badge ${sevMap[data.ai_priority]||'sev-med'}"><span class="ai-badge-icon">&#129302;</span>AI Priority: ${escH(data.ai_priority)}</span>`;
+        if (data.ai_cost)     html += `<span class="ai-badge info"><span class="ai-badge-icon">&#128176;</span>Est. Cost: ${escH(data.ai_cost)}</span>`;
+        if (data.ai_immediate) html += `<span class="ai-badge urgent"><span class="ai-badge-icon">&#9889;</span>Immediate Action Required</span>`;
         html += '</div>';
         if (data.ai_description) html += `<div style="margin-top:10px;"><div style="font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">&#128221; Damage Description</div><p style="font-size:13px;color:var(--text-primary);line-height:1.6;margin:0;">${escH(data.ai_description)}</p></div>`;
         if (data.ai_combined)   html += `<div style="margin-top:10px;"><div style="font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">&#128196; Combined Analysis</div><p style="font-size:13px;color:var(--text-primary);line-height:1.6;margin:0;">${escH(data.ai_combined)}</p></div>`;
