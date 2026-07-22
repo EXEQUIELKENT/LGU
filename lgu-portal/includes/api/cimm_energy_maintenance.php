@@ -318,7 +318,9 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
         ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, NOW())
     ");
     if (!$checkStmt || !$insertStmt) {
+        $msg = 'Import prepare failed: ' . $conn->error;
         error_log('CIMM<-Energy maintenance import: prepare failed: ' . $conn->error);
+        $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
         return 0;
     }
 
@@ -367,7 +369,9 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
         if ($insertStmt->execute()) {
             $imported++;
         } else {
+            $msg = "Import failed for energy_id={$energyId} ({$entry['facility_name']}): {$insertStmt->error}";
             error_log('CIMM<-Energy maintenance import failed for energy_id=' . $energyId . ': ' . $insertStmt->error);
+            $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
         }
     }
 
