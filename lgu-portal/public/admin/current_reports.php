@@ -798,7 +798,7 @@ foreach ($rows as $row) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=11">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Current Reports — In Progress</title>
@@ -1678,7 +1678,8 @@ tr.notif-highlight > td:first-child {
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
     .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
-    .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: 0.05em; }
+    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: 0.05em; }
+    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
@@ -1687,7 +1688,12 @@ tr.notif-highlight > td:first-child {
     .sidebar-nav.mobile-active { left: 12px; }
     .sidebar-top { position: relative; padding-top: 30px; }
     .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; width: 45px; height: 47px; }
-    .site-logo { margin: 10px auto 20px auto; text-align: center; }
+    /* ! BUG FIX — see admin_create.php for the full explanation: mobile puts
+       .sidebar-profile-btn in normal flow and swaps .mobile-dark-mode-btn in
+       for the desktop toggle, so the card's desktop-tuned margin/padding only
+       clipped the bottom edge of both buttons instead of framing them. */
+    .site-logo { margin: -60px 6px 14px 6px !important; padding-top: 84px !important; text-align: center; }
+    .site-logo::before { top: 76px !important; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; padding-top: 90px; height: auto; min-height: 100vh; overflow-y: auto; margin: 0; }
     .card { margin-top: 0; padding: 18px 14px; border-radius: 16px; gap: 12px; }
@@ -1699,7 +1705,7 @@ tr.notif-highlight > td:first-child {
     .report-card .rc-label { font-weight: 600; color: #ff9800; flex-shrink: 0; min-width: 110px; }
     .report-card .rc-value { color: var(--text-primary); flex: 1; word-break: break-word; }
     .report-card .rc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 6px; }
-    .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
+    .sidebar-divider:not(.logo-divider), .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
     .eng-combobox { min-width: 0; max-width: 100%; width: 100%; }
     /* Status pill — allow wrapping so long labels aren't clipped */
@@ -2887,7 +2893,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
-        <div class="desktop-cimm-label">CIMM</div>
+        <div class="desktop-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</div>
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
@@ -2912,7 +2918,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
 
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <span class="mobile-cimm-label">CIMM</span>
+    <span class="mobile-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</span>
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">

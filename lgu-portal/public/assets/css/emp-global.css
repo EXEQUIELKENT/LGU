@@ -160,13 +160,36 @@ body.sidebar-collapsed .desktop-top-nav {
     transition: max-width 0.3s ease, padding 0.3s ease;
     padding-left: 12px;
 }
-/* CIMM Label Styles */
+/* CIMM Label — plain brand wordmark. Not a link/button, so it must not look
+   like one: no pill fill, no shadow, no hover lift. Blue for brand identity,
+   carried by the text/icon color alone rather than a filled background. */
 .desktop-cimm-label {
-    font-size: 18px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
     color: #3762c8;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     margin-right: auto;
+}
+.cimm-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: rgba(55, 98, 200, .12);
+    font-size: 12px;
+    line-height: 1;
+}
+[data-theme="dark"] .desktop-cimm-label,
+[data-theme="dark"] .mobile-cimm-label {
+    color: #8fb0ff;
+}
+[data-theme="dark"] .cimm-badge-icon {
+    background: rgba(143, 176, 255, .18);
 }
 /* Dark Mode & Notification Buttons */
 .nav-actions {

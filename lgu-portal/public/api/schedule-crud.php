@@ -29,9 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/api/cimm_energy_maintenance.php';
 
 $catalog = cimm_fetch_cprf_facility_catalog(true);
 cimm_ensure_maintenance_schedule_schema($conn);
+cimm_energy_ensure_schedule_schema($conn);
 
 $raw = file_get_contents('php://input');
 $data = is_string($raw) ? json_decode($raw, true) : null;
@@ -42,6 +44,13 @@ if (!is_array($data)) {
 }
 
 $schedId = (int)($data['sched_id'] ?? 0);
+
+// Look up the row's own Energy link server-side rather than trusting a
+// client-supplied energy_maintenance_id — see cimm_energy_lookup_schedule_link()
+// docblock. A row imported from Energy has no CPRF facility, so it's exempt
+// from the "CPRF facility is required" check below, and its status/date
+// changes get pushed back to Energy after saving instead of touching CPRF fields.
+$energyLink = $schedId > 0 ? cimm_energy_lookup_schedule_link($conn, $schedId) : null;
 $task = trim((string)($data['task'] ?? ''));
 $cprfFacilityId = (int)($data['cprf_facility_id'] ?? 0);
 $startingDate = trim((string)($data['starting_date'] ?? ''));
@@ -68,7 +77,7 @@ if ($task === '') {
     echo json_encode(['success' => false, 'error' => 'Task is required']);
     exit;
 }
-if ($cprfFacilityId <= 0) {
+if ($cprfFacilityId <= 0 && $energyLink === null) {
     http_response_code(422);
     echo json_encode(['success' => false, 'error' => 'CPRF facility is required']);
     exit;
@@ -79,17 +88,23 @@ if ($startingDate === '') {
     exit;
 }
 
-$facility = cimm_get_facility_by_id($cprfFacilityId, $catalog);
-if ($facility === null) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'error' => 'Invalid CPRF facility_id — not found in live catalog']);
-    exit;
-}
+$cprfFacilityName = '';
+if ($energyLink === null) {
+    $facility = cimm_get_facility_by_id($cprfFacilityId, $catalog);
+    if ($facility === null) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'error' => 'Invalid CPRF facility_id — not found in live catalog']);
+        exit;
+    }
 
-$cprfFacilityName = (string)$facility['name'];
-if ($location === '') {
-    $facilityLocation = trim((string)($facility['location'] ?? ''));
-    $location = $facilityLocation !== '' ? "{$cprfFacilityName}, {$facilityLocation}" : $cprfFacilityName;
+    $cprfFacilityName = (string)$facility['name'];
+    if ($location === '') {
+        $facilityLocation = trim((string)($facility['location'] ?? ''));
+        $location = $facilityLocation !== '' ? "{$cprfFacilityName}, {$facilityLocation}" : $cprfFacilityName;
+    }
+} else {
+    // Energy-linked row: no CPRF facility to resolve. cprf_facility_id stays 0/NULL.
+    $cprfFacilityId = 0;
 }
 
 if (!in_array($priority, $allowedPriority, true)) {
@@ -198,6 +213,17 @@ try {
         $stmt->close();
     }
 
+    $energySync = null;
+    if ($energyLink !== null) {
+        $energySync = cimm_energy_push_update(
+            $energyLink['energy_maintenance_id'],
+            $status,
+            $startingDate,
+            $assignedTeam,
+            $endDateDb
+        );
+    }
+
     echo json_encode([
         'success' => true,
         'sched_id' => $schedId,
@@ -205,6 +231,7 @@ try {
         'cprf_facility_name' => $cprfFacilityName,
         'location' => $location,
         'message' => $schedId > 0 ? 'Schedule saved' : 'Schedule created',
+        'energy_sync' => $energySync,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
     http_response_code(500);

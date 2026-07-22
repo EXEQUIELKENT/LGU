@@ -41,10 +41,18 @@ $serverTimestamp = time();
 
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/api/cimm_energy_maintenance.php';
 
 $cprfCatalog = cimm_fetch_cprf_facility_catalog();
 cimm_ensure_maintenance_schedule_schema($conn);
 cimm_backfill_schedule_facility_ids($conn, $cprfCatalog);
+
+// Pull "Facilities Needing Maintenance" (active + completed-history) from the
+// Energy app and import any not-yet-seen issues as maintenance_schedule rows
+// tagged with an Energy badge. Insert-only — see cimm_energy_import_catalog()
+// docblock for why re-pulling never overwrites an already-imported row.
+cimm_energy_ensure_schedule_schema($conn);
+cimm_energy_import_catalog($conn, cimm_fetch_energy_maintenance_catalog());
 
 function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
 {
@@ -359,7 +367,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=11">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -1186,6 +1194,19 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 [data-theme="dark"] .badge-shared-cprf {
     background: rgba(129,140,248,.12); color: #a5b4fc;
     border-color: rgba(129,140,248,.28);
+}
+
+.badge-shared-energy {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(245,158,11,.12); color: #b45309;
+    border: 1px solid rgba(245,158,11,.3);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .badge-shared-energy {
+    background: rgba(251,191,36,.14); color: #fbbf24;
+    border-color: rgba(251,191,36,.3);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -4336,11 +4357,15 @@ Sidebar (250px) takes the most relative space here.
     .mobile-cimm-label {
         position: absolute;
         left: 70px;
-        font-size: 16px;
-        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        font-weight: 800;
         color: #3762c8;
         letter-spacing: 0.05em;
     }
+    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
@@ -4443,15 +4468,21 @@ Sidebar (250px) takes the most relative space here.
         margin: 10px 0 0 15px;
     }
 
+    /* ! BUG FIX — see admin_create.php for the full explanation: mobile puts
+       .sidebar-profile-btn in normal flow and swaps .mobile-dark-mode-btn in
+       for the desktop toggle, so the card's desktop-tuned margin/padding only
+       clipped the bottom edge of both buttons instead of framing them. */
     .site-logo {
-        margin: 10px auto 20px auto;
+        margin: -60px 6px 14px 6px !important;
+        padding-top: 84px !important;
     }
+    .site-logo::before { top: 76px !important; }
 
     .nav-list {
         padding: 0 20px;
     }
 
-    .sidebar-divider,
+    .sidebar-divider:not(.logo-divider),
     .sidebar-toggle,
     .sidebar-toggle-divider {
         display: none !important;
@@ -5351,7 +5382,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
-        <div class="desktop-cimm-label">CIMM</div>
+        <div class="desktop-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</div>
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
@@ -5378,7 +5409,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <span class="mobile-cimm-label">CIMM</span>
+    <span class="mobile-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</span>
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
@@ -5800,6 +5831,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                     🔗 CPRF
                                 </span>
                             <?php endif; ?>
+                            <?php if (!empty($row['energy_source'])): ?>
+                                <span class="badge badge-shared-energy searchable" title="Imported from the Energy Management System — edits here sync back automatically">
+                                    ⚡ Energy
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <!-- Dates shown only on desktop (below badges) -->
                         <div class="schedule-item-dates-desktop">
@@ -6002,7 +6038,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="sched-form-card">
 
                 <!-- CPRF Facility — searchable combobox -->
-                <div class="sfr-row">
+                <div class="sfr-row" id="sfCprfFacilityRow">
                     <div class="sfr-label-row">
                         <div class="sfr-icon"><i class="fas fa-building"></i></div>
                         <label class="sfr-label" for="sfCprfFacilityDisplay">CPRF Facility <span class="req">*</span></label>
@@ -6020,6 +6056,21 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                             </div>
                         </div>
                         <small class="sched-form-hint">Linked by exact CPRF facility ID — no GPS needed.</small>
+                    </div>
+                </div>
+
+                <!-- Energy Facility — read-only, shown instead of the CPRF row when
+                     editing a schedule imported from the Energy Management System -->
+                <div class="sfr-row" id="sfEnergyFacilityRow" style="display:none;">
+                    <div class="sfr-label-row">
+                        <div class="sfr-icon"><i class="fas fa-bolt"></i></div>
+                        <label class="sfr-label">Energy Facility</label>
+                    </div>
+                    <div class="sfr-content">
+                        <div class="sf-combobox-display" style="cursor:default;">
+                            <span class="sf-combobox-label selected" id="sfEnergyFacilityLabel">—</span>
+                        </div>
+                        <small class="sched-form-hint">⚡ Imported from the Energy Management System. Status, date, and assigned-team changes here are pushed back to Energy automatically.</small>
                     </div>
                 </div>
 
@@ -9619,7 +9670,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function openScheduleForm(data) {
             if (!sfForm || !sfModal) return;
-            setFacilitySelection(data && data.cprf_facility_id ? data.cprf_facility_id : '');
+            const isEnergyLinked = !!(data && data.energy_source);
+            const cprfRow = document.getElementById('sfCprfFacilityRow');
+            const energyRow = document.getElementById('sfEnergyFacilityRow');
+            if (cprfRow) cprfRow.style.display = isEnergyLinked ? 'none' : '';
+            if (energyRow) energyRow.style.display = isEnergyLinked ? '' : 'none';
+            if (isEnergyLinked) {
+                setFacilitySelection('');
+                const energyLabel = document.getElementById('sfEnergyFacilityLabel');
+                if (energyLabel) energyLabel.textContent = data.energy_facility_name || data.location || '—';
+            } else {
+                setFacilitySelection(data && data.cprf_facility_id ? data.cprf_facility_id : '');
+            }
             document.getElementById('scheduleFormTitle').textContent = (data && data.sched_id) ? 'Edit Maintenance Schedule' : 'Add Maintenance Schedule';
             document.getElementById('sfSchedId').value = (data && data.sched_id) ? String(data.sched_id) : '';
             document.getElementById('sfTask').value = (data && data.task) || '';
@@ -9681,10 +9743,16 @@ document.addEventListener('DOMContentLoaded', function() {
         function openSchedSaveConfirm(payload) {
             sfPendingPayload = payload;
             const isEdit = payload.sched_id > 0;
+            const energyRow = document.getElementById('sfEnergyFacilityRow');
+            const isEnergyLinked = !!(energyRow && energyRow.style.display !== 'none');
             schedSaveConfirmTitle.textContent = isEdit ? 'Save changes to this schedule?' : 'Add this maintenance schedule?';
-            schedSaveConfirmDesc.textContent  = isEdit
-                ? 'This will update the maintenance schedule for the selected CPRF facility. The changes will be saved immediately.'
-                : 'This will create a new maintenance schedule for the selected CPRF facility. The changes will be saved immediately.';
+            if (isEnergyLinked) {
+                schedSaveConfirmDesc.textContent = 'This will update the schedule and push the status/date changes back to the Energy Management System. The changes will be saved immediately.';
+            } else {
+                schedSaveConfirmDesc.textContent = isEdit
+                    ? 'This will update the maintenance schedule for the selected CPRF facility. The changes will be saved immediately.'
+                    : 'This will create a new maintenance schedule for the selected CPRF facility. The changes will be saved immediately.';
+            }
             schedSaveConfirmBackdrop.classList.add('active');
         }
         function closeSchedSaveConfirm() {

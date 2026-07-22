@@ -727,7 +727,7 @@ function um_status_icon(array $u): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=11">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>User Management | LGU Portal</title>
@@ -1480,7 +1480,8 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         width: 38px; height: 38px; font-size: 20px; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
     }
-    .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: .05em; }
+    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: .05em; }
+    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
@@ -1498,9 +1499,14 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     .sidebar-nav.collapsed { width: calc(100% - 24px) !important; }
     .sidebar-top { padding-top: 30px; position: relative; }
     .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; width: 45px; height: 47px; }
-    .site-logo { margin: 10px auto 20px auto; }
+    /* ! BUG FIX — see admin_create.php for the full explanation: mobile puts
+       .sidebar-profile-btn in normal flow and swaps .mobile-dark-mode-btn in
+       for the desktop toggle, so the card's desktop-tuned margin/padding only
+       clipped the bottom edge of both buttons instead of framing them. */
+    .site-logo { margin: -60px 6px 14px 6px !important; padding-top: 84px !important; }
+    .site-logo::before { top: 76px !important; }
     .nav-list { padding: 0 20px; }
-    .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
+    .sidebar-divider:not(.logo-divider), .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .user-info { padding-bottom: 20px; }
     .sidebar-mobile-overlay {
         display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 3999;
@@ -1568,7 +1574,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
-        <div class="desktop-cimm-label">CIMM</div>
+        <div class="desktop-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</div>
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
@@ -1595,7 +1601,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle" onclick="(function(){var s=document.getElementById('sidebarNav'),o=document.getElementById('sidebarMobileOverlay');if(!s)return;var open=s.classList.contains('mobile-active');s.classList.toggle('mobile-active',!open);if(o)o.classList.toggle('active',!open);})()">☰</button>
-    <span class="mobile-cimm-label">CIMM</span>
+    <span class="mobile-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</span>
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">

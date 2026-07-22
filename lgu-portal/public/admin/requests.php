@@ -241,7 +241,7 @@ function format_datetime_ampm($datetime) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=11">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -2037,7 +2037,8 @@ tbody td {
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
     .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
-    .mobile-cimm-label { position: absolute; left: 70px; font-size: 16px; font-weight: 600; color: #3762c8; letter-spacing: .05em; }
+    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: .05em; }
+    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
@@ -2051,9 +2052,14 @@ tbody td {
     .main-content, .main-content.expanded { margin-left: 0 !important; height: auto !important; min-height: calc(100vh - 64px) !important; overflow-y: auto !important; padding: 20px !important; padding-top: 80px !important; margin: 0 !important; /* -webkit-overflow-scrolling removed — it creates a GPU compositing layer that breaks Leaflet marker pixel coordinates on mobile */ }
     .sidebar-top { padding-top: 30px; }
     .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; }
-    .site-logo { margin: 10px auto 20px auto; }
+    /* ! BUG FIX — see admin_create.php for the full explanation: mobile puts
+       .sidebar-profile-btn in normal flow and swaps .mobile-dark-mode-btn in
+       for the desktop toggle, so the card's desktop-tuned margin/padding only
+       clipped the bottom edge of both buttons instead of framing them. */
+    .site-logo { margin: -60px 6px 14px 6px !important; padding-top: 84px !important; }
+    .site-logo::before { top: 76px !important; }
     .nav-list { padding: 0 20px; }
-    .sidebar-divider, .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
+    .sidebar-divider:not(.logo-divider), .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .user-info { padding-bottom: 20px; }
     .notif-popup {
         top: 76px !important;
@@ -2582,7 +2588,7 @@ tbody td {
 <!-- DESKTOP TOP NAV -->
 <div class="desktop-top-nav">
     <div class="desktop-nav-inner">
-        <div class="desktop-cimm-label">CIMM</div>
+        <div class="desktop-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</div>
         <div class="desktop-clock" id="desktopClock"></div>
         <div class="nav-actions">
             <button class="nav-btn dark-mode-btn" id="darkModeBtn" title="Toggle Dark Mode">
@@ -2609,7 +2615,7 @@ tbody td {
 <!-- MOBILE TOP NAV -->
 <div class="mobile-top-nav">
     <button class="mobile-toggle" id="mobileToggle">☰</button>
-    <span class="mobile-cimm-label">CIMM</span>
+    <span class="mobile-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</span>
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
