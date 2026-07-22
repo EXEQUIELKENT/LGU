@@ -68,7 +68,7 @@ if (
     $_SESSION['employee_logged_in'] === true &&
     (time() - ($_SESSION['_last_activity_db_write'] ?? 0)) > 60
 ) {
-    $_hbConn = @new mysqli('localhost', 'root', '', 'cimm_lgu');
+    $_hbConn = @new mysqli('localhost', 'cimm_root', '12345678', 'cimm_lgu');
     if ($_hbConn && !$_hbConn->connect_error) {
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
         $_hbEmpId = (int)$_SESSION['employee_id'];
