@@ -7,8 +7,8 @@
 // so this file stays safe to share between every environment as-is instead
 // of drifting out of sync with whatever the last deploy happened to contain.
 $DB_HOST = "localhost";
-$DB_USER = "cimm_root";
-$DB_PASS = "12345678";          // default XAMPP password
+$DB_USER = "root";
+$DB_PASS = "";          // default XAMPP password
 $DB_NAME = "cimm_lgu";
 
 $localOverride = __DIR__ . '/db.local.php';
