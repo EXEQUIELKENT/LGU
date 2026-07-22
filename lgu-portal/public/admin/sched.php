@@ -3806,6 +3806,24 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
     letter-spacing: 0.04em;
     text-shadow: 0 1px 2px rgba(0,0,0,.4);
 }
+/* Energy synced badge — on-card. Same shape/language as .cap-cprf-badge,
+   teal to match Energy's brand color (see .energy-sync-badge above). */
+.cap-energy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(13,158,158,.45);
+    border: 1px solid rgba(153,246,228,.55);
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
 
 /* Hidden states */
 .capsule-card.cap-hidden        { display: none; }
@@ -6039,6 +6057,14 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="modal-header-icon"><i class="fas fa-tools"></i></div>
             <div class="modal-header-text">
                 <span class="modal-label">Maintenance Task</span>
+                <span class="cprf-sync-badge cprf-sync-badge-modal" id="modalCprfBadge" style="display:none;" title="This schedule is shared with the CPRF integration">
+                    <span class="cprf-sync-dot"></span>
+                    <span class="cprf-sync-label">CPRF Integration</span>
+                </span>
+                <span class="energy-sync-badge energy-sync-badge-modal" id="modalEnergyBadge" style="display:none;" title="This schedule was imported from the Energy Management System">
+                    <span class="energy-sync-dot"></span>
+                    <span class="energy-sync-label">Energy Integration</span>
+                </span>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <h3 class="modal-title">Task Details</h3>
                     <a id="modalRepBadge" href="#" target="_self" class="modal-rep-badge-link" style="display:none;" title="View this report"></a>
@@ -7591,6 +7617,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Apply status theme to header + nav bar
         applyModalTheme(key);
 
+        // CPRF vs Energy sync badge — a schedule row is linked to at most one
+        // of the two, never both (see cimm_energy_import_catalog()'s
+        // insert-only design), so exactly one badge (or neither, for
+        // report-source items and unlinked manual schedules) shows at a time.
+        const isEnergyItem = !!t.energy_source;
+        const modalCprfBadgeEl = document.getElementById('modalCprfBadge');
+        const modalEnergyBadgeEl = document.getElementById('modalEnergyBadge');
+        if (modalCprfBadgeEl) modalCprfBadgeEl.style.display = (!isEnergyItem && t.is_shared) ? '' : 'none';
+        if (modalEnergyBadgeEl) modalEnergyBadgeEl.style.display = isEnergyItem ? '' : 'none';
+
         // Slide animation
         if (direction) {
             modalBody.classList.remove('slide-left', 'slide-right');
@@ -7649,7 +7685,7 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
-        const cprfFacilityRow = (t.cprf_facility_id || t.facility_name)
+        const cprfFacilityRow = (!isEnergyItem && (t.cprf_facility_id || t.facility_name))
             ? `<div class="modal-task-row modal-cprf-facility-row">
                     <div class="modal-task-row-icon"><i class="fas fa-building"></i></div>
                     <div class="modal-task-row-content">
@@ -7659,9 +7695,19 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
+        const energyFacilityRow = (isEnergyItem && (t.energy_facility_name || t.location))
+            ? `<div class="modal-task-row modal-energy-facility-row">
+                    <div class="modal-task-row-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="modal-task-row-content">
+                        <div class="modal-task-row-label">Energy Facility</div>
+                        <div class="modal-task-row-value">${escH(t.energy_facility_name || t.location || '—')}</div>
+                    </div>
+               </div>`
+            : '';
+
         const editScheduleBtn = (window.IS_ADMIN && t.source === 'schedule' && t.sched_id)
             ? `<button type="button" class="sched-modal-edit-btn" onclick="schedOpenEditForm(${parseInt(t.sched_id, 10)})">
-                    <i class="fas fa-pen"></i> Edit Schedule / CPRF Facility
+                    <i class="fas fa-pen"></i> Edit Schedule / ${isEnergyItem ? 'Energy Facility' : 'CPRF Facility'}
                </button>`
             : '';
 
@@ -7674,7 +7720,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
-                ${cprfFacilityRow}
+                ${cprfFacilityRow}${energyFacilityRow}
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="modal-task-row-content">
@@ -8184,8 +8230,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     events.forEach(e => {
                         const key = getStatusKey(e.status_label || '');
                         const repTag = e.rep_id ? ` · REP-${e.rep_id}` : '';
-                        const facilityTag = e.facility_name ? `<span class="cal-facility-tag">🏢 ${escH(e.facility_name)}</span>` : '';
-                        const sharedTag   = e.is_shared ? `<span class="badge-shared-cprf" style="margin-top:3px;display:inline-flex;">🔗 Shared with CPRF</span>` : '';
+                        const facilityTag = e.facility_name
+                            ? `<span class="cal-facility-tag">🏢 ${escH(e.facility_name)}</span>`
+                            : (e.energy_facility_name ? `<span class="cal-facility-tag">⚡ ${escH(e.energy_facility_name)}</span>` : '');
+                        const sharedTag   = e.is_shared
+                            ? `<span class="badge-shared-cprf" style="margin-top:3px;display:inline-flex;">🔗 Shared with CPRF</span>`
+                            : (e.energy_source ? `<span class="badge-shared-energy" style="margin-top:3px;display:inline-flex;">⚡ Energy</span>` : '');
                         html += `
                             <div class="cal-task-row">
                                 <span class="cal-task-dot ${key}"></span>
@@ -8503,7 +8553,9 @@ document.addEventListener('DOMContentLoaded', function() {
                              badgeAlias,
                              t.rep_id ? 'rep-' + t.rep_id : '',
                              t.is_shared ? 'cprf shared' : '',
-                             t.facility_name || '']
+                             t.energy_source ? 'energy shared' : '',
+                             t.facility_name || '',
+                             t.energy_facility_name || '']
                     .map(v => (v || '').toLowerCase()).join(' ');
                 if (!hay.includes(sl)) return;
             }
@@ -8530,6 +8582,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
             const cprfTag   = t.is_shared
                             ? `<span class="cap-cprf-badge">🔗 CPRF</span>` : '';
+            const energyTag = t.energy_source
+                            ? `<span class="cap-energy-badge">⚡ Energy</span>` : '';
             const numStr    = String(cardIndex);
 
             card.innerHTML = `
@@ -8546,7 +8600,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="capsule-card-desc">
                         📍 <span class="cap-hl-loc">${escH(locStr)}</span>
                     </div>
-                    ${cprfTag ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">${cprfTag}</div>` : ''}
+                    ${(cprfTag || energyTag) ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;">${cprfTag}${energyTag}</div>` : ''}
                 </div>
                 <div class="capsule-card-bottom">
                     <button class="capsule-card-btn">
