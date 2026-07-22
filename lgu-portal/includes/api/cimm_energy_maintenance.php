@@ -196,11 +196,32 @@ function cimm_energy_normalize_row(array $row, string $source): ?array
         'trigger_month' => (string)($row['trigger_month'] ?? ''),
         'maintenance_type' => (string)($row['maintenance_type'] ?? ''),
         'status' => (string)($row['status'] ?? ''),
-        'scheduled_date' => $row['scheduled_date'] ?? null,
+        'scheduled_date' => cimm_energy_normalize_date($row['scheduled_date'] ?? null),
         'assigned_to' => $row['assigned_to'] ?? null,
-        'completed_date' => $row['completed_date'] ?? null,
+        'completed_date' => cimm_energy_normalize_date($row['completed_date'] ?? null),
         'remarks' => $row['remarks'] ?? null,
     ];
+}
+
+/**
+ * Energy's date columns are Carbon-cast, so its JSON API returns full
+ * ISO8601 datetimes (e.g. "2026-07-14T16:00:00.000000Z") — MySQL rejects
+ * that format for a DATE column. Collapse to plain Y-m-d before it's ever
+ * bound into an INSERT/UPDATE.
+ */
+function cimm_energy_normalize_date(?string $value): ?string
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return date('Y-m-d', $timestamp);
 }
 
 /**
@@ -366,11 +387,22 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
             $facilityName
         );
 
-        if ($insertStmt->execute()) {
-            $imported++;
-        } else {
-            $msg = "Import failed for energy_id={$energyId} ({$entry['facility_name']}): {$insertStmt->error}";
-            error_log('CIMM<-Energy maintenance import failed for energy_id=' . $energyId . ': ' . $insertStmt->error);
+        try {
+            if ($insertStmt->execute()) {
+                $imported++;
+            } else {
+                $msg = "Import failed for energy_id={$energyId} ({$entry['facility_name']}): {$insertStmt->error}";
+                error_log('CIMM<-Energy maintenance import failed for energy_id=' . $energyId . ': ' . $insertStmt->error);
+                $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
+            }
+        } catch (\mysqli_sql_exception $e) {
+            // mysqli throws on failure by default (PHP >= 8.1's mysqli.report_mode),
+            // so the execute()-returned-false branch above never actually runs —
+            // this is what a bad row (e.g. an unparseable date, an over-length
+            // value) really hits. One malformed Energy record must not take down
+            // the whole schedule page for every admin, so log it and keep going.
+            $msg = "Import failed for energy_id={$energyId} ({$entry['facility_name']}): {$e->getMessage()}";
+            error_log('CIMM<-Energy maintenance import failed for energy_id=' . $energyId . ': ' . $e->getMessage());
             $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
         }
     }
