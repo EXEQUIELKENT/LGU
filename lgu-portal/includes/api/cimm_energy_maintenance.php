@@ -51,9 +51,10 @@ function cimm_energy_detect_base_url(): string
         return $protocol . '://' . $host . '/Lgu1-energy/public';
     }
 
-    // No production URL known for Energy yet — same-host fallback lets an
-    // admin still fix this with ENERGY_API_BASE_URL without a code change.
-    return $protocol . '://' . $host . '/Lgu1-energy/public';
+    // Energy runs on its own domain (energy.infragovservices.com), separate
+    // from wherever CIMM itself is hosted — same-host guessing can't work
+    // here. ENERGY_API_BASE_URL still overrides this if that ever changes.
+    return 'https://energy.infragovservices.com';
 }
 
 /**
