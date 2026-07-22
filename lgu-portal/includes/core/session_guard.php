@@ -33,10 +33,8 @@ date_default_timezone_set('Asia/Manila');
 
 // ── 3. Inactivity timeout ─────────────────────────────────────────────────────
 // Timeout is skipped on localhost so developers aren't constantly logged out.
-$isLocalhost = in_array(
-    strtolower(parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST) ?? ''),
-    ['localhost', '127.0.0.1', '::1']
-);
+require_once __DIR__ . '/../config/db_credentials.php';
+$isLocalhost = cimm_is_localhost();
 
 // 30 minutes — change this one constant to adjust the timeout across the whole app.
 define('INACTIVITY_LIMIT', 30 * 60);
@@ -68,7 +66,8 @@ if (
     $_SESSION['employee_logged_in'] === true &&
     (time() - ($_SESSION['_last_activity_db_write'] ?? 0)) > 60
 ) {
-    $_hbConn = @new mysqli('localhost', 'cimm_root', '12345678', 'cimm_lgu');
+    $_hbCreds = cimm_db_credentials();
+    $_hbConn = @new mysqli($_hbCreds['host'], $_hbCreds['user'], $_hbCreds['pass'], $_hbCreds['name']);
     if ($_hbConn && !$_hbConn->connect_error) {
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
         $_hbEmpId = (int)$_SESSION['employee_id'];
@@ -76,7 +75,7 @@ if (
         $_hbConn->close();
         $_SESSION['_last_activity_db_write'] = time();
     }
-    unset($_hbConn, $_hbEmpId);
+    unset($_hbConn, $_hbEmpId, $_hbCreds);
 }
 
 // ── 4. Cache-control headers ──────────────────────────────────────────────────

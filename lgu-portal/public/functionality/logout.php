@@ -13,13 +13,15 @@ session_destroy();
 /* Stamp last_activity at the moment of logout (own short-lived connection —
    this page has no other DB access). */
 if ($loggedOutEmployeeId > 0) {
-    $_hbConn = @new mysqli('localhost', 'root', '', 'cimm_lgu');
+    require_once __DIR__ . '/../../includes/config/db_credentials.php';
+    $_hbCreds = cimm_db_credentials();
+    $_hbConn = @new mysqli($_hbCreds['host'], $_hbCreds['user'], $_hbCreds['pass'], $_hbCreds['name']);
     if ($_hbConn && !$_hbConn->connect_error) {
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
         $_hbConn->query("UPDATE employees SET last_activity = NOW() WHERE user_id = {$loggedOutEmployeeId}");
         $_hbConn->close();
     }
-    unset($_hbConn);
+    unset($_hbConn, $_hbCreds);
 }
 
 /* Remove session cookie */
