@@ -273,8 +273,15 @@ function resetFailedLoginAttempts(mysqli $conn, string $email): void {
 
 function updateLastLogin(mysqli $conn, ?int $userId): void {
     if (!$userId) return;
-    $stmt = $conn->prepare("UPDATE employees SET last_login = NOW() WHERE user_id = ?");
-    $stmt->bind_param("i", $userId);
+    // ! BUG FIX — SQL NOW() runs in the DB SERVER's own timezone (Asia/Manila
+    // on this XAMPP install, but UTC on the live domain's MySQL), while
+    // user_management.php reads it back with PHP's strtotime() in Asia/Manila
+    // (set above). On the domain this made a fresh login's "Last Login" read
+    // 8 hours off. Writing PHP's own clock keeps both sides consistent
+    // regardless of the DB server's timezone configuration.
+    $now = date('Y-m-d H:i:s');
+    $stmt = $conn->prepare("UPDATE employees SET last_login = ? WHERE user_id = ?");
+    $stmt->bind_param("si", $now, $userId);
     $stmt->execute();
     $stmt->close();
 }

@@ -14,14 +14,28 @@ session_destroy();
    this page has no other DB access). */
 if ($loggedOutEmployeeId > 0) {
     require_once __DIR__ . '/../../includes/config/db_credentials.php';
+    // ! BUG FIX — SQL NOW() runs in the DB SERVER's own timezone (Asia/Manila
+    // on this XAMPP install, but UTC on the live domain's MySQL), while
+    // user_management.php reads the stored value back with PHP's strtotime()
+    // in Asia/Manila. On the domain that mismatch showed a fresh logout as
+    // "Active 8 hours ago" instead of counting up from "just now". Setting
+    // the timezone explicitly here (this script never includes
+    // session_guard.php, so it wouldn't otherwise be set) and writing the
+    // timestamp from PHP's own clock keeps both sides in the same timezone
+    // regardless of how the DB server is configured.
+    date_default_timezone_set('Asia/Manila');
     $_hbCreds = cimm_db_credentials();
     $_hbConn = @new mysqli($_hbCreds['host'], $_hbCreds['user'], $_hbCreds['pass'], $_hbCreds['name']);
     if ($_hbConn && !$_hbConn->connect_error) {
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
-        $_hbConn->query("UPDATE employees SET last_activity = NOW() WHERE user_id = {$loggedOutEmployeeId}");
+        $_hbNow = date('Y-m-d H:i:s');
+        $_hbStmt = $_hbConn->prepare("UPDATE employees SET last_activity = ? WHERE user_id = ?");
+        $_hbStmt->bind_param('si', $_hbNow, $loggedOutEmployeeId);
+        $_hbStmt->execute();
+        $_hbStmt->close();
         $_hbConn->close();
     }
-    unset($_hbConn, $_hbCreds);
+    unset($_hbConn, $_hbCreds, $_hbNow, $_hbStmt);
 }
 
 /* Remove session cookie */

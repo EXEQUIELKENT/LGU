@@ -71,11 +71,23 @@ if (
     if ($_hbConn && !$_hbConn->connect_error) {
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
         $_hbEmpId = (int)$_SESSION['employee_id'];
-        $_hbConn->query("UPDATE employees SET last_activity = NOW() WHERE user_id = {$_hbEmpId}");
+        // ! BUG FIX — SQL NOW() runs in the DB SERVER's own timezone, which is
+        // Asia/Manila on this XAMPP install but UTC on the live domain's MySQL.
+        // user_management.php later reads this back with PHP's strtotime(),
+        // which interprets the stored string in PHP's timezone (Asia/Manila,
+        // set above). On the domain that mismatch reads a fresh heartbeat as
+        // "8 hours ago" (the UTC+8 gap) instead of "Active now". Writing the
+        // timestamp from PHP's own clock keeps both sides in the same timezone
+        // regardless of how the DB server itself is configured.
+        $_hbNow = date('Y-m-d H:i:s');
+        $_hbStmt = $_hbConn->prepare("UPDATE employees SET last_activity = ? WHERE user_id = ?");
+        $_hbStmt->bind_param('si', $_hbNow, $_hbEmpId);
+        $_hbStmt->execute();
+        $_hbStmt->close();
         $_hbConn->close();
         $_SESSION['_last_activity_db_write'] = time();
     }
-    unset($_hbConn, $_hbEmpId, $_hbCreds);
+    unset($_hbConn, $_hbEmpId, $_hbCreds, $_hbNow, $_hbStmt);
 }
 
 // ── 4. Cache-control headers ──────────────────────────────────────────────────
