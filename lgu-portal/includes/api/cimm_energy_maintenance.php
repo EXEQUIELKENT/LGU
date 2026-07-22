@@ -40,11 +40,24 @@ function cimm_energy_config(): array
     return $cfg;
 }
 
-function cimm_energy_detect_base_url(): string
+/**
+ * True when CIMM itself is being served from a local dev host (XAMPP).
+ * Used to keep local-only noise (e.g. Energy being unreachable because
+ * nobody's running Lgu1-energy locally right now) from being surfaced as a
+ * production-looking warning banner in sched.php — see
+ * cimm_energy_should_report_sync_errors() below.
+ */
+function cimm_energy_is_local_env(): bool
 {
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $hostOnly = explode(':', $host)[0];
-    $isLocal = in_array($hostOnly, ['localhost', '127.0.0.1', '::1'], true);
+    return in_array($hostOnly, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+function cimm_energy_detect_base_url(): string
+{
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $isLocal = cimm_energy_is_local_env();
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 
     if ($isLocal) {
@@ -76,6 +89,18 @@ $GLOBALS['__cimm_energy_sync_errors'] = [];
 function cimm_energy_last_sync_errors(): array
 {
     return $GLOBALS['__cimm_energy_sync_errors'];
+}
+
+/**
+ * What sched.php should actually check before rendering the "Energy
+ * maintenance sync failed" banner. On local dev, Energy is very often just
+ * not running — that's expected while working on CIMM alone, not an
+ * incident, so the banner stays suppressed there. On the real domain it's
+ * a genuine problem an admin needs to see, so it always shows.
+ */
+function cimm_energy_should_report_sync_errors(): bool
+{
+    return cimm_energy_last_sync_errors() !== [] && !cimm_energy_is_local_env();
 }
 
 /**

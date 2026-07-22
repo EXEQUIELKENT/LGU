@@ -5550,7 +5550,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <div class="card">
 
-        <?php if (($energySyncErrors = cimm_energy_last_sync_errors()) !== []): ?>
+        <?php if (cimm_energy_should_report_sync_errors()): $energySyncErrors = cimm_energy_last_sync_errors(); ?>
         <div class="ae-no-district-banner">
             <i class="fas fa-triangle-exclamation"></i>
             <div>
@@ -6056,15 +6056,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <div class="modal-header">
             <div class="modal-header-icon"><i class="fas fa-tools"></i></div>
             <div class="modal-header-text">
-                <span class="modal-label">Maintenance Task</span>
-                <span class="cprf-sync-badge cprf-sync-badge-modal" id="modalCprfBadge" style="display:none;" title="This schedule is shared with the CPRF integration">
-                    <span class="cprf-sync-dot"></span>
-                    <span class="cprf-sync-label">CPRF Integration</span>
-                </span>
-                <span class="energy-sync-badge energy-sync-badge-modal" id="modalEnergyBadge" style="display:none;" title="This schedule was imported from the Energy Management System">
-                    <span class="energy-sync-dot"></span>
-                    <span class="energy-sync-label">Energy Integration</span>
-                </span>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span class="modal-label">Maintenance Task</span>
+                    <span class="cprf-sync-badge cprf-sync-badge-modal" id="modalCprfBadge" style="display:none;" title="This schedule is shared with the CPRF integration">
+                        <span class="cprf-sync-dot"></span>
+                        <span class="cprf-sync-label">CPRF Integration</span>
+                    </span>
+                    <span class="energy-sync-badge energy-sync-badge-modal" id="modalEnergyBadge" style="display:none;" title="This schedule was imported from the Energy Management System">
+                        <span class="energy-sync-dot"></span>
+                        <span class="energy-sync-label">Energy Integration</span>
+                    </span>
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <h3 class="modal-title">Task Details</h3>
                     <a id="modalRepBadge" href="#" target="_self" class="modal-rep-badge-link" style="display:none;" title="View this report"></a>
