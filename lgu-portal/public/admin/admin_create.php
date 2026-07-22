@@ -453,7 +453,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Create Employee Account | LGU Portal</title>
@@ -762,25 +762,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
 }
 
 .submit-btn {
-    padding: 14px 52px;
+    padding: 14px 40px;
     background: linear-gradient(135deg, #3762c8, #5f8cff);
     color: #fff;
     border: none;
-    border-radius: 12px;
+    border-radius: 999px;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     font-family: 'Poppins', sans-serif;
+    box-shadow: 0 4px 14px rgba(55,98,200,0.3);
 }
 
 .submit-btn:hover {
-    background: linear-gradient(135deg, #2851b3, #4a76f5);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(55,98,200,0.35);
+    box-shadow: 0 6px 20px rgba(55,98,200,0.45);
+    filter: brightness(1.06);
 }
 
 .submit-btn:active { transform: translateY(0); }
@@ -1078,7 +1080,7 @@ input:-webkit-autofill:focus {
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
-        height: calc(100% - 24px);
+        height: calc(100vh - 24px);
         top: 12px; bottom: 12px;
         border-radius: 18px;
         transition: left 0.35s ease;

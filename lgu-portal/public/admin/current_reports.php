@@ -798,7 +798,7 @@ foreach ($rows as $row) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Current Reports — In Progress</title>
@@ -1038,17 +1038,17 @@ table {
     width: 100%; border-collapse: separate; border-spacing: 0;
     table-layout: fixed; min-width: 920px;
 }
-table colgroup col:nth-child(1)  { width: 6%;  }  /* Action         */
+table colgroup col:nth-child(1)  { width: 8%;  }  /* Action         */
 table colgroup col:nth-child(2)  { width: 5%;  }  /* Rep #          */
-table colgroup col:nth-child(3)  { width: 8%;  }  /* Infrastructure */
+table colgroup col:nth-child(3)  { width: 10%; }  /* Infrastructure */
 table colgroup col:nth-child(4)  { width: 10%; }  /* Location       */
 table colgroup col:nth-child(5)  { width: 8%;  }  /* Issue / Notes  */
 table colgroup col:nth-child(6)  { width: 11%; }  /* Engineer       */
-table colgroup col:nth-child(7)  { width: 9%;  }  /* Reported By    */
+table colgroup col:nth-child(7)  { width: 7%;  }  /* Reported By    */
 table colgroup col:nth-child(8)  { width: 7%;  }  /* Start Date     */
 table colgroup col:nth-child(9)  { width: 7%;  }  /* End Date       */
 table colgroup col:nth-child(10) { width: 8%;  }  /* Priority       */
-table colgroup col:nth-child(11) { width: 12%; }  /* Budget         */
+table colgroup col:nth-child(11) { width: 10%; }  /* Budget         */
 table colgroup col:nth-child(12) { width: 9%;  }  /* Status         */
 thead { background: linear-gradient(135deg, #e65100, #ff9800); }
 thead th {
@@ -1683,7 +1683,7 @@ tr.notif-highlight > td:first-child {
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
-    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
+    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100vh - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
     .sidebar-top { position: relative; padding-top: 30px; }
     .sidebar-profile-btn { position: relative; margin: 10px 0 0 15px; width: 45px; height: 47px; }
@@ -1704,8 +1704,8 @@ tr.notif-highlight > td:first-child {
     .eng-combobox { min-width: 0; max-width: 100%; width: 100%; }
     /* Status pill — allow wrapping so long labels aren't clipped */
     .status { font-size: 11px; padding: 4px 8px; max-width: 160px; white-space: normal; word-break: break-word; text-overflow: clip; line-height: 1.3; }
-    /* Larger View button in mobile cards */
-    .btn-view-rep-mobile { padding: 10px 22px !important; font-size: 14px !important; border-radius: 10px !important; }
+    /* Larger View button in mobile cards — same pill shape as desktop, just bigger */
+    .btn-view-rep-mobile { padding: 10px 22px !important; font-size: 14px !important; }
 }
 @media (min-width: 769px) { .mobile-dark-mode-btn { display: none !important; } }
 
@@ -1970,8 +1970,17 @@ select.rep-editable-field { cursor:pointer; }
 .btn-approve-rep:hover { transform:translateY(-2px);box-shadow:0 7px 20px rgba(255,152,0,.5); }
 .btn-save-rep { display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#3762c8,#2851b3);color:#fff;border:none;padding:11px 20px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 4px 14px rgba(55,98,200,.3); }
 .btn-save-rep:hover { transform:translateY(-2px); }
-.btn-view-rep { background:linear-gradient(135deg,#ff9800,#e65100);color:#fff;border:none;padding:5px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;white-space:nowrap;box-shadow:0 2px 8px rgba(255,152,0,.3); }
-.btn-view-rep:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(255,152,0,.45); }
+.btn-view-rep {
+    display:inline-flex; align-items:center; gap:3px;
+    background:linear-gradient(135deg,#ff9800,#e65100);color:#fff;border:none;
+    padding:5px 12px;border-radius:999px;cursor:pointer;
+    font-size:11px;font-weight:600;white-space:nowrap; line-height:1.2;
+    box-shadow:0 2px 8px rgba(255,152,0,.3);
+    transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+}
+.btn-view-rep i { font-size: 10px; }
+.btn-view-rep:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 6px 16px rgba(255,152,0,.45); filter:brightness(1.06); }
+.btn-view-rep:active { transform:translateY(0) scale(.98); }
 .rep-img-lightbox { position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;flex-direction:column; }
 .rep-img-lightbox.active { display:flex; }
 .rep-img-lightbox img { max-width:88vw;max-height:80vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-in;transition:transform .2s;user-select:none; }
@@ -3128,7 +3137,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     $displayStatus = !$hasEngineer ? 'Awaiting Engineer' : ($engAccepted ? 'In Progress' : 'Pending Acceptance');
                 ?>
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
-                    <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button></td>
+                    <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
@@ -3231,7 +3240,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rc-row"><span class="rc-label">Budget:</span><span class="rc-value searchable"><?= effectiveBudget($row) ?></span></div>
             <div class="rc-footer" style="display:flex;justify-content:space-between;align-items:center;">
                 <?= statusPill($rawStatus) ?>
-                <button class="btn-view-rep btn-view-rep-mobile" onclick="openRepModal(<?= $row['rep_id'] ?>)">View</button>
+                <button class="btn-view-rep btn-view-rep-mobile" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button>
             </div>
         </div>
         <?php endforeach; ?>

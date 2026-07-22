@@ -727,7 +727,7 @@ function um_status_icon(array $u): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>User Management | LGU Portal</title>
@@ -1488,7 +1488,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
     /* ── Sidebar — slide off-screen, show only when .mobile-active ── */
     .sidebar-nav {
-        left: -110% !important; width: calc(100% - 24px) !important; height: calc(100% - 24px) !important;
+        left: -110% !important; width: calc(100% - 24px) !important; height: calc(100vh - 24px) !important;
         top: 12px !important; bottom: 12px !important; border-radius: 18px !important;
         transition: left .35s ease !important; z-index: 4000 !important;
         backdrop-filter: blur(10px) !important; -webkit-backdrop-filter: blur(10px) !important;

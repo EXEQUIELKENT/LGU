@@ -501,7 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Profile Settings - LGU Employee Portal</title>
@@ -621,19 +621,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 }
 
 .profile-picture-upload label {
-    padding: 10px 20px;
-    background: #3762c8;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
     color: #fff;
-    border-radius: 8px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 3px 10px rgba(55,98,200,.3);
 }
 
 .profile-picture-upload label:hover {
-    background: #2851b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(55,98,200,.45);
+    filter: brightness(1.06);
 }
+.profile-picture-upload label:active { transform: translateY(0) scale(.98); }
 
 .profile-picture-upload input[type="file"] {
     display: none;
@@ -875,23 +880,26 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 }
 
 .submit-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     padding: 16px 48px;
     background: linear-gradient(135deg, #6384d2, #285ccd);
     color: #fff;
     border: none;
-    border-radius: 12px;
+    border-radius: 999px;
     font-size: 18px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
     min-width: 200px;
+    box-shadow: 0 4px 14px rgba(55, 98, 200, 0.3);
 }
 
 .submit-btn:hover {
-    background: linear-gradient(135deg, #4d76d6, #1651d0);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(55, 98, 200, 0.4);
+    box-shadow: 0 6px 20px rgba(55, 98, 200, 0.45);
+    filter: brightness(1.06);
 }
+.submit-btn:active { transform: translateY(0) scale(.98); }
 
 .submit-btn:disabled {
     opacity: 0.6;
@@ -1439,7 +1447,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
-        height: calc(100% - 24px);
+        height: calc(100vh - 24px);
         top: 12px;
         bottom: 12px;
         border-radius: 18px;
@@ -2707,7 +2715,7 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                     </div>
                 <?php endif; ?>
                 <div class="profile-picture-upload">
-                    <label for="profile_picture">Change Profile Picture</label>
+                    <label for="profile_picture"><i class="fas fa-camera"></i> Change Profile Picture</label>
                     <input type="file" name="profile_picture" id="profile_picture" accept="image/jpeg,image/jpg,image/png,image/webp" <?= $cooldownActive && !$isSuperAdmin ? 'disabled' : '' ?>>
                     <small style="color: var(--text-secondary); font-size: 12px;">Max size: 5MB (JPEG, PNG, & WEBP)</small>
                 </div>
@@ -3180,7 +3188,7 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
             </div>
 
             <div class="save-wrapper">
-                <button type="button" class="submit-btn" id="submitBtn" <?= $cooldownActive && !$isSuperAdmin ? 'disabled title="You can only update profile once every 7 days."' : '' ?>>Save Changes</button>
+                <button type="button" class="submit-btn" id="submitBtn" <?= $cooldownActive && !$isSuperAdmin ? 'disabled title="You can only update profile once every 7 days."' : '' ?>><i class="fas fa-save"></i> Save Changes</button>
             </div>
         </form>
     </div>

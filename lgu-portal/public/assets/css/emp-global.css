@@ -1042,28 +1042,38 @@ body::before {
     right: 15px;
     width: 32px;
     height: 32px;
-    background: #3762c8;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
     border: none;
-    border-radius: 8px;
+    border-radius: 50%;
     color: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    transition: all 0.3s ease;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, filter .25s ease;
     z-index: 1003;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 3px 10px rgba(55,98,200,.35);
+    overflow: hidden;
 }
 .sidebar-toggle:hover {
-    background: #2851b3;
-    transform: scale(1.08);
+    transform: scale(1.1) translateY(-1px);
+    box-shadow: 0 5px 16px rgba(55,98,200,.5);
+    filter: brightness(1.08);
+}
+/* Click feedback: quick punch-in, then the bouncy transition above
+   springs it back out past 100% before settling — a lot more tactile
+   than a plain linear scale-down. */
+.sidebar-toggle:active {
+    transform: scale(0.82);
+    transition: transform .1s ease-out, box-shadow .1s ease-out;
+    box-shadow: 0 1px 4px rgba(55,98,200,.4);
 }
 .sidebar-nav.collapsed .sidebar-toggle {
     right: 19px;
 }
 .toggle-icon {
-    transition: transform 0.3s ease;
+    transition: transform 0.45s cubic-bezier(.34,1.56,.64,1);
 }
 .sidebar-nav.collapsed .toggle-icon {
     transform: rotate(180deg);
@@ -1079,38 +1089,82 @@ body::before {
     position: relative;
 }
 .sidebar-logo-spacer {
-    height: 16px;
+    height: 10px;
     flex-shrink: 0;
 }
 .sidebar-nav .site-logo {
-    margin-top: 5px;
+    /* Extend the card frame UP and WIDE enough to actually contain the
+       profile button (top:18px, 42px tall, left:15px) and the sidebar
+       toggle (top:20px, 32px tall, right:15px) instead of sitting below
+       them. Both buttons are position:absolute with a higher z-index, so
+       they render visually "inside" this card's background/border once it
+       reaches up and out far enough — a negative margin-top pulls the box
+       above .sidebar-top's 20px padding, and the large top padding below
+       reserves room so the logo image itself still starts under the
+       buttons, not behind them. The margin-top/margin-left/margin-right
+       here are deliberately larger than the buttons' own inset (15px) so
+       there's a visible gap between the buttons and the frame edge instead
+       of the circles touching the border. */
+    margin-top: -12px;
     flex-direction: column;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    padding-bottom: 5px;
-    width: calc(100% - 50px);
-    margin-left: 25px;
-    margin-right: 25px;
+    gap: 3px;
+    padding: 40px 14px 20px;
+    width: calc(100% - 12px);
+    margin-left: 6px;
+    margin-right: 6px;
     box-sizing: border-box;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     color: #fff;
     transition: all 0.3s ease;
     overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(55,98,200,.18) 0%, rgba(55,98,200,.05) 100%);
+    border: 1px solid rgba(95,140,255,.25);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(55,98,200,.18), inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* Soft glow sitting behind the mark itself */
+.sidebar-nav .site-logo::before {
+    content: '';
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    width: 66px;
+    height: 66px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(95,140,255,.4) 0%, transparent 70%);
+    filter: blur(7px);
+    pointer-events: none;
+    z-index: 0;
 }
 .sidebar-nav .site-logo img {
-    width: 120px;
+    width: 100px;
     height: auto;
     object-fit: contain;
     border-radius: 10px;
     transition: all 0.3s ease, opacity 0.3s ease;
+    position: relative;
+    z-index: 1;
 }
 .sidebar-nav.collapsed .site-logo {
-    margin-left: auto;
-    margin-right: auto;
-    width: 100%;
+    /* Collapsed state puts .sidebar-profile-btn back in normal flow above the
+       logo (see .sidebar-nav.collapsed .sidebar-profile-btn), so there's no
+       overlap to clear here — the large expanded-state margin-top would just
+       add an oversized gap. */
+    margin-top: 5px;
+    margin-left: 10px;
+    margin-right: 10px;
+    width: calc(100% - 20px);
     margin-bottom: 0px;
+    padding: 10px 6px 8px;
+}
+.sidebar-nav.collapsed .site-logo::before {
+    width: 44px;
+    height: 44px;
+    top: 6px;
 }
 .sidebar-nav.collapsed .site-logo img {
     opacity: 1;
@@ -1122,7 +1176,10 @@ body::before {
     transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
     opacity: 1;
     width: calc(100% - 50px);
-    margin: 18px 25px 0 25px;
+    margin: 8px 25px 0 25px;
+    border-bottom: none !important;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(95,140,255,.45) 50%, transparent);
 }
 .sidebar-nav.collapsed .sidebar-divider.logo-divider {
     opacity: 1;
@@ -1153,22 +1210,27 @@ body::before {
     gap: 12px;
     color: var(--text-primary);
     text-decoration: none;
-    padding: 12px 20px;
-    transition: all 0.3s ease;
-    border-radius: 8px;
+    padding: 12px 16px;
+    transition: transform .2s ease, background .2s ease, box-shadow .2s ease, color .2s ease;
+    border-radius: 10px;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
 }
 .sidebar-nav .nav-link.active,
 .sidebar-nav .nav-link.active:hover {
-    background: #3762c8;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
     color: #fff;
     transform: translateX(2px);
+    box-shadow: 0 3px 10px rgba(55,98,200,.35);
 }
 .sidebar-nav .nav-link:hover {
-    background: #97a4c2;
-    transform: translateX(8px) scale(1.02);
+    background: rgba(55,98,200,.1);
+    color: var(--text-primary);
+    transform: translateX(4px);
+}
+[data-theme="dark"] .sidebar-nav .nav-link:hover {
+    background: rgba(95,140,255,.16);
 }
 .sidebar-nav.collapsed .nav-link {
     justify-content: center;

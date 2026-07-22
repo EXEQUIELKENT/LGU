@@ -1063,6 +1063,21 @@ input[type="file"] {
     color: #3650c7; font-weight: 600;
     text-align: center; display: none; flex-shrink: 0;
 }
+/* District-specific tints — matches the Area Engineer district badge colours
+   (profile.php .district-badge.d1..d6) so a district reads the same colour
+   everywhere in the app. */
+#districtInfo.d1 { background:#e8edfc; border-color:#b9c8f5; color:#3762c8; }
+#districtInfo.d2 { background:#e6f7ec; border-color:#a8e0bc; color:#1a7a42; }
+#districtInfo.d3 { background:#fdf1e3; border-color:#f7cfa0; color:#b85c00; }
+#districtInfo.d4 { background:#fce8f0; border-color:#f3b8d3; color:#ad1457; }
+#districtInfo.d5 { background:#f0eafc; border-color:#cdb8f5; color:#512da8; }
+#districtInfo.d6 { background:#e3f4f8; border-color:#a3dbe8; color:#00607a; }
+[data-theme="dark"] #districtInfo.d1 { background:rgba(55,98,200,.22); border-color:rgba(91,138,255,.4);  color:#8fb4ff; }
+[data-theme="dark"] #districtInfo.d2 { background:rgba(26,122,66,.22); border-color:rgba(52,199,116,.4);  color:#6ee7a0; }
+[data-theme="dark"] #districtInfo.d3 { background:rgba(184,92,0,.22);  border-color:rgba(245,144,51,.4);  color:#ffb066; }
+[data-theme="dark"] #districtInfo.d4 { background:rgba(173,20,87,.22); border-color:rgba(236,72,153,.4);  color:#f9a8d4; }
+[data-theme="dark"] #districtInfo.d5 { background:rgba(81,45,168,.22); border-color:rgba(139,92,246,.4);  color:#c4b5fd; }
+[data-theme="dark"] #districtInfo.d6 { background:rgba(0,96,122,.22);  border-color:rgba(14,165,201,.4);  color:#7dd3e8; }
 [data-theme="dark"] #districtInfo {
     background: rgba(55, 98, 200, 0.2);
     border-color: rgba(55, 98, 200, 0.4);
@@ -3224,7 +3239,7 @@ input[type="file"] {
             if (!navigator.geolocation) { showJsNotification('error', 'Geolocation is not supported by your browser.'); return; }
             gpsBtn.textContent = '⏳';
             navigator.geolocation.getCurrentPosition(
-                pos => {
+                async pos => {
                     const lat = pos.coords.latitude, lng = pos.coords.longitude;
                     const latlng = L.latLng(lat, lng);
                     if (!isWithinQC(latlng)) { showJsNotification('warning', 'Your current location is outside Quezon City. Please select a location within QC.'); gpsBtn.textContent = '📍'; return; }
@@ -3234,10 +3249,16 @@ input[type="file"] {
                     if (accuracyCircle) map.removeLayer(accuracyCircle);
                     accuracyCircle = L.circle([lat, lng], { radius: accuracy, color: '#2b6cb0', fillColor: '#2b6cb0', fillOpacity: 0.15 }).addTo(map);
 
-                    const nearest = findNearestBarangay(latlng);
+                    // ! BUG FIX — the GPS/locate-me path never called highlightBarangayBoundary()
+                    // at all, so using "locate me" never drew any barangay border, real or
+                    // fallback. Awaiting the GeoJSON load also avoids the same race the pin-drop
+                    // path had (see handleMapLocationUpdate).
+                    await loadBarangayGeoJSON();
+                    const nearest = findBarangayForPoint(latlng);
                     if (nearest) {
                         barangaySelect.value = nearest.name;
                         updateDistrictInfo(nearest.district);
+                        highlightBarangayBoundary(nearest.name, false);
                         fetchDetailedAddress(latlng, nearest.name);
                     }
                     gpsBtn.textContent = '📍';
@@ -3321,14 +3342,26 @@ input[type="file"] {
         }
         lastUpdatePosition = selectedLatLng;
         if (updateLocationTimeout) clearTimeout(updateLocationTimeout);
-        updateLocationTimeout = setTimeout(() => {
-            // Normal LGU road — proceed as before
-            const nearest = findNearestBarangay(selectedLatLng);
+        updateLocationTimeout = setTimeout(async () => {
+            // ! BUG FIX — this used to call highlightBarangayBoundary() synchronously
+            // while the ~430KB barangay GeoJSON could still be in flight (it's only
+            // fire-and-forget "pre-loaded" at map init, never awaited here). If the
+            // fetch hadn't resolved yet, barangayGeoJSON was still null and the map
+            // silently drew the "approximate circle" fallback instead of the real
+            // border — an intermittent bug depending on connection speed / how fast
+            // the user interacted with the map. Awaiting it here is a no-op once
+            // already loaded (the promise is cached) and only adds latency the very
+            // first time, when it actually matters.
+            await loadBarangayGeoJSON();
+            const pinPos = selectedLatLng;
+            // Real point-in-polygon lookup — see findBarangayForPoint() for why
+            // nearest-centroid alone picked the wrong barangay near shared edges.
+            const nearest = findBarangayForPoint(pinPos);
             if (nearest) {
                 barangaySelect.value = nearest.name;
                 updateDistrictInfo(nearest.district);
                 highlightBarangayBoundary(nearest.name, false);
-                fetchDetailedAddress(selectedLatLng, nearest.name);
+                fetchDetailedAddress(pinPos, nearest.name);
             }
         }, 200);
     }
@@ -3337,7 +3370,53 @@ input[type="file"] {
         QC_BARANGAYS_COMPREHENSIVE.forEach(b => { const d = latlng.distanceTo(L.latLng(b.lat, b.lng)); if (d < minDist) { minDist = d; nearest = b; } });
         return nearest;
     }
-    function updateDistrictInfo(district) { if (districtInfo) { districtInfo.textContent = `📌 ${district}`; districtInfo.style.display = 'block'; } }
+    // ! BUG FIX — "nearest centroid" is a poor proxy for "which barangay actually
+    // contains this point". Barangay sizes vary hugely (a huge Novaliches-side
+    // barangay vs. a tiny central one), so a point well inside a large barangay
+    // can still be centroid-CLOSER to a small neighbour across the boundary —
+    // picking the wrong barangay/district and drawing the wrong border. This did
+    // a real point-in-polygon test against the loaded GeoJSON first, and only
+    // falls back to nearest-centroid when no polygon actually contains the point
+    // (GeoJSON not loaded yet, or the point sits in a small gap between shapes).
+    function _pointInGeoRing(lat, lng, ring) {
+        let inside = false;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            // GeoJSON coordinates are [lng, lat]
+            const xi = ring[i][1], yi = ring[i][0];
+            const xj = ring[j][1], yj = ring[j][0];
+            const intersect = ((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+    function _pointInGeoFeature(lat, lng, geometry) {
+        if (!geometry) return false;
+        if (geometry.type === 'Polygon') return _pointInGeoRing(lat, lng, geometry.coordinates[0]);
+        if (geometry.type === 'MultiPolygon') return geometry.coordinates.some(poly => _pointInGeoRing(lat, lng, poly[0]));
+        return false;
+    }
+    function findBarangayForPoint(latlng) {
+        if (barangayGeoJSON) {
+            for (const f of barangayGeoJSON.features) {
+                if (!f.properties) continue;
+                if (_pointInGeoFeature(latlng.lat, latlng.lng, f.geometry)) {
+                    const target = _normBrgyName(f.properties.name);
+                    const match = QC_BARANGAYS_COMPREHENSIVE.find(b => _normBrgyName(b.name) === target);
+                    if (match) return match;
+                }
+            }
+        }
+        // Fallback: no polygon contained the point (GeoJSON not yet loaded, or a gap)
+        return findNearestBarangay(latlng);
+    }
+    function updateDistrictInfo(district) {
+        if (!districtInfo) return;
+        districtInfo.textContent = `📌 ${district}`;
+        districtInfo.style.display = 'block';
+        districtInfo.classList.remove('d1', 'd2', 'd3', 'd4', 'd5', 'd6');
+        const m = /District (\d)/.exec(district || '');
+        if (m) districtInfo.classList.add('d' + m[1]);
+    }
     // Normalize name for matching: lowercase, strip accents/dots/dashes
     function _normBrgyName(n) {
         let s = (n || '').toLowerCase()
@@ -3392,9 +3471,25 @@ input[type="file"] {
 
     // highlightBarangayBoundary(bName, fitToPolygon)
     // Returns the Leaflet layer so the caller can fitBounds if needed.
+    // District colour scheme — matches the Area Engineer district badges
+    // (profile.php's .district-badge.d1..d6, "shared with requests.php / sched.php")
+    // so a district means the same colour everywhere in the app, map included.
+    const DISTRICT_MAP_COLORS = {
+        'District 1': { stroke: '#3762c8', fill: '#5b8aff' },
+        'District 2': { stroke: '#1a7a42', fill: '#34c774' },
+        'District 3': { stroke: '#b85c00', fill: '#f59033' },
+        'District 4': { stroke: '#ad1457', fill: '#ec4899' },
+        'District 5': { stroke: '#512da8', fill: '#8b5cf6' },
+        'District 6': { stroke: '#00607a', fill: '#0ea5c9' },
+    };
+    const DEFAULT_MAP_COLOR = { stroke: '#2b6cb0', fill: '#3b82f6' };
+
     function highlightBarangayBoundary(bName, fitToPolygon) {
         if (currentBoundaryLayer) { map.removeLayer(currentBoundaryLayer); currentBoundaryLayer = null; }
         if (!bName) return null;
+
+        const bMeta  = QC_BARANGAYS_COMPREHENSIVE.find(x => x.name === bName);
+        const colors = (bMeta && DISTRICT_MAP_COLORS[bMeta.district]) || DEFAULT_MAP_COLOR;
 
         // ── Try to use real GeoJSON polygon first ──────────────────────────
         if (barangayGeoJSON) {
@@ -3409,7 +3504,7 @@ input[type="file"] {
             if (matches.length > 0) {
                 const fc = { type: 'FeatureCollection', features: matches };
                 currentBoundaryLayer = L.geoJSON(fc, {
-                    style: { color: '#2b6cb0', weight: 3, fillColor: '#3b82f6', fillOpacity: 0.18, dashArray: '6, 4' },
+                    style: { color: colors.stroke, weight: 3, fillColor: colors.fill, fillOpacity: 0.22, dashArray: '6, 4' },
                     interactive: false
                 }).addTo(map);
                 if (fitToPolygon) {
@@ -3423,10 +3518,9 @@ input[type="file"] {
         }
 
         // ── Fallback: approximate circle if GeoJSON not loaded yet ─────────
-        const b = QC_BARANGAYS_COMPREHENSIVE.find(x => x.name === bName);
-        if (b) {
-            currentBoundaryLayer = L.circle([b.lat, b.lng], { radius: 600, color: '#2b6cb0', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 2, dashArray: '5, 5' }).addTo(map);
-            if (fitToPolygon) map.setView([b.lat, b.lng], 15);
+        if (bMeta) {
+            currentBoundaryLayer = L.circle([bMeta.lat, bMeta.lng], { radius: 600, color: colors.stroke, fillColor: colors.fill, fillOpacity: 0.18, weight: 2, dashArray: '5, 5' }).addTo(map);
+            if (fitToPolygon) map.setView([bMeta.lat, bMeta.lng], 15);
         }
         return currentBoundaryLayer;
     }
@@ -3434,7 +3528,13 @@ input[type="file"] {
     // ── Load barangay GeoJSON once ───────────────────────────────────────
     function loadBarangayGeoJSON() {
         if (barangayGeoJSON) return Promise.resolve(barangayGeoJSON);
-        return fetch('geojson/QuezonCity_Barangays.geojson')
+        // ! BUG FIX — this fetched a relative path that the browser resolves against
+        // the current page URL (public/citizen/citizenrepform.php), landing on
+        // public/citizen/geojson/... which doesn't exist — the geojson/ folder lives
+        // one level up, directly under public/. The fetch 404'd silently (only a
+        // console.warn), so barangayGeoJSON stayed null forever and every boundary
+        // draw permanently fell back to the generic circle instead of a real border.
+        return fetch('../geojson/QuezonCity_Barangays.geojson')
             .then(r => { if (!r.ok) throw new Error('GeoJSON fetch failed: ' + r.status); return r.json(); })
             .then(data => { barangayGeoJSON = data; return data; })
             .catch(err => { console.warn('Barangay GeoJSON could not be loaded:', err); });
@@ -3864,7 +3964,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
             if (manualEl) manualEl.value = r.display_name;
 
             // Update barangay selector based on nearest
-            const nearest = findNearestBarangay(latlng);
+            const nearest = findBarangayForPoint(latlng);
             if (nearest) {
                 barangaySelect.value = nearest.name;
                 updateDistrictInfo(nearest.district);
@@ -3931,7 +4031,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
                     locationSource = 'map';
 
                     // Update barangay + address fetch
-                    const nearest = findNearestBarangay(latlng);
+                    const nearest = findBarangayForPoint(latlng);
                     if (nearest) {
                         barangaySelect.value = nearest.name;
                         updateDistrictInfo(nearest.district);

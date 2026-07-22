@@ -620,7 +620,7 @@ $schedChartData   = array_values($schedStatusCounts);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>LGU Employee Portal - Dashboard</title>
@@ -2338,7 +2338,7 @@ body {
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
-        height: calc(100% - 24px);
+        height: calc(100vh - 24px);
         top: 12px;
         bottom: 12px;
         border-radius: 18px;

@@ -254,7 +254,7 @@ $avgRating = $totalFeedback > 0 ? number_format(array_sum(array_column($feedback
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <title>Citizen Feedback — Employee Portal</title>
@@ -1283,7 +1283,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     .sidebar-nav {
         left: -110% !important;
         width: calc(100% - 24px) !important;
-        height: calc(100% - 24px) !important;
+        height: calc(100vh - 24px) !important;
         top: 12px !important;
         bottom: 12px !important;
         border-radius: 18px !important;

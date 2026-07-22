@@ -241,7 +241,7 @@ function format_datetime_ampm($datetime) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -543,10 +543,28 @@ tbody { min-height: 200px; display: table-row-group; }
 tbody tr:hover { background: rgba(55,98,200,.08); }
 
 .status { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-.pending     { background: #ffe082; color: #6b5500; }
 .in-progress { background: #90caf9; color: #0d47a1; }
-.completed   { background: #a5d6a7; color: #1b5e20; }
 .rejected    { background: #ef9a9a; color: #7f1d1d; }
+/* Pending & Validated (Approved) badges — polished rgba+border+dark-mode design
+   (matches current_reports.php's .validated-st / .pending-accept-st), replacing
+   the old flat, no-border fills. Compound-scoped to .status.pending/.completed
+   (not bare .pending/.completed) so this doesn't also restyle the unrelated
+   .legend-dot.pending/.legend-dot.approved map-legend dots that share these
+   class names. Same design applies in both the table and the mobile card view. */
+.status.pending {
+    background: rgba(230,126,0,.12);
+    color: #92400e;
+    border: 1px solid rgba(230,126,0,.28);
+    font-weight: 700;
+}
+[data-theme="dark"] .status.pending { background: rgba(255,167,38,.2); color: #ffcc80; border-color: rgba(255,167,38,.4); }
+.status.completed {
+    background: rgba(46,125,50,.12);
+    color: #1b5e20;
+    border: 1px solid rgba(46,125,50,.28);
+    font-weight: 700;
+}
+[data-theme="dark"] .status.completed { background: rgba(76,175,80,.22); color: #a5d6a7; border-color: rgba(76,175,80,.4); }
 
 /* IPMS-origin badge — same design language as sched.php's CPRF badge */
 .badge-source-ipms {
@@ -612,12 +630,19 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
 
 
+/* View / View Details / View Evidence action button — same gradient-pill design
+   in both the table and the mobile card view. */
 .btn-view {
-    background: #3762c8; color: #fff; border: none;
-    padding: 7px 14px; border-radius: 8px; cursor: pointer;
-    transition: all .3s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 999px; cursor: pointer;
+    font-size: 12.5px; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(55,98,200,.3);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
 }
-.btn-view:hover { background: #2851b3; transform: scale(1.05); }
+.btn-view::before { content: '\f06e'; font-family: 'Font Awesome 5 Free'; font-weight: 900; font-size: 11px; }
+.btn-view:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 16px rgba(55,98,200,.45); filter: brightness(1.06); }
+.btn-view:active { transform: translateY(0) scale(.98); }
 
 .evidence-thumb-wrapper { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
 .evidence-thumb {
@@ -633,12 +658,8 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 /* dark mobile cards */
 [data-theme="dark"] .cimmReqCard { background: var(--bg-tertiary); color: var(--text-primary); box-shadow: 0 6px 18px var(--shadow-color); }
 [data-theme="dark"] .cimmReqCard .cimmReqLabel { color: #5f8cff; }
-[data-theme="dark"] .cimmReqCard .status.pending  { background: rgba(255,224,130,.2); color: #ffd54f; }
-[data-theme="dark"] .cimmReqCard .status.completed { background: rgba(76,175,80,.2); color: #81c784; }
 [data-theme="dark"] .cimmReqCard .status.rejected  { background: rgba(239,154,154,.2); color: #ef5350; }
 [data-theme="dark"] .no-evidence { color: var(--text-secondary); }
-[data-theme="dark"] .cimmReqCard .btn-view { background: #3762c8; color: #fff; }
-[data-theme="dark"] .cimmReqCard .btn-view:hover { background: #2851b3; }
 /* Modal label icons: white in dark mode; blue label text stays unchanged */
 [data-theme="dark"] .detail-field-label i,
 [data-theme="dark"] .gis-field-label i { color: #ffffff; }
@@ -2024,7 +2045,7 @@ tbody td {
     .sidebar-profile-btn { position: absolute; top: 18px; left: 12px; width: 45px; height: 47px; }
     .sidebar-top { position: relative; }
     .site-logo { margin-top: 60px; text-align: center; }
-    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100% - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100vh - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .sidebar-nav.mobile-active { left: 12px; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; height: auto !important; min-height: calc(100vh - 64px) !important; overflow-y: auto !important; padding: 20px !important; padding-top: 80px !important; margin: 0 !important; /* -webkit-overflow-scrolling removed — it creates a GPU compositing layer that breaks Leaflet marker pixel coordinates on mobile */ }

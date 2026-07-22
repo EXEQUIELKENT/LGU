@@ -359,7 +359,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 <title>Maintenance Schedule</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=10">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -3156,8 +3156,14 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 }
 
 /* ── Expand the details-card to fit scroll hint ───────── */
+/* ! BUG FIX — this capped the OUTER card at 240px while the inner scrollable
+   .calendar-details area alone can grow to 280px (plus the ~54px header on
+   top), so once there was enough scheduled content to need scrolling, the
+   card's own overflow:hidden clipped off the bottom — including the "scroll
+   for more" hint sitting flush against that bottom edge. 240px was smaller
+   than what the comment intended ("expand to fit"), not larger. */
 .calendar-details-card {
-    max-height: 240px !important;
+    max-height: 340px !important;
     padding-bottom: 4px !important;
 }
 .scroll-indicator {
@@ -4393,7 +4399,7 @@ Sidebar (250px) takes the most relative space here.
     .sidebar-nav {
         left: -110%;
         width: calc(100% - 24px);
-        height: calc(100% - 24px);
+        height: calc(100vh - 24px);
         top: 12px;
         bottom: 12px;
         border-radius: 18px;
