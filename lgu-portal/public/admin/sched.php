@@ -1198,15 +1198,15 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 
 .badge-shared-energy {
     display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(245,158,11,.12); color: #b45309;
-    border: 1px solid rgba(245,158,11,.3);
+    background: rgba(13,158,158,.12); color: #0a6e6e;
+    border: 1px solid rgba(13,158,158,.3);
     border-radius: 5px; padding: 2px 7px;
     font-size: 11px; font-weight: 600; white-space: nowrap;
     letter-spacing: 0.01em;
 }
 [data-theme="dark"] .badge-shared-energy {
-    background: rgba(251,191,36,.14); color: #fbbf24;
-    border-color: rgba(251,191,36,.3);
+    background: rgba(45,212,191,.14); color: #2dd4bf;
+    border-color: rgba(45,212,191,.3);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1255,6 +1255,44 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 /* Modal-header variant — sits where the plain .modal-label eyebrow used to,
    above the modal title, so it needs a touch less padding + a bottom gap. */
 .cprf-sync-badge-modal {
+    padding: 3px 10px;
+    font-size: 10px;
+    margin-bottom: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ENERGY INTEGRATION BADGE — same animated-pill language as the CPRF
+   badge above, swapped to Energy's own brand color. Color sourced the
+   same way: Main LGU's department directory (infragovservices.com →
+   .db-svc3-teal / .db-svc3-orb, public/styles.css) — the "ECM" / Energy
+   Efficiency & Conservation card is teal, not an arbitrary color.
+═══════════════════════════════════════════════════════ */
+.energy-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #2dd4bf, #0a5f5f);
+    color: #fff; border: none;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .04em; cursor: default;
+    box-shadow: 0 3px 10px rgba(45,212,191,.4), 0 0 0 1px rgba(255,255,255,.15) inset;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+    animation: energyBadgeGlow 2.6s ease-in-out infinite;
+}
+.energy-sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #fff;
+    box-shadow: 0 0 0 0 rgba(255,255,255,.75);
+    animation: cprfSyncPulse 2s infinite;
+}
+@keyframes energyBadgeGlow {
+    0%, 100% { box-shadow: 0 2px 6px rgba(45,212,191,.4),  0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 2px 9px rgba(45,212,191,.65), 0 0 0 1px rgba(255,255,255,.22) inset; }
+}
+[data-theme="dark"] .energy-sync-badge {
+    background: linear-gradient(135deg, #0d9e9e, #003030);
+    box-shadow: 0 3px 14px rgba(45,212,191,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
+}
+.energy-sync-badge-modal {
     padding: 3px 10px;
     font-size: 10px;
     margin-bottom: 3px;
@@ -6038,9 +6076,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <div class="modal-header">
             <div class="modal-header-icon"><i class="fas fa-calendar-plus"></i></div>
             <div class="modal-header-text">
-                <span class="cprf-sync-badge cprf-sync-badge-modal" title="This schedule is linked through the CPRF facility catalog">
+                <span class="cprf-sync-badge cprf-sync-badge-modal" id="sfCprfSyncBadge" title="This schedule is linked through the CPRF facility catalog">
                     <span class="cprf-sync-dot"></span>
                     <span class="cprf-sync-label">CPRF Integration</span>
+                </span>
+                <span class="energy-sync-badge energy-sync-badge-modal" id="sfEnergySyncBadge" title="This schedule was imported from the Energy Management System" style="display:none;">
+                    <span class="energy-sync-dot"></span>
+                    <span class="energy-sync-label">Energy Integration</span>
                 </span>
                 <h3 class="modal-title" id="scheduleFormTitle">Add Maintenance Schedule</h3>
             </div>
@@ -9687,8 +9729,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const isEnergyLinked = !!(data && data.energy_source);
             const cprfRow = document.getElementById('sfCprfFacilityRow');
             const energyRow = document.getElementById('sfEnergyFacilityRow');
+            const cprfBadge = document.getElementById('sfCprfSyncBadge');
+            const energyBadge = document.getElementById('sfEnergySyncBadge');
             if (cprfRow) cprfRow.style.display = isEnergyLinked ? 'none' : '';
             if (energyRow) energyRow.style.display = isEnergyLinked ? '' : 'none';
+            if (cprfBadge) cprfBadge.style.display = isEnergyLinked ? 'none' : '';
+            if (energyBadge) energyBadge.style.display = isEnergyLinked ? '' : 'none';
             if (isEnergyLinked) {
                 setFacilitySelection('');
                 const energyLabel = document.getElementById('sfEnergyFacilityLabel');
