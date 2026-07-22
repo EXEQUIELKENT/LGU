@@ -1,0 +1,2 @@
+# Per-environment secrets — never commit real credentials
+lgu-portal/includes/config/db.local.php
