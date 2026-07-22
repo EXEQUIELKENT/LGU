@@ -58,10 +58,33 @@ function cimm_energy_detect_base_url(): string
 }
 
 /**
+ * Records of the most recent cimm_energy_api_get() failures, for
+ * cimm_energy_last_sync_errors() to surface on the (admin-only) schedule
+ * page — so a broken sync is visible right where an admin would notice
+ * missing rows, instead of only in the PHP error log.
+ *
+ * @var array<int, string>
+ */
+$GLOBALS['__cimm_energy_sync_errors'] = [];
+
+/**
+ * @return array<int, string> human-readable messages from the last
+ *         cimm_fetch_energy_maintenance_catalog() call in this request.
+ *         Empty means every endpoint fetched cleanly (though possibly with
+ *         zero rows).
+ */
+function cimm_energy_last_sync_errors(): array
+{
+    return $GLOBALS['__cimm_energy_sync_errors'];
+}
+
+/**
  * Authenticated GET against the Energy maintenance-sync API, following
  * Laravel pagination up to a safety cap. Returns the combined "data" rows,
  * or [] on any failure (logged, never thrown — a down/misconfigured Energy
- * instance shouldn't break CIMM's own schedule page).
+ * instance shouldn't break CIMM's own schedule page). Failures are also
+ * appended to $GLOBALS['__cimm_energy_sync_errors'] for
+ * cimm_energy_last_sync_errors() to display to an admin.
  *
  * @return array<int, array<string,mixed>>
  */
@@ -93,17 +116,24 @@ function cimm_energy_api_get(string $path, array $query = []): array
         curl_close($ch);
 
         if ($curlErr !== '') {
+            $msg = "Could not reach {$url} — curl error: {$curlErr}";
             error_log('CIMM<-Energy maintenance fetch curl error: ' . $curlErr);
+            $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
             return $rows;
         }
         if ($httpCode !== 200) {
+            $bodySnippet = substr((string) $response, 0, 200);
+            $msg = "HTTP {$httpCode} from {$url}" . ($bodySnippet !== '' ? " — {$bodySnippet}" : '');
             error_log('CIMM<-Energy maintenance fetch HTTP ' . $httpCode . ' for ' . $path);
+            $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
             return $rows;
         }
 
         $json = json_decode((string)$response, true);
         if (!is_array($json) || !isset($json['data']) || !is_array($json['data'])) {
+            $msg = "Unexpected response shape from {$url}";
             error_log('CIMM<-Energy maintenance fetch: unexpected response shape for ' . $path);
+            $GLOBALS['__cimm_energy_sync_errors'][] = $msg;
             return $rows;
         }
 

@@ -5494,6 +5494,20 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
 
     <div class="card">
 
+        <?php if (($energySyncErrors = cimm_energy_last_sync_errors()) !== []): ?>
+        <div class="ae-no-district-banner">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>
+                <strong>Energy maintenance sync failed</strong>
+                <span>Could not pull "Facilities Needing Maintenance" data from the Energy system just now — new Energy-flagged rows won't appear below until this is fixed.
+                    <?php foreach ($energySyncErrors as $energySyncError): ?>
+                        <br><code><?= htmlspecialchars($energySyncError) ?></code>
+                    <?php endforeach; ?>
+                </span>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if ($isAreaEngineer && !$aeHasDistrict): ?>
         <div class="ae-no-district-banner">
             <i class="fas fa-triangle-exclamation"></i>
