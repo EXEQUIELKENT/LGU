@@ -92,6 +92,7 @@ $_SESSION['employee_id'] = (int) $employee['user_id'];
 $_SESSION['employee_role'] = $employee['role'];
 $_SESSION['employee_first_name'] = $employee['first_name'];
 $_SESSION['last_activity'] = time();
+$_SESSION['sso_from_mainlgu'] = true;
 
 $now = date('Y-m-d H:i:s');
 $loginUpdate = $conn->prepare('UPDATE employees SET last_login = ? WHERE user_id = ?');
