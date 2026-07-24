@@ -1353,6 +1353,14 @@ body {
     caret-color: #ffffff;
 }
 
+/* Edge injects its own native password-reveal icon inside type="password"
+   fields, which stacks with this page's own eye-icon toggle button —
+   showing two overlapping icons. Hide the native one. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
 /* Input icon (if you have one) */
 .input-box .icon {
     position: absolute;
