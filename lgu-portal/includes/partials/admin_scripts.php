@@ -348,9 +348,17 @@ logoutAlertBackdrop.addEventListener('mousedown', (e) => {
 });
 
 const mobileToggle = document.getElementById('mobileToggle');
+const mobileSidebarOverlay = document.getElementById('sidebarMobileOverlay');
 if (mobileToggle) {
     mobileToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('mobile-active');
+        const isOpen = sidebar.classList.toggle('mobile-active');
+        if (mobileSidebarOverlay) mobileSidebarOverlay.classList.toggle('active', isOpen);
+    });
+}
+if (mobileSidebarOverlay) {
+    mobileSidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-active');
+        mobileSidebarOverlay.classList.remove('active');
     });
 }
 

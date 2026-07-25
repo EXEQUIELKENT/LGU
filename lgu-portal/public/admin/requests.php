@@ -2046,7 +2046,7 @@ tbody td {
     .sidebar-profile-btn { position: absolute; top: 18px; left: 12px; width: 45px; height: 47px; }
     .sidebar-top { position: relative; }
     .site-logo { margin-top: 60px; text-align: center; }
-    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100vh - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100vh - 24px); height: calc(100dvh - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left .35s ease; z-index: 4000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .sidebar-nav.mobile-active { left: 12px; }
     .sidebar-nav.collapsed { width: calc(100% - 24px); }
     .main-content, .main-content.expanded { margin-left: 0 !important; height: auto !important; min-height: calc(100vh - 64px) !important; overflow-y: auto !important; padding: 20px !important; padding-top: 80px !important; margin: 0 !important; /* -webkit-overflow-scrolling removed — it creates a GPU compositing layer that breaks Leaflet marker pixel coordinates on mobile */ }

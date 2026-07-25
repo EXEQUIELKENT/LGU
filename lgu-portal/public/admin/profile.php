@@ -1452,6 +1452,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
         left: -110%;
         width: calc(100% - 24px);
         height: calc(100vh - 24px);
+        height: calc(100dvh - 24px);
         top: 12px;
         bottom: 12px;
         border-radius: 18px;

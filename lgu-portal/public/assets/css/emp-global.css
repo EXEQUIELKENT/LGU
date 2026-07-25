@@ -1071,6 +1071,9 @@ body::before {
     left: 0;
     width: 250px;
     height: 100vh;
+    height: 100dvh; /* mobile browsers: 100vh includes space behind the collapsible address bar,
+                       which pushed the logout button (bottom of the sidebar) off-screen until
+                       the page was scrolled; dvh tracks the actual visible viewport instead */
     background: var(--bg-secondary);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);

@@ -4481,6 +4481,7 @@ Sidebar (250px) takes the most relative space here.
         left: -110%;
         width: calc(100% - 24px);
         height: calc(100vh - 24px);
+        height: calc(100dvh - 24px);
         top: 12px;
         bottom: 12px;
         border-radius: 18px;

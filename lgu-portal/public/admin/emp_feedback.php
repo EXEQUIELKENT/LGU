@@ -1286,6 +1286,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         left: -110% !important;
         width: calc(100% - 24px) !important;
         height: calc(100vh - 24px) !important;
+        height: calc(100dvh - 24px) !important;
         top: 12px !important;
         bottom: 12px !important;
         border-radius: 18px !important;

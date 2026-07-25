@@ -1490,6 +1490,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     /* ── Sidebar — slide off-screen, show only when .mobile-active ── */
     .sidebar-nav {
         left: -110% !important; width: calc(100% - 24px) !important; height: calc(100vh - 24px) !important;
+        height: calc(100dvh - 24px) !important;
         top: 12px !important; bottom: 12px !important; border-radius: 18px !important;
         transition: left .35s ease !important; z-index: 4000 !important;
         backdrop-filter: blur(10px) !important; -webkit-backdrop-filter: blur(10px) !important;
@@ -1600,7 +1601,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 </div>
 
 <div class="mobile-top-nav">
-    <button class="mobile-toggle" id="mobileToggle" onclick="(function(){var s=document.getElementById('sidebarNav'),o=document.getElementById('sidebarMobileOverlay');if(!s)return;var open=s.classList.contains('mobile-active');s.classList.toggle('mobile-active',!open);if(o)o.classList.toggle('active',!open);})()">☰</button>
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
     <span class="mobile-cimm-label"><span class="cimm-badge-icon">🏢</span>CIMM</span>
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
