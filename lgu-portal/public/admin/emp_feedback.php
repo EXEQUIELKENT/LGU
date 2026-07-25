@@ -1338,6 +1338,9 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     /* Metrics — 2 column grid with properly sized icon circles */
     .metrics-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
     .metric-value { font-size: 26px; }
+    /* Reserve room on the right so the title/value text wraps beside the icon
+       circle instead of running underneath it on narrow cards. */
+    .metric-card { padding-right: 66px !important; }
     .metric-card::before { width: 52px; height: 52px; right: 10px; }
     .metric-icon-box {
         width: 48px !important;

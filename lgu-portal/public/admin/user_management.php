@@ -1529,12 +1529,20 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     /* ── Metrics — 2 column pill grid (matches emp_feedback.php) ── */
     .metrics-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
     .metric-value { font-size: 26px; }
+    /* Reserve room on the right so the title/value text wraps beside the icon
+       circle instead of running underneath it on narrow cards. */
+    .metric-card { padding-right: 70px !important; }
     .metric-card::before { width: 52px; height: 52px; right: 10px; }
     .metric-icon-box { width: 48px !important; height: 48px !important; display: flex !important; align-items: center !important; justify-content: center !important; border-radius: 50% !important; }
     .metric-icon-box i { font-size: 18px !important; color: #fff !important; }
 
     /* ── Table card ── */
     .table-card { border-radius: 14px; padding: 16px; }
+    /* h2 packs icon + title + count + "Admin Only" badge in one flex row;
+       on narrow screens the title text wrapped to 2 lines while the badges
+       stayed centered on that row, overlapping the wrapped second line.
+       Letting the row wrap moves the badges onto their own line instead. */
+    .table-card-header h2 { flex-wrap: wrap; row-gap: 6px; }
 
     /* ── Search toolbar — keep filter button inline with search ── */
     .search-toolbar { flex-direction: column; align-items: stretch; gap: 0; padding: 8px 10px; }
