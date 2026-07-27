@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 // Server timestamp for the live clock widget
 $serverTimestamp = time();
@@ -7,8 +8,8 @@ $serverTimestamp = time();
 require __DIR__ . '/../../includes/config/db.php';
 
 // --- Engineer role detection ---
-$isEngineer     = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
-$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$isEngineer     = cimm_is_engineer();
+$isAreaEngineer = cimm_is_area_engineer();
 
 // Auto-create engineer_profiles table if it doesn't exist
 $conn->query("
@@ -194,10 +195,7 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin = in_array(
-    strtolower(trim($_SESSION['employee_role'] ?? '')),
-    ['admin', 'super admin']
-);
+$isAdmin = cimm_is_admin();
 
 $profilePictureSrc = getProfilePicture($employeeId, $conn);
 $isProfilePage = basename($_SERVER['PHP_SELF']) === 'profile.php';

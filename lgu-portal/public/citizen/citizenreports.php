@@ -139,6 +139,7 @@ foreach ($maintenance_data as $_item) {
     <title>Citizen Reports - LGU Portal</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
@@ -650,6 +651,49 @@ foreach ($maintenance_data as $_item) {
         .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 700; }
         [data-theme="dark"] .search-highlight { background: #f9a825; color: #000; }
 
+        /* ── LIST / MAP VIEW TOGGLE ── */
+        .view-toggle-wrap {
+            display: flex; flex-shrink: 0; gap: 4px;
+            background: rgba(55,98,200,0.08); border-radius: 10px; padding: 3px;
+        }
+        [data-theme="dark"] .view-toggle-wrap { background: rgba(95,140,255,0.12); }
+        .view-toggle-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            height: 30px; padding: 0 12px; border: none; border-radius: 8px;
+            background: transparent; color: var(--text-secondary, #333);
+            font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+            transition: all .18s ease; white-space: nowrap;
+        }
+        .view-toggle-btn i { font-size: 12px; }
+        .view-toggle-btn:hover { color: #3762c8; }
+        .view-toggle-btn.active {
+            background: linear-gradient(135deg, #3762c8, #2851b3);
+            color: #fff; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+        }
+        [data-theme="dark"] .view-toggle-btn.active { color: #fff; }
+        @media (max-width: 520px) { .view-toggle-btn span { display: none; } .view-toggle-btn { padding: 0 10px; } }
+
+        /* ── MAP VIEW ── */
+        .reports-map-view {
+            border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--shadow-color); margin-bottom: 10px;
+        }
+        #reportsMap { width: 100%; height: 480px; background: #dde3ee; }
+        @media (max-width: 768px) { #reportsMap { height: 380px; } }
+        .reports-map-empty {
+            padding: 40px 20px; text-align: center; color: var(--text-secondary);
+            font-weight: 600; font-size: 14px;
+        }
+        .reports-map-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+        .reports-map-popup strong { display: block; font-size: 13.5px; margin-bottom: 3px; }
+        .reports-map-popup .rmp-status {
+            display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+        }
+        .rmp-scheduled { background: rgba(21,101,192,0.14); color: #1565c0; }
+        .rmp-in-progress { background: rgba(245,158,11,0.16); color: #b45309; }
+        .rmp-completed { background: rgba(46,125,50,0.14); color: #2e7d32; }
+
         /* ── STATUS LEGEND ── */
         .status-legend {
             display: flex;
@@ -1056,6 +1100,27 @@ foreach ($maintenance_data as $_item) {
         [data-theme="dark"] .sched-status-pill.sched-inprogress { background: rgba(245,158,11,0.18); color: #fdd835; }
         [data-theme="dark"] .sched-status-pill.sched-pending    { background: rgba(21,101,192,0.2);  color: #90caf9; }
 
+        /* Progress timeline */
+        .sched-timeline { display: flex; align-items: flex-start; margin: 4px 0 20px; }
+        .sched-timeline-step { flex: 1; text-align: center; position: relative; }
+        .sched-timeline-dot {
+            width: 26px; height: 26px; border-radius: 50%; margin: 0 auto 6px;
+            display: flex; align-items: center; justify-content: center;
+            background: #e5e7eb; color: #9ca3af; font-size: 11px; font-weight: 800;
+            border: 3px solid var(--card-bg, #fff); box-shadow: 0 0 0 2px #e5e7eb; position: relative; z-index: 2;
+        }
+        .sched-timeline-step::before {
+            content: ''; position: absolute; top: 12px; left: -50%; width: 100%; height: 3px;
+            background: #e5e7eb; z-index: 1;
+        }
+        .sched-timeline-step:first-child::before { display: none; }
+        .sched-timeline-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+        .sched-timeline-step.done .sched-timeline-dot { background: #2563eb; color: #fff; box-shadow: 0 0 0 2px #2563eb; }
+        .sched-timeline-step.done::before { background: #2563eb; }
+        .sched-timeline-step.current .sched-timeline-dot { background: #fff; color: #2563eb; box-shadow: 0 0 0 3px #2563eb; }
+        .sched-timeline-step.current .sched-timeline-label { color: #2563eb; }
+        [data-theme="dark"] .sched-timeline-step.current .sched-timeline-dot { background: var(--card-bg, #1e1e1e); }
+
         /* Fields */
         .sched-field        { margin-bottom: 14px; }
         .sched-field-label  { font-size: 11px; font-weight: 700; color: #3762c8; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
@@ -1172,6 +1237,7 @@ foreach ($maintenance_data as $_item) {
                 <?php endif; ?>
                 <a href="citizencimm.php" data-i18n="nav_home">Home</a>
                 <a href="#" class="active" data-i18n="nav_reports">Reports</a>
+                <a href="track_report.php" data-i18n="nav_track">Track</a>
                 <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
                 <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
                 <a href="about.php" data-i18n="nav_about">About</a>
@@ -1215,6 +1281,7 @@ foreach ($maintenance_data as $_item) {
                 <?php endif; ?>
                 <li><a href="citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
                 <li><a href="#"class="nav-link active"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="track_report.php" class="nav-link"><i class="fas fa-magnifying-glass-location"></i><span data-i18n="nav_track">Track</span></a></li>
                 <li><a href="citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
                 <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
                 <li><a href="about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
@@ -1315,6 +1382,14 @@ foreach ($maintenance_data as $_item) {
             <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> <span data-i18n="sort_alpha_desc">Type Z → A</span></div>
         </div>
     </div>
+    <div class="view-toggle-wrap" role="group" aria-label="View toggle">
+        <button type="button" class="view-toggle-btn active" id="listViewBtn" data-i18n-title="reports_view_list_title" title="List view">
+            <i class="fas fa-list"></i> <span data-i18n="reports_view_list">List</span>
+        </button>
+        <button type="button" class="view-toggle-btn" id="mapViewBtn" data-i18n-title="reports_view_map_title" title="Map view">
+            <i class="fas fa-map-marked-alt"></i> <span data-i18n="reports_view_map">Map</span>
+        </button>
+    </div>
     </div>
 
     <!-- STATUS LEGEND (clickable filter) -->
@@ -1332,6 +1407,12 @@ foreach ($maintenance_data as $_item) {
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             <span id="legendClearLabel">Scheduled</span>
         </span>
+    </div>
+
+    <!-- MAP VIEW -->
+    <div class="reports-map-view" id="reportsMapView" style="display:none;">
+        <div id="reportsMap"></div>
+        <div class="reports-map-empty" id="reportsMapEmpty" style="display:none;" data-i18n="reports_map_empty">No pinned reports match the current filter.</div>
     </div>
 
     <!-- DESKTOP TABLE -->
@@ -1520,6 +1601,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Re-run combined filter
         runFilter();
+
+        // Keep the map view (if initialized) in sync with the same filter
+        window.__reportsActiveLegendFilter = filter;
+        if (window.__reportsMapApplyFilter) window.__reportsMapApplyFilter(filter);
     }
 
     // Wire legend pill clicks
@@ -1616,6 +1701,121 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<!-- ═══════════════ LIST / MAP VIEW TOGGLE + ISSUE MAP ═══════════════ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    const API_BASE   = <?= json_encode($BASE_URL) ?>;
+    const listBtn    = document.getElementById('listViewBtn');
+    const mapBtn     = document.getElementById('mapViewBtn');
+    const mapView    = document.getElementById('reportsMapView');
+    const mapEmpty   = document.getElementById('reportsMapEmpty');
+    const tableWrap  = document.querySelector('.table-wrapper');
+    const mobileList = document.querySelector('.mobile-maintenance-list');
+    if (!listBtn || !mapBtn || !mapView) return;
+
+    // Status → legend filter key + colour, shared with the existing legend pills.
+    const STATUS_META = {
+        'Scheduled':   { filter: 'upcoming',  color: '#1565c0', cls: 'rmp-scheduled' },
+        'In Progress': { filter: 'ongoing',   color: '#f59e0b', cls: 'rmp-in-progress' },
+        'Completed':   { filter: 'completed', color: '#2e7d32', cls: 'rmp-completed' },
+    };
+
+    let map = null;
+    let markers = [];   // { marker, filter }
+    let loaded = false;
+
+    function makeDivIcon(color) {
+        return L.divIcon({
+            className: '',
+            html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);"></span>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+            popupAnchor: [0, -8],
+        });
+    }
+
+    function loadMarkers() {
+        if (loaded) return;
+        loaded = true;
+        fetch(`${API_BASE}api/reports-map.php`)
+            .then(r => r.json())
+            .then(json => {
+                if (!json || !json.success || !Array.isArray(json.data)) return;
+                json.data.forEach(item => {
+                    const meta = STATUS_META[item.status];
+                    if (!meta || typeof item.lat !== 'number' || typeof item.lng !== 'number') return;
+                    const dateStr = item.created_at ? new Date(item.created_at.replace(' ', 'T')).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+                    const marker = L.marker([item.lat, item.lng], { icon: makeDivIcon(meta.color) });
+                    marker.bindPopup(
+                        `<div class="reports-map-popup">
+                            <strong>${escapeHtml(item.type || 'Report')}</strong>
+                            ${escapeHtml(item.location || '')}
+                            <span class="rmp-status ${meta.cls}">${escapeHtml(item.status)}</span>
+                            ${dateStr ? `<div style="margin-top:4px;color:#888;">${dateStr}</div>` : ''}
+                        </div>`
+                    );
+                    marker.addTo(map);
+                    markers.push({ marker, filter: meta.filter });
+                });
+                applyMapFilter(window.__reportsActiveLegendFilter || null);
+                updateEmptyState();
+            })
+            .catch(() => { /* map still usable even if pins fail to load */ });
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function updateEmptyState() {
+        if (!mapEmpty) return;
+        const anyVisible = markers.some(m => map.hasLayer(m.marker));
+        mapEmpty.style.display = markers.length > 0 && !anyVisible ? '' : 'none';
+    }
+
+    function applyMapFilter(filter) {
+        if (!map) return;
+        markers.forEach(({ marker, filter: f }) => {
+            const show = !filter || f === filter;
+            if (show && !map.hasLayer(marker)) marker.addTo(map);
+            if (!show && map.hasLayer(marker)) map.removeLayer(marker);
+        });
+        updateEmptyState();
+    }
+    window.__reportsMapApplyFilter = applyMapFilter;
+
+    function showMap() {
+        listBtn.classList.remove('active');
+        mapBtn.classList.add('active');
+        if (tableWrap) tableWrap.style.display = 'none';
+        if (mobileList) mobileList.style.display = 'none';
+        mapView.style.display = '';
+
+        if (!map) {
+            map = L.map('reportsMap', { scrollWheelZoom: false }).setView([14.6760, 121.0437], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(map);
+        }
+        setTimeout(() => map.invalidateSize(), 60);
+        loadMarkers();
+    }
+
+    function showList() {
+        mapBtn.classList.remove('active');
+        listBtn.classList.add('active');
+        mapView.style.display = 'none';
+        if (tableWrap) tableWrap.style.display = '';
+        if (mobileList) mobileList.style.display = '';
+    }
+
+    mapBtn.addEventListener('click', showMap);
+    listBtn.addEventListener('click', showList);
+})();
+</script>
+
 <!-- ═══════════════ SCHEDULE DETAIL MODAL ═══════════════ -->
 <!-- Evidence Lightbox -->
 <div id="schedLightbox" class="sched-lightbox">
@@ -1638,6 +1838,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="sched-status-row">
                 <span class="sched-status-pill" id="schedModalStatus"></span>
             </div>
+            <div class="sched-timeline" id="schedModalTimeline"></div>
             <div class="sched-field">
                 <div class="sched-field-label" id="lbl-location">📍 Location</div>
                 <div class="sched-field-value" id="schedModalLocation"></div>
@@ -1861,6 +2062,25 @@ document.addEventListener("DOMContentLoaded", () => {
         statusEl.textContent = (lang === 'tl') ? smap.tl : smap.en;
         statusEl.className   = 'sched-status-pill ' + smap.cls;
 
+        /* Progress timeline — Scheduled → In Progress → Completed */
+        var timelineEl = document.getElementById('schedModalTimeline');
+        if (timelineEl) {
+            var STAGE_LABELS = {
+                en: ['📅 Scheduled', '🔄 In Progress', '✅ Completed'],
+                tl: ['📅 Nakaplanong', '🔄 Isinasagawa', '✅ Natapos'],
+            };
+            var labels = STAGE_LABELS[lang] || STAGE_LABELS.en;
+            var stage = rec.status === 'Completed' ? 2 : (rec.status === 'In Progress' ? 1 : 0);
+            timelineEl.innerHTML = labels.map(function (label, i) {
+                var cls  = i < stage ? 'done' : (i === stage ? 'current' : '');
+                var icon = i < stage ? '✓' : (i + 1);
+                return '<div class="sched-timeline-step ' + cls + '">' +
+                           '<div class="sched-timeline-dot">' + icon + '</div>' +
+                           '<div class="sched-timeline-label">' + label + '</div>' +
+                       '</div>';
+            }).join('');
+        }
+
         /* Show */
         backdrop.classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -2046,6 +2266,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
                 <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
                 <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>

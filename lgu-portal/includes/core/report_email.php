@@ -182,7 +182,17 @@ function sendReportUpdateEmail(
     ' . $descSection . '
     ' . $imageSection . '
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:20px 0 0;">If you have any concerns or questions, please contact your local LGU office.</p>
-    <div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
+    ' . ($isComplete
+        ? '<div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
+        <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#11088; How did we do?</p>
+        <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">Your report is complete — rate your experience with report #REP-' . $repId . ' and let us know if the work met your expectations.</p>
+        <a href="' . getBaseUrl() . '/citizen/citizen_feedback.php?rep=' . $repId . '" target="_blank"
+           style="display:inline-block;background:#27417b;color:#ffffff;font-size:13px;font-weight:700;
+                  padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
+            &#11088; Rate This Report
+        </a>
+    </div>'
+        : '<div style="margin:24px 0;padding:18px 20px;background:#f0f4ff;border-radius:10px;border:1.5px solid #c7d4f7;text-align:center;">
         <p style="color:#27417b;font-size:13px;font-weight:700;margin:0 0 6px;">&#128172; Share Your Feedback</p>
         <p style="color:#4b5563;font-size:12px;margin:0 0 12px;line-height:1.6;">We value your experience. Let us know how we\'re doing by submitting a feedback, suggestion, or concern about our services.</p>
         <a href="' . getBaseUrl() . '/citizen/citizen_feedback.php" target="_blank"
@@ -190,7 +200,7 @@ function sendReportUpdateEmail(
                   padding:10px 24px;border-radius:6px;text-decoration:none;letter-spacing:.03em;">
             &#128203; Submit Feedback — CIMM LGU
         </a>
-    </div>
+    </div>') . '
     <p style="color:#9ca3af;font-size:12px;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:18px;text-align:center;">This is an automated message. Please do not reply to this email.</p>
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:8px;">&copy; ' . date('Y') . ' LGU Portal &mdash; City Infrastructure Management &amp; Monitoring</p>
 </div>
@@ -201,7 +211,9 @@ function sendReportUpdateEmail(
             . ($isComplete ? "Your report #REP-{$repId} has been COMPLETED.\n\n" : "Progress update on your report #REP-{$repId}.\n\n")
             . "Infrastructure: {$infra}\nLocation: {$location}\nIssue: {$issue}\nEngineer: {$engineer}\n"
             . ($desc ? "\nEngineer Notes:\n{$descRaw}\n" : '')
-            . "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen/citizen_feedback.php\n"
+            . ($isComplete
+                ? "\n---\nHow did we do? Rate this report:\n" . getBaseUrl() . "/citizen/citizen_feedback.php?rep={$repId}\n"
+                : "\n---\nShare your feedback, suggestions, or concerns about our services:\n" . getBaseUrl() . "/citizen/citizen_feedback.php\n")
             . "\n© " . date('Y') . " LGU Portal";
 
         $mail->send();

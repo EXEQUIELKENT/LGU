@@ -134,6 +134,20 @@ $infraOptions = [
 <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- PWA: installability (manifest + service worker). No offline caching yet —
+     see public/sw.js for why. -->
+<link rel="manifest" href="<?= $BASE_URL ?>manifest.json">
+<meta name="theme-color" content="#2b6cb0">
+<link rel="apple-touch-icon" href="<?= $BASE_URL ?>assets/img/pwa-icon-192.png">
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('<?= $BASE_URL ?>sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+        });
+    });
+}
+</script>
 <script>
 (function(){
     const t=localStorage.getItem('theme');
@@ -1259,6 +1273,7 @@ body {
                 <?php endif; ?>
                 <a href="citizencimm.php" data-i18n="nav_home">Home</a>
                 <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+                <a href="track_report.php" data-i18n="nav_track">Track</a>
                 <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
                 <a href="citizen_feedback.php" class="active" data-i18n="nav_feedback">Feedback</a>
                 <a href="about.php" data-i18n="nav_about">About</a>
@@ -1298,6 +1313,7 @@ body {
                 <?php endif; ?>
                 <li><a href="citizencimm.php" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
                 <li><a href="citizenreports.php" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="<?= $BASE_URL ?>track_report.php" class="nav-link"><i class="fas fa-search"></i><span data-i18n="nav_track">Track</span></a></li>
                 <li><a href="citizenrepform.php" class="nav-link"><span><i class="fas fa-clipboard-list"></i></span><span data-i18n="nav_requests">Requests</span></a></li>
                 <li><a href="#" class="nav-link active"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
                 <li><a href="about.php" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
@@ -1683,6 +1699,7 @@ body {
         }
         echo json_encode($refModalData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
     ?>;
+    window.REF_REPORTS = REF_REPORTS; // used outside this IIFE by the ?rep= pre-select below
 
     var PRIORITY_CLASS = { 'Low':'p-low','Medium':'p-medium','High':'p-high','Critical':'p-critical' };
 
@@ -2019,10 +2036,37 @@ function initProfCombobox(opts) {
     }
 }
 
+// Pre-select the reference report when arriving from a "Rate This Report"
+// completion email link (?rep=123) — overrides any stale localStorage draft
+// since a fresh link click is a clearer signal of intent than an old draft.
+(function () {
+    var repParam = new URLSearchParams(window.location.search).get('rep');
+    if (!repParam) return;
+    var repId = parseInt(repParam, 10);
+    var match = REF_REPORTS.find(function (r) { return r.rep_id === repId; });
+    if (!match) return; // not a valid/known completed report — leave the field untouched
+    var label = '#REP-' + String(repId).padStart(3, '0');
+    localStorage.setItem('fbk_rep_id', String(repId));
+    localStorage.setItem('fbk_rep_id_label', label);
+    window.__fbkPrefilledRepId = repId;
+})();
+
 // Init infrastructure combobox
 initProfCombobox({ displayId:'cbInfraDisplay', dropdownId:'cbInfraDropdown', hiddenId:'infraVal', labelId:'cbInfraLabel', placeholder:'— Select infrastructure —', storageKey:'fbk_infrastructure', storageLabelKey:'fbk_infrastructure_label' });
 // Init reference report combobox
 initProfCombobox({ displayId:'cbRefDisplay', dropdownId:'cbRefDropdown', hiddenId:'refRepIdVal', labelId:'cbRefLabel', placeholder:'— None —', storageKey:'fbk_rep_id', storageLabelKey:'fbk_rep_id_label' });
+
+// Draw attention to the now-prefilled reference field + rating so the citizen
+// notices they landed here for a reason, not just a blank form.
+if (window.__fbkPrefilledRepId) {
+    var cbRef = document.getElementById('cbRef');
+    if (cbRef) {
+        cbRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        cbRef.style.transition = 'box-shadow .3s ease';
+        cbRef.style.boxShadow = '0 0 0 4px rgba(39,65,123,0.35)';
+        setTimeout(function () { cbRef.style.boxShadow = ''; }, 2200);
+    }
+}
 
 // ── i18nReady: update combobox placeholders + star hint labels on language change ──
 document.addEventListener('i18nReady', function(e) {

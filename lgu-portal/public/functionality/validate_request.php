@@ -4,6 +4,7 @@ session_start();
 header('Content-Type: application/json; charset=utf-8');
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 function jsonOut(bool $ok, string $message, array $extra = []): void {
     ob_end_clean();
@@ -15,13 +16,7 @@ if (empty($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !=
     jsonOut(false, 'Unauthorized');
 }
 
-$userRole = $_SESSION['employee_role'] ?? '';
-$allowed  = ['Engineer', 'Admin', 'Super Admin'];
-$ok = false;
-foreach ($allowed as $r) {
-    if (strcasecmp($userRole, $r) === 0) { $ok = true; break; }
-}
-if (!$ok) jsonOut(false, 'Permission denied.');
+if (!cimm_is_engineer() && !cimm_is_admin()) jsonOut(false, 'Permission denied.');
 
 $reportBy = (int)($_SESSION['employee_id'] ?? 0);
 if ($reportBy <= 0) jsonOut(false, 'Invalid session.');

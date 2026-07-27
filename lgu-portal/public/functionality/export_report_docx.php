@@ -30,6 +30,7 @@
  */
 
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 require_once __DIR__ . '/../../includes/core/docx_lib.php';
 
 header('X-Content-Type-Options: nosniff');
@@ -42,8 +43,7 @@ function export_docx_fail(int $httpCode, string $message): void {
 }
 
 // ── Authorization: Office Staff only (server-side, independent of the UI) ──
-$employeeRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-if ($employeeRole !== 'office staff') {
+if (!cimm_is_office_staff()) {
     export_docx_fail(403, 'Only Office Staff accounts can generate this document.');
 }
 

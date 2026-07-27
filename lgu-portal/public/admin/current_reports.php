@@ -1,6 +1,7 @@
 <?php
 ob_start();
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
@@ -28,11 +29,11 @@ $conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_reason TEXT D
 $conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_reviewed TINYINT(1) DEFAULT NULL COMMENT '1=valid,0=invalid'");
 $conn->query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decline_review_note TEXT DEFAULT NULL");
 
-$isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isEngineer = cimm_is_engineer();
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
-$isAdmin    = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
+$isAdmin    = cimm_is_admin();
 
-$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$isAreaEngineer = cimm_is_area_engineer();
 
 // Area Engineer district — queried from DB only when role matches
 $aeDistrict    = '';
@@ -612,13 +613,13 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
+$isAdmin = cimm_is_admin();
 
-$userRole          = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$userRole          = cimm_current_role();
 // Area Engineers can assign only when they have a district set in their profile.
 // Office Staff, like Admin/Super Admin, can no longer assign engineers — they only view (⚠ Unassigned when none is set).
 $canAssignEngineer = ($isAreaEngineer && $aeHasDistrict);
-$isOfficeStaff = $userRole === 'office staff';
+$isOfficeStaff = cimm_is_office_staff();
 
 $conn->query("SET SESSION group_concat_max_len = 4096");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
@@ -801,6 +802,7 @@ foreach ($rows as $row) {
 <link rel="stylesheet" href="../assets/css/emp-global.css?v=12">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <title>Current Reports — In Progress</title>
 <style>
 :root {
@@ -954,6 +956,40 @@ foreach ($rows as $row) {
     background: linear-gradient(135deg, rgba(55,98,200,0.14) 0%, rgba(22,26,46,0.85) 100%);
     border-color: rgba(95, 140, 255, 0.18);
 }
+
+/* ── List / Map view toggle ── */
+.view-toggle-wrap {
+    display: flex; flex-shrink: 0; gap: 4px;
+    background: rgba(55,98,200,0.08); border-radius: 10px; padding: 3px; margin-left: 10px;
+}
+[data-theme="dark"] .view-toggle-wrap { background: rgba(95,140,255,0.12); }
+.view-toggle-btn2 {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 12px; border: none; border-radius: 8px;
+    background: transparent; color: var(--text-secondary, #333);
+    font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: all .18s ease; white-space: nowrap;
+}
+.view-toggle-btn2 i { font-size: 12px; }
+.view-toggle-btn2:hover { color: #3762c8; }
+.view-toggle-btn2.active {
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    color: #fff; box-shadow: 0 2px 8px rgba(55,98,200,.30);
+}
+@media (max-width: 560px) { .view-toggle-btn2 span { display: none; } .view-toggle-btn2 { padding: 0 10px; } }
+
+/* ── Triage map ── */
+.reports-map-view {
+    border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color, rgba(0,0,0,.1));
+    box-shadow: 0 2px 10px rgba(0,0,0,.10); margin-bottom: 14px;
+}
+#reportsTriageMap { width: 100%; height: 500px; background: #dde3ee; }
+@media (max-width: 768px) { #reportsTriageMap { height: 380px; } }
+.reports-map-empty { padding: 40px 20px; text-align: center; color: var(--text-secondary); font-weight: 600; font-size: 14px; }
+.rmp-popup { font-size: 13px; line-height: 1.5; min-width: 190px; }
+.rmp-popup strong { display: block; font-size: 13.5px; margin-bottom: 3px; }
+.rmp-popup .rmp-badge { display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.rmp-popup .rmp-view-link { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; color: #2851b3; cursor: pointer; }
 
 /* ── Search bar — sched.php list-view design (exact match) ── */
 .search-bar-wrapper {
@@ -3108,6 +3144,20 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Infrastructure Z → A</div>
         </div>
     </div>
+    <div class="view-toggle-wrap" role="group" aria-label="View toggle">
+        <button type="button" class="view-toggle-btn2 active" id="repListViewBtn" title="List view">
+            <i class="fas fa-list"></i> <span>List</span>
+        </button>
+        <button type="button" class="view-toggle-btn2" id="repMapViewBtn" title="Map view — triage by location">
+            <i class="fas fa-map-marked-alt"></i> <span>Map</span>
+        </button>
+    </div>
+    </div>
+
+    <!-- TRIAGE MAP VIEW -->
+    <div class="reports-map-view" id="reportsTriageMapView" style="display:none;">
+        <div id="reportsTriageMap"></div>
+        <div class="reports-map-empty" id="reportsTriageMapEmpty" style="display:none;">No reports with pinned locations to show.</div>
     </div>
 
     <!-- Desktop Table -->
@@ -5626,16 +5676,19 @@ function pokeActivityLog() {
 //  triggered an action — everyone else still had to reload the page to see
 //  it. validate_request.php, reject_request.php, assign_engineer.php, etc.
 //  already push a live notification to every other employee (via
-//  insertNotification) the moment an action happens, and
-//  notification-stream.php streams those out over Server-Sent Events in
-//  real time. We piggyback on that same stream here — same as requests.php —
-//  so that whenever ANY employee acts, everyone else's Activity History
-//  panel updates live, within a second or two, with no reload.
+//  insertNotification), and admin_scripts.php's existing 3s notification
+//  poll (shared by every admin page, for the bell icon) now dispatches a
+//  "cimm:new-notification" DOM event whenever it sees unread notifications
+//  this tab hasn't shown yet. We just listen for that — no dedicated
+//  connection of our own — so that whenever ANY employee acts, everyone
+//  else's Activity History panel updates live within a few seconds, with no
+//  reload. (Previously this held its own permanent Server-Sent Events
+//  connection via notification-stream.php — a PHP process + DB connection
+//  kept open indefinitely per open tab. Piggybacking on the poll that was
+//  already running removes that cost entirely.)
 // ═══════════════════════════════════════════════════════
 <?php if ($isAdmin): ?>
 (function () {
-    if (typeof EventSource === 'undefined') return;
-
     let refreshTimer = null;
     function scheduleActivityRefresh() {
         // Debounce: if several notifications land at once (e.g. bulk
@@ -5643,19 +5696,7 @@ function pokeActivityLog() {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(refreshActivityLog, 400);
     }
-
-    function connect() {
-        const es = new EventSource('../api/notification-stream.php?last_id=0');
-        es.addEventListener('notification', scheduleActivityRefresh);
-        es.onerror = () => {
-            // EventSource retries on its own, but if the browser gives up
-            // (connection closed), reconnect after a short delay.
-            if (es.readyState === EventSource.CLOSED) {
-                setTimeout(connect, 3000);
-            }
-        };
-    }
-    connect();
+    document.addEventListener('cimm:new-notification', scheduleActivityRefresh);
 })();
 <?php endif; ?>
 
@@ -6207,5 +6248,108 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ══════════════ TRIAGE MAP — List / Map view toggle ══════════════
+// Reuses ALL_REPORTS (already role/district-scoped by the server query above)
+// so the map never shows more than the logged-in user is allowed to see.
+(function () {
+    const listBtn  = document.getElementById('repListViewBtn');
+    const mapBtn   = document.getElementById('repMapViewBtn');
+    const mapView  = document.getElementById('reportsTriageMapView');
+    const mapEmpty = document.getElementById('reportsTriageMapEmpty');
+    if (!listBtn || !mapBtn || !mapView || typeof ALL_REPORTS === 'undefined') return;
+
+    const STATUS_META = {
+        'Awaiting Engineer':   { color: '#dc2626', label: 'Awaiting Engineer' },
+        'Pending Acceptance':  { color: '#f59e0b', label: 'Pending Acceptance' },
+        'In Progress':         { color: '#2563eb', label: 'In Progress' },
+        'Pending Admin Approval': { color: '#7c3aed', label: 'Pending Approval' },
+    };
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function displayStatusFor(r) {
+        const hasEngineer = !!(r.engineer_id && r.engineer_name && r.engineer_name.trim());
+        if (!hasEngineer) return 'Awaiting Engineer';
+        return r.engineer_accepted ? 'In Progress' : 'Pending Acceptance';
+    }
+
+    let map = null;
+    let loaded = false;
+
+    function makeDivIcon(color) {
+        return L.divIcon({
+            className: '',
+            html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);"></span>`,
+            iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -8],
+        });
+    }
+
+    function loadMarkers() {
+        if (loaded) return;
+        loaded = true;
+        let plotted = 0;
+        ALL_REPORTS.forEach(r => {
+            const coords = (r.coordinates || '').split(',');
+            if (coords.length !== 2) return;
+            const lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
+            if (!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0)) return;
+
+            const status = displayStatusFor(r);
+            const meta = STATUS_META[status] || { color: '#6b7280', label: status };
+            const marker = L.marker([lat, lng], { icon: makeDivIcon(meta.color) });
+            marker.bindPopup(
+                `<div class="rmp-popup">
+                    <strong>#REP-${r.rep_id} — ${escapeHtml(r.infrastructure || 'Report')}</strong>
+                    ${escapeHtml(r.location || '')}
+                    <div style="margin-top:4px;color:#666;">${escapeHtml(r.priority_lvl || 'Low')} priority${r.engineer_name ? ' · ' + escapeHtml(r.engineer_name) : ''}</div>
+                    <span class="rmp-badge" style="background:${meta.color}22;color:${meta.color};">${escapeHtml(meta.label)}</span>
+                    <div class="rmp-view-link" onclick="openRepModal(${r.rep_id})">View full report →</div>
+                </div>`
+            );
+            marker.addTo(map);
+            plotted++;
+        });
+        if (mapEmpty) mapEmpty.style.display = plotted === 0 ? '' : 'none';
+    }
+
+    function showMap() {
+        listBtn.classList.remove('active');
+        mapBtn.classList.add('active');
+        document.body.classList.add('map-view-active');
+        mapView.style.display = '';
+
+        if (!map) {
+            map = L.map('reportsTriageMap', { scrollWheelZoom: false }).setView([14.6760, 121.0437], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(map);
+        }
+        setTimeout(() => map.invalidateSize(), 60);
+        loadMarkers();
+    }
+
+    function showList() {
+        mapBtn.classList.remove('active');
+        listBtn.classList.add('active');
+        document.body.classList.remove('map-view-active');
+        mapView.style.display = 'none';
+    }
+
+    mapBtn.addEventListener('click', showMap);
+    listBtn.addEventListener('click', showList);
+})();
+</script>
+<style>
+    /* Higher specificity than both the plain .table-wrapper rule and the
+       @media (max-width:768px) .mobile-report-list{display:flex!important}
+       rule above, so the map toggle wins at every viewport width. */
+    body.map-view-active .table-wrapper,
+    body.map-view-active .mobile-report-list { display: none !important; }
+</style>
 </body>
 </html>

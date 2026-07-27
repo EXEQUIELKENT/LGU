@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 // Read welcome-animation flag — session is already active from session_guard.php
 $showWelcomeAnimation = isset($_SESSION['show_welcome_animation']) && $_SESSION['show_welcome_animation'] === true;
@@ -73,16 +74,10 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin = in_array(
-    strtolower(trim($_SESSION['employee_role'] ?? '')),
-    ['admin', 'super admin']
-);
+$isAdmin = cimm_is_admin();
 
 // Report Generation access: Admin, Super Admin, and Office Staff
-$canGenerateReports = in_array(
-    strtolower(trim($_SESSION['employee_role'] ?? '')),
-    ['admin', 'super admin', 'office staff']
-);
+$canGenerateReports = cimm_is_admin() || cimm_is_office_staff();
 
 // ── Feedback widget data (Admin / Super Admin only) ───────────────────────────
 $feedbackWidget = null;
@@ -136,7 +131,7 @@ if ($isAdmin) {
 }
 
 // Engineer detection — same pattern as sched.php
-$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isEngineer    = cimm_is_engineer();
 $sessionUserId = (int)($_SESSION['employee_id'] ?? 0);
 
 // Engineer SQL filter clause (applied to all engineer-personalised queries)
@@ -145,7 +140,7 @@ $engFilter = $isEngineer && $sessionUserId > 0
     : "";
 
 // Area Engineer detection and district-based filtering
-$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$isAreaEngineer = cimm_is_area_engineer();
 $aeDistrict     = '';
 $aeHasDistrict  = false;
 if ($isAreaEngineer) {

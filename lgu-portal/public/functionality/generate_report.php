@@ -3,13 +3,13 @@
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 // ── Security: Admin only ──────────────────────────────────────────────────────
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     http_response_code(403); die('Unauthorized');
 }
-$role = strtolower(trim($_SESSION['employee_role'] ?? ''));
-if (!in_array($role, ['admin', 'super admin', 'office staff'])) {
+if (!cimm_is_admin() && !cimm_is_office_staff()) {
     http_response_code(403); die('Admin access required');
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

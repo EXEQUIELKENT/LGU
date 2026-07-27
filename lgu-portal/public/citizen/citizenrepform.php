@@ -73,9 +73,20 @@ function showNotification() {
         $icon = ($type === 'success') ? '✔️' :
             (($type === 'error') ? '❌' :
             (($type === 'warning') ? '⚠️' : 'ℹ️'));
+        // On a successful submission, point the citizen straight at the tracker
+        // with their new reference number pre-filled — this is the only moment
+        // they see that number, so make it easy to act on immediately.
+        $trackLink = '';
+        if ($type === 'success' && !empty($_SESSION['last_req_id'])) {
+            $refId = (int)$_SESSION['last_req_id'];
+            $trackLink = "<a class='notif-track-link' href='track_report.php?ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
+        }
+        // Success notifications stay on screen longer when there's a track
+        // link to read/click, since they carry information the citizen needs.
+        $autoCloseMs = $trackLink ? 6000 : 2200;
         echo "<div class='notif-popup notif-{$type}' id='notifPopup'>
                 <span class='notif-icon'>{$icon}</span>
-                <span class='notif-message'>{$message}</span>
+                <span class='notif-message'>{$message}{$trackLink}</span>
                 <button class='notif-close' onclick=\"closeNotif()\">&times;</button>
               </div>";
         unset($_SESSION['notification']);
@@ -85,7 +96,7 @@ function showNotification() {
                 if(n) n.style.opacity='0';
                 setTimeout(()=>{if(n)n.remove();}, 400);
             }
-            setTimeout(closeNotif, 2200);
+            setTimeout(closeNotif, {$autoCloseMs});
             </script>";
     }
 }
@@ -463,6 +474,12 @@ body {
     color: var(--text-primary);
 }
 .notif-popup .notif-icon { font-size: 23px; }
+.notif-popup .notif-message { display: flex; flex-direction: column; gap: 4px; }
+.notif-track-link {
+    font-size: 13.5px; font-weight: 700; color: #2b6cb0; text-decoration: underline;
+    text-underline-offset: 2px;
+}
+[data-theme="dark"] .notif-track-link { color: #8fb4ff; }
 .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
 .notif-popup.notif-error   { border-left: 5px solid #d73f52; }
 .notif-popup.notif-warning { border-left: 5px solid #dda203; }
@@ -1084,6 +1101,19 @@ input[type="file"] {
     color: #8ab4f8;
 }
 
+#dpwhRoadWarning {
+    background: #fef3c7; border: 1px solid #fbbf24;
+    border-radius: 8px; padding: 7px 12px;
+    margin: 6px 16px 0; font-size: 12px;
+    color: #92400e; font-weight: 600;
+    text-align: center; display: none; flex-shrink: 0;
+}
+[data-theme="dark"] #dpwhRoadWarning {
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fdd835;
+}
+
 .map-address-input {
     display: flex; flex-direction: column; gap: 8px;
     padding: 10px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
@@ -1440,6 +1470,7 @@ input[type="file"] {
     #labelToggleBtn { left: 58px !important; padding: 6px 9px; font-size: 15px; min-width: 36px; border-radius: 8px; }
     #mapLayerToggle { right: 12px; padding: 6px 10px; font-size: 11px; border-radius: 6px; }
     #districtInfo { padding: 4px 10px; font-size: 11px; margin: 4px 12px 0; }
+    #dpwhRoadWarning { padding: 5px 10px; font-size: 11px; margin: 4px 12px 0; }
     .map-address-input { padding: 8px 12px; gap: 6px; }
     #barangaySelect, #barangaySearch, .map-address-input input { padding: 8px 12px; font-size: 13px; }
     .map-actions { padding: 8px 12px; gap: 10px; }
@@ -1686,6 +1717,7 @@ input[type="file"] {
                 <?php endif; ?>
                 <a href="citizencimm.php" data-i18n="nav_home">Home</a>
                 <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+                <a href="track_report.php" data-i18n="nav_track">Track</a>
                 <a href="#" class="active" data-i18n="nav_requests">Requests</a>
                 <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
                 <a href="about.php" data-i18n="nav_about">About</a>
@@ -1725,6 +1757,7 @@ input[type="file"] {
                 <?php endif; ?>
                 <li><a href="citizencimm.php" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
                 <li><a href="citizenreports.php" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="track_report.php" class="nav-link"><span><i class="fas fa-magnifying-glass-location"></i></span><span data-i18n="nav_track">Track</span></a></li>
                 <li><a href="#" class="nav-link active"><span><i class="fas fa-clipboard-list"></i></span><span data-i18n="nav_requests">Requests</span></a></li>
                 <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
                 <li><a href="about.php" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
@@ -1871,6 +1904,7 @@ input[type="file"] {
             </div>
 
             <div id="districtInfo"></div>
+            <div id="dpwhRoadWarning"></div>
 
             <div class="map-address-input">
                 <div class="map-address-row">
@@ -1943,6 +1977,9 @@ input[type="file"] {
                 alert_location_outside_gps: 'Your current location is outside Quezon City. Please select a location within QC.',
                 alert_location_qc_only: 'Location must be within Quezon City.',
                 alert_select_location: 'Please select or enter a location.',
+                alert_dpwh_road: '⚠️ DPWH-maintained road — not under LGU jurisdiction',
+                alert_dpwh_cannot_save: '⚠️ Cannot save this location. This road is maintained by DPWH, not the LGU. Please select a nearby local road instead.',
+                alert_dpwh_cannot_save_named: '⚠️ Cannot save this location. {road} is maintained by DPWH. Please move your pin to a nearby local road.',
 
                 map_fetching_address: 'Fetching address...',
                 map_save_location_wait: 'Please wait — fetching address…',
@@ -1980,6 +2017,9 @@ input[type="file"] {
                 alert_location_outside_gps: 'Ang iyong kasalukuyang lokasyon ay nasa labas ng Lungsod Quezon. Mangyaring pumili ng lokasyon sa loob ng QC.',
                 alert_location_qc_only: 'Ang lokasyon ay dapat nasa loob ng Lungsod Quezon.',
                 alert_select_location: 'Mangyaring pumili o magpasok ng lokasyon.',
+                alert_dpwh_road: '⚠️ Kalsadang pinananatili ng DPWH — hindi nasa ilalim ng nasasakupan ng LGU',
+                alert_dpwh_cannot_save: '⚠️ Hindi ma-save ang lokasyong ito. Ang kalsadang ito ay pinananatili ng DPWH, hindi ng LGU. Mangyaring pumili ng malapit na lokal na kalsada.',
+                alert_dpwh_cannot_save_named: '⚠️ Hindi ma-save ang lokasyong ito. Ang {road} ay pinananatili ng DPWH. Mangyaring ilipat ang iyong pin sa malapit na lokal na kalsada.',
 
                 map_fetching_address: 'Kinukuha ang address...',
                 map_save_location_wait: 'Mangyaring maghintay — kinukuha ang address…',
@@ -3051,6 +3091,7 @@ input[type="file"] {
     // ── MAP VARIABLES ────────────────────────────────────────────────────
     let map, marker, currentBoundaryLayer;
     let barangayGeoJSON = null; // Holds the loaded QuezonCity_Barangays.geojson data
+    let dpwhRoadsCache = null;  // Holds the cached DPWH/OSM major-road geometry (see loadDpwhRoads())
     window.selectedLatLng = null; let selectedLatLng = window.selectedLatLng = null;
     let accuracyCircle = null;
     let locationSource = null;
@@ -3329,6 +3370,8 @@ input[type="file"] {
         syncMapLayerToggleButton();
         // Pre-load barangay GeoJSON so borders are ready on first pin drop
         loadBarangayGeoJSON();
+        // Pre-load DPWH major-road geometry so the jurisdiction check is ready on first pin drop
+        loadDpwhRoads();
     }
 
     // ── Location Update Handler ──────────────────────────────────────────
@@ -3363,6 +3406,10 @@ input[type="file"] {
                 highlightBarangayBoundary(nearest.name, false);
                 fetchDetailedAddress(pinPos, nearest.name);
             }
+            // DPWH jurisdiction check — live warning banner; the actual hard
+            // block happens in saveLocation() so this stays informational here.
+            await loadDpwhRoads();
+            updateDpwhRoadWarning(pinPos.lat, pinPos.lng);
         }, 200);
     }
     function findNearestBarangay(latlng) {
@@ -3538,6 +3585,69 @@ input[type="file"] {
             .then(r => { if (!r.ok) throw new Error('GeoJSON fetch failed: ' + r.status); return r.json(); })
             .then(data => { barangayGeoJSON = data; return data; })
             .catch(err => { console.warn('Barangay GeoJSON could not be loaded:', err); });
+    }
+
+    // ── Load DPWH-maintained major-road geometry once (cached server-side —
+    // see functionality/dpwh_roads.php) ──────────────────────────────────
+    function loadDpwhRoads() {
+        if (dpwhRoadsCache) return Promise.resolve(dpwhRoadsCache);
+        return fetch('../functionality/dpwh_roads.php')
+            .then(r => { if (!r.ok) throw new Error('DPWH roads fetch failed: ' + r.status); return r.json(); })
+            .then(data => {
+                const ways = (data.elements || []).filter(el => el.type === 'way' && Array.isArray(el.geometry) && el.geometry.length > 1);
+                dpwhRoadsCache = ways;
+                return ways;
+            })
+            .catch(err => { console.warn('DPWH road geometry could not be loaded:', err); dpwhRoadsCache = []; return []; });
+    }
+
+    // Perpendicular distance in meters from (lat,lng) to the segment (lat1,lng1)-(lat2,lng2).
+    // Flat-earth approximation via equirectangular projection centered on the query point —
+    // accurate to well under a meter at the scale of a single road segment, same approach
+    // matchKnownFacility() already uses for CPRF facility proximity.
+    function pointToSegmentMeters(lat, lng, lat1, lng1, lat2, lng2) {
+        const cosLat = Math.cos(lat * Math.PI / 180);
+        const x1 = (lng1 - lng) * 111320 * cosLat, y1 = (lat1 - lat) * 111320;
+        const x2 = (lng2 - lng) * 111320 * cosLat, y2 = (lat2 - lat) * 111320;
+        const dx = x2 - x1, dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        let t = lenSq > 0 ? -(x1 * dx + y1 * dy) / lenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        const px = x1 + t * dx, py = y1 + t * dy;
+        return Math.sqrt(px * px + py * py);
+    }
+
+    const DPWH_PROXIMITY_METERS = 18; // half a lane-and-shoulder width, tuned to avoid false positives on nearby local roads
+
+    // Returns { name } for the nearest DPWH-maintained road within DPWH_PROXIMITY_METERS,
+    // or null if the point isn't on/near one. Roads without a name tag still block (name: '').
+    function checkDpwhRoadProximity(lat, lng) {
+        if (!dpwhRoadsCache || !dpwhRoadsCache.length) return null;
+        for (const way of dpwhRoadsCache) {
+            const geom = way.geometry;
+            for (let i = 0; i < geom.length - 1; i++) {
+                const d = pointToSegmentMeters(lat, lng, geom[i].lat, geom[i].lon, geom[i + 1].lat, geom[i + 1].lon);
+                if (d <= DPWH_PROXIMITY_METERS) {
+                    return { name: (way.tags && way.tags.name) ? way.tags.name.trim() : '' };
+                }
+            }
+        }
+        return null;
+    }
+
+    // Live inline warning shown while the pin sits on a DPWH road — separate from the
+    // hard block in saveLocation(), which is the actual gate that prevents proceeding.
+    function updateDpwhRoadWarning(lat, lng) {
+        const el = document.getElementById('dpwhRoadWarning');
+        if (!el) return null;
+        const match = checkDpwhRoadProximity(lat, lng);
+        if (match) {
+            el.textContent = getTranslation('alert_dpwh_road');
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+        return match;
     }
 
     // ── Save Location button state ───────────────────────────────────────
@@ -3856,6 +3966,19 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
     function saveLocation() {
         let finalValue = manualAddressInput.value.trim();
         if (!finalValue) { showJsNotification('warning', 'Please select or enter a location.'); return; }
+
+        if (selectedLatLng) {
+            const chkLat = typeof selectedLatLng.lat === 'function' ? selectedLatLng.lat() : selectedLatLng.lat;
+            const chkLng = typeof selectedLatLng.lng === 'function' ? selectedLatLng.lng() : selectedLatLng.lng;
+            const dpwhMatch = checkDpwhRoadProximity(chkLat, chkLng);
+            if (dpwhMatch) {
+                const msg = dpwhMatch.name
+                    ? getTranslation('alert_dpwh_cannot_save_named').replace('{road}', dpwhMatch.name)
+                    : getTranslation('alert_dpwh_cannot_save');
+                showJsNotification('error', msg);
+                return;
+            }
+        }
 
         locationInput.value = finalValue; localStorage.setItem('location', finalValue);
         if (selectedLatLng) {
@@ -4227,6 +4350,7 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
                 <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
                 <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
                 <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>

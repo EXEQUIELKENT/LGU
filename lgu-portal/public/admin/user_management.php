@@ -4,11 +4,12 @@ use PHPMailer\PHPMailer\Exception as PHPMailerException;
 
 ob_start();
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
 // 🔐 Role guard — Admin and Super Admin only
-if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
+if (!cimm_is_admin()) {
     header("Location: employee.php");
     exit;
 }
@@ -26,10 +27,9 @@ require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
 $conn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
 
 $currentUserId = (int)($_SESSION['employee_id'] ?? 0);
-$currentRole   = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$isSuperAdmin  = $currentRole === 'super admin';
+$isSuperAdmin  = cimm_is_super_admin();
 
-const UM_VALID_ROLES = ['Area Engineer', 'Engineer', 'Office Staff', 'Admin', 'Super Admin'];
+const UM_VALID_ROLES = CIMM_VALID_ROLES;
 const UM_ROLE_ICONS = [
     'Area Engineer' => 'fa-user-tie',
     'Engineer'      => 'fa-hard-hat',

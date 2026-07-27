@@ -1,0 +1,31 @@
+{
+  "name": "InfraGovServices",
+  "short_name": "InfraGov",
+  "description": "Report and track infrastructure issues in Quezon City.",
+  "start_url": "citizen/citizencimm.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2b6cb0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/img/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/pwa-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

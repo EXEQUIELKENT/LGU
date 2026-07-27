@@ -4,6 +4,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 session_start();
 date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 header('Content-Type: application/json');
 header("Cache-Control: no-store, no-cache, must-revalidate");
@@ -16,8 +17,7 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
 }
 
 // Permission check
-$userRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$canReject = in_array($userRole, ['engineer', 'admin', 'super admin']);
+$canReject = cimm_is_engineer() || cimm_is_admin();
 if (!$canReject) {
     ob_end_clean();
     echo json_encode(['success' => false, 'message' => 'Insufficient permissions.']);

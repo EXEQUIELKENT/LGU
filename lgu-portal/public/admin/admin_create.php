@@ -3,11 +3,12 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
 // 🔐 Role guard — Admin and Super Admin only
-if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
+if (!cimm_is_admin()) {
     header("Location: employee.php");
     exit;
 }
@@ -18,8 +19,7 @@ require __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
 
 // 🔒 Admin-only access guard
-$currentRole = strtolower(trim($_SESSION['employee_role'] ?? ''));
-$isAdmin = in_array($currentRole, ['admin', 'super admin']);
+$isAdmin = cimm_is_admin();
 
 if (!$isAdmin) {
     session_unset();

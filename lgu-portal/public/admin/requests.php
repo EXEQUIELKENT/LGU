@@ -1,6 +1,7 @@
 <?php
 ob_start();
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
@@ -40,10 +41,14 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
+// NOTE: $userRole intentionally keeps its original (non-lowercased) casing —
+// it's echoed into the page as the USER_ROLE JS constant and displayed
+// verbatim ("Validating as Super Admin"). Use cimm_current_role() instead of
+// $userRole for any new case-insensitive comparisons.
 $userRole    = $_SESSION['employee_role'] ?? '';
-$isAdmin     = in_array(strtolower(trim($userRole)), ['admin', 'super admin']);
-$canValidate = in_array(strtolower(trim($userRole)), ['engineer', 'admin', 'super admin']);
-$isOfficeStaff = strtolower(trim($userRole)) === 'office staff';
+$isAdmin     = cimm_is_admin();
+$canValidate = cimm_is_engineer() || cimm_is_admin();
+$isOfficeStaff = cimm_is_office_staff();
 
 // ── AJAX/POST handler ───────────────────────────────────────────────────
 // Currently only used to record "who viewed this request" for the History
@@ -4573,17 +4578,20 @@ function pokeActivityLog() {
 //  refreshActivityLog() above only fires for the employee who personally
 //  validated/rejected a request — everyone else still had to reload the
 //  page to see it. validate_request.php and reject_request.php already
-//  push a live notification to every other employee (via insertNotification)
-//  the moment an action happens, and notification-stream.php streams those
-//  out over Server-Sent Events in real time. We piggyback on that same
-//  stream here — no new backend endpoint needed — so that whenever ANY
-//  employee validates or rejects a request, everyone else's Activity
-//  History panel updates live, within a second or two, with no reload.
+//  push a live notification to every other employee (via insertNotification),
+//  and admin_scripts.php's existing 3s notification poll (shared by every
+//  admin page, for the bell icon) now dispatches a "cimm:new-notification"
+//  DOM event whenever it sees unread notifications this tab hasn't shown yet.
+//  We just listen for that — no dedicated connection of our own — so that
+//  whenever ANY employee validates or rejects a request, everyone else's
+//  Activity History panel updates live within a few seconds, with no reload.
+//  (Previously this held its own permanent Server-Sent Events connection via
+//  notification-stream.php — a PHP process + DB connection kept open
+//  indefinitely per open tab. Piggybacking on the poll that was already
+//  running removes that cost entirely.)
 // ═══════════════════════════════════════════════════════
 <?php if ($isAdmin): ?>
 (function () {
-    if (typeof EventSource === 'undefined') return;
-
     let refreshTimer = null;
     function scheduleActivityRefresh() {
         // Debounce: if several notifications land at once (e.g. bulk
@@ -4591,19 +4599,7 @@ function pokeActivityLog() {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(refreshActivityLog, 400);
     }
-
-    function connect() {
-        const es = new EventSource('../api/notification-stream.php?last_id=0');
-        es.addEventListener('notification', scheduleActivityRefresh);
-        es.onerror = () => {
-            // EventSource retries on its own, but if the browser gives up
-            // (connection closed), reconnect after a short delay.
-            if (es.readyState === EventSource.CLOSED) {
-                setTimeout(connect, 3000);
-            }
-        };
-    }
-    connect();
+    document.addEventListener('cimm:new-notification', scheduleActivityRefresh);
 })();
 <?php endif; ?>
 

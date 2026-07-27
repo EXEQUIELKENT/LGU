@@ -13,7 +13,8 @@ header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
 // ─── API key ──────────────────────────────────────────────────
-$CLAUDE_API_KEY = getenv('CLAUDE_API_KEY') ?: (defined('CLAUDE_API_KEY') ? CLAUDE_API_KEY : '');
+require_once __DIR__ . '/../../includes/config/claude_credentials.php';
+$CLAUDE_API_KEY = cimm_claude_api_key();
 $USE_CLAUDE_API = !empty($CLAUDE_API_KEY);
 
 // ─── Parse request ────────────────────────────────────────────
@@ -1419,7 +1420,7 @@ function callClaudeText(
 
 function claudeRequest(string $apiKey, string $systemPrompt, array $messages, int $maxTokens = 700): ?string {
     $payload = [
-        'model'      => 'claude-sonnet-4-6',
+        'model'      => 'claude-sonnet-5',
         'max_tokens' => $maxTokens,
         'system'     => $systemPrompt,
         'messages'   => $messages,
@@ -1440,12 +1441,20 @@ function claudeRequest(string $apiKey, string $systemPrompt, array $messages, in
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
 
     if ($httpCode === 200 && $response) {
         $decoded = json_decode($response, true);
         return $decoded['content'][0]['text'] ?? null;
     }
+
+    // Log the failure (never to the citizen — respond() below still falls
+    // through to the local rule-based responder) so an admin checking the
+    // server log can tell "no key set" apart from "key set but rejected".
+    error_log('CIMM chatbot: Claude API call failed — HTTP ' . $httpCode
+        . ($curlErr ? " (curl: {$curlErr})" : '')
+        . ($response ? ' — ' . substr($response, 0, 300) : ''));
     return null;
 }
 

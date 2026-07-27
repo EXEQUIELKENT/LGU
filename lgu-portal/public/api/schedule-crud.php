@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 session_start();
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !== true) {
     http_response_code(401);
@@ -14,8 +15,7 @@ if (!isset($_SESSION['employee_logged_in']) || $_SESSION['employee_logged_in'] !
     exit;
 }
 
-$role = strtolower(trim((string)($_SESSION['employee_role'] ?? '')));
-if (!in_array($role, ['admin', 'super admin'], true)) {
+if (!cimm_is_admin()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Admin access required']);
     exit;

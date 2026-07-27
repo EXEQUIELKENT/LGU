@@ -5,11 +5,12 @@
  * Mirrors the style and structure of requests.php.
  */
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
 // 🔐 Role guard — Admin and Super Admin only
-if (!in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin'])) {
+if (!cimm_is_admin()) {
     header('Location: employee.php');
     exit;
 }
@@ -56,7 +57,7 @@ function showNotification() {
 $profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
 $displayName       = getDisplayName();
 $userRole          = $_SESSION['employee_role'] ?? '';
-$isAdmin           = in_array(strtolower(trim($userRole)), ['admin', 'super admin']);
+$isAdmin           = cimm_is_admin();
 
 // ── Ensure tables exist ───────────────────────────────────────────────────────
 $conn->query("

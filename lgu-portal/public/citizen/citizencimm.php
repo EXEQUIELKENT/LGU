@@ -39,6 +39,47 @@ if ($pending_result) {
     $pending_count = $pending_row['count'];
 }
 
+// ── Transparency stats ──────────────────────────────────────────────────────
+// Average Resolution Time: days from citizen submission (requests.created_at)
+// to actual completion (request_resolutions.resolved_at, now set by
+// pending_reports.php's admin_complete action). Only counts reports completed
+// since that fix shipped — older completions never had resolved_at written,
+// so they're correctly excluded rather than skewing the average with nulls.
+$avg_resolution_days = null;
+$avg_result = $conn->query("
+    SELECT AVG(DATEDIFF(rr.resolved_at, req.created_at)) AS avg_days
+    FROM request_resolutions rr
+    JOIN requests req ON req.req_id = rr.req_id
+    WHERE rr.status = 'Completed' AND rr.resolved_at IS NOT NULL
+");
+if ($avg_result) {
+    $avg_row = $avg_result->fetch_assoc();
+    if ($avg_row['avg_days'] !== null) {
+        $avg_resolution_days = round((float)$avg_row['avg_days'], 1);
+    }
+}
+
+// Total budget invested in completed repairs — real figures already tracked
+// on reports.budget, just never surfaced publicly before.
+$total_budget_invested = 0;
+$budget_result = $conn->query("
+    SELECT COALESCE(SUM(r.budget), 0) AS total_budget
+    FROM reports r
+    JOIN request_resolutions rr ON rr.res_id = r.res_id
+    WHERE rr.status = 'Completed'
+");
+if ($budget_result) {
+    $budget_row = $budget_result->fetch_assoc();
+    $total_budget_invested = (float)$budget_row['total_budget'];
+}
+
+// Compact ₱ display: ₱1.2M / ₱850K / ₱4,200 — full precision stays in the title attribute.
+function formatCompactPeso(float $amount): string {
+    if ($amount >= 1000000) return '₱' . rtrim(rtrim(number_format($amount / 1000000, 1), '0'), '.') . 'M';
+    if ($amount >= 1000)    return '₱' . rtrim(rtrim(number_format($amount / 1000, 1), '0'), '.') . 'K';
+    return '₱' . number_format($amount, 0);
+}
+
 // Get recent maintenance for preview — same combined source as citizenreports.php
 $recent_maintenance = array();
 
@@ -904,6 +945,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         .animate-on-scroll.delay-2 { transition-delay: 0.2s; }
         .animate-on-scroll.delay-3 { transition-delay: 0.3s; }
         .animate-on-scroll.delay-4 { transition-delay: 0.4s; }
+        .animate-on-scroll.delay-5 { transition-delay: 0.5s; }
 
         /* While the guide is active, collapse all animate-on-scroll transitions to
            zero so getBoundingClientRect() always measures the final settled position.
@@ -1243,6 +1285,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             <?php endif; ?>
             <a href="#" class="active" data-i18n="nav_home">Home</a>
             <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>track_report.php" data-i18n="nav_track">Track</a>
             <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
             <a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
             <a href="<?= $BASE_URL ?>about.php" data-i18n="nav_about">About</a>
@@ -1287,6 +1330,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             <?php endif; ?>
             <li><a href="#" class="nav-link active"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>track_report.php" class="nav-link"><i class="fas fa-magnifying-glass-location"></i><span data-i18n="nav_track">Track</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
             <li><a href="<?= $BASE_URL ?>citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
             <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
@@ -1353,6 +1397,16 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                 <div class="stat-icon">📍</div>
                 <div class="stat-number"><?= $pending_count ?></div>
                 <div class="stat-label" data-i18n="stat_pending">Pending Requests</div>
+            </div>
+            <div class="stat-card animate-on-scroll delay-4">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-number"><?= $avg_resolution_days !== null ? htmlspecialchars(rtrim(rtrim(number_format($avg_resolution_days, 1), '0'), '.')) . ' <span style="font-size:0.45em;font-weight:600;">days</span>' : '—' ?></div>
+                <div class="stat-label" data-i18n="stat_avg_resolution">Average Resolution Time</div>
+            </div>
+            <div class="stat-card animate-on-scroll delay-5" title="<?= htmlspecialchars('₱' . number_format($total_budget_invested, 2)) ?>">
+                <div class="stat-icon">💰</div>
+                <div class="stat-number"><?= htmlspecialchars(formatCompactPeso($total_budget_invested)) ?></div>
+                <div class="stat-label" data-i18n="stat_budget_invested">Invested in Completed Repairs</div>
             </div>
         </div><!-- end stats-grid -->
     </section>
@@ -1548,6 +1602,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                 <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
                 <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
                 <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
                 <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>

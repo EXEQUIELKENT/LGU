@@ -1,3 +1,18 @@
+<!-- PWA: installability (manifest + service worker). No offline caching yet —
+     see public/sw.js for why. -->
+<link rel="manifest" href="<?= $BASE_URL ?>manifest.json">
+<meta name="theme-color" content="#2b6cb0">
+<link rel="apple-touch-icon" href="<?= $BASE_URL ?>assets/img/pwa-icon-192.png">
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('<?= $BASE_URL ?>sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+        });
+    });
+}
+</script>
+
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 

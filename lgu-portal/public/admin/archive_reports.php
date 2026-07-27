@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
@@ -51,15 +52,15 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin       = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
-$isEngineer    = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isAdmin       = cimm_is_admin();
+$isEngineer    = cimm_is_engineer();
 $engineerId    = (int)($_SESSION['employee_id'] ?? 0);
-$userRole      = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$userRole      = cimm_current_role();
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
-$isOfficeStaff = $userRole === 'office staff';
+$isOfficeStaff = cimm_is_office_staff();
 
 // ── Area Engineer: detect role and load their assigned district ──────────────
-$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$isAreaEngineer = cimm_is_area_engineer();
 $aeDistrict    = '';
 $aeHasDistrict = false;
 if ($isAreaEngineer) {
@@ -2728,16 +2729,19 @@ function pokeActivityLog() {
 //  triggered an action — everyone else still had to reload the page to see
 //  it. validate_request.php, reject_request.php, assign_engineer.php, etc.
 //  already push a live notification to every other employee (via
-//  insertNotification) the moment an action happens, and
-//  notification-stream.php streams those out over Server-Sent Events in
-//  real time. We piggyback on that same stream here — same as requests.php —
-//  so that whenever ANY employee acts, everyone else's Activity History
-//  panel updates live, within a second or two, with no reload.
+//  insertNotification), and admin_scripts.php's existing 3s notification
+//  poll (shared by every admin page, for the bell icon) now dispatches a
+//  "cimm:new-notification" DOM event whenever it sees unread notifications
+//  this tab hasn't shown yet. We just listen for that — no dedicated
+//  connection of our own — so that whenever ANY employee acts, everyone
+//  else's Activity History panel updates live within a few seconds, with no
+//  reload. (Previously this held its own permanent Server-Sent Events
+//  connection via notification-stream.php — a PHP process + DB connection
+//  kept open indefinitely per open tab. Piggybacking on the poll that was
+//  already running removes that cost entirely.)
 // ═══════════════════════════════════════════════════════
 <?php if ($isAdmin): ?>
 (function () {
-    if (typeof EventSource === 'undefined') return;
-
     let refreshTimer = null;
     function scheduleActivityRefresh() {
         // Debounce: if several notifications land at once (e.g. bulk
@@ -2745,19 +2749,7 @@ function pokeActivityLog() {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(refreshActivityLog, 400);
     }
-
-    function connect() {
-        const es = new EventSource('../api/notification-stream.php?last_id=0');
-        es.addEventListener('notification', scheduleActivityRefresh);
-        es.onerror = () => {
-            // EventSource retries on its own, but if the browser gives up
-            // (connection closed), reconnect after a short delay.
-            if (es.readyState === EventSource.CLOSED) {
-                setTimeout(connect, 3000);
-            }
-        };
-    }
-    connect();
+    document.addEventListener('cimm:new-notification', scheduleActivityRefresh);
 })();
 <?php endif; ?>
 
@@ -2852,11 +2844,11 @@ const SELF_ENG_NAME = <?= json_encode(trim(($_SESSION['employee_first_name'] ?? 
 
 const IS_ADMIN             = <?= $isAdmin    ? 'true' : 'false' ?>;
 
-// (Real-time Activity History SSE listener now lives earlier in this file,
-// right next to refreshActivityLog()/pokeActivityLog() — see the comment
-// block above them. It's gated server-side via <?php if ($isAdmin) ?> so it
-// no longer needs to wait on this IS_ADMIN const, and having it declared
-// only once here avoids opening a second, duplicate EventSource connection.)
+// (Real-time Activity History listener now lives earlier in this file, right
+// next to refreshActivityLog()/pokeActivityLog() — see the comment block
+// above them. It just listens for the "cimm:new-notification" event that
+// admin_scripts.php's existing bell poll dispatches, so it's gated
+// server-side via <?php if ($isAdmin) ?> and doesn't need this IS_ADMIN const.)
 
 const IS_AREA_ENGINEER = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 const AE_HAS_DISTRICT  = <?= $aeHasDistrict  ? 'true' : 'false' ?>;

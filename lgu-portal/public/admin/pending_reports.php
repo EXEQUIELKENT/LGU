@@ -1,6 +1,7 @@
 <?php
 ob_start();
 require_once __DIR__ . '/../../includes/core/session_guard.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 $serverTimestamp = time();
 
@@ -62,15 +63,15 @@ $conn->query("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
 
-$isEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'engineer';
+$isEngineer = cimm_is_engineer();
 $engineerId = (int)($_SESSION['employee_id'] ?? 0);
-$isAdmin    = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
-$userRole   = strtolower(trim($_SESSION['employee_role'] ?? ''));
+$isAdmin    = cimm_is_admin();
+$userRole   = cimm_current_role();
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
-$isOfficeStaff = $userRole === 'office staff';
+$isOfficeStaff = cimm_is_office_staff();
 
 // ── Area Engineer: detect role and load their assigned district ──────────────
-$isAreaEngineer = strtolower(trim($_SESSION['employee_role'] ?? '')) === 'area engineer';
+$isAreaEngineer = cimm_is_area_engineer();
 $aeDistrict    = '';
 $aeHasDistrict = false;
 if ($isAreaEngineer) {
@@ -291,10 +292,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'admin_complete') {
         $repId = (int)($input['rep_id'] ?? 0);
         if ($repId <= 0) { while(ob_get_level()>0)ob_end_clean(); echo json_encode(['success'=>false,'message'=>'Invalid report ID.']); exit; }
+        // resolved_at marks the actual completion moment — previously an unused
+        // column (only ever read by cimm_rgmap_sync.php, never written) — now the
+        // basis for the homepage's "Average Resolution Time" transparency stat.
         $stmt = $conn->prepare(
             "UPDATE request_resolutions rr
              JOIN reports r ON r.res_id = rr.res_id
              SET rr.status = 'Completed',
+                 rr.resolved_at = NOW(),
                  rr.admin_return_note = NULL,
                  rr.highlight_days = NULL,
                  rr.admin_feedback_by = NULL
@@ -548,7 +553,7 @@ function getDisplayName() {
 }
 $displayName = getDisplayName();
 
-$isAdmin = in_array(strtolower(trim($_SESSION['employee_role'] ?? '')), ['admin', 'super admin']);
+$isAdmin = cimm_is_admin();
 
 // ─── FETCH: Pending/Scheduled reports only ───────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
@@ -4002,16 +4007,19 @@ function pokeActivityLog() {
 //  triggered an action — everyone else still had to reload the page to see
 //  it. validate_request.php, reject_request.php, assign_engineer.php, etc.
 //  already push a live notification to every other employee (via
-//  insertNotification) the moment an action happens, and
-//  notification-stream.php streams those out over Server-Sent Events in
-//  real time. We piggyback on that same stream here — same as requests.php —
-//  so that whenever ANY employee acts, everyone else's Activity History
-//  panel updates live, within a second or two, with no reload.
+//  insertNotification), and admin_scripts.php's existing 3s notification
+//  poll (shared by every admin page, for the bell icon) now dispatches a
+//  "cimm:new-notification" DOM event whenever it sees unread notifications
+//  this tab hasn't shown yet. We just listen for that — no dedicated
+//  connection of our own — so that whenever ANY employee acts, everyone
+//  else's Activity History panel updates live within a few seconds, with no
+//  reload. (Previously this held its own permanent Server-Sent Events
+//  connection via notification-stream.php — a PHP process + DB connection
+//  kept open indefinitely per open tab. Piggybacking on the poll that was
+//  already running removes that cost entirely.)
 // ═══════════════════════════════════════════════════════
 <?php if ($isAdmin): ?>
 (function () {
-    if (typeof EventSource === 'undefined') return;
-
     let refreshTimer = null;
     function scheduleActivityRefresh() {
         // Debounce: if several notifications land at once (e.g. bulk
@@ -4019,19 +4027,7 @@ function pokeActivityLog() {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(refreshActivityLog, 400);
     }
-
-    function connect() {
-        const es = new EventSource('../api/notification-stream.php?last_id=0');
-        es.addEventListener('notification', scheduleActivityRefresh);
-        es.onerror = () => {
-            // EventSource retries on its own, but if the browser gives up
-            // (connection closed), reconnect after a short delay.
-            if (es.readyState === EventSource.CLOSED) {
-                setTimeout(connect, 3000);
-            }
-        };
-    }
-    connect();
+    document.addEventListener('cimm:new-notification', scheduleActivityRefresh);
 })();
 <?php endif; ?>
 

@@ -1,6 +1,7 @@
 <?php
 session_start();
 date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 // ── Only allow POST ───────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -22,8 +23,7 @@ if (
 }
 
 // ── Admin only ────────────────────────────────────────────────────────────────
-$role = strtolower(trim($_SESSION['employee_role'] ?? ''));
-if (!in_array($role, ['admin', 'super admin'])) {
+if (!cimm_is_admin()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Access denied.']);
     exit;

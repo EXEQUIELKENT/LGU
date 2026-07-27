@@ -748,6 +748,14 @@ startClock();
                     });
                     newUnread.forEach(n => seenNotifIds.add(n.id));
                     localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(Array.from(seenNotifIds)));
+                    // Let any page-specific listeners (e.g. the Activity History
+                    // panel on requests.php / pending_reports.php / current_reports.php /
+                    // archive_reports.php) react to fresh notifications without each
+                    // one opening its own permanent connection — see cimm:new-notification
+                    // below. This replaces the old per-page SSE stream (notification-stream.php),
+                    // which held a PHP process + DB connection open indefinitely per browser
+                    // tab; piggybacking on the bell's existing 3s poll costs nothing extra.
+                    document.dispatchEvent(new CustomEvent('cimm:new-notification', { detail: newUnread }));
                 }
             }
 
