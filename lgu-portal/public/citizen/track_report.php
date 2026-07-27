@@ -70,18 +70,19 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             backdrop-filter: blur(8px); background: rgba(0,0,0,0.4); z-index: -1;
         }
         .dashboard-container { padding: 30px 0 40px; max-width: 100%; margin: 0; color: var(--text-primary); flex: 1; }
-        .container { max-width: 720px; margin: auto; padding: 0 40px; }
-        @media (max-width: 768px) { .container { padding: 0 16px; } .dashboard-container { padding: 20px 0 40px; } }
-
-        .track-hero { text-align: center; margin-bottom: 26px; }
-        .track-hero h1 { font-size: 2rem; margin-bottom: 8px; }
-        .track-hero p { color: var(--text-secondary); font-size: 14.5px; max-width: 560px; margin: 0 auto; }
+        .container { max-width: 720px; margin: auto; padding: 0 40px; box-sizing: border-box; }
 
         .content-card {
             background: var(--card-bg); backdrop-filter: blur(10px);
-            border-radius: 20px; padding: 28px; border: 1px solid var(--border-color);
+            border-radius: 20px; padding: 32px; border: 1px solid var(--border-color);
             box-shadow: 0 4px 20px var(--shadow-color);
+            box-sizing: border-box;
         }
+
+        /* ── Hero — now lives inside the card ── */
+        .track-hero { text-align: center; margin-bottom: 26px; }
+        .track-hero h1 { font-size: 1.7rem; margin: 0 0 8px; }
+        .track-hero p { color: var(--text-secondary); font-size: 14px; max-width: 480px; margin: 0 auto; line-height: 1.55; }
         .track-form { display: flex; flex-direction: column; gap: 16px; }
         .track-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-secondary); }
         .track-field input {
@@ -91,6 +92,29 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         }
         .track-field input:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.18); }
         [data-theme="dark"] .track-field input { background: rgba(255,255,255,.07); border-color: rgba(95,140,255,.22); color: var(--text-primary); }
+        .track-field { position: relative; }
+        .track-ref-dropdown {
+            display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
+            background: var(--bg-primary); border: 1.5px solid #94a3b8; border-radius: 10px;
+            box-shadow: 0 10px 28px var(--shadow-color); max-height: 260px; overflow-y: auto;
+            /* Same thin scrollbar as the citizenreports.php schedule detail modal's body ── */
+            scrollbar-width: thin; scrollbar-color: #9cafde rgba(0,0,0,.07);
+        }
+        .track-ref-dropdown::-webkit-scrollbar { width: 5px; }
+        .track-ref-dropdown::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .track-ref-dropdown::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
+        .track-ref-dropdown.open { display: block; }
+        [data-theme="dark"] .track-ref-dropdown { border-color: rgba(95,140,255,.3); }
+        .track-ref-option {
+            display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .track-ref-option:last-child { border-bottom: none; }
+        .track-ref-option:hover, .track-ref-option.active { background: rgba(55,98,200,.1); }
+        .track-ref-option .ref-id { font-weight: 700; font-size: 13.5px; color: #3762c8; }
+        [data-theme="dark"] .track-ref-option .ref-id { color: #7c9dfb; }
+        .track-ref-option .ref-meta { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .track-ref-empty { padding: 12px 14px; font-size: 12.5px; color: var(--text-secondary); text-align: center; }
         .track-submit-btn {
             height: 46px; border: none; border-radius: 10px; cursor: pointer;
             background: linear-gradient(135deg, #2b6cb0, #1d4ed8); color: #fff;
@@ -104,8 +128,36 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         }
         [data-theme="dark"] .track-error { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: #fca5a5; }
 
-        /* ── Result panel ── */
-        .track-result { display: none; margin-top: 26px; }
+        /* ── Toast notification (search-result errors — not tied to a field) ── */
+        .notif-popup {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            min-width: 280px; max-width: 92vw; padding: 16px 26px;
+            background: var(--card-bg, #fff); border-radius: 13px;
+            box-shadow: 0 8px 38px rgba(34,53,126,0.23); z-index: 10000;
+            display: flex; align-items: center; gap: 14px;
+            font-size: 14.5px; font-weight: 500; opacity: 1;
+            transition: opacity .35s; color: var(--text-primary);
+        }
+        .notif-popup .notif-icon { font-size: 21px; flex-shrink: 0; }
+        .notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+        .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+        .notif-popup .notif-close { background: none; border: none; font-size: 19px; margin-left: auto; color: #888; cursor: pointer; flex-shrink: 0; }
+        @media (max-width: 560px) { .notif-popup { top: 16px; left: 12px; right: 12px; transform: none; min-width: 0; } }
+
+        /* ── Result panel — framed like a modal card (matches the citizenreports.php
+           schedule detail modal: bordered box with a status-coloured top band) ── */
+        .track-result {
+            display: none; margin-top: 26px; border-radius: 18px; overflow: hidden;
+            border: 1px solid var(--border-color); box-shadow: 0 8px 30px var(--shadow-color);
+            background: var(--bg-primary, var(--card-bg));
+        }
+        .track-result-band { height: 8px; width: 100%; }
+        .track-result-band.track-band-pending    { background: linear-gradient(90deg,#1565c0,#42a5f5); }
+        .track-result-band.track-band-progress   { background: linear-gradient(90deg,#f57f17,#ffd54f); }
+        .track-result-band.track-band-completed  { background: linear-gradient(90deg,#2e7d32,#66bb6a); }
+        .track-result-band.track-band-rejected   { background: linear-gradient(90deg,#dc2626,#f87171); }
+        .track-result-inner { padding: 24px; }
+        @media (max-width: 560px) { .track-result-inner { padding: 18px 16px; } }
         .track-result-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
         .track-result-id { font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #3762c8; }
         [data-theme="dark"] .track-result-id { color: #8fb4ff; }
@@ -123,14 +175,28 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         [data-theme="dark"] .track-status-completed { background: rgba(22,163,74,.20); color: #86efac; }
         [data-theme="dark"] .track-status-rejected  { background: rgba(239,68,68,.20); color: #fca5a5; }
 
-        /* ── Timeline ── */
-        .track-timeline { display: flex; align-items: flex-start; margin: 10px 0 24px; }
+        /* ── Timeline — same numbered-circle-with-icon-labels visual as the
+           citizenreports.php schedule modal's progress tracker ── */
+        .track-timeline {
+            display: flex; align-items: flex-start; margin: 10px 0 24px;
+            padding: 16px 14px 12px; border-radius: 14px; border: 1px solid transparent;
+            --tl-accent: #2563eb;
+        }
+        .track-timeline-theme-pending    { --tl-accent: #1565c0; background: rgba(21,101,192,0.07);  border-color: rgba(21,101,192,0.16); }
+        .track-timeline-theme-progress   { --tl-accent: #f59e0b; background: rgba(245,158,11,0.08);  border-color: rgba(245,158,11,0.20); }
+        .track-timeline-theme-completed  { --tl-accent: #2e7d32; background: rgba(46,125,50,0.08);   border-color: rgba(46,125,50,0.18); }
+        .track-timeline-theme-rejected   { --tl-accent: #dc2626; background: rgba(220,38,38,0.08);   border-color: rgba(220,38,38,0.20); }
+        [data-theme="dark"] .track-timeline-theme-pending   { background: rgba(21,101,192,0.14);  border-color: rgba(90,150,255,0.28); }
+        [data-theme="dark"] .track-timeline-theme-progress  { background: rgba(245,158,11,0.14);  border-color: rgba(253,216,53,0.28); }
+        [data-theme="dark"] .track-timeline-theme-completed { background: rgba(46,125,50,0.16);   border-color: rgba(129,199,132,0.30); }
+        [data-theme="dark"] .track-timeline-theme-rejected  { background: rgba(220,38,38,0.16);   border-color: rgba(248,113,113,0.30); }
         .track-timeline-step { flex: 1; text-align: center; position: relative; }
         .track-timeline-dot {
             width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 8px;
             display: flex; align-items: center; justify-content: center;
             background: #e5e7eb; color: #9ca3af; font-size: 13px; font-weight: 800;
             border: 3px solid var(--card-bg, #fff); box-shadow: 0 0 0 2px #e5e7eb; position: relative; z-index: 2;
+            transition: background .2s ease, color .2s ease, box-shadow .2s ease;
         }
         .track-timeline-step::before {
             content: ''; position: absolute; top: 14px; left: -50%; width: 100%; height: 3px;
@@ -138,14 +204,11 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         }
         .track-timeline-step:first-child::before { display: none; }
         .track-timeline-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
-        .track-timeline-step.done .track-timeline-dot { background: #2563eb; color: #fff; box-shadow: 0 0 0 2px #2563eb; }
-        .track-timeline-step.done::before { background: #2563eb; }
-        .track-timeline-step.current .track-timeline-dot { background: #fff; color: #2563eb; box-shadow: 0 0 0 3px #2563eb; }
-        .track-timeline-step.current .track-timeline-label { color: #2563eb; }
-        [data-theme="dark"] .track-timeline-step.current .track-timeline-dot { background: #1a1a1a; }
-        .track-timeline.rejected .track-timeline-dot,
-        .track-timeline.rejected .track-timeline-step::before { background: #ef4444 !important; box-shadow: 0 0 0 2px #ef4444 !important; }
-        .track-timeline.rejected .track-timeline-dot { color: #fff; }
+        .track-timeline-step.done .track-timeline-dot { background: var(--tl-accent); color: #fff; box-shadow: 0 0 0 2px var(--tl-accent); }
+        .track-timeline-step.done::before { background: var(--tl-accent); }
+        .track-timeline-step.current .track-timeline-dot { background: #fff; color: var(--tl-accent); box-shadow: 0 0 0 3px var(--tl-accent); }
+        .track-timeline-step.current .track-timeline-label { color: var(--tl-accent); }
+        [data-theme="dark"] .track-timeline-step.current .track-timeline-dot { background: var(--card-bg, #1a1a1a); }
 
         .track-rejection-note {
             background: #fee2e2; border: 1px solid #fca5a5; border-radius: 10px;
@@ -159,31 +222,166 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         .track-detail-item .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px; }
         .track-detail-item .value { font-size: 14px; font-weight: 600; }
 
-        /* ── AI assessment card ── */
+        /* ── AI assessment card — pill badges, same visual language as the
+           admin report modal's AI analysis section (current_reports.php) ── */
         .track-ai-card {
             margin-top: 18px; border-radius: 14px; padding: 16px 18px;
-            background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(43,108,176,0.08));
-            border: 1px solid rgba(124,58,237,0.22);
+            background: var(--bg-tertiary); border: 1px solid var(--border-color);
         }
-        [data-theme="dark"] .track-ai-card { background: linear-gradient(135deg, rgba(124,58,237,0.14), rgba(43,108,176,0.14)); border-color: rgba(124,58,237,0.35); }
-        .track-ai-head { font-size: 13px; font-weight: 800; color: #6d28d9; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        [data-theme="dark"] .track-ai-head { color: #c4b5fd; }
-        .track-ai-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; font-size: 13px; }
-        @media (max-width: 560px) { .track-ai-body { grid-template-columns: 1fr; } }
-        .track-ai-row { display: flex; flex-direction: column; gap: 2px; }
-        .track-ai-row .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; }
-        .track-ai-row .value { font-weight: 600; }
+        .track-ai-head { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .track-ai-head i { color: #7c3aed; }
+        .track-ai-badges { display: flex; gap: 9px; flex-wrap: wrap; }
+        .track-ai-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 5px 14px 5px 5px; border-radius: 20px; font-size: 12px; font-weight: 700;
+            border: 1px solid transparent; box-shadow: 0 2px 6px rgba(0,0,0,.07);
+        }
+        .track-ai-badge-icon {
+            width: 21px; height: 21px; border-radius: 50%; flex-shrink: 0; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 11px;
+        }
+        .track-ai-badge.sev-low  { background:#d1fae5; color:#065f46; } .track-ai-badge.sev-low  .track-ai-badge-icon { background:#10b981; }
+        .track-ai-badge.sev-med  { background:#fef3c7; color:#92400e; } .track-ai-badge.sev-med  .track-ai-badge-icon { background:#f59e0b; }
+        .track-ai-badge.sev-high { background:#fde8e8; color:#9b1c1c; } .track-ai-badge.sev-high .track-ai-badge-icon { background:#ef4444; }
+        .track-ai-badge.sev-crit { background:#fce7f3; color:#831843; } .track-ai-badge.sev-crit .track-ai-badge-icon { background:#db2777; }
+        .track-ai-badge.info     { background:#e0e7ff; color:#3730a3; } .track-ai-badge.info     .track-ai-badge-icon { background:#6366f1; }
+        [data-theme="dark"] .track-ai-badge.sev-low  { background:rgba(16,185,129,.16);  color:#6ee7b7; }
+        [data-theme="dark"] .track-ai-badge.sev-med  { background:rgba(245,158,11,.16); color:#fcd34d; }
+        [data-theme="dark"] .track-ai-badge.sev-high { background:rgba(239,68,68,.18);  color:#fca5a5; }
+        [data-theme="dark"] .track-ai-badge.sev-crit { background:rgba(219,39,119,.18); color:#f9a8d4; }
+        [data-theme="dark"] .track-ai-badge.info     { background:rgba(99,102,241,.18); color:#a5b4fc; }
+        .track-ai-desc {
+            margin-top: 12px; font-size: 13px; color: var(--text-primary); line-height: 1.55;
+            background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px;
+        }
         .track-ai-urgent {
-            grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+            margin-top: 10px; display: flex; align-items: center; gap: 8px;
             background: #fee2e2; color: #991b1b; border-radius: 8px; padding: 8px 12px;
             font-size: 12.5px; font-weight: 700;
         }
         [data-theme="dark"] .track-ai-urgent { background: rgba(239,68,68,.18); color: #fca5a5; }
-        .track-ai-disclaimer { grid-column: 1 / -1; font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .track-ai-disclaimer { font-size: 11px; color: var(--text-secondary); margin-top: 10px; }
 
         .track-search-again { text-align: center; margin-top: 22px; }
-        .track-search-again a { color: #3762c8; font-weight: 700; font-size: 13.5px; cursor: pointer; text-decoration: none; }
-        [data-theme="dark"] .track-search-again a { color: #8fb4ff; }
+        .track-again-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            height: 44px; padding: 0 22px; border-radius: 10px; cursor: pointer;
+            background: var(--bg-secondary); border: 1.5px solid #3762c8; color: #3762c8;
+            font-size: 14px; font-weight: 700; font-family: inherit; transition: all .2s ease;
+        }
+        .track-again-btn:hover { background: #3762c8; color: #fff; box-shadow: 0 4px 14px rgba(55,98,200,.3); transform: translateY(-1px); }
+        [data-theme="dark"] .track-again-btn { border-color: rgba(95,140,255,.4); color: #8fb4ff; }
+        [data-theme="dark"] .track-again-btn:hover { background: #3762c8; color: #fff; }
+
+        /* ── Confirmation modal — same pattern as citizenrepform.php's submit confirm ── */
+        #trackConfirmBackdrop {
+            position: fixed; z-index: 5000; inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            display: none; align-items: center; justify-content: center;
+        }
+        #trackConfirmBackdrop.active { display: flex; }
+        #trackConfirmModal {
+            background: var(--card-bg, #fff);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            padding: 32px 30px 24px;
+            width: 440px; max-width: 92vw;
+            animation: trackModalPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            box-sizing: border-box;
+        }
+        @keyframes trackModalPop {
+            from { transform: translateY(24px) scale(0.93); opacity: 0; }
+            to   { transform: translateY(0)    scale(1);    opacity: 1; }
+        }
+        [data-theme="dark"] #trackConfirmModal {
+            background: rgba(24, 24, 30, 0.98);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        #trackConfirmModal .icon-wrap {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, rgba(55,98,200,0.14), rgba(55,98,200,0.08));
+            border-radius: 50%; margin: 0 auto 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            border: 1px solid rgba(55,98,200,0.22);
+        }
+        [data-theme="dark"] #trackConfirmModal .icon-wrap {
+            background: linear-gradient(135deg, rgba(95,140,255,0.20), rgba(95,140,255,0.10));
+        }
+        #trackConfirmModal .alert-title {
+            font-size: 1.05rem; font-weight: 700; color: var(--text-primary, #1a1a2e); margin-bottom: 8px;
+        }
+        [data-theme="dark"] #trackConfirmModal .alert-title { color: #e2e8f0; }
+        #trackConfirmModal .alert-desc {
+            color: var(--text-secondary, #64748b); font-size: 0.92rem; margin-bottom: 6px; line-height: 1.5;
+        }
+        [data-theme="dark"] #trackConfirmModal .alert-desc { color: #94a3b8; }
+        #trackConfirmModal .track-confirm-details {
+            width: 100%; background: rgba(55,98,200,0.07); border: 1px solid rgba(55,98,200,0.18);
+            border-radius: 12px; padding: 14px 16px; margin: 14px 0 22px; text-align: left;
+        }
+        [data-theme="dark"] #trackConfirmModal .track-confirm-details {
+            background: rgba(95,140,255,0.10); border-color: rgba(95,140,255,0.24);
+        }
+        #trackConfirmModal .track-confirm-row {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+            font-size: 13px; padding: 6px 0;
+        }
+        #trackConfirmModal .track-confirm-row + .track-confirm-row { border-top: 1px solid rgba(55,98,200,0.14); }
+        [data-theme="dark"] #trackConfirmModal .track-confirm-row + .track-confirm-row { border-top-color: rgba(95,140,255,0.16); }
+        #trackConfirmModal .track-confirm-row .label {
+            color: var(--text-secondary, #64748b); font-weight: 600; flex-shrink: 0; white-space: nowrap;
+        }
+        [data-theme="dark"] #trackConfirmModal .track-confirm-row .label { color: #a8b3c7; }
+        #trackConfirmModal .track-confirm-row .value {
+            font-weight: 800; text-align: right; color: var(--text-primary, #1a1a2e);
+            word-break: break-word;
+        }
+        [data-theme="dark"] #trackConfirmModal .track-confirm-row .value { color: #f1f5f9; }
+        @media (max-width: 420px) {
+            #trackConfirmModal .track-confirm-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+            #trackConfirmModal .track-confirm-row .value { text-align: left; }
+        }
+        #trackConfirmModal .alert-btns { display: flex; gap: 10px; width: 100%; }
+        #trackConfirmModal .alert-btn {
+            flex: 1; padding: 10px 0; border-radius: 10px; border: none;
+            font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.18s ease;
+        }
+        #trackConfirmModal .alert-btn.cancel {
+            background: var(--bg-secondary, #f1f5f9); color: var(--text-primary, #374151);
+            border: 1px solid var(--border-color, #e2e8f0);
+        }
+        #trackConfirmModal .alert-btn.cancel:hover { background: var(--border-color, #e2e8f0); }
+        [data-theme="dark"] #trackConfirmModal .alert-btn.cancel {
+            background: rgba(255, 255, 255, 0.06); color: #e2e8f0; border-color: rgba(255, 255, 255, 0.1);
+        }
+        [data-theme="dark"] #trackConfirmModal .alert-btn.cancel:hover { background: rgba(255, 255, 255, 0.11); }
+        #trackConfirmModal .alert-btn.confirm {
+            background: linear-gradient(135deg, #2b6cb0, #1d4ed8); color: #fff;
+            box-shadow: 0 4px 12px rgba(43,108,176,0.35);
+        }
+        #trackConfirmModal .alert-btn.confirm:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(43,108,176,0.45); }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+            .container { padding: 0 16px; box-sizing: border-box; }
+            .dashboard-container { padding: 20px 0 40px; }
+            .content-card { padding: 22px 18px; border-radius: 16px; }
+            .track-hero h1 { font-size: 1.4rem; }
+            .track-hero p { font-size: 13px; }
+            .track-result-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .track-timeline-label { font-size: 9.5px; }
+            .footer { padding: 40px 20px 20px; }
+            .footer-content { grid-template-columns: 1fr !important; gap: 30px !important; margin-bottom: 30px !important; }
+            .footer-bottom { flex-direction: column !important; gap: 14px !important; text-align: center; }
+        }
+        @media (max-width: 400px) {
+            .content-card { padding: 18px 14px; }
+            .track-detail-grid, .track-ai-body { grid-template-columns: 1fr !important; }
+        }
     </style>
     <?php include __DIR__ . '/../../includes/partials/citizen_rendering.php'; ?>
 </head>
@@ -281,16 +479,17 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 <div class="dashboard-container">
 <div class="container">
 
-    <div class="track-hero">
-        <h1 data-i18n="track_title">Track My Report</h1>
-        <p data-i18n="track_subtitle">No account needed. Enter the reference number you received when you submitted your report, along with the phone number you used, to check its current status.</p>
-    </div>
-
     <div class="content-card">
+        <div class="track-hero">
+            <h1 data-i18n="track_title">Track My Report</h1>
+            <p data-i18n="track_subtitle">No account needed. Enter the reference number you received when you submitted your report, along with the phone number you used, to check its current status.</p>
+        </div>
+
         <form class="track-form" id="trackForm">
             <div class="track-field">
                 <label for="trackRef" data-i18n="track_ref_label">Reference Number</label>
                 <input type="text" id="trackRef" data-i18n-placeholder="track_ref_placeholder" placeholder="e.g. REQ-123 or 123" value="<?= htmlspecialchars($prefillRef) ?>" required autocomplete="off">
+                <div class="track-ref-dropdown" id="trackRefDropdown"></div>
             </div>
             <div class="track-field">
                 <label for="trackPhone" data-i18n="track_phone_label">Contact Number Used</label>
@@ -301,33 +500,62 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         </form>
 
         <div class="track-result" id="trackResult">
-            <div class="track-result-head">
-                <div>
-                    <div class="track-result-id" id="trackResultId"></div>
-                    <div class="track-result-title" id="trackResultTitle"></div>
-                    <div class="track-result-meta" id="trackResultMeta"></div>
+            <div class="track-result-band" id="trackResultBand"></div>
+            <div class="track-result-inner">
+                <div class="track-result-head">
+                    <div>
+                        <div class="track-result-id" id="trackResultId"></div>
+                        <div class="track-result-title" id="trackResultTitle"></div>
+                        <div class="track-result-meta" id="trackResultMeta"></div>
+                    </div>
+                    <div class="track-status-badge" id="trackResultBadge"></div>
                 </div>
-                <div class="track-status-badge" id="trackResultBadge"></div>
-            </div>
 
-            <div class="track-timeline" id="trackTimeline"></div>
-            <div class="track-rejection-note" id="trackRejectionNote" style="display:none;"></div>
+                <div class="track-timeline" id="trackTimeline"></div>
+                <div class="track-rejection-note" id="trackRejectionNote" style="display:none;"></div>
 
-            <div class="track-detail-grid" id="trackDetailGrid"></div>
+                <div class="track-detail-grid" id="trackDetailGrid"></div>
 
-            <div class="track-ai-card" id="trackAiCard" style="display:none;">
-                <div class="track-ai-head"><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="track_ai_title">What our system found in your photos</span></div>
-                <div class="track-ai-body" id="trackAiBody"></div>
-            </div>
+                <div class="track-ai-card" id="trackAiCard" style="display:none;">
+                    <div class="track-ai-head"><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="track_ai_title">What our system found in your photos</span></div>
+                    <div class="track-ai-badges" id="trackAiBadges"></div>
+                    <div class="track-ai-desc" id="trackAiDesc" style="display:none;"></div>
+                    <div class="track-ai-urgent" id="trackAiUrgent" style="display:none;"><i class="fas fa-triangle-exclamation"></i> <span data-i18n="track_ai_urgent">Flagged for urgent attention</span></div>
+                    <div class="track-ai-disclaimer" data-i18n="track_ai_disclaimer">Automated assessment from your submitted photos — final scope and cost are confirmed by the assigned engineer.</div>
+                </div>
 
-            <div class="track-search-again">
-                <a id="trackAgainLink" data-i18n="track_search_again">🔍 Track another report</a>
+                <div class="track-search-again">
+                    <button type="button" class="track-again-btn" id="trackAgainLink"><i class="fas fa-magnifying-glass"></i> <span data-i18n="track_search_again">Track another report</span></button>
+                </div>
             </div>
         </div>
     </div>
 
 </div>
 </div>
+</div>
+
+<!-- Confirmation modal — shown before the lookup actually runs -->
+<div id="trackConfirmBackdrop">
+    <div id="trackConfirmModal">
+        <div class="icon-wrap"><span class="icon">🔍</span></div>
+        <div class="alert-title" data-i18n="track_confirm_title">Confirm Details</div>
+        <div class="alert-desc" data-i18n="track_confirm_desc">Please confirm these are the details you'd like to search with:</div>
+        <div class="track-confirm-details">
+            <div class="track-confirm-row">
+                <span class="label" data-i18n="track_ref_label">Reference Number</span>
+                <span class="value" id="trackConfirmRef"></span>
+            </div>
+            <div class="track-confirm-row">
+                <span class="label" data-i18n="track_phone_label">Contact Number Used</span>
+                <span class="value" id="trackConfirmPhone"></span>
+            </div>
+        </div>
+        <div class="alert-btns">
+            <button class="alert-btn cancel" type="button" id="trackConfirmCancelBtn" data-i18n="track_confirm_edit">Edit</button>
+            <button class="alert-btn confirm" type="button" id="trackConfirmOkBtn" data-i18n="track_confirm_ok">Confirm & Search</button>
+        </div>
+    </div>
 </div>
 
 <footer class="footer" style="margin-top:50px;">
@@ -374,7 +602,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
     const resultBox = document.getElementById('trackResult');
 
     const STAGE_LABELS = ['track_stage_pending', 'track_stage_scheduled', 'track_stage_progress', 'track_stage_completed'];
-    const STAGE_LABELS_DEFAULT = ['Pending Review', 'Scheduled', 'In Progress', 'Completed'];
+    const STAGE_LABELS_DEFAULT = ['🕓 Pending Review', '📅 Scheduled', '🔄 In Progress', '✅ Completed'];
 
     function t(key, fallback) {
         const lang = localStorage.getItem('lang') || 'en';
@@ -388,6 +616,18 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
+    function showToast(type, message) {
+        document.querySelectorAll('.notif-popup').forEach(n => n.remove());
+        const notif = document.createElement('div');
+        notif.className = 'notif-popup notif-' + type;
+        const icon = type === 'success' ? '✔️' : type === 'error' ? '❌' : 'ℹ️';
+        notif.innerHTML = `<span class="notif-icon">${icon}</span><span class="notif-message">${escapeHtml(message)}</span><button class="notif-close" type="button">&times;</button>`;
+        document.body.appendChild(notif);
+        const close = () => { notif.style.opacity = '0'; setTimeout(() => notif.remove(), 400); };
+        notif.querySelector('.notif-close').addEventListener('click', close);
+        setTimeout(close, 4000);
+    }
+
     function badgeClassFor(status) {
         return {
             'Pending Review': 'track-status-pending',
@@ -398,22 +638,48 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         }[status] || 'track-status-pending';
     }
 
+    function bandClassFor(status) {
+        return {
+            'Pending Review': 'track-band-pending',
+            'Scheduled':       'track-band-pending',
+            'In Progress':     'track-band-progress',
+            'Completed':       'track-band-completed',
+            'Rejected':        'track-band-rejected',
+        }[status] || 'track-band-pending';
+    }
+
+    function severityClass(n) {
+        n = parseInt(n, 10);
+        if (isNaN(n)) return 'sev-low';
+        if (n >= 8) return 'sev-crit';
+        if (n >= 6) return 'sev-high';
+        if (n >= 4) return 'sev-med';
+        return 'sev-low';
+    }
+
+    const TIMELINE_THEME_BY_STAGE = ['track-timeline-theme-pending', 'track-timeline-theme-pending', 'track-timeline-theme-progress', 'track-timeline-theme-completed'];
+
     function renderTimeline(stage) {
         const el = document.getElementById('trackTimeline');
         if (stage === -1) {
-            el.className = 'track-timeline rejected';
+            el.className = 'track-timeline track-timeline-theme-rejected';
             el.innerHTML = `
                 <div class="track-timeline-step done">
                     <div class="track-timeline-dot"><i class="fas fa-xmark"></i></div>
-                    <div class="track-timeline-label">${escapeHtml(t('track_stage_rejected', 'Rejected'))}</div>
+                    <div class="track-timeline-label">${escapeHtml(t('track_stage_rejected', '❌ Rejected'))}</div>
                 </div>`;
             return;
         }
-        el.className = 'track-timeline';
+        el.className = 'track-timeline ' + (TIMELINE_THEME_BY_STAGE[stage] || 'track-timeline-theme-pending');
+        // The final stage (Completed) has no "next" step to be "current" about —
+        // once reached, it's done too, so it gets the same checkmark treatment
+        // as every earlier step instead of sitting as an unchecked "current" circle.
+        const isFinalStageReached = stage >= STAGE_LABELS.length - 1;
         el.innerHTML = STAGE_LABELS.map((key, i) => {
             const label = t(key, STAGE_LABELS_DEFAULT[i]);
-            const cls = i < stage ? 'done' : (i === stage ? 'current' : '');
-            const icon = i < stage ? '<i class="fas fa-check"></i>' : (i + 1);
+            const isDone = i < stage || (i === stage && isFinalStageReached);
+            const cls = isDone ? 'done' : (i === stage ? 'current' : '');
+            const icon = isDone ? '<i class="fas fa-check"></i>' : (i + 1);
             return `<div class="track-timeline-step ${cls}">
                         <div class="track-timeline-dot">${icon}</div>
                         <div class="track-timeline-label">${escapeHtml(label)}</div>
@@ -428,7 +694,105 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    form.addEventListener('submit', async (e) => {
+    // Reference number autofill dropdown — lets a citizen browse/pick an
+    // existing report instead of having to remember the exact REQ-### id.
+    const refInput    = document.getElementById('trackRef');
+    const refDropdown = document.getElementById('trackRefDropdown');
+    let refSuggestions = [];
+    let refActiveIndex = -1;
+    let refFetchToken   = 0;
+
+    function closeRefDropdown() {
+        refDropdown.classList.remove('open');
+        refDropdown.innerHTML = '';
+        refSuggestions = [];
+        refActiveIndex = -1;
+    }
+
+    function renderRefDropdown(rows) {
+        refSuggestions = rows;
+        refActiveIndex = -1;
+        if (!rows.length) {
+            refDropdown.innerHTML = `<div class="track-ref-empty">${escapeHtml(t('track_ref_none', 'No matching reports found'))}</div>`;
+            refDropdown.classList.add('open');
+            return;
+        }
+        refDropdown.innerHTML = rows.map((r, i) => `
+            <div class="track-ref-option" data-index="${i}">
+                <span class="ref-id">${escapeHtml(r.ref_id)}</span>
+                <span class="ref-meta">${escapeHtml(r.infrastructure || '')}${r.infrastructure && r.location ? ' — ' : ''}${escapeHtml(r.location || '')}</span>
+            </div>`).join('');
+        refDropdown.classList.add('open');
+        refDropdown.querySelectorAll('.track-ref-option').forEach(opt => {
+            opt.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                pickRefSuggestion(parseInt(opt.dataset.index, 10));
+            });
+        });
+    }
+
+    function pickRefSuggestion(i) {
+        const row = refSuggestions[i];
+        if (!row) return;
+        refInput.value = row.ref_id;
+        closeRefDropdown();
+        refInput.focus();
+    }
+
+    async function fetchRefSuggestions(q) {
+        const token = ++refFetchToken;
+        try {
+            const res = await fetch(`${BASE_URL}api/track-report-suggest.php?q=${encodeURIComponent(q)}`);
+            const json = await res.json();
+            if (token !== refFetchToken) return; // a newer keystroke superseded this request
+            renderRefDropdown((json && json.data) || []);
+        } catch (err) {
+            if (token !== refFetchToken) return;
+            closeRefDropdown();
+        }
+    }
+
+    let refDebounceTimer = null;
+    refInput.addEventListener('input', () => {
+        clearTimeout(refDebounceTimer);
+        const q = refInput.value.trim();
+        refDebounceTimer = setTimeout(() => fetchRefSuggestions(q), 200);
+    });
+    refInput.addEventListener('focus', () => fetchRefSuggestions(refInput.value.trim()));
+    refInput.addEventListener('blur', () => closeRefDropdown());
+    refInput.addEventListener('keydown', (e) => {
+        if (!refDropdown.classList.contains('open')) return;
+        const opts = refDropdown.querySelectorAll('.track-ref-option');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            refActiveIndex = Math.min(refActiveIndex + 1, opts.length - 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            refActiveIndex = Math.max(refActiveIndex - 1, 0);
+        } else if (e.key === 'Enter' && refActiveIndex >= 0) {
+            e.preventDefault();
+            pickRefSuggestion(refActiveIndex);
+            return;
+        } else if (e.key === 'Escape') {
+            closeRefDropdown();
+            return;
+        } else {
+            return;
+        }
+        opts.forEach((o, i) => o.classList.toggle('active', i === refActiveIndex));
+        if (opts[refActiveIndex]) opts[refActiveIndex].scrollIntoView({ block: 'nearest' });
+    });
+
+    const confirmBackdrop = document.getElementById('trackConfirmBackdrop');
+    const confirmOkBtn    = document.getElementById('trackConfirmOkBtn');
+    const confirmEditBtn  = document.getElementById('trackConfirmCancelBtn');
+
+    function closeConfirmModal() {
+        confirmBackdrop.classList.remove('active');
+    }
+
+    // Step 1: validate, then show the confirmation box instead of searching right away.
+    form.addEventListener('submit', (e) => {
         e.preventDefault();
         errorBox.style.display = 'none';
         resultBox.style.display = 'none';
@@ -447,6 +811,27 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             return;
         }
 
+        const refDisplay = /^\d+$/.test(ref) ? ('REQ-' + ref) : ref.toUpperCase();
+        document.getElementById('trackConfirmRef').textContent = refDisplay;
+        document.getElementById('trackConfirmPhone').textContent = phone.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
+        confirmBackdrop.classList.add('active');
+    });
+
+    confirmEditBtn.addEventListener('click', () => {
+        closeConfirmModal();
+        document.getElementById('trackRef').focus();
+    });
+    confirmBackdrop.addEventListener('click', (e) => {
+        if (e.target === confirmBackdrop) closeConfirmModal();
+    });
+
+    // Step 2: user confirmed — actually run the lookup.
+    confirmOkBtn.addEventListener('click', async () => {
+        closeConfirmModal();
+
+        const ref   = document.getElementById('trackRef').value.trim();
+        const phone = document.getElementById('trackPhone').value.replace(/\D/g, '');
+
         submitBtn.disabled = true;
         const originalLabel = submitBtn.textContent;
         submitBtn.textContent = t('track_searching', 'Searching…');
@@ -456,8 +841,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             const json = await res.json();
 
             if (!json.success) {
-                errorBox.textContent = t('track_err_not_found', 'No matching report found. Double-check your reference number and contact number.');
-                errorBox.style.display = 'block';
+                showToast('error', t('track_err_not_found', 'No matching report found. Double-check your reference number and contact number.'));
                 return;
             }
 
@@ -469,6 +853,8 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             const badge = document.getElementById('trackResultBadge');
             badge.className = 'track-status-badge ' + badgeClassFor(d.status);
             badge.textContent = t('track_status_' + d.status.toLowerCase().replace(/\s+/g, '_'), d.status);
+
+            document.getElementById('trackResultBand').className = 'track-result-band ' + bandClassFor(d.status);
 
             renderTimeline(d.stage);
 
@@ -482,40 +868,42 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 
             const grid = document.getElementById('trackDetailGrid');
             const items = [];
-            items.push([t('track_detail_issue', 'Issue Described'), d.issue || '—']);
-            if (d.starting_date) items.push([t('track_detail_start', 'Scheduled Start'), fmtDate(d.starting_date)]);
-            if (d.estimated_end_date) items.push([t('track_detail_end', 'Est. Completion'), fmtDate(d.estimated_end_date)]);
-            if (d.priority) items.push([t('track_detail_priority', 'Priority'), d.priority]);
-            grid.innerHTML = items.map(([label, value]) =>
+            items.push(['fa-file-lines', t('track_detail_issue', '📝 Issue Described'), d.issue || '—']);
+            if (d.starting_date) items.push(['fa-calendar-days', t('track_detail_start', '📅 Scheduled Start'), fmtDate(d.starting_date)]);
+            if (d.estimated_end_date) items.push(['fa-flag-checkered', t('track_detail_end', '🏁 Est. Completion'), fmtDate(d.estimated_end_date)]);
+            if (d.priority) items.push(['fa-gauge-high', t('track_detail_priority', '🚦 Priority'), d.priority]);
+            grid.innerHTML = items.map(([, label, value]) =>
                 `<div class="track-detail-item"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`
             ).join('');
 
-            const aiCard = document.getElementById('trackAiCard');
-            const aiBody = document.getElementById('trackAiBody');
+            const aiCard   = document.getElementById('trackAiCard');
+            const aiBadges = document.getElementById('trackAiBadges');
+            const aiDesc   = document.getElementById('trackAiDesc');
+            const aiUrgent = document.getElementById('trackAiUrgent');
             if (d.ai_assessment) {
                 const ai = d.ai_assessment;
-                const rows = [];
+                const badges = [];
                 if (ai.severity != null) {
-                    rows.push([t('track_ai_severity', 'Damage Severity'), ai.severity + ' / 10']);
+                    badges.push(`<span class="track-ai-badge ${severityClass(ai.severity)}"><span class="track-ai-badge-icon">🎯</span>${escapeHtml(t('track_ai_severity', 'Severity'))}: ${escapeHtml(ai.severity)}/10</span>`);
                 }
                 if (ai.complexity) {
-                    rows.push([t('track_ai_complexity', 'Repair Complexity'), ai.complexity]);
+                    badges.push(`<span class="track-ai-badge info"><span class="track-ai-badge-icon">🔧</span>${escapeHtml(t('track_ai_complexity', 'Complexity'))}: ${escapeHtml(ai.complexity)}</span>`);
                 }
                 if (ai.estimated_cost) {
-                    rows.push([t('track_ai_cost', 'Estimated Repair Cost'), ai.estimated_cost]);
+                    badges.push(`<span class="track-ai-badge info"><span class="track-ai-badge-icon">💰</span>${escapeHtml(t('track_ai_cost', 'Est. Cost'))}: ${escapeHtml(ai.estimated_cost)}</span>`);
                 }
-                let html = rows.map(([label, value]) =>
-                    `<div class="track-ai-row"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value)}</span></div>`
-                ).join('');
+                aiBadges.innerHTML = badges.join('');
+
                 if (ai.description) {
-                    html += `<div class="track-ai-row" style="grid-column:1/-1;"><span class="label">${escapeHtml(t('track_ai_description', 'What we saw'))}</span><span class="value" style="font-weight:500;">${escapeHtml(ai.description)}</span></div>`;
+                    aiDesc.innerHTML = `<strong>${escapeHtml(t('track_ai_description', '👁️ What we saw'))}:</strong> ${escapeHtml(ai.description)}`;
+                    aiDesc.style.display = '';
+                } else {
+                    aiDesc.style.display = 'none';
                 }
-                if (ai.requires_immediate_action) {
-                    html += `<div class="track-ai-urgent"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(t('track_ai_urgent', 'Flagged for urgent attention'))}</div>`;
-                }
-                html += `<div class="track-ai-disclaimer">${escapeHtml(t('track_ai_disclaimer', 'Automated assessment from your submitted photos — final scope and cost are confirmed by the assigned engineer.'))}</div>`;
-                aiBody.innerHTML = html;
-                aiCard.style.display = rows.length || ai.description ? 'block' : 'none';
+
+                aiUrgent.style.display = ai.requires_immediate_action ? 'flex' : 'none';
+
+                aiCard.style.display = badges.length || ai.description ? 'block' : 'none';
             } else {
                 aiCard.style.display = 'none';
             }
@@ -523,8 +911,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             resultBox.style.display = 'block';
             resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (err) {
-            errorBox.textContent = t('track_err_generic', 'Something went wrong. Please try again.');
-            errorBox.style.display = 'block';
+            showToast('error', t('track_err_generic', 'Something went wrong. Please try again.'));
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = originalLabel;
@@ -557,37 +944,42 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_subtitle: 'No account needed. Enter the reference number you received when you submitted your report, along with the phone number you used, to check its current status.',
             track_ref_label: 'Reference Number',
             track_ref_placeholder: 'e.g. REQ-123 or 123',
+            track_ref_none: 'No matching reports found',
             track_phone_label: 'Contact Number Used',
             track_phone_placeholder: '09XXXXXXXXX',
             track_submit: 'Track Report',
             track_searching: 'Searching…',
-            track_search_again: '🔍 Track another report',
+            track_search_again: 'Track another report',
+            track_confirm_title: 'Confirm Details',
+            track_confirm_desc: "Please confirm these are the details you'd like to search with:",
+            track_confirm_edit: 'Edit',
+            track_confirm_ok: 'Confirm & Search',
             track_err_ref_required: 'Please enter your reference number.',
             track_err_phone_invalid: 'Please enter a valid 11-digit contact number starting with 09.',
             track_err_not_found: 'No matching report found. Double-check your reference number and contact number.',
             track_err_generic: 'Something went wrong. Please try again.',
             track_untitled: 'Infrastructure Report',
             track_submitted_on: 'Submitted',
-            track_stage_pending: 'Pending Review',
-            track_stage_scheduled: 'Scheduled',
-            track_stage_progress: 'In Progress',
-            track_stage_completed: 'Completed',
-            track_stage_rejected: 'Rejected',
+            track_stage_pending: '🕓 Pending Review',
+            track_stage_scheduled: '📅 Scheduled',
+            track_stage_progress: '🔄 In Progress',
+            track_stage_completed: '✅ Completed',
+            track_stage_rejected: '❌ Rejected',
             track_status_pending_review: 'Pending Review',
             track_status_scheduled: 'Scheduled',
             track_status_in_progress: 'In Progress',
             track_status_completed: 'Completed',
             track_status_rejected: 'Rejected',
             track_rejection_reason_label: 'Reason:',
-            track_detail_issue: 'Issue Described',
-            track_detail_start: 'Scheduled Start',
-            track_detail_end: 'Est. Completion',
-            track_detail_priority: 'Priority',
+            track_detail_issue: '📝 Issue Described',
+            track_detail_start: '📅 Scheduled Start',
+            track_detail_end: '🏁 Est. Completion',
+            track_detail_priority: '🚦 Priority',
             track_ai_title: 'What our system found in your photos',
-            track_ai_severity: 'Damage Severity',
-            track_ai_complexity: 'Repair Complexity',
-            track_ai_cost: 'Estimated Repair Cost',
-            track_ai_description: 'What we saw',
+            track_ai_severity: 'Severity',
+            track_ai_complexity: 'Complexity',
+            track_ai_cost: 'Est. Cost',
+            track_ai_description: '👁️ What we saw',
             track_ai_urgent: 'Flagged for urgent attention',
             track_ai_disclaimer: 'Automated assessment from your submitted photos — final scope and cost are confirmed by the assigned engineer.',
             footer_desc: 'Community Infrastructure Maintenance Management System for Quezon City. Dedicated to providing efficient, transparent, and responsive infrastructure services for all residents.',
@@ -606,37 +998,42 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_subtitle: 'Walang kailangang account. Ilagay ang reference number na natanggap mo noong nagsumite ka ng ulat, kasama ang numero ng telepono na ginamit mo, para tingnan ang kasalukuyang katayuan nito.',
             track_ref_label: 'Reference Number',
             track_ref_placeholder: 'hal. REQ-123 o 123',
+            track_ref_none: 'Walang natagpuang tumutugmang ulat',
             track_phone_label: 'Numero ng Telepono na Ginamit',
             track_phone_placeholder: '09XXXXXXXXX',
             track_submit: 'Subaybayan ang Ulat',
             track_searching: 'Hinahanap…',
-            track_search_again: '🔍 Subaybayan ang ibang ulat',
+            track_search_again: 'Subaybayan ang ibang ulat',
+            track_confirm_title: 'Kumpirmahin ang mga Detalye',
+            track_confirm_desc: 'Mangyaring kumpirmahin na ito ang mga detalyeng gusto mong gamitin sa paghahanap:',
+            track_confirm_edit: 'I-edit',
+            track_confirm_ok: 'Kumpirmahin at Maghanap',
             track_err_ref_required: 'Mangyaring ilagay ang iyong reference number.',
             track_err_phone_invalid: 'Mangyaring maglagay ng wastong 11-digit na numero na nagsisimula sa 09.',
             track_err_not_found: 'Walang natagpuang tumutugmang ulat. Suriin muli ang iyong reference number at numero ng telepono.',
             track_err_generic: 'May naganap na error. Pakisubukang muli.',
             track_untitled: 'Ulat ng Imprastraktura',
             track_submitted_on: 'Isinumite noong',
-            track_stage_pending: 'Sinusuri',
-            track_stage_scheduled: 'Naka-iskedyul',
-            track_stage_progress: 'Isinasagawa',
-            track_stage_completed: 'Natapos',
-            track_stage_rejected: 'Tinanggihan',
+            track_stage_pending: '🕓 Sinusuri',
+            track_stage_scheduled: '📅 Naka-iskedyul',
+            track_stage_progress: '🔄 Isinasagawa',
+            track_stage_completed: '✅ Natapos',
+            track_stage_rejected: '❌ Tinanggihan',
             track_status_pending_review: 'Sinusuri',
             track_status_scheduled: 'Naka-iskedyul',
             track_status_in_progress: 'Isinasagawa',
             track_status_completed: 'Natapos',
             track_status_rejected: 'Tinanggihan',
             track_rejection_reason_label: 'Dahilan:',
-            track_detail_issue: 'Inilarawang Isyu',
-            track_detail_start: 'Naka-iskedyul na Simula',
-            track_detail_end: 'Tinatayang Pagkumpleto',
-            track_detail_priority: 'Prayoridad',
+            track_detail_issue: '📝 Inilarawang Isyu',
+            track_detail_start: '📅 Naka-iskedyul na Simula',
+            track_detail_end: '🏁 Tinatayang Pagkumpleto',
+            track_detail_priority: '🚦 Prayoridad',
             track_ai_title: 'Ang natuklasan ng aming sistema sa iyong mga larawan',
             track_ai_severity: 'Antas ng Pinsala',
-            track_ai_complexity: 'Kumplikasyon ng Pag-aayos',
-            track_ai_cost: 'Tinatayang Gastos sa Pag-aayos',
-            track_ai_description: 'Ang aming nakita',
+            track_ai_complexity: 'Kumplikasyon',
+            track_ai_cost: 'Tinatayang Gastos',
+            track_ai_description: '👁️ Ang aming nakita',
             track_ai_urgent: 'Na-flag para sa agarang pansin',
             track_ai_disclaimer: 'Awtomatikong pagsusuri mula sa iyong isinumiteng mga larawan — ang huling saklaw at gastos ay kukumpirmahin ng nakatalagang inhinyero.',
             footer_desc: 'Sistema ng Pamamahala ng Pagpapanatili ng Imprastraktura ng Komunidad para sa Lungsod Quezon.',

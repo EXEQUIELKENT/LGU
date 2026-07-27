@@ -673,18 +673,260 @@ foreach ($maintenance_data as $_item) {
         [data-theme="dark"] .view-toggle-btn.active { color: #fff; }
         @media (max-width: 520px) { .view-toggle-btn span { display: none; } .view-toggle-btn { padding: 0 10px; } }
 
-        /* ── MAP VIEW ── */
+        /* ── MAP VIEW — unified toolbar + map + legend card (gis-combined-card language) ── */
         .reports-map-view {
-            border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);
-            box-shadow: 0 2px 10px var(--shadow-color); margin-bottom: 10px;
+            background: var(--bg-secondary, var(--card-bg));
+            border-radius: 18px; border: 1px solid var(--border-color);
+            box-shadow: 0 4px 18px var(--shadow-color); margin-bottom: 10px;
+            overflow: hidden;
         }
+        .reports-map-toolbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 12px 18px; border-bottom: 1px solid var(--border-color);
+        }
+        .reports-map-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+        .reports-map-title i { color: #3762c8; margin-right: 4px; }
+        .reports-map-layer-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            height: 32px; padding: 0 13px; border-radius: 9px; cursor: pointer;
+            background: var(--bg-primary); border: 1.5px solid var(--border-color);
+            color: var(--text-primary); font-size: 12px; font-weight: 700; font-family: inherit;
+            transition: all .18s ease; box-shadow: 0 1px 4px var(--shadow-color);
+        }
+        .reports-map-layer-btn:hover { border-color: #3762c8; color: #3762c8; }
+        .reports-map-layer-btn.active { background: #3762c8; border-color: #3762c8; color: #fff; }
+
+        .reports-map-toolbar-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+
+        /* ── Search — same look as the admin GIS request map's search box ── */
+        .gis-search-wrap { position: relative; display: flex; align-items: center; width: 200px; }
+        .gis-search-wrap svg { position: absolute; left: 11px; color: #94a3b8; pointer-events: none; flex-shrink: 0; z-index: 1; }
+        [data-theme="dark"] .gis-search-wrap svg { color: #64748b; }
+        #reportsMapSearch {
+            width: 100%; height: 32px; padding: 0 28px 0 30px; border-radius: 9px; box-sizing: border-box;
+            border: 1.5px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);
+            font-size: 12.5px; font-family: inherit; outline: none; transition: border-color .15s, box-shadow .15s;
+        }
+        #reportsMapSearch::placeholder { color: #94a3b8; }
+        #reportsMapSearch:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.18); }
+        [data-theme="dark"] #reportsMapSearch::placeholder { color: #64748b; }
+        .gis-search-clear {
+            position: absolute; right: 7px; background: none; border: none; cursor: pointer;
+            color: var(--text-secondary); font-size: 15px; line-height: 1; padding: 2px 4px;
+            border-radius: 4px; display: none; align-items: center; justify-content: center; opacity: .5; transition: opacity .2s; z-index: 2;
+        }
+        .gis-search-clear:hover { opacity: 1; }
+        .gis-search-clear.visible { display: flex; }
+        .gis-search-results-badge {
+            position: fixed; display: none; align-items: center; gap: 6px; padding: 5px 12px;
+            background: #dce6f8; border: 1.5px solid #3762c8; border-radius: 8px;
+            font-size: 12px; font-weight: 600; color: #3762c8; white-space: nowrap; z-index: 99999;
+            pointer-events: none; box-shadow: 0 2px 8px rgba(55,98,200,.2); min-width: 120px;
+        }
+        .gis-search-results-badge.visible { display: flex; }
+        .gis-search-results-badge.no-results { background: #fde8e8; border-color: #f44336; color: #f44336; }
+        [data-theme="dark"] .gis-search-results-badge { background: #1e3160; border-color: #5f8cff; color: #a0b8ff; }
+        [data-theme="dark"] .gis-search-results-badge.no-results { background: #3b1414; border-color: #f44336; color: #f87171; }
+
+        /* ── Dropdown menus — same look as the admin GIS request map's filter dropdowns ── */
+        .gis-dd-wrap { position: relative; flex-shrink: 0; }
+        .gis-dd-btn {
+            display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 11px;
+            background: var(--bg-primary); border: 1.5px solid var(--border-color);
+            color: var(--text-primary); border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer;
+            transition: all .18s ease; white-space: nowrap; font-family: inherit; box-shadow: 0 1px 4px var(--shadow-color);
+        }
+        .gis-dd-btn:hover { border-color: #3762c8; color: #3762c8; background: rgba(55,98,200,.06); }
+        .gis-dd-btn.has-filter { background: #3762c8; border-color: #3762c8; color: #fff; }
+        .gis-dd-chevron { font-size: 9px !important; transition: transform .18s; }
+        .gis-dd-wrap.open .gis-dd-chevron { transform: rotate(180deg); }
+        .gis-dd-menu {
+            display: none; position: fixed;
+            background: var(--bg-secondary, var(--card-bg)); border: 1.5px solid rgba(55,98,200,.18);
+            border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16);
+            z-index: 99999; min-width: 190px; overflow: hidden; animation: gisDropIn .18s ease;
+        }
+        .gis-dd-wrap.open .gis-dd-menu { display: block; }
+        @keyframes gisDropIn { from{opacity:0;transform:translateY(-6px) scale(.97)} to{opacity:1;transform:none} }
+        .gis-dd-item {
+            display: flex; align-items: center; gap: 9px; padding: 9px 14px;
+            font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+            cursor: pointer; transition: background .13s,color .13s; border-left: 3px solid transparent; white-space: nowrap;
+        }
+        .gis-dd-item:hover { background: rgba(55,98,200,.07); color: #3762c8; }
+        .gis-dd-item.active { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; border-left-color: #3762c8; }
+        .gis-dd-item i { width: 14px; text-align: center; font-size: 11px; }
+        .gis-dd-divider { height: 1px; background: var(--border-color); margin: 3px 0; }
+        [data-theme="dark"] .gis-dd-menu { background: rgba(30,30,40,.98); border-color: rgba(95,140,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+        [data-theme="dark"] .gis-dd-item { color: var(--text-secondary); }
+        [data-theme="dark"] .gis-dd-item:hover { background: rgba(95,140,255,.12); color: #8fb4ff; }
+        [data-theme="dark"] .gis-dd-item.active { background: rgba(95,140,255,.16); color: #8fb4ff; border-left-color: #5f8cff; }
+        @media (max-width: 768px) {
+            #reportsMapPeriodMenu { min-width: 210px; max-height: min(320px, 60vh); overflow-y: auto; }
+        }
+
+        /* Expand button — same look/position as the admin GIS request map's
+           #gisExpandBtn: absolute top-right of the map itself, not the toolbar. */
+        .reports-map-expand-btn {
+            position: absolute; top: 12px; right: 12px; z-index: 1000;
+            background: rgba(255,255,255,.92); color: #3762c8; border: 1.5px solid #c7d1f3;
+            width: 34px; height: 34px; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,.22); transition: background .2s, transform .15s;
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        .reports-map-expand-btn:hover { background: #fff; transform: scale(1.1); }
+        [data-theme="dark"] .reports-map-expand-btn { background: rgba(30,30,30,.88); color: #8ab4f8; border-color: rgba(74,143,216,.4); }
+        [data-theme="dark"] .reports-map-expand-btn:hover { background: rgba(45,45,45,.95); }
+        /* Once the map is already fullscreen, the in-map expand button would
+           just duplicate the header's close button — hide it there. */
+        .reports-map-fs-body .reports-map-expand-btn { display: none; }
+        @media (max-width: 768px) {
+            .reports-map-toolbar { flex-wrap: wrap; }
+            .reports-map-toolbar-tools { width: 100%; margin-left: 0; }
+            .gis-search-wrap { flex: 1 1 auto; width: auto; }
+            .reports-map-title { display: none; }
+            .gis-dd-btn { font-size: 11px; height: 30px; padding: 0 9px; }
+            .gis-dd-menu { min-width: 160px; max-height: min(280px, 48vh); overflow-y: auto; }
+            .reports-map-legend { padding: 8px 12px; gap: 8px; }
+            .reports-map-legend-item { font-size: 10px; gap: 4px; }
+            .reports-map-dot { width: 8px; height: 8px; }
+            .reports-map-legend-hint { font-size: 10px; }
+        }
+
+        /* ── Fullscreen map overlay — covers the entire viewport edge-to-edge,
+           same as the admin GIS request map's expanded fullscreen modal
+           (no padding around it, no rounded corners, no max-width cap). ── */
+        .reports-map-fs-backdrop {
+            display: none; position: fixed; inset: 0; z-index: 5000;
+            background: rgba(0,0,0,.6); align-items: center; justify-content: center; padding: 0;
+        }
+        .reports-map-fs-backdrop.active { display: flex; animation: reportsMapFsFade .2s ease; }
+        @keyframes reportsMapFsFade { from { opacity: 0; } to { opacity: 1; } }
+        .reports-map-fs-modal {
+            width: 100%; height: 100%; max-width: 100%; background: var(--bg-secondary, var(--card-bg));
+            border-radius: 0; overflow: hidden; display: flex; flex-direction: column;
+            animation: reportsMapFsPop .3s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes reportsMapFsPop {
+            from { opacity: 0; transform: scale(.92) translateY(-18px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .reports-map-fs-head {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 12px 18px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+        }
+        .reports-map-fs-head strong { font-size: 14px; color: var(--text-primary); flex-shrink: 0; }
+        .reports-map-fs-head-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+        /* 100dvh excludes mobile browser chrome (address bar/toolbar) so the
+           header and close button are never hidden off-screen. */
+        @media (max-width: 768px) {
+            .reports-map-fs-modal { height: 100dvh; }
+            .reports-map-fs-head-tools { width: 100%; margin-left: 0; order: 3; }
+            .reports-map-fs-head .gis-search-wrap { flex: 1 1 auto; width: auto; }
+            .reports-map-fs-head .gis-dd-btn { font-size: 11px; height: 30px; padding: 0 9px; }
+        }
+        .reports-map-fs-close {
+            width: 32px; height: 32px; border-radius: 9px; border: 1.5px solid var(--border-color);
+            background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .reports-map-fs-close:hover { border-color: #dc2626; color: #dc2626; }
+        .reports-map-fs-body { flex: 1; min-height: 0; position: relative; isolation: isolate; }
+        .reports-map-fs-body .reports-map-inner,
+        .reports-map-fs-body #reportsMap { width: 100%; height: 100%; }
+
+        /* isolation:isolate traps Leaflet's internal z-index values (controls/
+           popups default to 1000+) inside this card so they can never render
+           above the fixed top nav, regardless of the nav's own z-index. */
+        .reports-map-inner { position: relative; isolation: isolate; }
         #reportsMap { width: 100%; height: 480px; background: #dde3ee; }
         @media (max-width: 768px) { #reportsMap { height: 380px; } }
         .reports-map-empty {
-            padding: 40px 20px; text-align: center; color: var(--text-secondary);
-            font-weight: 600; font-size: 14px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            background: var(--bg-secondary, var(--card-bg)); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 24px 32px; text-align: center; box-shadow: 0 8px 32px var(--shadow-color);
+            z-index: 400; display: none; pointer-events: none;
         }
-        .reports-map-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+        .reports-map-empty.visible { display: block; }
+        .reports-map-empty .no-results-icon { font-size: 32px; margin-bottom: 8px; }
+        .reports-map-empty .no-results-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .reports-map-empty .no-results-sub  { font-size: 12px; color: var(--text-secondary); }
+        .reports-map-loading {
+            position: absolute; inset: 0; z-index: 500; background: var(--bg-secondary, var(--card-bg));
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+            font-size: 13px; font-weight: 600; color: var(--text-secondary);
+            transition: opacity .25s ease;
+        }
+        .reports-map-loading.hidden { opacity: 0; pointer-events: none; }
+        .reports-map-spinner {
+            width: 40px; height: 40px; border: 4px solid var(--border-color);
+            border-top-color: #3762c8; border-radius: 50%; animation: reportsMapSpin .8s linear infinite;
+        }
+        @keyframes reportsMapSpin { to { transform: rotate(360deg); } }
+
+        .reports-map-legend {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+            padding: 10px 18px; border-top: 1px solid var(--border-color);
+        }
+        .reports-map-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+        .reports-map-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,.06); }
+        .rmp-dot-scheduled { background: #1565c0; }
+        .rmp-dot-progress  { background: #f59e0b; }
+        .rmp-dot-completed { background: #2e7d32; }
+        .reports-map-legend-hint { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); opacity: .75; }
+        .reports-map-legend-hint i { margin-right: 3px; }
+        @media (max-width: 560px) { .reports-map-legend-hint { margin-left: 0; width: 100%; } }
+
+        /* ── Leaflet zoom control — redesigned (same as the admin GIS map) ── */
+        #reportsMap .leaflet-bar,
+        #reportsMap .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12) !important;
+            border-radius: 14px !important; overflow: hidden !important;
+            backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important;
+        }
+        #reportsMap .leaflet-control-zoom-in,
+        #reportsMap .leaflet-control-zoom-out {
+            width: 36px !important; height: 36px !important; line-height: 36px !important;
+            font-size: 18px !important; font-weight: 400 !important; color: #2b6cb0 !important;
+            background: rgba(255,255,255,.92) !important; border: none !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            transition: background .15s ease, color .15s ease, transform .12s ease !important;
+            text-decoration: none !important; position: relative !important;
+        }
+        #reportsMap .leaflet-control-zoom-in  { border-radius: 14px 14px 0 0 !important; }
+        #reportsMap .leaflet-control-zoom-out { border-radius: 0 0 14px 14px !important; border-top: 1px solid rgba(43,108,176,.12) !important; }
+        #reportsMap .leaflet-control-zoom-in:hover,
+        #reportsMap .leaflet-control-zoom-out:hover { background: #2b6cb0 !important; color: #fff !important; }
+        #reportsMap .leaflet-control-zoom-in:active,
+        #reportsMap .leaflet-control-zoom-out:active { background: #245a96 !important; color: #fff !important; transform: scale(.94) !important; }
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom-in,
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom-out { background: rgba(26,26,26,.88) !important; color: #8ab4f8 !important; }
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom-out { border-top: 1px solid rgba(255,255,255,.08) !important; }
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom-in:hover,
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom-out:hover { background: #3762c8 !important; color: #fff !important; }
+        [data-theme="dark"] #reportsMap .leaflet-bar,
+        [data-theme="dark"] #reportsMap .leaflet-control-zoom { box-shadow: 0 4px 20px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3) !important; }
+
+        /* ── Pin markers (teardrop pin, same technique as the admin GIS map) ── */
+        .rmp-marker-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+        .rmp-pin {
+            width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg); border: 3px solid #fff;
+            box-shadow: 0 3px 12px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: transform .15s, box-shadow .15s;
+        }
+        .rmp-pin:hover { transform: rotate(-45deg) scale(1.1); box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+        .rmp-pin-inner { transform: rotate(45deg); font-size: 13px; line-height: 1; }
+        .rmp-pin.rmp-scheduled { background: #1565c0; }
+        .rmp-pin.rmp-in-progress { background: #f59e0b; }
+        .rmp-pin.rmp-completed { background: #2e7d32; }
+
+        /* ── Popup (matches admin GIS popup treatment) ── */
+        .leaflet-popup-content-wrapper { border-radius: 12px !important; padding: 0 !important; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.2) !important; }
+        .leaflet-popup-content { margin: 0 !important; }
+        .reports-map-popup { font-size: 13px; line-height: 1.5; min-width: 190px; padding: 12px 16px; }
         .reports-map-popup strong { display: block; font-size: 13.5px; margin-bottom: 3px; }
         .reports-map-popup .rmp-status {
             display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 20px;
@@ -1100,14 +1342,25 @@ foreach ($maintenance_data as $_item) {
         [data-theme="dark"] .sched-status-pill.sched-inprogress { background: rgba(245,158,11,0.18); color: #fdd835; }
         [data-theme="dark"] .sched-status-pill.sched-pending    { background: rgba(21,101,192,0.2);  color: #90caf9; }
 
-        /* Progress timeline */
-        .sched-timeline { display: flex; align-items: flex-start; margin: 4px 0 20px; }
+        /* Progress timeline — themed background frame, colour reflects overall status */
+        .sched-timeline {
+            display: flex; align-items: flex-start; margin: 4px 0 20px;
+            padding: 16px 14px 12px; border-radius: 14px; border: 1px solid transparent;
+            --tl-accent: #2563eb;
+        }
+        .sched-timeline-theme-pending   { --tl-accent: #1565c0; background: rgba(21,101,192,0.07);  border-color: rgba(21,101,192,0.16); }
+        .sched-timeline-theme-progress  { --tl-accent: #f59e0b; background: rgba(245,158,11,0.08);  border-color: rgba(245,158,11,0.20); }
+        .sched-timeline-theme-completed { --tl-accent: #2e7d32; background: rgba(46,125,50,0.08);   border-color: rgba(46,125,50,0.18); }
+        [data-theme="dark"] .sched-timeline-theme-pending   { background: rgba(21,101,192,0.14);  border-color: rgba(90,150,255,0.28); }
+        [data-theme="dark"] .sched-timeline-theme-progress  { background: rgba(245,158,11,0.14);  border-color: rgba(253,216,53,0.28); }
+        [data-theme="dark"] .sched-timeline-theme-completed { background: rgba(46,125,50,0.16);   border-color: rgba(129,199,132,0.30); }
         .sched-timeline-step { flex: 1; text-align: center; position: relative; }
         .sched-timeline-dot {
             width: 26px; height: 26px; border-radius: 50%; margin: 0 auto 6px;
             display: flex; align-items: center; justify-content: center;
             background: #e5e7eb; color: #9ca3af; font-size: 11px; font-weight: 800;
             border: 3px solid var(--card-bg, #fff); box-shadow: 0 0 0 2px #e5e7eb; position: relative; z-index: 2;
+            transition: background .2s ease, color .2s ease, box-shadow .2s ease;
         }
         .sched-timeline-step::before {
             content: ''; position: absolute; top: 12px; left: -50%; width: 100%; height: 3px;
@@ -1115,10 +1368,10 @@ foreach ($maintenance_data as $_item) {
         }
         .sched-timeline-step:first-child::before { display: none; }
         .sched-timeline-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
-        .sched-timeline-step.done .sched-timeline-dot { background: #2563eb; color: #fff; box-shadow: 0 0 0 2px #2563eb; }
-        .sched-timeline-step.done::before { background: #2563eb; }
-        .sched-timeline-step.current .sched-timeline-dot { background: #fff; color: #2563eb; box-shadow: 0 0 0 3px #2563eb; }
-        .sched-timeline-step.current .sched-timeline-label { color: #2563eb; }
+        .sched-timeline-step.done .sched-timeline-dot { background: var(--tl-accent); color: #fff; box-shadow: 0 0 0 2px var(--tl-accent); }
+        .sched-timeline-step.done::before { background: var(--tl-accent); }
+        .sched-timeline-step.current .sched-timeline-dot { background: #fff; color: var(--tl-accent); box-shadow: 0 0 0 3px var(--tl-accent); }
+        .sched-timeline-step.current .sched-timeline-label { color: var(--tl-accent); }
         [data-theme="dark"] .sched-timeline-step.current .sched-timeline-dot { background: var(--card-bg, #1e1e1e); }
 
         /* Fields */
@@ -1411,8 +1664,120 @@ foreach ($maintenance_data as $_item) {
 
     <!-- MAP VIEW -->
     <div class="reports-map-view" id="reportsMapView" style="display:none;">
-        <div id="reportsMap"></div>
-        <div class="reports-map-empty" id="reportsMapEmpty" style="display:none;" data-i18n="reports_map_empty">No pinned reports match the current filter.</div>
+        <div class="reports-map-toolbar">
+            <span class="reports-map-title"><i class="fas fa-layer-group"></i> <span data-i18n="reports_map_toolbar_title">Reported Issues Map</span></span>
+            <div class="reports-map-toolbar-tools" id="reportsMapToolbarTools">
+                <div class="gis-search-wrap" id="reportsMapSearchWrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="reportsMapSearch" data-i18n-placeholder="reports_map_search_placeholder" placeholder="Search location or type…" autocomplete="off">
+                    <button class="gis-search-clear" id="reportsMapSearchClear" type="button" title="Clear">&times;</button>
+                    <span class="gis-search-results-badge" id="reportsMapResultsBadge">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Showing&nbsp;<strong id="reportsMapResultsCount">0</strong>&nbsp;of&nbsp;<strong id="reportsMapTotalCount">0</strong>&nbsp;report(s)
+                    </span>
+                </div>
+                <div class="gis-dd-wrap" id="reportsMapSortWrap">
+                    <button class="gis-dd-btn" id="reportsMapSortBtn" type="button" title="Which pin draws on top when reports overlap">
+                        <i class="fas fa-arrow-down-wide-short"></i>
+                        <span id="reportsMapSortLabel" data-i18n="reports_map_sort_newest">Newest on top</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="reportsMapSortMenu">
+                        <div class="gis-dd-item active" data-val="newest"><i class="fas fa-clock"></i> <span data-i18n="reports_map_sort_newest">Newest on top</span></div>
+                        <div class="gis-dd-item" data-val="oldest"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="reports_map_sort_oldest">Oldest on top</span></div>
+                        <div class="gis-dd-item" data-val="status"><i class="fas fa-circle-half-stroke"></i> <span data-i18n="reports_map_sort_status">Status on top</span></div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="reportsMapStatusWrap">
+                    <button class="gis-dd-btn" id="reportsMapStatusBtn" type="button">
+                        <i class="fas fa-circle-half-stroke"></i>
+                        <span id="reportsMapStatusLabel" data-i18n="reports_map_filter_all_status">All Status</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="reportsMapStatusMenu">
+                        <div class="gis-dd-item active" data-val="all"><i class="fas fa-layer-group"></i> <span data-i18n="reports_map_filter_all_status">All Status</span></div>
+                        <div class="gis-dd-item" data-val="upcoming"><i class="fas fa-calendar-days" style="color:#1565c0"></i> <span data-i18n="reports_legend_scheduled">Scheduled</span></div>
+                        <div class="gis-dd-item" data-val="ongoing"><i class="fas fa-wrench" style="color:#f59e0b"></i> <span data-i18n="reports_legend_ongoing">In Progress</span></div>
+                        <div class="gis-dd-item" data-val="completed"><i class="fas fa-circle-check" style="color:#2e7d32"></i> <span data-i18n="reports_legend_completed">Completed</span></div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="reportsMapDistrictWrap">
+                    <button class="gis-dd-btn" id="reportsMapDistrictBtn" type="button">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="reportsMapDistrictLabel" data-i18n="reports_map_filter_all_districts">All Districts</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="reportsMapDistrictMenu">
+                        <div class="gis-dd-item active" data-val="all"><i class="fas fa-globe-asia"></i> <span data-i18n="reports_map_filter_all_districts">All Districts</span></div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item" data-val="district 1"><i class="fas fa-location-dot"></i> District 1</div>
+                        <div class="gis-dd-item" data-val="district 2"><i class="fas fa-location-dot"></i> District 2</div>
+                        <div class="gis-dd-item" data-val="district 3"><i class="fas fa-location-dot"></i> District 3</div>
+                        <div class="gis-dd-item" data-val="district 4"><i class="fas fa-location-dot"></i> District 4</div>
+                        <div class="gis-dd-item" data-val="district 5"><i class="fas fa-location-dot"></i> District 5</div>
+                        <div class="gis-dd-item" data-val="district 6"><i class="fas fa-location-dot"></i> District 6</div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item" data-val="other"><i class="fas fa-question-circle"></i> <span data-i18n="reports_map_filter_other_district">Other / Unspecified</span></div>
+                    </div>
+                </div>
+                <div class="gis-dd-wrap" id="reportsMapPeriodWrap">
+                    <button class="gis-dd-btn" id="reportsMapPeriodBtn" type="button">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span id="reportsMapPeriodLabel" data-i18n="reports_map_filter_all_time">All Time</span>
+                        <i class="fas fa-chevron-down gis-dd-chevron"></i>
+                    </button>
+                    <div class="gis-dd-menu" id="reportsMapPeriodMenu">
+                        <div class="gis-dd-item active" data-val="all"><i class="fas fa-infinity"></i> <span data-i18n="reports_map_filter_all_time">All Time</span></div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-item" data-val="today"><i class="fas fa-sun"></i> <span data-i18n="reports_map_filter_today">Today</span></div>
+                        <div class="gis-dd-item" data-val="yesterday"><i class="fas fa-history"></i> <span data-i18n="reports_map_filter_yesterday">Yesterday</span></div>
+                        <div class="gis-dd-item" data-val="week"><i class="fas fa-calendar-week"></i> <span data-i18n="reports_map_filter_week">This Week</span></div>
+                        <div class="gis-dd-item" data-val="month"><i class="fas fa-calendar-day"></i> <span data-i18n="reports_map_filter_month">This Month</span></div>
+                        <div class="gis-dd-item" data-val="year"><i class="fas fa-calendar-alt"></i> <span data-i18n="reports_map_filter_year">This Year</span></div>
+                        <div class="gis-dd-item" data-val="lastyear"><i class="fas fa-undo"></i> <span data-i18n="reports_map_filter_lastyear">Last Year</span></div>
+                    </div>
+                </div>
+                <button class="reports-map-layer-btn" id="reportsMapLayerBtn" type="button">🛰️ <span data-i18n="reports_map_satellite">Satellite</span></button>
+            </div>
+        </div>
+        <div class="reports-map-inner">
+            <button class="reports-map-expand-btn" id="reportsMapExpandBtn" type="button" title="Expand map to fullscreen" data-i18n-title="reports_map_expand_title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+            </button>
+            <div class="reports-map-loading" id="reportsMapLoading">
+                <div class="reports-map-spinner"></div>
+                <span data-i18n="reports_map_loading">Loading pinned reports…</span>
+            </div>
+            <div id="reportsMap"></div>
+            <div class="reports-map-empty" id="reportsMapEmpty">
+                <div class="no-results-icon">🔍</div>
+                <div class="no-results-text" data-i18n="reports_map_empty">No pinned reports match the current filter</div>
+                <div class="no-results-sub" data-i18n="reports_map_empty_sub">Try a different keyword or clear the status filter</div>
+            </div>
+        </div>
+        <div class="reports-map-legend">
+            <div class="reports-map-legend-item"><span class="reports-map-dot rmp-dot-scheduled"></span><span data-i18n="reports_legend_scheduled">Scheduled</span></div>
+            <div class="reports-map-legend-item"><span class="reports-map-dot rmp-dot-progress"></span><span data-i18n="reports_legend_ongoing">In Progress</span></div>
+            <div class="reports-map-legend-item"><span class="reports-map-dot rmp-dot-completed"></span><span data-i18n="reports_legend_completed">Completed</span></div>
+            <div class="reports-map-legend-hint"><i class="fas fa-info-circle"></i> <span data-i18n="reports_map_hint">Click a pin to view report details</span></div>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN MAP OVERLAY -->
+    <div class="reports-map-fs-backdrop" id="reportsMapFsBackdrop">
+        <div class="reports-map-fs-modal">
+            <div class="reports-map-fs-head">
+                <strong><i class="fas fa-layer-group"></i> <span data-i18n="reports_map_toolbar_title">Reported Issues Map</span></strong>
+                <div class="reports-map-fs-head-tools" id="reportsMapFsHeadTools"></div>
+                <button class="reports-map-fs-close" id="reportsMapFsClose" type="button" title="Close">&times;</button>
+            </div>
+            <div class="reports-map-fs-body" id="reportsMapFsBody"></div>
+        </div>
     </div>
 
     <!-- DESKTOP TABLE -->
@@ -1698,6 +2063,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const card = document.querySelector('.content-card');
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+    // Expose a direct (non-toggling) setter too, so the map's own Status
+    // filter dropdown can set an exact value without guessing current state.
+    window.applyLegendFilter = applyLegendFilter;
+    window.getActiveLegendFilter = function() { return activeLegendFilter; };
 });
 </script>
 
@@ -1710,29 +2079,105 @@ document.addEventListener("DOMContentLoaded", () => {
     const mapBtn     = document.getElementById('mapViewBtn');
     const mapView    = document.getElementById('reportsMapView');
     const mapEmpty   = document.getElementById('reportsMapEmpty');
+    const mapLoading = document.getElementById('reportsMapLoading');
+    const layerBtn   = document.getElementById('reportsMapLayerBtn');
     const tableWrap  = document.querySelector('.table-wrapper');
     const mobileList = document.querySelector('.mobile-maintenance-list');
+    const mapSearchEl      = document.getElementById('reportsMapSearch');
+    const mapSearchClearEl = document.getElementById('reportsMapSearchClear');
+    const searchWrapEl      = document.getElementById('reportsMapSearchWrap');
+    const resultsBadge      = document.getElementById('reportsMapResultsBadge');
+    const resultsCountEl    = document.getElementById('reportsMapResultsCount');
+    const totalCountEl      = document.getElementById('reportsMapTotalCount');
+    const sortWrap           = document.getElementById('reportsMapSortWrap');
+    const sortBtn             = document.getElementById('reportsMapSortBtn');
+    const sortMenu            = document.getElementById('reportsMapSortMenu');
+    const sortLabelEl         = document.getElementById('reportsMapSortLabel');
+    const statusWrap          = document.getElementById('reportsMapStatusWrap');
+    const statusBtn           = document.getElementById('reportsMapStatusBtn');
+    const statusMenu          = document.getElementById('reportsMapStatusMenu');
+    const statusLabelEl       = document.getElementById('reportsMapStatusLabel');
+    const districtWrap        = document.getElementById('reportsMapDistrictWrap');
+    const districtBtn         = document.getElementById('reportsMapDistrictBtn');
+    const districtMenu        = document.getElementById('reportsMapDistrictMenu');
+    const districtLabelEl     = document.getElementById('reportsMapDistrictLabel');
+    const periodWrap          = document.getElementById('reportsMapPeriodWrap');
+    const periodBtn           = document.getElementById('reportsMapPeriodBtn');
+    const periodMenu          = document.getElementById('reportsMapPeriodMenu');
+    const periodLabelEl       = document.getElementById('reportsMapPeriodLabel');
+    const expandBtn          = document.getElementById('reportsMapExpandBtn');
+    const fsBackdrop         = document.getElementById('reportsMapFsBackdrop');
+    const fsBody             = document.getElementById('reportsMapFsBody');
+    const fsClose            = document.getElementById('reportsMapFsClose');
+    const fsHeadTools        = document.getElementById('reportsMapFsHeadTools');
     if (!listBtn || !mapBtn || !mapView) return;
 
-    // Status → legend filter key + colour, shared with the existing legend pills.
-    const STATUS_META = {
-        'Scheduled':   { filter: 'upcoming',  color: '#1565c0', cls: 'rmp-scheduled' },
-        'In Progress': { filter: 'ongoing',   color: '#f59e0b', cls: 'rmp-in-progress' },
-        'Completed':   { filter: 'completed', color: '#2e7d32', cls: 'rmp-completed' },
-    };
+    // Guard against the same containing-block trap as the admin map: if any
+    // ancestor card ever gets a backdrop-filter/filter/transform, a fixed
+    // overlay nested inside it would shrink to that card instead of the
+    // viewport. Body-level placement sidesteps that regardless (also applies
+    // to every dropdown menu and the search results badge, all fixed-position).
+    if (fsBackdrop && fsBackdrop.parentElement !== document.body) document.body.appendChild(fsBackdrop);
+    if (sortMenu && sortMenu.parentElement !== document.body) document.body.appendChild(sortMenu);
+    if (statusMenu && statusMenu.parentElement !== document.body) document.body.appendChild(statusMenu);
+    if (districtMenu && districtMenu.parentElement !== document.body) document.body.appendChild(districtMenu);
+    if (periodMenu && periodMenu.parentElement !== document.body) document.body.appendChild(periodMenu);
+    if (resultsBadge && resultsBadge.parentElement !== document.body) document.body.appendChild(resultsBadge);
 
-    let map = null;
+    // Status → legend filter key / colour class / pin emoji, shared with the existing legend pills.
+    const STATUS_META = {
+        'Scheduled':   { filter: 'upcoming',  cls: 'rmp-scheduled',   emoji: '📅' },
+        'In Progress': { filter: 'ongoing',   cls: 'rmp-in-progress', emoji: '🔧' },
+        'Completed':   { filter: 'completed', cls: 'rmp-completed',   emoji: '✅' },
+    };
+    // Rank used by the "Status" sort — higher ranks draw on top when pins
+    // overlap. In Progress surfaces first since it reflects an active,
+    // possibly disruptive worksite; Completed sits lowest as purely historical.
+    const STATUS_RANK = { 'Completed': 1, 'Scheduled': 2, 'In Progress': 3 };
+
+    let map = null, satelliteLayer = null, streetLayer = null;
     let markers = [];   // { marker, filter }
     let loaded = false;
 
-    function makeDivIcon(color) {
-        return L.divIcon({
-            className: '',
-            html: `<span style="display:block;width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);"></span>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8],
-            popupAnchor: [0, -8],
-        });
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Teardrop pin — same shape/technique as the admin GIS map (a rotated
+    // rounded square gives the classic map-pin silhouette without an image asset).
+    function makePinIcon(meta, label) {
+        const html = `<div class="rmp-marker-wrap">
+            <div class="rmp-pin ${meta.cls}"><div class="rmp-pin-inner">${meta.emoji}</div></div>
+        </div>`;
+        return L.divIcon({ html, className: '', iconSize: [30, 40], iconAnchor: [15, 32], popupAnchor: [0, -34] });
+    }
+
+    function fmtShortDate(s) {
+        if (!s) return null;
+        const d = new Date(String(s).replace(' ', 'T'));
+        if (isNaN(d)) return null;
+        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+    }
+
+    // Builds the same "rec" shape ALL_SCHEDULES entries use, straight from a
+    // map pin's already-fetched data, so a click can open the full detail
+    // modal without needing the item to be one of the 10 most recent reports.
+    function recordFromMapItem(item) {
+        const hasRep = !!item.rep_id;
+        return {
+            id: hasRep ? (10000 + item.rep_id) : null,
+            idLabel: hasRep ? ('#RPT-' + String(item.rep_id).padStart(3, '0')) : ('#REQ-' + String(item.req_id).padStart(3, '0')),
+            isReport: true,
+            task: item.type || 'Infrastructure Report',
+            location: item.location,
+            district: item.district || '',
+            status: item.status,
+            start: fmtShortDate(item.start_date),
+            end: fmtShortDate(item.end_date),
+            priority: item.priority || '',
+            issue: item.issue || '',
+            evidence_images: (item.evidence_images || []).map(p => '../' + String(p).replace(/^\/+/, '')),
+        };
     }
 
     function loadMarkers() {
@@ -1741,12 +2186,13 @@ document.addEventListener("DOMContentLoaded", () => {
         fetch(`${API_BASE}api/reports-map.php`)
             .then(r => r.json())
             .then(json => {
+                if (mapLoading) mapLoading.classList.add('hidden');
                 if (!json || !json.success || !Array.isArray(json.data)) return;
                 json.data.forEach(item => {
                     const meta = STATUS_META[item.status];
                     if (!meta || typeof item.lat !== 'number' || typeof item.lng !== 'number') return;
                     const dateStr = item.created_at ? new Date(item.created_at.replace(' ', 'T')).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-                    const marker = L.marker([item.lat, item.lng], { icon: makeDivIcon(meta.color) });
+                    const marker = L.marker([item.lat, item.lng], { icon: makePinIcon(meta) });
                     marker.bindPopup(
                         `<div class="reports-map-popup">
                             <strong>${escapeHtml(item.type || 'Report')}</strong>
@@ -1755,35 +2201,139 @@ document.addEventListener("DOMContentLoaded", () => {
                             ${dateStr ? `<div style="margin-top:4px;color:#888;">${dateStr}</div>` : ''}
                         </div>`
                     );
+                    // Hover previews the popup; click closes it and opens the full detail modal.
+                    marker.on('mouseover', function () { this.openPopup(); });
+                    marker.on('mouseout', function () { this.closePopup(); });
+                    marker.on('click', function () {
+                        this.closePopup();
+                        if (window.openSchedModalFromRecord) window.openSchedModalFromRecord(recordFromMapItem(item));
+                    });
                     marker.addTo(map);
-                    markers.push({ marker, filter: meta.filter });
+                    markers.push({
+                        marker, filter: meta.filter,
+                        searchText: ((item.type || '') + ' ' + (item.location || '')).toLowerCase(),
+                        createdAt: item.created_at || '',
+                        statusRank: STATUS_RANK[item.status] || 0,
+                        district: (item.district || '').toLowerCase().trim(),
+                    });
                 });
+                sortMarkers(currentSort);
                 applyMapFilter(window.__reportsActiveLegendFilter || null);
-                updateEmptyState();
             })
-            .catch(() => { /* map still usable even if pins fail to load */ });
+            .catch(() => { if (mapLoading) mapLoading.classList.add('hidden'); });
     }
 
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    function updateEmptyState() {
+    function updateEmptyState(visibleCount) {
         if (!mapEmpty) return;
-        const anyVisible = markers.some(m => map.hasLayer(m.marker));
-        mapEmpty.style.display = markers.length > 0 && !anyVisible ? '' : 'none';
+        mapEmpty.classList.toggle('visible', markers.length > 0 && visibleCount === 0);
+    }
+
+    const KNOWN_DISTRICTS = ['district 1', 'district 2', 'district 3', 'district 4', 'district 5', 'district 6'];
+
+    // Same date-range math as the admin GIS request map's Period filter.
+    function getDateFilterRange(filter) {
+        const now = new Date();
+        const y = now.getFullYear(), m = now.getMonth(), d = now.getDate(), dow = now.getDay();
+        if (filter === 'today')     { const s=new Date(y,m,d); s.setHours(0,0,0,0); const e=new Date(y,m,d+1); e.setHours(0,0,0,0); return {from:s,to:e}; }
+        if (filter === 'yesterday') { const s=new Date(y,m,d-1); s.setHours(0,0,0,0); const e=new Date(y,m,d); e.setHours(0,0,0,0); return {from:s,to:e}; }
+        if (filter === 'week')      { const s=new Date(y,m,d-dow); s.setHours(0,0,0,0); const e=new Date(y,m,d+1); e.setHours(0,0,0,0); return {from:s,to:e}; }
+        if (filter === 'month')     { return {from:new Date(y,m,1), to:new Date(y,m+1,1)}; }
+        if (filter === 'year')      { return {from:new Date(y,0,1), to:new Date(y+1,0,1)}; }
+        if (filter === 'lastyear')  { return {from:new Date(y-1,0,1), to:new Date(y,0,1)}; }
+        return null;
+    }
+
+    let searchQuery = '';
+    let districtFilterVal = 'all';
+    let periodFilterVal = 'all';
+    let currentStatusFilter = null;
+
+    // Plain hardcoded labels (same convention as SORT_LABELS above) — this
+    // dropdown's own translation is handled separately via data-i18n on its
+    // markup; this JS-side map only needs to pick the right default text.
+    const STATUS_FILTER_LABELS = { all: 'All Status', upcoming: 'Scheduled', ongoing: 'In Progress', completed: 'Completed' };
+    function statusLabelFor(val) {
+        return STATUS_FILTER_LABELS[val] || 'All Status';
+    }
+    function syncStatusDropdownUI(filter) {
+        const val = filter || 'all';
+        if (statusLabelEl) statusLabelEl.textContent = statusLabelFor(val);
+        if (statusBtn) statusBtn.classList.toggle('has-filter', val !== 'all');
+        if (statusMenu) statusMenu.querySelectorAll('.gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === val));
     }
 
     function applyMapFilter(filter) {
         if (!map) return;
-        markers.forEach(({ marker, filter: f }) => {
-            const show = !filter || f === filter;
-            if (show && !map.hasLayer(marker)) marker.addTo(map);
-            if (!show && map.hasLayer(marker)) map.removeLayer(marker);
+        currentStatusFilter = filter;
+        syncStatusDropdownUI(filter);
+        let visible = 0;
+        const dateRange = getDateFilterRange(periodFilterVal);
+        markers.forEach(({ marker, filter: f, searchText, district, createdAt }) => {
+            let dateOk = true;
+            if (dateRange && createdAt) {
+                const normalized = createdAt.replace(' ', 'T');
+                const dt = new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
+                if (dateRange.from && dt < dateRange.from) dateOk = false;
+                if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
+            }
+            const districtOk = districtFilterVal === 'all'
+                || (districtFilterVal === 'other' ? !KNOWN_DISTRICTS.includes(district) : district === districtFilterVal);
+            const show = (!filter || f === filter) && (!searchQuery || searchText.indexOf(searchQuery) !== -1) && districtOk && dateOk;
+            if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
+            else if (map.hasLayer(marker)) map.removeLayer(marker);
         });
-        updateEmptyState();
+        if (searchQuery && resultsBadge) {
+            resultsBadge.classList.add('visible');
+            resultsBadge.classList.toggle('no-results', visible === 0);
+            if (resultsCountEl) resultsCountEl.textContent = visible;
+            if (totalCountEl) totalCountEl.textContent = markers.length;
+            positionResultsBadge();
+        } else if (resultsBadge) {
+            resultsBadge.classList.remove('visible');
+        }
+        updateEmptyState(visible);
     }
     window.__reportsMapApplyFilter = applyMapFilter;
+
+    // Position the (fixed-position) search results badge directly under the
+    // search input, in viewport coordinates.
+    function positionResultsBadge() {
+        if (!resultsBadge || !mapSearchEl || !resultsBadge.classList.contains('visible')) return;
+        const rect = mapSearchEl.getBoundingClientRect();
+        const vw = window.innerWidth;
+        let left = rect.left;
+        const bw = resultsBadge.offsetWidth || 120;
+        if (left + bw > vw - 8) left = vw - bw - 8;
+        resultsBadge.style.top  = (rect.bottom + 6) + 'px';
+        resultsBadge.style.left = left + 'px';
+    }
+
+    // "Sort" controls marker paint order — later-added pins render on top,
+    // so this decides which report wins when several pins overlap on the map.
+    let currentSort = 'newest';
+    function sortMarkers(order) {
+        currentSort = order;
+        markers.sort((a, b) => {
+            if (order === 'status') return a.statusRank - b.statusRank;
+            const cmp = (a.createdAt || '').localeCompare(b.createdAt || '');
+            return order === 'oldest' ? -cmp : cmp;
+        });
+        markers.forEach(({ marker }) => { if (map.hasLayer(marker)) { marker.remove(); marker.addTo(map); } });
+    }
+
+    function toggleLayer() {
+        if (!map) return;
+        const onSatellite = map.hasLayer(satelliteLayer);
+        if (onSatellite) {
+            map.removeLayer(satelliteLayer);
+            streetLayer.addTo(map);
+            layerBtn.classList.remove('active');
+        } else {
+            map.removeLayer(streetLayer);
+            satelliteLayer.addTo(map);
+            layerBtn.classList.add('active');
+        }
+    }
 
     function showMap() {
         listBtn.classList.remove('active');
@@ -1793,11 +2343,16 @@ document.addEventListener("DOMContentLoaded", () => {
         mapView.style.display = '';
 
         if (!map) {
+            const QC_POLY = [[14.7646242,121.1095933],[14.7639251,121.1093054],[14.7631436,121.1090833],[14.7627981,121.1073723],[14.7622963,121.105793],[14.7618357,121.104773],[14.7638675,121.1025355],[14.7655348,121.1016249],[14.7654178,121.1012409],[14.7651862,121.0997995],[14.7640376,121.0997537],[14.7626015,121.0990606],[14.7623292,121.0984063],[14.7615898,121.0964583],[14.7615413,121.0956111],[14.7609386,121.0948137],[14.7598163,121.0934468],[14.7591997,121.0925497],[14.7585362,121.091745],[14.7579449,121.0907068],[14.7582575,121.0896539],[14.7582657,121.089366],[14.7579696,121.0887985],[14.758085,121.0857106],[14.7578089,121.0856433],[14.7566921,121.0853354],[14.7558102,121.0851033],[14.7556543,121.08507],[14.7552569,121.0850078],[14.753781,121.0849007],[14.7533543,121.0848696],[14.7520288,121.0847854],[14.7421927,121.0663291],[14.7421837,121.0587677],[14.742157,121.0531742],[14.7422036,121.0464397],[14.7421201,121.0404931],[14.740294,121.0385103],[14.7380574,121.0362582],[14.732682,121.0308457],[14.7298826,121.0280557],[14.7292097,121.0273872],[14.7275181,121.0257601],[14.7243718,121.0224236],[14.7225911,121.0205352],[14.7204784,121.0183472],[14.7159085,121.0136441],[14.708755,121.0161294],[14.7033858,121.0179631],[14.6884807,121.0223396],[14.6851812,121.0192022],[14.6806545,121.014895],[14.6710675,121.0058529],[14.667334,121.0022246],[14.6653244,121.0003125],[14.664741,120.9997577],[14.6643627,120.9994174],[14.663877,120.9994138],[14.6634339,120.9994033],[14.661943,120.9993861],[14.6581224,120.999302],[14.6551673,120.9976659],[14.6543814,120.9972619],[14.6539536,120.9970642],[14.6528858,120.9965706],[14.6521912,120.9962495],[14.6507248,120.9955689],[14.6497136,120.9951615],[14.6480502,120.9945753],[14.6374219,120.9925993],[14.6362678,120.9921888],[14.6359804,120.9930436],[14.6305282,120.9912426],[14.6262495,120.9898201],[14.6245355,120.9913147],[14.6235329,120.9926137],[14.6226129,120.9938057],[14.6217104,120.9949749],[14.6200392,120.997134],[14.6193355,120.9978929],[14.6170829,121.0009647],[14.6150944,121.003646],[14.6139723,121.0052731],[14.6125167,121.0069471],[14.6115939,121.0081408],[14.6107331,121.0092936],[14.6098411,121.0104299],[14.607205,121.0139822],[14.6061298,121.0153858],[14.6053799,121.0163648],[14.6044948,121.0175128],[14.6029514,121.0193839],[14.607049,121.0510734],[14.6063175,121.0513718],[14.6048031,121.051977],[14.6065867,121.0567956],[14.602265,121.0590045],[14.5986502,121.0597438],[14.5983444,121.0597432],[14.5896463,121.0582621],[14.5900235,121.0596451],[14.5904899,121.0614237],[14.5919521,121.0680469],[14.5930667,121.0695316],[14.5923335,121.07788],[14.5905369,121.0826503],[14.5921634,121.0827285],[14.5951453,121.0823165],[14.5989494,121.082531],[14.6017929,121.0823531],[14.6033745,121.083786],[14.6022288,121.0863878],[14.6003282,121.0874234],[14.599318,121.0879024],[14.599072,121.0895263],[14.6001564,121.0904543],[14.6024379,121.0900155],[14.6054058,121.0883546],[14.6138249,121.079012],[14.6155269,121.0784392],[14.616765,121.0784541],[14.6177381,121.0788822],[14.6195429,121.0758218],[14.6208781,121.0765039],[14.6218147,121.0764557],[14.6228017,121.0759409],[14.6237732,121.0750915],[14.6264184,121.0747689],[14.6279073,121.0744536],[14.6286421,121.074425],[14.628847,121.0751483],[14.6296256,121.0769013],[14.6309563,121.0774626],[14.6322159,121.0776147],[14.6333002,121.0787821],[14.6336149,121.0795619],[14.6345357,121.0802379],[14.6362589,121.0806885],[14.636861,121.0813323],[14.6379116,121.0819219],[14.6383388,121.0816883],[14.6391565,121.0814591],[14.6400111,121.0817834],[14.640833,121.0823068],[14.6413518,121.0824574],[14.6424372,121.0823549],[14.6433858,121.0831803],[14.6439511,121.0835988],[14.6436446,121.084572],[14.6437206,121.0853712],[14.6444918,121.0855999],[14.6448987,121.0876123],[14.6458583,121.0874867],[14.6464517,121.0889727],[14.6468726,121.0896603],[14.6485394,121.0877901],[14.6493282,121.0868934],[14.6514982,121.0865934],[14.651506,121.0874307],[14.652202,121.0866746],[14.6527812,121.0858927],[14.6545518,121.0861472],[14.6554682,121.0857081],[14.6562612,121.0859908],[14.6566853,121.0867891],[14.6573361,121.0874608],[14.6566672,121.0882081],[14.6596216,121.0912009],[14.6609324,121.0914765],[14.6617729,121.0920319],[14.6634173,121.0935248],[14.6643486,121.0936995],[14.6646918,121.0941136],[14.6649347,121.0948585],[14.6652424,121.0956829],[14.6648805,121.0961861],[14.6642299,121.0967374],[14.6637413,121.0979213],[14.664832,121.0983915],[14.667012,121.0987996],[14.6678005,121.0987592],[14.66828,121.0989231],[14.6692092,121.0993176],[14.6700618,121.1002379],[14.6723195,121.103246],[14.6744874,121.1050187],[14.6752513,121.105877],[14.6757895,121.1066178],[14.6772824,121.1079596],[14.6787885,121.1088846],[14.6808973,121.1101685],[14.6834048,121.1116706],[14.6844409,121.1119916],[14.6852978,121.1121855],[14.6892498,121.1113444],[14.6912424,121.1113873],[14.6930258,121.1115295],[14.6957288,121.1114141],[14.6964194,121.1121743],[14.6973898,121.112502],[14.6979009,121.1134183],[14.6980488,121.1139303],[14.7208067,121.1171018],[14.7298888,121.1183676],[14.7327323,121.118638],[14.7332343,121.1176351],[14.7340306,121.1166812],[14.7343126,121.1160177],[14.7344121,121.1157523],[14.7350341,121.1148897],[14.735565,121.1144336],[14.7372321,121.1137369],[14.7376302,121.1141598],[14.7379454,121.1151634],[14.7385508,121.1157523],[14.7396788,121.1166398],[14.7398421,121.1167681],[14.7406808,121.1175255],[14.7413675,121.117651],[14.7420636,121.1178619],[14.7428784,121.1180428],[14.7434952,121.1183029],[14.74502,121.1181852],[14.745882,121.1176944],[14.7462763,121.1177004],[14.7464168,121.1177821],[14.7475179,121.1186965],[14.7495936,121.1181479],[14.7509132,121.1196186],[14.7520088,121.1206314],[14.7527807,121.1208202],[14.7539178,121.1210519],[14.7550217,121.1207944],[14.7559513,121.1213609],[14.7568643,121.1211807],[14.7578437,121.1215498],[14.7579018,121.123069],[14.7598938,121.1235239],[14.7608898,121.1253091],[14.7626983,121.125776],[14.7631133,121.1251752],[14.764273,121.1246215],[14.7645778,121.1239254],[14.7658129,121.1247996],[14.7668581,121.1259981],[14.7681074,121.1269178],[14.7693315,121.1272269],[14.7700103,121.1278939],[14.7714835,121.1290096],[14.7713221,121.1297934],[14.7714603,121.1308227],[14.771775,121.1322758],[14.7720049,121.132411],[14.7741422,121.1327295],[14.7752992,121.1337681],[14.7756687,121.1331762],[14.7764137,121.1332033],[14.7764085,121.1317064],[14.7758509,121.1311391],[14.7751283,121.1309266],[14.7762065,121.1289228],[14.7760592,121.1272065],[14.7757419,121.126301],[14.7733002,121.123635],[14.774863,121.1204059],[14.7740299,121.1191841],[14.7723201,121.1175027],[14.772087,121.116914],[14.7712492,121.1139187],[14.7693916,121.1134127],[14.7679537,121.112593],[14.7673232,121.112048],[14.7665244,121.1113289],[14.7651342,121.1099963],[14.7646242,121.1095933]];
             map = L.map('reportsMap', { scrollWheelZoom: false }).setView([14.6760, 121.0437], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors',
+            L.polygon(QC_POLY, { color: '#3762c8', weight: 3, fillColor: '#3762c8', fillOpacity: .05, dashArray: '10,6', interactive: false }).addTo(map);
+            streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
             }).addTo(map);
+            satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19, attribution: 'Tiles &copy; Esri',
+            });
+            if (layerBtn) layerBtn.addEventListener('click', toggleLayer);
         }
         setTimeout(() => map.invalidateSize(), 60);
         loadMarkers();
@@ -1813,6 +2368,147 @@ document.addEventListener("DOMContentLoaded", () => {
 
     mapBtn.addEventListener('click', showMap);
     listBtn.addEventListener('click', showList);
+
+    // ── Search ──
+    if (mapSearchEl) {
+        mapSearchEl.addEventListener('input', () => {
+            searchQuery = mapSearchEl.value.trim().toLowerCase();
+            if (mapSearchClearEl) mapSearchClearEl.classList.toggle('visible', searchQuery.length > 0);
+            applyMapFilter(window.__reportsActiveLegendFilter || null);
+        });
+        window.addEventListener('resize', positionResultsBadge);
+        window.addEventListener('scroll', positionResultsBadge, true);
+    }
+    if (mapSearchClearEl) {
+        mapSearchClearEl.addEventListener('click', () => {
+            mapSearchEl.value = '';
+            searchQuery = '';
+            mapSearchClearEl.classList.remove('visible');
+            applyMapFilter(window.__reportsActiveLegendFilter || null);
+            mapSearchEl.focus();
+        });
+    }
+
+    // ── Generic fixed-position dropdown — same pattern as the admin GIS
+    // request map's filter menus (Status/Type/District/Period). Handles
+    // open/close, viewport-aware positioning, and item-click wiring; the
+    // caller just supplies what happens when an item is picked. ──
+    function setupDropdown(wrap, btn, menu, labelEl, labels, defaultVal, onPick) {
+        if (!wrap || !btn || !menu) return;
+        function position() {
+            const rect = btn.getBoundingClientRect();
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const mw = menu.offsetWidth || 190, mh = menu.offsetHeight || 0;
+            let left = rect.right - mw, top = rect.bottom + 6;
+            if (left < 8) left = 8;
+            if (left + mw > vw - 8) left = vw - mw - 8;
+            if (top + mh > vh - 8 && rect.top > mh + 6) top = rect.top - mh - 6;
+            menu.style.left = left + 'px';
+            menu.style.top  = top + 'px';
+        }
+        function open() {
+            wrap.classList.add('open');
+            menu.style.display = 'block';
+            position();
+            void menu.offsetHeight;
+            window.addEventListener('resize', position);
+            window.addEventListener('scroll', position, true);
+        }
+        function close() {
+            wrap.classList.remove('open');
+            menu.style.display = 'none';
+            window.removeEventListener('resize', position);
+            window.removeEventListener('scroll', position, true);
+        }
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (wrap.classList.contains('open')) close(); else open();
+        });
+        document.addEventListener('click', (e) => {
+            if (!wrap.contains(e.target) && !menu.contains(e.target)) close();
+        });
+        menu.querySelectorAll('.gis-dd-item').forEach(opt => {
+            opt.addEventListener('click', () => {
+                const val = opt.dataset.val;
+                menu.querySelectorAll('.gis-dd-item').forEach(o => o.classList.toggle('active', o === opt));
+                if (labelEl) labelEl.textContent = (labels && labels[val]) || opt.textContent.trim();
+                if (btn) btn.classList.toggle('has-filter', val !== defaultVal);
+                onPick(val);
+                close();
+            });
+        });
+    }
+
+    const SORT_LABELS = { newest: 'Newest on top', oldest: 'Oldest on top', status: 'Status on top' };
+    setupDropdown(sortWrap, sortBtn, sortMenu, sortLabelEl, SORT_LABELS, 'newest', (val) => sortMarkers(val));
+
+    setupDropdown(statusWrap, statusBtn, statusMenu, statusLabelEl, STATUS_FILTER_LABELS, 'all', (val) => {
+        // Routes through the shared legend filter setter so the legend pills
+        // and table above stay in sync with whatever the map's own dropdown picks.
+        if (window.applyLegendFilter) window.applyLegendFilter(val === 'all' ? null : val);
+        else applyMapFilter(val === 'all' ? null : val);
+    });
+
+    const DISTRICT_LABELS = {
+        all: 'All Districts', 'district 1': 'District 1', 'district 2': 'District 2', 'district 3': 'District 3',
+        'district 4': 'District 4', 'district 5': 'District 5', 'district 6': 'District 6', other: 'Other / Unspecified',
+    };
+    setupDropdown(districtWrap, districtBtn, districtMenu, districtLabelEl, DISTRICT_LABELS, 'all', (val) => {
+        districtFilterVal = val;
+        applyMapFilter(currentStatusFilter);
+    });
+
+    const PERIOD_LABELS = {
+        all: 'All Time', today: 'Today', yesterday: 'Yesterday', week: 'This Week',
+        month: 'This Month', year: 'This Year', lastyear: 'Last Year',
+    };
+    setupDropdown(periodWrap, periodBtn, periodMenu, periodLabelEl, PERIOD_LABELS, 'all', (val) => {
+        periodFilterVal = val;
+        applyMapFilter(currentStatusFilter);
+    });
+
+    // ── Fullscreen expand — reparents the live map DOM node (plus the search
+    // box and sort dropdown, so they stay usable while fullscreen) into the
+    // overlay. Leaflet/inputs don't care where their container lives, they
+    // just need to still be in the document — so there's nothing to keep in
+    // sync, unlike a cloned/second copy would require.
+    // Scroll-wheel zoom is only enabled while fullscreen — the embedded card view
+    // keeps it off so an accidental scroll over the map doesn't hijack page scroll. ──
+    const fsMoved = []; // { el, parent, nextSibling }
+    function fsMoveIn(el, target) {
+        if (!el || !target) return;
+        fsMoved.push({ el, parent: el.parentNode, nextSibling: el.nextSibling });
+        target.appendChild(el);
+    }
+    function fsMoveBack() {
+        while (fsMoved.length) {
+            const { el, parent, nextSibling } = fsMoved.pop();
+            parent.insertBefore(el, nextSibling);
+        }
+    }
+    function openFullscreen() {
+        if (!map || !fsBackdrop || !fsBody) return;
+        const inner = document.querySelector('.reports-map-view .reports-map-inner');
+        if (!inner) return;
+        fsMoveIn(inner, fsBody);
+        fsMoveIn(searchWrapEl, fsHeadTools);
+        fsMoveIn(sortWrap, fsHeadTools);
+        fsBackdrop.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        map.scrollWheelZoom.enable();
+        setTimeout(() => map.invalidateSize(), 60);
+    }
+    function closeFullscreen() {
+        if (!fsBackdrop) return;
+        fsMoveBack();
+        fsBackdrop.classList.remove('active');
+        document.body.style.overflow = '';
+        if (map) { map.scrollWheelZoom.disable(); setTimeout(() => map.invalidateSize(), 60); }
+    }
+    if (expandBtn) expandBtn.addEventListener('click', openFullscreen);
+    if (fsClose) fsClose.addEventListener('click', closeFullscreen);
+    if (fsBackdrop) fsBackdrop.addEventListener('click', (e) => { if (e.target === fsBackdrop) closeFullscreen(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fsBackdrop && fsBackdrop.classList.contains('active')) closeFullscreen(); });
 })();
 </script>
 
@@ -1890,7 +2586,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                        : '—',
                 'priority'        => $m['priority'] ?? '',
                 'issue'           => $m['issue'] ?? '',
-                'evidence_images' => $m['evidence_images'] ?? [],
+                // Evidence paths are stored relative to public/ (e.g. "uploads/evidence/x.jpg"),
+                // but this page lives in public/citizen/ — without the "../" prefix the browser
+                // resolves them against public/citizen/uploads/... which doesn't exist, so every
+                // evidence thumbnail 404'd silently.
+                'evidence_images' => array_map(fn($p) => '../' . ltrim($p, '/'), $m['evidence_images'] ?? []),
             ];
         }
         echo json_encode($modal_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
@@ -1980,18 +2680,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return '<span class="district-badge ' + cls + '"><i class="fas fa-location-dot"></i>' + district + '</span>';
     }
 
-    /* ── Open ── */
-    window.openSchedModal = function (schedId) {
-        var rec = null;
-        for (var i = 0; i < ALL_SCHEDULES.length; i++) {
-            if (ALL_SCHEDULES[i].id === schedId) { rec = ALL_SCHEDULES[i]; break; }
-        }
-        if (!rec) return;
-
+    /* ── Render (shared by ID-lookup opens and direct map-pin opens) ── */
+    function renderSchedModalRecord(rec) {
         var lang   = getLang();
         var lbl    = LABELS[lang] || LABELS.en;
         var smap   = STATUS_MAP[rec.status] || { cls: 'sched-pending', en: rec.status, tl: rec.status };
-        var isRpt  = (rec.id >= 10000); // reports are offset by 10000
+        var isRpt  = (typeof rec.isReport === 'boolean') ? rec.isReport : (rec.id >= 10000); // reports are offset by 10000
 
         /* Labels */
         lblLocation.textContent = lbl.location;
@@ -2004,8 +2698,10 @@ document.addEventListener("DOMContentLoaded", () => {
         /* Band colour */
         band.className = 'sched-modal-band ' + smap.cls;
 
-        /* ID prefix differs: SCH- for maintenance, RPT- for reports */
-        if (isRpt) {
+        /* ID prefix differs: SCH- for maintenance, RPT- for reports (or an explicit label for map-sourced records) */
+        if (rec.idLabel) {
+            idEl.textContent = rec.idLabel;
+        } else if (isRpt) {
             idEl.textContent = '#RPT-' + String(rec.id - 10000).padStart(3, '0');
         } else {
             idEl.textContent = '#SCH-' + String(rec.id).padStart(3, '0');
@@ -2071,20 +2767,47 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             var labels = STAGE_LABELS[lang] || STAGE_LABELS.en;
             var stage = rec.status === 'Completed' ? 2 : (rec.status === 'In Progress' ? 1 : 0);
+            // The final stage (Completed) has no "next" step to be "current" about —
+            // once reached it's done too, so it gets the checkmark like every earlier
+            // step instead of sitting as an unchecked "current" circle showing "3".
+            var isFinalStageReached = stage >= labels.length - 1;
             timelineEl.innerHTML = labels.map(function (label, i) {
-                var cls  = i < stage ? 'done' : (i === stage ? 'current' : '');
-                var icon = i < stage ? '✓' : (i + 1);
+                var isDone = i < stage || (i === stage && isFinalStageReached);
+                var cls  = isDone ? 'done' : (i === stage ? 'current' : '');
+                var icon = isDone ? '✓' : (i + 1);
                 return '<div class="sched-timeline-step ' + cls + '">' +
                            '<div class="sched-timeline-dot">' + icon + '</div>' +
                            '<div class="sched-timeline-label">' + label + '</div>' +
                        '</div>';
             }).join('');
+
+            // Themed background frame — colour reflects overall status so the
+            // timeline reads at a glance instead of floating bare on the modal.
+            var THEME_CLASS = { 'sched-completed': 'sched-timeline-theme-completed', 'sched-inprogress': 'sched-timeline-theme-progress', 'sched-pending': 'sched-timeline-theme-pending' };
+            timelineEl.className = 'sched-timeline ' + (THEME_CLASS[smap.cls] || 'sched-timeline-theme-pending');
         }
 
         /* Show */
         backdrop.classList.add('active');
         document.body.style.overflow = 'hidden';
         closeBtn.focus();
+    }
+
+    /* ── Open by ID (table/card "View" links) ── */
+    window.openSchedModal = function (schedId) {
+        var rec = null;
+        for (var i = 0; i < ALL_SCHEDULES.length; i++) {
+            if (ALL_SCHEDULES[i].id === schedId) { rec = ALL_SCHEDULES[i]; break; }
+        }
+        if (!rec) return;
+        renderSchedModalRecord(rec);
+    };
+
+    /* ── Open from a map pin — the map's data isn't limited to the 10 most
+       recent items in ALL_SCHEDULES, so pins render straight from the
+       already-fetched map record instead of an ID lookup. ── */
+    window.openSchedModalFromRecord = function (rec) {
+        renderSchedModalRecord(rec);
     };
 
     /* ── Lightbox with zoom/pan ── */
@@ -2337,6 +3060,8 @@ document.addEventListener("DOMContentLoaded", () => {
             nav_home:                            'Home',
             nav_reports:                         'Reports',
             nav_requests:                        'Requests',
+            nav_track:                           'Track',
+            nav_feedback:                        'Feedback',
             nav_about:                           'About',
             translate_btn_title:                 'Translate to Filipino',
             lang_label:                          'EN',
@@ -2359,6 +3084,11 @@ document.addEventListener("DOMContentLoaded", () => {
             /* ── main card ── */
             reports_page_title:                  'Recent Maintenance Reports',
             reports_search_placeholder:          'Search by Date, Type, Location, or Status...',
+            /* ── list/map view toggle ── */
+            reports_view_list:                   'List',
+            reports_view_list_title:             'List view',
+            reports_view_map:                    'Map',
+            reports_view_map_title:              'Map view',
             /* ── legend ── */
             reports_legend_scheduled:            'Scheduled',
             reports_legend_ongoing:              'In Progress',
@@ -2367,6 +3097,28 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_legend_filter_title_ongoing:    'Click to filter: In Progress',
             reports_legend_filter_title_completed:  'Click to filter: Completed',
             reports_legend_clear:                'Click to clear filter',
+            /* ── issue map view ── */
+            reports_map_toolbar_title:           'Reported Issues Map',
+            reports_map_satellite:               'Satellite',
+            reports_map_loading:                 'Loading pinned reports…',
+            reports_map_empty:                   'No pinned reports match the current filter',
+            reports_map_empty_sub:               'Try a different keyword or clear the status filter',
+            reports_map_hint:                    'Click a pin to view report details',
+            reports_map_search_placeholder:      'Search location or type…',
+            reports_map_sort_newest:             'Newest on top',
+            reports_map_sort_oldest:             'Oldest on top',
+            reports_map_sort_status:             'Status on top',
+            reports_map_expand_title:            'Expand map to fullscreen',
+            reports_map_filter_all_status:       'All Status',
+            reports_map_filter_all_districts:    'All Districts',
+            reports_map_filter_other_district:   'Other / Unspecified',
+            reports_map_filter_all_time:         'All Time',
+            reports_map_filter_today:            'Today',
+            reports_map_filter_yesterday:        'Yesterday',
+            reports_map_filter_week:             'This Week',
+            reports_map_filter_month:            'This Month',
+            reports_map_filter_year:             'This Year',
+            reports_map_filter_lastyear:         'Last Year',
             /* ── table headers ── */
             reports_table_sched:                 'Sched #',
             reports_table_date:                  'Date',
@@ -2395,6 +3147,8 @@ document.addEventListener("DOMContentLoaded", () => {
             footer_link_home:    'Home',
             footer_link_reports: 'Reports',
             footer_link_submit:  'Submit Request',
+            footer_link_track:   'Track My Report',
+            footer_link_feedback: 'Feedback',
             footer_link_about:   'About Us',
             footer_resources:    'Resources',
             footer_link_guide:   'User Guide',
@@ -2414,6 +3168,8 @@ document.addEventListener("DOMContentLoaded", () => {
             nav_home:                            'Tahanan',
             nav_reports:                         'Mga Ulat',
             nav_requests:                        'Mga Kahilingan',
+            nav_track:                           'Subaybayan',
+            nav_feedback:                        'Puna',
             nav_about:                           'Tungkol Sa',
             translate_btn_title:                 'I-translate sa Ingles',
             lang_label:                          'FIL',
@@ -2436,6 +3192,11 @@ document.addEventListener("DOMContentLoaded", () => {
             /* ── main card ── */
             reports_page_title:                  'Kamakailang Ulat ng Pagpapanatili',
             reports_search_placeholder:          'Maghanap ayon sa Petsa, Uri, Lokasyon, o Katayuan...',
+            /* ── list/map view toggle ── */
+            reports_view_list:                   'Listahan',
+            reports_view_list_title:             'Tanawing Listahan',
+            reports_view_map:                    'Mapa',
+            reports_view_map_title:              'Tanawing Mapa',
             /* ── legend ── */
             reports_legend_scheduled:            'Nakaplanong',
             reports_legend_ongoing:              'Isinasagawa',
@@ -2444,6 +3205,28 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_legend_filter_title_ongoing:    'I-click para i-filter: Isinasagawa',
             reports_legend_filter_title_completed:  'I-click para i-filter: Natapos',
             reports_legend_clear:                'I-click para alisin ang filter',
+            /* ── issue map view ── */
+            reports_map_toolbar_title:           'Mapa ng mga Iniulat na Isyu',
+            reports_map_satellite:               'Satellite',
+            reports_map_loading:                 'Ikinakarga ang mga nakapinong ulat…',
+            reports_map_empty:                   'Walang nakapinong ulat na tumutugma sa kasalukuyang filter',
+            reports_map_empty_sub:               'Subukan ang ibang keyword o alisin ang filter ng katayuan',
+            reports_map_hint:                    'I-click ang pin para tingnan ang detalye ng ulat',
+            reports_map_search_placeholder:      'Maghanap ng lokasyon o uri…',
+            reports_map_sort_newest:             'Pinakabago sa taas',
+            reports_map_sort_oldest:             'Pinakaluma sa taas',
+            reports_map_sort_status:             'Katayuan sa taas',
+            reports_map_expand_title:            'Palakihin ang mapa sa buong screen',
+            reports_map_filter_all_status:       'Lahat ng Katayuan',
+            reports_map_filter_all_districts:    'Lahat ng Distrito',
+            reports_map_filter_other_district:   'Iba / Hindi Tinukoy',
+            reports_map_filter_all_time:         'Lahat ng Oras',
+            reports_map_filter_today:            'Ngayon',
+            reports_map_filter_yesterday:        'Kahapon',
+            reports_map_filter_week:             'Ngayong Linggo',
+            reports_map_filter_month:            'Ngayong Buwan',
+            reports_map_filter_year:             'Ngayong Taon',
+            reports_map_filter_lastyear:         'Nakaraang Taon',
             /* ── table headers ── */
             reports_table_sched:                 'Iskedyul #',
             reports_table_date:                  'Petsa',
@@ -2472,6 +3255,8 @@ document.addEventListener("DOMContentLoaded", () => {
             footer_link_home:    'Tahanan',
             footer_link_reports: 'Mga Ulat',
             footer_link_submit:  'Magsumite ng Kahilingan',
+            footer_link_track:   'Subaybayan ang Aking Ulat',
+            footer_link_feedback: 'Puna',
             footer_link_about:   'Tungkol Sa Amin',
             footer_resources:    'Mga Mapagkukunan',
             footer_link_guide:   'Gabay ng Gumagamit',
