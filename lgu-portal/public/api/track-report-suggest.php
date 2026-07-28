@@ -14,15 +14,30 @@ date_default_timezone_set('Asia/Manila');
 $q = trim($_GET['q'] ?? '');
 $digits = preg_replace('/\D/', '', $q);
 
-if ($digits !== '') {
-    $stmt = $conn->prepare("
-        SELECT req_id, infrastructure, location, created_at
-        FROM requests
-        WHERE req_id LIKE CONCAT(?, '%')
-        ORDER BY created_at DESC
-        LIMIT 15
-    ");
-    $stmt->bind_param('s', $digits);
+if ($q !== '') {
+    // Matches the reference number (by digit prefix) OR the infrastructure
+    // type / location text shown in each dropdown row — so searching
+    // "traffic" or a street name works just as well as searching "125".
+    $like = '%' . $conn->real_escape_string($q) . '%';
+    if ($digits !== '') {
+        $stmt = $conn->prepare("
+            SELECT req_id, infrastructure, location, created_at
+            FROM requests
+            WHERE req_id LIKE CONCAT(?, '%') OR infrastructure LIKE ? OR location LIKE ?
+            ORDER BY created_at DESC
+            LIMIT 15
+        ");
+        $stmt->bind_param('sss', $digits, $like, $like);
+    } else {
+        $stmt = $conn->prepare("
+            SELECT req_id, infrastructure, location, created_at
+            FROM requests
+            WHERE infrastructure LIKE ? OR location LIKE ?
+            ORDER BY created_at DESC
+            LIMIT 15
+        ");
+        $stmt->bind_param('ss', $like, $like);
+    }
 } else {
     $stmt = $conn->prepare("
         SELECT req_id, infrastructure, location, created_at

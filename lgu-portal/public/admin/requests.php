@@ -4833,21 +4833,44 @@ function _initGisDd(wrapId) {
         menu.style.left = left + 'px';
     }
 
+    // The menu is position:fixed so it can escape the card's own stacking
+    // context — but "fixed" only means "pinned to the viewport", it does NOT
+    // automatically follow the button when the page scrolls. Without this,
+    // scrolling while a dropdown is open leaves the menu floating wherever it
+    // first opened while the button (and everything else) scrolls out from
+    // under it. Re-running _positionMenu() on every scroll keeps it glued to
+    // the button, matching what a non-fixed dropdown would look like.
+    function _onScroll() { _positionMenu(); }
     btn.addEventListener('click', e => {
         e.stopPropagation();
         const opening = !wrap.classList.contains('open');
         _closeAllGisDd(wrapId);
-        if (opening) { _positionMenu(); wrap.classList.add('open'); }
-        else          { wrap.classList.remove('open'); }
+        if (opening) {
+            _positionMenu();
+            wrap.classList.add('open');
+            window.addEventListener('scroll', _onScroll, true);
+            window.addEventListener('resize', _onScroll);
+        } else {
+            wrap.classList.remove('open');
+            window.removeEventListener('scroll', _onScroll, true);
+            window.removeEventListener('resize', _onScroll);
+        }
     });
+    wrap._gisDdCloseScrollCleanup = function () {
+        window.removeEventListener('scroll', _onScroll, true);
+        window.removeEventListener('resize', _onScroll);
+    };
 }
 function _closeAllGisDd(except) {
-    ['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => {
-        if (id !== except) { const w=document.getElementById(id); if(w) w.classList.remove('open'); }
+    ['gisStatusWrap','gisTypeWrap','gisDistrictWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mDistrictWrap','mPeriodWrap'].forEach(id => {
+        if (id !== except) {
+            const w = document.getElementById(id);
+            if (w) { w.classList.remove('open'); if (w._gisDdCloseScrollCleanup) w._gisDdCloseScrollCleanup(); }
+        }
     });
 }
 document.addEventListener('click', () => _closeAllGisDd(null));
-['gisStatusWrap','gisTypeWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mPeriodWrap'].forEach(id => {
+['gisStatusWrap','gisTypeWrap','gisDistrictWrap','gisPeriodWrap','mStatusWrap','mTypeWrap','mDistrictWrap','mPeriodWrap'].forEach(id => {
     const w = document.getElementById(id);
     if (w) w.addEventListener('click', e => e.stopPropagation());
 });
@@ -5673,12 +5696,28 @@ function initRequestSort() {
         overlay.style.display = 'block';
         void overlay.offsetWidth;
         overlay.style.animation = 'gisDropIn .18s ease forwards';
+        // Same fixed-position gotcha as the filter dropdowns: "fixed" only
+        // pins it to the viewport, it doesn't follow the trigger button on
+        // scroll. Re-run positionOverlay() on every scroll/resize while open
+        // so the calendar stays glued to whichever button opened it.
+        window.addEventListener('scroll', _onDpScroll, true);
+        window.addEventListener('resize', _onDpScroll);
+    }
+
+    function _onDpScroll() {
+        // positionOverlay() measures by briefly flipping display:block→none —
+        // fine when openPicker() re-shows it right after, but called on its
+        // own (as here) that side effect would silently hide an already-open
+        // calendar. Restore visibility afterward so it just repositions.
+        if (activeTrigger) { positionOverlay(activeTrigger); overlay.style.display = 'block'; }
     }
 
     function closePicker() {
         overlay.style.display = 'none';
         if (activeTrigger) activeTrigger.classList.remove('active');
         activeTrigger = null;
+        window.removeEventListener('scroll', _onDpScroll, true);
+        window.removeEventListener('resize', _onDpScroll);
     }
 
     function applySelection(rawVal, displayLabel, filterVal) {

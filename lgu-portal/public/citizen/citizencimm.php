@@ -146,7 +146,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>InfraGovServices - Community Infrastructure Maintenance</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->

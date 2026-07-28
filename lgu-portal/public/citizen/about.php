@@ -22,7 +22,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>About - InfraGovServices | LGU Portal</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <script>

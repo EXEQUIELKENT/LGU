@@ -1156,7 +1156,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <!-- CRITICAL: Block rendering FIRST - before anything else loads -->

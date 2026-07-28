@@ -463,6 +463,168 @@ startClock();
         } catch(e) {}
     });
 })();
+
+/* ---------------------------------------------------------------
+   DESKTOP NAV OVERFLOW ("More" menu)
+   Whatever nav links don't fit .nav-links' available width (longer
+   Tagalog labels, narrower windows) get moved into a "More ▾" dropdown
+   instead of clipping or scrolling. The button/dropdown markup isn't
+   in the page templates — it's injected here so every citizen page
+   picks it up automatically from this one shared file.
+   --------------------------------------------------------------- */
+(function() {
+    const navLinks = document.querySelector('.nav-links');
+    if (!navLinks) return;
+
+    const allLinks = Array.from(navLinks.querySelectorAll(':scope > a'));
+    if (!allLinks.length) return;
+
+    // Same icon set as the mobile sidebar's .nav-list links, keyed by the
+    // shared data-i18n label — only shown once a link lands in the dropdown
+    // (see .nav-links a .nav-more-icon in citizen_global.css).
+    const NAV_ICONS = {
+        nav_login:    'fa-sign-in-alt',
+        nav_home:     'fa-home',
+        nav_reports:  'fa-file-alt',
+        nav_track:    'fa-magnifying-glass-location',
+        nav_requests: 'fa-clipboard-list',
+        nav_feedback: 'fa-comment-dots',
+        nav_about:    'fa-info-circle',
+    };
+    allLinks.forEach(a => {
+        const key = a.getAttribute('data-i18n');
+        a.dataset.navKey = key || ''; // survives even after data-i18n moves off the <a> below
+        const icon = NAV_ICONS[key];
+        if (!icon) return;
+        // The translation engine does el.textContent = ... on every
+        // [data-i18n] element, which would wipe out an icon prepended
+        // directly into the <a>. Move data-i18n onto a wrapping <span>
+        // instead so re-translating only touches the label, not the icon.
+        const label = document.createElement('span');
+        label.setAttribute('data-i18n', key);
+        label.textContent = a.textContent;
+        a.removeAttribute('data-i18n');
+        a.textContent = '';
+        const i = document.createElement('i');
+        i.className = 'nav-more-icon fas ' + icon;
+        a.appendChild(i);
+        a.appendChild(label);
+    });
+
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'nav-more-btn';
+    moreBtn.id = 'navMoreBtn';
+    moreBtn.innerHTML = '<span data-i18n="nav_more">More</span><i class="nav-more-caret">&#9662;</i>';
+    navLinks.appendChild(moreBtn);
+
+    const moreDropdown = document.createElement('div');
+    moreDropdown.className = 'nav-more-dropdown';
+    moreDropdown.id = 'navMoreDropdown';
+    document.body.appendChild(moreDropdown);
+
+    function closeMoreDropdown() {
+        moreDropdown.classList.remove('open');
+        moreBtn.classList.remove('open');
+    }
+
+    function openMoreDropdown() {
+        const rect = moreBtn.getBoundingClientRect();
+        // .nav is position:fixed, so moreBtn's viewport position doesn't
+        // change on page scroll — no scroll-tracking needed to stay glued.
+        moreDropdown.style.top   = Math.round(rect.bottom + 8) + 'px';
+        moreDropdown.style.right = Math.round(window.innerWidth - rect.right) + 'px';
+        moreDropdown.style.left  = 'auto';
+        moreDropdown.classList.add('open');
+        moreBtn.classList.add('open');
+    }
+
+    moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (moreDropdown.classList.contains('open')) closeMoreDropdown();
+        else openMoreDropdown();
+    });
+    document.addEventListener('click', (e) => {
+        if (!moreDropdown.classList.contains('open')) return;
+        if (!moreDropdown.contains(e.target) && e.target !== moreBtn && !moreBtn.contains(e.target)) {
+            closeMoreDropdown();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMoreDropdown();
+    });
+
+    function layoutNav() {
+        closeMoreDropdown();
+
+        // Reset: every link back into nav-links, in original order, before
+        // the more-button, so each pass re-measures from a clean slate.
+        allLinks.forEach(a => navLinks.insertBefore(a, moreBtn));
+        moreDropdown.innerHTML = '';
+        moreBtn.style.display = 'none';
+
+        // Tagalog labels ("Mga Kahilingan", "Katugunan", "Tungkol Sa", ...)
+        // run noticeably longer than their English equivalents, so only in
+        // Tagalog do Requests/Feedback/About always live in the dropdown —
+        // Log in / Home / Reports / Track stay as the fixed primary bar.
+        // In English everything normally fits on its own; the width-based
+        // pass below still applies to both languages purely as a safety net.
+        if ((localStorage.getItem('lang') || 'en') === 'tl') {
+            const ALWAYS_COLLAPSED = ['nav_requests', 'nav_feedback', 'nav_about'];
+            allLinks.filter(a => ALWAYS_COLLAPSED.includes(a.dataset.navKey))
+                    .forEach(a => moreDropdown.appendChild(a));
+        }
+
+        // .nav-links has flex-shrink + overflow:hidden, so it silently
+        // shrinks its own box and clips whatever doesn't fit — the outer
+        // .nav element never actually overflows, only .nav-links does.
+        // scrollWidth still reports the full unclipped content size even
+        // though clientWidth reflects the shrunk, visible box.
+        if (navLinks.clientWidth > 0) {
+            // Move links out from the end, one at a time, re-checking the
+            // *real* overflow each time — avoids having to reverse-engineer
+            // the exact flex/gap math of everything else sharing this row
+            // (logo, divider, clock, translate/dark-mode buttons).
+            while (navLinks.querySelector(':scope > a') && navLinks.scrollWidth > navLinks.clientWidth + 1) {
+                const remaining = navLinks.querySelectorAll(':scope > a');
+                moreDropdown.insertBefore(remaining[remaining.length - 1], moreDropdown.firstChild);
+            }
+        }
+
+        if (!moreDropdown.children.length) {
+            moreBtn.style.display = 'none';
+            return;
+        }
+        moreBtn.style.display = 'inline-flex';
+
+        // Never let the current page's own link disappear into the menu —
+        // swap it back into the visible group, bumping the last fitting one out.
+        const activeOverflow = Array.from(moreDropdown.children).find(a => a.classList.contains('active'));
+        const stillVisible = Array.from(navLinks.querySelectorAll(':scope > a'));
+        const lastVisible = stillVisible[stillVisible.length - 1];
+        if (activeOverflow && lastVisible) {
+            navLinks.insertBefore(activeOverflow, moreBtn);
+            moreDropdown.insertBefore(lastVisible, moreDropdown.firstChild);
+        }
+    }
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        closeMoreDropdown();
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(layoutNav, 120);
+    });
+    document.addEventListener('i18nReady', layoutNav);
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(layoutNav).catch(() => {});
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', layoutNav);
+    } else {
+        layoutNav();
+    }
+})();
 </script>
 
 <script>

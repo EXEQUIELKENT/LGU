@@ -25,7 +25,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Track My Report - InfraGovServices</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <script>
@@ -47,6 +47,9 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             --shadow-color: rgba(0, 0, 0, 0.2);
             --card-bg: #ffffff;
             --nav-bg: rgba(255, 255, 255, 0.87);
+            --accent-primary: #2b6cb0;
+            --accent-secondary: #3762c8;
+            --input-placeholder: #666666;
         }
         [data-theme="dark"] {
             --bg-primary: #1a1a1a;
@@ -58,6 +61,9 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             --shadow-color: rgba(0, 0, 0, 0.5);
             --card-bg: rgba(30, 30, 30, 0.95);
             --nav-bg: rgba(26, 26, 26, 0.87);
+            --accent-primary: #4a8fd8;
+            --accent-secondary: #5a9fe8;
+            --input-placeholder: #888888;
         }
         body {
             margin: 0; padding: 0; min-height: 100vh;
@@ -84,27 +90,51 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         .track-hero h1 { font-size: 1.7rem; margin: 0 0 8px; }
         .track-hero p { color: var(--text-secondary); font-size: 14px; max-width: 480px; margin: 0 auto; line-height: 1.55; }
         .track-form { display: flex; flex-direction: column; gap: 16px; }
-        .track-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-secondary); }
+        /* Labels/inputs mirror citizenrepform.php's .input-group so the two
+           citizen-facing forms feel like the same product. */
+        .track-field label {
+            display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 6px;
+            color: var(--text-secondary); letter-spacing: .04em; text-transform: uppercase;
+        }
         .track-field input {
             width: 100%; height: 44px; padding: 0 14px; border-radius: 10px;
-            border: 1.5px solid #94a3b8; background: #fff; font-size: 14px;
-            color: #111; outline: none; box-sizing: border-box; transition: border-color .15s, box-shadow .15s;
+            border: 1.5px solid var(--border-color); background: var(--bg-tertiary);
+            font-family: 'Poppins', sans-serif; font-size: 14px;
+            color: var(--text-primary); outline: none; box-sizing: border-box; transition: border-color .2s, box-shadow .2s;
         }
-        .track-field input:focus { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.18); }
-        [data-theme="dark"] .track-field input { background: rgba(255,255,255,.07); border-color: rgba(95,140,255,.22); color: var(--text-primary); }
+        .track-field input::placeholder { color: var(--input-placeholder); opacity: .6; }
+        .track-field input:focus { border-color: var(--accent-secondary); box-shadow: 0 0 0 3px rgba(55,98,200,.13); }
+        .track-field input:hover:not(:focus) { border-color: var(--accent-secondary); }
+        [data-theme="dark"] .track-field input:hover:not(:focus) { border-color: rgba(255,255,255,.35); }
         .track-field { position: relative; }
+        .track-btn-container { display: flex; justify-content: center; margin-top: 2px; }
         .track-ref-dropdown {
             display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20;
             background: var(--bg-primary); border: 1.5px solid #94a3b8; border-radius: 10px;
-            box-shadow: 0 10px 28px var(--shadow-color); max-height: 260px; overflow-y: auto;
+            box-shadow: 0 10px 28px var(--shadow-color); overflow: hidden;
+        }
+        .track-ref-dropdown.open { display: block; }
+        [data-theme="dark"] .track-ref-dropdown { border-color: rgba(95,140,255,.3); }
+        .track-ref-search-wrap {
+            position: relative; display: flex; align-items: center;
+            padding: 8px; border-bottom: 1px solid var(--border-color);
+        }
+        .track-ref-search-wrap i { position: absolute; left: 18px; font-size: 12px; color: var(--text-secondary); pointer-events: none; }
+        #trackRefSearchBox {
+            width: 100%; height: 34px; padding: 0 10px 0 28px; box-sizing: border-box;
+            border: 1.5px solid var(--border-color); border-radius: 8px;
+            background: var(--bg-secondary, var(--bg-primary)); color: var(--text-primary);
+            font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s;
+        }
+        #trackRefSearchBox:focus { border-color: #3762c8; }
+        .track-ref-results {
+            max-height: 260px; overflow-y: auto;
             /* Same thin scrollbar as the citizenreports.php schedule detail modal's body ── */
             scrollbar-width: thin; scrollbar-color: #9cafde rgba(0,0,0,.07);
         }
-        .track-ref-dropdown::-webkit-scrollbar { width: 5px; }
-        .track-ref-dropdown::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
-        .track-ref-dropdown::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
-        .track-ref-dropdown.open { display: block; }
-        [data-theme="dark"] .track-ref-dropdown { border-color: rgba(95,140,255,.3); }
+        .track-ref-results::-webkit-scrollbar { width: 5px; }
+        .track-ref-results::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 3px; }
+        .track-ref-results::-webkit-scrollbar-thumb { background: #9cafde; border-radius: 3px; }
         .track-ref-option {
             display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; cursor: pointer;
             border-bottom: 1px solid var(--border-color);
@@ -115,34 +145,56 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         [data-theme="dark"] .track-ref-option .ref-id { color: #7c9dfb; }
         .track-ref-option .ref-meta { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .track-ref-empty { padding: 12px 14px; font-size: 12.5px; color: var(--text-secondary); text-align: center; }
+        .track-ref-hl { background: #ffe066; color: #3a2e00; border-radius: 3px; padding: 0 1px; }
+        [data-theme="dark"] .track-ref-hl { background: #ffd60a; color: #241c00; }
+        /* Same visual spec as citizenrepform.php's .btn-primary */
         .track-submit-btn {
-            height: 46px; border: none; border-radius: 10px; cursor: pointer;
-            background: linear-gradient(135deg, #2b6cb0, #1d4ed8); color: #fff;
-            font-size: 15px; font-weight: 700; transition: all .2s ease;
+            display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+            width: auto; min-width: 200px;
+            background: linear-gradient(135deg, #2b6cb0, #2563eb); color: #fff;
+            border: none; border-radius: 12px; padding: 13px 34px;
+            font-weight: 800; font-size: 15px; cursor: pointer;
+            transition: all .25s; box-shadow: 0 4px 16px rgba(43,108,176,.35);
         }
-        .track-submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(43,108,176,.35); }
-        .track-submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
-        .track-error {
-            display: none; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b;
-            padding: 10px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
-        }
-        [data-theme="dark"] .track-error { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); color: #fca5a5; }
+        .track-submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(43,108,176,.5); background: linear-gradient(135deg, #245a96, #1d4ed8); }
+        .track-submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
-        /* ── Toast notification (search-result errors — not tied to a field) ── */
+        /* ── Toast notification — same spec as citizenrepform.php's .notif-popup,
+           used for every track-lookup error (not just "not found"). ── */
         .notif-popup {
             position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
-            min-width: 280px; max-width: 92vw; padding: 16px 26px;
-            background: var(--card-bg, #fff); border-radius: 13px;
+            min-width: 280px; max-width: 95vw; padding: 18px 32px;
+            background: var(--card-bg); border-radius: 13px;
             box-shadow: 0 8px 38px rgba(34,53,126,0.23); z-index: 10000;
             display: flex; align-items: center; gap: 14px;
-            font-size: 14.5px; font-weight: 500; opacity: 1;
-            transition: opacity .35s; color: var(--text-primary);
+            font-family: 'Poppins', Arial, sans-serif;
+            font-size: 17px; font-weight: 500; opacity: 1;
+            transition: opacity .35s, background 0.3s ease; color: var(--text-primary);
         }
-        .notif-popup .notif-icon { font-size: 21px; flex-shrink: 0; }
-        .notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+        .notif-popup .notif-icon { font-size: 23px; }
+        .notif-popup .notif-message { display: flex; flex-direction: column; gap: 4px; }
         .notif-popup.notif-success { border-left: 5px solid #4fc97a; }
-        .notif-popup .notif-close { background: none; border: none; font-size: 19px; margin-left: auto; color: #888; cursor: pointer; flex-shrink: 0; }
-        @media (max-width: 560px) { .notif-popup { top: 16px; left: 12px; right: 12px; transform: none; min-width: 0; } }
+        .notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+        .notif-popup.notif-warning { border-left: 5px solid #dda203; }
+        .notif-popup.notif-info    { border-left: 5px solid #527cdf; }
+        .notif-popup .notif-close {
+            background: none; border: none;
+            font-size: 20px; margin-left: auto;
+            color: #888; cursor: pointer;
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .notif-popup {
+                top: 40px; left: 12px; right: 12px; transform: none;
+                min-width: unset; max-width: unset; width: calc(100vw - 24px);
+                padding: 13px 14px; font-size: 14px; gap: 10px;
+                align-items: flex-start; border-radius: 11px;
+                flex-wrap: nowrap; box-sizing: border-box;
+            }
+            .notif-popup .notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+            .notif-popup .notif-message { flex: 1; word-break: break-word; line-height: 1.5; }
+            .notif-popup .notif-close { font-size: 18px; margin-left: 6px; }
+        }
 
         /* ── Result panel — framed like a modal card (matches the citizenreports.php
            schedule detail modal: bordered box with a status-coloured top band) ── */
@@ -221,6 +273,48 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         .track-detail-item { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px; }
         .track-detail-item .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px; }
         .track-detail-item .value { font-size: 14px; font-weight: 600; }
+
+        /* ── Evidence photos — same thumbnail strip + lightbox as the
+           citizenreports.php schedule detail modal ── */
+        .track-evidence-field { margin: 18px 0 6px; }
+        .track-evidence-label {
+            font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+            color: var(--text-secondary); font-weight: 700; margin-bottom: 8px;
+        }
+        .track-evidence-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+        .track-evidence-thumb {
+            width: 80px; height: 80px; border-radius: 10px; object-fit: cover;
+            border: 2px solid var(--border-color); cursor: pointer; transition: transform .2s, box-shadow .2s;
+        }
+        .track-evidence-thumb:hover { transform: scale(1.07); box-shadow: 0 4px 14px rgba(55,98,200,.3); }
+
+        .track-lightbox {
+            position: fixed; inset: 0; background: rgba(0,0,0,.88);
+            display: none; align-items: center; justify-content: center;
+            z-index: 10001; flex-direction: column; overflow: hidden;
+        }
+        .track-lightbox.active { display: flex; }
+        .track-lightbox img {
+            max-width: 88vw; max-height: 80vh; border-radius: 10px;
+            cursor: zoom-in; transition: transform .15s ease;
+            transform-origin: center center;
+            user-select: none; -webkit-user-select: none;
+        }
+        .track-lightbox img.zoomed { cursor: grab; }
+        .track-lightbox img.dragging { cursor: grabbing; }
+        .track-lightbox-close {
+            position: absolute; top: 16px; right: 20px;
+            background: rgba(255,255,255,.15); border: none; color: #fff;
+            font-size: 28px; width: 44px; height: 44px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 1;
+        }
+        .track-lightbox-close:hover { background: rgba(255,255,255,.3); }
+        .track-lightbox-hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,.5); font-size: 12px; pointer-events: none;
+            transition: opacity .4s;
+        }
 
         /* ── AI assessment card — pill badges, same visual language as the
            admin report modal's AI analysis section (current_reports.php) ── */
@@ -488,15 +582,22 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         <form class="track-form" id="trackForm">
             <div class="track-field">
                 <label for="trackRef" data-i18n="track_ref_label">Reference Number</label>
-                <input type="text" id="trackRef" data-i18n-placeholder="track_ref_placeholder" placeholder="e.g. REQ-123 or 123" value="<?= htmlspecialchars($prefillRef) ?>" required autocomplete="off">
-                <div class="track-ref-dropdown" id="trackRefDropdown"></div>
+                <input type="text" id="trackRef" data-i18n-placeholder="track_ref_placeholder" placeholder="e.g. REQ-123 or 123" value="<?= htmlspecialchars($prefillRef) ?>" autocomplete="off">
+                <div class="track-ref-dropdown" id="trackRefDropdown">
+                    <div class="track-ref-search-wrap">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="trackRefSearchBox" data-i18n-placeholder="track_ref_search_placeholder" placeholder="Search ref # or details…" autocomplete="off">
+                    </div>
+                    <div class="track-ref-results" id="trackRefResults"></div>
+                </div>
             </div>
             <div class="track-field">
                 <label for="trackPhone" data-i18n="track_phone_label">Contact Number Used</label>
-                <input type="tel" id="trackPhone" data-i18n-placeholder="track_phone_placeholder" placeholder="09XXXXXXXXX" required autocomplete="off">
+                <input type="tel" id="trackPhone" data-i18n-placeholder="track_phone_placeholder" placeholder="09XX-XXX-XXXX" maxlength="13" autocomplete="off">
             </div>
-            <div class="track-error" id="trackError"></div>
-            <button type="submit" class="track-submit-btn" id="trackSubmitBtn" data-i18n="track_submit">Track Report</button>
+            <div class="track-btn-container">
+                <button type="submit" class="track-submit-btn" id="trackSubmitBtn" data-i18n="track_submit">Track Report</button>
+            </div>
         </form>
 
         <div class="track-result" id="trackResult">
@@ -515,6 +616,11 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
                 <div class="track-rejection-note" id="trackRejectionNote" style="display:none;"></div>
 
                 <div class="track-detail-grid" id="trackDetailGrid"></div>
+
+                <div class="track-evidence-field" id="trackEvidenceField" style="display:none;">
+                    <div class="track-evidence-label"><i class="fas fa-images"></i> <span data-i18n="track_detail_evidence">Evidence Photos</span></div>
+                    <div class="track-evidence-strip" id="trackEvidenceStrip"></div>
+                </div>
 
                 <div class="track-ai-card" id="trackAiCard" style="display:none;">
                     <div class="track-ai-head"><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="track_ai_title">What our system found in your photos</span></div>
@@ -558,6 +664,13 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
     </div>
 </div>
 
+<!-- Evidence lightbox -->
+<div id="trackLightbox" class="track-lightbox">
+    <button class="track-lightbox-close" id="trackLightboxClose">&#215;</button>
+    <img id="trackLightboxImg" src="" alt="Evidence" draggable="false">
+    <div class="track-lightbox-hint" id="trackLightboxHint">Double-tap to zoom &nbsp;·&nbsp; Scroll to zoom</div>
+</div>
+
 <footer class="footer" style="margin-top:50px;">
     <div class="footer-content">
         <div class="footer-about">
@@ -597,9 +710,41 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 (function () {
     const BASE_URL = <?= json_encode($BASE_URL) ?>;
     const form      = document.getElementById('trackForm');
-    const errorBox  = document.getElementById('trackError');
     const submitBtn = document.getElementById('trackSubmitBtn');
     const resultBox = document.getElementById('trackResult');
+
+    // ── Cache — keeps the typed reference/phone and the last successful
+    // lookup around across navigation (e.g. the citizen wanders off to
+    // Reports and comes back), so they don't have to re-enter/re-search.
+    // Expires after a while so a status shown here doesn't go stale forever. ──
+    const CACHE_KEY = 'track_report_cache_v1';
+    const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+    function loadCache() {
+        try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            const cache = JSON.parse(raw);
+            if (!cache || typeof cache !== 'object') return null;
+            if (!cache.savedAt || Date.now() - cache.savedAt > CACHE_TTL_MS) {
+                localStorage.removeItem(CACHE_KEY);
+                return null;
+            }
+            return cache;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function saveCache(ref, phone, result) {
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ ref, phone, result: result || null, savedAt: Date.now() }));
+        } catch (e) { /* localStorage unavailable/full — silently skip caching */ }
+    }
+
+    function clearCache() {
+        try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+    }
 
     const STAGE_LABELS = ['track_stage_pending', 'track_stage_scheduled', 'track_stage_progress', 'track_stage_completed'];
     const STAGE_LABELS_DEFAULT = ['🕓 Pending Review', '📅 Scheduled', '🔄 In Progress', '✅ Completed'];
@@ -614,6 +759,17 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 
     function escapeHtml(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Wraps every case-insensitive occurrence of `query` inside (already
+    // HTML-escaped) `text` with a highlight <mark> — used by the reference
+    // dropdown to show citizens which part of each row matched their search.
+    function highlightMatch(text, query) {
+        const escaped = escapeHtml(text);
+        const q = String(query || '').trim();
+        if (!q) return escaped;
+        const escapedQuery = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escaped.replace(new RegExp(escapedQuery, 'ig'), m => `<mark class="track-ref-hl">${m}</mark>`);
     }
 
     function showToast(type, message) {
@@ -696,34 +852,57 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 
     // Reference number autofill dropdown — lets a citizen browse/pick an
     // existing report instead of having to remember the exact REQ-### id.
-    const refInput    = document.getElementById('trackRef');
-    const refDropdown = document.getElementById('trackRefDropdown');
+    // A dedicated search box inside the panel filters by ref number OR
+    // location/infrastructure text, independent of what's in the field itself.
+    const refInput     = document.getElementById('trackRef');
+    const refDropdown  = document.getElementById('trackRefDropdown');
+    const refResults   = document.getElementById('trackRefResults');
+    const refSearchBox = document.getElementById('trackRefSearchBox');
     let refSuggestions = [];
     let refActiveIndex = -1;
     let refFetchToken   = 0;
 
     function closeRefDropdown() {
         refDropdown.classList.remove('open');
-        refDropdown.innerHTML = '';
+        refResults.innerHTML = '';
+        if (refSearchBox) refSearchBox.value = '';
         refSuggestions = [];
         refActiveIndex = -1;
     }
 
-    function renderRefDropdown(rows) {
+    // The dropdown is position:absolute inside the page's normal flow (not
+    // viewport-fixed), so it scrolls along with the page — the only thing
+    // that can push it into the footer is opening it near a short page's
+    // bottom, where the footer sits close beneath the reference field. Cap
+    // the results list's height to whatever room remains above the footer.
+    function capRefDropdownHeight() {
+        const footer = document.querySelector('.footer');
+        if (!footer) return;
+        const footerTop = footer.getBoundingClientRect().top;
+        const ddTop = refDropdown.getBoundingClientRect().top;
+        const searchWrapH = refDropdown.querySelector('.track-ref-search-wrap');
+        const reserved = (searchWrapH ? searchWrapH.offsetHeight : 0) + 16; // bottom breathing room
+        const available = footerTop - ddTop - reserved;
+        refResults.style.maxHeight = Math.max(90, Math.min(260, available)) + 'px';
+    }
+
+    function renderRefDropdown(rows, query) {
         refSuggestions = rows;
         refActiveIndex = -1;
         if (!rows.length) {
-            refDropdown.innerHTML = `<div class="track-ref-empty">${escapeHtml(t('track_ref_none', 'No matching reports found'))}</div>`;
+            refResults.innerHTML = `<div class="track-ref-empty">${escapeHtml(t('track_ref_none', 'No matching reports found'))}</div>`;
             refDropdown.classList.add('open');
+            capRefDropdownHeight();
             return;
         }
-        refDropdown.innerHTML = rows.map((r, i) => `
+        refResults.innerHTML = rows.map((r, i) => `
             <div class="track-ref-option" data-index="${i}">
-                <span class="ref-id">${escapeHtml(r.ref_id)}</span>
-                <span class="ref-meta">${escapeHtml(r.infrastructure || '')}${r.infrastructure && r.location ? ' — ' : ''}${escapeHtml(r.location || '')}</span>
+                <span class="ref-id">${highlightMatch(r.ref_id, query)}</span>
+                <span class="ref-meta">${highlightMatch(r.infrastructure || '', query)}${r.infrastructure && r.location ? ' — ' : ''}${highlightMatch(r.location || '', query)}</span>
             </div>`).join('');
         refDropdown.classList.add('open');
-        refDropdown.querySelectorAll('.track-ref-option').forEach(opt => {
+        capRefDropdownHeight();
+        refResults.querySelectorAll('.track-ref-option').forEach(opt => {
             opt.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 pickRefSuggestion(parseInt(opt.dataset.index, 10));
@@ -735,7 +914,18 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         const row = refSuggestions[i];
         if (!row) return;
         refInput.value = row.ref_id;
+        // Setting .value programmatically doesn't fire a real 'input' event,
+        // so the cache never saw this — it kept whatever partial text was
+        // last typed (e.g. "Rep"). Save directly (defined later in this same
+        // closure, hoisted) instead of dispatching a synthetic 'input' event —
+        // that would *also* re-trigger this dropdown's own search-as-you-type
+        // listener and pop a fresh (redundant) result list right back open.
+        if (typeof saveCurrentInputs === 'function') saveCurrentInputs();
         closeRefDropdown();
+        // refInput.focus() below fires the 'focus' listener, which would
+        // otherwise immediately re-run a search on the just-picked value and
+        // pop the dropdown back open right after picking. Skip that one time.
+        suppressNextFocusSearch = true;
         refInput.focus();
     }
 
@@ -745,24 +935,41 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             const res = await fetch(`${BASE_URL}api/track-report-suggest.php?q=${encodeURIComponent(q)}`);
             const json = await res.json();
             if (token !== refFetchToken) return; // a newer keystroke superseded this request
-            renderRefDropdown((json && json.data) || []);
+            renderRefDropdown((json && json.data) || [], q);
         } catch (err) {
             if (token !== refFetchToken) return;
             closeRefDropdown();
         }
     }
 
+    // Closing on blur has to tolerate focus moving BETWEEN the field and the
+    // internal search box (both live inside the dropdown's own DOM once it's
+    // open) — a plain "blur closes it" would kill the dropdown the instant
+    // focus shifts to the search box. Defer the check to see where focus
+    // actually landed.
+    function scheduleCloseIfFocusLeft() {
+        setTimeout(() => {
+            if (!refDropdown.contains(document.activeElement) && document.activeElement !== refInput) {
+                closeRefDropdown();
+            }
+        }, 120);
+    }
+
     let refDebounceTimer = null;
+    let suppressNextFocusSearch = false;
     refInput.addEventListener('input', () => {
         clearTimeout(refDebounceTimer);
         const q = refInput.value.trim();
         refDebounceTimer = setTimeout(() => fetchRefSuggestions(q), 200);
     });
-    refInput.addEventListener('focus', () => fetchRefSuggestions(refInput.value.trim()));
-    refInput.addEventListener('blur', () => closeRefDropdown());
+    refInput.addEventListener('focus', () => {
+        if (suppressNextFocusSearch) { suppressNextFocusSearch = false; return; }
+        fetchRefSuggestions(refInput.value.trim());
+    });
+    refInput.addEventListener('blur', scheduleCloseIfFocusLeft);
     refInput.addEventListener('keydown', (e) => {
         if (!refDropdown.classList.contains('open')) return;
-        const opts = refDropdown.querySelectorAll('.track-ref-option');
+        const opts = refResults.querySelectorAll('.track-ref-option');
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             refActiveIndex = Math.min(refActiveIndex + 1, opts.length - 1);
@@ -783,6 +990,24 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         if (opts[refActiveIndex]) opts[refActiveIndex].scrollIntoView({ block: 'nearest' });
     });
 
+    if (refSearchBox) {
+        let refSearchDebounce = null;
+        refSearchBox.addEventListener('mousedown', (e) => e.stopPropagation());
+        refSearchBox.addEventListener('input', () => {
+            clearTimeout(refSearchDebounce);
+            const q = refSearchBox.value.trim();
+            refSearchDebounce = setTimeout(() => fetchRefSuggestions(q), 200);
+        });
+        refSearchBox.addEventListener('blur', scheduleCloseIfFocusLeft);
+        refSearchBox.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeRefDropdown(); refInput.focus(); }
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        if (refDropdown.classList.contains('open')) capRefDropdownHeight();
+    });
+
     const confirmBackdrop = document.getElementById('trackConfirmBackdrop');
     const confirmOkBtn    = document.getElementById('trackConfirmOkBtn');
     const confirmEditBtn  = document.getElementById('trackConfirmCancelBtn');
@@ -794,20 +1019,17 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
     // Step 1: validate, then show the confirmation box instead of searching right away.
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        errorBox.style.display = 'none';
         resultBox.style.display = 'none';
 
         const ref   = document.getElementById('trackRef').value.trim();
         const phone = document.getElementById('trackPhone').value.replace(/\D/g, '');
 
         if (!ref) {
-            errorBox.textContent = t('track_err_ref_required', 'Please enter your reference number.');
-            errorBox.style.display = 'block';
+            showToast('error', t('track_err_ref_required', 'Please enter your reference number.'));
             return;
         }
         if (!/^09\d{9}$/.test(phone)) {
-            errorBox.textContent = t('track_err_phone_invalid', 'Please enter a valid 11-digit contact number starting with 09.');
-            errorBox.style.display = 'block';
+            showToast('error', t('track_err_phone_invalid', 'Please enter a valid 11-digit contact number starting with 09.'));
             return;
         }
 
@@ -846,6 +1068,19 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             }
 
             const d = json.data;
+            renderResult(d);
+            saveCache(ref, phone, d);
+            resultBox.style.display = 'block';
+            resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (err) {
+            showToast('error', t('track_err_generic', 'Something went wrong. Please try again.'));
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel;
+        }
+    });
+
+    function renderResult(d) {
             document.getElementById('trackResultId').textContent = d.req_id;
             document.getElementById('trackResultTitle').textContent = d.infrastructure || t('track_untitled', 'Infrastructure Report');
             document.getElementById('trackResultMeta').textContent = (d.location || '') + ' · ' + t('track_submitted_on', 'Submitted') + ' ' + fmtDate(d.submitted_at);
@@ -875,6 +1110,26 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             grid.innerHTML = items.map(([, label, value]) =>
                 `<div class="track-detail-item"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`
             ).join('');
+
+            const evField  = document.getElementById('trackEvidenceField');
+            const evStrip  = document.getElementById('trackEvidenceStrip');
+            // Paths come back relative to public/ (e.g. "uploads/evidence/x.jpg")
+            // — this page lives in public/citizen/, so prefix "../" to resolve.
+            const evImages = (d.evidence_images || []).map(p => '../' + String(p).replace(/^\/+/, ''));
+            if (evImages.length) {
+                evStrip.innerHTML = '';
+                evImages.forEach((src) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = 'Evidence';
+                    img.className = 'track-evidence-thumb';
+                    img.onclick = () => openTrackLightbox(src);
+                    evStrip.appendChild(img);
+                });
+                evField.style.display = 'block';
+            } else {
+                evField.style.display = 'none';
+            }
 
             const aiCard   = document.getElementById('trackAiCard');
             const aiBadges = document.getElementById('trackAiBadges');
@@ -907,28 +1162,201 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             } else {
                 aiCard.style.display = 'none';
             }
-
-            resultBox.style.display = 'block';
-            resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } catch (err) {
-            showToast('error', t('track_err_generic', 'Something went wrong. Please try again.'));
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalLabel;
-        }
-    });
+    }
 
     document.getElementById('trackAgainLink').addEventListener('click', () => {
         resultBox.style.display = 'none';
+        clearCache();
         form.reset();
         document.getElementById('trackRef').focus();
     });
 
+    // ── Contact number auto-format — same 09XX-XXX-XXXX masking (with
+    // cursor-position preservation) as citizenrepform.php's contact field ──
+    const refInputEl   = document.getElementById('trackRef');
+    const phoneInputEl = document.getElementById('trackPhone');
+    function formatPhoneDigits(digits) {
+        digits = String(digits || '').replace(/\D/g, '').slice(0, 11);
+        return digits.length <= 4 ? digits
+             : digits.length <= 7 ? digits.slice(0, 4) + '-' + digits.slice(4)
+             : digits.slice(0, 4) + '-' + digits.slice(4, 7) + '-' + digits.slice(7);
+    }
+    phoneInputEl.addEventListener('input', (e) => {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+        const digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g, '').length;
+        input.value = formatPhoneDigits(input.value);
+        let newCursor = 0, digitCount = 0;
+        for (let i = 0; i < input.value.length; i++) {
+            if (/\d/.test(input.value[i])) digitCount++;
+            if (digitCount === digitsBeforeCursor) { newCursor = i + 1; break; }
+        }
+        input.setSelectionRange(newCursor, newCursor);
+    });
+
+    // ── Restore from cache, then keep it live as the citizen types ──
+    (function restoreFromCache() {
+        const cache = loadCache();
+        if (!cache) return;
+        // A `?ref=` in the URL (e.g. straight from "your request was
+        // submitted") takes priority over whatever ref was cached.
+        if (!refInputEl.value && cache.ref) refInputEl.value = cache.ref;
+        if (!phoneInputEl.value && cache.phone) phoneInputEl.value = formatPhoneDigits(cache.phone);
+        const currentPhoneDigits = phoneInputEl.value.replace(/\D/g, '');
+        if (cache.result && cache.ref === refInputEl.value && cache.phone === currentPhoneDigits) {
+            renderResult(cache.result);
+            resultBox.style.display = 'block';
+        }
+    })();
+    function saveCurrentInputs() {
+        const cache = loadCache();
+        saveCache(refInputEl.value.trim(), phoneInputEl.value.replace(/\D/g, ''), (cache && cache.result) || null);
+    }
+    refInputEl.addEventListener('input', saveCurrentInputs);
+    phoneInputEl.addEventListener('input', saveCurrentInputs);
+
     // Auto-search if a reference number was passed in the URL (e.g. straight
     // from the "your request was submitted" screen) — phone still required.
-    if (document.getElementById('trackRef').value) {
-        document.getElementById('trackPhone').focus();
+    if (refInputEl.value && !resultBox.style.display) {
+        phoneInputEl.focus();
     }
+})();
+</script>
+
+<!-- ── Evidence lightbox — same zoom/pan/pinch engine as the citizenreports.php
+     schedule detail modal, adapted for track_report.php's own markup IDs ── -->
+<script>
+(function () {
+    const lightbox      = document.getElementById('trackLightbox');
+    const lightboxImg   = document.getElementById('trackLightboxImg');
+    const lightboxClose = document.getElementById('trackLightboxClose');
+    if (!lightbox || !lightboxImg) return;
+
+    let lbScale = 1, lbTX = 0, lbTY = 0;
+    let lbDragging = false, lbDragStartX = 0, lbDragStartY = 0;
+    const LB_BASE_ZOOM = 2.5, LB_MAX_ZOOM = 5;
+    let lbHintTimer = null;
+
+    function lbSetTransform() {
+        lightboxImg.style.transform = 'scale(' + lbScale + ') translate(' + lbTX + 'px,' + lbTY + 'px)';
+    }
+    function lbReset() {
+        lbScale = 1; lbTX = 0; lbTY = 0;
+        lbSetTransform();
+        lightboxImg.classList.remove('zoomed', 'dragging');
+        lightboxImg.style.cursor = 'zoom-in';
+    }
+
+    window.openTrackLightbox = function (src) {
+        lbReset();
+        lightboxImg.src = src;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        const hint = document.getElementById('trackLightboxHint');
+        if (hint) {
+            hint.style.opacity = '1';
+            clearTimeout(lbHintTimer);
+            lbHintTimer = setTimeout(() => { hint.style.opacity = '0'; }, 2500);
+        }
+    };
+    function closeTrackLightbox() {
+        lbReset();
+        lightbox.classList.remove('active');
+        lightboxImg.src = '';
+        document.body.style.overflow = '';
+    }
+
+    lightboxImg.addEventListener('dblclick', (e) => {
+        if (lbScale > 1) { lbReset(); return; }
+        const rect = lightboxImg.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        lbScale = LB_BASE_ZOOM;
+        lbTX = -px * rect.width * (LB_BASE_ZOOM - 1) / LB_BASE_ZOOM;
+        lbTY = -py * rect.height * (LB_BASE_ZOOM - 1) / LB_BASE_ZOOM;
+        lbSetTransform();
+        lightboxImg.classList.add('zoomed');
+        lightboxImg.style.cursor = 'grab';
+    });
+
+    lightboxImg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = lightboxImg.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        const newScale = Math.min(Math.max(lbScale + delta, 1), LB_MAX_ZOOM);
+        if (newScale === 1) { lbReset(); return; }
+        const scaleDelta = newScale / lbScale;
+        lbTX = lbTX * scaleDelta - px * rect.width * (scaleDelta - 1) / newScale;
+        lbTY = lbTY * scaleDelta - py * rect.height * (scaleDelta - 1) / newScale;
+        lbScale = newScale;
+        lbSetTransform();
+        lightboxImg.classList.add('zoomed');
+        lightboxImg.style.cursor = 'grab';
+    }, { passive: false });
+
+    lightboxImg.addEventListener('mousedown', (e) => {
+        if (lbScale <= 1 || e.button !== 0) return;
+        lbDragging = true;
+        lbDragStartX = e.clientX - lbTX * lbScale;
+        lbDragStartY = e.clientY - lbTY * lbScale;
+        lightboxImg.classList.add('dragging');
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!lbDragging) return;
+        lbTX = (e.clientX - lbDragStartX) / lbScale;
+        lbTY = (e.clientY - lbDragStartY) / lbScale;
+        lbSetTransform();
+    });
+    document.addEventListener('mouseup', () => {
+        if (!lbDragging) return;
+        lbDragging = false;
+        lightboxImg.classList.remove('dragging');
+    });
+
+    let lbTouchStartDist = null, lbTouchStartScale = 1;
+    lightboxImg.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            lbTouchStartDist = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            lbTouchStartScale = lbScale;
+        } else if (e.touches.length === 1 && lbScale > 1) {
+            lbDragging = true;
+            lbDragStartX = e.touches[0].clientX - lbTX * lbScale;
+            lbDragStartY = e.touches[0].clientY - lbTY * lbScale;
+        }
+    }, { passive: true });
+    lightboxImg.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && lbTouchStartDist) {
+            e.preventDefault();
+            const dist = Math.hypot(
+                e.touches[1].clientX - e.touches[0].clientX,
+                e.touches[1].clientY - e.touches[0].clientY
+            );
+            lbScale = Math.min(Math.max(lbTouchStartScale * (dist / lbTouchStartDist), 1), LB_MAX_ZOOM);
+            lbSetTransform();
+            if (lbScale > 1) lightboxImg.classList.add('zoomed');
+        } else if (e.touches.length === 1 && lbDragging && lbScale > 1) {
+            lbTX = (e.touches[0].clientX - lbDragStartX) / lbScale;
+            lbTY = (e.touches[0].clientY - lbDragStartY) / lbScale;
+            lbSetTransform();
+        }
+    }, { passive: false });
+    lightboxImg.addEventListener('touchend', () => {
+        lbTouchStartDist = null;
+        lbDragging = false;
+        if (lbScale <= 1) lbReset();
+    }, { passive: true });
+
+    lightboxClose && lightboxClose.addEventListener('click', closeTrackLightbox);
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeTrackLightbox(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox.classList.contains('active')) closeTrackLightbox();
+    });
 })();
 </script>
 
@@ -945,8 +1373,9 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_ref_label: 'Reference Number',
             track_ref_placeholder: 'e.g. REQ-123 or 123',
             track_ref_none: 'No matching reports found',
+            track_ref_search_placeholder: 'Search ref # or details…',
             track_phone_label: 'Contact Number Used',
-            track_phone_placeholder: '09XXXXXXXXX',
+            track_phone_placeholder: '09XX-XXX-XXXX',
             track_submit: 'Track Report',
             track_searching: 'Searching…',
             track_search_again: 'Track another report',
@@ -975,6 +1404,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_detail_start: '📅 Scheduled Start',
             track_detail_end: '🏁 Est. Completion',
             track_detail_priority: '🚦 Priority',
+            track_detail_evidence: 'Evidence Photos',
             track_ai_title: 'What our system found in your photos',
             track_ai_severity: 'Severity',
             track_ai_complexity: 'Complexity',
@@ -999,8 +1429,9 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_ref_label: 'Reference Number',
             track_ref_placeholder: 'hal. REQ-123 o 123',
             track_ref_none: 'Walang natagpuang tumutugmang ulat',
+            track_ref_search_placeholder: 'Maghanap ng ref # o detalye…',
             track_phone_label: 'Numero ng Telepono na Ginamit',
-            track_phone_placeholder: '09XXXXXXXXX',
+            track_phone_placeholder: '09XX-XXX-XXXX',
             track_submit: 'Subaybayan ang Ulat',
             track_searching: 'Hinahanap…',
             track_search_again: 'Subaybayan ang ibang ulat',
@@ -1029,6 +1460,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_detail_start: '📅 Naka-iskedyul na Simula',
             track_detail_end: '🏁 Tinatayang Pagkumpleto',
             track_detail_priority: '🚦 Prayoridad',
+            track_detail_evidence: 'Mga Larawan ng Ebidensya',
             track_ai_title: 'Ang natuklasan ng aming sistema sa iyong mga larawan',
             track_ai_severity: 'Antas ng Pinsala',
             track_ai_complexity: 'Kumplikasyon',

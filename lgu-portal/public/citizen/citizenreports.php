@@ -137,7 +137,7 @@ foreach ($maintenance_data as $_item) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="<?= $OFFICIAL_LOGO ?>" type="image/png">
     <title>Citizen Reports - LGU Portal</title>
-    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css">
+    <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -764,6 +764,103 @@ foreach ($maintenance_data as $_item) {
         @media (max-width: 768px) {
             #reportsMapPeriodMenu { min-width: 210px; max-height: min(320px, 60vh); overflow-y: auto; }
         }
+
+        /* ── Specific Month / Specific Day pickers — same design as the
+           admin GIS request map's date-picker overlay ── */
+        .gis-dd-picker { padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+        .gis-dd-picker label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+        .gis-dp-trigger-btn {
+            width: 100%; padding: 5px 9px; border: 1.5px solid var(--border-color);
+            border-radius: 7px; font-size: 12px; color: var(--text-secondary);
+            background: var(--bg-primary); font-family: inherit; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: border-color .15s, color .15s;
+            outline: none; text-align: left;
+        }
+        .gis-dp-trigger-btn:hover { border-color: #0891b2; color: #0891b2; background: rgba(8,145,178,.05); }
+        .gis-dp-trigger-btn.active { border-color: #0891b2; color: #0891b2; background: rgba(8,145,178,.07); }
+        .gis-dp-trigger-btn i { flex-shrink: 0; color: #0891b2; }
+        [data-theme="dark"] .gis-dp-trigger-btn { background: rgba(255,255,255,.06); border-color: rgba(95,140,255,.22); color: #94a3b8; }
+        [data-theme="dark"] .gis-dp-trigger-btn:hover { border-color: #0891b2; color: #22d3ee; background: rgba(8,145,178,.08); }
+        [data-theme="dark"] .gis-dp-trigger-btn.active { border-color: #0891b2; color: #22d3ee; }
+        [data-theme="dark"] .gis-dp-trigger-btn i { color: #22d3ee; }
+
+        .gis-dp-overlay {
+            position: fixed; z-index: 99999;
+            background: var(--bg-secondary, var(--card-bg)); border: 1.5px solid rgba(55,98,200,.22);
+            border-radius: 14px; box-shadow: 0 10px 32px rgba(0,0,0,.22);
+            padding: 10px 12px 12px; min-width: 230px;
+            animation: gisDropIn .18s ease;
+            display: none;
+        }
+        [data-theme="dark"] .gis-dp-overlay { background: rgba(24,24,32,.98); border-color: rgba(95,140,255,.3); box-shadow: 0 10px 36px rgba(0,0,0,.55); }
+        .gis-dp-nav-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 4px; }
+        .gis-dp-nav-btn {
+            background: rgba(55,98,200,.08); border: 1.5px solid rgba(55,98,200,.18);
+            color: #3762c8; border-radius: 7px; width: 28px; height: 28px;
+            font-size: 15px; font-weight: 700; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; transition: background .15s, color .15s;
+            flex-shrink: 0; padding: 0; line-height: 1;
+        }
+        .gis-dp-nav-btn:hover { background: #3762c8; color: #fff; }
+        [data-theme="dark"] .gis-dp-nav-btn { background: rgba(95,140,255,.12); border-color: rgba(95,140,255,.28); color: #8ab4f8; }
+        [data-theme="dark"] .gis-dp-nav-btn:hover { background: #5f8cff; color: #fff; }
+        .gis-dp-nav-center { display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+        .gis-dp-month-lbl, .gis-dp-year-lbl {
+            background: none; border: none; color: var(--text-primary); font-size: 13px;
+            font-weight: 700; cursor: pointer; padding: 3px 7px; border-radius: 6px;
+            transition: background .15s; font-family: inherit;
+        }
+        .gis-dp-month-lbl:hover, .gis-dp-year-lbl:hover { background: rgba(55,98,200,.10); color: #3762c8; }
+        [data-theme="dark"] .gis-dp-month-lbl:hover, [data-theme="dark"] .gis-dp-year-lbl:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+        .gis-dp-month-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; margin-bottom: 6px; }
+        .gis-dp-mo {
+            background: none; border: 1.5px solid transparent; color: var(--text-secondary);
+            font-size: 12px; font-weight: 500; padding: 6px 2px; border-radius: 7px;
+            cursor: pointer; transition: all .13s; text-align: center; font-family: inherit;
+        }
+        .gis-dp-mo:hover { background: rgba(55,98,200,.09); color: #3762c8; border-color: rgba(55,98,200,.2); }
+        .gis-dp-mo.selected { background: #3762c8; color: #fff; font-weight: 700; border-color: #3762c8; }
+        [data-theme="dark"] .gis-dp-mo { color: #e2e8f0; }
+        [data-theme="dark"] .gis-dp-mo:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+        [data-theme="dark"] .gis-dp-mo.selected { background: #5f8cff; border-color: #5f8cff; }
+        .gis-dp-year-grid { display: none; grid-template-columns: repeat(4,1fr); gap: 3px; max-height: 140px; overflow-y: auto; margin-bottom: 6px; scrollbar-width: thin; }
+        .gis-dp-year-grid.open { display: grid; }
+        .gis-dp-yr {
+            background: none; border: 1.5px solid transparent; color: var(--text-secondary);
+            font-size: 11.5px; padding: 4px 2px; border-radius: 6px; cursor: pointer;
+            transition: all .13s; text-align: center; font-family: inherit;
+        }
+        .gis-dp-yr:hover { background: rgba(55,98,200,.09); color: #3762c8; }
+        .gis-dp-yr.selected { background: #3762c8; color: #fff; font-weight: 700; }
+        [data-theme="dark"] .gis-dp-yr { color: #e2e8f0; }
+        [data-theme="dark"] .gis-dp-yr:hover { background: rgba(95,140,255,.14); color: #8ab4f8; }
+        [data-theme="dark"] .gis-dp-yr.selected { background: #5f8cff; }
+        .gis-dp-weekdays { display: grid; grid-template-columns: repeat(7,1fr); margin-bottom: 4px; }
+        .gis-dp-weekdays span { text-align: center; font-size: 10px; font-weight: 700; color: var(--text-secondary); padding: 2px 0; }
+        .gis-dp-weekdays span:first-child, .gis-dp-weekdays span:last-child { color: #f87171; }
+        .gis-dp-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 6px; }
+        .gis-dp-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 11.5px; font-weight: 500; border-radius: 6px; cursor: pointer;
+            border: none; background: none; color: var(--text-secondary); transition: all .13s;
+            font-family: inherit; padding: 0;
+        }
+        .gis-dp-day:hover { background: rgba(55,98,200,.10); color: #3762c8; transform: scale(1.1); }
+        .gis-dp-day.dp-empty { cursor: default; pointer-events: none; }
+        .gis-dp-day.dp-weekend { color: #ef4444; }
+        .gis-dp-day.dp-today { background: rgba(55,98,200,.10); color: #3762c8; font-weight: 700; }
+        .gis-dp-day.dp-selected { background: #3762c8; color: #fff !important; font-weight: 700; transform: none; }
+        [data-theme="dark"] .gis-dp-day { color: #e2e8f0; }
+        [data-theme="dark"] .gis-dp-day.dp-weekend { color: #f87171; }
+        [data-theme="dark"] .gis-dp-day:hover { background: rgba(95,140,255,.16); color: #8ab4f8; }
+        [data-theme="dark"] .gis-dp-day.dp-today { background: rgba(95,140,255,.18); color: #8ab4f8; }
+        [data-theme="dark"] .gis-dp-day.dp-selected { background: #5f8cff; color: #fff !important; }
+        .gis-dp-footer { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 4px; border-top: 1px solid var(--border-color); padding-top: 8px; }
+        .gis-dp-clear-btn, .gis-dp-done-btn { padding: 5px 13px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; border: 1.5px solid; }
+        .gis-dp-clear-btn { background: none; border-color: var(--border-color); color: var(--text-secondary); }
+        .gis-dp-clear-btn:hover { background: #fde8e8; border-color: #ef4444; color: #ef4444; }
+        .gis-dp-done-btn { background: linear-gradient(135deg,#3762c8,#2851b3); border-color: #3762c8; color: #fff; }
+        .gis-dp-done-btn:hover { background: linear-gradient(135deg,#2851b3,#1f3e99); }
 
         /* Expand button — same look/position as the admin GIS request map's
            #gisExpandBtn: absolute top-right of the map itself, not the toolbar. */
@@ -1735,6 +1832,23 @@ foreach ($maintenance_data as $_item) {
                         <div class="gis-dd-item" data-val="month"><i class="fas fa-calendar-day"></i> <span data-i18n="reports_map_filter_month">This Month</span></div>
                         <div class="gis-dd-item" data-val="year"><i class="fas fa-calendar-alt"></i> <span data-i18n="reports_map_filter_year">This Year</span></div>
                         <div class="gis-dd-item" data-val="lastyear"><i class="fas fa-undo"></i> <span data-i18n="reports_map_filter_lastyear">Last Year</span></div>
+                        <div class="gis-dd-divider"></div>
+                        <div class="gis-dd-picker">
+                            <label><i class="fas fa-calendar"></i> <span data-i18n="reports_map_filter_specific_month">Specific Month</span></label>
+                            <button type="button" class="gis-dp-trigger-btn" id="reportsMapPickMonthBtn">
+                                <i class="fas fa-calendar"></i>
+                                <span id="reportsMapPickMonthLabel" data-i18n="reports_map_filter_click_month">Click to select month</span>
+                            </button>
+                            <input type="hidden" id="reportsMapPickMonth">
+                        </div>
+                        <div class="gis-dd-picker">
+                            <label><i class="fas fa-calendar-check"></i> <span data-i18n="reports_map_filter_specific_day">Specific Day</span></label>
+                            <button type="button" class="gis-dp-trigger-btn" id="reportsMapPickDayBtn">
+                                <i class="fas fa-calendar-check"></i>
+                                <span id="reportsMapPickDayLabel" data-i18n="reports_map_filter_click_day">Click to select date</span>
+                            </button>
+                            <input type="hidden" id="reportsMapPickDay">
+                        </div>
                     </div>
                 </div>
                 <button class="reports-map-layer-btn" id="reportsMapLayerBtn" type="button">🛰️ <span data-i18n="reports_map_satellite">Satellite</span></button>
@@ -2240,6 +2354,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filter === 'month')     { return {from:new Date(y,m,1), to:new Date(y,m+1,1)}; }
         if (filter === 'year')      { return {from:new Date(y,0,1), to:new Date(y+1,0,1)}; }
         if (filter === 'lastyear')  { return {from:new Date(y-1,0,1), to:new Date(y,0,1)}; }
+        if (filter && filter.startsWith('specificMonth:')) {
+            const parts = filter.split(':')[1].split('-');
+            return {from:new Date(+parts[0],+parts[1]-1,1), to:new Date(+parts[0],+parts[1],1)};
+        }
+        if (filter && filter.startsWith('specificDay:')) {
+            const parts = filter.split(':')[1].split('-');
+            const s=new Date(+parts[0],+parts[1]-1,+parts[2]); s.setHours(0,0,0,0);
+            const e=new Date(s); e.setDate(e.getDate()+1);
+            return {from:s,to:e};
+        }
         return null;
     }
 
@@ -2464,8 +2588,267 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     setupDropdown(periodWrap, periodBtn, periodMenu, periodLabelEl, PERIOD_LABELS, 'all', (val) => {
         periodFilterVal = val;
+        // A preset item was picked directly — clear any specific month/day
+        // selection so the picker buttons don't show a stale label/state.
+        if (window._reportsMapDpReset) window._reportsMapDpReset();
         applyMapFilter(currentStatusFilter);
     });
+
+    // ── Specific Month / Specific Day calendar picker — same widget as the
+    // admin GIS request map's date picker. One shared overlay for both
+    // trigger buttons; it's body-level and position-tracks whichever button
+    // opened it, so it works unmodified whether the buttons are in the
+    // embedded toolbar or (once reparented) the fullscreen header. ──
+    (function () {
+        const monthBtn   = document.getElementById('reportsMapPickMonthBtn');
+        const dayBtn     = document.getElementById('reportsMapPickDayBtn');
+        if (!monthBtn || !dayBtn) return;
+        const monthHidden = document.getElementById('reportsMapPickMonth');
+        const dayHidden    = document.getElementById('reportsMapPickDay');
+        const monthLabelEl = document.getElementById('reportsMapPickMonthLabel');
+        const dayLabelEl   = document.getElementById('reportsMapPickDayLabel');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'gis-dp-overlay';
+        overlay.innerHTML = [
+            '<div class="gis-dp-nav-row">',
+              '<button class="gis-dp-nav-btn" id="reportsMapDpPrev" type="button">&#8592;</button>',
+              '<div class="gis-dp-nav-center">',
+                '<button class="gis-dp-month-lbl" id="reportsMapDpMonthLbl" type="button"></button>',
+                '<button class="gis-dp-year-lbl"  id="reportsMapDpYearLbl"  type="button"></button>',
+              '</div>',
+              '<button class="gis-dp-nav-btn" id="reportsMapDpNext" type="button">&#8594;</button>',
+            '</div>',
+            '<div class="gis-dp-year-grid"   id="reportsMapDpYearGrid"></div>',
+            '<div class="gis-dp-month-grid"  id="reportsMapDpMonthGrid"></div>',
+            '<div class="gis-dp-weekdays" id="reportsMapDpWeekdays">',
+              '<span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>',
+            '</div>',
+            '<div class="gis-dp-day-grid"    id="reportsMapDpDayGrid"></div>',
+            '<div class="gis-dp-footer">',
+              '<button class="gis-dp-clear-btn" id="reportsMapDpClear" type="button">Clear</button>',
+              '<button class="gis-dp-done-btn"  id="reportsMapDpDone"  type="button">Done</button>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(overlay);
+
+        const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        let mode = 'day', viewYear = new Date().getFullYear(), viewMonth = new Date().getMonth();
+        let selYear = null, selMonth = null, selDay = null;
+        let activeTrigger = null, activeHidden = null, activeLabelEl = null, activeCallback = null;
+
+        const prevBtn   = document.getElementById('reportsMapDpPrev');
+        const nextBtn   = document.getElementById('reportsMapDpNext');
+        const monthLbl  = document.getElementById('reportsMapDpMonthLbl');
+        const yearLbl   = document.getElementById('reportsMapDpYearLbl');
+        const yearGrid  = document.getElementById('reportsMapDpYearGrid');
+        const monthGrid = document.getElementById('reportsMapDpMonthGrid');
+        const weekdays  = document.getElementById('reportsMapDpWeekdays');
+        const dayGrid   = document.getElementById('reportsMapDpDayGrid');
+        const clearBtn  = document.getElementById('reportsMapDpClear');
+        const doneBtn   = document.getElementById('reportsMapDpDone');
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function renderYearGrid() {
+            yearGrid.innerHTML = '';
+            const now = new Date();
+            for (let y = now.getFullYear(); y >= 1900; y--) {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'gis-dp-yr'; b.textContent = y; b.dataset.y = y;
+                if (y === viewYear) b.classList.add('selected');
+                b.addEventListener('click', function (e) { e.stopPropagation(); viewYear = +this.dataset.y; yearGrid.classList.remove('open'); yearLbl.classList.remove('active'); render(); });
+                yearGrid.appendChild(b);
+            }
+            setTimeout(() => { const s = yearGrid.querySelector('.selected'); if (s) s.scrollIntoView({ block: 'nearest' }); }, 20);
+        }
+
+        function renderMonthGridPicker() {
+            monthGrid.innerHTML = '';
+            for (let m = 0; m < 12; m++) {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'gis-dp-mo'; b.textContent = MONTHS_SHORT[m]; b.dataset.m = m;
+                if (selYear === viewYear && m === selMonth) b.classList.add('selected');
+                b.addEventListener('click', ((mo) => (e) => {
+                    e.stopPropagation();
+                    selMonth = mo; selYear = viewYear;
+                    const val = viewYear + '-' + pad2(mo + 1);
+                    applySelection(val, MONTHS_LONG[mo] + ' ' + viewYear, 'specificMonth:' + val);
+                    render();
+                })(m));
+                monthGrid.appendChild(b);
+            }
+        }
+
+        function renderDayGrid() {
+            dayGrid.innerHTML = '';
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+            const selStr = (selYear && selMonth !== null && selDay) ? selYear + '-' + pad2(selMonth + 1) + '-' + pad2(selDay) : '';
+
+            const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+            const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+            for (let i = 0; i < firstDow; i++) {
+                const emp = document.createElement('button'); emp.type = 'button';
+                emp.className = 'gis-dp-day dp-empty'; dayGrid.appendChild(emp);
+            }
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = viewYear + '-' + pad2(viewMonth + 1) + '-' + pad2(d);
+                const dow = new Date(viewYear, viewMonth, d).getDay();
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'gis-dp-day'; b.textContent = d; b.dataset.date = dateStr;
+                if (dow === 0 || dow === 6) b.classList.add('dp-weekend');
+                if (dateStr === todayStr) b.classList.add('dp-today');
+                if (dateStr === selStr) b.classList.add('dp-selected');
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const p = this.dataset.date.split('-');
+                    selYear = +p[0]; selMonth = +p[1] - 1; selDay = +p[2];
+                    const val = this.dataset.date;
+                    const lbl = MONTHS_LONG[selMonth] + ' ' + selDay + ', ' + selYear;
+                    applySelection(val, lbl, 'specificDay:' + val);
+                    render();
+                });
+                dayGrid.appendChild(b);
+            }
+        }
+
+        function render() {
+            monthLbl.textContent = MONTHS_LONG[viewMonth].slice(0, 3);
+            yearLbl.textContent = viewYear;
+            if (mode === 'month') {
+                weekdays.style.display = 'none'; dayGrid.style.display = 'none'; monthGrid.style.display = '';
+                prevBtn.style.visibility = 'hidden'; nextBtn.style.visibility = 'hidden';
+                renderMonthGridPicker();
+            } else {
+                weekdays.style.display = ''; dayGrid.style.display = ''; monthGrid.style.display = 'none';
+                prevBtn.style.visibility = ''; nextBtn.style.visibility = '';
+                renderDayGrid();
+            }
+        }
+
+        function positionOverlay(triggerBtn) {
+            const rect = triggerBtn.getBoundingClientRect();
+            const vw = window.innerWidth, vh = window.innerHeight;
+            overlay.style.display = 'block';
+            const ow = overlay.offsetWidth || 240, oh = overlay.offsetHeight || 320;
+            overlay.style.display = 'none';
+            let top = rect.bottom + 6, left = rect.left;
+            if (left + ow > vw - 8) left = vw - ow - 8;
+            if (left < 8) left = 8;
+            if (top + oh > vh - 8) { top = rect.top > oh + 6 ? rect.top - oh - 6 : Math.max(8, vh - oh - 8); }
+            overlay.style.top = top + 'px';
+            overlay.style.left = left + 'px';
+        }
+
+        function openPicker(triggerBtn, hiddenInput, labelEl, pickerMode, cb) {
+            activeTrigger = triggerBtn; activeHidden = hiddenInput; activeLabelEl = labelEl; activeCallback = cb;
+            mode = pickerMode;
+            const existing = hiddenInput ? hiddenInput.value : '';
+            if (existing && mode === 'month') {
+                const p = existing.split('-');
+                if (p.length >= 2) { selYear = +p[0]; selMonth = +p[1] - 1; viewYear = selYear; viewMonth = selMonth; }
+            } else if (existing && mode === 'day') {
+                const p2 = existing.split('-');
+                if (p2.length === 3) { selYear = +p2[0]; selMonth = +p2[1] - 1; selDay = +p2[2]; viewYear = selYear; viewMonth = selMonth; }
+            } else {
+                selYear = null; selMonth = null; selDay = null;
+                viewYear = new Date().getFullYear(); viewMonth = new Date().getMonth();
+            }
+            renderYearGrid();
+            yearGrid.classList.remove('open'); yearLbl.classList.remove('active');
+            render();
+            positionOverlay(triggerBtn);
+            overlay.style.removeProperty('animation');
+            overlay.style.display = 'block';
+            void overlay.offsetWidth;
+            overlay.style.animation = 'gisDropIn .18s ease forwards';
+            // "fixed" only pins the overlay to the viewport, it doesn't follow
+            // the trigger button on scroll — re-run positionOverlay() on every
+            // scroll/resize while open so the calendar stays glued to the button.
+            window.addEventListener('scroll', onDpScroll, true);
+            window.addEventListener('resize', onDpScroll);
+        }
+
+        function onDpScroll() {
+            // positionOverlay() measures by briefly flipping display:block→none;
+            // restore visibility afterward so this only repositions, not hides.
+            if (activeTrigger) { positionOverlay(activeTrigger); overlay.style.display = 'block'; }
+        }
+
+        function closePicker() {
+            overlay.style.display = 'none';
+            if (activeTrigger) activeTrigger.classList.remove('active');
+            activeTrigger = null;
+            window.removeEventListener('scroll', onDpScroll, true);
+            window.removeEventListener('resize', onDpScroll);
+        }
+
+        function applySelection(rawVal, displayLabel, filterVal) {
+            if (activeHidden) activeHidden.value = rawVal;
+            if (activeLabelEl) activeLabelEl.textContent = displayLabel;
+            if (activeTrigger) activeTrigger.classList.add('active');
+            if (activeCallback) activeCallback(filterVal);
+            closePicker();
+        }
+
+        prevBtn.addEventListener('click', (e) => { e.stopPropagation(); viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); });
+        nextBtn.addEventListener('click', (e) => { e.stopPropagation(); viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
+        yearLbl.addEventListener('click', (e) => { e.stopPropagation(); const open = yearGrid.classList.toggle('open'); yearLbl.classList.toggle('active', open); });
+        monthLbl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (mode === 'month') return;
+            monthGrid.style.display = monthGrid.style.display === '' ? 'none' : '';
+            monthGrid.querySelectorAll('.gis-dp-mo').forEach((b, mi) => {
+                b.onclick = (e2) => { e2.stopPropagation(); viewMonth = mi; monthGrid.style.display = 'none'; render(); };
+            });
+        });
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activeHidden) activeHidden.value = '';
+            if (activeLabelEl) activeLabelEl.textContent = (mode === 'month') ? 'Click to select month' : 'Click to select date';
+            if (activeTrigger) activeTrigger.classList.remove('active');
+            if (activeCallback) activeCallback('all');
+            selYear = null; selMonth = null; selDay = null;
+            render();
+            closePicker();
+        });
+        doneBtn.addEventListener('click', (e) => { e.stopPropagation(); closePicker(); });
+        document.addEventListener('click', (e) => { if (overlay.style.display !== 'none' && !overlay.contains(e.target)) closePicker(); });
+        overlay.addEventListener('click', (e) => e.stopPropagation());
+
+        function wireTrigger(btn, hidden, labelEl, pickerMode, filterFn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (overlay.style.display !== 'none' && activeTrigger === btn) { closePicker(); return; }
+                openPicker(btn, hidden, labelEl, pickerMode, filterFn);
+            });
+        }
+        wireTrigger(monthBtn, monthHidden, monthLabelEl, 'month', (v) => {
+            periodFilterVal = v === 'all' ? 'all' : v;
+            if (periodLabelEl) periodLabelEl.textContent = v === 'all' ? (PERIOD_LABELS.all) : monthLabelEl.textContent;
+            if (periodBtn) periodBtn.classList.toggle('has-filter', v !== 'all');
+            periodMenu.querySelectorAll('.gis-dd-item').forEach(o => o.classList.remove('active'));
+            applyMapFilter(currentStatusFilter);
+        });
+        wireTrigger(dayBtn, dayHidden, dayLabelEl, 'day', (v) => {
+            periodFilterVal = v === 'all' ? 'all' : v;
+            if (periodLabelEl) periodLabelEl.textContent = v === 'all' ? (PERIOD_LABELS.all) : dayLabelEl.textContent;
+            if (periodBtn) periodBtn.classList.toggle('has-filter', v !== 'all');
+            periodMenu.querySelectorAll('.gis-dd-item').forEach(o => o.classList.remove('active'));
+            applyMapFilter(currentStatusFilter);
+        });
+
+        // Exposed so picking a preset period item (Today/This Month/etc.)
+        // clears any specific month/day selection shown on these buttons.
+        window._reportsMapDpReset = function () {
+            monthBtn.classList.remove('active'); if (monthHidden) monthHidden.value = ''; if (monthLabelEl) monthLabelEl.textContent = 'Click to select month';
+            dayBtn.classList.remove('active');   if (dayHidden)   dayHidden.value   = ''; if (dayLabelEl)   dayLabelEl.textContent   = 'Click to select date';
+        };
+    })();
 
     // ── Fullscreen expand — reparents the live map DOM node (plus the search
     // box and sort dropdown, so they stay usable while fullscreen) into the
@@ -2493,6 +2876,9 @@ document.addEventListener("DOMContentLoaded", () => {
         fsMoveIn(inner, fsBody);
         fsMoveIn(searchWrapEl, fsHeadTools);
         fsMoveIn(sortWrap, fsHeadTools);
+        fsMoveIn(statusWrap, fsHeadTools);
+        fsMoveIn(districtWrap, fsHeadTools);
+        fsMoveIn(periodWrap, fsHeadTools);
         fsBackdrop.classList.add('active');
         document.body.style.overflow = 'hidden';
         map.scrollWheelZoom.enable();
@@ -3119,6 +3505,10 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_map_filter_month:            'This Month',
             reports_map_filter_year:             'This Year',
             reports_map_filter_lastyear:         'Last Year',
+            reports_map_filter_specific_month:   'Specific Month',
+            reports_map_filter_click_month:      'Click to select month',
+            reports_map_filter_specific_day:     'Specific Day',
+            reports_map_filter_click_day:        'Click to select date',
             /* ── table headers ── */
             reports_table_sched:                 'Sched #',
             reports_table_date:                  'Date',
@@ -3227,6 +3617,10 @@ document.addEventListener("DOMContentLoaded", () => {
             reports_map_filter_month:            'Ngayong Buwan',
             reports_map_filter_year:             'Ngayong Taon',
             reports_map_filter_lastyear:         'Nakaraang Taon',
+            reports_map_filter_specific_month:   'Tiyak na Buwan',
+            reports_map_filter_click_month:      'I-click para pumili ng buwan',
+            reports_map_filter_specific_day:     'Tiyak na Araw',
+            reports_map_filter_click_day:        'I-click para pumili ng petsa',
             /* ── table headers ── */
             reports_table_sched:                 'Iskedyul #',
             reports_table_date:                  'Petsa',

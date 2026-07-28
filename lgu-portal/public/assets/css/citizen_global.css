@@ -52,7 +52,7 @@
             left: 0;
             z-index: 100;
             transition: all 0.3s ease;
-            gap: 0;
+            gap: 16px;
             flex-wrap: nowrap;
             overflow: visible;
         }
@@ -97,21 +97,31 @@
             display: flex;
             align-items: center;
             gap: clamp(6px, 1vw, 14px);
+            /* Pushes the whole links+divider+actions block together over to
+               the right side, close to the clock — not spread across the bar. */
             margin-left: auto;
             flex-wrap: nowrap;
             flex-shrink: 1;
             min-width: 0;
             overflow: visible;
         }
-        
+
         .nav-links {
             display: flex;
             align-items: center;
             gap: clamp(10px, 1.4vw, 22px);
             flex-wrap: nowrap;
-            flex-shrink: 0;
+            flex-shrink: 1;
+            min-width: 0;
+            /* When the 7 nav items (plus longer Tagalog labels) don't fit the
+               available width, citizen_global.php's overflow-nav script moves
+               the excess links into a "More" dropdown (appended as the last
+               child here) instead of scrolling or clipping them. Anything
+               still too wide at the moment of measurement is simply hidden
+               until that script runs, rather than wrapping or spilling out. */
+            overflow: hidden;
         }
-        
+
         .nav-links a {
             margin-left: 0;
             text-decoration: none;
@@ -122,10 +132,78 @@
             font-weight: 500;
             font-size: clamp(12px, 1.2vw, 15px);
             white-space: nowrap;
+            flex-shrink: 0;
         }
-        
+
         .nav-links a.active { opacity: 1; font-weight: 600; }
         .nav-links a:hover { opacity: 1; }
+
+        /* "More" overflow button + dropdown — injected by citizen_global.php's
+           overflow-nav script; markup isn't in the page templates. */
+        .nav-more-btn {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-primary);
+            opacity: .8;
+            transition: .2s;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(12px, 1.2vw, 15px);
+            white-space: nowrap;
+            flex-shrink: 0;
+            padding: 0;
+        }
+        .nav-more-btn:hover, .nav-more-btn.open { opacity: 1; }
+        .nav-more-btn .nav-more-caret { font-size: 10px; transition: transform .2s ease; display: inline-block; }
+        .nav-more-btn.open .nav-more-caret { transform: rotate(180deg); }
+
+        .nav-more-dropdown {
+            position: fixed;
+            display: none;
+            min-width: 200px;
+            max-width: 260px;
+            background: var(--bg-primary, var(--card-bg));
+            border: 1.5px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: 0 12px 34px var(--shadow-color);
+            padding: 8px;
+            z-index: 5000;
+        }
+        .nav-more-dropdown.open { display: block; }
+        .nav-more-dropdown a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 9px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: background .15s ease, transform .15s ease;
+        }
+        .nav-more-dropdown a + a { margin-top: 2px; }
+        .nav-more-dropdown a .nav-more-icon {
+            width: 18px;
+            flex-shrink: 0;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .nav-more-dropdown a:hover { background: rgba(55,98,200,.1); transform: translateX(2px); }
+        .nav-more-dropdown a:hover .nav-more-icon { color: #3762c8; }
+        .nav-more-dropdown a.active { background: #3762c8; color: #fff; }
+        .nav-more-dropdown a.active .nav-more-icon { color: #fff; }
+
+        /* The icon only makes sense once a link has been moved into the
+           dropdown — hide it while the link is still sitting in the main
+           .nav-links row (which has no icons of its own). */
+        .nav-links a .nav-more-icon { display: none; }
 
         .nav-divider {
             width: 2px;
@@ -476,42 +554,66 @@
             position: relative;
         }
 
+        /* Same branded card treatment as the admin sidebar's mobile logo:
+           gradient card frame + soft glow behind the mark, instead of the
+           logo just floating bare above the nav list. */
         .sidebar-nav .site-logo {
-            margin-top: 60px;
+            margin-top: 44px;
             flex-direction: column;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            padding-bottom: 5px;
-            width: 100%;
-            margin-left: auto;
-            margin-right: auto;
+            gap: 3px;
+            padding: 22px 14px 18px;
+            width: calc(100% - 12px);
+            max-width: none;
+            margin-left: 6px;
+            margin-right: 6px;
             box-sizing: border-box;
-            margin-bottom: 20px;
-            color: var(--text-primary);
+            margin-bottom: 14px;
+            color: #fff;
             transition: all 0.3s ease;
             overflow: hidden;
+            position: relative;
+            background: linear-gradient(180deg, rgba(55,98,200,.18) 0%, rgba(55,98,200,.05) 100%);
+            border: 1px solid rgba(95,140,255,.25);
+            border-radius: 18px;
+            box-shadow: 0 4px 18px rgba(55,98,200,.18), inset 0 1px 0 rgba(255,255,255,.06);
+        }
+
+        /* Soft glow sitting behind the mark itself */
+        .sidebar-nav .site-logo::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            width: 66px;
+            height: 66px;
+            transform: translateX(-50%);
+            background: radial-gradient(circle, rgba(95,140,255,.4) 0%, transparent 70%);
+            filter: blur(7px);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .sidebar-nav .site-logo img {
-            width: 120px;
+            width: 100px;
             height: auto;
             object-fit: contain;
             border-radius: 10px;
             transition: all 0.3s ease, opacity 0.3s ease;
+            position: relative;
+            z-index: 1;
         }
 
         .sidebar-divider.logo-divider {
             transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
             opacity: 1;
-            width: calc(100% - 30px);
-            margin: 18px 15px 0 15px;
-            border-bottom: 2px solid rgba(0, 0, 0, 0.551);
-        }
-
-        [data-theme="dark"] .sidebar-divider.logo-divider {
-            border-bottom-color: rgba(255, 255, 255, 0.3);
+            width: calc(100% - 50px);
+            margin: 8px 25px 0 25px;
+            border-bottom: none !important;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(95,140,255,.45) 50%, transparent);
         }
 
         .sidebar-nav .nav-list {
@@ -649,16 +751,6 @@
         }
 
         /* RESPONSIVE */
-        @media (min-width: 769px) and (max-width: 1200px) {
-            .desktop-clock { width: clamp(160px, 24vw, 300px); font-size: clamp(9px, 1vw, 11px); white-space: nowrap !important; }
-            .site-logo span { max-width: 160px; }
-        }
-
-        @media (min-width: 769px) and (max-width: 1000px) {
-            .desktop-clock { width: clamp(130px, 20vw, 240px); font-size: 9px; white-space: nowrap !important; }
-            .site-logo span { display: none; }
-        }
-
         @media (max-width: 768px) {
             .nav { display: none; }
 

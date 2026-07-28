@@ -340,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
     <title>Submit Maintenance Request - InfraGovServices</title>
-    <link rel="stylesheet" href="../assets/css/citizen_global.css">
+    <link rel="stylesheet" href="../assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script>
     (function() {

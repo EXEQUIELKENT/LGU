@@ -49,6 +49,20 @@ if (!$row) {
     exit;
 }
 
+// Evidence photos the citizen originally submitted with the report. Paths
+// are returned raw (relative to public/, e.g. "uploads/evidence/x.jpg") —
+// same convention as api/reports-map.php — so the consuming page prefixes
+// them based on its own location instead of this API assuming one.
+$evStmt = $conn->prepare("SELECT img_path FROM evidence_images WHERE req_id = ? ORDER BY uploaded_at ASC");
+$evStmt->bind_param('i', $reqId);
+$evStmt->execute();
+$evResult = $evStmt->get_result();
+$evidenceImages = [];
+while ($evRow = $evResult->fetch_assoc()) {
+    $evidenceImages[] = ltrim($evRow['img_path'], '/');
+}
+$evStmt->close();
+
 // Map to a single citizen-friendly status label + stage index for a progress timeline.
 if ($row['approval_status'] === 'Rejected') {
     $status = 'Rejected';
@@ -97,5 +111,6 @@ echo json_encode([
         'estimated_end_date' => $row['estimated_end_date'],
         'priority'        => $row['priority_lvl'],
         'ai_assessment'   => $aiAssessment,
+        'evidence_images' => $evidenceImages,
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
