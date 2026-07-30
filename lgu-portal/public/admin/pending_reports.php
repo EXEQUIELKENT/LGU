@@ -8,6 +8,7 @@ $serverTimestamp = time();
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
+require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
 
 // ── Safe migrations ──────────────────────────────────────────────────────────
 $conn->query("
@@ -502,6 +503,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── Verify a Road Monitoring (RGMAO) report — marks it verified here and
+    //    calls back into RGMAO so the original report shows as CIMM-verified
+    //    there too. See rgmap_road_reports.php for the callback logic.
+    if ($action === 'verify_road_report') {
+        while (ob_get_level() > 0) ob_end_clean();
+        if (!$isAdmin) {
+            echo json_encode(['success' => false, 'message' => 'Not authorized.']);
+            exit;
+        }
+        $localId = (int)($input['id'] ?? 0);
+        if ($localId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid report ID.']);
+            exit;
+        }
+        $verifierName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
+        $result = rgmap_road_reports_verify($conn, $localId, $verifierName);
+        echo json_encode([
+            'success' => $result['ok'],
+            'message' => $result['ok']
+                ? ($result['callback_ok'] ? 'Verified and synced back to Road Monitoring.' : 'Verified here, but the sync back to Road Monitoring failed — it will still show verified on the CIMM side.')
+                : ($result['error'] ?? 'Failed to verify report.'),
+        ]);
+        exit;
+    }
+
     while(ob_get_level()>0)ob_end_clean();
     echo json_encode(['success'=>false,'message'=>'Unknown action.']);
     exit;
@@ -736,6 +762,12 @@ foreach ($rows as $row) {
         'daily_logs'          => $allDailyLogs[$row['rep_id']] ?? (object)[],
     ];
 }
+
+// Road Monitoring (RGMAO) reports — pushed in from
+// road_transportation_monitoring.php on report creation. Shown in their own
+// panel below the CIMM schedule list since they're a different kind of
+// record (see rgmap_road_reports.php).
+$road_monitoring_reports = rgmap_road_reports_fetch($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -883,6 +915,40 @@ foreach ($rows as $row) {
     box-shadow: 0 3px 14px rgba(251,146,60,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
 }
 @media (max-width: 480px) { .rgmap-sync-label-full { display: none; } }
+
+/* ── Road Monitoring Reports panel — pushed in from RGMAO, same orange
+   brand as the sync badge above. ── */
+.rm-reports-card { margin-top: 20px; }
+.rm-count-badge { background: linear-gradient(135deg, #fb923c, #8b3000) !important; }
+.rm-verify-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border: none; border-radius: 8px;
+    background: linear-gradient(135deg, #fb923c, #8b3000);
+    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+    transition: filter .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.rm-verify-btn:hover:not(:disabled) {
+    filter: brightness(1.08); transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251,146,60,.4);
+}
+.rm-verify-btn:disabled { opacity: .6; cursor: not-allowed; }
+.rm-verified-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px;
+    background: rgba(34,197,94,.12); color: #16a34a;
+    border: 1px solid rgba(34,197,94,.25);
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+[data-theme="dark"] .rm-verified-badge {
+    background: rgba(74,222,128,.12); color: #4ade80;
+    border-color: rgba(74,222,128,.28);
+}
+.rm-reports-card .rc-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px;
+}
+
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
 .search-toolbar {
     display: flex;
@@ -2551,8 +2617,140 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     </div>
 </div>
 <?php endif; ?>
+
+<!-- ══════════ ROAD MONITORING REPORTS (pushed in from RGMAO's
+     road_transportation_monitoring.php on report creation — see
+     rgmap_road_reports.php) ══════════ -->
+<div class="card rm-reports-card">
+    <div class="page-header">
+        <h2 class="page-title">Road Monitoring Reports</h2>
+        <span class="rgmap-sync-badge" title="Reports pushed in from the Road Monitoring (RGMAP) system">
+            <span class="rgmap-sync-dot"></span>
+            <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
+        </span>
+        <span class="page-badge rm-count-badge"><?= count($road_monitoring_reports) ?> Report<?= count($road_monitoring_reports) === 1 ? '' : 's' ?></span>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="roadMonitoringTable">
+            <colgroup>
+                <col><col><col><col><col><col><col><col>
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Report ID</th><th>Title</th><th>Type</th><th>Location</th>
+                    <th>Priority</th><th>Severity</th><th>Reported</th><th>Verification</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if (!empty($road_monitoring_reports)): ?>
+                <?php foreach ($road_monitoring_reports as $rm):
+                    $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
+                ?>
+                <tr data-rm-id="<?= (int)$rm['id'] ?>">
+                    <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
+                    <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
+                    <td class="searchable"><?= htmlspecialchars(str_replace('_', ' ', $rm['report_type'] ?? '—')) ?></td>
+                    <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></td>
+                    <td class="searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></td>
+                    <td class="searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></td>
+                    <td class="searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></td>
+                    <td class="searchable">
+                        <?php if ($rmVerified): ?>
+                            <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                        <?php else: ?>
+                            <button type="button" class="rm-verify-btn" onclick="verifyRoadReport(<?= (int)$rm['id'] ?>, this)"><i class="fas fa-shield-halved"></i> Verify</button>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <div class="empty-icon">🛣️</div>
+                        <p>No Road Monitoring reports yet.</p>
+                    </div>
+                </td></tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mobile-report-list">
+    <?php if (!empty($road_monitoring_reports)): ?>
+        <?php foreach ($road_monitoring_reports as $rm):
+            $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
+        ?>
+        <div class="report-card" data-rm-id="<?= (int)$rm['id'] ?>">
+            <div class="rc-row"><span class="rc-label">Report ID:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Title:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['title']) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= htmlspecialchars(str_replace('_', ' ', $rm['report_type'] ?? '—')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Reported:</span><span class="rc-value searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></span></div>
+            <div class="rc-footer">
+                <?php if ($rmVerified): ?>
+                    <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                <?php else: ?>
+                    <button type="button" class="rm-verify-btn" onclick="verifyRoadReport(<?= (int)$rm['id'] ?>, this)"><i class="fas fa-shield-halved"></i> Verify</button>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="report-card">
+            <div class="empty-state">
+                <div class="empty-icon">🛣️</div>
+                <p>No Road Monitoring reports yet.</p>
+            </div>
+        </div>
+    <?php endif; ?>
+    </div>
+</div>
 </div>
 
+<script>
+function verifyRoadReport(id, btn) {
+    if (!confirm('Mark this Road Monitoring report as verified? This syncs back to the Road Monitoring system.')) return;
+    var originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'verify_road_report', id: id})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var badge = document.createElement('span');
+            badge.className = 'rm-verified-badge';
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+            btn.replaceWith(badge);
+            showInlineNotification(data.message || 'Verified.', 'success');
+        } else {
+            alert(data.message || 'Failed to verify report.');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    })
+    .catch(function() {
+        alert('Network error while verifying.');
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    });
+}
+function showInlineNotification(message, type) {
+    var n = document.createElement('div');
+    n.className = 'notif-popup notif-' + type;
+    n.innerHTML = '<span class="notif-icon">' + (type === 'success' ? '✔️' : 'ℹ️') + '</span>' +
+        '<span class="notif-message">' + message + '</span>' +
+        '<button class="notif-close" onclick="this.parentElement.remove()">&times;</button>';
+    document.body.appendChild(n);
+    setTimeout(function() { if (n) { n.style.opacity = '0'; setTimeout(function(){ n.remove(); }, 400); } }, 3500);
+}
+</script>
 
 <!-- ══════════════ VIEW DETAIL MODAL ══════════════ -->
 <div id="repModalBackdrop" class="rep-modal-backdrop">
