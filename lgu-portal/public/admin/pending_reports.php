@@ -994,8 +994,23 @@ $roadReportsJson = array_map(function ($rm) {
 }
 .rm-reports-card .rc-footer {
     display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 8px;
     margin-top: 8px;
 }
+
+/* #roadMonitoringTable has 9 columns, not the 12 the generic
+   `table colgroup col:nth-child()` widths above were built for — without
+   this, those mismatched percentages left "Verification" far too narrow for
+   "Awaiting Verification", clipping it against the table/card edge. */
+#roadMonitoringTable colgroup col:nth-child(1) { width: 9%;  }
+#roadMonitoringTable colgroup col:nth-child(2) { width: 9%;  }
+#roadMonitoringTable colgroup col:nth-child(3) { width: 17%; }
+#roadMonitoringTable colgroup col:nth-child(4) { width: 10%; }
+#roadMonitoringTable colgroup col:nth-child(5) { width: 14%; }
+#roadMonitoringTable colgroup col:nth-child(6) { width: 9%;  }
+#roadMonitoringTable colgroup col:nth-child(7) { width: 9%;  }
+#roadMonitoringTable colgroup col:nth-child(8) { width: 9%;  }
+#roadMonitoringTable colgroup col:nth-child(9) { width: 14%; }
 
 /* Road Monitoring report review modal reuses .rep-modal-backdrop /
    .rep-detail-modal / .rep-field / .rep-grid-2 / .rep-evidence-strip etc.
@@ -2720,18 +2735,18 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         <div class="report-card" data-rm-id="<?= (int)$rm['id'] ?>">
             <div class="rc-row"><span class="rc-label">Report ID:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></span></div>
             <div class="rc-row"><span class="rc-label">Title:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['title']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rm['report_type'] ?? '') ?: '—')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></span></div>
             <div class="rc-row"><span class="rc-label">Reported:</span><span class="rc-value searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></span></div>
             <div class="rc-footer">
                 <?php if ($rmVerified): ?>
-                    <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                    <span class="status completed"><i class="fas fa-check-circle"></i> Verified</span>
                 <?php else: ?>
-                    <span class="rm-verify-badge-pending"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
+                    <span class="status pending-st"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
                 <?php endif; ?>
-                <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
+                <button type="button" class="btn-view-rep btn-view-rep-mobile" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
             </div>
         </div>
         <?php endforeach; ?>
@@ -2783,19 +2798,19 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         </div>
         <div class="rep-modal-body">
             <div class="rep-grid-2">
-                <div class="rep-field"><div class="rep-field-label">Type</div><div class="rep-field-value" id="rmModalType"></div></div>
-                <div class="rep-field"><div class="rep-field-label">Category</div><div class="rep-field-value" id="rmModalCategory"></div></div>
-                <div class="rep-field"><div class="rep-field-label">Department</div><div class="rep-field-value" id="rmModalDepartment"></div></div>
-                <div class="rep-field"><div class="rep-field-label">Priority</div><div class="rep-field-value" id="rmModalPriority"></div></div>
-                <div class="rep-field"><div class="rep-field-label">Severity</div><div class="rep-field-value" id="rmModalSeverity"></div></div>
-                <div class="rep-field"><div class="rep-field-label">Reported</div><div class="rep-field-value" id="rmModalSubmitted"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#127991;&#65039; Type</div><div class="rep-field-value" id="rmModalType"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128194; Category</div><div class="rep-field-value" id="rmModalCategory"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#127970; Department</div><div class="rep-field-value" id="rmModalDepartment"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128678; Priority</div><div class="rep-field-value" id="rmModalPriority"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#9888;&#65039; Severity</div><div class="rep-field-value" id="rmModalSeverity"></div></div>
+                <div class="rep-field"><div class="rep-field-label">&#128197; Reported</div><div class="rep-field-value" id="rmModalSubmitted"></div></div>
             </div>
             <div class="rep-divider"></div>
-            <div class="rep-field"><div class="rep-field-label">Location</div><div class="rep-field-value" id="rmModalLocation"></div></div>
-            <div class="rep-field"><div class="rep-field-label">Reporter</div><div class="rep-field-value" id="rmModalReporter"></div></div>
-            <div class="rep-field"><div class="rep-field-label">Description</div><div class="rep-field-value" id="rmModalDescription"></div></div>
+            <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="rmModalLocation"></div></div>
+            <div class="rep-field"><div class="rep-field-label">&#128100; Reporter</div><div class="rep-field-value" id="rmModalReporter"></div></div>
+            <div class="rep-field"><div class="rep-field-label">&#128221; Description</div><div class="rep-field-value" id="rmModalDescription"></div></div>
             <div class="rep-divider"></div>
-            <div class="rep-field-label" style="margin-bottom:8px;">Attachments</div>
+            <div class="rep-field-label" style="margin-bottom:8px;">&#128444;&#65039; Attachments</div>
             <div class="rep-evidence-strip" id="rmModalAttachmentsGrid"></div>
             <div class="rep-no-evidence" id="rmModalNoEvidence" style="display:none;">No attachments.</div>
         </div>
@@ -2831,13 +2846,16 @@ function openRoadReportModal(id) {
 
     document.getElementById('rmModalReportId').textContent = data.rgmap_report_id || ('#' + data.id);
     document.getElementById('rmModalTitle').textContent = data.title || 'Untitled report';
-    document.getElementById('rmModalType').textContent = data.report_type
-        ? data.report_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-        : '—';
+    // RGMAO sometimes sends a generic auto-generated placeholder (e.g. "Issue
+    // at Pinned Location") when the field worker never picked a real
+    // category — not a useful Type value, so treat it the same as missing.
+    const rawType = (data.report_type || '').replace(/_/g, ' ').trim();
+    document.getElementById('rmModalType').textContent =
+        (!rawType || /pinned location/i.test(rawType)) ? '—' : rawType.replace(/\b\w/g, c => c.toUpperCase());
     document.getElementById('rmModalCategory').textContent = data.report_category || '—';
     document.getElementById('rmModalDepartment').textContent = data.department || '—';
-    document.getElementById('rmModalPriority').textContent = data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : '—';
-    document.getElementById('rmModalSeverity').textContent = data.severity ? (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) : '—';
+    document.getElementById('rmModalPriority').innerHTML = priBadge(data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : 'Medium');
+    document.getElementById('rmModalSeverity').innerHTML = priBadge(data.severity ? (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) : 'Medium');
     document.getElementById('rmModalSubmitted').textContent = data.submitted_at ? new Date(data.submitted_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '—';
     document.getElementById('rmModalLocation').textContent = data.location || '—';
     document.getElementById('rmModalReporter').textContent = data.reporter_name || data.reporter_email || data.reporter_phone || '— (submitted by LGU staff)';
