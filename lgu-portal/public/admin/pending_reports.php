@@ -969,6 +969,17 @@ $roadReportsJson = array_map(function ($rm) {
     background: rgba(74,222,128,.12); color: #4ade80;
     border-color: rgba(74,222,128,.28);
 }
+.rm-verify-badge-pending {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px;
+    background: rgba(245,158,11,.12); color: #b45309;
+    border: 1px solid rgba(245,158,11,.25);
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+[data-theme="dark"] .rm-verify-badge-pending {
+    background: rgba(251,191,36,.12); color: #fbbf24;
+    border-color: rgba(251,191,36,.28);
+}
 .rm-reports-card .rc-footer {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 8px;
@@ -2646,11 +2657,11 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     <div class="table-wrapper">
         <table id="roadMonitoringTable">
             <colgroup>
-                <col><col><col><col><col><col><col><col>
+                <col><col><col><col><col><col><col><col><col>
             </colgroup>
             <thead>
                 <tr>
-                    <th>Report ID</th><th>Title</th><th>Type</th><th>Location</th>
+                    <th>Action</th><th>Report ID</th><th>Title</th><th>Type</th><th>Location</th>
                     <th>Priority</th><th>Severity</th><th>Reported</th><th>Verification</th>
                 </tr>
             </thead>
@@ -2660,9 +2671,10 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
                 ?>
                 <tr data-rm-id="<?= (int)$rm['id'] ?>">
+                    <td><button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
                     <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
-                    <td class="searchable"><?= htmlspecialchars(str_replace('_', ' ', $rm['report_type'] ?? '—')) ?></td>
+                    <td class="searchable"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rm['report_type'] ?? '') ?: '—')) ?></td>
                     <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></td>
                     <td class="searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></td>
                     <td class="searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></td>
@@ -2671,13 +2683,13 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                         <?php if ($rmVerified): ?>
                             <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
                         <?php else: ?>
-                            <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> Review</button>
+                            <span class="rm-verify-badge-pending"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="8">
+                <tr><td colspan="9">
                     <div class="empty-state">
                         <div class="empty-icon">🛣️</div>
                         <p>No Road Monitoring reports yet.</p>
@@ -2696,7 +2708,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         <div class="report-card" data-rm-id="<?= (int)$rm['id'] ?>">
             <div class="rc-row"><span class="rc-label">Report ID:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></span></div>
             <div class="rc-row"><span class="rc-label">Title:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['title']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= htmlspecialchars(str_replace('_', ' ', $rm['report_type'] ?? '—')) ?></span></div>
+            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rm['report_type'] ?? '') ?: '—')) ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></span></div>
             <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></span></div>
@@ -2705,8 +2717,9 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <?php if ($rmVerified): ?>
                     <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
                 <?php else: ?>
-                    <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> Review</button>
+                    <span class="rm-verify-badge-pending"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
                 <?php endif; ?>
+                <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
             </div>
         </div>
         <?php endforeach; ?>
@@ -2806,7 +2819,9 @@ function openRoadReportModal(id) {
 
     document.getElementById('rmModalReportId').textContent = data.rgmap_report_id || ('#' + data.id);
     document.getElementById('rmModalTitle').textContent = data.title || 'Untitled report';
-    document.getElementById('rmModalType').textContent = (data.report_type || '—').replace(/_/g, ' ');
+    document.getElementById('rmModalType').textContent = data.report_type
+        ? data.report_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        : '—';
     document.getElementById('rmModalCategory').textContent = data.report_category || '—';
     document.getElementById('rmModalDepartment').textContent = data.department || '—';
     document.getElementById('rmModalPriority').textContent = data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : '—';
