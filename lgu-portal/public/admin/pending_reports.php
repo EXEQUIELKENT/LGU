@@ -974,55 +974,12 @@ $roadReportsJson = array_map(function ($rm) {
     margin-top: 8px;
 }
 
-/* ── Road Monitoring report review modal — same backdrop/sizing language as
-   .rep-modal-backdrop / .rep-detail-modal, orange accent to match the RGMAP
-   badge instead of that modal's blue. ── */
-.rm-report-modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.5);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    display: none; align-items: center; justify-content: center; z-index: 8000;
-}
-.rm-report-modal-backdrop.active { display: flex; }
-.rm-report-modal {
-    background: var(--bg-primary); border-radius: 20px;
-    box-shadow: 0 12px 50px var(--shadow-color);
-    width: 92%; max-width: 560px; max-height: 90vh;
-    display: flex; flex-direction: column;
-    animation: repModalIn .3s cubic-bezier(.34,1.56,.64,1);
-    border: 1px solid var(--border-color); overflow: hidden;
-}
-.rm-report-modal-header {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-    padding: 18px 20px 16px;
-    background: linear-gradient(135deg, #fb923c, #8b3000);
-    flex-shrink: 0;
-}
-.rm-report-modal-id { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.8); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
-.rm-report-modal-title { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
-.rm-report-modal-close {
-    background: rgba(255,255,255,.15); border: none; color: #fff;
-    width: 30px; height: 30px; border-radius: 50%; font-size: 18px; line-height: 1;
-    cursor: pointer; flex-shrink: 0; transition: background .15s ease;
-}
-.rm-report-modal-close:hover { background: rgba(255,255,255,.28); }
-.rm-report-modal-body { padding: 20px; overflow-y: auto; }
-.rm-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
-.rm-modal-field-full { grid-column: 1 / -1; }
-.rm-modal-label {
-    display: block; font-size: 10px; font-weight: 700; color: var(--text-secondary,#64748b);
-    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px;
-}
-.rm-modal-value { display: block; font-size: 13.5px; color: var(--text-primary,#1a1a2e); font-weight: 500; word-break: break-word; }
-.rm-modal-attachments { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-color); }
-.rm-modal-attachments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
-.rm-modal-attachments-grid img {
-    width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px;
-    border: 1px solid var(--border-color); cursor: pointer; transition: transform .15s ease;
-}
-.rm-modal-attachments-grid img:hover { transform: scale(1.04); }
-.rm-report-modal-footer { padding: 16px 20px; border-top: 1px solid var(--border-color); flex-shrink: 0; }
-.rm-verify-btn-lg { width: 100%; justify-content: center; padding: 11px 0; font-size: 14px; border-radius: 10px; }
-.rm-verified-badge-lg { width: 100%; justify-content: center; padding: 10px 0; font-size: 13px; border-radius: 10px; }
+/* Road Monitoring report review modal reuses .rep-modal-backdrop /
+   .rep-detail-modal / .rep-field / .rep-grid-2 / .rep-evidence-strip etc.
+   directly (see #rmReportModalBackdrop below) — same design as the
+   Pending Reports detail modal, no parallel CSS needed. Just widen the
+   footer buttons a touch since this modal only ever has one action. */
+.rm-verify-btn-lg, .rm-verified-badge-lg { width: 100%; justify-content: center; padding: 11px 0; font-size: 14px; border-radius: 10px; }
 
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
 .search-toolbar {
@@ -2785,34 +2742,41 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
 <?php endif; ?>
 </div>
 
-<!-- ══════════ ROAD MONITORING REPORT DETAIL MODAL ══════════ -->
-<div class="rm-report-modal-backdrop" id="rmReportModalBackdrop">
-    <div class="rm-report-modal">
-        <div class="rm-report-modal-header">
-            <div class="rm-report-modal-header-text">
-                <div class="rm-report-modal-id" id="rmModalReportId"></div>
-                <div class="rm-report-modal-title" id="rmModalTitle"></div>
+<!-- ══════════ ROAD MONITORING REPORT DETAIL MODAL — reuses the exact same
+     .rep-modal-backdrop / .rep-detail-modal / .rep-field / .rep-grid-2 /
+     .rep-evidence-strip classes as the Pending Reports detail modal above,
+     so this reads as the same modal design, not a lookalike. ══════════ -->
+<div class="rep-modal-backdrop" id="rmReportModalBackdrop">
+    <div class="rep-detail-modal">
+        <div class="rep-modal-band"></div>
+        <div class="rep-modal-header">
+            <div class="rep-modal-header-left">
+                <div class="rep-modal-rep-id" id="rmModalReportId"></div>
+                <div class="rep-modal-infra" id="rmModalTitle"></div>
             </div>
-            <button type="button" class="rm-report-modal-close" onclick="closeRoadReportModal()" aria-label="Close">&times;</button>
+            <button type="button" class="rep-modal-close" onclick="closeRoadReportModal()" aria-label="Close">&times;</button>
         </div>
-        <div class="rm-report-modal-body">
-            <div class="rm-modal-grid">
-                <div class="rm-modal-field"><span class="rm-modal-label">Type</span><span class="rm-modal-value" id="rmModalType"></span></div>
-                <div class="rm-modal-field"><span class="rm-modal-label">Category</span><span class="rm-modal-value" id="rmModalCategory"></span></div>
-                <div class="rm-modal-field"><span class="rm-modal-label">Department</span><span class="rm-modal-value" id="rmModalDepartment"></span></div>
-                <div class="rm-modal-field"><span class="rm-modal-label">Priority</span><span class="rm-modal-value" id="rmModalPriority"></span></div>
-                <div class="rm-modal-field"><span class="rm-modal-label">Severity</span><span class="rm-modal-value" id="rmModalSeverity"></span></div>
-                <div class="rm-modal-field"><span class="rm-modal-label">Reported</span><span class="rm-modal-value" id="rmModalSubmitted"></span></div>
-                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Location</span><span class="rm-modal-value" id="rmModalLocation"></span></div>
-                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Reporter</span><span class="rm-modal-value" id="rmModalReporter"></span></div>
-                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Description</span><span class="rm-modal-value" id="rmModalDescription"></span></div>
+        <div class="rep-modal-body">
+            <div class="rep-grid-2">
+                <div class="rep-field"><div class="rep-field-label">Type</div><div class="rep-field-value" id="rmModalType"></div></div>
+                <div class="rep-field"><div class="rep-field-label">Category</div><div class="rep-field-value" id="rmModalCategory"></div></div>
+                <div class="rep-field"><div class="rep-field-label">Department</div><div class="rep-field-value" id="rmModalDepartment"></div></div>
+                <div class="rep-field"><div class="rep-field-label">Priority</div><div class="rep-field-value" id="rmModalPriority"></div></div>
+                <div class="rep-field"><div class="rep-field-label">Severity</div><div class="rep-field-value" id="rmModalSeverity"></div></div>
+                <div class="rep-field"><div class="rep-field-label">Reported</div><div class="rep-field-value" id="rmModalSubmitted"></div></div>
             </div>
-            <div class="rm-modal-attachments" id="rmModalAttachments" style="display:none;">
-                <span class="rm-modal-label">Attachments</span>
-                <div class="rm-modal-attachments-grid" id="rmModalAttachmentsGrid"></div>
-            </div>
+            <div class="rep-divider"></div>
+            <div class="rep-field"><div class="rep-field-label">Location</div><div class="rep-field-value" id="rmModalLocation"></div></div>
+            <div class="rep-field"><div class="rep-field-label">Reporter</div><div class="rep-field-value" id="rmModalReporter"></div></div>
+            <div class="rep-field"><div class="rep-field-label">Description</div><div class="rep-field-value" id="rmModalDescription"></div></div>
+            <div class="rep-divider"></div>
+            <div class="rep-field-label" style="margin-bottom:8px;">Attachments</div>
+            <div class="rep-evidence-strip" id="rmModalAttachmentsGrid"></div>
+            <div class="rep-no-evidence" id="rmModalNoEvidence" style="display:none;">No attachments.</div>
         </div>
-        <div class="rm-report-modal-footer" id="rmModalFooter"></div>
+        <div class="rep-modal-footer">
+            <div class="rep-footer-inner" id="rmModalFooter"></div>
+        </div>
     </div>
 </div>
 
@@ -2852,21 +2816,24 @@ function openRoadReportModal(id) {
     document.getElementById('rmModalReporter').textContent = data.reporter_name || data.reporter_email || data.reporter_phone || '— (submitted by LGU staff)';
     document.getElementById('rmModalDescription').textContent = data.description || '—';
 
-    const attWrap = document.getElementById('rmModalAttachments');
+    // Reuses the same evidence-strip + lightbox as the schedule report modal
+    // (openRepLightbox) instead of a separate image viewer.
     const attGrid = document.getElementById('rmModalAttachmentsGrid');
+    const noEvidence = document.getElementById('rmModalNoEvidence');
     attGrid.innerHTML = '';
-    if (Array.isArray(data.attachments) && data.attachments.length > 0) {
-        data.attachments.forEach(url => {
-            const a = document.createElement('a');
-            a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    const attachments = Array.isArray(data.attachments) ? data.attachments : [];
+    if (attachments.length > 0) {
+        attachments.forEach((url, idx) => {
             const img = document.createElement('img');
-            img.src = url; img.alt = 'Attachment'; img.loading = 'lazy';
-            a.appendChild(img);
-            attGrid.appendChild(a);
+            img.src = url; img.className = 'rep-evidence-thumb'; img.alt = 'Attachment'; img.loading = 'lazy';
+            img.onclick = () => { repGalleryType = 'evidence'; openRepLightbox(idx, attachments); };
+            attGrid.appendChild(img);
         });
-        attWrap.style.display = '';
+        attGrid.style.display = '';
+        noEvidence.style.display = 'none';
     } else {
-        attWrap.style.display = 'none';
+        attGrid.style.display = 'none';
+        noEvidence.style.display = '';
     }
 
     const footer = document.getElementById('rmModalFooter');
