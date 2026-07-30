@@ -768,6 +768,31 @@ foreach ($rows as $row) {
 // panel below the CIMM schedule list since they're a different kind of
 // record (see rgmap_road_reports.php).
 $road_monitoring_reports = rgmap_road_reports_fetch($conn);
+
+// Trimmed-down copy for the client-side ALL_ROAD_REPORTS embed (drives the
+// review modal) — leaves out the raw payload_json/attachments_json blobs
+// rgmap_road_reports_fetch() carries for server-side use only.
+$roadReportsJson = array_map(function ($rm) {
+    return [
+        'id'                  => (int)$rm['id'],
+        'rgmap_report_id'     => $rm['rgmap_report_id'],
+        'title'               => $rm['title'],
+        'report_type'         => $rm['report_type'],
+        'report_category'     => $rm['report_category'],
+        'department'          => $rm['department'],
+        'priority'            => $rm['priority'],
+        'severity'            => $rm['severity'],
+        'description'         => $rm['description'],
+        'location'            => $rm['location'],
+        'reporter_name'       => $rm['reporter_name'],
+        'reporter_email'      => $rm['reporter_email'],
+        'reporter_phone'      => $rm['reporter_phone'],
+        'attachments'         => $rm['attachments'],
+        'submitted_at'        => $rm['submitted_at'],
+        'verification_status' => $rm['verification_status'],
+        'verified_by'         => $rm['verified_by'],
+    ];
+}, $road_monitoring_reports);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -948,6 +973,56 @@ $road_monitoring_reports = rgmap_road_reports_fetch($conn);
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 8px;
 }
+
+/* ── Road Monitoring report review modal — same backdrop/sizing language as
+   .rep-modal-backdrop / .rep-detail-modal, orange accent to match the RGMAP
+   badge instead of that modal's blue. ── */
+.rm-report-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 8000;
+}
+.rm-report-modal-backdrop.active { display: flex; }
+.rm-report-modal {
+    background: var(--bg-primary); border-radius: 20px;
+    box-shadow: 0 12px 50px var(--shadow-color);
+    width: 92%; max-width: 560px; max-height: 90vh;
+    display: flex; flex-direction: column;
+    animation: repModalIn .3s cubic-bezier(.34,1.56,.64,1);
+    border: 1px solid var(--border-color); overflow: hidden;
+}
+.rm-report-modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 18px 20px 16px;
+    background: linear-gradient(135deg, #fb923c, #8b3000);
+    flex-shrink: 0;
+}
+.rm-report-modal-id { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.8); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
+.rm-report-modal-title { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.3; }
+.rm-report-modal-close {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    width: 30px; height: 30px; border-radius: 50%; font-size: 18px; line-height: 1;
+    cursor: pointer; flex-shrink: 0; transition: background .15s ease;
+}
+.rm-report-modal-close:hover { background: rgba(255,255,255,.28); }
+.rm-report-modal-body { padding: 20px; overflow-y: auto; }
+.rm-modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.rm-modal-field-full { grid-column: 1 / -1; }
+.rm-modal-label {
+    display: block; font-size: 10px; font-weight: 700; color: var(--text-secondary,#64748b);
+    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px;
+}
+.rm-modal-value { display: block; font-size: 13.5px; color: var(--text-primary,#1a1a2e); font-weight: 500; word-break: break-word; }
+.rm-modal-attachments { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+.rm-modal-attachments-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 8px; }
+.rm-modal-attachments-grid img {
+    width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px;
+    border: 1px solid var(--border-color); cursor: pointer; transition: transform .15s ease;
+}
+.rm-modal-attachments-grid img:hover { transform: scale(1.04); }
+.rm-report-modal-footer { padding: 16px 20px; border-top: 1px solid var(--border-color); flex-shrink: 0; }
+.rm-verify-btn-lg { width: 100%; justify-content: center; padding: 11px 0; font-size: 14px; border-radius: 10px; }
+.rm-verified-badge-lg { width: 100%; justify-content: center; padding: 10px 0; font-size: 13px; border-radius: 10px; }
 
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
 .search-toolbar {
@@ -2598,29 +2673,9 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     </div>
 </div>
 
-<!-- ══════════ HISTORY LOGS (admin / super admin only) ══════════ -->
-<?php if ($isAdmin): ?>
-<div class="card activity-log-card">
-    <div class="activity-log-header">
-        <h2 class="activity-log-title"><i class="fas fa-clock-rotate-left"></i> History Logs
-            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
-        </h2>
-        <span class="activity-log-count-badge" id="activityLogCountBadge"><span class="activity-log-live-dot" title="Live"></span><span id="activityLogCountText"><?= count($activityEntries) ?> <?= count($activityEntries) === 1 ? 'entry' : 'entries' ?></span></span>
-    </div>
-    <div class="activity-log-list" id="activityLogList">
-        <?= activity_log_items_html($activityEntries) ?>
-    </div>
-    <div class="activity-log-more-wrap" id="activityLogMoreWrap" style="display:none;">
-        <button type="button" class="activity-log-more-btn" id="activityLogMoreBtn">
-            <i class="fas fa-chevron-down"></i> <span id="activityLogMoreLabel">Show more</span>
-        </button>
-    </div>
-</div>
-<?php endif; ?>
-
 <!-- ══════════ ROAD MONITORING REPORTS (pushed in from RGMAO's
      road_transportation_monitoring.php on report creation — see
-     rgmap_road_reports.php) ══════════ -->
+     rgmap_road_reports.php). Sits between Pending Reports and History Logs. ══════════ -->
 <div class="card rm-reports-card">
     <div class="page-header">
         <h2 class="page-title">Road Monitoring Reports</h2>
@@ -2659,7 +2714,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                         <?php if ($rmVerified): ?>
                             <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
                         <?php else: ?>
-                            <button type="button" class="rm-verify-btn" onclick="verifyRoadReport(<?= (int)$rm['id'] ?>, this)"><i class="fas fa-shield-halved"></i> Verify</button>
+                            <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> Review</button>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -2693,7 +2748,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <?php if ($rmVerified): ?>
                     <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
                 <?php else: ?>
-                    <button type="button" class="rm-verify-btn" onclick="verifyRoadReport(<?= (int)$rm['id'] ?>, this)"><i class="fas fa-shield-halved"></i> Verify</button>
+                    <button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> Review</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -2708,47 +2763,168 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     <?php endif; ?>
     </div>
 </div>
+
+<!-- ══════════ HISTORY LOGS (admin / super admin only) ══════════ -->
+<?php if ($isAdmin): ?>
+<div class="card activity-log-card">
+    <div class="activity-log-header">
+        <h2 class="activity-log-title"><i class="fas fa-clock-rotate-left"></i> History Logs
+            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+        </h2>
+        <span class="activity-log-count-badge" id="activityLogCountBadge"><span class="activity-log-live-dot" title="Live"></span><span id="activityLogCountText"><?= count($activityEntries) ?> <?= count($activityEntries) === 1 ? 'entry' : 'entries' ?></span></span>
+    </div>
+    <div class="activity-log-list" id="activityLogList">
+        <?= activity_log_items_html($activityEntries) ?>
+    </div>
+    <div class="activity-log-more-wrap" id="activityLogMoreWrap" style="display:none;">
+        <button type="button" class="activity-log-more-btn" id="activityLogMoreBtn">
+            <i class="fas fa-chevron-down"></i> <span id="activityLogMoreLabel">Show more</span>
+        </button>
+    </div>
+</div>
+<?php endif; ?>
+</div>
+
+<!-- ══════════ ROAD MONITORING REPORT DETAIL MODAL ══════════ -->
+<div class="rm-report-modal-backdrop" id="rmReportModalBackdrop">
+    <div class="rm-report-modal">
+        <div class="rm-report-modal-header">
+            <div class="rm-report-modal-header-text">
+                <div class="rm-report-modal-id" id="rmModalReportId"></div>
+                <div class="rm-report-modal-title" id="rmModalTitle"></div>
+            </div>
+            <button type="button" class="rm-report-modal-close" onclick="closeRoadReportModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="rm-report-modal-body">
+            <div class="rm-modal-grid">
+                <div class="rm-modal-field"><span class="rm-modal-label">Type</span><span class="rm-modal-value" id="rmModalType"></span></div>
+                <div class="rm-modal-field"><span class="rm-modal-label">Category</span><span class="rm-modal-value" id="rmModalCategory"></span></div>
+                <div class="rm-modal-field"><span class="rm-modal-label">Department</span><span class="rm-modal-value" id="rmModalDepartment"></span></div>
+                <div class="rm-modal-field"><span class="rm-modal-label">Priority</span><span class="rm-modal-value" id="rmModalPriority"></span></div>
+                <div class="rm-modal-field"><span class="rm-modal-label">Severity</span><span class="rm-modal-value" id="rmModalSeverity"></span></div>
+                <div class="rm-modal-field"><span class="rm-modal-label">Reported</span><span class="rm-modal-value" id="rmModalSubmitted"></span></div>
+                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Location</span><span class="rm-modal-value" id="rmModalLocation"></span></div>
+                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Reporter</span><span class="rm-modal-value" id="rmModalReporter"></span></div>
+                <div class="rm-modal-field rm-modal-field-full"><span class="rm-modal-label">Description</span><span class="rm-modal-value" id="rmModalDescription"></span></div>
+            </div>
+            <div class="rm-modal-attachments" id="rmModalAttachments" style="display:none;">
+                <span class="rm-modal-label">Attachments</span>
+                <div class="rm-modal-attachments-grid" id="rmModalAttachmentsGrid"></div>
+            </div>
+        </div>
+        <div class="rm-report-modal-footer" id="rmModalFooter"></div>
+    </div>
+</div>
+
+<!-- ══════════ ROAD MONITORING VERIFY CONFIRMATION (same custom
+     confirm-box component used for logout and every other action on this
+     page — .rep-confirm-backdrop / .rep-confirm-modal) ══════════ -->
+<div class="rep-confirm-backdrop" id="rmVerifyConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon complete-icon"><i class="fas fa-shield-halved" style="color:#c2410c;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Verify this Report?</div>
+        <div class="rep-confirm-desc">This marks the report as verified here and syncs the status back to the Road Monitoring system.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeRmVerifyConfirm()">Cancel</button>
+            <button class="rep-confirm-btn rep-confirm-ok-complete rm-verify-confirm-ok" onclick="doVerifyRoadReport()"><i class="fas fa-shield-halved"></i> Verify</button>
+        </div>
+    </div>
 </div>
 
 <script>
-function verifyRoadReport(id, btn) {
-    if (!confirm('Mark this Road Monitoring report as verified? This syncs back to the Road Monitoring system.')) return;
-    var originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
-    fetch(window.location.pathname, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'verify_road_report', id: id})
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            var badge = document.createElement('span');
-            badge.className = 'rm-verified-badge';
-            badge.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
-            btn.replaceWith(badge);
-            showInlineNotification(data.message || 'Verified.', 'success');
-        } else {
-            alert(data.message || 'Failed to verify report.');
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    })
-    .catch(function() {
-        alert('Network error while verifying.');
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-    });
+const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+let currentRoadReportData = null;
+
+function openRoadReportModal(id) {
+    const data = ALL_ROAD_REPORTS.find(r => r.id == id);
+    if (!data) return;
+    currentRoadReportData = data;
+
+    document.getElementById('rmModalReportId').textContent = data.rgmap_report_id || ('#' + data.id);
+    document.getElementById('rmModalTitle').textContent = data.title || 'Untitled report';
+    document.getElementById('rmModalType').textContent = (data.report_type || '—').replace(/_/g, ' ');
+    document.getElementById('rmModalCategory').textContent = data.report_category || '—';
+    document.getElementById('rmModalDepartment').textContent = data.department || '—';
+    document.getElementById('rmModalPriority').textContent = data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : '—';
+    document.getElementById('rmModalSeverity').textContent = data.severity ? (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) : '—';
+    document.getElementById('rmModalSubmitted').textContent = data.submitted_at ? new Date(data.submitted_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '—';
+    document.getElementById('rmModalLocation').textContent = data.location || '—';
+    document.getElementById('rmModalReporter').textContent = data.reporter_name || data.reporter_email || data.reporter_phone || '— (submitted by LGU staff)';
+    document.getElementById('rmModalDescription').textContent = data.description || '—';
+
+    const attWrap = document.getElementById('rmModalAttachments');
+    const attGrid = document.getElementById('rmModalAttachmentsGrid');
+    attGrid.innerHTML = '';
+    if (Array.isArray(data.attachments) && data.attachments.length > 0) {
+        data.attachments.forEach(url => {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+            const img = document.createElement('img');
+            img.src = url; img.alt = 'Attachment'; img.loading = 'lazy';
+            a.appendChild(img);
+            attGrid.appendChild(a);
+        });
+        attWrap.style.display = '';
+    } else {
+        attWrap.style.display = 'none';
+    }
+
+    const footer = document.getElementById('rmModalFooter');
+    if ((data.verification_status || 'Pending') === 'Verified') {
+        footer.innerHTML = '<span class="rm-verified-badge rm-verified-badge-lg"><i class="fas fa-check-circle"></i> Verified' +
+            (data.verified_by ? ' by ' + data.verified_by : '') + '</span>';
+    } else {
+        footer.innerHTML = '<button type="button" class="rm-verify-btn rm-verify-btn-lg" onclick="confirmVerifyRoadReport()"><i class="fas fa-shield-halved"></i> Verify Report</button>';
+    }
+
+    document.getElementById('rmReportModalBackdrop').classList.add('active');
 }
-function showInlineNotification(message, type) {
-    var n = document.createElement('div');
-    n.className = 'notif-popup notif-' + type;
-    n.innerHTML = '<span class="notif-icon">' + (type === 'success' ? '✔️' : 'ℹ️') + '</span>' +
-        '<span class="notif-message">' + message + '</span>' +
-        '<button class="notif-close" onclick="this.parentElement.remove()">&times;</button>';
-    document.body.appendChild(n);
-    setTimeout(function() { if (n) { n.style.opacity = '0'; setTimeout(function(){ n.remove(); }, 400); } }, 3500);
+function closeRoadReportModal() {
+    document.getElementById('rmReportModalBackdrop').classList.remove('active');
+}
+document.getElementById('rmReportModalBackdrop').addEventListener('click', function(e) {
+    if (e.target === document.getElementById('rmReportModalBackdrop')) closeRoadReportModal();
+});
+
+function confirmVerifyRoadReport() {
+    if (!currentRoadReportData) return;
+    document.getElementById('rmVerifyConfirmBackdrop').classList.add('active');
+}
+function closeRmVerifyConfirm() {
+    document.getElementById('rmVerifyConfirmBackdrop').classList.remove('active');
+}
+document.getElementById('rmVerifyConfirmBackdrop').addEventListener('click', function(e) {
+    if (e.target === document.getElementById('rmVerifyConfirmBackdrop')) closeRmVerifyConfirm();
+});
+
+async function doVerifyRoadReport() {
+    if (!currentRoadReportData) return;
+    const id = currentRoadReportData.id;
+    closeRmVerifyConfirm();
+    showRepOverlay('Verifying & Syncing to Road Monitoring');
+    try {
+        const res = await fetch(window.location.pathname, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'verify_road_report', id: id})
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch (pe) {
+            hideRepOverlay();
+            showRepNotif('error', '❌ Server error. Please try again.'); return;
+        }
+        hideRepOverlay();
+        if (data.success) {
+            closeRoadReportModal();
+            showRepNotif('success', '✔️ ' + (data.message || 'Report verified.'));
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showRepNotif('error', '❌ ' + (data.message || 'Failed to verify.'));
+        }
+    } catch (e) {
+        hideRepOverlay();
+        showRepNotif('error', '❌ Network error.');
+    }
 }
 </script>
 
