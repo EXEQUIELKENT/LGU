@@ -1,5 +1,5 @@
 <?php
-// Buffer output so stray PHP warnings never corrupt the binary XLSX stream
+// Buffer output so stray PHP warnings never corrupt the CSV/PDF stream
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Manila');
@@ -70,7 +70,7 @@ require __DIR__ . '/../../includes/config/db.php';
 require __DIR__ . '/../../includes/core/notif_helper.php';
 
 // ── Input validation ──────────────────────────────────────────────────────────
-$format     = in_array($_POST['format'] ?? '', ['excel','pdf']) ? $_POST['format'] : 'excel';
+$format     = in_array($_POST['format'] ?? '', ['csv','pdf']) ? $_POST['format'] : 'csv';
 $reportType = in_array($_POST['report_type'] ?? '', ['requests','schedules','summary','current_reports','pending_reports','archive_reports'])
               ? $_POST['report_type'] : 'requests';
 $dateFrom   = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-01')));
@@ -92,9 +92,9 @@ $periodStr   = date('F d, Y', strtotime($dateFrom)) . ' – ' . date('F d, Y', s
 
 // ── Notify Admins / Super Admins that a report was exported ────────────────────
 // Fired right before the file is streamed to the browser (i.e. only once the
-// export has actually been built), from whichever branch (XLSX or PDF) runs.
+// export has actually been built), from whichever branch (CSV or PDF) runs.
 function notifyReportExported(mysqli $conn, string $reportType, string $format, string $reportTitle, string $periodStr, string $generatedBy, int $actorId): void {
-    $formatLabel = ($format === 'pdf') ? 'PDF' : 'Excel';
+    $formatLabel = ($format === 'pdf') ? 'PDF' : 'CSV';
     $icon        = ($format === 'pdf') ? '📄' : '📊';
 
     $title = "{$icon} Report Exported: {$reportTitle}";
@@ -343,11 +343,6 @@ function fetchSummary($conn, $from, $to) {
         'top_locations'    => $all("SELECT location AS lbl, COUNT(*) AS cnt FROM requests WHERE DATE(created_at) BETWEEN ? AND ? GROUP BY location ORDER BY cnt DESC LIMIT 5"),
     ];
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  EXCEL (pure PHP / ZipArchive) — builder now shared via includes/core/xlsx_builder.php
-// ══════════════════════════════════════════════════════════════════════════════
-require_once __DIR__ . '/../../includes/core/xlsx_builder.php';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  PDF (HTML → browser print)
@@ -650,7 +645,7 @@ function htmlBadge(string $v, array $css): string {
 // ══════════════════════════════════════════════════════════════════════════════
 //  ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
-if ($format === 'excel') {
+if ($format === 'csv') {
     // ── CSV output — dates prefixed with \t so Excel never auto-converts them ──
     // Helper: wrap a date/datetime string so Excel treats it as text
     $d = fn(string $v): string => "\t" . $v;   // tab prefix = force text in Excel
@@ -800,74 +795,49 @@ if ($format === 'excel') {
         ];
     }
 
-    // ── Auto-compute column widths from actual data for every section ──────────
-    // Excel col width unit ≈ (max_chars * 1.15) + 2, capped at 60, min 10.
-    foreach ($sections as &$sec) {
-        $headers = $sec['headers'];
-        $colCount = count($headers);
-        $maxLen = [];
-        // Seed with header lengths — headers render as BOLD UPPERCASE so multiply by 1.35
-        // to guarantee the header text itself is never clipped.
-        foreach ($headers as $ci => $h) {
-            $maxLen[$ci] = (int)(mb_strlen(strtoupper($h)) * 1.35);
-        }
-        // Walk data rows and strip \t prefix before measuring
-        foreach (($sec['rows'] ?? []) as $row) {
-            foreach (array_values($row) as $ci => $val) {
-                $clean = ltrim((string)$val, "\t");
-                // For long strings measure only the longest line (newline or natural wrap at ~80)
-                $len = 0;
-                foreach (explode("\n", $clean) as $line) {
-                    $len = max($len, mb_strlen(trim($line)));
-                }
-                $maxLen[$ci] = max($maxLen[$ci] ?? 0, min($len, 80));
-            }
-        }
-        $widths = [];
-        for ($i = 0; $i < $colCount; $i++) {
-            // Excel col width unit ≈ chars * 1.2 + 2, min 12 so short labels show fully
-            $widths[$i] = max(12, min(65, (int)(($maxLen[$i] ?? 12) * 1.2) + 2));
-        }
-        $sec['colWidths']  = $widths;
-        // Remove \t prefix from all data values before passing to XLSX builder
-        $sec['rows'] = array_map(function($row) {
-            return array_map(fn($v) => ltrim((string)$v, "\t"), array_values($row));
-        }, $sec['rows'] ?? []);
-    }
-    unset($sec);
-
-    // Convert sections to sheetDefs format expected by buildXLSX
-    $sheetDefs = [];
-    foreach ($sections as $sec) {
-        $sheetDefs[] = [
-            'name'        => mb_substr($sec['title'] ?? 'Data', 0, 31), // Excel tab max 31 chars
-            'title'       => $sec['title'] ?? 'Data',
-            'headers'     => $sec['headers'],
-            'rows'        => $sec['rows'] ?? [],
-            'colWidths'   => $sec['colWidths'],
-            'centerCols'  => $sec['centerCols'] ?? [],
-            'badgeCols'   => $sec['badgeCols']  ?? [],
-            'meta_period' => $periodStr,
-            'meta_by'     => $generatedBy,
-            'meta_date'   => $generatedAt,
-        ];
-    }
-
-    $xlsxFile = buildXLSX($sheetDefs, $reportTitle);
-    $xlsxData = file_get_contents($xlsxFile);
-    @unlink($xlsxFile);
-    $filename = 'CIMM_' . str_replace(['_',' '], '-', ucwords($reportType, '_')) . '_' . date('Ymd') . '.xlsx';
+    // Note: the \t prefix $d() added to date-like values above is deliberately
+    // left in place here — fputcsv() writes it through as-is, and that
+    // leading tab is what makes Excel treat the cell as text instead of
+    // silently reformatting/misparsing the date when the CSV is opened.
+    $filename = 'CIMM_' . str_replace(['_',' '], '-', ucwords($reportType, '_')) . '_' . date('Ymd') . '.csv';
 
     // Export succeeded — let Admins / Super Admins know.
-    notifyReportExported($conn, $reportType, 'excel', $reportTitle, $periodStr, $generatedBy, (int)($_SESSION['employee_id'] ?? 0));
+    notifyReportExported($conn, $reportType, 'csv', $reportTitle, $periodStr, $generatedBy, (int)($_SESSION['employee_id'] ?? 0));
 
     ob_end_clean();
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . strlen($xlsxData));
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
-    echo $xlsxData;
+
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so spreadsheet apps don't mangle accented text
+
+    fputcsv($out, [$reportTitle]);
+    fputcsv($out, ['Period', $periodStr]);
+    fputcsv($out, ['Generated by', $generatedBy]);
+    fputcsv($out, ['Generated at', $generatedAt]);
+    fputcsv($out, []);
+
+    // Multiple report sections (e.g. the Executive Summary's five mini-tables)
+    // land in one CSV as sequential title/header/rows blocks, separated by a
+    // blank line — CSV has no concept of separate sheets like XLSX did.
+    foreach ($sections as $sec) {
+        fputcsv($out, [$sec['title'] ?? 'Data']);
+        fputcsv($out, $sec['headers']);
+        foreach ($sec['rows'] as $row) {
+            fputcsv($out, $row);
+        }
+        if (!empty($sec['summary'])) {
+            fputcsv($out, []);
+            fputcsv($out, ['Summary']);
+            foreach ($sec['summary'] as $sumRow) {
+                fputcsv($out, $sumRow);
+            }
+        }
+        fputcsv($out, []);
+    }
+    fclose($out);
     exit;
 
 } else {

@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
+require_once __DIR__ . '/../../includes/core/activity_log.php';
+require_once __DIR__ . '/../../includes/core/notif_helper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -175,6 +177,12 @@ try {
     );
 
     $stmt->execute();
+    // INSERT ... ON DUPLICATE KEY UPDATE: affected_rows is 1 for a genuine new
+    // insert, 2 for an update that changed something, 0 for an update with no
+    // actual change. Only notify/log on a true first-time arrival — RGMAP only
+    // pushes once today, but this keeps a retried/duplicated webhook call from
+    // spamming a second notification for the same report.
+    $isNewInsert = $stmt->affected_rows === 1;
     $stmt->close();
 
     $localIdStmt = $conn->prepare('SELECT id FROM rgmap_road_reports WHERE rgmap_report_pk = ? LIMIT 1');
@@ -182,6 +190,22 @@ try {
     $localIdStmt->execute();
     $localId = (int)($localIdStmt->get_result()->fetch_assoc()['id'] ?? 0);
     $localIdStmt->close();
+
+    if ($isNewInsert && $localId > 0) {
+        $displayTitle = $title !== '' ? $title : 'Untitled report';
+        log_activity(
+            $conn, 'pending_reports', 'road_report', $localId, 'submitted',
+            "A new Road Monitoring report ({$rgmapReportId} — {$displayTitle}) was received from the Road Monitoring (RGMAP) system and needs verification.",
+            'Road Monitoring System (RGMAP)'
+        );
+        notifyAdminsOnly(
+            $conn,
+            'New Road Monitoring Report',
+            "{$displayTitle} ({$rgmapReportId}) was submitted from the Road Monitoring system and is awaiting verification.",
+            'pending_reports.php',
+            'Road Monitoring Report'
+        );
+    }
 
     echo json_encode([
         'success' => true,

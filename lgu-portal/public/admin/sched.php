@@ -368,7 +368,7 @@ $cprfFacilitiesForJs = array_map(static fn($f) => [
 <link rel="stylesheet" href="../assets/css/emp-global.css?v=12">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="../assets/css/sched.css?v=1">
+<link rel="stylesheet" href="../assets/css/sched.css?v=<?= @filemtime(__DIR__ . '/../assets/css/sched.css') ?>">
 <script>
 // --- Server time for server-synced clock ---
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms

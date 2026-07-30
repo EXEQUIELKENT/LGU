@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const allImgs  = evidence.concat(progress);
 
                         if (!allImgs.length) {
-                            valEl.innerHTML = '<span class="sched-no-evidence">No images attached.</span>';
+                            valEl.innerHTML = '<span class="sched-no-evidence"><i class="fas fa-image"></i>No images attached.</span>';
                             return;
                         }
 
@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const rowEl = document.getElementById('schedEvidenceRow-' + repId);
                         if (rowEl) {
                             const valEl = rowEl.querySelector('.modal-task-row-value');
-                            if (valEl) valEl.innerHTML = '<span class="sched-no-evidence">Could not load images.</span>';
+                            if (valEl) valEl.innerHTML = '<span class="sched-no-evidence"><i class="fas fa-triangle-exclamation"></i>Could not load images.</span>';
                         }
                     });
             })(t.rep_id);

@@ -2306,7 +2306,12 @@ select.rep-editable-field { cursor:pointer; }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(255,152,0,.3); }
-.rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
+.rep-no-evidence {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; width:100%; padding:22px 12px;
+    color:var(--text-secondary); font-size:13px; font-style:normal; text-align:center;
+}
+.rep-no-evidence i { font-size:22px; opacity:.35; }
 .ai-badge-strip { display:flex;gap:9px;flex-wrap:wrap;margin-top:8px; }
 .ai-badge {
     display:inline-flex; align-items:center; gap:7px;
@@ -3858,7 +3863,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <div class="rep-divider" id="repAiDivider" style="display:none;"></div>
             <div class="rep-field">
                 <div class="rep-field-label">&#128444;&#65039; Evidence Images</div>
-                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence">No evidence images</span></div>
+                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span></div>
             </div>
         </div>
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
@@ -5339,7 +5344,7 @@ function openRepModal(repId) {
             img.onclick = () => openRepLightbox(idx);
             ec.appendChild(img);
         });
-    } else { ec.innerHTML = '<span class="rep-no-evidence">No evidence images</span>'; }
+    } else { ec.innerHTML = '<span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span>'; }
 
     document.getElementById('repModalFooter').style.display = (IS_ENGINEER || IS_ADMIN || CAN_ASSIGN_ENGINEER || IS_OFFICE_STAFF) ? '' : 'none';
     document.getElementById('repCreateReportBtn').style.display = IS_OFFICE_STAFF ? '' : 'none';

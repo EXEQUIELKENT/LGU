@@ -513,6 +513,7 @@
     "modal_start_date": "📅 Start Date",
     "modal_est_completion": "🏁 Est. Completion",
     "modal_evidence_photos": "🖼️ Evidence Photos",
+    "modal_evidence_empty": "No evidence images",
     "modal_status_completed": "✅ Completed",
     "modal_status_cancelled": "❌ Cancelled"
   },
@@ -1030,6 +1031,7 @@
     "modal_start_date": "📅 Petsa ng Pagsisimula",
     "modal_est_completion": "🏁 Tinatayang Tapusin",
     "modal_evidence_photos": "🖼️ Mga Larawan ng Ebidensya",
+    "modal_evidence_empty": "Walang larawan ng ebidensya",
     "modal_status_completed": "✅ Natapos",
     "modal_status_cancelled": "❌ Nakansela"
   }

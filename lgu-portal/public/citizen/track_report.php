@@ -287,6 +287,12 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             border: 2px solid var(--border-color); cursor: pointer; transition: transform .2s, box-shadow .2s;
         }
         .track-evidence-thumb:hover { transform: scale(1.07); box-shadow: 0 4px 14px rgba(55,98,200,.3); }
+        .track-evidence-empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; width: 100%; padding: 22px 12px;
+            color: var(--text-secondary); font-size: 13px; text-align: center;
+        }
+        .track-evidence-empty i { font-size: 22px; opacity: .35; }
 
         .track-lightbox {
             position: fixed; inset: 0; background: rgba(0,0,0,.88);
@@ -1128,7 +1134,8 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
                 });
                 evField.style.display = 'block';
             } else {
-                evField.style.display = 'none';
+                evStrip.innerHTML = `<div class="track-evidence-empty"><i class="fas fa-image"></i>${escapeHtml(t('track_evidence_empty', 'No evidence images'))}</div>`;
+                evField.style.display = 'block';
             }
 
             const aiCard   = document.getElementById('trackAiCard');
@@ -1405,6 +1412,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_detail_end: '🏁 Est. Completion',
             track_detail_priority: '🚦 Priority',
             track_detail_evidence: 'Evidence Photos',
+            track_evidence_empty: 'No evidence images',
             track_ai_title: 'What our system found in your photos',
             track_ai_severity: 'Severity',
             track_ai_complexity: 'Complexity',
@@ -1461,6 +1469,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             track_detail_end: '🏁 Tinatayang Pagkumpleto',
             track_detail_priority: '🚦 Prayoridad',
             track_detail_evidence: 'Mga Larawan ng Ebidensya',
+            track_evidence_empty: 'Walang larawan ng ebidensya',
             track_ai_title: 'Ang natuklasan ng aming sistema sa iyong mga larawan',
             track_ai_severity: 'Antas ng Pinsala',
             track_ai_complexity: 'Kumplikasyon',

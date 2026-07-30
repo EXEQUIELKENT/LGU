@@ -956,7 +956,12 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(46,125,50,.3); }
-.rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
+.rep-no-evidence {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; width:100%; padding:22px 12px;
+    color:var(--text-secondary); font-size:13px; font-style:normal; text-align:center;
+}
+.rep-no-evidence i { font-size:22px; opacity:.35; }
 .btn-view-rep {
     display:inline-flex; align-items:center; gap:3px;
     background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;
@@ -1992,7 +1997,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
             <div class="rep-divider"></div>
             <div class="rep-field">
                 <div class="rep-field-label">&#128444;&#65039; Evidence Images</div>
-                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence">No evidence images</span></div>
+                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span></div>
             </div>
         </div>
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
@@ -2549,7 +2554,7 @@ function openRepModal(repId) {
             img.onclick=()=>{ repGalleryType = 'evidence'; openRepLightbox(idx, repGalleryImages); };
             ec.appendChild(img);
         });
-    } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
+    } else { ec.innerHTML='<span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span>'; }
 
     document.getElementById('repModalFooter').style.display     = IS_OFFICE_STAFF ? '' : 'none';
     document.getElementById('repCreateReportBtn').style.display  = IS_OFFICE_STAFF ? '' : 'none';

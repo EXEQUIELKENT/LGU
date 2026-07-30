@@ -843,6 +843,15 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .req-detail-divider { height: 1px; background: var(--border-color); margin: 14px 0; }
 .req-detail-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 .req-detail-evidence-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+/* Same "no images" fallback design used across the other report modals
+   (pending/current/archive_reports.php's .rep-no-evidence) — icon above
+   muted centered text instead of an inline icon+text line. */
+.evidence-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; width: 100%; padding: 22px 12px;
+    color: var(--text-secondary, #94a3b8); font-size: 13px; text-align: center;
+}
+.evidence-empty i { font-size: 22px; opacity: .35; }
 .req-detail-evidence-thumb { width: 82px; height: 82px; border-radius: 11px; object-fit: cover; border: 2px solid var(--border-color); cursor: pointer; transition: transform .2s, box-shadow .2s; background: rgba(0,0,0,.06); }
 .req-detail-evidence-thumb:hover { transform: scale(1.07); box-shadow: 0 6px 18px rgba(55,98,200,.3); }
 
@@ -2500,7 +2509,7 @@ function openDetail(id) {
                     ' title="Click to enlarge">';
             }).join('') + '</div>';
     } else {
-        imagesHtml = '<span style="font-size:13px;color:#94a3b8;"><i class="fas fa-image" style="margin-right:5px;"></i>No photos attached.</span>';
+        imagesHtml = '<span class="evidence-empty"><i class="fas fa-image"></i>No photos attached.</span>';
     }
 
     // Map preview

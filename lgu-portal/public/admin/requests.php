@@ -508,6 +508,15 @@ table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout:
 }
 .cimmReqCard .status { display: inline-block; margin-left: 0; }
 .no-evidence { font-size: 12px; color: #777; }
+/* Same "no images" fallback design used in the other report modals
+   (pending/current/archive_reports.php's .rep-no-evidence) — icon + muted
+   centered text instead of a bare line of italic text. */
+.evidence-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; width: 100%; padding: 22px 12px;
+    color: var(--text-secondary); font-size: 13px; text-align: center;
+}
+.evidence-empty i { font-size: 22px; opacity: .35; }
 
 /* Requests page has two swappable views (#gisView / #requestsView) plus the
    persistent Activity History card as direct children of .main-content.
@@ -3882,7 +3891,7 @@ function openRequestDetail(button) {
             strip.appendChild(img);
         });
     } else {
-        strip.innerHTML = '<span style="font-size:13px;color:var(--text-secondary);">No evidence images</span>';
+        strip.innerHTML = '<span class="evidence-empty"><i class="fas fa-image"></i>No evidence images</span>';
     }
 
     const isPending = status.toLowerCase() === 'pending';
@@ -3996,7 +4005,7 @@ function openGisDetailModal(reqId) {
             evidenceWrap.appendChild(img);
         });
     } else {
-        evidenceWrap.innerHTML = '<span style="color:var(--text-secondary);font-size:13px;">No evidence images</span>';
+        evidenceWrap.innerHTML = '<span class="evidence-empty"><i class="fas fa-image"></i>No evidence images</span>';
     }
 
     // Show validate/reject footer for pending requests

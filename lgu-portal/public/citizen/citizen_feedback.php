@@ -1061,6 +1061,12 @@ body {
 
 /* ══ Shared: priority badges + evidence strip (exact citizenreports copy) ══ */
 .sched-evidence-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.sched-no-evidence {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; width: 100%; padding: 22px 12px;
+    color: var(--text-secondary); font-size: 13px; text-align: center;
+}
+.sched-no-evidence i { font-size: 22px; opacity: .35; }
 .sched-evidence-thumb {
     width: 80px; height: 80px; border-radius: 10px; object-fit: cover;
     border: 2px solid var(--border-color, rgba(0,0,0,.1));
@@ -1781,7 +1787,11 @@ body {
             });
             evidFld.style.display = '';
         } else {
-            evidFld.style.display = 'none';
+            var evLang = localStorage.getItem('lang') || 'en';
+            var evTr = (window.__preloadedTranslations && window.__preloadedTranslations[evLang]) || {};
+            evidStrip.innerHTML = '<span class="sched-no-evidence"><i class="fas fa-image"></i>' +
+                (evTr['modal_evidence_empty'] || 'No evidence images') + '</span>';
+            evidFld.style.display = '';
         }
 
         document.getElementById('refReportModalBackdrop').classList.add('active');

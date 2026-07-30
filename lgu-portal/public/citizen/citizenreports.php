@@ -1486,7 +1486,12 @@ foreach ($maintenance_data as $_item) {
             cursor: pointer; transition: transform .2s, box-shadow .2s;
         }
         .sched-evidence-thumb:hover { transform: scale(1.07); box-shadow: 0 4px 14px rgba(55,98,200,.3); }
-        .sched-no-evidence { font-size: 13px; color: var(--text-secondary, #64748b); opacity: .7; font-style: italic; }
+        .sched-no-evidence {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; width: 100%; padding: 22px 12px;
+            color: var(--text-secondary, #64748b); font-size: 13px; text-align: center;
+        }
+        .sched-no-evidence i { font-size: 22px; opacity: .35; }
 
         /* Priority badges */
         .sched-priority-badge {
@@ -3132,6 +3137,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     img.onclick = function () { openSchedLightbox(src); };
                     evidenceEl.appendChild(img);
                 });
+                evidenceFld.style.display = '';
+                if (evidenceDivider) evidenceDivider.style.display = '';
+            } else if (isRpt) {
+                // A report, just none with images this time — show a fallback
+                // instead of hiding the whole field (that's only for the
+                // non-report case below, where evidence doesn't apply at all).
+                var evLang = localStorage.getItem('lang') || 'en';
+                var evTr = (window.__preloadedTranslations && window.__preloadedTranslations[evLang]) || {};
+                evidenceEl.innerHTML = '<span class="sched-no-evidence"><i class="fas fa-image"></i>' +
+                    (evTr['modal_evidence_empty'] || 'No evidence images') + '</span>';
                 evidenceFld.style.display = '';
                 if (evidenceDivider) evidenceDivider.style.display = '';
             } else {

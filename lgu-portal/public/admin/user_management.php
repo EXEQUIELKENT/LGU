@@ -17,7 +17,6 @@ if (!cimm_is_admin()) {
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
-require_once __DIR__ . '/../../includes/core/xlsx_builder.php';
 require __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
@@ -162,8 +161,8 @@ function showNotification() {
 $profilePictureSrc = getProfilePicture($currentUserId, $conn);
 $displayName        = getDisplayName();
 
-// ── Export to Excel ────────────────────────────────────────────────────────────
-if (isset($_GET['export']) && $_GET['export'] === 'xlsx') {
+// ── Export to CSV ────────────────────────────────────────────────────────────
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     while (ob_get_level() > 0) ob_end_clean();
 
     $exportRes = $conn->query("
@@ -185,27 +184,21 @@ if (isset($_GET['export']) && $_GET['export'] === 'xlsx') {
     }
 
     $actor = activity_actor_name();
-    $sheetDef = [
-        'name'        => 'Users',
-        'title'       => 'User Management — Employee Accounts',
-        'meta_period' => 'All accounts',
-        'meta_by'     => $actor,
-        'meta_date'   => date('M d, Y h:i A'),
-        'headers'     => ['Name', 'Email', 'Role', 'Status', 'Verified', 'Last Login'],
-        'rows'        => $rows,
-        'centerCols'  => [false, false, true, true, true, true],
-    ];
 
-    $tmpFile = buildXLSX([$sheetDef], 'User Accounts');
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="user_accounts_' . date('Y-m-d') . '.csv"');
+
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so spreadsheet apps don't mangle accented names
+    fputcsv($out, ['Name', 'Email', 'Role', 'Status', 'Verified', 'Last Login']);
+    foreach ($rows as $row) {
+        fputcsv($out, $row);
+    }
+    fclose($out);
 
     log_activity($conn, 'user_management', 'user', $currentUserId, 'export',
-        "{$actor} exported the user list to Excel (" . count($rows) . " accounts).");
+        "{$actor} exported the user list to CSV (" . count($rows) . " accounts).");
 
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="user_accounts_' . date('Y-m-d') . '.xlsx"');
-    header('Content-Length: ' . filesize($tmpFile));
-    readfile($tmpFile);
-    unlink($tmpFile);
     exit;
 }
 
@@ -1743,8 +1736,8 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                 <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
             </h2>
             <div class="um-header-actions">
-                <button class="btn-action btn-export" id="umExportBtn" title="Export the full user list to Excel">
-                    <i class="fas fa-file-excel"></i> Export
+                <button class="btn-action btn-export" id="umExportBtn" title="Export the full user list to CSV">
+                    <i class="fas fa-file-csv"></i> Export
                 </button>
                 <button class="btn-action btn-add-user" id="umAddUserBtn">
                     <i class="fas fa-user-plus"></i> Add User
@@ -2008,11 +2001,11 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         <div class="lo-icon-wrap">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3762c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8M8 17h8M8 9h1"/></svg>
         </div>
-        <div class="lo-title">Export to Excel?</div>
-        <div class="lo-desc" id="exportConfirmDesc">This will download an Excel file containing every employee account currently in the system.</div>
+        <div class="lo-title">Export to CSV?</div>
+        <div class="lo-desc" id="exportConfirmDesc">This will download a CSV file containing every employee account currently in the system.</div>
         <div class="lo-btns">
             <button class="lo-btn lo-cancel" id="exportCancelBtn">Cancel</button>
-            <button class="lo-btn lo-confirm-role" id="exportConfirmBtn"><i class="fas fa-file-excel"></i> Export</button>
+            <button class="lo-btn lo-confirm-role" id="exportConfirmBtn"><i class="fas fa-file-csv"></i> Export</button>
         </div>
     </div>
 </div>
@@ -2451,7 +2444,7 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
     });
 })();
 
-// ── Export to Excel (with confirmation) ──────────────────────────────────────
+// ── Export to CSV (with confirmation) ──────────────────────────────────────
 (function(){
     var btn = document.getElementById('umExportBtn');
     var backdrop = document.getElementById('exportConfirmBackdrop');
@@ -2466,7 +2459,7 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
     backdrop.addEventListener('mousedown', function(e){ if (e.target === backdrop) closeModal(); });
     confirmBtn.addEventListener('click', function(){
         closeModal();
-        window.location.href = window.location.pathname + '?export=xlsx';
+        window.location.href = window.location.pathname + '?export=csv';
     });
 })();
 

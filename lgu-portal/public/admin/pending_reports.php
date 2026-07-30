@@ -519,6 +519,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $verifierName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
         $result = rgmap_road_reports_verify($conn, $localId, $verifierName);
+        if ($result['ok']) {
+            $rmRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
+            $rmLabel = trim(($rmRow['rgmap_report_id'] ?? '') . ' — ' . ($rmRow['title'] ?? ''), ' —');
+            // ref_type 'road_report' (not the 'report' shortcut) — rgmap_road_reports.id
+            // is its own ID sequence, separate from reports.rep_id, and re-using
+            // 'report' here would risk colliding with an unrelated schedule report
+            // that happens to share the same numeric id.
+            log_activity(
+                $conn, 'pending_reports', 'road_report', $localId, 'validated',
+                "{$verifierName} verified Road Monitoring report {$rmLabel}" . ($result['callback_ok'] ? ' — synced back to Road Monitoring.' : ' (sync back to Road Monitoring failed).')
+            );
+        }
         echo json_encode([
             'success' => $result['ok'],
             'message' => $result['ok']
@@ -1513,7 +1525,12 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(230,81,0,.3); }
-.rep-no-evidence { color:var(--text-secondary);font-size:13px;opacity:.7;font-style:italic; }
+.rep-no-evidence {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; width:100%; padding:22px 12px;
+    color:var(--text-secondary); font-size:13px; font-style:normal; text-align:center;
+}
+.rep-no-evidence i { font-size:22px; opacity:.35; }
 .rep-img-lightbox { position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9500;flex-direction:column; }
 .rep-img-lightbox.active { display:flex; }
 .rep-img-lightbox img { max-width:88vw;max-height:80vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.6);cursor:zoom-in;user-select:none; }
@@ -2812,7 +2829,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
             <div class="rep-divider"></div>
             <div class="rep-field-label" style="margin-bottom:8px;">&#128444;&#65039; Attachments</div>
             <div class="rep-evidence-strip" id="rmModalAttachmentsGrid"></div>
-            <div class="rep-no-evidence" id="rmModalNoEvidence" style="display:none;">No attachments.</div>
+            <div class="rep-no-evidence" id="rmModalNoEvidence" style="display:none;"><i class="fas fa-image"></i>No attachments.</div>
         </div>
         <div class="rep-modal-footer">
             <div class="rep-footer-inner" id="rmModalFooter"></div>
@@ -3045,7 +3062,7 @@ async function doVerifyRoadReport() {
             <div class="rep-divider"></div>
             <div class="rep-field">
                 <div class="rep-field-label">&#128444;&#65039; Evidence Images</div>
-                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence">No evidence images</span></div>
+                <div class="rep-evidence-strip" id="repEvidenceContainer"><span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span></div>
             </div>
         </div>
         <div class="rep-modal-footer" id="repModalFooter" style="display:none;">
@@ -3650,7 +3667,7 @@ function openRepModal(repId) {
             img.onclick=()=>{ repGalleryType='evidence'; openRepLightbox(idx, repGalleryImages); };
             ec.appendChild(img);
         });
-    } else { ec.innerHTML='<span class="rep-no-evidence">No evidence images</span>'; }
+    } else { ec.innerHTML='<span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span>'; }
 
     // Reset upload spinner
     document.getElementById('repUploadSpinner').style.display = 'none';

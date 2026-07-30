@@ -4218,8 +4218,8 @@ if (activeReportsCtx) {
             <div class="form-group">
                 <label>Export Format</label>
                 <div class="format-toggle">
-                    <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('excel')">
-                        <i class="fas fa-file-excel"></i> Excel (.xlsx)
+                    <button class="fmt-btn active" id="fmtExcel" onclick="selectFormat('csv')">
+                        <i class="fas fa-file-csv"></i> CSV (.csv)
                     </button>
                     <button class="fmt-btn" id="fmtPdf" onclick="selectFormat('pdf')">
                         <i class="fas fa-file-pdf"></i> PDF (Print)
@@ -4308,7 +4308,7 @@ if (activeReportsCtx) {
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
 let _rptType   = 'requests';
-let _rptFormat = 'excel';
+let _rptFormat = 'csv';
 
 // ── Report modal ─────────────────────────────────────────────────────────────
 function openReportModal(type) {
@@ -4345,7 +4345,7 @@ function closeReportModal() {
 
 function selectFormat(fmt) {
     _rptFormat = fmt;
-    document.getElementById('fmtExcel').classList.toggle('active', fmt === 'excel');
+    document.getElementById('fmtExcel').classList.toggle('active', fmt === 'csv');
     document.getElementById('fmtPdf').classList.toggle('active',   fmt === 'pdf');
 }
 
@@ -4485,15 +4485,15 @@ async function verifyAndGenerate() {
             closePwModal();
 
             const form = document.getElementById('reportForm');
-            if (_rptFormat === 'excel') {
+            if (_rptFormat === 'csv') {
                 form.target = '_self'; // triggers file download in same tab
             } else {
                 form.target = '_blank'; // PDF opens in new tab
             }
             form.submit();
 
-            // Re-enable generate button after a delay (for Excel re-use)
-            if (_rptFormat === 'excel') {
+            // Re-enable generate button after a delay (for CSV re-use)
+            if (_rptFormat === 'csv') {
                 setTimeout(resetBtnGenerate, 4500);
             }
 
