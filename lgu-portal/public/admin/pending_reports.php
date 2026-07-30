@@ -678,6 +678,18 @@ function priorityBadge(?string $lvl): string {
          . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
 
+// RGMAO sometimes pushes a generic auto-generated placeholder ("Issue at
+// Pinned Location" etc.) into report_type when the field worker never picked
+// a real category — that's not a useful "Type" value, so treat it the same
+// as missing rather than showing it verbatim.
+function rmTypeLabel(?string $raw): string {
+    $clean = trim(str_replace('_', ' ', (string)$raw));
+    if ($clean === '' || stripos($clean, 'pinned location') !== false) {
+        return '—';
+    }
+    return htmlspecialchars(ucwords($clean));
+}
+
 function engProfileBtn(int $engineerId, ?string $picPath): string {
     $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fbe9e7"/><circle cx="50" cy="36" r="20" fill="#e65100"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#e65100"/></svg>';
     $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/../' . $picPath);
@@ -2671,19 +2683,19 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
                 ?>
                 <tr data-rm-id="<?= (int)$rm['id'] ?>">
-                    <td><button type="button" class="rm-verify-btn" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
+                    <td><button type="button" class="btn-view-rep" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
                     <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
-                    <td class="searchable"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rm['report_type'] ?? '') ?: '—')) ?></td>
+                    <td class="searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></td>
                     <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></td>
                     <td class="searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></td>
-                    <td class="searchable"><?= htmlspecialchars(ucfirst($rm['severity'] ?? '—')) ?></td>
+                    <td class="searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></td>
                     <td class="searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></td>
                     <td class="searchable">
                         <?php if ($rmVerified): ?>
-                            <span class="rm-verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                            <span class="status completed"><i class="fas fa-check-circle"></i> Verified</span>
                         <?php else: ?>
-                            <span class="rm-verify-badge-pending"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
+                            <span class="status pending-st"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
                         <?php endif; ?>
                     </td>
                 </tr>
