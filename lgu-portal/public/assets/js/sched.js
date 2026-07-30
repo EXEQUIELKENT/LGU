@@ -792,7 +792,12 @@ document.addEventListener('DOMContentLoaded', function() {
         '06-12': { name: 'Independence Day', type: 'holiday' },
         '07-04': { name: 'Philippines-American Friendship Day', type: 'event' },
         '08-21': { name: 'Ninoy Aquino Day', type: 'holiday' },
-        '08-31': { name: 'National Heroes Day', type: 'holiday' },
+        // National Heroes Day is NOT fixed to Aug 31 — it's the last Monday
+        // of August, already computed correctly per-year by
+        // getNationalHeroesDay() below. A static '08-31' entry here doesn't
+        // stay in sync with that in years where Aug 31 isn't a Monday,
+        // producing two different "National Heroes Day" dates in the same
+        // calendar. Deliberately omitted.
         '11-01': { name: 'All Saints\' Day', type: 'holiday' },
         '11-02': { name: 'All Souls\' Day', type: 'event' },
         '11-30': { name: 'Bonifacio Day', type: 'holiday' },
@@ -803,46 +808,78 @@ document.addEventListener('DOMContentLoaded', function() {
         '12-31': { name: 'New Year\'s Eve', type: 'event' }
     };
 
-    const MOVABLE_HOLIDAYS_2026 = {
-        '02-17': { name: 'Chinese New Year', type: 'holiday' },
-        '04-02': { name: 'Maundy Thursday', type: 'holiday' },
-        '04-03': { name: 'Good Friday', type: 'holiday' },
-        '04-04': { name: 'Black Saturday', type: 'holiday' },
-        '03-31': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
+    // ── Holy Week — derived from Easter Sunday, not looked up, so it's
+    // correct for any year forever. Meeus/Jones/Butcher algorithm (the
+    // standard closed-form calculation for the Gregorian Easter date).
+    function getEasterSunday(year) {
+        const a = year % 19;
+        const b = Math.floor(year / 100);
+        const c = year % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = March, 4 = April
+        const day = ((h + l - 7 * m + 114) % 31) + 1;
+        return new Date(year, month - 1, day);
+    }
+    function addDays(date, days) {
+        const d = new Date(date);
+        d.setDate(d.getDate() + days);
+        return d;
+    }
+    function monthDayKey(date) {
+        return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    // ── Chinese New Year — lunisolar, no closed-form formula exists, so
+    // this is sourced from published astronomical calendars rather than
+    // computed. Covers a wide span of years instead of just a handful —
+    // outside this range the calendar simply omits it, same as before.
+    const CHINESE_NEW_YEAR = {
+        2020: '01-25', 2021: '02-12', 2022: '02-01', 2023: '01-22', 2024: '02-10',
+        2025: '01-29', 2026: '02-17', 2027: '02-06', 2028: '01-26', 2029: '02-13',
+        2030: '02-03', 2031: '01-23', 2032: '02-11', 2033: '01-31', 2034: '02-19',
+        2035: '02-08', 2036: '01-28', 2037: '02-15', 2038: '02-04', 2039: '01-24',
+        2040: '02-12', 2041: '02-01', 2042: '01-22', 2043: '02-10', 2044: '01-30',
+        2045: '02-17',
+    };
+
+    // ── Eid al-Fitr — moon-sighting based, so "approximate" by nature (can
+    // shift ±1-2 days by country/authority even after the fact); dates below
+    // use the Umm al-Qura calculated calendar as one consistent reference.
+    // 2033 gets two occurrences since the ~354-day Islamic lunar year
+    // occasionally fits twice into one Gregorian year.
+    const EID_AL_FITR = {
+        2020: ['05-24'], 2021: ['05-13'], 2022: ['05-02'], 2023: ['04-22'], 2024: ['04-10'],
+        2025: ['03-31'], 2026: ['03-20'], 2027: ['03-09'], 2028: ['02-26'], 2029: ['02-14'],
+        2030: ['02-04'], 2031: ['01-24'], 2032: ['01-14'], 2033: ['01-02', '12-23'],
+        2034: ['12-12'], 2035: ['12-01'], 2036: ['11-19'],
     };
 
     function getHolidaysForYear(year) {
-        if (year === 2026) {
-            return { ...FIXED_HOLIDAYS, ...MOVABLE_HOLIDAYS_2026 };
-        } else if (year === 2025) {
-            const movable2025 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' },
-                '04-17': { name: 'Maundy Thursday', type: 'holiday' },
-                '04-18': { name: 'Good Friday', type: 'holiday' },
-                '04-19': { name: 'Black Saturday', type: 'holiday' },
-                '03-31': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
-            };
-            return { ...FIXED_HOLIDAYS, ...movable2025 };
-        } else if (year === 2027) {
-            const movable2027 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' },
-                '03-25': { name: 'Maundy Thursday', type: 'holiday' },
-                '03-26': { name: 'Good Friday', type: 'holiday' },
-                '03-27': { name: 'Black Saturday', type: 'holiday' },
-                '03-20': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
-            };
-            return { ...FIXED_HOLIDAYS, ...movable2027 };
-        } else if (year === 2024) {
-            const movable2024 = {
-                '02-17': { name: 'Chinese New Year', type: 'holiday' },
-                '03-28': { name: 'Maundy Thursday', type: 'holiday' },
-                '03-29': { name: 'Good Friday', type: 'holiday' },
-                '03-30': { name: 'Black Saturday', type: 'holiday' },
-                '04-10': { name: 'Eid al-Fitr (approximate)', type: 'holiday' }
-            };
-            return { ...FIXED_HOLIDAYS, ...movable2024 };
+        const holidays = { ...FIXED_HOLIDAYS };
+
+        const easter = getEasterSunday(year);
+        holidays[monthDayKey(addDays(easter, -3))] = { name: 'Maundy Thursday', type: 'holiday' };
+        holidays[monthDayKey(addDays(easter, -2))] = { name: 'Good Friday',     type: 'holiday' };
+        holidays[monthDayKey(addDays(easter, -1))] = { name: 'Black Saturday',  type: 'holiday' };
+
+        if (CHINESE_NEW_YEAR[year]) {
+            holidays[CHINESE_NEW_YEAR[year]] = { name: 'Chinese New Year', type: 'holiday' };
         }
-        return FIXED_HOLIDAYS;
+        if (EID_AL_FITR[year]) {
+            EID_AL_FITR[year].forEach(key => {
+                holidays[key] = { name: 'Eid al-Fitr (approximate)', type: 'holiday' };
+            });
+        }
+
+        return holidays;
     }
 
     function getNationalHeroesDay(year) {
