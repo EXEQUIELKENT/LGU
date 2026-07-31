@@ -784,13 +784,39 @@ function cimm_ensure_cprf_facility_columns(mysqli $conn): void
 }
 
 /**
- * Safe schema fixes for maintenance_schedule (CPRF columns + optional engineer_id).
+ * Safe schema creation + fixes for maintenance_schedule (idempotent).
+ *
+ * 1. CREATE TABLE IF NOT EXISTS with the full target schema (includes CPRF columns,
+ *    NULLable engineer_id, extended status ENUM that includes 'Request Pending').
+ * 2. Run targeted ALTERs to bring older tables up to spec if any columns are missing
+ *    or have the wrong definition.
  */
 function cimm_ensure_maintenance_schedule_schema(mysqli $conn): void
 {
-    cimm_ensure_cprf_facility_columns($conn);
+    $create = "CREATE TABLE IF NOT EXISTS maintenance_schedule (
+        sched_id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        task VARCHAR(255) NOT NULL,
+        location VARCHAR(255) NOT NULL,
+        cprf_facility_id INT UNSIGNED NULL DEFAULT NULL,
+        cprf_facility_name VARCHAR(150) NULL DEFAULT NULL,
+        category VARCHAR(100) NULL DEFAULT NULL,
+        priority ENUM('Low','Medium','High','Critical') NOT NULL DEFAULT 'Medium',
+        status ENUM('Request Pending','Scheduled','In Progress','Completed','Delayed','Cancelled')
+               NOT NULL DEFAULT 'Scheduled',
+        engineer_id INT(10) UNSIGNED NULL DEFAULT NULL,
+        assigned_team VARCHAR(255) NULL DEFAULT NULL,
+        budget DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+        starting_date DATETIME NOT NULL,
+        estimated_completion_date DATETIME NULL DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cprf_facility_id (cprf_facility_id),
+        INDEX idx_sched_status (status),
+        INDEX idx_sched_start (starting_date),
+        INDEX idx_sched_engineer (engineer_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+    $conn->query($create);
 
-    $result = $conn->query("SHOW COLUMNS FROM maintenance_schedule WHERE Field IN ('engineer_id', 'estimated_completion_date')");
+    $result = $conn->query('SHOW COLUMNS FROM maintenance_schedule');
     $colInfo = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
@@ -799,12 +825,31 @@ function cimm_ensure_maintenance_schedule_schema(mysqli $conn): void
         $result->free();
     }
 
+    if (!isset($colInfo['cprf_facility_id'])) {
+        $conn->query('ALTER TABLE maintenance_schedule ADD COLUMN cprf_facility_id INT UNSIGNED NULL DEFAULT NULL AFTER location');
+        $conn->query('ALTER TABLE maintenance_schedule ADD INDEX idx_cprf_facility_id (cprf_facility_id)');
+    }
+    if (!isset($colInfo['cprf_facility_name'])) {
+        $conn->query('ALTER TABLE maintenance_schedule ADD COLUMN cprf_facility_name VARCHAR(150) NULL DEFAULT NULL AFTER cprf_facility_id');
+    }
+
     if (isset($colInfo['engineer_id']) && strtoupper((string)($colInfo['engineer_id']['Null'] ?? '')) !== 'YES') {
         $conn->query('ALTER TABLE maintenance_schedule MODIFY COLUMN engineer_id INT UNSIGNED NULL DEFAULT NULL');
     }
 
     if (isset($colInfo['estimated_completion_date']) && strtoupper((string)($colInfo['estimated_completion_date']['Null'] ?? '')) !== 'YES') {
         $conn->query('ALTER TABLE maintenance_schedule MODIFY COLUMN estimated_completion_date DATETIME NULL DEFAULT NULL');
+    }
+
+    if (isset($colInfo['status'])) {
+        $statusType = strtoupper((string)($colInfo['status']['Type'] ?? ''));
+        if (strpos($statusType, 'REQUEST PENDING') === false && strpos($statusType, "'Request Pending'") === false) {
+            $conn->query(
+                "ALTER TABLE maintenance_schedule MODIFY COLUMN status
+                 ENUM('Request Pending','Scheduled','In Progress','Completed','Delayed','Cancelled')
+                 NOT NULL DEFAULT 'Scheduled'"
+            );
+        }
     }
 }
 
