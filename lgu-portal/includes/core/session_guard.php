@@ -69,6 +69,7 @@ if (
     $_hbCreds = cimm_db_credentials();
     $_hbConn = @new mysqli($_hbCreds['host'], $_hbCreds['user'], $_hbCreds['pass'], $_hbCreds['name']);
     if ($_hbConn && !$_hbConn->connect_error) {
+        $_hbConn->set_charset('utf8mb4');
         $_hbConn->query("ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_activity DATETIME NULL DEFAULT NULL");
         $_hbEmpId = (int)$_SESSION['employee_id'];
         // ! BUG FIX — SQL NOW() runs in the DB SERVER's own timezone, which is

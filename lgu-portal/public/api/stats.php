@@ -24,6 +24,7 @@ if ($conn->connect_error) {
     echo json_encode(['error' => 'db_unavailable']);
     exit;
 }
+$conn->set_charset('utf8mb4');
 
 $count = 0;
 $result = $conn->query('SELECT COUNT(*) AS c FROM requests');

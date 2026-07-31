@@ -49,14 +49,22 @@ function resolveRepPage(mysqli $conn, int $repId): string {
  */
 function insertNotification(mysqli $conn, int $employeeId, string $title, string $description, string $url, string $requestType = 'Report'): void {
     if ($employeeId <= 0) return;
-    $stmt = $conn->prepare(
-        "INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
-         VALUES (?, ?, ?, ?, ?, 0)"
-    );
-    if (!$stmt) return;
-    $stmt->bind_param("issss", $employeeId, $title, $description, $requestType, $url);
-    $stmt->execute();
-    $stmt->close();
+    try {
+        $stmt = $conn->prepare(
+            "INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
+             VALUES (?, ?, ?, ?, ?, 0)"
+        );
+        if (!$stmt) return;
+        $stmt->bind_param("issss", $employeeId, $title, $description, $requestType, $url);
+        $stmt->execute();
+        $stmt->close();
+    } catch (\Throwable $e) {
+        // A notification is a side effect, not the primary action (e.g. the
+        // report/PDF/CSV a user is exporting has already been built by the
+        // time this runs). Never let a notification failure — bad charset,
+        // truncation, a locked table, etc. — take down the calling flow.
+        error_log('insertNotification failed for employee_id=' . $employeeId . ': ' . $e->getMessage());
+    }
 }
 
 /**

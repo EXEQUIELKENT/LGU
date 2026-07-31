@@ -19,4 +19,10 @@ $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
 if ($conn->connect_error) {
     die("Database connection failed: " . $conn->connect_error);
 }
+
+// Without this, mysqli negotiates a non-utf8mb4 connection charset even
+// though the tables themselves are utf8mb4 — any 4-byte character (emoji,
+// some CJK/astral characters) then gets rejected with
+// "Incorrect string value" instead of being stored correctly.
+$conn->set_charset('utf8mb4');
 ?>
