@@ -1347,13 +1347,35 @@ input[type="file"] {
 
 .leaflet-container { touch-action: pan-x pan-y pinch-zoom; }
 .leaflet-map-label {
-    background: rgba(255, 255, 255, 0.95); border: 2px solid #2b6cb0;
-    border-radius: 8px; padding: 4px 10px; font-size: 13px;
-    font-weight: 600; color: #2b6cb0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2); white-space: nowrap; pointer-events: none;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    border: 1.5px solid rgba(43, 108, 176, 0.55);
+    border-radius: 20px; padding: 5px 12px;
+    font-family: 'Poppins', sans-serif; font-size: 12px;
+    font-weight: 700; letter-spacing: .02em; color: #2b6cb0;
+    box-shadow: 0 2px 10px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.4) inset;
+    white-space: nowrap; pointer-events: none;
 }
+.leaflet-map-label i { font-size: 10px; opacity: .8; }
 [data-theme="dark"] .leaflet-map-label {
-    background: rgba(30, 30, 30, 0.95); border-color: #4a8fd8; color: #8ab4f8;
+    background: rgba(24, 26, 32, 0.88); border-color: rgba(95,140,255,.5); color: #8ab4f8;
+    box-shadow: 0 2px 10px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.06) inset;
+}
+
+/* Landmark variant (malls, the Circle, transit stations) — filled accent
+   pill with an icon, so it reads as a "place to go" at a glance instead of
+   blending in with the plain neighborhood/area name labels. */
+.leaflet-map-label-landmark {
+    background: linear-gradient(135deg, #2b6cb0, #1d4ed8);
+    border-color: transparent; color: #fff;
+    box-shadow: 0 3px 12px rgba(29,78,216,.45), 0 0 0 1px rgba(255,255,255,.25) inset;
+}
+.leaflet-map-label-landmark i { opacity: 1; color: #ffd166; }
+[data-theme="dark"] .leaflet-map-label-landmark {
+    background: linear-gradient(135deg, #3762c8, #2851b3);
+    border-color: transparent;
+    box-shadow: 0 3px 14px rgba(55,98,200,.5), 0 0 0 1px rgba(255,255,255,.15) inset;
 }
 .qc-boundary-layer { pointer-events: none; }
 @media (max-width: 768px) { .leaflet-container .leaflet-interactive { stroke-width: 5 !important; } }
@@ -3311,25 +3333,59 @@ input[type="file"] {
     }
 
     // ── Location Labels ──────────────────────────────────────────────────
+    // Neighborhood/area coordinates cross-checked against
+    // QC_BARANGAYS_COMPREHENSIVE (GeoJSON centroids, the app's own vetted
+    // source of truth) — several of the original values landed several
+    // kilometers from the area they were meant to label (Blue Ridge and San
+    // Martin de Porres were the worst, off by 8+ and 14+ km respectively;
+    // "Katipunan" pointed at the small District 1 barangay of that name
+    // instead of the popular Katipunan Ave/LRT2 station area near Loyola
+    // Heights everyone actually means by that name). Landmark coordinates
+    // (malls, the Circle, transit stations) are independently verified.
     function addLocationLabels() {
         locationLabels.forEach(label => map && map.removeLayer && map.removeLayer(label));
         locationLabels = [];
         const majorLocations = [
-            { name: "Fairview", lat: 14.7234, lng: 121.0667 }, { name: "Novaliches", lat: 14.7267, lng: 121.0512 },
-            { name: "Commonwealth", lat: 14.7045, lng: 121.1156 }, { name: "San Martin de Porres", lat: 14.7423, lng: 121.0312 },
-            { name: "Lagro", lat: 14.7189, lng: 121.0778 }, { name: "Sauyo", lat: 14.7289, lng: 121.0612 },
-            { name: "Talipapa", lat: 14.7234, lng: 121.0534 }, { name: "Batasan Hills", lat: 14.6883, lng: 121.1089 },
-            { name: "Payatas", lat: 14.7138, lng: 121.1034 }, { name: "UP Diliman", lat: 14.6538, lng: 121.0682 },
-            { name: "Cubao", lat: 14.6223, lng: 121.0500 }, { name: "Project 6", lat: 14.6423, lng: 121.0447 },
-            { name: "Project 8", lat: 14.6467, lng: 121.0334 }, { name: "Tandang Sora", lat: 14.6777, lng: 121.0557 },
-            { name: "Kamuning", lat: 14.6234, lng: 121.0371 }, { name: "Loyola Heights", lat: 14.6398, lng: 121.0775 },
-            { name: "Libis", lat: 14.6345, lng: 121.0612 }, { name: "White Plains", lat: 14.6267, lng: 121.0589 },
-            { name: "Blue Ridge", lat: 14.6956, lng: 121.0500 }, { name: "Novaliches West", lat: 14.7167, lng: 121.0378 },
-            { name: "Sangandaan", lat: 14.6534, lng: 121.0156 }, { name: "Araneta Center", lat: 14.6178, lng: 121.0523 },
-            { name: "Katipunan", lat: 14.6612, lng: 121.0443 }, { name: "Teachers Village", lat: 14.6240, lng: 121.0501 }
+            // Neighborhoods / areas
+            { name: "Fairview", lat: 14.7056, lng: 121.0699 }, { name: "Novaliches", lat: 14.7195, lng: 121.0365 },
+            { name: "Commonwealth", lat: 14.7038, lng: 121.0854 }, { name: "San Martin de Porres", lat: 14.6165, lng: 121.0493 },
+            { name: "Lagro", lat: 14.7247, lng: 121.0640 }, { name: "Sauyo", lat: 14.6942, lng: 121.0434 },
+            { name: "Talipapa", lat: 14.6824, lng: 121.0238 }, { name: "Batasan Hills", lat: 14.6807, lng: 121.0961 },
+            { name: "Payatas", lat: 14.7123, lng: 121.0972 }, { name: "UP Diliman", lat: 14.6541, lng: 121.0641 },
+            { name: "Cubao", lat: 14.6194, lng: 121.0533 }, { name: "Project 6", lat: 14.6582, lng: 121.0405 },
+            { name: "Project 8", lat: 14.6669, lng: 121.0281 }, { name: "Tandang Sora", lat: 14.6796, lng: 121.0359 },
+            { name: "Kamuning", lat: 14.6272, lng: 121.0396 }, { name: "Loyola Heights", lat: 14.6383, lng: 121.0752 },
+            { name: "Libis", lat: 14.6161, lng: 121.0766 }, { name: "White Plains", lat: 14.6048, lng: 121.0738 },
+            { name: "Blue Ridge", lat: 14.6172, lng: 121.0745 }, { name: "Novaliches West", lat: 14.7059, lng: 121.0315 },
+            { name: "Sangandaan", lat: 14.6742, lng: 121.0211 }, { name: "Katipunan", lat: 14.6311, lng: 121.0730 },
+            { name: "Teachers Village", lat: 14.6439, lng: 121.0576 },
+            { name: "Diliman", lat: 14.6484, lng: 121.0495 }, { name: "Krus na Ligas", lat: 14.6437, lng: 121.0634 },
+            { name: "Holy Spirit", lat: 14.6794, lng: 121.0787 }, { name: "Bagumbayan", lat: 14.6070, lng: 121.0788 },
+            { name: "Culiat", lat: 14.6669, lng: 121.0535 }, { name: "Apolonio Samson", lat: 14.6542, lng: 121.0093 },
+            { name: "Baesa", lat: 14.6681, lng: 121.0147 }, { name: "New Era", lat: 14.6646, lng: 121.0604 },
+            { name: "Horseshoe", lat: 14.6125, lng: 121.0421 }, { name: "Immaculate Conception", lat: 14.6224, lng: 121.0443 },
+            { name: "Bagbag", lat: 14.6983, lng: 121.0289 }, { name: "Kaligayahan", lat: 14.7299, lng: 121.0423 },
+            { name: "Pasong Tamo", lat: 14.6753, lng: 121.0507 }, { name: "North Fairview", lat: 14.7121, lng: 121.0602 },
+            // Landmarks / commercial districts
+            { name: "Araneta Center", lat: 14.6186, lng: 121.0526, type: "landmark" },
+            { name: "Quezon Memorial Circle", lat: 14.6515, lng: 121.0493, type: "landmark" },
+            { name: "Philcoa", lat: 14.6535, lng: 121.0475, type: "landmark" },
+            { name: "SM North EDSA", lat: 14.6570, lng: 121.0305, type: "landmark" },
+            { name: "SM City Fairview", lat: 14.7337, lng: 121.0585, type: "landmark" },
+            { name: "SM City Novaliches", lat: 14.7080, lng: 121.0373, type: "landmark" },
+            { name: "SM City Sta. Mesa", lat: 14.6044, lng: 121.0188, type: "landmark" },
+            { name: "Trinoma", lat: 14.6531, lng: 121.0334, type: "landmark" },
+            { name: "Vertis North", lat: 14.6521, lng: 121.0360, type: "landmark" },
+            { name: "Eastwood City", lat: 14.6097, lng: 121.0801, type: "landmark" },
+            { name: "Timog Avenue", lat: 14.6332, lng: 121.0347, type: "landmark" },
+            { name: "Balara", lat: 14.6643, lng: 121.0834, type: "landmark" },
+            { name: "Anonas", lat: 14.6280, lng: 121.0647, type: "landmark" }
         ];
         majorLocations.forEach(loc => {
-            const label = L.marker([loc.lat, loc.lng], { icon: L.divIcon({ className: 'leaflet-map-label', html: loc.name, iconSize: null }), interactive: false });
+            const isLandmark = loc.type === 'landmark';
+            const cls = 'leaflet-map-label' + (isLandmark ? ' leaflet-map-label-landmark' : '');
+            const html = (isLandmark ? '<i class="fas fa-landmark"></i>' : '') + '<span>' + loc.name + '</span>';
+            const label = L.marker([loc.lat, loc.lng], { icon: L.divIcon({ className: cls, html, iconSize: null }), interactive: false });
             locationLabels.push(label);
             if (currentMapLayer === 'satellite' && map && labelsEnabled) label.addTo(map);
         });
