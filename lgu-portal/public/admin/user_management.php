@@ -395,9 +395,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $picSrc  = ($picPath && file_exists(__DIR__ . '/../' . $picPath)) ? ('../' . $picPath) : null;
         $avatarMeta = um_avatar_meta(trim($emp['first_name'] . ' ' . $emp['last_name']));
 
+        $targetIsSuperAdminForEdit = strcasecmp($emp['role'], 'Super Admin') === 0;
+        $canEdit = ($targetId !== $currentUserId) && ($isSuperAdmin || !$targetIsSuperAdminForEdit);
+
         $profile = [
             'id'        => (int)$emp['user_id'],
             'name'      => trim($emp['first_name'] . ' ' . $emp['last_name']),
+            'firstName' => $emp['first_name'],
+            'lastName'  => $emp['last_name'],
             'email'     => $emp['email'],
             'role'      => $emp['role'],
             'picture'   => $picSrc,
@@ -407,10 +412,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'firstLogin'=> (bool)$emp['is_first_login'],
             'locked'    => (bool)$emp['account_locked'],
             'lastLogin' => $emp['last_login'] ? date('M j, Y g:i A', strtotime($emp['last_login'])) : 'Never',
+            'canEdit'   => $canEdit,
             'engineer'  => null,
         ];
 
-        // Engineer / Area Engineer accounts have an extended profile.
+        // Engineer / Area Engineer accounts have an extended profile — always expose
+        // an (empty-defaulted, if no row exists yet) engineer object for these two
+        // roles so the edit form can still be filled in from scratch.
         if (in_array($emp['role'], ['Engineer', 'Area Engineer'], true)) {
             $stmt = $conn->prepare("SELECT * FROM engineer_profiles WHERE user_id = ?");
             $stmt->bind_param('i', $targetId);
@@ -418,29 +426,183 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ep = $stmt->get_result()->fetch_assoc();
             $stmt->close();
 
-            if ($ep) {
-                $profile['engineer'] = [
-                    'fullName'       => $ep['full_name'] ?? '',
-                    'gender'         => $ep['gender'] ?? '',
-                    'dateOfBirth'    => $ep['date_of_birth'] ? date('M j, Y', strtotime($ep['date_of_birth'])) : '',
-                    'address'        => $ep['address'] ?? '',
-                    'contactNumber'  => $ep['contact_number'] ?? '',
-                    'discipline'     => $ep['engineering_discipline'] ?? '',
-                    'department'     => $ep['department'] ?? '',
-                    'yearsExperience'=> $ep['years_of_experience'],
-                    'specialization' => $ep['areas_of_specialization'] ?? '',
-                    'skills'         => array_values(array_filter([
-                        !empty($ep['skill_structural_design']) ? 'Structural Design' : null,
-                        !empty($ep['skill_site_inspection'])   ? 'Site Inspection'   : null,
-                        !empty($ep['skill_project_planning'])  ? 'Project Planning'  : null,
-                    ])),
-                    'cadSoftware'    => $ep['cad_software'] ?? '',
-                    'district'       => $ep['district'] ?? '',
-                ];
-            }
+            $profile['engineer'] = [
+                'fullName'       => $ep['full_name'] ?? '',
+                'gender'         => $ep['gender'] ?? '',
+                'dateOfBirth'    => ($ep['date_of_birth'] ?? null) ? date('M j, Y', strtotime($ep['date_of_birth'])) : '',
+                'dateOfBirthRaw' => $ep['date_of_birth'] ?? '',
+                'address'        => $ep['address'] ?? '',
+                'contactNumber'  => $ep['contact_number'] ?? '',
+                'discipline'     => $ep['engineering_discipline'] ?? '',
+                'department'     => $ep['department'] ?? '',
+                'yearsExperience'=> $ep['years_of_experience'] ?? '',
+                'specialization' => $ep['areas_of_specialization'] ?? '',
+                'skills'         => array_values(array_filter([
+                    !empty($ep['skill_structural_design']) ? 'Structural Design' : null,
+                    !empty($ep['skill_site_inspection'])   ? 'Site Inspection'   : null,
+                    !empty($ep['skill_project_planning'])  ? 'Project Planning'  : null,
+                ])),
+                'cadSoftware'    => $ep['cad_software'] ?? '',
+                'district'       => $ep['district'] ?? '',
+                'addressLat'     => $ep['address_lat'] ?? '',
+                'addressLng'     => $ep['address_lng'] ?? '',
+            ];
         }
 
         echo json_encode(['success' => true, 'profile' => $profile]);
+        exit;
+    }
+
+    // ── Edit every field on an employee's record — the View Profile modal's
+    // Save action. Employees-table identity fields for every role; the full
+    // engineer_profiles field set (including district) for both Engineer and
+    // Area Engineer, since the schema doesn't differentiate between them and
+    // Area Engineer accounts carry the exact same profile columns. ──────────
+    if ($action === 'update_employee') {
+        $targetId = (int)($input['user_id'] ?? 0);
+        if ($targetId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters.']); exit;
+        }
+        if ($targetId === $currentUserId) {
+            echo json_encode(['success' => false, 'message' => 'Use your own Profile page to edit your account.']); exit;
+        }
+        $target = um_find_user($conn, $targetId);
+        if (!$target) {
+            echo json_encode(['success' => false, 'message' => 'User not found.']); exit;
+        }
+        $targetIsSuperAdmin = strcasecmp($target['role'], 'Super Admin') === 0;
+        if (!$isSuperAdmin && $targetIsSuperAdmin) {
+            echo json_encode(['success' => false, 'message' => 'Only a Super Admin can edit a Super Admin account.']); exit;
+        }
+
+        $firstName = trim($input['first_name'] ?? '');
+        $lastName  = trim($input['last_name'] ?? '');
+        $email     = trim($input['email'] ?? '');
+        if ($firstName === '' || $lastName === '') {
+            echo json_encode(['success' => false, 'message' => 'First and last name are required.']); exit;
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'A valid email address is required.']); exit;
+        }
+        // Email must stay unique across employees (excluding this same row).
+        $dupStmt = $conn->prepare("SELECT user_id FROM employees WHERE email = ? AND user_id != ?");
+        $dupStmt->bind_param('si', $email, $targetId);
+        $dupStmt->execute();
+        if ($dupStmt->get_result()->fetch_assoc()) {
+            $dupStmt->close();
+            echo json_encode(['success' => false, 'message' => 'Another account already uses that email address.']); exit;
+        }
+        $dupStmt->close();
+
+        $stmt = $conn->prepare("UPDATE employees SET first_name = ?, last_name = ?, email = ? WHERE user_id = ?");
+        $stmt->bind_param('sssi', $firstName, $lastName, $email, $targetId);
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        if (!$ok) {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]); exit;
+        }
+
+        // Area Engineer: district-only save (mirrors profile.php's own "Area
+        // Engineer district-only" save path) — this role's edit form never
+        // sends the other engineer_profiles fields, so touching only the
+        // district column here avoids silently blanking out any Personal/
+        // Professional data a Super Admin may have filled in earlier.
+        if ($target['role'] === 'Area Engineer') {
+            $epDistrict     = trim($input['district'] ?? '');
+            $validDistricts = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6', ''];
+            if (!in_array($epDistrict, $validDistricts, true)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid district.']); exit;
+            }
+            $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
+            $epCheck->bind_param('i', $targetId);
+            $epCheck->execute();
+            $epExists = $epCheck->get_result()->num_rows > 0;
+            $epCheck->close();
+
+            if ($epExists) {
+                $epStmt = $conn->prepare("UPDATE engineer_profiles SET district = ?, updated_at = NOW() WHERE user_id = ?");
+                $epStmt->bind_param('si', $epDistrict, $targetId);
+            } else {
+                $epStmt = $conn->prepare("INSERT INTO engineer_profiles (user_id, district) VALUES (?, ?)");
+                $epStmt->bind_param('is', $targetId, $epDistrict);
+            }
+            if (!$epStmt->execute()) {
+                echo json_encode(['success' => false, 'message' => 'Database error (profile): ' . $epStmt->error]); exit;
+            }
+            $epStmt->close();
+        }
+
+        // Engineer: every engineer_profiles field (mirrors profile.php's own
+        // self-edit save logic).
+        if ($target['role'] === 'Engineer') {
+            $epFullName      = trim($input['full_name'] ?? '');
+            $epGender        = in_array($input['gender'] ?? '', ['Male', 'Female', 'Non-binary', 'Prefer not to say'], true) ? $input['gender'] : null;
+            $epDob           = !empty($input['date_of_birth']) ? $input['date_of_birth'] : null;
+            $epAddress       = trim($input['address'] ?? '');
+            $epContact       = trim($input['contact_number'] ?? '');
+            $epDiscipline    = trim($input['engineering_discipline'] ?? '');
+            $epDepartment    = trim($input['department'] ?? '');
+            $epExperience    = is_numeric($input['years_of_experience'] ?? '') ? (int)$input['years_of_experience'] : null;
+            $epSpecialization= trim($input['areas_of_specialization'] ?? '');
+            $epStructural    = !empty($input['skill_structural_design']) ? 1 : 0;
+            $epSite          = !empty($input['skill_site_inspection']) ? 1 : 0;
+            $epPlanning      = !empty($input['skill_project_planning']) ? 1 : 0;
+            $epCad           = trim($input['cad_software'] ?? '');
+            $epDistrict      = trim($input['district'] ?? '');
+            $epAddrLat       = is_numeric($input['address_lat'] ?? '') ? (float)$input['address_lat'] : null;
+            $epAddrLng       = is_numeric($input['address_lng'] ?? '') ? (float)$input['address_lng'] : null;
+            $validDistricts  = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6', ''];
+            if (!in_array($epDistrict, $validDistricts, true)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid district.']); exit;
+            }
+
+            $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
+            $epCheck->bind_param('i', $targetId);
+            $epCheck->execute();
+            $epExists = $epCheck->get_result()->num_rows > 0;
+            $epCheck->close();
+
+            if ($epExists) {
+                $epStmt = $conn->prepare(
+                    "UPDATE engineer_profiles SET full_name=?, gender=?, date_of_birth=?, address=?, contact_number=?,
+                        engineering_discipline=?, department=?, years_of_experience=?, areas_of_specialization=?,
+                        skill_structural_design=?, skill_site_inspection=?, skill_project_planning=?, cad_software=?,
+                        district=?, address_lat=?, address_lng=?, updated_at=NOW() WHERE user_id=?"
+                );
+                $epStmt->bind_param(
+                    'sssssssisiiissddi',
+                    $epFullName, $epGender, $epDob, $epAddress, $epContact, $epDiscipline, $epDepartment,
+                    $epExperience, $epSpecialization, $epStructural, $epSite, $epPlanning, $epCad, $epDistrict,
+                    $epAddrLat, $epAddrLng, $targetId
+                );
+            } else {
+                $epStmt = $conn->prepare(
+                    "INSERT INTO engineer_profiles
+                        (user_id, full_name, gender, date_of_birth, address, contact_number, engineering_discipline,
+                         department, years_of_experience, areas_of_specialization, skill_structural_design,
+                         skill_site_inspection, skill_project_planning, cad_software, district, address_lat, address_lng)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                );
+                $epStmt->bind_param(
+                    'isssssssisiiissdd',
+                    $targetId, $epFullName, $epGender, $epDob, $epAddress, $epContact, $epDiscipline, $epDepartment,
+                    $epExperience, $epSpecialization, $epStructural, $epSite, $epPlanning, $epCad, $epDistrict,
+                    $epAddrLat, $epAddrLng
+                );
+            }
+            if (!$epStmt->execute()) {
+                echo json_encode(['success' => false, 'message' => 'Database error (profile): ' . $epStmt->error]); exit;
+            }
+            $epStmt->close();
+        }
+
+        $targetName = trim("{$firstName} {$lastName}");
+        $actor = activity_actor_name();
+        log_activity($conn, 'user_management', 'user', $targetId, 'profile_edited',
+            "{$actor} updated {$targetName}'s account information.");
+
+        echo json_encode(['success' => true, 'message' => 'Account updated successfully.']);
         exit;
     }
 
@@ -723,6 +885,8 @@ function um_status_icon(array $u): string {
 <link rel="stylesheet" href="../assets/css/emp-global.css?v=12">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <title>User Management | LGU Portal</title>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -1265,29 +1429,404 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .vp-det-skill-badge { padding: 5px 13px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(55,98,200,.12); color: #2851b3; border: 1px solid rgba(55,98,200,.3); }
 [data-theme="dark"] .vp-det-skill-badge { background: rgba(95,140,255,.16); color: #8fb4ff; }
 .vp-det-divider { height: 1px; background: var(--border-color, rgba(0,0,0,.08)); margin: 16px 0 0; }
-.vp-det-footer { padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08)); flex-shrink: 0; display: flex; justify-content: center; }
+.vp-det-footer { padding: 12px 22px; border-top: 1px solid var(--border-color, rgba(0,0,0,.08)); flex-shrink: 0; display: flex; justify-content: center; gap: 10px; }
 .vp-det-close-btn {
     padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer; font-size: 13px; font-weight: 600;
     background: linear-gradient(135deg,#3762c8,#2851b3); color: #fff; box-shadow: 0 4px 12px rgba(55,98,200,.3);
     transition: all .18s ease;
 }
 .vp-det-close-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(55,98,200,.4); }
+.vp-det-close-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+.vp-det-cancel-btn {
+    padding: 9px 22px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600;
+    background: transparent; color: var(--text-secondary, #64748b); border: 1.5px solid var(--border-color, rgba(0,0,0,.14));
+    transition: all .18s ease;
+}
+.vp-det-cancel-btn:hover { background: rgba(0,0,0,.04); color: var(--text-primary, #1a1a2e); }
+[data-theme="dark"] .vp-det-cancel-btn:hover { background: rgba(255,255,255,.06); }
+
+/* ── Editable profile fields (User Management edit-in-place) ── */
+.vp-edit-input, .vp-edit-select, .vp-edit-textarea {
+    width: 100%; padding: 8px 11px; border-radius: 8px; border: 1.5px solid var(--border-color, rgba(0,0,0,.14));
+    background: rgba(0,0,0,.015); color: var(--text-primary, #1a1a2e); font-size: 13px; font-family: inherit;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    box-sizing: border-box;
+}
+.vp-edit-input:hover, .vp-edit-select:hover, .vp-edit-textarea:hover { border-color: rgba(55,98,200,.4); }
+.vp-edit-textarea { resize: vertical; min-height: 58px; line-height: 1.5; }
+.vp-edit-input:focus, .vp-edit-select:focus, .vp-edit-textarea:focus {
+    outline: none; border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.15); background: var(--bg-primary, #fff);
+}
+.vp-edit-input:disabled, .vp-edit-select:disabled, .vp-edit-textarea:disabled {
+    border-color: transparent; background: transparent; color: var(--text-primary, #1a1a2e);
+    padding: 0; font-size: 13.5px; opacity: .85; cursor: default; resize: none; appearance: none; -webkit-appearance: none;
+}
+[data-theme="dark"] .vp-edit-input, [data-theme="dark"] .vp-edit-select, [data-theme="dark"] .vp-edit-textarea {
+    background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.16); color: #e8ecf5;
+}
+[data-theme="dark"] .vp-edit-input:focus, [data-theme="dark"] .vp-edit-select:focus, [data-theme="dark"] .vp-edit-textarea:focus { background: rgba(255,255,255,.06); }
+/* Same specificity as the dark-mode rule above (attribute + class), so without
+   this the disabled/read-only look (transparent, no border) got silently
+   overridden by the dark-mode background whenever a self-view or a Super-Admin
+   target was opened in dark mode — those read-only boxes rendered visually
+   identical to a genuinely editable field on another account. */
+[data-theme="dark"] .vp-edit-input:disabled, [data-theme="dark"] .vp-edit-select:disabled, [data-theme="dark"] .vp-edit-textarea:disabled {
+    background: transparent; border-color: transparent;
+}
+/* Auto-growing single-line textareas used for text-ish fields (Email, Name, etc.)
+   so long values (e.g. long Gmail addresses) wrap onto a 2nd line instead of
+   silently clipping/scrolling the way a plain <input> would. */
+textarea.vp-edit-input-wrap {
+    resize: none; overflow: hidden; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+    min-height: 36px; line-height: 1.4;
+}
+.vp-edit-checkbox-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.vp-edit-checkbox-item {
+    display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 20px;
+    border: 1.5px solid var(--border-color, rgba(0,0,0,.14)); font-size: 12px; font-weight: 600; cursor: pointer; user-select: none;
+}
+.vp-edit-checkbox-item input[type="checkbox"] { accent-color: #3762c8; width: 15px; height: 15px; cursor: pointer; }
+.vp-edit-checkbox-item.locked-look { cursor: default; opacity: .8; }
+.vp-edit-checkbox-item.locked-look input[type="checkbox"] { cursor: default; }
+.vp-det-district-preview { margin-top: 8px; }
+
+/* ── Save confirmation dialog — canonical design ported verbatim from the
+   reports pages (pending_reports.php's .rep-confirm-* modal) ── */
+.rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:10050; }
+.rep-confirm-backdrop.active { display:flex; }
+.rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }
+@keyframes repConfirmPop { from{transform:translateY(24px) scale(.93);opacity:0;} to{transform:translateY(0) scale(1);opacity:1;} }
+[data-theme="dark"] .rep-confirm-modal { background:rgba(24,24,30,.98);box-shadow:0 25px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07); }
+.rep-confirm-icon { width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px; }
+.rep-confirm-icon.save-icon { background:linear-gradient(135deg,rgba(55,98,200,.12),rgba(55,98,200,.08));border:1px solid rgba(55,98,200,.2); }
+.rep-confirm-title { font-size:1.05rem;font-weight:700;color:var(--text-primary,#1a1a2e);margin-bottom:8px; }
+[data-theme="dark"] .rep-confirm-title { color:#e2e8f0; }
+.rep-confirm-desc { font-size:.92rem;color:var(--text-secondary,#64748b);margin-bottom:22px;line-height:1.5; }
+[data-theme="dark"] .rep-confirm-desc { color:#94a3b8; }
+.rep-confirm-btns { display:flex;gap:10px;width:100%; }
+.rep-confirm-btn { flex:1;padding:10px 0;border-radius:10px;border:none;font-weight:600;font-size:14px;cursor:pointer;transition:all .18s ease;font-family:inherit; }
+.rep-confirm-cancel { background:var(--bg-secondary,#f1f5f9);color:var(--text-primary,#374151);border:1px solid var(--border-color,#e2e8f0)!important; }
+.rep-confirm-cancel:hover { background:var(--border-color,#e2e8f0); }
+[data-theme="dark"] .rep-confirm-cancel { background:rgba(255,255,255,.06);color:#e2e8f0;border-color:rgba(255,255,255,.1)!important; }
+.rep-confirm-ok-save { background:linear-gradient(135deg,#3762c8,#2851b3);color:#fff;box-shadow:0 4px 12px rgba(55,98,200,.3); }
+.rep-confirm-ok-save:hover { transform:translateY(-1px);box-shadow:0 6px 16px rgba(55,98,200,.4); }
+
+/* ── Searchable combobox (Gender / District) — ported verbatim from profile.php ── */
+.prof-combobox { position: relative; width: 100%; }
+.prof-combobox-display {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 11px; border-radius: 8px; border: 1.5px solid var(--border-color, rgba(0,0,0,.14));
+    background: rgba(0,0,0,.015); color: var(--text-primary); font-size: 13px; cursor: pointer; user-select: none;
+    transition: border-color .2s, box-shadow .2s; min-height: 36px; box-sizing: border-box; font-family: inherit;
+}
+.prof-combobox-display:hover { border-color: #3762c8; }
+.prof-combobox-display.open { border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.15); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.prof-combobox-display.locked { background: transparent; border-color: transparent; cursor: not-allowed; opacity: .85; padding: 0; min-height: 0; }
+[data-theme="dark"] .prof-combobox-display { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.16); }
+[data-theme="dark"] .prof-combobox-display.locked { background: transparent; border-color: transparent; }
+.prof-combobox-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); opacity: .75; transition: color .15s; }
+.prof-combobox-label.selected { color: var(--text-primary); opacity: 1; font-weight: 500; }
+.prof-combobox-arrow { font-size: 11px; color: var(--text-secondary); margin-left: 8px; transition: transform .2s; flex-shrink: 0; }
+.prof-combobox-display.open .prof-combobox-arrow { transform: rotate(180deg); }
+.prof-combobox-dropdown { position: fixed; background: var(--bg-secondary); border: 2px solid #3762c8; border-radius: 9px; box-shadow: 0 10px 28px rgba(0,0,0,.22); z-index: 99999; overflow: hidden; display: none; }
+.prof-combobox-dropdown.open { display: block; }
+[data-theme="dark"] .prof-combobox-dropdown { background: #1e1e24; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
+.prof-combobox-search { width: 100%; padding: 9px 13px; border: none; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; outline: none; box-sizing: border-box; font-family: inherit; }
+.prof-combobox-search::placeholder { color: var(--text-secondary); opacity: .6; }
+[data-theme="dark"] .prof-combobox-search { background: #1e1e24; }
+.prof-combobox-list { max-height: 196px; overflow-y: auto; overscroll-behavior: contain; }
+.prof-combobox-list::-webkit-scrollbar { width: 5px; }
+.prof-combobox-list::-webkit-scrollbar-track { background: transparent; }
+.prof-combobox-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.prof-combobox-option { padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text-primary); border-bottom: 1px solid var(--border-color); transition: background .12s; display: flex; align-items: center; gap: 8px; }
+.prof-combobox-option:last-child { border-bottom: none; }
+.prof-combobox-option:hover, .prof-combobox-option.highlighted { background: rgba(55,98,200,.09); }
+.prof-combobox-option.selected-opt { background: rgba(55,98,200,.14); font-weight: 600; color: #3762c8; }
+[data-theme="dark"] .prof-combobox-option.selected-opt { color: #7aa3f5; }
+.prof-combobox-no-results { padding: 13px 14px; text-align: center; font-size: 13px; color: var(--text-secondary); opacity: .7; }
+
+/* District combobox embedded inside the colored Assignment card (Area Engineer) */
+.vp-det-district-card .prof-combobox-display { background: rgba(255,255,255,.55); margin-top: 3px; }
+[data-theme="dark"] .vp-det-district-card .prof-combobox-display { background: rgba(0,0,0,.22); }
+.vp-det-district-card .prof-combobox-display.locked { background: transparent; }
+.vp-det-district-card .prof-combobox-label { font-size: 15px; font-weight: 700; color: var(--text-primary); opacity: 1; }
+
+/* ── DOB date picker — ported verbatim from profile.php ── */
+.dob-input-display {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 11px; border-radius: 8px; border: 1.5px solid var(--border-color, rgba(0,0,0,.14));
+    background: rgba(0,0,0,.015); color: var(--text-primary); font-size: 13px; cursor: pointer; user-select: none;
+    transition: border-color .2s, box-shadow .2s; min-height: 36px; box-sizing: border-box; font-family: inherit;
+}
+.dob-input-display:hover { border-color: #3762c8; }
+.dob-input-display.locked { background: transparent; border-color: transparent; cursor: not-allowed; opacity: .85; padding: 0; min-height: 0; }
+[data-theme="dark"] .dob-input-display { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.16); }
+[data-theme="dark"] .dob-input-display.locked { background: transparent; border-color: transparent; }
+.dob-input-display .dob-text { flex: 1; }
+.dob-input-display .dob-text.placeholder { color: var(--text-secondary); opacity: .6; }
+.dob-input-display .dob-icon { font-size: 14px; margin-left: 8px; flex-shrink: 0; }
+.dob-clear-btn { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 14px; padding: 0 2px 0 6px; line-height: 1; opacity: .6; transition: opacity .15s; }
+.dob-clear-btn:hover { opacity: 1; color: #ef4444; }
+#dobPickerOverlay {
+    position: fixed; z-index: 99999; display: none; visibility: hidden; top: -9999px; left: -9999px;
+    width: 288px; max-height: 80vh; overflow-y: auto; overflow-x: hidden;
+    background: #ffffff; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.10);
+    border: 1px solid rgba(55,98,200,.13); font-family: inherit; scroll-behavior: smooth;
+}
+#dobPickerOverlay::-webkit-scrollbar { width: 5px; }
+#dobPickerOverlay::-webkit-scrollbar-track { background: transparent; }
+#dobPickerOverlay::-webkit-scrollbar-thumb { background: rgba(55,98,200,.25); border-radius: 4px; }
+.dob-dp-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; background: linear-gradient(135deg, #3762c8 0%, #2851b3 100%); gap: 6px; }
+@keyframes dobPopIn { from { opacity: 0; transform: scale(0.94) translateY(-6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.dob-dp-nav { width: 28px; height: 28px; border-radius: 8px; border: none; background: rgba(255,255,255,.18); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .12s; flex-shrink: 0; }
+.dob-dp-nav:hover { background: rgba(255,255,255,.32); transform: scale(1.08); }
+.dob-dp-nav:active { transform: scale(0.95); }
+.dob-dp-header-center { display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+.dob-dp-month-btn, .dob-dp-year-btn { background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 13.5px; font-weight: 700; padding: 4px 9px; border-radius: 7px; cursor: pointer; letter-spacing: .02em; transition: background .15s; font-family: inherit; }
+.dob-dp-month-btn:hover, .dob-dp-year-btn:hover { background: rgba(255,255,255,.3); }
+.dob-dp-month-btn.active, .dob-dp-year-btn.active { background: rgba(255,255,255,.4); box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+.dob-year-dropdown { display: none; padding: 6px 8px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); max-height: 180px; overflow-y: auto; overscroll-behavior: contain; }
+.dob-year-dropdown::-webkit-scrollbar { width: 5px; }
+.dob-year-dropdown::-webkit-scrollbar-track { background: transparent; }
+.dob-year-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.dob-year-dropdown.open { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.dob-year-opt { padding: 6px 4px; border-radius: 7px; border: none; background: transparent; color: var(--text-primary); font-size: 12.5px; cursor: pointer; text-align: center; transition: background .12s; font-family: inherit; }
+.dob-year-opt:hover { background: rgba(55,98,200,.1); color: #3762c8; }
+.dob-year-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.dob-month-dropdown { display: none; padding: 6px 8px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); max-height: 180px; overflow-y: auto; overscroll-behavior: contain; }
+.dob-month-dropdown::-webkit-scrollbar { width: 5px; }
+.dob-month-dropdown::-webkit-scrollbar-track { background: transparent; }
+.dob-month-dropdown::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 4px; }
+.dob-month-dropdown.open { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+.dob-month-opt { padding: 7px 4px; border-radius: 7px; border: none; background: transparent; color: var(--text-primary); font-size: 12px; cursor: pointer; text-align: center; transition: background .12s; font-family: inherit; }
+.dob-month-opt:hover { background: rgba(55,98,200,.1); color: #3762c8; }
+.dob-month-opt.selected { background: #3762c8; color: #fff; font-weight: 700; }
+.dob-dp-weekdays { display: grid; grid-template-columns: repeat(7,1fr); padding: 8px 10px 2px; gap: 2px; }
+.dob-dp-weekdays span { text-align: center; font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .06em; padding: 2px 0; }
+.dob-dp-weekdays span:first-child, .dob-dp-weekdays span:last-child { color: #f87171; }
+.dob-dp-grid { display: grid; grid-template-columns: repeat(7,1fr); padding: 2px 10px 8px; gap: 3px; }
+.dob-dp-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; color: #1e293b; border: none; background: transparent; transition: background .13s, color .13s, transform .1s; padding: 0; line-height: 1; }
+.dob-dp-day:hover { background: #eef2ff; color: #3762c8; transform: scale(1.12); }
+.dob-dp-day:active { transform: scale(0.95); }
+.dob-dp-day.dob-empty { cursor: default; pointer-events: none; }
+.dob-dp-day.dob-weekend { color: #ef4444; }
+.dob-dp-day.dob-weekend:hover { background: #fff0f0; color: #dc2626; }
+.dob-dp-day.dob-today { background: rgba(55,98,200,.1); color: #3762c8; font-weight: 700; position: relative; }
+.dob-dp-day.dob-today::after { content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:#3762c8; }
+.dob-dp-day.dob-selected { background: linear-gradient(135deg, #3762c8, #2851b3) !important; color: #fff !important; font-weight: 700; box-shadow: 0 3px 10px rgba(55,98,200,.35); transform: scale(1.05); }
+.dob-dp-day.dob-selected::after { display: none; }
+.dob-dp-day.dob-future { opacity: .3; pointer-events: none; cursor: default; }
+.dob-dp-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 12px; border-top: 1px solid rgba(55,98,200,.08); gap: 8px; }
+.dob-dp-clear { flex: 1; padding: 7px 0; border-radius: 9px; border: 1.5px solid rgba(239,68,68,.3); background: transparent; color: #ef4444; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; letter-spacing: .03em; font-family: inherit; }
+.dob-dp-clear:hover { background: #fff0f0; border-color: #ef4444; }
+.dob-dp-close { flex: 1; padding: 7px 0; border-radius: 9px; border: none; background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity .15s; letter-spacing: .03em; font-family: inherit; }
+.dob-dp-close:hover { opacity: .88; }
+[data-theme="dark"] #dobPickerOverlay { background: #1e2235; border-color: rgba(95,140,255,.2); box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.3); }
+[data-theme="dark"] .dob-dp-day { color: #e2e8f0; }
+[data-theme="dark"] .dob-dp-day:hover { background: rgba(55,98,200,.2); color: #8ab4f8; }
+[data-theme="dark"] .dob-dp-day.dob-weekend { color: #f87171; }
+[data-theme="dark"] .dob-dp-day.dob-today { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .dob-dp-day.dob-today::after { background: #8ab4f8; }
+[data-theme="dark"] .dob-dp-footer { border-top-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .dob-dp-weekdays span { color: #64748b; }
+[data-theme="dark"] .dob-dp-weekdays span:first-child, [data-theme="dark"] .dob-dp-weekdays span:last-child { color: #f87171; }
+[data-theme="dark"] .dob-year-dropdown, [data-theme="dark"] .dob-month-dropdown { background: #1e2235; border-bottom-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .dob-year-dropdown::-webkit-scrollbar-thumb, [data-theme="dark"] .dob-month-dropdown::-webkit-scrollbar-thumb { background: rgba(95,140,255,.35); }
+[data-theme="dark"] .dob-year-opt, [data-theme="dark"] .dob-month-opt { color: #e2e8f0; }
+[data-theme="dark"] .dob-year-opt:hover, [data-theme="dark"] .dob-month-opt:hover { background: rgba(55,98,200,.22); color: #8ab4f8; }
+[data-theme="dark"] .dob-dp-clear { color: #f87171; border-color: rgba(239,68,68,.4); }
+[data-theme="dark"] .dob-dp-clear:hover { background: rgba(239,68,68,.1); }
+
+/* ── GIS address map picker — ported from profile.php's Engineer address
+   picker (Leaflet, satellite/street toggle, Nominatim search + reverse
+   geocode, district auto-detect). IDs prefixed vp* since this modal lives
+   inside User Management's dynamically re-rendered profile modal. ── */
+#vpAddrMapBtn {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: #2b6cb0; border: none; color: #fff; width: 30px; height: 30px;
+    border-radius: 50%; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 2;
+}
+#vpAddrMapBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: flex; align-items: stretch; justify-content: stretch; z-index: 10100;
+    visibility: hidden; opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, visibility .18s ease;
+}
+#vpAddrMapBackdrop.show { visibility: visible; opacity: 1; pointer-events: auto; }
+#vpAddrMapModal {
+    background: var(--bg-primary, #fff); width: 100%; height: 100%;
+    border-radius: 0; overflow: hidden; box-shadow: none;
+    display: flex; flex-direction: column; flex: 1;
+}
+.vp-map-header {
+    padding: 14px 18px; font-weight: 600; border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: center; align-items: center; position: relative;
+    flex-shrink: 0; color: var(--text-primary);
+}
+.vp-map-header h3 { flex: 1; text-align: center; margin: 0; font-size: 16px; }
+#vpMapGpsBtn {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    border: none; background: #eef2ff; border-radius: 10px; padding: 8px 12px;
+    font-size: 18px; cursor: pointer; z-index: 10; transition: background .15s;
+}
+#vpMapGpsBtn:hover { background: #e0e7ff; }
+[data-theme="dark"] #vpMapGpsBtn { background: rgba(55,98,200,.22); color: var(--text-primary); }
+[data-theme="dark"] #vpMapGpsBtn:hover { background: rgba(55,98,200,.35); }
+#vpMapLayerToggle {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    background: #2b6cb0; color: #fff; border: none; padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; cursor: pointer; font-weight: 600; transition: all .2s; z-index: 10;
+}
+#vpMapLayerToggle:hover { background: #245a96; }
+#vpMapDistrictInfo {
+    background: #eef2ff; border: 1px solid #c7d1f3; border-radius: 8px; padding: 6px 12px;
+    margin: 6px 16px 0; font-size: 12px; color: #3650c7; font-weight: 600;
+    text-align: center; display: none; flex-shrink: 0;
+}
+[data-theme="dark"] #vpMapDistrictInfo { background: rgba(55,98,200,.2); border-color: rgba(55,98,200,.4); color: #8ab4f8; }
+.vp-map-address-input { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+.vp-map-search-wrap { position: relative; flex: 1; min-width: 0; }
+#vpMapSearchInput {
+    width: 100%; box-sizing: border-box; padding: 10px 34px 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--border-color); font-size: 14px; background: var(--bg-primary); color: var(--text-primary);
+    transition: border-color .2s, box-shadow .2s; font-family: inherit;
+}
+#vpMapSearchInput:focus { outline: none; border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.15); }
+#vpMapSearchClearBtn {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 15px;
+    line-height: 1; padding: 2px 4px; border-radius: 4px; display: none; transition: color .15s;
+}
+#vpMapSearchClearBtn:hover { color: var(--text-primary); }
+#vpMapSearchClearBtn.visible { display: block; }
+#vpMapAddrField {
+    width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid var(--border-color); font-size: 14px; background: var(--bg-primary); color: var(--text-primary);
+    transition: border-color .2s; font-family: inherit;
+}
+#vpMapAddrField:focus { outline: none; border-color: #3762c8; box-shadow: 0 0 0 3px rgba(55,98,200,.15); }
+#vpMapSearchDropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15); max-height: 200px; overflow-y: auto; z-index: 10200;
+    display: none; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border-color) transparent;
+}
+#vpMapSearchDropdown::-webkit-scrollbar { width: 5px; }
+#vpMapSearchDropdown::-webkit-scrollbar-track { background: transparent; }
+#vpMapSearchDropdown::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+#vpMapSearchDropdown.open { display: block; }
+[data-theme="dark"] #vpMapSearchDropdown { box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.vp-map-search-item { padding: 9px 13px; font-size: 13px; cursor: pointer; color: var(--text-primary); border-bottom: 1px solid var(--border-color); display: flex; align-items: flex-start; gap: 8px; transition: background .12s; }
+.vp-map-search-item:last-child { border-bottom: none; }
+.vp-map-search-item:hover { background: rgba(43,108,176,.09); }
+[data-theme="dark"] .vp-map-search-item:hover { background: rgba(74,143,216,.12); }
+.vp-map-search-item-icon { flex-shrink: 0; margin-top: 1px; opacity: .6; font-size: 14px; }
+.vp-map-search-item-text { flex: 1; min-width: 0; }
+.vp-map-search-item-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp-map-search-item-addr { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp-map-search-spinner { display: none; padding: 10px 14px; font-size: 12px; color: var(--text-secondary); }
+.vp-map-search-spinner.visible { display: block; }
+#vpAddrMapWrapper { position: relative; margin: 10px 12px 12px; border-radius: 12px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+#vpAddrMap { width: 100%; flex: 1; min-height: 300px; border-radius: 12px; touch-action: none; display: block; }
+.vp-map-actions { display: flex; justify-content: center; align-items: center; padding: 12px 16px; border-top: 1px solid var(--border-color); gap: 12px; flex-shrink: 0; }
+.vp-map-actions button { flex: 0 1 200px; min-width: 120px; max-width: 240px; padding: 11px 22px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; transition: all .2s ease; font-size: 15px; font-family: inherit; }
+.vp-map-actions .btn-cancel { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.vp-map-actions .btn-cancel:hover { background: #e5e7eb; }
+[data-theme="dark"] .vp-map-actions .btn-cancel { background: rgba(255,255,255,.1); color: var(--text-primary); border-color: var(--border-color); }
+[data-theme="dark"] .vp-map-actions .btn-cancel:hover { background: rgba(255,255,255,.15); }
+.vp-map-actions .btn-save { background: #2b6cb0; color: #fff; }
+.vp-map-actions .btn-save:hover { background: #245a96; }
+@media (max-width: 768px) {
+    #vpAddrMapWrapper { margin: 8px 10px 10px; border-radius: 10px; }
+    #vpAddrMap { min-height: 250px; border-radius: 10px; }
+    #vpMapGpsBtn { left: 14px; padding: 6px 10px; font-size: 16px; }
+    #vpMapLayerToggle { right: 14px; padding: 6px 12px; font-size: 12px; }
+    .vp-map-actions { flex-direction: row; gap: 10px; }
+    .vp-map-actions button { flex: 1; padding: 12px 16px; font-size: 14px; max-width: 160px; }
+}
+[data-theme="dark"] .leaflet-bar a { background-color: #2a2a35 !important; color: #e2e8f0 !important; border-color: rgba(255,255,255,.12) !important; }
+[data-theme="dark"] .leaflet-bar a:hover { background-color: #3a3a4a !important; }
+[data-theme="dark"] .leaflet-control-attribution { background: rgba(28,28,35,.85) !important; color: #94a3b8 !important; }
+[data-theme="dark"] .leaflet-control-attribution a { color: #8ab4f8 !important; }
+[data-theme="dark"] .leaflet-popup-content-wrapper, [data-theme="dark"] .leaflet-popup-tip { background: #1e1e2e !important; color: #e2e8f0 !important; box-shadow: 0 6px 20px rgba(0,0,0,.5) !important; }
+#vpAddrMap .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 1px 4px rgba(0,0,0,.12) !important; border-radius: 14px !important; overflow: hidden !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; }
+#vpAddrMap .leaflet-control-zoom-in, #vpAddrMap .leaflet-control-zoom-out { width: 36px !important; height: 36px !important; line-height: 36px !important; font-size: 18px !important; font-weight: 400 !important; color: #2b6cb0 !important; background: rgba(255,255,255,.92) !important; border: none !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: background .15s ease, color .15s ease, transform .12s ease !important; text-decoration: none !important; position: relative !important; }
+#vpAddrMap .leaflet-control-zoom-in { border-radius: 14px 14px 0 0 !important; }
+#vpAddrMap .leaflet-control-zoom-out { border-radius: 0 0 14px 14px !important; border-top: 1px solid rgba(43,108,176,.12) !important; }
+#vpAddrMap .leaflet-control-zoom-in:hover, #vpAddrMap .leaflet-control-zoom-out:hover { background: #2b6cb0 !important; color: #fff !important; transform: none !important; }
+#vpAddrMap .leaflet-control-zoom-in:active, #vpAddrMap .leaflet-control-zoom-out:active { background: #245a96 !important; color: #fff !important; transform: scale(.94) !important; }
+[data-theme="dark"] #vpAddrMap .leaflet-control-zoom-in, [data-theme="dark"] #vpAddrMap .leaflet-control-zoom-out { background: rgba(26,26,26,.88) !important; color: #8ab4f8 !important; }
+[data-theme="dark"] #vpAddrMap .leaflet-control-zoom-out { border-top: 1px solid rgba(255,255,255,.08) !important; }
+[data-theme="dark"] #vpAddrMap .leaflet-control-zoom-in:hover, [data-theme="dark"] #vpAddrMap .leaflet-control-zoom-out:hover { background: #3762c8 !important; color: #fff !important; }
+[data-theme="dark"] #vpAddrMap .leaflet-control-zoom { box-shadow: 0 4px 20px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3) !important; }
+#vpAddrMap .leaflet-control-zoom-in.leaflet-disabled, #vpAddrMap .leaflet-control-zoom-out.leaflet-disabled { color: #b0b8c9 !important; cursor: not-allowed !important; background: rgba(255,255,255,.6) !important; }
+[data-theme="dark"] #vpAddrMap .leaflet-control-zoom-in.leaflet-disabled, [data-theme="dark"] #vpAddrMap .leaflet-control-zoom-out.leaflet-disabled { color: rgba(255,255,255,.2) !important; background: rgba(26,26,26,.5) !important; }
+
+/* ── Skill toggle cards — ported verbatim from profile.php ── */
+.eng-skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 8px 0 18px; }
+.eng-skill-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--border-color); border-radius: 11px; cursor: pointer; transition: all .18s; user-select: none; background: rgba(0,0,0,.015); }
+.eng-skill-card:hover { border-color: #3762c8; background: rgba(55,98,200,.06); }
+.eng-skill-card input[type="checkbox"] { display: none; }
+.eng-skill-card .sk-toggle { width: 44px; height: 24px; border-radius: 12px; background: rgba(150,150,170,.35); border: 2px solid rgba(150,150,170,.5); position: relative; flex-shrink: 0; transition: background .2s, border-color .2s; margin-left: auto; }
+.eng-skill-card .sk-toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left .2s, transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.eng-skill-card.checked .sk-toggle { background: #3762c8; border-color: #3762c8; }
+.eng-skill-card.checked .sk-toggle::after { left: 22px; }
+[data-theme="dark"] .eng-skill-card .sk-toggle { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.25); }
+[data-theme="dark"] .eng-skill-card.checked .sk-toggle { background: #4a7be0; border-color: #4a7be0; }
+.eng-skill-card .sk-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.eng-skill-card .sk-icon { font-size: 18px; }
+.eng-skill-card.locked-look { cursor: default; opacity: .8; }
+.eng-skill-card.locked-look:hover { border-color: var(--border-color); background: rgba(0,0,0,.015); }
+
+/* ── Canonical district palette (matches archive_reports.php / requests.php / sched.js) ── */
+.district-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 13px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8 0%,#5b8aff 100%); color:#fff; box-shadow:0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42 0%,#34c774 100%); color:#fff; box-shadow:0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00 0%,#f59033 100%); color:#fff; box-shadow:0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457 0%,#ec4899 100%); color:#fff; box-shadow:0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8 0%,#8b5cf6 100%); color:#fff; box-shadow:0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a 0%,#0ea5c9 100%); color:#fff; box-shadow:0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563 0%,#9ca3af 100%); color:#fff; box-shadow:0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
 
 /* ── Area Engineer's "assigned district" summary (in place of full personal/professional/skills sections) ── */
 .vp-det-district-card {
     display: flex; align-items: center; gap: 14px; margin-top: 8px;
     padding: 16px 18px; border-radius: 14px;
-    background: rgba(55,98,200,.06); border: 1px solid rgba(55,98,200,.18);
+    background: rgba(75,85,99,.06); border: 1px solid rgba(75,85,99,.18);
+    transition: background .2s ease, border-color .2s ease;
 }
-[data-theme="dark"] .vp-det-district-card { background: rgba(95,140,255,.1); border-color: rgba(95,140,255,.22); }
+[data-theme="dark"] .vp-det-district-card { background: rgba(156,163,175,.1); border-color: rgba(156,163,175,.22); }
 .vp-det-district-icon {
     width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-    background: linear-gradient(135deg,#3762c8,#5f8cff); color: #fff;
+    background: linear-gradient(135deg,#4b5563,#9ca3af); color: #fff;
     display: flex; align-items: center; justify-content: center; font-size: 19px;
-    box-shadow: 0 4px 12px rgba(55,98,200,.3);
+    box-shadow: 0 4px 12px rgba(75,85,99,.3);
+    transition: background .2s ease, box-shadow .2s ease;
 }
 .vp-det-district-label { font-size: 10px; font-weight: 700; color: var(--text-secondary, #64748b); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
 .vp-det-district-value { font-size: 15px; font-weight: 700; color: var(--text-primary, #1a1a2e); }
+
+.vp-det-district-card.dcard-d1 { background: rgba(55,98,200,.08); border-color: rgba(55,98,200,.24); }
+.vp-det-district-card.dcard-d2 { background: rgba(26,122,66,.08); border-color: rgba(26,122,66,.24); }
+.vp-det-district-card.dcard-d3 { background: rgba(184,92,0,.08); border-color: rgba(184,92,0,.24); }
+.vp-det-district-card.dcard-d4 { background: rgba(173,20,87,.08); border-color: rgba(173,20,87,.24); }
+.vp-det-district-card.dcard-d5 { background: rgba(81,45,168,.08); border-color: rgba(81,45,168,.24); }
+.vp-det-district-card.dcard-d6 { background: rgba(0,96,122,.08); border-color: rgba(0,96,122,.24); }
+[data-theme="dark"] .vp-det-district-card.dcard-d1 { background: rgba(91,138,255,.12); border-color: rgba(91,138,255,.28); }
+[data-theme="dark"] .vp-det-district-card.dcard-d2 { background: rgba(52,199,116,.12); border-color: rgba(52,199,116,.28); }
+[data-theme="dark"] .vp-det-district-card.dcard-d3 { background: rgba(245,144,51,.12); border-color: rgba(245,144,51,.28); }
+[data-theme="dark"] .vp-det-district-card.dcard-d4 { background: rgba(236,72,153,.12); border-color: rgba(236,72,153,.28); }
+[data-theme="dark"] .vp-det-district-card.dcard-d5 { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.28); }
+[data-theme="dark"] .vp-det-district-card.dcard-d6 { background: rgba(14,165,201,.12); border-color: rgba(14,165,201,.28); }
+
+.vp-det-district-icon.dicon-d1 { background: linear-gradient(135deg,#3762c8,#5b8aff); box-shadow: 0 4px 12px rgba(55,98,200,.35); }
+.vp-det-district-icon.dicon-d2 { background: linear-gradient(135deg,#1a7a42,#34c774); box-shadow: 0 4px 12px rgba(26,122,66,.35); }
+.vp-det-district-icon.dicon-d3 { background: linear-gradient(135deg,#b85c00,#f59033); box-shadow: 0 4px 12px rgba(184,92,0,.35); }
+.vp-det-district-icon.dicon-d4 { background: linear-gradient(135deg,#ad1457,#ec4899); box-shadow: 0 4px 12px rgba(173,20,87,.35); }
+.vp-det-district-icon.dicon-d5 { background: linear-gradient(135deg,#512da8,#8b5cf6); box-shadow: 0 4px 12px rgba(81,45,168,.35); }
+.vp-det-district-icon.dicon-d6 { background: linear-gradient(135deg,#00607a,#0ea5c9); box-shadow: 0 4px 12px rgba(0,96,122,.35); }
 
 /* ── Engineer performance metrics (Report Activity / Behaviour / Rating) — copied from
    current_reports.php's engineer details modal so both pages stay visually identical ── */
@@ -1645,6 +2184,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
                     <i class="fas fa-file-alt"></i><span>Reports</span>
@@ -1654,9 +2194,11 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
                     <li><a href="current_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
                     <li><a href="pending_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="archive_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
             <li><a href="emp_feedback.php" class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <!-- Admin-only: User Management (active on this page) -->
@@ -2118,7 +2660,79 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
             <div class="um-profile-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
         </div>
         <div class="vp-det-footer">
-            <button class="vp-det-close-btn" id="viewProfileFooterCloseBtn">Close</button>
+            <button class="vp-det-cancel-btn" id="viewProfileFooterCloseBtn">Close</button>
+            <button class="vp-det-close-btn" id="viewProfileSaveBtn" style="display:none;"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Save-changes confirmation — canonical design ported from the reports pages -->
+<div class="rep-confirm-backdrop" id="vpSaveConfirmBackdrop">
+    <div class="rep-confirm-modal">
+        <div class="rep-confirm-icon save-icon"><i class="fas fa-save" style="color:#3762c8;font-size:24px;"></i></div>
+        <div class="rep-confirm-title">Save changes?</div>
+        <div class="rep-confirm-desc" id="vpSaveConfirmDesc">This will update the account information for this user.</div>
+        <div class="rep-confirm-btns">
+            <button class="rep-confirm-btn rep-confirm-cancel" id="vpSaveConfirmCancelBtn">Cancel</button>
+            <button class="rep-confirm-btn rep-confirm-ok-save" id="vpSaveConfirmOkBtn"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- DOB date picker overlay — single page-level instance, ported verbatim from profile.php,
+     re-synced to whichever profile's Date of Birth field is currently open -->
+<div id="dobPickerOverlay">
+    <div class="dob-dp-header">
+        <button class="dob-dp-nav" id="dobPrevMonth" type="button">&#8592;</button>
+        <div class="dob-dp-header-center">
+            <button class="dob-dp-month-btn" id="dobMonthBtn" type="button"></button>
+            <button class="dob-dp-year-btn"  id="dobYearBtn"  type="button"></button>
+        </div>
+        <button class="dob-dp-nav" id="dobNextMonth" type="button">&#8594;</button>
+    </div>
+    <div class="dob-year-dropdown" id="dobYearDropdown"></div>
+    <div class="dob-month-dropdown" id="dobMonthDropdown">
+        <?php foreach (['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as $mi => $mn): ?>
+        <button class="dob-month-opt" data-month="<?= $mi ?>" type="button"><?= $mn ?></button>
+        <?php endforeach; ?>
+    </div>
+    <div class="dob-dp-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span>
+        <span>Th</span><span>Fr</span><span>Sa</span>
+    </div>
+    <div class="dob-dp-grid" id="dobDpGrid"></div>
+    <div class="dob-dp-footer">
+        <button class="dob-dp-clear" id="dobDpClear" type="button">Clear</button>
+        <button class="dob-dp-close" id="dobDpClose" type="button">Done</button>
+    </div>
+</div>
+
+<!-- GIS address map picker — single page-level instance, ported from
+     profile.php, re-synced to whichever profile's Address field is open -->
+<div id="vpAddrMapBackdrop">
+    <div id="vpAddrMapModal">
+        <div class="vp-map-header">
+            <button type="button" id="vpMapGpsBtn" title="Use my current location">📍</button>
+            <h3>📍 Pick Address</h3>
+            <button type="button" id="vpMapLayerToggle">🛰 Satellite</button>
+        </div>
+        <div id="vpMapDistrictInfo"></div>
+        <div class="vp-map-address-input">
+            <div class="vp-map-search-wrap">
+                <input type="text" id="vpMapSearchInput" placeholder="🔍 Search any address or place…" autocomplete="off">
+                <button type="button" id="vpMapSearchClearBtn" title="Clear search">✕</button>
+                <div id="vpMapSearchDropdown">
+                    <div class="vp-map-search-spinner" id="vpMapSearchSpinner">Searching…</div>
+                </div>
+            </div>
+            <input type="text" id="vpMapAddrField" placeholder="Move the pin or search to detect address…" readonly>
+        </div>
+        <div id="vpAddrMapWrapper">
+            <div id="vpAddrMap"></div>
+        </div>
+        <div class="vp-map-actions">
+            <button type="button" class="btn-cancel" id="vpMapCancelBtn">Cancel</button>
+            <button type="button" class="btn-save" id="vpMapSaveBtn">Use This Address</button>
         </div>
     </div>
 </div>
@@ -2583,6 +3197,609 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
     });
 })();
 
+// ── Skill toggle cards (Engineer edit form) — ported from profile.php ────────
+function toggleSkill(labelEl) {
+    var cb = labelEl.querySelector('input[type="checkbox"]');
+    if (!cb || cb.disabled) return;
+    cb.checked = !cb.checked;
+    labelEl.classList.toggle('checked', cb.checked);
+}
+
+// ── DOB date picker — single page-level overlay instance, re-bound to
+//    whichever profile's Date of Birth field is currently rendered inside the
+//    modal. Ported from profile.php's own DOB picker, adapted so bind() can
+//    be called again each time renderProfile() regenerates the modal body. ──
+var VPDobPicker = (function() {
+    var overlay = document.getElementById('dobPickerOverlay');
+    if (!overlay) return { bind: function(){} };
+    var grid        = document.getElementById('dobDpGrid');
+    var monthBtn    = document.getElementById('dobMonthBtn');
+    var yearBtn     = document.getElementById('dobYearBtn');
+    var prevBtn     = document.getElementById('dobPrevMonth');
+    var nextBtn     = document.getElementById('dobNextMonth');
+    var yearDrop    = document.getElementById('dobYearDropdown');
+    var monthDrop   = document.getElementById('dobMonthDropdown');
+    var clearFooter = document.getElementById('dobDpClear');
+    var closeBtn    = document.getElementById('dobDpClose');
+
+    var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var today = new Date();
+    var selDate = null, viewYear = today.getFullYear(), viewMonth = today.getMonth();
+    var displayEl = null, displayText = null, hiddenVal = null;
+
+    function pad2(n) { return String(n).padStart(2,'0'); }
+    function fmtDisplay(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+    function fmtISO(d) { return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+
+    function setSelected(d) {
+        selDate = d;
+        if (!hiddenVal || !displayText || !displayEl) return;
+        if (d) {
+            hiddenVal.value = fmtISO(d);
+            displayText.textContent = fmtDisplay(d);
+            displayText.classList.remove('placeholder');
+            if (!displayEl.querySelector('.dob-clear-btn')) {
+                var cb = document.createElement('button');
+                cb.type = 'button'; cb.className = 'dob-clear-btn'; cb.title = 'Clear date'; cb.textContent = '✕';
+                cb.addEventListener('click', function(e){ e.stopPropagation(); clearDate(); });
+                var icon = displayEl.querySelector('.dob-icon');
+                if (icon) displayEl.insertBefore(cb, icon); else displayEl.appendChild(cb);
+            }
+        } else {
+            hiddenVal.value = '';
+            displayText.textContent = 'Select date of birth';
+            displayText.classList.add('placeholder');
+            var cb2 = displayEl.querySelector('.dob-clear-btn');
+            if (cb2) cb2.remove();
+        }
+        hiddenVal.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function clearDate() { setSelected(null); renderGrid(); }
+
+    function renderGrid() {
+        yearDrop.classList.remove('open'); monthDrop.classList.remove('open');
+        yearBtn.classList.remove('active'); monthBtn.classList.remove('active');
+        monthBtn.textContent = MONTHS[viewMonth].slice(0,3);
+        yearBtn.textContent  = viewYear;
+        var firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+        var daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+        var todayStr    = fmtISO(today);
+        var selStr      = selDate ? fmtISO(selDate) : '';
+        grid.innerHTML = '';
+        for (var i = 0; i < firstDay; i++) {
+            var emp = document.createElement('div');
+            emp.className = 'dob-dp-day dob-empty';
+            grid.appendChild(emp);
+        }
+        for (var d = 1; d <= daysInMonth; d++) {
+            var dateObj = new Date(viewYear, viewMonth, d);
+            var dateStr = fmtISO(dateObj);
+            var dow     = dateObj.getDay();
+            var btn     = document.createElement('button');
+            btn.type = 'button'; btn.className = 'dob-dp-day'; btn.textContent = d; btn.dataset.date = dateStr;
+            if (dow === 0 || dow === 6) btn.classList.add('dob-weekend');
+            if (dateStr === todayStr)   btn.classList.add('dob-today');
+            if (dateStr === selStr)     btn.classList.add('dob-selected');
+            if (dateObj > today)        btn.classList.add('dob-future');
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var parts = this.dataset.date.split('-');
+                setSelected(new Date(+parts[0], +parts[1]-1, +parts[2]));
+                renderGrid();
+            });
+            grid.appendChild(btn);
+        }
+    }
+
+    function buildYearGrid() {
+        yearDrop.innerHTML = '';
+        var endY = today.getFullYear(), startY = endY - 99;
+        for (var y = endY; y >= startY; y--) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'dob-year-opt' + (y === viewYear ? ' selected' : ''); b.textContent = y; b.dataset.year = y;
+            b.addEventListener('click', function(e) {
+                e.stopPropagation();
+                viewYear = +this.dataset.year;
+                if (viewYear === today.getFullYear() && viewMonth > today.getMonth()) viewMonth = today.getMonth();
+                renderGrid();
+            });
+            yearDrop.appendChild(b);
+        }
+        setTimeout(function() { var sel = yearDrop.querySelector('.selected'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }, 30);
+    }
+
+    function positionOverlay() {
+        if (!displayEl) return;
+        var rect = displayEl.getBoundingClientRect();
+        var vw = window.innerWidth, vh = window.innerHeight;
+        overlay.style.visibility = 'hidden'; overlay.style.display = 'block';
+        var ow = overlay.offsetWidth || 288;
+        var oh = Math.min(overlay.scrollHeight || 380, vh * 0.8);
+        overlay.style.visibility = '';
+        var top = rect.bottom + 6;
+        var left = rect.left + rect.width / 2 - ow / 2;
+        left = Math.max(8, Math.min(left, vw - ow - 8));
+        if (top + oh > vh - 10 && rect.top > oh + 10) top = rect.top - oh - 6;
+        if (top < 8) top = 8;
+        overlay.style.top = top + 'px'; overlay.style.left = left + 'px';
+        overlay.style.display = 'none';
+    }
+
+    function openPicker() {
+        renderGrid();
+        positionOverlay();
+        overlay.style.removeProperty('animation');
+        overlay.style.display = 'block';
+        overlay.style.visibility = 'visible';
+        void overlay.offsetWidth;
+        overlay.style.animation = 'dobPopIn 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    }
+    function closePicker() { overlay.style.display = 'none'; }
+
+    prevBtn.addEventListener('click', function(e) { e.stopPropagation(); viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } renderGrid(); });
+    nextBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (viewYear === today.getFullYear() && viewMonth >= today.getMonth()) return;
+        viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        renderGrid();
+    });
+    yearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        monthDrop.classList.remove('open'); monthBtn.classList.remove('active');
+        var nowOpen = yearDrop.classList.toggle('open');
+        yearBtn.classList.toggle('active', nowOpen);
+        if (nowOpen) buildYearGrid();
+    });
+    monthBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        yearDrop.classList.remove('open'); yearBtn.classList.remove('active');
+        var nowOpen = monthDrop.classList.toggle('open');
+        monthBtn.classList.toggle('active', nowOpen);
+        Array.from(monthDrop.querySelectorAll('.dob-month-opt')).forEach(function(b) { b.classList.toggle('selected', +b.dataset.month === viewMonth); });
+    });
+    monthDrop.addEventListener('click', function(e) {
+        var b = e.target.closest('.dob-month-opt');
+        if (!b) return;
+        e.stopPropagation();
+        viewMonth = +b.dataset.month;
+        if (viewYear === today.getFullYear() && viewMonth > today.getMonth()) viewMonth = today.getMonth();
+        renderGrid();
+    });
+    clearFooter.addEventListener('click', function(e) { e.stopPropagation(); clearDate(); });
+    closeBtn.addEventListener('click',    function(e) { e.stopPropagation(); closePicker(); });
+    document.addEventListener('click', function(e) {
+        if (overlay.style.display === 'block' && !overlay.contains(e.target) && (!displayEl || !displayEl.contains(e.target))) closePicker();
+    });
+    window.addEventListener('resize', function() { if (overlay.style.display === 'block') positionOverlay(); });
+    document.addEventListener('scroll', function(e) { if (overlay.style.display === 'block' && !overlay.contains(e.target)) positionOverlay(); }, true);
+    overlay.addEventListener('wheel',  function(e) { e.stopPropagation(); }, { passive: true });
+    overlay.addEventListener('scroll', function(e) { e.stopPropagation(); }, true);
+
+    return {
+        bind: function(displayId, textId, hiddenId, isoValue) {
+            closePicker();
+            displayEl = document.getElementById(displayId);
+            displayText = document.getElementById(textId);
+            hiddenVal = document.getElementById(hiddenId);
+            if (!displayEl || displayEl.classList.contains('locked')) { displayEl = null; return; }
+            selDate = null;
+            if (isoValue) {
+                var p = isoValue.split('-');
+                if (p.length === 3) selDate = new Date(+p[0], +p[1]-1, +p[2]);
+            }
+            viewYear  = selDate ? selDate.getFullYear() : today.getFullYear();
+            viewMonth = selDate ? selDate.getMonth()    : today.getMonth();
+            displayEl.addEventListener('click', function(e) {
+                if (e.target.classList.contains('dob-clear-btn')) return;
+                if (overlay.style.display === 'block') { closePicker(); }
+                else {
+                    viewYear  = selDate ? selDate.getFullYear() : today.getFullYear();
+                    viewMonth = selDate ? selDate.getMonth()    : today.getMonth();
+                    openPicker();
+                }
+            });
+        }
+    };
+})();
+
+// ── GIS address map picker — single page-level Leaflet instance, ported
+//    from profile.php's Engineer address picker (satellite/street toggle,
+//    Nominatim search + reverse geocode, district auto-detect). Re-bound to
+//    whichever profile's Address field is currently rendered inside the
+//    modal, same "bind() on each render" pattern as VPDobPicker above. ──
+var VPAddrMapPicker = (function() {
+    var backdrop = document.getElementById('vpAddrMapBackdrop');
+    if (!backdrop) return { bind: function(){} };
+
+    var distInfo       = document.getElementById('vpMapDistrictInfo');
+    var searchInput    = document.getElementById('vpMapSearchInput');
+    var searchDrop     = document.getElementById('vpMapSearchDropdown');
+    var searchClearBtn = document.getElementById('vpMapSearchClearBtn');
+    var gpsBtn         = document.getElementById('vpMapGpsBtn');
+    var layerToggle    = document.getElementById('vpMapLayerToggle');
+    var saveBtn        = document.getElementById('vpMapSaveBtn');
+    var cancelBtn      = document.getElementById('vpMapCancelBtn');
+    var addrField      = document.getElementById('vpMapAddrField');
+
+    var epMap = null, epMarker = null, epSelectedLatLng = null;
+    var epAddrTimeout = null, epAddrAbort = null, epSearchTimer = null, epSearchAbort = null;
+    var epFetchingAddress = false;
+    var satelliteLayer = null, streetLayer = null, isSatellite = true;
+
+    // Currently-bound target fields (re-assigned by bind() each render)
+    var targetAddressEl = null, targetLatEl = null, targetLngEl = null;
+    var targetDistrictHiddenId = null, targetDistrictLabelId = null, targetDistrictDropdownId = null;
+
+    var DISTRICT_BARANGAYS = {
+        'District 1': ['Alicia','Bagong Pag-asa','Bahay Toro','Balingasa','Bungad','Damar','Damayan','Del Monte','Katipunan','Lourdes','Maharlika','Manresa','Mariblo','Masambong','N.S. Amoranto','Nayong Kanluran','Paang Bundok','Pag-ibig sa Nayon','Paltok','Paraiso','Phil-Am','Project 6','Ramon Magsaysay','Saint Peter','Salvacion','San Antonio','San Isidro Labrador','San Jose','Santa Cruz','Santa Teresita','Santo Cristo','Santo Domingo','Sienna','Talayan','Vasra','Veterans Village','West Triangle'],
+        'District 2': ['Bagong Silangan','Batasan Hills','Commonwealth','Holy Spirit','Payatas'],
+        'District 3': ['Amihan','Bagumbayan','Bagumbuhay','Bayanihan','Blue Ridge A','Blue Ridge B','Camp Aguinaldo','Claro','Dioquino Zobel','Duyan-Duyan','E. Rodriguez','East Kamias','Escopa I','Escopa II','Escopa III','Escopa IV','Libis','Loyola Heights','Mangga','Marilag','Masagana','Matandang Balara','Milagrosa','Pansol','Quirino 2-A','Quirino 2-B','Quirino 2-C','Quirino 3-A','San Roque','Silangan','Socorro','St. Ignatius','Tagumpay','Ugong Norte','Villa Maria Clara','West Kamias','White Plains'],
+        'District 4': ['Bagong Lipunan ng Crame','Botocan','Central','Damayang Lagi','Don Manuel','Doña Aurora','Doña Imelda','Doña Josefa','Horseshoe','Immaculate Conception','Kalusugan','Kamuning','Kaunlaran','Kristong Hari','Krus na Ligas','Laging Handa','Malaya','Mariana','Obrero','Old Capitol Site','Paligsahan','Pinagkaisahan','Pinyahan','Roxas','Sacred Heart','San Isidro Galas','San Martin de Porres','San Vicente','Santol','Santo Niño','Sikatuna Village','South Triangle','Tatalon','Teachers Village East','Teachers Village West','U.P. Campus','U.P. Village','Valencia'],
+        'District 5': ['Bagbag','Capri','Fairview','Greater Lagro','Gulod','Kaligayahan','Nagkaisang Nayon','North Fairview','Novaliches Proper','Pasong Putik Proper','Regalado','San Agustin','San Bartolome','Santa Lucia','Santa Monica'],
+        'District 6': ['Apolonio Samson','Baesa','Balon Bato','Culiat','New Era','Pasong Tamo','Sangandaan','Sauyo','Talipapa','Tandang Sora','Unang Sigaw'],
+    };
+    function detectDistrict(addrText) {
+        if (!addrText) return '';
+        var al = addrText.toLowerCase();
+        for (var dist in DISTRICT_BARANGAYS) {
+            var brgys = DISTRICT_BARANGAYS[dist];
+            for (var i = 0; i < brgys.length; i++) {
+                if (al.includes(brgys[i].toLowerCase())) return dist;
+            }
+        }
+        return '';
+    }
+    function updateDistrictBanner(district) {
+        if (district) { distInfo.textContent = '📌 ' + district; distInfo.style.display = 'block'; }
+        else { distInfo.style.display = 'none'; }
+    }
+    function setSaveState(disabled) {
+        if (!saveBtn) return;
+        saveBtn.disabled = disabled;
+        saveBtn.style.opacity = disabled ? '0.55' : '';
+        saveBtn.style.cursor  = disabled ? 'not-allowed' : '';
+    }
+    function syncLayerToggleLabel() {
+        if (layerToggle) layerToggle.textContent = isSatellite ? '🗺 Street' : '🛰 Satellite';
+    }
+
+    async function reverseGeocode(lat, lng) {
+        addrField.value = 'Fetching address…';
+        addrField.style.color = 'var(--text-secondary)';
+        epFetchingAddress = true;
+        setSaveState(true);
+        if (epAddrAbort) epAddrAbort.abort();
+        epAddrAbort = new AbortController();
+        try {
+            const r = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                { signal: epAddrAbort.signal }
+            );
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            const addr = d.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            addrField.value = addr;
+            addrField.style.color = '';
+            updateDistrictBanner(detectDistrict(addr));
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            addrField.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            addrField.style.color = '';
+            updateDistrictBanner('');
+        } finally {
+            epFetchingAddress = false;
+            setSaveState(false);
+        }
+    }
+    function onPinMove(latlng) {
+        epSelectedLatLng = latlng;
+        if (epAddrTimeout) clearTimeout(epAddrTimeout);
+        epAddrTimeout = setTimeout(function(){ reverseGeocode(latlng.lat, latlng.lng); }, 300);
+    }
+    function initEpMap() {
+        if (epMap) return;
+        var savedLat = parseFloat(targetLatEl.value) || 14.6760;
+        var savedLng = parseFloat(targetLngEl.value) || 121.0437;
+        epMap = L.map('vpAddrMap', { zoomControl: true, scrollWheelZoom: true, touchZoom: true, doubleClickZoom: true }).setView([savedLat, savedLng], 14);
+        satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri Satellite' });
+        streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' });
+        satelliteLayer.addTo(epMap);
+        isSatellite = true;
+        syncLayerToggleLabel();
+        epMarker = L.marker([savedLat, savedLng], { draggable: true }).addTo(epMap);
+        epSelectedLatLng = L.latLng(savedLat, savedLng);
+        epMarker.on('dragend', function(){ onPinMove(epMarker.getLatLng()); });
+        epMap.on('click', function(e){ epMarker.setLatLng(e.latlng); onPinMove(e.latlng); });
+    }
+    function openPicker() {
+        backdrop.classList.add('show');
+        requestAnimationFrame(function() {
+            if (!epMap) initEpMap();
+            epMap.invalidateSize(false);
+            var lat = parseFloat(targetLatEl.value);
+            var lng = parseFloat(targetLngEl.value);
+            if (lat && lng) {
+                epMap.setView([lat, lng], 16);
+                epMarker.setLatLng([lat, lng]);
+                epSelectedLatLng = L.latLng(lat, lng);
+                var savedAddr = targetAddressEl.value.trim();
+                if (savedAddr) { addrField.value = savedAddr; addrField.style.color = ''; updateDistrictBanner(detectDistrict(savedAddr)); }
+                else { reverseGeocode(lat, lng); }
+            } else {
+                addrField.value = '';
+                updateDistrictBanner('');
+            }
+        });
+    }
+    function closePicker() {
+        backdrop.classList.remove('show');
+        if (epAddrAbort) { epAddrAbort.abort(); epAddrAbort = null; }
+        if (epSearchAbort) { epSearchAbort.abort(); epSearchAbort = null; }
+        clearTimeout(epAddrTimeout);
+        clearTimeout(epSearchTimer);
+        searchInput.value = '';
+        if (searchClearBtn) searchClearBtn.classList.remove('visible');
+        searchDrop.classList.remove('open');
+        searchDrop.innerHTML = '<div class="vp-map-search-spinner" id="vpMapSearchSpinner">Searching…</div>';
+    }
+    function doSave() {
+        if (!epSelectedLatLng) { alert('Please select a location on the map first.'); return; }
+        if (epFetchingAddress) { alert('Please wait — address is still loading.'); return; }
+        var addrText = addrField.value.trim();
+        if (!addrText || addrText === 'Fetching address…') { alert('Please wait for the address to load.'); return; }
+        targetAddressEl.value = addrText;
+        targetLatEl.value = epSelectedLatLng.lat;
+        targetLngEl.value = epSelectedLatLng.lng;
+
+        var detected = detectDistrict(addrText);
+        var distHidden = targetDistrictHiddenId ? document.getElementById(targetDistrictHiddenId) : null;
+        var distLabel  = targetDistrictLabelId  ? document.getElementById(targetDistrictLabelId)  : null;
+        if (detected && distHidden) {
+            distHidden.value = detected;
+            if (distLabel) { distLabel.textContent = detected; distLabel.classList.add('selected'); }
+            var dropdown = targetDistrictDropdownId ? document.getElementById(targetDistrictDropdownId) : null;
+            if (dropdown) {
+                dropdown.querySelectorAll('.prof-combobox-option').forEach(function(opt) {
+                    opt.classList.toggle('selected-opt', opt.dataset.value === detected);
+                });
+            }
+            distHidden.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closePicker();
+    }
+
+    if (cancelBtn) cancelBtn.addEventListener('click', closePicker);
+    if (saveBtn) saveBtn.addEventListener('click', doSave);
+    if (gpsBtn) {
+        gpsBtn.addEventListener('click', function() {
+            if (!navigator.geolocation) { alert('Geolocation is not supported by your browser.'); return; }
+            gpsBtn.textContent = '⏳';
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                var ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                if (epMap) { epMap.setView(ll, 17); epMarker.setLatLng(ll); }
+                onPinMove(ll);
+                gpsBtn.textContent = '📍';
+            }, function() {
+                alert('Unable to retrieve your location.');
+                gpsBtn.textContent = '📍';
+            }, { enableHighAccuracy: true });
+        });
+    }
+    if (layerToggle) {
+        layerToggle.addEventListener('click', function() {
+            if (!epMap) return;
+            if (isSatellite) { epMap.removeLayer(satelliteLayer); streetLayer.addTo(epMap); }
+            else { epMap.removeLayer(streetLayer); satelliteLayer.addTo(epMap); }
+            isSatellite = !isSatellite;
+            syncLayerToggleLabel();
+        });
+    }
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchClearBtn.classList.remove('visible');
+            searchDrop.classList.remove('open');
+            searchDrop.innerHTML = '<div class="vp-map-search-spinner">Searching…</div>';
+            if (epSearchAbort) { epSearchAbort.abort(); epSearchAbort = null; }
+            clearTimeout(epSearchTimer);
+            searchInput.focus();
+        });
+    }
+    searchInput.addEventListener('input', function() {
+        var q = searchInput.value.trim();
+        clearTimeout(epSearchTimer);
+        if (searchClearBtn) searchClearBtn.classList.toggle('visible', q.length > 0);
+        if (!q) { searchDrop.classList.remove('open'); return; }
+        var spinner = document.getElementById('vpMapSearchSpinner');
+        if (spinner) spinner.classList.add('visible');
+        searchDrop.classList.add('open');
+        epSearchTimer = setTimeout(async function() {
+            if (epSearchAbort) epSearchAbort.abort();
+            epSearchAbort = new AbortController();
+            try {
+                var url = 'https://nominatim.openstreetmap.org/search?format=json'
+                    + '&q=' + encodeURIComponent(q) + '&limit=6&addressdetails=1&accept-language=en&countrycodes=ph&viewbox=120.93,14.78,121.20,14.35&bounded=1';
+                const res = await fetch(url, { signal: epSearchAbort.signal });
+                const data = await res.json();
+                searchDrop.innerHTML = '<div class="vp-map-search-spinner" id="vpMapSearchSpinner">Searching…</div>';
+                if (!data.length) {
+                    var noRes = document.createElement('div');
+                    noRes.style.cssText = 'padding:10px 14px;font-size:13px;color:var(--text-secondary);';
+                    noRes.textContent = 'No results found.';
+                    searchDrop.appendChild(noRes);
+                } else {
+                    data.forEach(function(r) {
+                        var parts = r.display_name.split(',');
+                        var name = parts[0].trim();
+                        var address = parts.slice(1).join(',').trim();
+                        var item = document.createElement('div');
+                        item.className = 'vp-map-search-item';
+                        item.innerHTML = '<span class="vp-map-search-item-icon">📍</span>'
+                            + '<div class="vp-map-search-item-text"><div class="vp-map-search-item-name"></div><div class="vp-map-search-item-addr"></div></div>';
+                        item.querySelector('.vp-map-search-item-name').textContent = name;
+                        item.querySelector('.vp-map-search-item-addr').textContent = address;
+                        item.addEventListener('mousedown', function(ev) {
+                            ev.preventDefault();
+                            var ll = L.latLng(parseFloat(r.lat), parseFloat(r.lon));
+                            if (epMap) { epMap.setView(ll, 17); epMarker.setLatLng(ll); }
+                            onPinMove(ll);
+                            searchInput.value = '';
+                            if (searchClearBtn) searchClearBtn.classList.remove('visible');
+                            searchDrop.classList.remove('open');
+                        });
+                        searchDrop.appendChild(item);
+                    });
+                }
+                searchDrop.classList.add('open');
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                searchDrop.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-secondary);">Search unavailable. Try again.</div>';
+            }
+        }, 400);
+    });
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.vp-map-search-wrap')) searchDrop.classList.remove('open');
+    });
+
+    return {
+        bind: function(addressId, latId, lngId, districtHiddenId, districtLabelId, districtDropdownId) {
+            targetAddressEl = document.getElementById(addressId);
+            targetLatEl     = document.getElementById(latId);
+            targetLngEl     = document.getElementById(lngId);
+            targetDistrictHiddenId   = districtHiddenId   || null;
+            targetDistrictLabelId    = districtLabelId    || null;
+            targetDistrictDropdownId = districtDropdownId || null;
+            var mapBtn = document.getElementById('vpAddrMapBtn');
+            if (mapBtn) mapBtn.addEventListener('click', openPicker);
+        }
+    };
+})();
+
+// ── Searchable combobox engine (Gender / District) — ported from profile.php,
+//    adapted to be re-initializable each time renderProfile() regenerates the
+//    modal body. Outside-click / reposition handlers are delegated globally
+//    (bound once here) rather than per-instance, so re-opening the modal many
+//    times never accumulates stale document/window listeners. ──────────────
+function initCombobox(idPrefix) {
+    var displayEl  = document.getElementById(idPrefix + 'Display');
+    var dropdownEl = document.getElementById(idPrefix + 'Dropdown');
+    var hiddenEl   = document.getElementById(idPrefix + 'Val');
+    var labelEl    = document.getElementById(idPrefix + 'Label');
+    if (!displayEl || !dropdownEl) return; // locked/read-only variant has no dropdown
+
+    var searchEl   = dropdownEl.querySelector('.prof-combobox-search');
+    var listEl     = dropdownEl.querySelector('.prof-combobox-list');
+    var allOptions = Array.from(listEl.querySelectorAll('.prof-combobox-option'));
+    var isOpen = false, highlighted = -1;
+
+    function getVisible() { return allOptions.filter(function(o){ return o.style.display !== 'none'; }); }
+
+    function openDropdown() {
+        document.querySelectorAll('.prof-combobox-display.open').forEach(function(d){ if (d !== displayEl) d.click(); });
+        isOpen = true;
+        positionCombobox(displayEl, dropdownEl);
+        displayEl.classList.add('open');
+        dropdownEl.classList.add('open');
+        searchEl.value = '';
+        filterOptions('');
+        setTimeout(function() {
+            searchEl.focus();
+            var sel = listEl.querySelector('.selected-opt');
+            if (sel) sel.scrollIntoView({ block: 'nearest' });
+        }, 30);
+    }
+    function closeDropdown() {
+        isOpen = false;
+        displayEl.classList.remove('open');
+        dropdownEl.classList.remove('open');
+        searchEl.value = '';
+        filterOptions('');
+        highlighted = -1;
+    }
+    function selectOption(value, text) {
+        hiddenEl.value = value;
+        labelEl.textContent = text.trim();
+        labelEl.classList.toggle('selected', !!value);
+        allOptions.forEach(function(o) { o.classList.toggle('selected-opt', o.dataset.value === value); });
+        closeDropdown();
+        hiddenEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function filterOptions(q) {
+        var ql = q.toLowerCase().trim();
+        var visible = 0;
+        allOptions.forEach(function(o) {
+            var match = !ql || o.textContent.toLowerCase().includes(ql);
+            o.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        var noRes = listEl.querySelector('.prof-combobox-no-results');
+        if (!visible) {
+            if (!noRes) {
+                var d = document.createElement('div');
+                d.className = 'prof-combobox-no-results';
+                d.textContent = 'No results found';
+                listEl.appendChild(d);
+            }
+        } else if (noRes) { noRes.remove(); }
+        highlighted = -1;
+    }
+
+    displayEl.addEventListener('click', function(e) { e.stopPropagation(); isOpen ? closeDropdown() : openDropdown(); });
+    searchEl.addEventListener('input', function() { filterOptions(searchEl.value); });
+    listEl.addEventListener('mousedown', function(e) {
+        var opt = e.target.closest('.prof-combobox-option');
+        if (!opt) return;
+        e.preventDefault();
+        selectOption(opt.dataset.value, opt.textContent);
+    });
+    searchEl.addEventListener('keydown', function(e) {
+        var vis = getVisible();
+        if (e.key === 'ArrowDown')      { e.preventDefault(); highlighted = Math.min(highlighted+1, vis.length-1); }
+        else if (e.key === 'ArrowUp')   { e.preventDefault(); highlighted = Math.max(highlighted-1, 0); }
+        else if (e.key === 'Enter')     { e.preventDefault(); if (highlighted>=0 && vis[highlighted]) selectOption(vis[highlighted].dataset.value, vis[highlighted].textContent); return; }
+        else if (e.key === 'Escape')    { closeDropdown(); return; }
+        vis.forEach(function(o,i){ o.classList.toggle('highlighted', i===highlighted); });
+        if (vis[highlighted]) vis[highlighted].scrollIntoView({ block:'nearest' });
+    });
+}
+function positionCombobox(displayEl, dropdownEl) {
+    var rect = displayEl.getBoundingClientRect();
+    var w = rect.width, vw = window.innerWidth, vh = window.innerHeight;
+    dropdownEl.style.width = w + 'px';
+    dropdownEl.style.visibility = 'hidden'; dropdownEl.style.display = 'block';
+    var dh = dropdownEl.offsetHeight || 200;
+    dropdownEl.style.display = ''; dropdownEl.style.visibility = '';
+    var top = rect.bottom + 4, left = rect.left;
+    if (top + dh > vh - 12 && rect.top > dh + 12) top = rect.top - dh - 4;
+    left = Math.max(8, Math.min(left, vw - w - 8));
+    dropdownEl.style.top = top + 'px'; dropdownEl.style.left = left + 'px';
+}
+// Delegated: close/reset any open combobox on outside click, reposition on scroll/resize.
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.prof-combobox-display.open').forEach(function(disp) {
+        var root = disp.closest('.prof-combobox');
+        var dd = root ? root.querySelector('.prof-combobox-dropdown') : null;
+        if (root && !root.contains(e.target) && (!dd || !dd.contains(e.target))) {
+            disp.classList.remove('open');
+            if (dd) {
+                dd.classList.remove('open');
+                var s = dd.querySelector('.prof-combobox-search'); if (s) s.value = '';
+                dd.querySelectorAll('.prof-combobox-option').forEach(function(o){ o.style.display = ''; });
+                var noRes = dd.querySelector('.prof-combobox-no-results'); if (noRes) noRes.remove();
+            }
+        }
+    });
+});
+function repositionOpenCombobox() {
+    var openDisp = document.querySelector('.prof-combobox-display.open');
+    if (!openDisp) return;
+    var root = openDisp.closest('.prof-combobox');
+    var dd = root ? root.querySelector('.prof-combobox-dropdown') : null;
+    if (dd) positionCombobox(openDisp, dd);
+}
+window.addEventListener('resize', repositionOpenCombobox);
+document.addEventListener('scroll', repositionOpenCombobox, true);
+
 // ── View Profile modal ───────────────────────────────────────────────────────
 (function(){
     var backdrop = document.getElementById('viewProfileBackdrop');
@@ -2602,7 +3819,128 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
     function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
     function fv(v){ return v ? esc(v) : '<span style="opacity:.5;">—</span>'; }
 
+    var DISTRICT_OPTIONS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6'];
+    var GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+    var currentProfile = null;
+
+    function districtBadgeClass(district){
+        var map = { 'district 1':'d1', 'district 2':'d2', 'district 3':'d3', 'district 4':'d4', 'district 5':'d5', 'district 6':'d6' };
+        return map[(district || '').toLowerCase().trim()] || 'd-other';
+    }
+    function districtBadgeHtml(district){
+        return district ? '<span class="district-badge ' + districtBadgeClass(district) + '"><i class="fas fa-location-dot"></i> ' + esc(district) + '</span>' : '';
+    }
+    // Plain single-line input — for short fields unlikely to ever overflow (First/Last Name, Years of Experience).
+    function fieldInput(id, label, value, type, disabled){
+        type = type || 'text';
+        return '<div><div class="vp-det-field-label">' + esc(label) + '</div><input type="' + type + '" class="vp-edit-input" id="' + id + '" value="' + esc(value || '') + '"' + (disabled ? ' disabled' : '') + '></div>';
+    }
+    // Auto-growing textarea styled to look like a single-line input — used for
+    // text fields that can run long (Email, Full Name, Discipline, etc.) so the
+    // value wraps onto a 2nd line instead of clipping/scrolling like a plain <input>.
+    function fieldInputWrap(id, label, value, disabled){
+        return '<div><div class="vp-det-field-label">' + esc(label) + '</div><textarea class="vp-edit-input vp-edit-input-wrap" id="' + id + '" rows="1" data-autosize="1"' + (disabled ? ' disabled' : '') + '>' + esc(value || '') + '</textarea></div>';
+    }
+    function fieldTextarea(id, label, value, disabled){
+        return '<div class="vp-det-field-single"><div class="vp-det-field-label">' + esc(label) + '</div><textarea class="vp-edit-textarea" id="' + id + '"' + (disabled ? ' disabled' : '') + '>' + esc(value || '') + '</textarea></div>';
+    }
+    // Address field with the GIS map-pin picker button — markup ported from profile.php.
+    function addressField(label, value, lat, lng, disabled){
+        return '<div class="vp-det-field-single"><div class="vp-det-field-label">' + esc(label) + '</div>'
+            + '<input type="hidden" id="vpAddrLat" value="' + esc(lat || '') + '">'
+            + '<input type="hidden" id="vpAddrLng" value="' + esc(lng || '') + '">'
+            + '<div style="position:relative;">'
+            + '<textarea class="vp-edit-textarea" id="vpAddress" style="' + (disabled ? '' : 'padding-right:44px;') + '"' + (disabled ? ' disabled' : '') + '>' + esc(value || '') + '</textarea>'
+            + (disabled ? '' : '<button type="button" id="vpAddrMapBtn" title="Pick address on map">📍</button>')
+            + '</div></div>';
+    }
+    function contactField(id, label, value, disabled){
+        return '<div><div class="vp-det-field-label">' + esc(label) + '</div><input type="tel" class="vp-edit-input" id="' + id + '" maxlength="13" placeholder="e.g. 09XX-XXX-XXXX" value="' + esc(value || '') + '"' + (disabled ? ' disabled' : '') + '></div>';
+    }
+    // Searchable combobox (Gender / District) — .prof-combobox markup ported from profile.php.
+    function comboboxInner(idPrefix, value, options, disabled){
+        var hidden = '<input type="hidden" id="' + idPrefix + 'Val" value="' + esc(value || '') + '">';
+        if (disabled) {
+            return hidden + '<div class="prof-combobox" id="' + idPrefix + 'Combo">'
+                + '<div class="prof-combobox-display locked" id="' + idPrefix + 'Display">'
+                + '<span class="prof-combobox-label' + (value ? ' selected' : '') + '">' + (value ? esc(value) : '— Not set —') + '</span>'
+                + '</div></div>';
+        }
+        var opts = options.map(function(o){
+            return '<div class="prof-combobox-option' + (o === value ? ' selected-opt' : '') + '" data-value="' + esc(o) + '">' + esc(o) + '</div>';
+        }).join('');
+        return hidden + '<div class="prof-combobox" id="' + idPrefix + 'Combo">'
+            + '<div class="prof-combobox-display" id="' + idPrefix + 'Display">'
+            + '<span class="prof-combobox-label' + (value ? ' selected' : '') + '" id="' + idPrefix + 'Label">' + (value ? esc(value) : '— Select —') + '</span>'
+            + '<span class="prof-combobox-arrow">▾</span>'
+            + '</div>'
+            + '<div class="prof-combobox-dropdown" id="' + idPrefix + 'Dropdown">'
+            + '<input class="prof-combobox-search" type="text" placeholder="🔍 Search…" autocomplete="off">'
+            + '<div class="prof-combobox-list">' + opts + '</div>'
+            + '</div></div>';
+    }
+    function comboboxField(idPrefix, label, value, options, disabled){
+        return '<div><div class="vp-det-field-label">' + esc(label) + '</div>' + comboboxInner(idPrefix, value, options, disabled) + '</div>';
+    }
+    // DOB fake-input — .dob-input-display markup ported from profile.php; the
+    // actual calendar overlay is the single page-level VPDobPicker instance.
+    function dobField(label, isoValue, disabled){
+        var displayText = '';
+        if (isoValue) {
+            var parts = isoValue.split('-');
+            if (parts.length === 3) {
+                var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                displayText = MONTHS[+parts[1]-1] + ' ' + (+parts[2]) + ', ' + parts[0];
+            }
+        }
+        return '<div><div class="vp-det-field-label">' + esc(label) + '</div>'
+            + '<input type="hidden" id="vpDobHiddenVal" value="' + esc(isoValue || '') + '">'
+            + '<div class="dob-input-display' + (disabled ? ' locked' : '') + '" id="vpDobDisplay">'
+            + '<span class="dob-text' + (displayText ? '' : ' placeholder') + '" id="vpDobDisplayText">' + (displayText || (disabled ? 'Not set' : 'Select date of birth')) + '</span>'
+            + (disabled ? '' : '<span class="dob-icon">📅</span>')
+            + '</div></div>';
+    }
+    // Skill toggle card — .eng-skill-card markup ported from profile.php.
+    function skillToggleCard(id, icon, label, checked, enabled){
+        return '<label class="eng-skill-card' + (checked ? ' checked' : '') + (enabled ? '' : ' locked-look') + '"' + (enabled ? ' onclick="toggleSkill(this)"' : '') + '>'
+            + '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + (enabled ? '' : ' disabled') + '>'
+            + '<span class="sk-icon">' + icon + '</span>'
+            + '<span class="sk-label">' + esc(label) + '</span>'
+            + (enabled ? '<span class="sk-toggle"></span>' : '')
+            + '</label>';
+    }
+    function wireAutosize(root){
+        root.querySelectorAll('textarea[data-autosize]').forEach(function(ta){
+            function resize(){ ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+            ta.addEventListener('input', resize);
+            resize();
+        });
+    }
+    function wirePhoneFormat(inputEl){
+        if (!inputEl || inputEl.disabled) return;
+        inputEl.addEventListener('input', function(ev){
+            var input = ev.target;
+            var cursorPos = input.selectionStart;
+            var digits = input.value.replace(/\D/g, '').slice(0, 11);
+            var formatted = digits.length <= 4 ? digits
+                : digits.length <= 7 ? digits.slice(0,4)+'-'+digits.slice(4)
+                : digits.slice(0,4)+'-'+digits.slice(4,7)+'-'+digits.slice(7);
+            var digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g,'').length;
+            input.value = formatted;
+            var newCursor = 0, digitCount = 0;
+            for (var i = 0; i < formatted.length; i++) {
+                if (/\d/.test(formatted[i])) digitCount++;
+                if (digitCount === digitsBeforeCursor) { newCursor = i + 1; break; }
+            }
+            input.setSelectionRange(newCursor, newCursor);
+        });
+        var v = inputEl.value.replace(/\D/g, '');
+        if (v.length === 11) inputEl.value = v.replace(/(\d{4})(\d{3})(\d{4})/, '$1-$2-$3');
+    }
+
     function renderProfile(p){
+        currentProfile = p;
+
         // Header: avatar (real photo, falling back to this page's own letter-avatar), name, role
         avatarWrap.innerHTML = p.picture
             ? '<img src="' + esc(p.picture) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
@@ -2611,56 +3949,86 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
         nameEl.textContent = p.name || '—';
         roleEl.textContent = p.role || '';
 
+        var canEdit = !!p.canEdit;
+        var saveBtn = document.getElementById('viewProfileSaveBtn');
+        if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
+
         var html = '<div class="vp-det-section-title"><i class="fas fa-info-circle"></i> Account</div><div class="vp-det-grid">'
+            + fieldInput('vpFirstName', 'First Name', p.firstName, 'text', !canEdit)
+            + fieldInput('vpLastName', 'Last Name', p.lastName, 'text', !canEdit)
+            + fieldInputWrap('vpEmail', 'Email Address', p.email, !canEdit)
+            + '</div><div class="vp-det-grid" style="margin-top:16px;">'
             + '<div><div class="vp-det-field-label">Status</div><div class="vp-det-field-value">' + (p.locked ? 'Locked' : 'Active') + '</div></div>'
             + '<div><div class="vp-det-field-label">Verified</div><div class="vp-det-field-value">' + (p.verified ? 'Yes' : 'No') + '</div></div>'
             + '<div><div class="vp-det-field-label">Last Login</div><div class="vp-det-field-value">' + esc(p.lastLogin) + '</div></div>'
-            + '</div>'
-            + '<div class="vp-det-field-single"><div class="vp-det-field-label">Email Address</div><div class="vp-det-field-value">' + esc(p.email) + '</div></div>';
+            + '</div>';
 
         if (p.engineer && p.role === 'Area Engineer') {
-            // Area Engineer: no Personal Information / Professional Details / Skills — just their assigned district.
+            // Area Engineer: just the account fields above, plus their district
+            // assignment — no Personal Information / Professional Details / Skills
+            // (not relevant to this role). The district itself is an editable
+            // combobox embedded directly in the colored assignment card.
             var eAe = p.engineer;
+            var dClsAe = districtBadgeClass(eAe.district);
             html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-map-marked-alt"></i> Assignment</div>'
-                + '<div class="vp-det-district-card">'
-                + '<div class="vp-det-district-icon"><i class="fas fa-map-marker-alt"></i></div>'
-                + '<div><div class="vp-det-district-label">Assigned District</div><div class="vp-det-district-value">' + (eAe.district ? esc(eAe.district) : 'Not yet assigned') + '</div></div>'
-                + '</div>';
+                + '<div class="vp-det-district-card dcard-' + dClsAe + '" id="vpDistrictCard">'
+                + '<div class="vp-det-district-icon dicon-' + dClsAe + '" id="vpDistrictIcon"><i class="fas fa-map-marker-alt"></i></div>'
+                + '<div style="flex:1;min-width:0;"><div class="vp-det-district-label">Assigned District</div>'
+                + comboboxInner('vpDistrict', eAe.district, DISTRICT_OPTIONS, !canEdit)
+                + '</div></div>';
         } else if (p.engineer && p.role === 'Engineer') {
             var e = p.engineer;
+
             html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-user"></i> Personal Information</div><div class="vp-det-grid">'
-                + '<div><div class="vp-det-field-label">Full Name</div><div class="vp-det-field-value">' + fv(e.fullName) + '</div></div>'
-                + '<div><div class="vp-det-field-label">Gender</div><div class="vp-det-field-value">' + fv(e.gender) + '</div></div>'
-                + '<div><div class="vp-det-field-label">Date of Birth</div><div class="vp-det-field-value">' + fv(e.dateOfBirth) + '</div></div>'
-                + '<div><div class="vp-det-field-label">Contact Number</div><div class="vp-det-field-value">' + fv(e.contactNumber) + '</div></div>'
+                + fieldInputWrap('vpFullName', 'Full Name', e.fullName, !canEdit)
+                + comboboxField('vpGender', 'Gender', e.gender, GENDER_OPTIONS, !canEdit)
+                + dobField('Date of Birth', e.dateOfBirthRaw, !canEdit)
+                + contactField('vpContact', 'Contact Number', e.contactNumber, !canEdit)
                 + '</div>'
-                + '<div class="vp-det-field-single"><div class="vp-det-field-label">Address</div><div class="vp-det-field-value">' + fv(e.address) + '</div></div>';
+                + addressField('Address', e.address, e.addressLat, e.addressLng, !canEdit);
 
             html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-hard-hat"></i> Professional Details</div><div class="vp-det-grid">'
-                + '<div><div class="vp-det-field-label">Engineering Discipline</div><div class="vp-det-field-value">' + fv(e.discipline) + '</div></div>'
-                + '<div><div class="vp-det-field-label">Department</div><div class="vp-det-field-value">' + fv(e.department) + '</div></div>'
-                + '<div><div class="vp-det-field-label">Years of Experience</div><div class="vp-det-field-value">' + (e.yearsExperience != null && e.yearsExperience !== '' ? esc(e.yearsExperience) + ' yr(s)' : '<span style="opacity:.5;">—</span>') + '</div></div>'
-                + '<div><div class="vp-det-field-label">District</div><div class="vp-det-field-value">' + fv(e.district) + '</div></div>'
-                + '</div>';
-            if (e.specialization) {
-                html += '<div class="vp-det-field-single"><div class="vp-det-field-label">Areas of Specialization</div><div class="vp-det-field-value">' + fv(e.specialization) + '</div></div>';
-            }
+                + fieldInputWrap('vpDiscipline', 'Engineering Discipline', e.discipline, !canEdit)
+                + fieldInputWrap('vpDepartment', 'Department', e.department, !canEdit)
+                + fieldInput('vpExperience', 'Years of Experience', e.yearsExperience, 'number', !canEdit)
+                + comboboxField('vpDistrict', 'District', e.district, DISTRICT_OPTIONS, !canEdit)
+                + '</div>'
+                + '<div class="vp-det-district-preview" id="vpDistrictBadgePreview">' + districtBadgeHtml(e.district) + '</div>'
+                + fieldTextarea('vpSpecialization', 'Areas of Specialization', e.specialization, !canEdit);
 
-            html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-tools"></i> Skills &amp; Tools</div>';
-            if (e.skills && e.skills.length) {
-                html += '<div class="vp-det-skills">' + e.skills.map(function(s){ return '<span class="vp-det-skill-badge">' + esc(s) + '</span>'; }).join('') + '</div>';
-            } else {
-                html += '<div class="vp-det-field-value" style="opacity:.5;">No skills listed</div>';
-            }
-            if (e.cadSoftware) {
-                html += '<div class="vp-det-field-single"><div class="vp-det-field-label">CAD Software</div><div class="vp-det-field-value">' + fv(e.cadSoftware) + '</div></div>';
-            }
+            html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-tools"></i> Skills &amp; Tools</div>'
+                + '<div class="eng-skill-grid">'
+                + skillToggleCard('vpSkillStructural', '🏛️', 'Structural Design', e.skills && e.skills.indexOf('Structural Design') !== -1, canEdit)
+                + skillToggleCard('vpSkillSite', '🔍', 'Site Inspection', e.skills && e.skills.indexOf('Site Inspection') !== -1, canEdit)
+                + skillToggleCard('vpSkillPlanning', '📋', 'Project Planning', e.skills && e.skills.indexOf('Project Planning') !== -1, canEdit)
+                + '</div>'
+                + fieldInputWrap('vpCad', 'CAD Software', e.cadSoftware, !canEdit);
 
             html += '<div class="vp-det-divider"></div><div class="vp-det-section-title"><i class="fas fa-chart-line"></i> Performance Metrics</div>'
                 + '<div id="vpEngMetrics"><div class="um-metrics-loading"><i class="fas fa-spinner fa-spin"></i> Loading metrics…</div></div>';
         }
 
         body.innerHTML = html;
+        wireAutosize(body);
+
+        ['vpGender', 'vpDistrict'].forEach(initCombobox);
+        wirePhoneFormat(document.getElementById('vpContact'));
+        VPDobPicker.bind('vpDobDisplay', 'vpDobDisplayText', 'vpDobHiddenVal', (p.engineer && p.engineer.dateOfBirthRaw) || '');
+        VPAddrMapPicker.bind('vpAddress', 'vpAddrLat', 'vpAddrLng', 'vpDistrictVal', 'vpDistrictLabel', 'vpDistrictDropdown');
+
+        var districtHidden = document.getElementById('vpDistrictVal');
+        if (districtHidden) {
+            districtHidden.addEventListener('change', function(){
+                var d = districtHidden.value;
+                var cls = districtBadgeClass(d);
+                var preview = document.getElementById('vpDistrictBadgePreview');
+                if (preview) preview.innerHTML = districtBadgeHtml(d);
+                var card = document.getElementById('vpDistrictCard');
+                if (card) card.className = 'vp-det-district-card dcard-' + cls;
+                var icon = document.getElementById('vpDistrictIcon');
+                if (icon) icon.className = 'vp-det-district-icon dicon-' + cls;
+            });
+        }
 
         if (p.engineer && p.role === 'Engineer') {
             Promise.all([fetchEngineerMetrics(p.id), fetchEngineerRating(p.id)]).then(function(results){
@@ -2773,6 +4141,113 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
                 body.innerHTML = '<div class="um-profile-loading">Network error. Please try again.</div>';
             }
         });
+    });
+
+    function updateRowDisplay(userId, fullName, email) {
+        var deskRow = document.querySelector('.um-row[data-user-id="' + userId + '"]');
+        if (deskRow) {
+            var n1 = deskRow.querySelector('.um-name'), e1 = deskRow.querySelector('.um-email');
+            if (n1) { var tag1 = n1.querySelector('.you-tag'); n1.textContent = fullName; if (tag1) n1.appendChild(tag1); }
+            if (e1) e1.textContent = email;
+        }
+        var mobBtn = document.querySelector('#mobileUserList .btn-view[data-user-id="' + userId + '"]');
+        var mobCard = mobBtn ? mobBtn.closest('.um-card') : null;
+        if (mobCard) {
+            mobCard.dataset.name = fullName.toLowerCase();
+            mobCard.dataset.email = email.toLowerCase();
+            var n2 = mobCard.querySelector('.um-name'), e2 = mobCard.querySelector('.um-email');
+            if (n2) { var tag2 = n2.querySelector('.you-tag'); n2.textContent = fullName; if (tag2) n2.appendChild(tag2); }
+            if (e2) e2.textContent = email;
+        }
+    }
+
+    var saveBtn         = document.getElementById('viewProfileSaveBtn');
+    var saveConfirmBackdrop = document.getElementById('vpSaveConfirmBackdrop');
+    var saveConfirmDesc     = document.getElementById('vpSaveConfirmDesc');
+    var saveConfirmOkBtn    = document.getElementById('vpSaveConfirmOkBtn');
+    var saveConfirmCancelBtn= document.getElementById('vpSaveConfirmCancelBtn');
+    var pendingSavePayload  = null;
+    var pendingSaveNames    = null; // { fullName, email } — for updating the row on success
+
+    function closeSaveConfirm(){ saveConfirmBackdrop.classList.remove('active'); pendingSavePayload = null; }
+    saveConfirmCancelBtn.addEventListener('click', closeSaveConfirm);
+    saveConfirmBackdrop.addEventListener('mousedown', function(e){ if (e.target === saveConfirmBackdrop) closeSaveConfirm(); });
+
+    saveBtn.addEventListener('click', function(){
+        if (!currentProfile || !currentProfile.canEdit) return;
+
+        var firstName = (document.getElementById('vpFirstName') || {}).value || '';
+        var lastName  = (document.getElementById('vpLastName')  || {}).value || '';
+        var email     = (document.getElementById('vpEmail')     || {}).value || '';
+        var payload = {
+            action: 'update_employee',
+            user_id: currentProfile.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: email
+        };
+
+        if (currentProfile.role === 'Area Engineer') {
+            // District-only form — sending the (nonexistent) Personal/Professional
+            // field ids here would just come back empty and, worse, the backend
+            // would treat them as real values and blank out that data; the
+            // dedicated Area Engineer save path server-side only ever touches district.
+            payload.district = (document.getElementById('vpDistrictVal') || {}).value || '';
+        } else if (currentProfile.engineer) {
+            payload.full_name               = (document.getElementById('vpFullName')       || {}).value || '';
+            payload.gender                  = (document.getElementById('vpGenderVal')      || {}).value || '';
+            payload.date_of_birth           = (document.getElementById('vpDobHiddenVal')   || {}).value || '';
+            payload.contact_number          = (document.getElementById('vpContact')        || {}).value || '';
+            payload.address                 = (document.getElementById('vpAddress')        || {}).value || '';
+            payload.address_lat              = (document.getElementById('vpAddrLat')        || {}).value || '';
+            payload.address_lng              = (document.getElementById('vpAddrLng')        || {}).value || '';
+            payload.engineering_discipline  = (document.getElementById('vpDiscipline')     || {}).value || '';
+            payload.department              = (document.getElementById('vpDepartment')     || {}).value || '';
+            payload.years_of_experience     = (document.getElementById('vpExperience')     || {}).value || '';
+            payload.district                = (document.getElementById('vpDistrictVal')    || {}).value || '';
+            payload.areas_of_specialization = (document.getElementById('vpSpecialization') || {}).value || '';
+            var skStructural = document.getElementById('vpSkillStructural');
+            var skSite       = document.getElementById('vpSkillSite');
+            var skPlanning   = document.getElementById('vpSkillPlanning');
+            payload.skill_structural_design = skStructural && skStructural.checked ? 1 : 0;
+            payload.skill_site_inspection   = skSite && skSite.checked ? 1 : 0;
+            payload.skill_project_planning  = skPlanning && skPlanning.checked ? 1 : 0;
+            payload.cad_software            = (document.getElementById('vpCad') || {}).value || '';
+        }
+
+        pendingSavePayload = payload;
+        pendingSaveNames = { fullName: (firstName + ' ' + lastName).trim(), email: email };
+        saveConfirmDesc.textContent = 'This will update the account information for ' + (pendingSaveNames.fullName || 'this user') + '.';
+        saveConfirmBackdrop.classList.add('active');
+    });
+
+    saveConfirmOkBtn.addEventListener('click', async function(){
+        if (!pendingSavePayload) { closeSaveConfirm(); return; }
+        var payload = pendingSavePayload;
+        var names = pendingSaveNames;
+        closeSaveConfirm();
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+        try {
+            const res = await fetch(window.location.pathname, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                updateRowDisplay(payload.user_id, names.fullName, names.email);
+                closeModal();
+                alert(data.message || 'Account updated successfully.');
+            } else {
+                alert(data.message || 'Failed to update account.');
+            }
+        } catch (e) {
+            alert('Network error. Please try again.');
+        }
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
     });
 })();
 

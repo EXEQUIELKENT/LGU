@@ -18,18 +18,49 @@ if ($_SERVER['HTTP_HOST'] === 'localhost') {
 }
 
 // Get statistics for the landing page
+
+// "Completed Repairs" — repair_archive is a legacy table that's never
+// actually populated by the live requests → reports → request_resolutions
+// pipeline (it was always reading 0), so completions are counted from the
+// real resolution data instead. Still takes the larger of the two counts —
+// same defensive pattern already used in functionality/get_engineer_metrics.php —
+// in case repair_archive is ever populated by another path.
 $repairs_count = 0;
-$repairs_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
-if ($repairs_result) {
-    $repairs_row = $repairs_result->fetch_assoc();
-    $repairs_count = $repairs_row['count'];
+$completed_result = $conn->query("
+    SELECT COUNT(DISTINCT rr.req_id) AS count
+    FROM request_resolutions rr
+    INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id FROM request_resolutions GROUP BY req_id) latest
+      ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+    WHERE rr.status = 'Completed'
+");
+if ($completed_result) {
+    $repairs_count = (int)$completed_result->fetch_assoc()['count'];
+}
+$archive_result = $conn->query("SELECT COUNT(*) as count FROM repair_archive");
+if ($archive_result) {
+    $repairs_count = max($repairs_count, (int)$archive_result->fetch_assoc()['count']);
 }
 
+// "Ongoing Repairs" — maintenance_schedule alone missed the much larger
+// requests → reports pipeline (Approved/Scheduled/In Progress/Pending
+// Completion cases), which is why this always showed near-zero. Both
+// sources are summed since they track different work (ad-hoc scheduled
+// maintenance tasks vs. citizen-submitted repair requests actively being
+// worked on).
 $ongoing_count = 0;
 $ongoing_result = $conn->query("SELECT COUNT(*) as count FROM maintenance_schedule WHERE status = 'In Progress'");
 if ($ongoing_result) {
-    $ongoing_row = $ongoing_result->fetch_assoc();
-    $ongoing_count = $ongoing_row['count'];
+    $ongoing_count += (int)$ongoing_result->fetch_assoc()['count'];
+}
+$ongoing_pipeline_result = $conn->query("
+    SELECT COUNT(DISTINCT rr.req_id) AS count
+    FROM request_resolutions rr
+    INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id FROM request_resolutions GROUP BY req_id) latest
+      ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+    WHERE rr.status IN ('Approved', 'Scheduled', 'In Progress', 'Pending Completion')
+");
+if ($ongoing_pipeline_result) {
+    $ongoing_count += (int)$ongoing_pipeline_result->fetch_assoc()['count'];
 }
 
 $pending_count = 0;
@@ -894,14 +925,18 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
             font-weight: 600;
         }
 
-        .status-pending   { background: #fff3cd; color: #856404; }
-        .status-progress  { background: #cce5ff; color: #004085; }
-        .status-completed { background: #d4edda; color: #155724; }
-        .status-delayed   { background: #ffebee; color: #c62828; }
+        /* Colors mirror citizenreports.php's .status-pill scheme exactly
+           (which itself mirrors sched.php's legend) — these previously used
+           an unrelated yellow/blue pairing that didn't match the rest of the
+           site's Pending/In-Progress/Completed color language. */
+        .status-pending   { background: #e3f2fd; color: #1565c0; }   /* Scheduled/Pending → blue */
+        .status-progress  { background: #fff8e1; color: #f57f17; }   /* In Progress       → amber */
+        .status-completed { background: #e8f5e9; color: #2e7d32; }   /* Completed         → green */
+        .status-delayed   { background: #ffebee; color: #c62828; }   /* Delayed           → red */
 
-        [data-theme="dark"] .status-pending   { background: rgba(133,100,4,0.22);   color: #fdd835; }
-        [data-theme="dark"] .status-progress  { background: rgba(0,64,133,0.22);    color: #90caf9; }
-        [data-theme="dark"] .status-completed { background: rgba(21,87,36,0.22);    color: #81c784; }
+        [data-theme="dark"] .status-pending   { background: rgba(21,101,192,0.2);   color: #90caf9; }
+        [data-theme="dark"] .status-progress  { background: rgba(245,158,11,0.18);  color: #fdd835; }
+        [data-theme="dark"] .status-completed { background: rgba(76,175,80,0.2);    color: #81c784; }
         [data-theme="dark"] .status-delayed   { background: rgba(198,40,40,0.22);   color: #e57373; }
 
         .activity-id {

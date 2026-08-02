@@ -20,6 +20,22 @@ requestAnimationFrame(function() {
     document.documentElement.classList.remove('sidebar-preload-collapsed');
 });
 
+// ── Sidebar scroll position persistence ──────────────────────────────────
+// The nav list now has more links than fit in the sidebar's height on most
+// screens, so .sidebar-top scrolls internally. Without this, every full page
+// navigation (every nav link is a plain <a>, not an SPA route) reset that
+// scroll back to the top, so a link near the bottom of the list would jump
+// away from under the cursor after each click. Restored synchronously
+// (before first paint) to avoid a visible snap-to-top flash.
+const sidebarTopEl = sidebar.querySelector('.sidebar-top');
+if (sidebarTopEl) {
+    const savedScroll = parseInt(localStorage.getItem('sidebarScrollTop') || '0', 10);
+    if (savedScroll > 0) sidebarTopEl.scrollTop = savedScroll;
+    sidebarTopEl.addEventListener('scroll', () => {
+        localStorage.setItem('sidebarScrollTop', sidebarTopEl.scrollTop);
+    }, { passive: true });
+}
+
 let lastMobileState = isMobileView();
 window.addEventListener('resize', () => {
     const isNowMobile = isMobileView();

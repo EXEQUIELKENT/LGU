@@ -2671,6 +2671,7 @@ tbody td {
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="#" class="nav-link active" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
                     <i class="fas fa-file-alt"></i><span>Reports</span>
@@ -2680,9 +2681,15 @@ tbody td {
                     <li><a href="current_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
                     <li><a href="pending_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="archive_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <?php if ($isAdmin): ?>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
@@ -5258,7 +5265,13 @@ function initRequestSort() {
     const dropdown= document.getElementById('reqSortDropdown');
     if (!wrap || !btn || !dropdown) return;
 
+    // Per-employee sort persistence (mirrors sched.php / pending_reports.php's
+    // proven 'cimm_<page>_sort_<empId>' localStorage pattern, so each
+    // employee's chosen sort sticks to their own account, not the device).
+    window.CURRENT_EMP_ID = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;
+    const _REQ_SORT_KEY = 'cimm_requests_sort_' + (window.CURRENT_EMP_ID || 0);
     let currentSort = 'date-desc';
+    try { currentSort = localStorage.getItem(_REQ_SORT_KEY) || 'date-desc'; } catch (e) {}
     // Whether the "Request from IPMS" sort option is active. Unlike the other
     // sort modes, this one also acts as a filter — only IPMS-sourced requests
     // should be shown while it's selected, and if there are none, the list
@@ -5329,6 +5342,7 @@ function initRequestSort() {
     dropdown.querySelectorAll('.sort-option').forEach(opt => {
         opt.addEventListener('click', () => {
             currentSort = opt.dataset.sort;
+            try { localStorage.setItem(_REQ_SORT_KEY, currentSort); } catch (e) {}
             dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
             closeSortDropdown();
@@ -5349,6 +5363,20 @@ function initRequestSort() {
             applyRequestListFilter();
         });
     });
+
+    // Restore this employee's saved sort preference on page load (the table
+    // is server-rendered in the 'date-desc' default order, so anything else
+    // needs an explicit re-apply here, same side effects as picking it fresh).
+    if (currentSort !== 'date-desc') {
+        dropdown.querySelectorAll('.sort-option').forEach(o => o.classList.toggle('active', o.dataset.sort === currentSort));
+        if (currentSort.startsWith('district-')) {
+            const target = currentSort.replace('district-', 'district ');
+            if (typeof setDistrictFilter === 'function') setDistrictFilter(target);
+        }
+        ipmsOnlyActive = (currentSort === 'ipms-first');
+        applyRequestSort(currentSort);
+        applyRequestListFilter();
+    }
 
     function parseRequestDate(el) {
         // Prefer the reliable ISO timestamp; fall back to the formatted string

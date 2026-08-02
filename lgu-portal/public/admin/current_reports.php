@@ -3332,6 +3332,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <li class="nav-dropdown-item open">
                 <a href="#" class="nav-link nav-dropdown-toggle active" data-tooltip="Reports">
                     <i class="fas fa-file-alt"></i><span>Reports</span>
@@ -3341,9 +3342,15 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     <li><a href="#" class="nav-link nav-sub-link active"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
                     <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <?php if ($isAdmin): ?>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>

@@ -433,6 +433,63 @@ $lastMonthCount = $lastMonthResult->fetch_assoc()['count'] ?? 1; // Avoid divisi
 
 $requestsTrend = $lastMonthCount > 0 ? (($currentMonthCount - $lastMonthCount) / $lastMonthCount) * 100 : 0;
 
+// District Comparison Query — total vs. completed cases per district (Reporting & Analytics)
+$districtQuery = "
+    SELECT
+        COALESCE(NULLIF(r.district, ''), 'Unspecified') AS district,
+        COUNT(DISTINCT r.req_id) AS total_count,
+        COUNT(DISTINCT CASE WHEN res.status = 'Completed' THEN r.req_id END) AS completed_count
+    FROM requests r
+    LEFT JOIN (
+        SELECT rr.* FROM request_resolutions rr
+        INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id FROM request_resolutions GROUP BY req_id) latest
+          ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+    ) res ON res.req_id = r.req_id
+    GROUP BY district
+    ORDER BY total_count DESC
+";
+$districtResult = $conn->query($districtQuery);
+$districtLabels = [];
+$districtTotalData = [];
+$districtCompletedData = [];
+if ($districtResult && $districtResult->num_rows > 0) {
+    while ($row = $districtResult->fetch_assoc()) {
+        $districtLabels[] = $row['district'];
+        $districtTotalData[] = (int)$row['total_count'];
+        $districtCompletedData[] = (int)$row['completed_count'];
+    }
+}
+
+// Engineer Leaderboard Query — completed count + avg resolution days per engineer
+$engineerLeaderboardQuery = "
+    SELECT
+        CONCAT(e.first_name, ' ', e.last_name) AS engineer_name,
+        COUNT(*) AS completed_count,
+        AVG(DATEDIFF(res.resolved_at, rp.starting_date)) AS avg_days
+    FROM reports rp
+    JOIN (
+        SELECT rr.* FROM request_resolutions rr
+        INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id FROM request_resolutions GROUP BY req_id) latest
+          ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+    ) res ON res.res_id = rp.res_id
+    JOIN employees e ON e.user_id = rp.engineer_id
+    WHERE res.status = 'Completed'
+    GROUP BY rp.engineer_id
+    ORDER BY completed_count DESC
+    LIMIT 8
+";
+$engineerLeaderboardResult = $conn->query($engineerLeaderboardQuery);
+$engineerLabels = [];
+$engineerCompletedData = [];
+$engineerAvgDaysData = [];
+if ($engineerLeaderboardResult && $engineerLeaderboardResult->num_rows > 0) {
+    while ($row = $engineerLeaderboardResult->fetch_assoc()) {
+        $engineerLabels[] = $row['engineer_name'];
+        $engineerCompletedData[] = (int)$row['completed_count'];
+        $engineerAvgDaysData[] = round((float)$row['avg_days'], 1);
+    }
+}
+
 // ===== UPCOMING MAINTENANCE — same combined source as sched.php =====
 // Pull non-completed items from maintenance_schedule AND from reports
 // (with engineer filter on the reports side when logged in as engineer)
@@ -2926,6 +2983,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         <ul class="nav-list">
             <li><a href="#"  class="nav-link active" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
@@ -2937,9 +2995,15 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
                     <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <?php if ($isAdmin): ?>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
             <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
@@ -3342,6 +3406,47 @@ HTML;
                 <?php endif; ?>
 
             </div><!-- end charts-grid (Active Reports + bottom pair) -->
+
+            <?php if (!$isPersonalized): ?>
+            <!-- District Comparison + Engineer Leaderboard Row (Reporting & Analytics) -->
+            <div class="charts-grid" style="margin-top:0;">
+
+                <!-- District Comparison Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Cases by District</div>
+                            <div class="chart-subtitle">Total vs. completed cases per district</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="districtChart"></canvas>
+                    </div>
+                    <div style="display:flex;justify-content:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
+                        <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                            <span style="width:12px;height:12px;border-radius:3px;background:#3762c8;display:inline-block;"></span>Total
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);">
+                            <span style="width:12px;height:12px;border-radius:3px;background:#4caf50;display:inline-block;"></span>Completed
+                        </span>
+                    </div>
+                </div><!-- end District Comparison card -->
+
+                <!-- Engineer Leaderboard Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Engineer Leaderboard</div>
+                            <div class="chart-subtitle">Completed cases per engineer (avg. resolution days in tooltip)</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="engineerLeaderboardChart"></canvas>
+                    </div>
+                </div><!-- end Engineer Leaderboard card -->
+
+            </div><!-- end charts-grid (District + Engineer Leaderboard) -->
+            <?php endif; ?>
 
             <!-- Current Reports Preview -->
             <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
@@ -3802,6 +3907,14 @@ const statusData = <?= json_encode($statusData) ?>;
 const schedChartLabels = <?= json_encode($schedChartLabels) ?>;
 const schedChartData   = <?= json_encode($schedChartData) ?>;
 
+// ── District Comparison / Engineer Leaderboard (Reporting & Analytics) ──
+const districtLabels = <?= json_encode($districtLabels) ?>;
+const districtTotalData = <?= json_encode($districtTotalData) ?>;
+const districtCompletedData = <?= json_encode($districtCompletedData) ?>;
+const engineerLabels = <?= json_encode($engineerLabels) ?>;
+const engineerCompletedData = <?= json_encode($engineerCompletedData) ?>;
+const engineerAvgDaysData = <?= json_encode($engineerAvgDaysData) ?>;
+
 // Make charts responsive on window resize
 let resizeTimeout;
 window.addEventListener('resize', function() {
@@ -4169,6 +4282,141 @@ if (activeReportsCtx) {
                     grid: {
                         color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
                     }
+                }
+            }
+        }
+    });
+}
+
+// ===== DISTRICT COMPARISON CHART =====
+const districtCtx = document.getElementById('districtChart');
+if (districtCtx) {
+    new Chart(districtCtx, {
+        type: 'bar',
+        data: {
+            labels: districtLabels,
+            datasets: [
+                {
+                    label: 'Total',
+                    data: districtTotalData,
+                    backgroundColor: 'rgba(55, 98, 200, 0.85)',
+                    borderColor: '#3762c8',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Completed',
+                    data: districtCompletedData,
+                    backgroundColor: 'rgba(76, 175, 80, 0.85)',
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ===== ENGINEER LEADERBOARD CHART =====
+const engineerCtx = document.getElementById('engineerLeaderboardChart');
+if (engineerCtx) {
+    new Chart(engineerCtx, {
+        type: 'bar',
+        data: {
+            labels: engineerLabels,
+            datasets: [
+                {
+                    label: 'Completed Cases',
+                    data: engineerCompletedData,
+                    backgroundColor: 'rgba(230, 81, 0, 0.85)',
+                    borderColor: '#e65100',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim(),
+                    titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    bodyColor:  getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const idx = context[0].dataIndex;
+                            const avg = engineerAvgDaysData[idx];
+                            return ['Avg. resolution: ' + (avg ?? '—') + ' days'];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12 },
+                        stepSize: 1
+                    },
+                    grid: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(),
+                        font: { size: 12, weight: '600' }
+                    },
+                    grid: { display: false }
                 }
             }
         }

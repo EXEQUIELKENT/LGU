@@ -8,7 +8,6 @@ $serverTimestamp = time();
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
-require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
 
 // ── Safe migrations ──────────────────────────────────────────────────────────
 $conn->query("
@@ -503,43 +502,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // ── Verify a Road Monitoring (RGMAO) report — marks it verified here and
-    //    calls back into RGMAO so the original report shows as CIMM-verified
-    //    there too. See rgmap_road_reports.php for the callback logic.
-    if ($action === 'verify_road_report') {
-        while (ob_get_level() > 0) ob_end_clean();
-        if (!$isAdmin) {
-            echo json_encode(['success' => false, 'message' => 'Not authorized.']);
-            exit;
-        }
-        $localId = (int)($input['id'] ?? 0);
-        if ($localId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Invalid report ID.']);
-            exit;
-        }
-        $verifierName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
-        $result = rgmap_road_reports_verify($conn, $localId, $verifierName);
-        if ($result['ok']) {
-            $rmRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
-            $rmLabel = trim(($rmRow['rgmap_report_id'] ?? '') . ' — ' . ($rmRow['title'] ?? ''), ' —');
-            // ref_type 'road_report' (not the 'report' shortcut) — rgmap_road_reports.id
-            // is its own ID sequence, separate from reports.rep_id, and re-using
-            // 'report' here would risk colliding with an unrelated schedule report
-            // that happens to share the same numeric id.
-            log_activity(
-                $conn, 'pending_reports', 'road_report', $localId, 'validated',
-                "{$verifierName} verified Road Monitoring report {$rmLabel}" . ($result['callback_ok'] ? ' — synced back to Road Monitoring.' : ' (sync back to Road Monitoring failed).')
-            );
-        }
-        echo json_encode([
-            'success' => $result['ok'],
-            'message' => $result['ok']
-                ? ($result['callback_ok'] ? 'Verified and synced back to Road Monitoring.' : 'Verified here, but the sync back to Road Monitoring failed — it will still show verified on the CIMM side.')
-                : ($result['error'] ?? 'Failed to verify report.'),
-        ]);
-        exit;
-    }
-
     while(ob_get_level()>0)ob_end_clean();
     echo json_encode(['success'=>false,'message'=>'Unknown action.']);
     exit;
@@ -690,18 +652,6 @@ function priorityBadge(?string $lvl): string {
          . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
 
-// RGMAO sometimes pushes a generic auto-generated placeholder ("Issue at
-// Pinned Location" etc.) into report_type when the field worker never picked
-// a real category — that's not a useful "Type" value, so treat it the same
-// as missing rather than showing it verbatim.
-function rmTypeLabel(?string $raw): string {
-    $clean = trim(str_replace('_', ' ', (string)$raw));
-    if ($clean === '' || stripos($clean, 'pinned location') !== false) {
-        return '—';
-    }
-    return htmlspecialchars(ucwords($clean));
-}
-
 function engProfileBtn(int $engineerId, ?string $picPath): string {
     $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fbe9e7"/><circle cx="50" cy="36" r="20" fill="#e65100"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#e65100"/></svg>';
     $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/../' . $picPath);
@@ -787,36 +737,6 @@ foreach ($rows as $row) {
     ];
 }
 
-// Road Monitoring (RGMAO) reports — pushed in from
-// road_transportation_monitoring.php on report creation. Shown in their own
-// panel below the CIMM schedule list since they're a different kind of
-// record (see rgmap_road_reports.php).
-$road_monitoring_reports = rgmap_road_reports_fetch($conn);
-
-// Trimmed-down copy for the client-side ALL_ROAD_REPORTS embed (drives the
-// review modal) — leaves out the raw payload_json/attachments_json blobs
-// rgmap_road_reports_fetch() carries for server-side use only.
-$roadReportsJson = array_map(function ($rm) {
-    return [
-        'id'                  => (int)$rm['id'],
-        'rgmap_report_id'     => $rm['rgmap_report_id'],
-        'title'               => $rm['title'],
-        'report_type'         => $rm['report_type'],
-        'report_category'     => $rm['report_category'],
-        'department'          => $rm['department'],
-        'priority'            => $rm['priority'],
-        'severity'            => $rm['severity'],
-        'description'         => $rm['description'],
-        'location'            => $rm['location'],
-        'reporter_name'       => $rm['reporter_name'],
-        'reporter_email'      => $rm['reporter_email'],
-        'reporter_phone'      => $rm['reporter_phone'],
-        'attachments'         => $rm['attachments'],
-        'submitted_at'        => $rm['submitted_at'],
-        'verification_status' => $rm['verification_status'],
-        'verified_by'         => $rm['verified_by'],
-    ];
-}, $road_monitoring_reports);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -964,72 +884,6 @@ $roadReportsJson = array_map(function ($rm) {
     box-shadow: 0 3px 14px rgba(251,146,60,.6), 0 0 0 1px rgba(255,255,255,.15) inset;
 }
 @media (max-width: 480px) { .rgmap-sync-label-full { display: none; } }
-
-/* ── Road Monitoring Reports panel — pushed in from RGMAO, same orange
-   brand as the sync badge above. ── */
-.rm-reports-card { margin-top: 20px; }
-.rm-count-badge { background: linear-gradient(135deg, #fb923c, #8b3000) !important; }
-.rm-verify-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 14px; border: none; border-radius: 8px;
-    background: linear-gradient(135deg, #fb923c, #8b3000);
-    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
-    white-space: nowrap;
-    transition: filter .2s ease, transform .2s ease, box-shadow .2s ease;
-}
-.rm-verify-btn:hover:not(:disabled) {
-    filter: brightness(1.08); transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(251,146,60,.4);
-}
-.rm-verify-btn:disabled { opacity: .6; cursor: not-allowed; }
-.rm-verified-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 8px;
-    background: rgba(34,197,94,.12); color: #16a34a;
-    border: 1px solid rgba(34,197,94,.25);
-    font-size: 12px; font-weight: 700; white-space: nowrap;
-}
-[data-theme="dark"] .rm-verified-badge {
-    background: rgba(74,222,128,.12); color: #4ade80;
-    border-color: rgba(74,222,128,.28);
-}
-.rm-verify-badge-pending {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 8px;
-    background: rgba(245,158,11,.12); color: #b45309;
-    border: 1px solid rgba(245,158,11,.25);
-    font-size: 12px; font-weight: 700; white-space: nowrap;
-}
-[data-theme="dark"] .rm-verify-badge-pending {
-    background: rgba(251,191,36,.12); color: #fbbf24;
-    border-color: rgba(251,191,36,.28);
-}
-.rm-reports-card .rc-footer {
-    display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 8px;
-    margin-top: 8px;
-}
-
-/* #roadMonitoringTable has 9 columns, not the 12 the generic
-   `table colgroup col:nth-child()` widths above were built for — without
-   this, those mismatched percentages left "Verification" far too narrow for
-   "Awaiting Verification", clipping it against the table/card edge. */
-#roadMonitoringTable colgroup col:nth-child(1) { width: 9%;  }
-#roadMonitoringTable colgroup col:nth-child(2) { width: 9%;  }
-#roadMonitoringTable colgroup col:nth-child(3) { width: 17%; }
-#roadMonitoringTable colgroup col:nth-child(4) { width: 10%; }
-#roadMonitoringTable colgroup col:nth-child(5) { width: 14%; }
-#roadMonitoringTable colgroup col:nth-child(6) { width: 9%;  }
-#roadMonitoringTable colgroup col:nth-child(7) { width: 9%;  }
-#roadMonitoringTable colgroup col:nth-child(8) { width: 9%;  }
-#roadMonitoringTable colgroup col:nth-child(9) { width: 14%; }
-
-/* Road Monitoring report review modal reuses .rep-modal-backdrop /
-   .rep-detail-modal / .rep-field / .rep-grid-2 / .rep-evidence-strip etc.
-   directly (see #rmReportModalBackdrop below) — same design as the
-   Pending Reports detail modal, no parallel CSS needed. Just widen the
-   footer buttons a touch since this modal only ever has one action. */
-.rm-verify-btn-lg, .rm-verified-badge-lg { width: 100%; justify-content: center; padding: 11px 0; font-size: 14px; border-radius: 10px; }
 
 /* ── Search toolbar — sched.php list-view-toolbar (exact match) ── */
 .search-toolbar {
@@ -2445,6 +2299,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         <ul class="nav-list">
             <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
 
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item open">
@@ -2457,10 +2312,16 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
                     <li><a href="#" class="nav-link nav-sub-link active"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <?php if ($isAdmin): ?>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
 
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <?php if ($isAdmin): ?>
+            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
@@ -2685,99 +2546,6 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
     </div>
 </div>
 
-<!-- ══════════ ROAD MONITORING REPORTS (pushed in from RGMAO's
-     road_transportation_monitoring.php on report creation — see
-     rgmap_road_reports.php). Sits between Pending Reports and History Logs. ══════════ -->
-<div class="card rm-reports-card">
-    <div class="page-header">
-        <h2 class="page-title">Road Monitoring Reports</h2>
-        <span class="rgmap-sync-badge" title="Reports pushed in from the Road Monitoring (RGMAP) system">
-            <span class="rgmap-sync-dot"></span>
-            <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
-        </span>
-        <span class="page-badge rm-count-badge"><?= count($road_monitoring_reports) ?> Report<?= count($road_monitoring_reports) === 1 ? '' : 's' ?></span>
-    </div>
-
-    <div class="table-wrapper">
-        <table id="roadMonitoringTable">
-            <colgroup>
-                <col><col><col><col><col><col><col><col><col>
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Action</th><th>Report ID</th><th>Title</th><th>Type</th><th>Location</th>
-                    <th>Priority</th><th>Severity</th><th>Reported</th><th>Verification</th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php if (!empty($road_monitoring_reports)): ?>
-                <?php foreach ($road_monitoring_reports as $rm):
-                    $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
-                ?>
-                <tr data-rm-id="<?= (int)$rm['id'] ?>">
-                    <td><button type="button" class="btn-view-rep" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
-                    <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
-                    <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
-                    <td class="searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></td>
-                    <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></td>
-                    <td class="searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></td>
-                    <td class="searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></td>
-                    <td class="searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></td>
-                    <td class="searchable">
-                        <?php if ($rmVerified): ?>
-                            <span class="status completed"><i class="fas fa-check-circle"></i> Verified</span>
-                        <?php else: ?>
-                            <span class="status pending-st"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr><td colspan="9">
-                    <div class="empty-state">
-                        <div class="empty-icon">🛣️</div>
-                        <p>No Road Monitoring reports yet.</p>
-                    </div>
-                </td></tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="mobile-report-list">
-    <?php if (!empty($road_monitoring_reports)): ?>
-        <?php foreach ($road_monitoring_reports as $rm):
-            $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
-        ?>
-        <div class="report-card" data-rm-id="<?= (int)$rm['id'] ?>">
-            <div class="rc-row"><span class="rc-label">Report ID:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Title:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['title']) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></span></div>
-            <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></span></div>
-            <div class="rc-row"><span class="rc-label">Reported:</span><span class="rc-value searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></span></div>
-            <div class="rc-footer">
-                <?php if ($rmVerified): ?>
-                    <span class="status completed"><i class="fas fa-check-circle"></i> Verified</span>
-                <?php else: ?>
-                    <span class="status pending-st"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
-                <?php endif; ?>
-                <button type="button" class="btn-view-rep btn-view-rep-mobile" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class="report-card">
-            <div class="empty-state">
-                <div class="empty-icon">🛣️</div>
-                <p>No Road Monitoring reports yet.</p>
-            </div>
-        </div>
-    <?php endif; ?>
-    </div>
-</div>
-
 <!-- ══════════ HISTORY LOGS (admin / super admin only) ══════════ -->
 <?php if ($isAdmin): ?>
 <div class="card activity-log-card">
@@ -2798,164 +2566,6 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
 </div>
 <?php endif; ?>
 </div>
-
-<!-- ══════════ ROAD MONITORING REPORT DETAIL MODAL — reuses the exact same
-     .rep-modal-backdrop / .rep-detail-modal / .rep-field / .rep-grid-2 /
-     .rep-evidence-strip classes as the Pending Reports detail modal above,
-     so this reads as the same modal design, not a lookalike. ══════════ -->
-<div class="rep-modal-backdrop" id="rmReportModalBackdrop">
-    <div class="rep-detail-modal">
-        <div class="rep-modal-band"></div>
-        <div class="rep-modal-header">
-            <div class="rep-modal-header-left">
-                <div class="rep-modal-rep-id" id="rmModalReportId"></div>
-                <div class="rep-modal-infra" id="rmModalTitle"></div>
-            </div>
-            <button type="button" class="rep-modal-close" onclick="closeRoadReportModal()" aria-label="Close">&times;</button>
-        </div>
-        <div class="rep-modal-body">
-            <div class="rep-grid-2">
-                <div class="rep-field"><div class="rep-field-label">&#127991;&#65039; Type</div><div class="rep-field-value" id="rmModalType"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#128194; Category</div><div class="rep-field-value" id="rmModalCategory"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#127970; Department</div><div class="rep-field-value" id="rmModalDepartment"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#128678; Priority</div><div class="rep-field-value" id="rmModalPriority"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#9888;&#65039; Severity</div><div class="rep-field-value" id="rmModalSeverity"></div></div>
-                <div class="rep-field"><div class="rep-field-label">&#128197; Reported</div><div class="rep-field-value" id="rmModalSubmitted"></div></div>
-            </div>
-            <div class="rep-divider"></div>
-            <div class="rep-field"><div class="rep-field-label">&#128205; Location</div><div class="rep-field-value" id="rmModalLocation"></div></div>
-            <div class="rep-field"><div class="rep-field-label">&#128100; Reporter</div><div class="rep-field-value" id="rmModalReporter"></div></div>
-            <div class="rep-field"><div class="rep-field-label">&#128221; Description</div><div class="rep-field-value" id="rmModalDescription"></div></div>
-            <div class="rep-divider"></div>
-            <div class="rep-field-label" style="margin-bottom:8px;">&#128444;&#65039; Attachments</div>
-            <div class="rep-evidence-strip" id="rmModalAttachmentsGrid"></div>
-            <div class="rep-no-evidence" id="rmModalNoEvidence" style="display:none;"><i class="fas fa-image"></i>No attachments.</div>
-        </div>
-        <div class="rep-modal-footer">
-            <div class="rep-footer-inner" id="rmModalFooter"></div>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════ ROAD MONITORING VERIFY CONFIRMATION (same custom
-     confirm-box component used for logout and every other action on this
-     page — .rep-confirm-backdrop / .rep-confirm-modal) ══════════ -->
-<div class="rep-confirm-backdrop" id="rmVerifyConfirmBackdrop">
-    <div class="rep-confirm-modal">
-        <div class="rep-confirm-icon complete-icon"><i class="fas fa-shield-halved" style="color:#c2410c;font-size:24px;"></i></div>
-        <div class="rep-confirm-title">Verify this Report?</div>
-        <div class="rep-confirm-desc">This marks the report as verified here and syncs the status back to the Road Monitoring system.</div>
-        <div class="rep-confirm-btns">
-            <button class="rep-confirm-btn rep-confirm-cancel" onclick="closeRmVerifyConfirm()">Cancel</button>
-            <button class="rep-confirm-btn rep-confirm-ok-complete rm-verify-confirm-ok" onclick="doVerifyRoadReport()"><i class="fas fa-shield-halved"></i> Verify</button>
-        </div>
-    </div>
-</div>
-
-<script>
-const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-let currentRoadReportData = null;
-
-function openRoadReportModal(id) {
-    const data = ALL_ROAD_REPORTS.find(r => r.id == id);
-    if (!data) return;
-    currentRoadReportData = data;
-
-    document.getElementById('rmModalReportId').textContent = data.rgmap_report_id || ('#' + data.id);
-    document.getElementById('rmModalTitle').textContent = data.title || 'Untitled report';
-    // RGMAO sometimes sends a generic auto-generated placeholder (e.g. "Issue
-    // at Pinned Location") when the field worker never picked a real
-    // category — not a useful Type value, so treat it the same as missing.
-    const rawType = (data.report_type || '').replace(/_/g, ' ').trim();
-    document.getElementById('rmModalType').textContent =
-        (!rawType || /pinned location/i.test(rawType)) ? '—' : rawType.replace(/\b\w/g, c => c.toUpperCase());
-    document.getElementById('rmModalCategory').textContent = data.report_category || '—';
-    document.getElementById('rmModalDepartment').textContent = data.department || '—';
-    document.getElementById('rmModalPriority').innerHTML = priBadge(data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : 'Medium');
-    document.getElementById('rmModalSeverity').innerHTML = priBadge(data.severity ? (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) : 'Medium');
-    document.getElementById('rmModalSubmitted').textContent = data.submitted_at ? new Date(data.submitted_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '—';
-    document.getElementById('rmModalLocation').textContent = data.location || '—';
-    document.getElementById('rmModalReporter').textContent = data.reporter_name || data.reporter_email || data.reporter_phone || '— (submitted by LGU staff)';
-    document.getElementById('rmModalDescription').textContent = data.description || '—';
-
-    // Reuses the same evidence-strip + lightbox as the schedule report modal
-    // (openRepLightbox) instead of a separate image viewer.
-    const attGrid = document.getElementById('rmModalAttachmentsGrid');
-    const noEvidence = document.getElementById('rmModalNoEvidence');
-    attGrid.innerHTML = '';
-    const attachments = Array.isArray(data.attachments) ? data.attachments : [];
-    if (attachments.length > 0) {
-        attachments.forEach((url, idx) => {
-            const img = document.createElement('img');
-            img.src = url; img.className = 'rep-evidence-thumb'; img.alt = 'Attachment'; img.loading = 'lazy';
-            img.onclick = () => { repGalleryType = 'evidence'; openRepLightbox(idx, attachments); };
-            attGrid.appendChild(img);
-        });
-        attGrid.style.display = '';
-        noEvidence.style.display = 'none';
-    } else {
-        attGrid.style.display = 'none';
-        noEvidence.style.display = '';
-    }
-
-    const footer = document.getElementById('rmModalFooter');
-    if ((data.verification_status || 'Pending') === 'Verified') {
-        footer.innerHTML = '<span class="rm-verified-badge rm-verified-badge-lg"><i class="fas fa-check-circle"></i> Verified' +
-            (data.verified_by ? ' by ' + data.verified_by : '') + '</span>';
-    } else {
-        footer.innerHTML = '<button type="button" class="rm-verify-btn rm-verify-btn-lg" onclick="confirmVerifyRoadReport()"><i class="fas fa-shield-halved"></i> Verify Report</button>';
-    }
-
-    document.getElementById('rmReportModalBackdrop').classList.add('active');
-}
-function closeRoadReportModal() {
-    document.getElementById('rmReportModalBackdrop').classList.remove('active');
-}
-document.getElementById('rmReportModalBackdrop').addEventListener('click', function(e) {
-    if (e.target === document.getElementById('rmReportModalBackdrop')) closeRoadReportModal();
-});
-
-function confirmVerifyRoadReport() {
-    if (!currentRoadReportData) return;
-    document.getElementById('rmVerifyConfirmBackdrop').classList.add('active');
-}
-function closeRmVerifyConfirm() {
-    document.getElementById('rmVerifyConfirmBackdrop').classList.remove('active');
-}
-document.getElementById('rmVerifyConfirmBackdrop').addEventListener('click', function(e) {
-    if (e.target === document.getElementById('rmVerifyConfirmBackdrop')) closeRmVerifyConfirm();
-});
-
-async function doVerifyRoadReport() {
-    if (!currentRoadReportData) return;
-    const id = currentRoadReportData.id;
-    closeRmVerifyConfirm();
-    showRepOverlay('Verifying & Syncing to Road Monitoring');
-    try {
-        const res = await fetch(window.location.pathname, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'verify_road_report', id: id})
-        });
-        const text = await res.text();
-        let data;
-        try { data = JSON.parse(text); } catch (pe) {
-            hideRepOverlay();
-            showRepNotif('error', '❌ Server error. Please try again.'); return;
-        }
-        hideRepOverlay();
-        if (data.success) {
-            closeRoadReportModal();
-            showRepNotif('success', '✔️ ' + (data.message || 'Report verified.'));
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showRepNotif('error', '❌ ' + (data.message || 'Failed to verify.'));
-        }
-    } catch (e) {
-        hideRepOverlay();
-        showRepNotif('error', '❌ Network error.');
-    }
-}
-</script>
 
 <!-- ══════════════ VIEW DETAIL MODAL ══════════════ -->
 <div id="repModalBackdrop" class="rep-modal-backdrop">
