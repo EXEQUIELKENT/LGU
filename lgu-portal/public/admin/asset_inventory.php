@@ -624,15 +624,39 @@ tbody tr:hover { background: rgba(142,36,170,.09); }
 .af-btn-save { background: linear-gradient(135deg, #8e24aa, #6a1b9a); color: #fff; box-shadow: 0 2px 8px rgba(142,36,170,.3); }
 .af-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(142,36,170,.4); }
 
-.confirm-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9000; }
-.confirm-modal-backdrop.active { display:flex; }
-.confirm-modal { background:var(--bg-primary); border-radius:18px; padding: 28px; width: 90%; max-width: 380px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 12px 50px var(--shadow-color); }
-.confirm-modal .lo-title { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
-.confirm-modal .lo-desc { font-size: 13.5px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
-.confirm-modal .lo-btns { display: flex; gap: 10px; }
-.confirm-modal .lo-btn { flex: 1; height: 42px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; }
-.confirm-modal .lo-cancel { background: rgba(148,163,184,.15); color: var(--text-primary); }
-.confirm-modal .lo-confirm-delete { background: linear-gradient(135deg,#dc2626,#b91c1c); color: #fff; }
+/* ── Confirm modal — same polished design as the logout confirmation box
+   (icon circle, pop-in animation, exact spacing/colors), instead of the
+   plainer flat dialog this used before. ── */
+.confirm-modal-backdrop {
+    position: fixed; z-index: 9998; inset: 0; background: rgba(15,23,42,.5);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+}
+.confirm-modal-backdrop.active { display: flex; }
+.confirm-modal {
+    background: var(--card-bg, #ffffff); border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(15,23,42,.2), 0 0 0 1px rgba(0,0,0,.05);
+    padding: 32px 26px 24px; width: 340px; max-width: 92vw;
+    animation: assetConfirmModalPop .28s cubic-bezier(.34,1.56,.64,1);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+@keyframes assetConfirmModalPop { from { transform: translateY(24px) scale(.93); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+.confirm-modal .lo-icon-wrap { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.confirm-modal.delete-confirm .lo-icon-wrap { background: linear-gradient(135deg, rgba(239,68,68,.13), rgba(239,68,68,.07)); border: 1.5px solid rgba(239,68,68,.22); }
+.confirm-modal .lo-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary, #1a1a2e); margin-bottom: 8px; }
+.confirm-modal .lo-desc { font-size: .92rem; color: var(--text-secondary, #64748b); margin-bottom: 24px; line-height: 1.55; }
+.confirm-modal .lo-btns { display: flex; gap: 10px; width: 100%; }
+.confirm-modal .lo-btn { flex: 1; padding: 11px 0; border-radius: 10px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all .18s ease; font-family: inherit; line-height: 1; }
+.confirm-modal .lo-cancel { background: var(--bg-secondary, #f1f5f9); color: var(--text-primary, #374151); border: 1px solid var(--border-color, #e2e8f0) !important; }
+.confirm-modal .lo-cancel:hover { background: var(--border-color, #e2e8f0); }
+.confirm-modal .lo-confirm-delete { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,.35); }
+.confirm-modal .lo-confirm-delete:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(239,68,68,.45); }
+[data-theme="dark"] .confirm-modal { background: rgba(24,24,30,.98); box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07); }
+[data-theme="dark"] .confirm-modal.delete-confirm .lo-icon-wrap { background: linear-gradient(135deg, rgba(239,68,68,.22), rgba(239,68,68,.10)); border-color: rgba(239,68,68,.32); }
+[data-theme="dark"] .confirm-modal .lo-title { color: #e2e8f0; }
+[data-theme="dark"] .confirm-modal .lo-desc { color: #94a3b8; }
+[data-theme="dark"] .confirm-modal .lo-cancel { background: rgba(255,255,255,.06); color: #e2e8f0; border-color: rgba(255,255,255,.1) !important; }
+[data-theme="dark"] .confirm-modal .lo-cancel:hover { background: rgba(255,255,255,.1); }
 
 /* ── Status/Condition pills ── */
 .status { padding: 3px 7px; border-radius: 20px; font-size: 10px; font-weight: 600; display: inline-block; white-space: normal; word-break: break-word; max-width: 100%; vertical-align: middle; line-height: 1.3; }
@@ -640,7 +664,7 @@ tbody tr:hover { background: rgba(142,36,170,.09); }
 @media (max-width: 768px) {
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
-    .mobile-toggle { position: absolute; left: 14px; background: #8e24aa; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
+    .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
     .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: 0.05em; }
     .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
@@ -2024,9 +2048,12 @@ tbody tr:hover { background: rgba(142,36,170,.09); }
     </div>
 </div>
 
-<!-- Delete confirm modal -->
+<!-- Delete confirm modal — same design as the logout confirmation box -->
 <div class="confirm-modal-backdrop" id="deleteConfirmBackdrop">
-    <div class="confirm-modal">
+    <div class="confirm-modal delete-confirm">
+        <div class="lo-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </div>
         <div class="lo-title">Delete Asset?</div>
         <div class="lo-desc" id="deleteConfirmDesc">This will permanently remove this asset from the registry.</div>
         <div class="lo-btns">

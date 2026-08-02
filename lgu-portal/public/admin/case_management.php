@@ -542,6 +542,30 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(13,148,136,.3); }
+
+/* ── Evidence image lightbox — ported verbatim from requests.php (zoom,
+   pan, gallery nav, pinch/swipe) so viewing an image behaves identically
+   across pages. ── */
+.image-modal { position: fixed; inset: 0; display: none; z-index: 9000; }
+.image-modal.active { display: flex; align-items: center; justify-content: center; }
+.image-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.70); }
+.image-modal-content { position: relative; display: flex; justify-content: center; align-items: center; max-height: 85vh; max-width: 90vw; margin: auto; }
+#imageModalImg { width: auto; height: auto; max-width: 100%; max-height: 80vh; border-radius: 16px; object-fit: contain; transition: transform .15s ease; cursor: zoom-in; }
+#imageModalImg.zoomed { cursor: zoom-out; }
+.image-modal-close { position: fixed; top: 20px; right: 35px; background: rgba(0,0,0,.75); color: #fff; border: none; font-size: 26px; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; z-index: 9001; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+.image-modal-close:hover { background: rgba(0,0,0,.88); }
+.nav-arrow { position: fixed; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.6); color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; z-index: 9001; }
+.nav-arrow.left  { left: 30px; }
+.nav-arrow.right { right: 30px; }
+.nav-arrow:hover { background: rgba(0,0,0,.85); }
+.nav-arrow.hidden { display: none; }
+.swipe-indicator { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.65); color: #fff; padding: 6px 14px; font-size: 13px; border-radius: 20px; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity .4s ease; z-index: 9002; }
+.swipe-indicator.show { opacity: 1; }
+@media (max-width: 768px) {
+    .nav-arrow { display: none !important; }
+    .image-modal-content { max-width: 95vw; max-height: 70vh; }
+    .image-modal-close { top: 20px; right: 20px; width: 40px; height: 40px; font-size: 24px; }
+}
 .rep-no-evidence {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; width:100%; padding:22px 12px;
@@ -1082,6 +1106,18 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
     <?php endif; ?>
 </div>
 
+<!-- Evidence image lightbox — ported verbatim from requests.php -->
+<div id="imageModal" class="image-modal">
+    <div class="image-modal-backdrop"></div>
+    <div class="image-modal-content">
+        <button class="image-modal-close" title="Close" aria-label="Close image">&times;</button>
+        <button class="nav-arrow left hidden" type="button" title="Previous" onclick="prevImage()">❮</button>
+        <img id="imageModalImg" src="" alt="Evidence Image">
+        <button class="nav-arrow right hidden" type="button" title="Next" onclick="nextImage()">❯</button>
+        <div class="swipe-indicator" id="swipeIndicator">⇆ Swipe left or right</div>
+    </div>
+</div>
+
 <!-- Case detail modal (read-only) — styled to match the report-detail modal
      used on requests.php / pending_reports.php / current_reports.php /
      archive_reports.php, connected to the actual report/request data instead
@@ -1177,6 +1213,122 @@ function fmtDate(s) {
 
 function findCase(reqId) { return ALL_CASES.find(c => c.req_id === reqId); }
 
+// ── Evidence image lightbox — ported verbatim from requests.php (double-click
+// zoom, wheel zoom, drag-to-pan, pinch/swipe on mobile, gallery navigation,
+// keyboard arrows/Escape) so viewing an image behaves identically here. ──
+const imageModal         = document.getElementById('imageModal');
+const imageModalImg      = document.getElementById('imageModalImg');
+const imageModalClose    = document.querySelector('.image-modal-close');
+const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
+
+const BASE_ZOOM = 2, MAX_WHEEL_ZOOM = 5, WHEEL_ZOOM_SPEED = 0.002;
+let isZoomed = false, isDragging = false, isWheelZooming = false;
+let startX = 0, startY = 0, translateX = 0, translateY = 0, currentScale = 1;
+let galleryImages = [], currentIndex = 0;
+
+imageModalImg.draggable = false;
+imageModalImg.addEventListener('dragstart', e => e.preventDefault());
+
+function openGalleryModal(images, index, requestId) {
+    galleryImages = images; currentIndex = index;
+    imageModal.classList.add('active');
+    updateGalleryImage();
+    showSwipeIndicator();
+
+    // Fire-and-forget: record this image view in History Logs, only when the
+    // lightbox actually opens (not just because the case modal showing
+    // thumbnails was opened).
+    if (requestId) {
+        const c = findCase(requestId);
+        if (c) logCaseActivity('log_image_view', c);
+    }
+}
+function closeImageModal() {
+    imageModal.classList.remove('active');
+    resetZoom();
+}
+imageModalClose.addEventListener('click', closeImageModal);
+imageModalBackdrop.addEventListener('click', closeImageModal);
+
+function updateGalleryImage() {
+    if (!galleryImages.length) return;
+    imageModalImg.src = galleryImages[currentIndex];
+    const single = galleryImages.length <= 1;
+    document.querySelector('.nav-arrow.left').classList.toggle('hidden', single);
+    document.querySelector('.nav-arrow.right').classList.toggle('hidden', single);
+    resetZoom();
+}
+function nextImage() { if (galleryImages.length > 1) { currentIndex = (currentIndex + 1) % galleryImages.length; updateGalleryImage(); } }
+function prevImage() { if (galleryImages.length > 1) { currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length; updateGalleryImage(); } }
+function showSwipeIndicator() {
+    const ind = document.getElementById('swipeIndicator');
+    if (!ind || window.innerWidth > 768) return;
+    ind.classList.add('show'); setTimeout(() => ind.classList.remove('show'), 2500);
+}
+function resetZoom() {
+    isZoomed = isDragging = isWheelZooming = false;
+    translateX = translateY = 0; currentScale = 1;
+    imageModalImg.classList.remove('zoomed');
+    imageModalImg.style.transform = 'scale(1)'; imageModalImg.style.cursor = 'zoom-in';
+    imageModalClose.style.display = 'flex'; imageModalClose.disabled = false;
+}
+imageModalImg.addEventListener('dblclick', e => {
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width, py = (e.clientY - rect.top) / rect.height;
+    if (!isZoomed) {
+        isZoomed = true; currentScale = BASE_ZOOM;
+        translateX = (0.5 - px) * rect.width * (BASE_ZOOM - 1);
+        translateY = (0.5 - py) * rect.height * (BASE_ZOOM - 1);
+        imageModalImg.classList.add('zoomed');
+        imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+        imageModalImg.style.cursor = 'grab';
+        imageModalClose.style.display = 'none'; imageModalClose.disabled = true;
+    } else resetZoom();
+});
+imageModalImg.addEventListener('mousedown', e => { if (!isZoomed || e.button !== 0) return; isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; imageModalImg.style.cursor = 'grabbing'; });
+window.addEventListener('mouseup', () => { if (!isZoomed) return; isDragging = false; imageModalImg.style.cursor = 'grab'; });
+window.addEventListener('mousemove', e => { if (!isZoomed || !isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`; });
+imageModalImg.addEventListener('wheel', e => {
+    if (!isZoomed) return; e.preventDefault();
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width, py = (e.clientY - rect.top) / rect.height;
+    const ns = Math.min(Math.max(currentScale + (-e.deltaY * WHEEL_ZOOM_SPEED), BASE_ZOOM), MAX_WHEEL_ZOOM);
+    const sd = ns / currentScale;
+    translateX = translateX * sd + (0.5 - px) * rect.width * (sd - 1);
+    translateY = translateY * sd + (0.5 - py) * rect.height * (sd - 1);
+    currentScale = ns;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+}, { passive: false });
+// Mobile pinch & swipe
+let initDist = null, touchSX = 0, touchEX = 0;
+imageModalImg.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) initDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+    else if (e.touches.length === 1) touchSX = e.changedTouches[0].screenX;
+}, { passive: true });
+imageModalImg.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && initDist) {
+        e.preventDefault();
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        currentScale = Math.min(Math.max(d / initDist, .5), 3);
+        imageModalImg.style.transform = `scale(${currentScale})`;
+    }
+});
+imageModalImg.addEventListener('touchend', e => {
+    if (currentScale < 1) currentScale = 1;
+    imageModalImg.style.transform = `scale(${currentScale})`; initDist = null;
+    if (e.changedTouches.length === 1) {
+        touchEX = e.changedTouches[0].screenX;
+        const dx = touchEX - touchSX;
+        if (Math.abs(dx) >= 50 && galleryImages.length > 1) { dx > 0 ? prevImage() : nextImage(); }
+    }
+}, { passive: true });
+document.addEventListener('keydown', e => {
+    if (!imageModal.classList.contains('active')) return;
+    if (e.key === 'ArrowLeft') { prevImage(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { nextImage(); e.preventDefault(); }
+    if (e.key === 'Escape') closeImageModal();
+});
+
 let currentCaseData = null;
 function openCaseModal(reqId) {
     const c = findCase(reqId);
@@ -1227,10 +1379,10 @@ function openCaseModal(reqId) {
     const ec = document.getElementById('caseEvidenceContainer');
     if (c.images && c.images.length) {
         ec.innerHTML = '';
-        c.images.forEach(src => {
+        c.images.forEach((src, idx) => {
             const img = document.createElement('img');
             img.src = src; img.className = 'rep-evidence-thumb'; img.alt = 'Evidence';
-            img.onclick = () => window.open(src, '_blank');
+            img.onclick = () => openGalleryModal(c.images, idx, c.req_id);
             ec.appendChild(img);
         });
     } else {
@@ -1245,9 +1397,10 @@ function openCaseModal(reqId) {
     // Record this view in History Logs — fire-and-forget, then refresh the
     // panel immediately so the admin's own action shows up without waiting
     // for the notification-triggered poll (which only fires for notification-
-    // worthy actions, not routine "viewed" activity).
+    // worthy actions, not routine "viewed" activity). Image views are logged
+    // separately, inside openGalleryModal(), only when the lightbox actually
+    // opens — matching requests.php's semantics.
     logCaseActivity('log_view', c);
-    if (c.images && c.images.length) logCaseActivity('log_image_view', c);
 }
 function logCaseActivity(action, c) {
     fetch(window.location.pathname, {

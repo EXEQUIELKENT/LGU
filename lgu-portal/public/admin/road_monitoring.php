@@ -143,6 +143,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── Log: admin opened a road report's detail view ─────────────────────
+    // Same fix as case_management.php's log_view: without this, opening a
+    // report/viewing its images never wrote to History Logs at all, so the
+    // panel only ever updated on a "validated" action — routine viewing
+    // never showed up, live or otherwise.
+    if ($action === 'log_view') {
+        $localId = (int)($input['id'] ?? 0);
+        if ($localId > 0) {
+            $rmRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
+            $rmLabel = trim(($rmRow['rgmap_report_id'] ?? '') . ' — ' . ($rmRow['title'] ?? ''), ' —');
+            $actorName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
+            log_activity($conn, 'road_monitoring', 'road_report', $localId, 'viewed',
+                "{$actorName} viewed Road Monitoring report {$rmLabel}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ── Log: admin viewed a road report's evidence images ─────────────────
+    if ($action === 'log_image_view') {
+        $localId = (int)($input['id'] ?? 0);
+        if ($localId > 0) {
+            $rmRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
+            $rmLabel = trim(($rmRow['rgmap_report_id'] ?? '') . ' — ' . ($rmRow['title'] ?? ''), ' —');
+            $actorName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
+            log_activity($conn, 'road_monitoring', 'road_report', $localId, 'images_viewed',
+                "{$actorName} viewed images for Road Monitoring report {$rmLabel}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     echo json_encode(['success' => false, 'message' => 'Unknown action.']);
     exit;
 }
@@ -542,7 +574,7 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 @media (max-width: 768px) {
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
-    .mobile-toggle { position: absolute; left: 14px; background: #c84b10; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
+    .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
     .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: 0.05em; }
     .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
@@ -1076,6 +1108,21 @@ function openRoadReportModal(id) {
     }
 
     document.getElementById('rmReportModalBackdrop').classList.add('active');
+
+    // Record this view in History Logs — fire-and-forget, then refresh the
+    // panel immediately (same fix as case_management.php's log_view: without
+    // this, opening a report never wrote to History Logs at all, so it only
+    // ever updated on a "validated" action).
+    logRoadActivity('log_view', data.id);
+    if (attachments.length > 0) logRoadActivity('log_image_view', data.id);
+}
+function logRoadActivity(action, id) {
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action, id: id }),
+        keepalive: true
+    }).then(() => pokeActivityLog()).catch(() => {});
 }
 function closeRoadReportModal() {
     document.getElementById('rmReportModalBackdrop').classList.remove('active');
