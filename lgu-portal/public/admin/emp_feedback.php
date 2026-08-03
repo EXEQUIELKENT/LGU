@@ -16,6 +16,7 @@ if (!cimm_is_admin()) {
 }
 
 require __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/core/notif_helper.php';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getProfilePicture($employeeId, $conn) {
@@ -157,10 +158,10 @@ if (isset($_GET['ajax'])) {
 
         // Send notification email when finalizing (Valid or Dismissed) and email exists
         $emailSent = false;
+        $refEngineerName = '';
         if ($ok && in_array($status, ['Valid','Dismissed']) && !empty($cur['email'])) {
             try {
                 // Fetch engineer name from referenced report if present
-                $refEngineerName = '';
                 if (!empty($cur['rep_id'])) {
                     $engStmt = $conn->prepare('
                         SELECT CONCAT(e.first_name," ",e.last_name) AS eng_name
@@ -193,6 +194,17 @@ if (isset($_GET['ajax'])) {
             } catch (Throwable $e) {
                 error_log('[emp_feedback] Email error: ' . $e->getMessage());
             }
+        }
+
+        if ($ok && $status === 'Valid') {
+            $targetLabel = $refEngineerName ? "Engineer {$refEngineerName}" : 'Engineer account';
+            notifyAdminsOnly(
+                $conn,
+                '✅ Valid Engineer Feedback',
+                "Feedback #{$fid} for {$targetLabel} has been confirmed as valid and added to ratings.",
+                'emp_feedback.php?highlight_fbk=' . $fid,
+                'Employee Feedback'
+            );
         }
 
         echo json_encode(['success'=>$ok,'email_sent'=>$emailSent]); exit;
@@ -1729,7 +1741,6 @@ tr.notif-highlight > td:first-child {
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
-            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
             <?php endif; ?>
             <li><a href="#"     class="nav-link active" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php if ($isAdmin): ?>

@@ -24,28 +24,6 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Table structure for table `assets`
---
-
-CREATE TABLE `assets` (
-  `asset_id` int(10) UNSIGNED NOT NULL,
-  `name` varchar(150) NOT NULL,
-  `asset_type` varchar(100) NOT NULL,
-  `location` varchar(255) NOT NULL,
-  `district` varchar(50) DEFAULT NULL,
-  `lat` decimal(10,7) DEFAULT NULL,
-  `lng` decimal(10,7) DEFAULT NULL,
-  `condition` enum('Good','Fair','Poor','Critical') NOT NULL DEFAULT 'Good',
-  `install_date` date DEFAULT NULL,
-  `notes` text DEFAULT NULL,
-  `created_by` int(10) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `citizen_feedback`
 --
 

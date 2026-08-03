@@ -194,7 +194,7 @@ try {
     if ($isNewInsert && $localId > 0) {
         $displayTitle = $title !== '' ? $title : 'Untitled report';
         log_activity(
-            $conn, 'pending_reports', 'road_report', $localId, 'submitted',
+            $conn, 'road_monitoring', 'road_report', $localId, 'submitted',
             "A new Road Monitoring report ({$rgmapReportId} — {$displayTitle}) was received from the Road Monitoring (RGMAP) system and needs verification.",
             'Road Monitoring System (RGMAP)'
         );
@@ -202,7 +202,7 @@ try {
             $conn,
             'New Road Monitoring Report',
             "{$displayTitle} ({$rgmapReportId}) was submitted from the Road Monitoring system and is awaiting verification.",
-            'pending_reports.php',
+            'road_monitoring.php?highlight_id=' . $localId . '&open_modal=1',
             'Road Monitoring Report'
         );
     }

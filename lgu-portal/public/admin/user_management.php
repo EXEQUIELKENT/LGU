@@ -601,6 +601,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $actor = activity_actor_name();
         log_activity($conn, 'user_management', 'user', $targetId, 'profile_edited',
             "{$actor} updated {$targetName}'s account information.");
+        notifyAdminsOnly(
+            $conn,
+            '👤 Account Updated',
+            "{$actor} updated {$targetName}'s account information.",
+            'user_management.php',
+            'User Management',
+            $currentUserId
+        );
 
         echo json_encode(['success' => true, 'message' => 'Account updated successfully.']);
         exit;
@@ -2198,7 +2206,6 @@ textarea.vp-edit-input-wrap {
                 </ul>
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
-            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
             <li><a href="emp_feedback.php" class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <!-- Admin-only: User Management (active on this page) -->

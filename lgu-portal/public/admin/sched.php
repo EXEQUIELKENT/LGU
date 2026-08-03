@@ -507,7 +507,6 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </li>
             <li><a href="#" class="nav-link active" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
-            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
@@ -1297,9 +1296,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </div><!-- /.sched-form-card -->
 
             <div id="scheduleFormError" class="sched-form-error hidden"></div>
-            <div class="sched-form-actions rep-confirm-btns">
-                <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel" title="Cancel and close">Cancel</button>
-                <button type="submit" class="rep-confirm-btn rep-confirm-ok-save" id="scheduleFormSave" title="Save this schedule"><i class="fas fa-save"></i> Save Schedule</button>
+            <div class="modal-footer sched-form-footer">
+                <div class="sched-form-actions rep-confirm-btns">
+                    <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel" title="Cancel and close">Cancel</button>
+                    <button type="submit" class="rep-confirm-btn rep-confirm-ok-save" id="scheduleFormSave" title="Save changes"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
             </div>
         </form>
     </div>

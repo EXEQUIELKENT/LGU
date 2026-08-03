@@ -425,8 +425,15 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 .rep-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px 18px; }
 .rep-divider { height:1px;background:var(--border-color);margin:14px 0; }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
-.rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:pointer;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
+.rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:zoom-in;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(200,75,16,.35); }
+.rm-image-viewer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 9100; padding: 20px; }
+.rm-image-viewer-backdrop.active { display: flex; }
+.rm-image-viewer-content { position: relative; max-width: 95vw; max-height: 95vh; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.rm-image-viewer-content img { width: 100%; max-height: calc(95vh - 90px); object-fit: contain; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.rm-image-viewer-caption { color: #ffffff; font-size: 14px; text-align: center; }
+.rm-image-viewer-close { position: absolute; top: 10px; right: 10px; width: 42px; height: 42px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 22px; cursor: pointer; transition: background .2s ease; }
+.rm-image-viewer-close:hover { background: rgba(255,255,255,.22); }
 .rep-no-evidence {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; width:100%; padding:22px 12px;
@@ -807,7 +814,6 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
             </li>
             <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
-            <li><a href="asset_inventory.php" class="nav-link" data-tooltip="Asset Inventory"><i class="fas fa-boxes-stacked"></i><span>Asset Inventory</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
             <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
@@ -1025,6 +1031,14 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
     </div>
 </div>
 
+<div id="rmImageViewerBackdrop" class="rm-image-viewer-backdrop">
+    <div class="rm-image-viewer-content">
+        <button type="button" class="rm-image-viewer-close" aria-label="Close image viewer">&times;</button>
+        <img id="rmImageViewerImg" src="" alt="Road Monitoring attachment" />
+        <div class="rm-image-viewer-caption" id="rmImageViewerCaption">View image</div>
+    </div>
+</div>
+
 <!-- ══════════ VERIFY CONFIRMATION ══════════ -->
 <div class="rep-confirm-backdrop" id="rmVerifyConfirmBackdrop">
     <div class="rep-confirm-modal">
@@ -1089,7 +1103,7 @@ function openRoadReportModal(id) {
         attachments.forEach((url) => {
             const img = document.createElement('img');
             img.src = url; img.className = 'rep-evidence-thumb'; img.alt = 'Attachment'; img.loading = 'lazy';
-            img.onclick = () => window.open(url, '_blank');
+            img.onclick = () => openRoadImageViewer(url, data.id);
             attGrid.appendChild(img);
         });
         attGrid.style.display = '';
@@ -1114,7 +1128,6 @@ function openRoadReportModal(id) {
     // this, opening a report never wrote to History Logs at all, so it only
     // ever updated on a "validated" action).
     logRoadActivity('log_view', data.id);
-    if (attachments.length > 0) logRoadActivity('log_image_view', data.id);
 }
 function logRoadActivity(action, id) {
     fetch(window.location.pathname, {
@@ -1124,6 +1137,29 @@ function logRoadActivity(action, id) {
         keepalive: true
     }).then(() => pokeActivityLog()).catch(() => {});
 }
+function openRoadImageViewer(url, reportId) {
+    const backdrop = document.getElementById('rmImageViewerBackdrop');
+    const image = document.getElementById('rmImageViewerImg');
+    const caption = document.getElementById('rmImageViewerCaption');
+    if (!backdrop || !image || !caption) return;
+    image.src = url;
+    caption.textContent = currentRoadReportData && currentRoadReportData.rgmap_report_id
+        ? `Report ${currentRoadReportData.rgmap_report_id}`
+        : 'Attachment';
+    backdrop.classList.add('active');
+    logRoadActivity('log_image_view', reportId);
+}
+function closeRoadImageViewer() {
+    const backdrop = document.getElementById('rmImageViewerBackdrop');
+    const image = document.getElementById('rmImageViewerImg');
+    if (backdrop) backdrop.classList.remove('active');
+    if (image) image.src = '';
+}
+document.getElementById('rmImageViewerBackdrop').addEventListener('click', function(e) {
+    if (e.target === this || e.target.closest('.rm-image-viewer-close')) {
+        closeRoadImageViewer();
+    }
+});
 function closeRoadReportModal() {
     document.getElementById('rmReportModalBackdrop').classList.remove('active');
 }
@@ -1263,6 +1299,20 @@ document.addEventListener('DOMContentLoaded', function () {
         moreLabelSelector: '#activityLogMoreLabel',
         pageSize: 8
     });
+});
+document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const highlightId = params.get('highlight_id');
+    const openModal = params.get('open_modal');
+    if (highlightId && Number(highlightId) > 0 && openModal === '1') {
+        openRoadReportModal(Number(highlightId));
+    }
+    if (highlightId || openModal) {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('highlight_id');
+        cleanUrl.searchParams.delete('open_modal');
+        window.history.replaceState({}, '', cleanUrl.toString());
+    }
 });
 
 // ── Activity Log refresh (same mechanism as the other admin pages) ──────
