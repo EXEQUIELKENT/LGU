@@ -292,23 +292,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $url = "employee.php?request_id=" . $request_id;
                 $requestType = $infrastructure;
 
+                // Same fix as notif_helper.php's insertNotification(): write
+                // created_at from PHP's own clock instead of the column's
+                // DEFAULT CURRENT_TIMESTAMP, which runs in the DB SERVER's
+                // own timezone (UTC on the live domain) and displays wrong
+                // in the notification dropdown (formatted as-is via MySQL's
+                // DATE_FORMAT, no PHP-side reinterpretation to catch it).
+                $notifCreatedAt = date('Y-m-d H:i:s');
+
                 $notif_stmt = $conn->prepare("
-                    INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
-                    VALUES (?, ?, ?, ?, ?, 0)
+                    INSERT INTO notifications (employee_id, title, description, request_type, url, is_read, created_at)
+                    VALUES (?, ?, ?, ?, ?, 0, ?)
                 ");
-                $notif_stmt->bind_param("issss", $assignedEmployeeId, $title, $description, $requestType, $url);
+                $notif_stmt->bind_param("isssss", $assignedEmployeeId, $title, $description, $requestType, $url, $notifCreatedAt);
                 $notif_stmt->execute();
                 $notif_stmt->close();
 
                 $employeesRes = $conn->query("SELECT user_id FROM employees WHERE role IN ('Manager','Super Admin','Engineer')");
                 if ($employeesRes) {
                     $stmt_mgr = $conn->prepare("
-                        INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
-                        VALUES (?, ?, ?, ?, ?, 0)
+                        INSERT INTO notifications (employee_id, title, description, request_type, url, is_read, created_at)
+                        VALUES (?, ?, ?, ?, ?, 0, ?)
                     ");
                     while ($row = $employeesRes->fetch_assoc()) {
                         $eid = $row['user_id'];
-                        $stmt_mgr->bind_param("issss", $eid, $title, $description, $requestType, $url);
+                        $stmt_mgr->bind_param("isssss", $eid, $title, $description, $requestType, $url, $notifCreatedAt);
                         $stmt_mgr->execute();
                     }
                     $stmt_mgr->close();

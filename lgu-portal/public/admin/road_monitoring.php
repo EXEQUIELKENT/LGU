@@ -25,6 +25,7 @@ if (!cimm_is_admin()) {
 
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
+require_once __DIR__ . '/../../includes/core/notif_helper.php';
 require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
 
 $isEngineer     = cimm_is_engineer();
@@ -132,6 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_activity(
                 $conn, 'road_monitoring', 'road_report', $localId, 'validated',
                 "{$verifierName} verified Road Monitoring report {$rmLabel}" . ($result['callback_ok'] ? ' — synced back to Road Monitoring.' : ' (sync back to Road Monitoring failed).')
+            );
+            notifyAdminsOnly(
+                $conn,
+                '✅ Road Monitoring Report Verified',
+                "{$verifierName} verified {$rmLabel} on Road Monitoring.",
+                'road_monitoring.php?highlight_id=' . $localId,
+                'Road Monitoring Report',
+                $engineerId
             );
         }
         echo json_encode([

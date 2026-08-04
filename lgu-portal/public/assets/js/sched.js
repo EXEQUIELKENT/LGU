@@ -7,6 +7,36 @@
    file, since it differs per request/session. No behavior change intended. */
 
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ── Inline notification toast (same design as requests.php's .notif-popup)
+   — used for the schedule save confirmation, which reloads the page on
+   success, so the flag is stashed in sessionStorage across the reload and
+   shown once the fresh page loads. ── */
+function showInlineNotif(type, message) {
+    const existing = document.getElementById('notifPopup');
+    if (existing) existing.remove();
+    const icon = type === 'success' ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
+    const div = document.createElement('div');
+    div.id = 'notifPopup';
+    div.className = `notif-popup notif-${type}`;
+    div.innerHTML = `<span class="notif-icon">${icon}</span>
+                     <span class="notif-message"></span>
+                     <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>`;
+    div.querySelector('.notif-message').textContent = message;
+    document.body.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 400); }, 3200);
+}
+function queueScheduleSaveNotif(type, message) {
+    try { sessionStorage.setItem('schedSaveNotif', JSON.stringify({ type, message })); } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', function () {
+    let pending;
+    try { pending = JSON.parse(sessionStorage.getItem('schedSaveNotif') || 'null'); } catch (e) { pending = null; }
+    if (pending && pending.message) {
+        sessionStorage.removeItem('schedSaveNotif');
+        showInlineNotif(pending.type || 'success', pending.message);
+    }
+});
 function makeDistrictBadge(district) {
     if (!district) return '';
     const map = {
@@ -2778,6 +2808,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         showFormError(data.error || 'Save failed');
                         return;
                     }
+                    queueScheduleSaveNotif('success', payload.sched_id > 0
+                        ? 'Schedule updated successfully.'
+                        : 'Schedule added successfully.');
                     window.location.reload();
                 } catch (err) {
                     closeSchedSaveConfirm();

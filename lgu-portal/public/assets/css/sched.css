@@ -4732,7 +4732,7 @@ Sidebar (250px) takes the most relative space here.
 [data-theme="dark"] .rep-confirm-title { color:#e2e8f0; }
 .rep-confirm-desc { font-size:.92rem;color:var(--text-secondary,#64748b);margin-bottom:22px;line-height:1.5; }
 [data-theme="dark"] .rep-confirm-desc { color:#94a3b8; }
-.rep-confirm-modal .rep-confirm-btns { display:flex;gap:10px;width:100%; }
+.rep-confirm-modal .rep-confirm-btns { display:flex;gap:10px;width:100%;justify-content:center; }
 
 /* ═══════════════════════════════════════════
    SCHEDULE FORM — SEARCHABLE COMBOBOX
@@ -5809,5 +5809,65 @@ Sidebar (250px) takes the most relative space here.
 }
 #schedEngDetailsModal.eng-theme-delayed .sched-eng-det-close-btn:hover {
     box-shadow: 0 6px 16px rgba(198,40,40,.4);
+}
+
+/* ── Notification popup (flash message) — matches requests.php ── */
+.notif-popup {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: var(--bg-secondary);
+    border-radius: 13px;
+    box-shadow: 0 8px 38px var(--shadow-color);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+.notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 5px solid #dda203; }
+.notif-popup.notif-info    { border-left: 5px solid #527cdf; }
+.notif-popup .notif-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    margin-left: auto;
+    color: #888;
+    cursor: pointer;
+}
+@media (max-width: 768px) {
+    .notif-popup {
+        top: 76px;
+        z-index: 5050;
+        left: 12px;
+        right: 12px;
+        transform: none;
+        min-width: unset;
+        max-width: unset;
+        width: calc(100vw - 24px);
+        padding: 13px 14px;
+        font-size: 14px;
+        gap: 10px;
+        align-items: flex-start;
+        border-radius: 11px;
+        flex-wrap: nowrap;
+        box-sizing: border-box;
+    }
+    .notif-popup .notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .notif-popup .notif-message { flex: 1; word-break: break-word; line-height: 1.5; }
+    .notif-popup .notif-close { font-size: 18px; margin-left: 6px; margin-top: 1px; }
 }
 #schedEngDetailsModal.eng-theme-delayed .eng-det-section-title { color: #c62828; }

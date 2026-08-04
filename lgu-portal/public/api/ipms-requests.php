@@ -189,11 +189,19 @@ function cimm_ipms_notify_staff(mysqli $conn, int $reqId, string $infrastructure
     $url = 'employee.php?request_id=' . $reqId;
     $assignedEmployeeId = 3;
 
+    // Same fix as notif_helper.php's insertNotification(): write created_at
+    // from PHP's own clock instead of the column's DEFAULT CURRENT_TIMESTAMP,
+    // which runs in the DB SERVER's own timezone (UTC on the live domain,
+    // Asia/Manila here) and displays wrong in the notification dropdown
+    // (which formats it as-is via MySQL's DATE_FORMAT, no PHP-side
+    // reinterpretation to catch/correct the offset).
+    $createdAt = date('Y-m-d H:i:s');
+
     $notif = $conn->prepare(
-        'INSERT INTO notifications (employee_id, title, description, request_type, url, is_read) VALUES (?, ?, ?, ?, ?, 0)'
+        'INSERT INTO notifications (employee_id, title, description, request_type, url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)'
     );
     if ($notif) {
-        $notif->bind_param('issss', $assignedEmployeeId, $title, $description, $infrastructure, $url);
+        $notif->bind_param('isssss', $assignedEmployeeId, $title, $description, $infrastructure, $url, $createdAt);
         $notif->execute();
         $notif->close();
     }
@@ -204,7 +212,7 @@ function cimm_ipms_notify_staff(mysqli $conn, int $reqId, string $infrastructure
     }
 
     $stmtMgr = $conn->prepare(
-        'INSERT INTO notifications (employee_id, title, description, request_type, url, is_read) VALUES (?, ?, ?, ?, ?, 0)'
+        'INSERT INTO notifications (employee_id, title, description, request_type, url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)'
     );
     if (!$stmtMgr) {
         $employeesRes->free();
@@ -213,7 +221,7 @@ function cimm_ipms_notify_staff(mysqli $conn, int $reqId, string $infrastructure
 
     while ($row = $employeesRes->fetch_assoc()) {
         $eid = (int)$row['user_id'];
-        $stmtMgr->bind_param('issss', $eid, $title, $description, $infrastructure, $url);
+        $stmtMgr->bind_param('isssss', $eid, $title, $description, $infrastructure, $url, $createdAt);
         $stmtMgr->execute();
     }
     $stmtMgr->close();

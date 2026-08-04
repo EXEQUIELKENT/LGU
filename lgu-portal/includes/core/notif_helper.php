@@ -50,12 +50,23 @@ function resolveRepPage(mysqli $conn, int $repId): string {
 function insertNotification(mysqli $conn, int $employeeId, string $title, string $description, string $url, string $requestType = 'Report'): void {
     if ($employeeId <= 0) return;
     try {
+        // Same fix as activity_log.php's log_activity(): don't rely on the
+        // column's DEFAULT CURRENT_TIMESTAMP — that runs in the DB SERVER's
+        // own timezone (Asia/Manila on XAMPP, but UTC on the live domain's
+        // MySQL), while the dropdown formats it with MySQL's own
+        // DATE_FORMAT(created_at, ...) — no PHP-side reinterpretation, so a
+        // UTC-written timestamp just displays as the wrong clock time
+        // outright ("3:57 PM" for something that actually happened at
+        // 11:57 PM Manila time). Writing created_at from PHP's own
+        // Asia/Manila clock keeps it correct regardless of the DB server's
+        // own timezone.
+        $createdAt = date('Y-m-d H:i:s');
         $stmt = $conn->prepare(
-            "INSERT INTO notifications (employee_id, title, description, request_type, url, is_read)
-             VALUES (?, ?, ?, ?, ?, 0)"
+            "INSERT INTO notifications (employee_id, title, description, request_type, url, is_read, created_at)
+             VALUES (?, ?, ?, ?, ?, 0, ?)"
         );
         if (!$stmt) return;
-        $stmt->bind_param("issss", $employeeId, $title, $description, $requestType, $url);
+        $stmt->bind_param("isssss", $employeeId, $title, $description, $requestType, $url, $createdAt);
         $stmt->execute();
         $stmt->close();
     } catch (\Throwable $e) {
