@@ -1436,7 +1436,7 @@ window.IS_ENGINEER       = <?= $isEngineer    ? 'true' : 'false' ?>;
 window.IS_AREA_ENGINEER  = <?= $isAreaEngineer ? 'true' : 'false' ?>;
 window.AE_DISTRICT       = <?= json_encode($aeDistrict) ?>;
 window.CURRENT_EMP_ID    = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
-<script src="../assets/js/sched.js?v=1"></script>
+<script src="../assets/js/sched.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sched.js') ?>"></script>
 <!-- ══════════════════════════════════════════════
      SCHED EVIDENCE LIGHTBOX
 ══════════════════════════════════════════════ -->
