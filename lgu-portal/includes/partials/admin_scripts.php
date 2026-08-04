@@ -638,6 +638,7 @@ startClock();
         if (u.includes('current_reports'))  return { label: 'Current Reports',   cls: 'notif-page-current'  };
         if (u.includes('archive_reports'))  return { label: 'Archive Reports',   cls: 'notif-page-archive'  };
         if (u.includes('emp_feedback'))     return { label: 'Citizen Feedback',  cls: 'notif-page-feedback' };
+        if (u.includes('road_monitoring'))  return { label: 'Road Monitoring',   cls: 'notif-page-road'     };
         if (u.includes('requests'))         return { label: 'Requests',          cls: 'notif-page-requests' };
         if (u.includes('employee'))         return { label: 'Dashboard',         cls: 'notif-page-dashboard'};
         return null;

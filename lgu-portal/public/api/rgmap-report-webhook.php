@@ -202,7 +202,7 @@ try {
             $conn,
             'New Road Monitoring Report',
             "{$displayTitle} ({$rgmapReportId}) was submitted from the Road Monitoring system and is awaiting verification.",
-            'road_monitoring.php?highlight_id=' . $localId . '&open_modal=1',
+            'road_monitoring.php?highlight_id=' . $localId,
             'Road Monitoring Report'
         );
     }

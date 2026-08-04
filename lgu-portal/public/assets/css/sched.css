@@ -4513,6 +4513,14 @@ Sidebar (250px) takes the most relative space here.
 [data-theme="dark"] .sched-form-footer {
     background: #191b24; border-top-color: rgba(255,255,255,.08);
 }
+/* .sched-form-actions.rep-confirm-btns normally draws its own separator line
+   above the buttons (for when it sits inline in scrolling content elsewhere).
+   Inside the pinned footer that line duplicates .sched-form-footer's own
+   border-top right above it — two visible lines a few px apart — so strip it
+   here and reclaim the padding/margin it added for that separator. */
+.sched-form-footer .sched-form-actions.rep-confirm-btns {
+    border-top: none; margin-top: 0; padding-top: 0;
+}
 .sched-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
 @media (max-width: 520px) { .sched-form-row { grid-template-columns: 1fr; } }
 .sched-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }

@@ -83,12 +83,24 @@ function log_activity(mysqli $conn, string $page, string $refType, int $refId, s
         $actorIdRaw = (int)($_SESSION['employee_id'] ?? 0);
         $actorId    = $actorIdRaw > 0 ? $actorIdRaw : null;
 
+        // Same fix as session_guard.php's last_activity heartbeat: don't rely
+        // on the column's DEFAULT CURRENT_TIMESTAMP — that runs in the DB
+        // SERVER's own timezone (Asia/Manila on this XAMPP install, but UTC
+        // on the live domain's MySQL), while activity_time_ago() below reads
+        // it back with PHP's strtotime(), which assumes PHP's timezone
+        // (Asia/Manila, set in session_guard.php). On the domain that 8-hour
+        // gap made every fresh entry display as "8 hours ago" instead of
+        // "Just now" — indistinguishable from History Logs not updating at
+        // all. Writing the timestamp from PHP's own clock keeps both sides
+        // in the same timezone regardless of how the DB server is configured.
+        $createdAt = date('Y-m-d H:i:s');
+
         $stmt = $conn->prepare(
-            "INSERT INTO activity_log (page, ref_type, ref_id, action, message, actor_id, actor_name)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO activity_log (page, ref_type, ref_id, action, message, actor_id, actor_name, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
         if (!$stmt) return;
-        $stmt->bind_param('ssissis', $page, $refType, $refId, $action, $message, $actorId, $actorName);
+        $stmt->bind_param('ssississ', $page, $refType, $refId, $action, $message, $actorId, $actorName, $createdAt);
         $stmt->execute();
         $stmt->close();
     } catch (Throwable $e) {

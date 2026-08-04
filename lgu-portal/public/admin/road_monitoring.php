@@ -477,6 +477,80 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 .rep-confirm-ok-complete { background:linear-gradient(135deg,#c84b10,#8b3000);color:#fff;box-shadow:0 4px 12px rgba(200,75,16,.35); }
 .rep-confirm-ok-complete:hover { transform:translateY(-1px);box-shadow:0 6px 16px rgba(200,75,16,.45); }
 
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION ROW HIGHLIGHT — same mechanism as pending_reports.php
+   (highlight + scroll only, no auto-opened modal), in this page's own
+   orange RGMAP theme instead of the blue used elsewhere.
+═══════════════════════════════════════════════════════ */
+.notif-highlight-banner {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    background: linear-gradient(135deg, rgba(200,75,16,.13), rgba(200,75,16,.07));
+    border: 1.5px solid rgba(200,75,16,.30);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #a83e0c;
+    margin-bottom: 12px;
+    animation: bannerFadeIn .35s ease, bannerFadeOut .5s ease 4.5s forwards;
+    pointer-events: none;
+}
+[data-theme="dark"] .notif-highlight-banner {
+    background: linear-gradient(135deg, rgba(251,146,60,.16), rgba(251,146,60,.08));
+    border-color: rgba(251,146,60,.35);
+    color: #fdba74;
+}
+@keyframes bannerFadeIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+@keyframes bannerFadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
+
+tr.notif-highlight > td {
+    animation: trCellHighlight 5s ease-out forwards;
+    position: relative;
+}
+tr.notif-highlight > td:first-child {
+    border-left: 3px solid #c84b10 !important;
+}
+@keyframes trCellHighlight {
+    0%   { background: rgba(200,75,16,.18); box-shadow: inset 0 1px 0 rgba(200,75,16,.5), inset 0 -1px 0 rgba(200,75,16,.5); }
+    25%  { background: rgba(200,75,16,.13); box-shadow: inset 0 1px 0 rgba(200,75,16,.35), inset 0 -1px 0 rgba(200,75,16,.35); }
+    60%  { background: rgba(200,75,16,.07); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td {
+    animation: trCellHighlightDark 5s ease-out forwards;
+}
+@keyframes trCellHighlightDark {
+    0%   { background: rgba(251,146,60,.22); box-shadow: inset 0 1px 0 rgba(251,146,60,.55), inset 0 -1px 0 rgba(251,146,60,.55); }
+    25%  { background: rgba(251,146,60,.15); box-shadow: inset 0 1px 0 rgba(251,146,60,.35), inset 0 -1px 0 rgba(251,146,60,.35); }
+    60%  { background: rgba(251,146,60,.08); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td:first-child {
+    border-left-color: #fb923c !important;
+}
+
+.report-card.notif-highlight {
+    animation: cardHighlight 5s ease-out forwards;
+    outline: 2px solid rgba(200,75,16,.5);
+    outline-offset: -2px;
+}
+@keyframes cardHighlight {
+    0%   { box-shadow: 0 0 0 4px rgba(200,75,16,.45); background: rgba(200,75,16,.10); }
+    30%  { box-shadow: 0 0 0 3px rgba(200,75,16,.30); background: rgba(200,75,16,.07); }
+    100% { box-shadow: none; background: transparent; }
+}
+[data-theme="dark"] .report-card.notif-highlight {
+    animation: cardHighlightDark 5s ease-out forwards;
+    outline-color: rgba(251,146,60,.6);
+}
+@keyframes cardHighlightDark {
+    0%   { box-shadow: 0 0 0 4px rgba(251,146,60,.50); background: rgba(251,146,60,.13); }
+    30%  { box-shadow: 0 0 0 3px rgba(251,146,60,.30); background: rgba(251,146,60,.08); }
+    100% { box-shadow: none; background: transparent; }
+}
+
 /* ── History Logs (admin / super admin only) — ported verbatim from
    pending_reports.php ── */
 .activity-log-card { gap: 14px; margin-top: 10px; }
@@ -1431,20 +1505,58 @@ document.addEventListener('DOMContentLoaded', function () {
         pageSize: 8
     });
 });
-document.addEventListener('DOMContentLoaded', function () {
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT — reads ?highlight_id={id} from the URL, scrolls
+   to the matching <tr> or .report-card, and applies a visible highlight
+   (same as pending_reports.php's notification redirect — find + highlight
+   only, no auto-opened modal).
+═══════════════════════════════════════════════════════ */
+(function initNotifHighlight() {
     const params = new URLSearchParams(window.location.search);
     const highlightId = params.get('highlight_id');
-    const openModal = params.get('open_modal');
-    if (highlightId && Number(highlightId) > 0 && openModal === '1') {
-        openRoadReportModal(Number(highlightId));
-    }
-    if (highlightId || openModal) {
-        const cleanUrl = new URL(window.location.href);
-        cleanUrl.searchParams.delete('highlight_id');
-        cleanUrl.searchParams.delete('open_modal');
-        window.history.replaceState({}, '', cleanUrl.toString());
-    }
-});
+    if (!highlightId) return;
+
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight_id');
+    cleanUrl.searchParams.delete('open_modal');
+    window.history.replaceState({}, '', cleanUrl.toString());
+
+    setTimeout(function () {
+        var tr   = document.querySelector('tr[data-rm-id="' + highlightId + '"]');
+        var card = document.querySelector('.report-card[data-rm-id="' + highlightId + '"]');
+        if (!tr && !card) return; // report not on this page
+
+        var isMobile = window.matchMedia('(max-width: 768px)').matches;
+        var primary  = isMobile ? (card || tr) : (tr || card);
+        primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        if (tr && !isMobile) {
+            tr.classList.add('notif-highlight');
+            setTimeout(function () {
+                tr.classList.remove('notif-highlight');
+                tr.querySelectorAll('td').forEach(function (td) { td.style.borderLeft = ''; });
+            }, 5500);
+        }
+        if (card && isMobile) {
+            card.classList.add('notif-highlight');
+            setTimeout(function () { card.classList.remove('notif-highlight'); }, 5500);
+        }
+
+        if (document.getElementById('notifHighlightBanner')) return;
+        var banner = document.createElement('div');
+        banner.id        = 'notifHighlightBanner';
+        banner.className = 'notif-highlight-banner';
+        banner.innerHTML = '<span style="font-size:16px;flex-shrink:0;">🔔</span>' +
+                           '<span>You were directed here from a notification — this item is highlighted below.</span>';
+        var container = primary.closest('.mobile-report-list, .table-wrapper');
+        if (container) {
+            container.insertBefore(banner, container.firstChild);
+        } else if (primary.parentElement) {
+            primary.parentElement.insertBefore(banner, primary);
+        }
+        setTimeout(function () { if (banner.parentElement) banner.parentElement.removeChild(banner); }, 5200);
+    }, 500);
+})();
 
 // ── Activity Log refresh (same mechanism as the other admin pages) ──────
 async function refreshActivityLog() {

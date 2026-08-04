@@ -572,6 +572,7 @@ body.sidebar-collapsed .desktop-top-nav {
 .notif-page-archive  { background: rgba(46,125,50,.1);   color: #1b5e20; }
 .notif-page-requests { background: rgba(124,58,237,.1);  color: #5b21b6; }
 .notif-page-dashboard{ background: rgba(14,165,233,.1);  color: #0369a1; }
+.notif-page-road      { background: rgba(200,75,16,.12); color: #a83e0c; }
 
 /* Unread dot */
 .notif-unread-dot {
@@ -650,6 +651,7 @@ body.sidebar-collapsed .desktop-top-nav {
 [data-theme="dark"] .notif-page-archive  { background: rgba(76,175,80,.15);  color: #81c784; }
 [data-theme="dark"] .notif-page-requests { background: rgba(167,139,250,.15);color: #c4b5fd; }
 [data-theme="dark"] .notif-page-dashboard{ background: rgba(56,189,248,.15); color: #7dd3fc; }
+[data-theme="dark"] .notif-page-road      { background: rgba(251,146,60,.16); color: #fdba74; }
 
 /* Keep old group/time classes non-breaking */
 .notif-group { padding-top: 0; border-top: none; }
