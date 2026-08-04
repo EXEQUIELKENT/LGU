@@ -4676,27 +4676,31 @@ Sidebar (250px) takes the most relative space here.
 [data-theme="dark"] .sfr-budget-spin-btn:first-child { border-bottom-color:#475569; }
 [data-theme="dark"] .sfr-budget-spin-btn { color:#94a3b8; }
 
-/* ── Action buttons — matches current_reports.php confirmation-modal buttons ── */
+/* ── Action buttons — layout copied from requests.php's
+   .detail-footer-inner/.btn-validate/.btn-reject (pill-shaped, content-width,
+   bold label, hover-lift), sched's own colors kept as-is. ── */
 .sched-form-actions.rep-confirm-btns {
     display: flex;
+    align-items: center;
     gap: 10px;
     width: 100%;
     justify-content: center;
+    flex-wrap: wrap;
     margin-top: 8px;
     padding-top: 14px;
     border-top: 1px solid #e2e8f0;
 }
 [data-theme="dark"] .sched-form-actions.rep-confirm-btns { border-top-color: rgba(255,255,255,0.1); }
 .rep-confirm-btn {
-    flex: 1;
-    max-width: 220px;
-    padding: 10px 0;
-    border-radius: 10px;
+    flex-shrink: 0;
+    padding: 11px 22px;
+    border-radius: 11px;
     border: none;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
+    letter-spacing: .02em;
     cursor: pointer;
-    transition: all 0.18s ease;
+    transition: all 0.25s ease;
     font-family: inherit;
     display: inline-flex;
     align-items: center;
@@ -4704,12 +4708,16 @@ Sidebar (250px) takes the most relative space here.
     gap: 8px;
 }
 .rep-confirm-cancel { background: var(--bg-secondary, #f1f5f9); color: var(--text-primary, #374151); border: 1px solid var(--border-color, #e2e8f0) !important; }
-.rep-confirm-cancel:hover { background: var(--border-color, #e2e8f0); }
+.rep-confirm-cancel:hover { background: var(--border-color, #e2e8f0); transform: translateY(-2px); }
 [data-theme="dark"] .rep-confirm-cancel { background: rgba(255,255,255,.06); color: #e2e8f0; border-color: rgba(255,255,255,.1) !important; }
 [data-theme="dark"] .rep-confirm-cancel:hover { background: rgba(255,255,255,.11); }
-.rep-confirm-ok-save { background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff; box-shadow: 0 4px 12px rgba(55,98,200,.3); }
-.rep-confirm-ok-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(55,98,200,.4); }
+.rep-confirm-ok-save { background: linear-gradient(135deg, #3762c8, #2851b3); color: #fff; box-shadow: 0 4px 14px rgba(55,98,200,.35); }
+.rep-confirm-ok-save:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(55,98,200,.45); }
+.rep-confirm-ok-save:active { transform: translateY(0); }
 .rep-confirm-ok-save:disabled { opacity: 0.6; cursor: wait; transform: none; }
+@media (max-width: 520px) {
+    .rep-confirm-btn { flex: 1; justify-content: center; min-width: 0; }
+}
 
 /* ── Save-schedule confirmation prompt — ported from current_reports.php #repSaveConfirmBackdrop ── */
 .rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }

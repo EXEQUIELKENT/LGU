@@ -217,7 +217,7 @@ $actLatestLogId  = !empty($activityEntries) ? (int)$activityEntries[0]['log_id']
 <title>Road Monitoring Reports</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
-<link rel="stylesheet" href="../assets/css/emp-global.css?v=12">
+<link rel="stylesheet" href="../assets/css/emp-global.css?v=13">
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script>
@@ -1249,7 +1249,24 @@ function logRoadActivity(action, id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: action, id: id }),
         keepalive: true
-    }).then(() => pokeActivityLog()).catch(() => {});
+    }).then(function (resp) {
+        // A session redirect / proxy error still resolves this promise (only
+        // a network failure rejects it) — check the response explicitly so a
+        // silent auth/session failure on the domain doesn't look identical
+        // to a successful log write.
+        if (!resp.ok) {
+            console.warn('logRoadActivity: server returned', resp.status, 'for action', action);
+            return;
+        }
+        return resp.json().then(function (data) {
+            if (!data || !data.success) {
+                console.warn('logRoadActivity: action', action, 'did not succeed', data);
+            }
+            pokeActivityLog();
+        });
+    }).catch(function (err) {
+        console.warn('logRoadActivity: request failed for action', action, err);
+    });
 }
 // ── Evidence image lightbox — ported verbatim from requests.php / case_management.php
 // (double-click zoom, wheel zoom, drag-to-pan, pinch/swipe on mobile, gallery
@@ -1561,7 +1578,14 @@ document.addEventListener('DOMContentLoaded', function () {
 // ── Activity Log refresh (same mechanism as the other admin pages) ──────
 async function refreshActivityLog() {
     try {
-        const resp = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
+        // Cache-bust with a unique query param — `cache: 'no-store'` only
+        // stops the BROWSER from reusing its own cache; it does nothing
+        // against a reverse proxy/CDN page cache in front of the live
+        // domain, which can otherwise keep re-serving the same snapshot of
+        // this page regardless of how many new entries actually got written.
+        const bustUrl = location.pathname + location.search
+            + (location.search ? '&' : '?') + '_=' + Date.now();
+        const resp = await fetch(bustUrl, { credentials: 'same-origin', cache: 'no-store' });
         if (!resp.ok) return;
         const html = await resp.text();
         const doc  = new DOMParser().parseFromString(html, 'text/html');
