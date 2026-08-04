@@ -1526,9 +1526,9 @@ input[type="password"]::-ms-clear {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: radial-gradient(circle at 50% 42%, rgba(34,46,82,.78), rgba(6,9,20,.92));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     display: none;
     justify-content: center;
     align-items: center;
@@ -1543,30 +1543,66 @@ input[type="password"]::-ms-clear {
 }
 
 .loading-content {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    animation: loadingPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes loadingPopIn {
+    from { opacity: 0; transform: scale(.86) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
 .lgu-spinner {
-    display: inline-block;
-    font-size: 64px;
-    font-weight: 800;
-    color: var(--accent-secondary);
-    letter-spacing: 8px;
-    animation: spinLGU 2s linear infinite;
-    text-shadow: 0 4px 12px rgba(99, 132, 210, 0.4);
+    position: relative;
+    width: 92px;
+    height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-@keyframes spinLGU {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+.lgu-spinner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid rgba(99,132,210,.18);
+}
+
+.lgu-spinner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--accent-secondary);
+    border-right-color: var(--accent-secondary);
+    animation: lguRingSpin .85s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(99,132,210,.55));
+}
+
+.lgu-spinner span {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(99,132,210,.6);
+}
+
+@keyframes lguRingSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .loading-text {
-    margin-top: 20px;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
-    letter-spacing: 1px;
+    letter-spacing: .3px;
+    text-align: center;
 }
 
 /* Notification popup styles */
@@ -2775,7 +2811,7 @@ body:has(#resetPasswordModal) {
 <!-- Loading Overlay -->
 <div id="loadingOverlay">
     <div class="loading-content">
-        <div class="lgu-spinner">CIMM</div>
+        <div class="lgu-spinner"><span>CIMM</span></div>
         <div class="loading-text">Processing...</div>
     </div>
 </div>

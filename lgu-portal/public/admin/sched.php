@@ -1105,6 +1105,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         <form id="scheduleForm" class="modal-body sched-form-body" autocomplete="off">
             <input type="hidden" id="sfSchedId" name="sched_id" value="">
 
+            <div class="sched-form-scroll">
             <div class="sched-form-card">
 
                 <!-- CPRF Facility — searchable combobox -->
@@ -1296,6 +1297,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             </div><!-- /.sched-form-card -->
 
             <div id="scheduleFormError" class="sched-form-error hidden"></div>
+            </div><!-- /.sched-form-scroll -->
             <div class="modal-footer sched-form-footer">
                 <div class="sched-form-actions rep-confirm-btns">
                     <button type="button" class="rep-confirm-btn rep-confirm-cancel" id="scheduleFormCancel" title="Cancel and close">Cancel</button>

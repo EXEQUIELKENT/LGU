@@ -159,22 +159,23 @@ if (isset($_GET['ajax'])) {
         // Send notification email when finalizing (Valid or Dismissed) and email exists
         $emailSent = false;
         $refEngineerName = '';
+        $refEngineerId = 0;
+        if (!empty($cur['rep_id'])) {
+            $engStmt = $conn->prepare('
+                SELECT r.engineer_id, CONCAT(e.first_name," ",e.last_name) AS eng_name
+                FROM reports r
+                LEFT JOIN employees e ON r.engineer_id = e.user_id
+                WHERE r.rep_id = ? LIMIT 1
+            ');
+            $engStmt->bind_param('i', $cur['rep_id']);
+            $engStmt->execute();
+            $engRow = $engStmt->get_result()->fetch_assoc();
+            $engStmt->close();
+            $refEngineerName = $engRow['eng_name'] ?? '';
+            $refEngineerId = (int)($engRow['engineer_id'] ?? 0);
+        }
         if ($ok && in_array($status, ['Valid','Dismissed']) && !empty($cur['email'])) {
             try {
-                // Fetch engineer name from referenced report if present
-                if (!empty($cur['rep_id'])) {
-                    $engStmt = $conn->prepare('
-                        SELECT CONCAT(e.first_name," ",e.last_name) AS eng_name
-                        FROM reports r
-                        LEFT JOIN employees e ON r.engineer_id = e.user_id
-                        WHERE r.rep_id = ? LIMIT 1
-                    ');
-                    $engStmt->bind_param('i', $cur['rep_id']);
-                    $engStmt->execute();
-                    $engRow = $engStmt->get_result()->fetch_assoc();
-                    $engStmt->close();
-                    $refEngineerName = $engRow['eng_name'] ?? '';
-                }
                 require_once __DIR__ . '/../../includes/core/report_email.php';
                 $emailSent = sendFeedbackStatusEmail(
                     $cur['email'],
@@ -205,6 +206,16 @@ if (isset($_GET['ajax'])) {
                 'emp_feedback.php?highlight_fbk=' . $fid,
                 'Employee Feedback'
             );
+            if ($refEngineerId > 0) {
+                insertNotification(
+                    $conn,
+                    $refEngineerId,
+                    '⭐ Feedback Added to Your Rating',
+                    "New citizen feedback for your work has been confirmed as valid and added to your ratings.",
+                    'profile.php',
+                    'Employee Feedback'
+                );
+            }
         }
 
         echo json_encode(['success'=>$ok,'email_sent'=>$emailSent]); exit;
@@ -480,23 +491,43 @@ body { overflow: hidden; height: 100vh; }
 /* ── CIMM email/save loading overlay (matches pending_reports.php) ── */
 #fbkEmailOverlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    background: radial-gradient(circle at 50% 42%, rgba(34,46,82,.8), rgba(6,9,20,.94));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     display: none; justify-content: center; align-items: center;
     z-index: 19000; opacity: 0; transition: opacity .3s ease;
 }
 #fbkEmailOverlay.show { display: flex; opacity: 1; }
-#fbkEmailOverlay .fbk-email-content { text-align: center; }
-#fbkEmailOverlay .fbk-email-spinner {
-    display: inline-block; font-size: 58px; font-weight: 800;
-    color: #6384d2; letter-spacing: 8px;
-    animation: fbkSpinLGU 2s linear infinite;
-    text-shadow: 0 4px 12px rgba(99,132,210,.4);
-    font-family: 'Poppins', Arial, sans-serif;
+#fbkEmailOverlay .fbk-email-content {
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    animation: fbkLoadingPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
 }
-@keyframes fbkSpinLGU { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+@keyframes fbkLoadingPopIn {
+    from { opacity: 0; transform: scale(.86) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+#fbkEmailOverlay .fbk-email-spinner {
+    position: relative; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+}
+#fbkEmailOverlay .fbk-email-spinner::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid rgba(99,132,210,.18);
+}
+#fbkEmailOverlay .fbk-email-spinner::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #6384d2; border-right-color: #6384d2;
+    animation: fbkRingSpin .85s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(99,132,210,.55));
+}
+#fbkEmailOverlay .fbk-email-spinner span {
+    font-size: 12px; font-weight: 800; letter-spacing: 2.2px;
+    color: #fff; text-shadow: 0 2px 10px rgba(99,132,210,.6);
+}
+@keyframes fbkRingSpin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
 #fbkEmailOverlay .fbk-email-text {
-    margin-top: 22px; color: #fff; font-size: 15px; font-weight: 500;
-    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+    color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: .3px; text-align: center; font-family: 'Poppins', Arial, sans-serif;
 }
 /* ── Detail modal footer action buttons (match pending_reports.php) ── */
 #footerSaveBtn {
@@ -2069,7 +2100,7 @@ tr.notif-highlight > td:first-child {
 <!-- ─── CIMM loading overlay (matches pending_reports.php) ───────────── -->
 <div id="fbkEmailOverlay">
     <div class="fbk-email-content">
-        <div class="fbk-email-spinner">CIMM</div>
+        <div class="fbk-email-spinner"><span>CIMM</span></div>
         <div class="fbk-email-text" id="fbkEmailOverlayText">Saving &amp; Sending Notification…</div>
     </div>
 </div>

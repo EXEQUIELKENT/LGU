@@ -1152,11 +1152,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!details || !hint) return;
         hint.classList.toggle('visible', details.scrollHeight > details.clientHeight + 4);
         if (details.scrollHeight > details.clientHeight) {
-            indicator.style.display = 'block';
-            indicator.style.opacity = '0.9';
+            hint.style.display = 'block';
+            hint.style.opacity = '0.9';
         } else {
-            indicator.style.display = 'block';
-            indicator.style.opacity = '0.3';
+            hint.style.display = 'block';
+            hint.style.opacity = '0.3';
         }
     }
 

@@ -427,13 +427,29 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 .rep-evidence-strip { display:flex;gap:10px;flex-wrap:wrap;margin-top:8px; }
 .rep-evidence-thumb { width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color);cursor:zoom-in;transition:transform .2s,box-shadow .2s;background:rgba(0,0,0,.06); }
 .rep-evidence-thumb:hover { transform:scale(1.07);box-shadow:0 6px 18px rgba(200,75,16,.35); }
-.rm-image-viewer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 9100; padding: 20px; }
-.rm-image-viewer-backdrop.active { display: flex; }
-.rm-image-viewer-content { position: relative; max-width: 95vw; max-height: 95vh; width: 100%; display: flex; flex-direction: column; gap: 14px; }
-.rm-image-viewer-content img { width: 100%; max-height: calc(95vh - 90px); object-fit: contain; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
-.rm-image-viewer-caption { color: #ffffff; font-size: 14px; text-align: center; }
-.rm-image-viewer-close { position: absolute; top: 10px; right: 10px; width: 42px; height: 42px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 22px; cursor: pointer; transition: background .2s ease; }
-.rm-image-viewer-close:hover { background: rgba(255,255,255,.22); }
+/* ── Evidence image lightbox — ported verbatim from requests.php / case_management.php
+   (zoom, pan, gallery nav, pinch/swipe) so viewing an image behaves identically
+   across pages, replacing the old single-image no-zoom viewer. ── */
+.image-modal { position: fixed; inset: 0; display: none; z-index: 9000; }
+.image-modal.active { display: flex; align-items: center; justify-content: center; }
+.image-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.70); }
+.image-modal-content { position: relative; display: flex; justify-content: center; align-items: center; max-height: 85vh; max-width: 90vw; margin: auto; }
+#imageModalImg { width: auto; height: auto; max-width: 100%; max-height: 80vh; border-radius: 16px; object-fit: contain; transition: transform .15s ease; cursor: zoom-in; }
+#imageModalImg.zoomed { cursor: zoom-out; }
+.image-modal-close { position: fixed; top: 20px; right: 35px; background: rgba(0,0,0,.75); color: #fff; border: none; font-size: 26px; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; z-index: 9001; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+.image-modal-close:hover { background: rgba(0,0,0,.88); }
+.nav-arrow { position: fixed; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.6); color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; z-index: 9001; }
+.nav-arrow.left  { left: 30px; }
+.nav-arrow.right { right: 30px; }
+.nav-arrow:hover { background: rgba(0,0,0,.85); }
+.nav-arrow.hidden { display: none; }
+.swipe-indicator { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.65); color: #fff; padding: 6px 14px; font-size: 13px; border-radius: 20px; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity .4s ease; z-index: 9002; }
+.swipe-indicator.show { opacity: 1; }
+@media (max-width: 768px) {
+    .nav-arrow { display: none !important; }
+    .image-modal-content { max-width: 95vw; max-height: 70vh; }
+    .image-modal-close { top: 20px; right: 20px; width: 40px; height: 40px; font-size: 24px; }
+}
 .rep-no-evidence {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; width:100%; padding:22px 12px;
@@ -526,23 +542,43 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 /* ── CIMM loading overlay (matches requests.php / pending_reports.php) ── */
 #repEmailOverlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    background: radial-gradient(circle at 50% 42%, rgba(82,48,34,.8), rgba(20,10,6,.94));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     display: none; justify-content: center; align-items: center;
     z-index: 19000; opacity: 0; transition: opacity .3s ease;
 }
 #repEmailOverlay.show { display: flex; opacity: 1; }
-#repEmailOverlay .rep-email-content { text-align: center; }
-#repEmailOverlay .rep-email-spinner {
-    display: inline-block; font-size: 58px; font-weight: 800;
-    color: #c84b10; letter-spacing: 8px;
-    animation: repSpinLGU 2s linear infinite;
-    text-shadow: 0 4px 12px rgba(200,75,16,.4);
-    font-family: 'Poppins', Arial, sans-serif;
+#repEmailOverlay .rep-email-content {
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    animation: repLoadingPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
 }
-@keyframes repSpinLGU { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+@keyframes repLoadingPopIn {
+    from { opacity: 0; transform: scale(.86) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+#repEmailOverlay .rep-email-spinner {
+    position: relative; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+}
+#repEmailOverlay .rep-email-spinner::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid rgba(200,75,16,.18);
+}
+#repEmailOverlay .rep-email-spinner::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #c84b10; border-right-color: #c84b10;
+    animation: repRingSpin .85s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(200,75,16,.55));
+}
+#repEmailOverlay .rep-email-spinner span {
+    font-size: 12px; font-weight: 800; letter-spacing: 2.2px;
+    color: #fff; text-shadow: 0 2px 10px rgba(200,75,16,.6);
+}
+@keyframes repRingSpin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
 #repEmailOverlay .rep-email-text {
-    margin-top: 22px; color: #fff; font-size: 15px; font-weight: 500;
-    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+    color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: .3px; text-align: center; font-family: 'Poppins', Arial, sans-serif;
 }
 
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -1031,11 +1067,15 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
     </div>
 </div>
 
-<div id="rmImageViewerBackdrop" class="rm-image-viewer-backdrop">
-    <div class="rm-image-viewer-content">
-        <button type="button" class="rm-image-viewer-close" aria-label="Close image viewer">&times;</button>
-        <img id="rmImageViewerImg" src="" alt="Road Monitoring attachment" />
-        <div class="rm-image-viewer-caption" id="rmImageViewerCaption">View image</div>
+<!-- Evidence image lightbox — ported verbatim from requests.php -->
+<div id="imageModal" class="image-modal">
+    <div class="image-modal-backdrop"></div>
+    <div class="image-modal-content">
+        <button class="image-modal-close" title="Close" aria-label="Close image">&times;</button>
+        <button class="nav-arrow left hidden" type="button" title="Previous" onclick="prevImage()">❮</button>
+        <img id="imageModalImg" src="" alt="Evidence Image">
+        <button class="nav-arrow right hidden" type="button" title="Next" onclick="nextImage()">❯</button>
+        <div class="swipe-indicator" id="swipeIndicator">⇆ Swipe left or right</div>
     </div>
 </div>
 
@@ -1054,7 +1094,7 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 
 <div id="repEmailOverlay">
     <div class="rep-email-content">
-        <div class="rep-email-spinner">CIMM</div>
+        <div class="rep-email-spinner"><span>CIMM</span></div>
         <div class="rep-email-text" id="repEmailOverlayText">Saving &amp; Sending Update…</div>
     </div>
 </div>
@@ -1100,10 +1140,10 @@ function openRoadReportModal(id) {
     attGrid.innerHTML = '';
     const attachments = Array.isArray(data.attachments) ? data.attachments : [];
     if (attachments.length > 0) {
-        attachments.forEach((url) => {
+        attachments.forEach((url, idx) => {
             const img = document.createElement('img');
             img.src = url; img.className = 'rep-evidence-thumb'; img.alt = 'Attachment'; img.loading = 'lazy';
-            img.onclick = () => openRoadImageViewer(url, data.id);
+            img.onclick = () => openGalleryModal(attachments, idx, data.id);
             attGrid.appendChild(img);
         });
         attGrid.style.display = '';
@@ -1137,29 +1177,120 @@ function logRoadActivity(action, id) {
         keepalive: true
     }).then(() => pokeActivityLog()).catch(() => {});
 }
-function openRoadImageViewer(url, reportId) {
-    const backdrop = document.getElementById('rmImageViewerBackdrop');
-    const image = document.getElementById('rmImageViewerImg');
-    const caption = document.getElementById('rmImageViewerCaption');
-    if (!backdrop || !image || !caption) return;
-    image.src = url;
-    caption.textContent = currentRoadReportData && currentRoadReportData.rgmap_report_id
-        ? `Report ${currentRoadReportData.rgmap_report_id}`
-        : 'Attachment';
-    backdrop.classList.add('active');
-    logRoadActivity('log_image_view', reportId);
+// ── Evidence image lightbox — ported verbatim from requests.php / case_management.php
+// (double-click zoom, wheel zoom, drag-to-pan, pinch/swipe on mobile, gallery
+// navigation, keyboard arrows/Escape) so viewing an image behaves identically
+// here — replaces the old single-image no-zoom viewer. ──
+const imageModal         = document.getElementById('imageModal');
+const imageModalImg      = document.getElementById('imageModalImg');
+const imageModalClose    = document.querySelector('.image-modal-close');
+const imageModalBackdrop = document.querySelector('.image-modal-backdrop');
+
+const BASE_ZOOM = 2, MAX_WHEEL_ZOOM = 5, WHEEL_ZOOM_SPEED = 0.002;
+let isZoomed = false, isDragging = false, isWheelZooming = false;
+let startX = 0, startY = 0, translateX = 0, translateY = 0, currentScale = 1;
+let galleryImages = [], currentIndex = 0;
+
+imageModalImg.draggable = false;
+imageModalImg.addEventListener('dragstart', e => e.preventDefault());
+
+function openGalleryModal(images, index, reportId) {
+    galleryImages = images; currentIndex = index;
+    imageModal.classList.add('active');
+    updateGalleryImage();
+    showSwipeIndicator();
+
+    // Fire-and-forget: record this image view in History Logs, only when the
+    // lightbox actually opens (not just because the report modal showing
+    // thumbnails was opened).
+    if (reportId) logRoadActivity('log_image_view', reportId);
 }
-function closeRoadImageViewer() {
-    const backdrop = document.getElementById('rmImageViewerBackdrop');
-    const image = document.getElementById('rmImageViewerImg');
-    if (backdrop) backdrop.classList.remove('active');
-    if (image) image.src = '';
+function closeImageModal() {
+    imageModal.classList.remove('active');
+    resetZoom();
 }
-document.getElementById('rmImageViewerBackdrop').addEventListener('click', function(e) {
-    if (e.target === this || e.target.closest('.rm-image-viewer-close')) {
-        closeRoadImageViewer();
+imageModalClose.addEventListener('click', closeImageModal);
+imageModalBackdrop.addEventListener('click', closeImageModal);
+
+function updateGalleryImage() {
+    if (!galleryImages.length) return;
+    imageModalImg.src = galleryImages[currentIndex];
+    const single = galleryImages.length <= 1;
+    document.querySelector('.nav-arrow.left').classList.toggle('hidden', single);
+    document.querySelector('.nav-arrow.right').classList.toggle('hidden', single);
+    resetZoom();
+}
+function nextImage() { if (galleryImages.length > 1) { currentIndex = (currentIndex + 1) % galleryImages.length; updateGalleryImage(); } }
+function prevImage() { if (galleryImages.length > 1) { currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length; updateGalleryImage(); } }
+function showSwipeIndicator() {
+    const ind = document.getElementById('swipeIndicator');
+    if (!ind || window.innerWidth > 768) return;
+    ind.classList.add('show'); setTimeout(() => ind.classList.remove('show'), 2500);
+}
+function resetZoom() {
+    isZoomed = isDragging = isWheelZooming = false;
+    translateX = translateY = 0; currentScale = 1;
+    imageModalImg.classList.remove('zoomed');
+    imageModalImg.style.transform = 'scale(1)'; imageModalImg.style.cursor = 'zoom-in';
+    imageModalClose.style.display = 'flex'; imageModalClose.disabled = false;
+}
+imageModalImg.addEventListener('dblclick', e => {
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width, py = (e.clientY - rect.top) / rect.height;
+    if (!isZoomed) {
+        isZoomed = true; currentScale = BASE_ZOOM;
+        translateX = (0.5 - px) * rect.width * (BASE_ZOOM - 1);
+        translateY = (0.5 - py) * rect.height * (BASE_ZOOM - 1);
+        imageModalImg.classList.add('zoomed');
+        imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+        imageModalImg.style.cursor = 'grab';
+        imageModalClose.style.display = 'none'; imageModalClose.disabled = true;
+    } else resetZoom();
+});
+imageModalImg.addEventListener('mousedown', e => { if (!isZoomed || e.button !== 0) return; isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; imageModalImg.style.cursor = 'grabbing'; });
+window.addEventListener('mouseup', () => { if (!isZoomed) return; isDragging = false; imageModalImg.style.cursor = 'grab'; });
+window.addEventListener('mousemove', e => { if (!isZoomed || !isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`; });
+imageModalImg.addEventListener('wheel', e => {
+    if (!isZoomed) return; e.preventDefault();
+    const rect = imageModalImg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width, py = (e.clientY - rect.top) / rect.height;
+    const ns = Math.min(Math.max(currentScale + (-e.deltaY * WHEEL_ZOOM_SPEED), BASE_ZOOM), MAX_WHEEL_ZOOM);
+    const sd = ns / currentScale;
+    translateX = translateX * sd + (0.5 - px) * rect.width * (sd - 1);
+    translateY = translateY * sd + (0.5 - py) * rect.height * (sd - 1);
+    currentScale = ns;
+    imageModalImg.style.transform = `scale(${currentScale}) translate(${translateX}px,${translateY}px)`;
+}, { passive: false });
+// Mobile pinch & swipe
+let initDist = null, touchSX = 0, touchEX = 0;
+imageModalImg.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) initDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+    else if (e.touches.length === 1) touchSX = e.changedTouches[0].screenX;
+}, { passive: true });
+imageModalImg.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && initDist) {
+        e.preventDefault();
+        const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        currentScale = Math.min(Math.max(d / initDist, .5), 3);
+        imageModalImg.style.transform = `scale(${currentScale})`;
     }
 });
+imageModalImg.addEventListener('touchend', e => {
+    if (currentScale < 1) currentScale = 1;
+    imageModalImg.style.transform = `scale(${currentScale})`; initDist = null;
+    if (e.changedTouches.length === 1) {
+        touchEX = e.changedTouches[0].screenX;
+        const dx = touchEX - touchSX;
+        if (Math.abs(dx) >= 50 && galleryImages.length > 1) { dx > 0 ? prevImage() : nextImage(); }
+    }
+}, { passive: true });
+document.addEventListener('keydown', e => {
+    if (!imageModal.classList.contains('active')) return;
+    if (e.key === 'ArrowLeft') { prevImage(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { nextImage(); e.preventDefault(); }
+    if (e.key === 'Escape') closeImageModal();
+});
+
 function closeRoadReportModal() {
     document.getElementById('rmReportModalBackdrop').classList.remove('active');
 }

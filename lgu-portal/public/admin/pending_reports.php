@@ -1654,23 +1654,43 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 /* ── CIMM loading overlay (matches requests.php) ── */
 #repEmailOverlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    background: radial-gradient(circle at 50% 42%, rgba(34,46,82,.8), rgba(6,9,20,.94));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     display: none; justify-content: center; align-items: center;
     z-index: 19000; opacity: 0; transition: opacity .3s ease;
 }
 #repEmailOverlay.show { display: flex; opacity: 1; }
-#repEmailOverlay .rep-email-content { text-align: center; }
-#repEmailOverlay .rep-email-spinner {
-    display: inline-block; font-size: 58px; font-weight: 800;
-    color: #6384d2; letter-spacing: 8px;
-    animation: repSpinLGU 2s linear infinite;
-    text-shadow: 0 4px 12px rgba(99,132,210,.4);
-    font-family: 'Poppins', Arial, sans-serif;
+#repEmailOverlay .rep-email-content {
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    animation: repLoadingPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
 }
-@keyframes repSpinLGU { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+@keyframes repLoadingPopIn {
+    from { opacity: 0; transform: scale(.86) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+#repEmailOverlay .rep-email-spinner {
+    position: relative; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+}
+#repEmailOverlay .rep-email-spinner::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid rgba(99,132,210,.18);
+}
+#repEmailOverlay .rep-email-spinner::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #6384d2; border-right-color: #6384d2;
+    animation: repRingSpin .85s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(99,132,210,.55));
+}
+#repEmailOverlay .rep-email-spinner span {
+    font-size: 12px; font-weight: 800; letter-spacing: 2.2px;
+    color: #fff; text-shadow: 0 2px 10px rgba(99,132,210,.6);
+}
+@keyframes repRingSpin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
 #repEmailOverlay .rep-email-text {
-    margin-top: 22px; color: #fff; font-size: 15px; font-weight: 500;
-    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+    color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: .3px; text-align: center; font-family: 'Poppins', Arial, sans-serif;
 }
 .rep-upload-section { margin-top:14px; }
 .rep-upload-label { font-size:11px;font-weight:700;color:#e65100;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;display:flex;align-items:center;gap:6px; }
@@ -4621,7 +4641,7 @@ function renderProgressStrip(images) {
 <!-- CIMM email sending overlay -->
 <div id="repEmailOverlay">
     <div class="rep-email-content">
-        <div class="rep-email-spinner">CIMM</div>
+        <div class="rep-email-spinner"><span>CIMM</span></div>
         <div class="rep-email-text" id="repEmailOverlayText">Saving &amp; Sending Update…</div>
     </div>
 </div>

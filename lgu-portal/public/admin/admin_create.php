@@ -254,11 +254,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['create_account'])) {
                         } else {
                             $pendingInsert->close();
 
-                            // Build verification link — points to login.php after verification
+                            // Build verification link — points to login.php after verification.
+                            // Uses the same localhost-vs-domain path convention as verify.php/
+                            // login.php (rather than deriving it from PHP_SELF/dirname()) so the
+                            // link is correct on the live domain even if the server's rewrite/
+                            // proxy setup makes PHP_SELF resolve differently than on XAMPP.
                             $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
                             $host     = $_SERVER['HTTP_HOST'];
-                            $scriptPath = rtrim(dirname($_SERVER['PHP_SELF']), '/');
-                            $verificationLink = $protocol . '://' . $host . $scriptPath . '/../functionality/verify.php?token=' . urlencode($verificationToken);
+                            $verifyPath = ($host === 'localhost')
+                                ? '/LGU/lgu-portal/public/functionality/verify.php'
+                                : '/lgu-portal/public/functionality/verify.php';
+                            $verificationLink = $protocol . '://' . $host . $verifyPath . '?token=' . urlencode($verificationToken);
 
                             // Send verification email
                             $mail = new PHPMailer(true);
@@ -1407,24 +1413,44 @@ input:-webkit-autofill:focus {
 /* ── CIMM Loading Overlay ── */
 #loadingOverlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px); display: none;
+    background: radial-gradient(circle at 50% 42%, rgba(34,46,82,.78), rgba(6,9,20,.92));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px); display: none;
     justify-content: center; align-items: center; z-index: 10000;
     opacity: 0; transition: opacity 0.3s ease;
 }
 #loadingOverlay.show { display: flex; opacity: 1; }
-#loadingOverlay .loading-content { text-align: center; }
-#loadingOverlay .lgu-spinner {
-    display: inline-block; font-size: 64px; font-weight: 800;
-    color: #6384d2; letter-spacing: 8px;
-    animation: spinLGU 2s linear infinite;
-    text-shadow: 0 4px 12px rgba(99,132,210,0.4);
-    font-family: 'Poppins', Arial, sans-serif;
+#loadingOverlay .loading-content {
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+    animation: loadingPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
 }
-@keyframes spinLGU { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
+@keyframes loadingPopIn {
+    from { opacity: 0; transform: scale(.86) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+#loadingOverlay .lgu-spinner {
+    position: relative; width: 92px; height: 92px;
+    display: flex; align-items: center; justify-content: center;
+}
+#loadingOverlay .lgu-spinner::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid rgba(99,132,210,.18);
+}
+#loadingOverlay .lgu-spinner::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #6384d2; border-right-color: #6384d2;
+    animation: lguRingSpin .85s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(99,132,210,.55));
+}
+#loadingOverlay .lgu-spinner span {
+    font-size: 13px; font-weight: 800; letter-spacing: 2.5px;
+    color: #fff; text-shadow: 0 2px 10px rgba(99,132,210,.6);
+}
+@keyframes lguRingSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 #loadingOverlay .loading-text {
-    margin-top: 20px; color: #fff; font-size: 16px; font-weight: 500;
-    letter-spacing: 1px; font-family: 'Poppins', Arial, sans-serif;
+    color: #fff; font-size: 15px; font-weight: 500;
+    letter-spacing: .3px; text-align: center; font-family: 'Poppins', Arial, sans-serif;
 }
 </style>
 <script>
@@ -2018,7 +2044,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 <!-- ── CIMM Loading Overlay ── -->
 <div id="loadingOverlay">
     <div class="loading-content">
-        <div class="lgu-spinner">CIMM</div>
+        <div class="lgu-spinner"><span>CIMM</span></div>
         <div class="loading-text" id="loadingText">Creating Account</div>
     </div>
 </div>

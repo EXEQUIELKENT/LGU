@@ -4483,7 +4483,36 @@ Sidebar (250px) takes the most relative space here.
     .sched-add-btn-icon { width: 26px; height: 26px; font-size: 12px; }
 }
 .sched-form-modal { max-width: 560px; width: 96%; }
-.sched-form-body { padding: 20px 22px 22px; overflow-x: hidden; }
+/* Fixed footer: the form's own scrollbar used to live on .sched-form-body,
+   which meant the Cancel/Save Changes buttons — the last elements in that
+   same scrolling box — scrolled out of view on longer forms (e.g. once the
+   CPRF/Energy Integration badge + facility fields are all shown). Splitting
+   the form into a scrolling field area + a pinned, non-scrolling footer
+   means the buttons are always visible without scrolling down. */
+.sched-form-body {
+    padding: 0; overflow: visible; overflow-x: visible;
+    display: flex; flex-direction: column; flex: 1; min-height: 0;
+}
+.sched-form-scroll {
+    overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0;
+    padding: 20px 22px 22px;
+    scrollbar-width: thin; scrollbar-color: rgba(55,98,200,0.35) transparent;
+}
+.sched-form-scroll::-webkit-scrollbar { width: 6px; }
+.sched-form-scroll::-webkit-scrollbar-track { background: transparent; border-radius: 99px; }
+.sched-form-scroll::-webkit-scrollbar-thumb { background: rgba(55,98,200,0.35); border-radius: 99px; }
+.sched-form-scroll::-webkit-scrollbar-thumb:hover { background: rgba(55,98,200,0.60); }
+[data-theme="dark"] .sched-form-scroll { scrollbar-color: rgba(95,140,255,0.35) transparent; }
+[data-theme="dark"] .sched-form-scroll::-webkit-scrollbar-thumb { background: rgba(95,140,255,0.35); }
+[data-theme="dark"] .sched-form-scroll::-webkit-scrollbar-thumb:hover { background: rgba(95,140,255,0.60); }
+.sched-form-footer {
+    flex-shrink: 0; padding: 14px 22px; margin: 0;
+    border-top: 1px solid rgba(0,0,0,.08);
+    background: #ffffff; border-radius: 0 0 20px 20px;
+}
+[data-theme="dark"] .sched-form-footer {
+    background: #191b24; border-top-color: rgba(255,255,255,.08);
+}
 .sched-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; min-width: 0; }
 @media (max-width: 520px) { .sched-form-row { grid-template-columns: 1fr; } }
 .sched-form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }

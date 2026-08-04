@@ -609,6 +609,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'User Management',
             $currentUserId
         );
+        // Notify the employee themselves — user_management.php is admin-only
+        // so their notification deep-links to their own profile page instead.
+        insertNotification(
+            $conn,
+            $targetId,
+            '✏️ Your Account Was Updated',
+            "{$actor} made changes to your account information. Review your profile to see what changed.",
+            'profile.php',
+            'Account'
+        );
 
         echo json_encode(['success' => true, 'message' => 'Account updated successfully.']);
         exit;
@@ -1985,18 +1995,36 @@ textarea.vp-edit-input-wrap {
 #logoutAlertModal .lo-confirm:hover { transform: translateY(-1px) !important; box-shadow: 0 6px 18px rgba(239,68,68,.45) !important; }
 [data-theme="dark"] #logoutAlertModal { background: rgba(24,24,30,.98) !important; box-shadow: 0 25px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.07) !important; }
 
-/* ── Notification popup (flash message) ── */
+/* ── Notification popup (flash message) — matches requests.php ── */
 .notif-popup {
-    position: fixed; top: 24px; right: 24px; z-index: 10000;
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 18px; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.2);
-    font-size: 14px; font-weight: 600; color: #fff; max-width: 360px;
-    transition: opacity .4s ease;
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: var(--bg-secondary);
+    border-radius: 13px;
+    box-shadow: 0 8px 38px var(--shadow-color);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
-.notif-popup.notif-success { background: linear-gradient(135deg,#22c55e,#16a34a); }
-.notif-popup.notif-error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
-.notif-popup.notif-warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
-.notif-popup .notif-close { background:none; border:none; color:#fff; font-size:18px; cursor:pointer; margin-left:auto; }
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+.notif-popup.notif-error   { border-left: 5px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 5px solid #dda203; }
+.notif-popup.notif-info    { border-left: 5px solid #527cdf; }
+.notif-popup .notif-close { background:none; border:none; color:#888; font-size:20px; cursor:pointer; margin-left:auto; }
 
 @media (max-width:768px) {
     body { overflow:auto !important; height:auto !important; }
@@ -2749,6 +2777,23 @@ textarea.vp-edit-input-wrap {
 <script>
 const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
 
+// ── Inline notification toast (matches requests.php's) — replaces native
+// alert() popups for account-management action results. ────────────────────
+function showInlineNotif(type, message) {
+    const existing = document.getElementById('notifPopup');
+    if (existing) existing.remove();
+    const icon = type === 'success' ? '✔️' : (type === 'error' ? '❌' : (type === 'warning' ? '⚠️' : 'ℹ️'));
+    const div = document.createElement('div');
+    div.id = 'notifPopup';
+    div.className = `notif-popup notif-${type}`;
+    div.innerHTML = `<span class="notif-icon">${icon}</span>
+                     <span class="notif-message"></span>
+                     <button class="notif-close" onclick="this.parentElement.remove()">&times;</button>`;
+    div.querySelector('.notif-message').textContent = message;
+    document.body.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 400); }, 3200);
+}
+
 // ── Filter dropdown open/close ──────────────────────────────────────────────
 (function(){
     var wrap = document.getElementById('umFilterWrap');
@@ -2975,10 +3020,10 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
                     }
                 });
             } else {
-                alert(data.message || 'Failed to change role.');
+                showInlineNotif('error', data.message || 'Failed to change role.');
             }
         } catch (e) {
-            alert('Network error. Please try again.');
+            showInlineNotif('error', 'Network error. Please try again.');
         }
         confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm';
         closeModal();
@@ -3054,10 +3099,10 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
                 });
                 wireButtons();
             } else {
-                alert(data.message || 'Failed to update account.');
+                showInlineNotif('error', data.message || 'Failed to update account.');
             }
         } catch (e) {
-            alert('Network error. Please try again.');
+            showInlineNotif('error', 'Network error. Please try again.');
         }
         confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm';
         pending = null;
@@ -3185,7 +3230,7 @@ const UM_CURRENT_USER_ID = <?= (int)$currentUserId ?>;
             closeInviteConfirm();
             if (data.success) {
                 closeModal();
-                alert(data.message);
+                showInlineNotif('success', data.message);
             } else {
                 errorBox.textContent = data.message || 'Failed to send invite.';
                 errorBox.style.display = 'block';
@@ -4246,12 +4291,12 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
             if (data.success) {
                 updateRowDisplay(payload.user_id, names.fullName, names.email);
                 closeModal();
-                alert(data.message || 'Account updated successfully.');
+                showInlineNotif('success', data.message || 'Account updated successfully.');
             } else {
-                alert(data.message || 'Failed to update account.');
+                showInlineNotif('error', data.message || 'Failed to update account.');
             }
         } catch (e) {
-            alert('Network error. Please try again.');
+            showInlineNotif('error', 'Network error. Please try again.');
         }
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
@@ -4298,10 +4343,10 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
                 var countEl = document.getElementById('rowCount');
                 if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
             } else {
-                alert(data.message || 'Failed to delete account.');
+                showInlineNotif('error', data.message || 'Failed to delete account.');
             }
         } catch (e) {
-            alert('Network error. Please try again.');
+            showInlineNotif('error', 'Network error. Please try again.');
         }
         confirmBtn.disabled = false; confirmBtn.textContent = 'Delete';
         closeModal();

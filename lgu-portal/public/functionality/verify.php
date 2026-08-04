@@ -431,6 +431,13 @@ if ($token !== '') {
                 This account has already been verified.<br>
                 You can go ahead and log in.
             </p>
+            <div class="countdown-strip">
+                <i class="fas fa-circle-notch fa-spin" style="color:#2b6cb0;"></i>
+                Redirecting to Login in&nbsp;<span id="countdown-num"><?= $redirectDelay ?></span>s
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
             <a href="<?= htmlspecialchars($loginUrl) ?>" class="btn-verify primary">
                 <i class="fas fa-sign-in-alt"></i> Go to Login
             </a>
@@ -444,6 +451,13 @@ if ($token !== '') {
                 Please ask an administrator to resend your invitation,<br>
                 or contact support for assistance.
             </p>
+            <div class="countdown-strip">
+                <i class="fas fa-circle-notch fa-spin" style="color:#2b6cb0;"></i>
+                Redirecting to Login in&nbsp;<span id="countdown-num"><?= $redirectDelay ?></span>s
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
             <a href="<?= htmlspecialchars($loginUrl) ?>" class="btn-verify primary">
                 <i class="fas fa-arrow-left"></i> Back to Login
             </a>
@@ -458,6 +472,13 @@ if ($token !== '') {
                 This verification link is invalid or has already been used.<br>
                 If you haven't verified yet, please check your email for the original link or contact support.
             </p>
+            <div class="countdown-strip">
+                <i class="fas fa-circle-notch fa-spin" style="color:#2b6cb0;"></i>
+                Redirecting to Login in&nbsp;<span id="countdown-num"><?= $redirectDelay ?></span>s
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
             <a href="<?= htmlspecialchars($loginUrl) ?>" class="btn-verify primary">
                 <i class="fas fa-sign-in-alt"></i> Go to Login
             </a>
@@ -520,8 +541,10 @@ if ($token !== '') {
     setInterval(tick, 1000);
 })();
 
-// ── Countdown + redirect (success only) ──────────────────────────────────
-<?php if ($state === 'success'): ?>
+// ── Countdown + redirect (every terminal state lands here — success,
+//    already-verified, expired, or invalid/missing token — so an employee
+//    who opens the confirmation email always ends up back at the login
+//    page even when the token on the URL is missing or unusable). ────────
 (function(){
     const TOTAL   = <?= $redirectDelay ?>;
     const target  = <?= json_encode($loginUrl) ?>;
@@ -547,7 +570,6 @@ if ($token !== '') {
         }
     }, 1000);
 })();
-<?php endif; ?>
 </script>
 
 </body>
