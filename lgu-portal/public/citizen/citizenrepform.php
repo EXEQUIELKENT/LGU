@@ -322,9 +322,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt_mgr->close();
                 }
 
-                // Push to RGMAO verification monitoring (non-blocking for citizen UX)
-                require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
-                cimm_rgmap_sync_request_async($conn, (int)$request_id, 'created');
+                // RGMAO's Road Monitoring only wants requests once they're an
+                // actual validated report (see validate_request.php's
+                // cimm_rgmap_sync_request_async($conn, $reqId, 'validated')
+                // call), not the raw, unreviewed citizen submission — a
+                // request can still be rejected and never become a report at
+                // all, so pushing here would show RGMAO reports that don't
+                // really exist yet.
 
                 $_SESSION['notification'] = [
                     'type' => 'success',

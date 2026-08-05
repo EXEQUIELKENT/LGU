@@ -134,8 +134,10 @@ if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 
 
-require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
-cimm_rgmap_sync_request_async($conn, $reqId, 'rejected');
+// A rejected request never becomes a validated report, so it's never
+// pushed to RGMAO's Road Monitoring — see citizenrepform.php /
+// ipms-requests.php for the matching fix on the "unvalidated submission"
+// side of the same rule.
 
 ob_end_clean();
 echo json_encode(['success' => true, 'req_id' => $reqId, 'email_sent' => $emailSent]);

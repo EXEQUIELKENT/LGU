@@ -37,7 +37,6 @@ if ($API_KEY === '' || !hash_equals($API_KEY, $provided)) {
 }
 
 require_once __DIR__ . '/../../includes/config/db.php';
-require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
 
 function cimm_ipms_val(array $data, string $key, $default = '')
 {
@@ -352,7 +351,9 @@ try {
 
     cimm_ipms_save_evidence($conn, $reqId, cimm_ipms_collect_evidence_files());
     cimm_ipms_notify_staff($conn, $reqId, $infrastructure);
-    cimm_rgmap_sync_request_async($conn, $reqId, 'created');
+    // RGMAO's Road Monitoring only wants requests once they're a validated
+    // report (validate_request.php pushes 'validated'), not this raw,
+    // unreviewed submission — see citizenrepform.php for the same fix.
 
     echo json_encode([
         'success' => true,

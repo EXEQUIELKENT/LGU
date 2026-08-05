@@ -364,6 +364,16 @@ function cimm_rgmap_sync_request(mysqli $conn, int $reqId, string $event = 'upse
         return ['ok' => false, 'req_id' => $reqId, 'error' => 'Request not found'];
     }
 
+    // RGMAO is a Road Monitoring system — it should only ever receive road
+    // requests, not the full range of infrastructure types CIMM handles
+    // (Street Lights, Drainage, Public Facilities, Water Supply, Electrical,
+    // ...). Gated here so every caller (validate_request.php, the
+    // current/pending report status transitions, and the bulk
+    // cimm_rgmap_sync_all() resync) is covered by one check.
+    if (strcasecmp((string)$payload['infrastructure'], 'Roads') !== 0) {
+        return ['ok' => true, 'req_id' => $reqId, 'skipped' => true, 'reason' => 'not a road infrastructure request'];
+    }
+
     $hash = hash('sha256', json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
 
     if (!$force) {
@@ -414,12 +424,16 @@ function cimm_rgmap_sync_all(mysqli $conn, bool $force = false, ?string $since =
 {
     cimm_rgmap_ensure_schema($conn);
 
-    $sql = 'SELECT req_id FROM requests';
+    // Only requests that have actually been validated into a report —
+    // matches cimm_rgmap_sync_request()'s per-request infrastructure gate:
+    // RGMAO's Road Monitoring wants validated road reports, not every raw,
+    // possibly-still-pending-review or rejected citizen submission.
+    $sql = "SELECT req_id FROM requests WHERE approval_status = 'Approved'";
     $params = [];
     $types = '';
 
     if ($since !== null && $since !== '') {
-        $sql .= ' WHERE created_at >= ? OR req_id IN (SELECT req_id FROM rgmap_sync_log WHERE last_synced_at >= ?)';
+        $sql .= ' AND (created_at >= ? OR req_id IN (SELECT req_id FROM rgmap_sync_log WHERE last_synced_at >= ?))';
         $params = [$since, $since];
         $types = 'ss';
     }
