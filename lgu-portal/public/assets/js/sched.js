@@ -1180,14 +1180,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const details = document.getElementById('calendarDetails');
         const hint    = document.getElementById('calScrollHint');
         if (!details || !hint) return;
-        hint.classList.toggle('visible', details.scrollHeight > details.clientHeight + 4);
-        if (details.scrollHeight > details.clientHeight) {
-            hint.style.display = 'block';
-            hint.style.opacity = '0.9';
-        } else {
-            hint.style.display = 'block';
-            hint.style.opacity = '0.3';
-        }
+        // Let CSS (.cal-details-scroll-hint / .visible) own visibility. Previously
+        // this always set an inline display:block (just fading it to opacity .3
+        // when not needed), which beats the CSS class and left the hint rendered
+        // — and overlapping the details text below it — even when there was
+        // nothing to scroll.
+        hint.style.removeProperty('display');
+        hint.style.removeProperty('opacity');
+        const overflows = details.scrollHeight > details.clientHeight + 4;
+        hint.classList.toggle('visible', overflows);
     }
 
     if (typeof prevMonthBtn !== "undefined" && prevMonthBtn && nextMonthBtn) {
