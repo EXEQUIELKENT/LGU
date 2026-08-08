@@ -166,11 +166,22 @@ $isOfficeStaff = cimm_is_office_staff();
 $canViewIntegrationSchedules = $isAdmin || $isOfficeStaff;
 
 // ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
-$conn->query("
-    ALTER TABLE request_resolutions
-    MODIFY COLUMN status ENUM('Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending Completion')
-    NOT NULL DEFAULT 'Approved'
-");
+// NOTE: the enum must include every status value the app ever writes to this
+// column. 'Pending', 'Pending Admin Approval' and '' (empty string) are all
+// set/queried elsewhere (pending_reports.php, current_reports.php,
+// employee.php, requests.php, generate_report.php, etc.) but were missing
+// here, so MySQL truncated any existing row holding one of those values
+// during the ALTER (fatal under strict/exception mode). Wrapped in try/catch
+// so this best-effort migration can never take down the whole admin page.
+try {
+    $conn->query("
+        ALTER TABLE request_resolutions
+        MODIFY COLUMN status ENUM('','Approved','Rejected','Scheduled','In Progress','Completed','Cancelled','Pending','Pending Admin Approval','Pending Completion')
+        NOT NULL DEFAULT 'Approved'
+    ");
+} catch (\mysqli_sql_exception $e) {
+    error_log('sched.php status enum migration failed: ' . $e->getMessage());
+}
 
 
 // Fetch schedules from database
