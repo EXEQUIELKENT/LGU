@@ -4018,16 +4018,20 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
    Reads ?highlight_req={req_id} from the URL (e.g. from the employee
    dashboard's "Recent Activity" widget), scrolls to the matching
    <tr class="request-row"> or .cimmReqCard, applies a visible highlight,
-   opens its detail modal, and shows a brief banner above the table.
+   and shows a brief banner above the table. The detail modal is only
+   auto-opened when ?open_modal=1 is also present (mirroring the
+   reports pages' notification-highlight behavior).
 ═══════════════════════════════════════════════════════ */
 (function initReqHighlight() {
-    const params = new URLSearchParams(window.location.search);
-    const reqId  = params.get('highlight_req');
+    const params    = new URLSearchParams(window.location.search);
+    const reqId     = params.get('highlight_req');
+    const openModal = params.get('open_modal') === '1';
     if (!reqId) return;
 
     // Clean URL immediately
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('highlight_req');
+    cleanUrl.searchParams.delete('open_modal');
     history.replaceState(null, '', cleanUrl);
 
     // This page defaults to the GIS map view (#requestsView starts hidden;
@@ -4062,17 +4066,20 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
             setTimeout(function () { card.classList.remove('notif-highlight'); }, 5500);
         }
 
-        // Open the request's detail modal — trigger a real click on its
-        // "View" button so this behaves identically to a manual click
-        // (rather than calling the handler function directly).
-        const viewBtn = primary.querySelector('button[onclick*="openRequestDetail"]');
-        if (viewBtn) {
-            try {
-                viewBtn.click();
-            } catch (e) {
-                console.error('Failed to auto-open request detail modal:', e);
+        // Open the request's detail modal — only when explicitly requested
+        // via ?open_modal=1 — by triggering a real click on its "View"
+        // button so this behaves identically to a manual click (rather
+        // than calling the handler function directly).
+        if (openModal) {
+            const viewBtn = primary.querySelector('button[onclick*="openRequestDetail"]');
+            if (viewBtn) {
+                try {
+                    viewBtn.click();
+                } catch (e) {
+                    console.error('Failed to auto-open request detail modal:', e);
+                }
+                return; // modal open is sufficient feedback — skip the banner
             }
-            return; // modal open is sufficient feedback — skip the banner
         }
 
         if (document.getElementById('notifHighlightBanner')) return;
