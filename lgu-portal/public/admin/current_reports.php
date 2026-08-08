@@ -720,9 +720,14 @@ function priorityBadge(?string $lvl): string {
 
 function engProfileBtn(int $engineerId, ?string $picPath, int $repId = 0): string {
     $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>';
-    $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/../' . $picPath);
+    // Support both remote URLs and local files. Normalize local path before file_exists.
+    $picStr = (string)($picPath ?? '');
+    $picFull = __DIR__ . '/../' . ltrim($picStr, '/\\');
+    $isUrl = !empty($picStr) && (filter_var($picStr, FILTER_VALIDATE_URL) !== false);
+    $hasPic = !empty($picStr) && $picStr !== 'profile.png' && ($isUrl || file_exists($picFull));
     if ($hasPic) {
-        $src   = htmlspecialchars('../' . $picPath);
+        $src = $isUrl ? $picStr : ('../' . ltrim($picStr, '/\\'));
+        $src = htmlspecialchars($src, ENT_QUOTES, 'UTF-8');
         $inner = "<img src=\"{$src}\" alt=\"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='block';\"><span style=\"display:none;width:100%;height:100%;\">{$FALLBACK_SVG}</span>";
     } else {
         $inner = $FALLBACK_SVG;
@@ -799,10 +804,6 @@ foreach ($rows as $row) {
         'ai_complexity'     => $row['ai_complexity'] ?? '',
         'ai_immediate'      => (bool)($row['ai_immediate'] ?? false),
         'ai_images_count'   => (int)($row['ai_images_count'] ?? 0),
-        'requester_name'    => $row['requester_name'] ?? '',
-        'contact_number'    => $row['contact_number'] ?? '',
-        'coordinates'       => $row['coordinates'] ?? '',
-        'req_email'         => $row['req_email']     ?? '',
         'req_district'      => $row['req_district']  ?? '',
         'images'            => $imgs,
     ];

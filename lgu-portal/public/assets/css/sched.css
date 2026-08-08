@@ -5541,15 +5541,7 @@ Sidebar (250px) takes the most relative space here.
 .eng-det-body .emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
 .eng-det-body .emc-title{font-size:10px}
 .eng-det-body .emc-sub{font-size:10px}
-}
 .eng-det-body .emc-grid[style]{margin-top:0!important}
-.eng-det-body .emc-card{padding:11px 12px 10px}
-.eng-det-body .emc-value{font-size:26px}
-.eng-det-body .emc-title{font-size:10px}
-.eng-det-body .emc-sub{font-size:10px}
-.eng-det-body .emc-icon{width:34px;height:34px;font-size:14px;border-radius:9px}
-.eng-det-body .emc-section-label{margin:8px 0 6px}
-}
 @media(max-width:520px){
 .emc-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px}
 .emc-card{padding:11px 12px 10px}

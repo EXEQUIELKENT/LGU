@@ -3529,7 +3529,7 @@ HTML;
                             $priorityColor  = $priorityColors[$priority] ?? '#2196f3';
                             $initial = substr($rep['infrastructure'] ?? 'R', 0, 1);
                         ?>
-                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
+                        <div class="activity-item" data-href="current_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background: <?= $repColors[$repColorIndex % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3609,7 +3609,7 @@ HTML;
                             $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
                             $hasEngineer = !empty($rep['engineer_id']) && trim($rep['engineer_name'] ?? '') !== '';
                         ?>
-                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
+                        <div class="activity-item" data-href="pending_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background:<?= $pColors[$pIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3669,7 +3669,7 @@ HTML;
                             $engName = trim($rep['engineer_name'] ?? '');
                             $hasEngineer = !empty($rep['engineer_id']) && $engName !== '';
                         ?>
-                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
+                        <div class="activity-item" data-href="archive_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background:<?= $aColors[$aIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3710,7 +3710,7 @@ HTML;
                         <div class="chart-title">Recent Activity</div>
                         <div class="chart-subtitle">Latest maintenance requests</div>
                     </div>
-                    <a href="request.php" class="view-all-link">View all →</a>
+                    <a href="requests.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php 
@@ -3720,7 +3720,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
+                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>" style="cursor:pointer;">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
@@ -3816,7 +3816,7 @@ HTML;
 
                             $fbDate = date('M d, Y', strtotime($fb['created_at']));
                         ?>
-                            <div class="activity-item dash-highlightable" data-feedback style="cursor:pointer;" onclick="dashHighlight(this, event)">
+                            <div class="activity-item" data-feedback data-href="emp_feedback.php?highlight_fbk=<?= (int)$fb['feedback_id'] ?>" style="cursor:pointer;">
                                 <div class="activity-avatar" style="background:<?= $fbAvatarBg ?>">
                                     <?= htmlspecialchars($fbInitial) ?>
                                 </div>
@@ -3835,7 +3835,6 @@ HTML;
                                     </span>
                                     <span class="fb-stars"><?= $fbStars ?></span>
                                 </div>
-                            </div>
                             </div>
                         <?php $fbColorIdx++; endforeach; ?>
                         </div>

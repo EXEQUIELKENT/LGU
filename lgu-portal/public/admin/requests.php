@@ -682,6 +682,81 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 .search-highlight { background: #fff176; color: #000; padding: 1px 3px; border-radius: 4px; font-weight: 600; }
 
 /* ═══════════════════════════════════════════════════════
+   NOTIFICATION / DASHBOARD ROW HIGHLIGHT
+   Injected per-page so it works regardless of emp-global.css version
+═══════════════════════════════════════════════════════ */
+.notif-highlight-banner {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    background: linear-gradient(135deg, rgba(55,98,200,.13), rgba(55,98,200,.07));
+    border: 1.5px solid rgba(55,98,200,.30);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #3762c8;
+    margin-bottom: 12px;
+    animation: bannerFadeIn .35s ease, bannerFadeOut .5s ease 4.5s forwards;
+    pointer-events: none;
+}
+[data-theme="dark"] .notif-highlight-banner {
+    background: linear-gradient(135deg, rgba(95,140,255,.16), rgba(95,140,255,.08));
+    border-color: rgba(95,140,255,.35);
+    color: #8fb4ff;
+}
+@keyframes bannerFadeIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+@keyframes bannerFadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
+
+/* Desktop <tr> highlight — uses inset box-shadow (works with border-collapse:separate) */
+tr.notif-highlight > td {
+    animation: trCellHighlight 5s ease-out forwards;
+    position: relative;
+}
+tr.notif-highlight > td:first-child {
+    border-left: 3px solid #3762c8 !important;
+}
+@keyframes trCellHighlight {
+    0%   { background: rgba(55,98,200,.18); box-shadow: inset 0 1px 0 rgba(55,98,200,.5), inset 0 -1px 0 rgba(55,98,200,.5); }
+    25%  { background: rgba(55,98,200,.13); box-shadow: inset 0 1px 0 rgba(55,98,200,.35), inset 0 -1px 0 rgba(55,98,200,.35); }
+    60%  { background: rgba(55,98,200,.07); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td {
+    animation: trCellHighlightDark 5s ease-out forwards;
+}
+@keyframes trCellHighlightDark {
+    0%   { background: rgba(95,140,255,.22); box-shadow: inset 0 1px 0 rgba(95,140,255,.55), inset 0 -1px 0 rgba(95,140,255,.55); }
+    25%  { background: rgba(95,140,255,.15); box-shadow: inset 0 1px 0 rgba(95,140,255,.35), inset 0 -1px 0 rgba(95,140,255,.35); }
+    60%  { background: rgba(95,140,255,.08); }
+    100% { background: transparent; box-shadow: none; }
+}
+[data-theme="dark"] tr.notif-highlight > td:first-child {
+    border-left-color: #5f8cff !important;
+}
+
+/* Mobile card highlight */
+.cimmReqCard.notif-highlight {
+    animation: cardHighlight 5s ease-out forwards;
+    outline: 2px solid rgba(55,98,200,.5);
+    outline-offset: -2px;
+}
+@keyframes cardHighlight {
+    0%   { box-shadow: 0 0 0 4px rgba(55,98,200,.45); background: rgba(55,98,200,.10); }
+    30%  { box-shadow: 0 0 0 3px rgba(55,98,200,.30); background: rgba(55,98,200,.07); }
+    100% { box-shadow: none; background: transparent; }
+}
+[data-theme="dark"] .cimmReqCard.notif-highlight {
+    animation: cardHighlightDark 5s ease-out forwards;
+    outline-color: rgba(95,140,255,.6);
+}
+@keyframes cardHighlightDark {
+    0%   { box-shadow: 0 0 0 4px rgba(95,140,255,.55); background: rgba(95,140,255,.16); }
+    30%  { box-shadow: 0 0 0 3px rgba(95,140,255,.35); background: rgba(95,140,255,.10); }
+    100% { box-shadow: none; background: transparent; }
+}
+
+/* ═══════════════════════════════════════════════════════
    SORT DROPDOWN
 ═══════════════════════════════════════════════════════ */
 .sort-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -3937,6 +4012,84 @@ document.getElementById('requestDetailBackdrop').addEventListener('click', e => 
     if (e.target === document.getElementById('requestDetailBackdrop'))
         document.getElementById('requestDetailBackdrop').classList.remove('active');
 });
+
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION / DASHBOARD HIGHLIGHT
+   Reads ?highlight_req={req_id} from the URL (e.g. from the employee
+   dashboard's "Recent Activity" widget), scrolls to the matching
+   <tr class="request-row"> or .cimmReqCard, applies a visible highlight,
+   opens its detail modal, and shows a brief banner above the table.
+═══════════════════════════════════════════════════════ */
+(function initReqHighlight() {
+    const params = new URLSearchParams(window.location.search);
+    const reqId  = params.get('highlight_req');
+    if (!reqId) return;
+
+    // Clean URL immediately
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight_req');
+    history.replaceState(null, '', cleanUrl);
+
+    // This page defaults to the GIS map view (#requestsView starts hidden;
+    // only "requests" localStorage.activeView keeps the table/card list
+    // visible on load). Show the List view for this visit so the row we're
+    // about to highlight — and the modal opened from it — are actually
+    // visible, without permanently overwriting the employee's saved
+    // view preference (avoid calling switchView(), which persists it).
+    const _gisEl = document.getElementById('gisView');
+    const _reqEl = document.getElementById('requestsView');
+    if (_gisEl && _reqEl) {
+        _gisEl.style.display = 'none';
+        _reqEl.style.display = '';
+    }
+
+    setTimeout(function () {
+        const tr   = document.querySelector('tr.request-row[data-req-id="' + reqId + '"]');
+        const card = document.querySelector('.cimmReqCard[data-req-id="' + reqId + '"]');
+        if (!tr && !card) return; // req_id not on this (filtered) page
+
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        const primary  = isMobile ? (card || tr) : (tr || card);
+
+        primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        if (tr && !isMobile) {
+            tr.classList.add('notif-highlight');
+            setTimeout(function () { tr.classList.remove('notif-highlight'); }, 5500);
+        }
+        if (card && isMobile) {
+            card.classList.add('notif-highlight');
+            setTimeout(function () { card.classList.remove('notif-highlight'); }, 5500);
+        }
+
+        // Open the request's detail modal — trigger a real click on its
+        // "View" button so this behaves identically to a manual click
+        // (rather than calling the handler function directly).
+        const viewBtn = primary.querySelector('button[onclick*="openRequestDetail"]');
+        if (viewBtn) {
+            try {
+                viewBtn.click();
+            } catch (e) {
+                console.error('Failed to auto-open request detail modal:', e);
+            }
+            return; // modal open is sufficient feedback — skip the banner
+        }
+
+        if (document.getElementById('notifHighlightBanner')) return;
+        const banner = document.createElement('div');
+        banner.id        = 'notifHighlightBanner';
+        banner.className = 'notif-highlight-banner';
+        banner.innerHTML = '<span style="font-size:16px;flex-shrink:0;">🔔</span>' +
+                           '<span>You were directed here from the dashboard — this item is highlighted below.</span>';
+        const container = primary.closest('.table-scroll-wrap, .mobile-request-list');
+        if (container) {
+            container.insertBefore(banner, container.firstChild);
+        } else if (primary.parentElement) {
+            primary.parentElement.insertBefore(banner, primary);
+        }
+        setTimeout(function () { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 5000);
+    }, 200);
+})();
 
 // Wire Requests view validate/reject buttons
 document.getElementById('reqValidateBtn').addEventListener('click', () => {
