@@ -155,6 +155,16 @@ if ($isAreaEngineer) {
     $aeHasDistrict = $aeDistrict !== '';
 }
 
+$isOfficeStaff = cimm_is_office_staff();
+
+// Energy + CPRF integration schedules (the maintenance_schedule table, imported
+// from the Energy "Facilities Needing Maintenance" catalog and matched against
+// the CPRF facility catalog — the rows that carry the ⚡ Energy / 🔗 CPRF badges)
+// are restricted to Admin/Super Admin and Office Staff. Engineers and Area
+// Engineers keep seeing their own report-based schedules below (unaffected —
+// that's a separate, already-role-filtered data source), just not these.
+$canViewIntegrationSchedules = $isAdmin || $isOfficeStaff;
+
 // ── One-time safe migration: ensure all statuses (incl. 'Pending Completion') are in the enum ──
 $conn->query("
     ALTER TABLE request_resolutions
@@ -164,11 +174,15 @@ $conn->query("
 
 
 // Fetch schedules from database
+// ── Energy + CPRF integration rows: Admin/Super Admin and Office Staff only ──
+// (see $canViewIntegrationSchedules above). Everyone else simply gets none of
+// these merged into $schedules, so they never appear in list/calendar/capsule
+// view or in window.scheduleData — all three views read from this one array.
 $schedules = [];
+$todayPhp = new DateTime('today', new DateTimeZone('Asia/Manila'));
+if ($canViewIntegrationSchedules) {
 $sql = "SELECT * FROM maintenance_schedule ORDER BY starting_date ASC";
 $result = $conn->query($sql);
-
-$todayPhp = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
 if ($result && $result->num_rows > 0) {
     $today = new DateTime('today');
@@ -244,6 +258,7 @@ if ($result && $result->num_rows > 0) {
         $schedules[] = $row;
     }
 }
+} // end $canViewIntegrationSchedules
 
 // ── Pull in Pending Reports (Scheduled / In Progress / Delayed) ──────────────
 // ── and Archive Reports (Completed) into the same $schedules array ───────────

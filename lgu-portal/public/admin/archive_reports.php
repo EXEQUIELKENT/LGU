@@ -90,6 +90,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── Log: someone opened an assigned engineer's profile from a report row ──
+    if ($action === 'log_engineer_profile_view') {
+        $repId = (int)($input['rep_id'] ?? 0);
+        $engId = (int)($input['engineer_id'] ?? 0);
+        if ($repId > 0 && $engId > 0) {
+            $engRow  = $conn->query("SELECT CONCAT(first_name, ' ', last_name) AS ename FROM employees WHERE user_id = {$engId} LIMIT 1");
+            $engName = $engRow ? ($engRow->fetch_assoc()['ename'] ?? 'the engineer') : 'the engineer';
+            log_report_activity($conn, 'archive_reports', $repId, 'engineer_profile_viewed',
+                activity_actor_name() . " viewed {$engName}'s engineer profile for Report #REP-{$repId}.");
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     // ── Log: someone opened the image gallery for an archived report ─────────
     // Distinguishes the citizen's original evidence photos from the engineer's
     // day-by-day progress photos, and for progress photos records which day of
@@ -268,7 +282,7 @@ function priorityBadge(?string $lvl): string {
          . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
 
-function engProfileBtn(int $engineerId, ?string $picPath): string {
+function engProfileBtn(int $engineerId, ?string $picPath, int $repId = 0): string {
     $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#e8f5e9"/><circle cx="50" cy="36" r="20" fill="#2e7d32"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#2e7d32"/></svg>';
     $hasPic = !empty($picPath) && $picPath !== 'profile.png' && file_exists(__DIR__ . '/../' . $picPath);
     if ($hasPic) {
@@ -277,7 +291,7 @@ function engProfileBtn(int $engineerId, ?string $picPath): string {
     } else {
         $inner = $FALLBACK_SVG;
     }
-    return "<button class=\"eng-profile-btn\" onclick=\"openEngineerProfileById({$engineerId})\" title=\"View Engineer Profile\">{$inner}</button>";
+    return "<button class=\"eng-profile-btn\" onclick=\"openEngineerProfileById({$engineerId}, {$repId})\" title=\"View Engineer Profile\">{$inner}</button>";
 }
 
 $rows = [];
@@ -1825,7 +1839,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                         <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                             <span class="eng-name-with-profile">
-                                <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
+                                <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null, (int)$row['rep_id']) ?>
                                 <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                             </span>
                         <?php else: ?>
@@ -1874,7 +1888,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <span class="rc-value engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
                     <?php if ($hasEngineer && ($canAssignEngineer || $isAdmin)): ?>
                         <span class="eng-name-with-profile">
-                            <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null) ?>
+                            <?= engProfileBtn((int)$row['engineer_id'], $row['engineer_pic'] ?? null, (int)$row['rep_id']) ?>
                             <span class="assigned-engineer-name"><?= htmlspecialchars($row['engineer_name']) ?></span>
                         </span>
                     <?php else: ?>
@@ -2879,7 +2893,7 @@ async function loadEngineers() {
     return engineersCache;
 }
 
-async function openEngineerProfileById(engineerId) {
+async function openEngineerProfileById(engineerId, repId = 0) {
     if (!CAN_ASSIGN_ENGINEER && !IS_ADMIN && !(IS_ENGINEER && engineerId == SELF_ENG_ID)) return;
     let eng = null;
 
@@ -2924,6 +2938,19 @@ async function openEngineerProfileById(engineerId) {
     }
 
     if (!eng) return;
+
+    // Fire-and-forget: record this profile view in the report's activity log.
+    // Only when opened from a specific report row (repId > 0) — the header's
+    // self-profile view (SELF_ENG_ID, no repId) isn't tied to any one report.
+    if (repId > 0) {
+        fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'log_engineer_profile_view', rep_id: parseInt(repId), engineer_id: parseInt(engineerId) }),
+            keepalive: true
+        }).then(() => { if (typeof pokeActivityLog === 'function') pokeActivityLog(); }).catch(() => {});
+    }
+
     _populateEngDetailsModal(eng);
     // Back button just closes — no assignment modal underneath
     engDetBackBtn.textContent = 'Close';

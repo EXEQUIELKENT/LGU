@@ -176,6 +176,7 @@ function activity_icon_for(string $action): array {
         'validated'              => ['fa-check',          'success'],
         'rejected'               => ['fa-xmark',          'danger'],
         'assigned'               => ['fa-user-gear',      'info'],
+        'engineer_profile_viewed' => ['fa-id-badge',       'info'],
         'submitted'               => ['fa-inbox',          'info'],
         'viewed'                  => ['fa-eye',             'info'],
         'images_viewed'           => ['fa-images',          'info'],
