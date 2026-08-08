@@ -159,11 +159,6 @@
 
 /* Schedule Search Input and Calendar Button — dark mode handled in toolbar block above */
 
-[data-theme="dark"] #toCalendarBtn,
-[data-theme="dark"] #mobileToCalendarBtn {
-    /* inherit from .view-switch-btn dark mode */
-}
-
 /* Additional Modal Elements */
 [data-theme="dark"] .modal {
     background: rgba(8, 8, 10, 0.78) !important;
@@ -3359,20 +3354,28 @@
     font-weight: 800;
     color: #fff;
     line-height: 1.3;
+    max-height: 2.6em;
     margin-bottom: 8px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
 }
 .capsule-card-desc {
     font-size: 13px;
     color: rgba(255,255,255,.75);
     line-height: 1.5;
+    max-height: 3em;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
     margin-bottom: 0;
 }
 
