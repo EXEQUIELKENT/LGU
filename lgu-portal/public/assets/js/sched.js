@@ -321,6 +321,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // ── List view: click a row to highlight it + open its detail modal ─────
+    // (previously list-view rows had no click behavior at all)
+    if (scheduleListHolder) {
+        scheduleListHolder.addEventListener('click', function (e) {
+            const item = e.target.closest('.schedule-item');
+            if (!item) return;
+            const source = item.getAttribute('data-source') || 'schedule';
+            const repId    = parseInt(item.getAttribute('data-rep-id') || '0', 10);
+            const schedId  = parseInt(item.getAttribute('data-sched-id') || '0', 10);
+            document.querySelectorAll('.schedule-item.sched-item-highlighted').forEach(function (el) {
+                if (el !== item) el.classList.remove('sched-item-highlighted');
+            });
+            item.classList.add('sched-item-highlighted');
+
+            const schedData = window.scheduleData || [];
+            let matches = [];
+            if (source === 'report' && repId > 0) {
+                matches = schedData.filter(function (x) { return x.source === 'report' && parseInt(x.rep_id, 10) === repId; });
+            } else if (schedId > 0) {
+                matches = schedData.filter(function (x) { return x.source !== 'report' && parseInt(x.sched_id, 10) === schedId; });
+            }
+            if (matches.length) openModal(matches, 0);
+        });
+    }
+
     // ── LEGEND FILTER ─────────────────────────────────────────────────────────
     // Shared state: null = no filter, or one of 'upcoming'|'ongoing'|'delayed'|'completed'
     let activeLegendFilter = null;
@@ -967,6 +992,81 @@ document.addEventListener('DOMContentLoaded', function() {
         return name.substring(0, 3).toUpperCase();
     }
 
+    // ── Cross-view highlight helpers ────────────────────────────────────────
+    // Used both when the user clicks an item directly on this page, and when
+    // arriving here from employee.php's "Upcoming Maintenance" widget via
+    // ?highlight_source=&highlight_id= (see initHighlightFromQuery() below).
+    function clearScheduleHighlights() {
+        document.querySelectorAll('.sched-item-highlighted').forEach(function (el) {
+            el.classList.remove('sched-item-highlighted');
+        });
+    }
+
+    function findScheduleEntry(source, id) {
+        const data = Array.isArray(window.scheduleData) ? window.scheduleData : [];
+        const numId = parseInt(id, 10);
+        if (source === 'report') {
+            return data.find(function (x) { return x.source === 'report' && parseInt(x.rep_id, 10) === numId; }) || null;
+        }
+        return data.find(function (x) { return x.source !== 'report' && parseInt(x.sched_id, 10) === numId; }) || null;
+    }
+
+    function flashHighlight(el) {
+        if (!el) return;
+        clearScheduleHighlights();
+        el.classList.add('sched-item-highlighted');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function () { el.classList.remove('sched-item-highlighted'); }, 5000);
+    }
+
+    function highlightInListView(entry) {
+        if (!scheduleListHolder) return;
+        const sel = entry.source === 'report'
+            ? '.schedule-item[data-source="report"][data-rep-id="' + entry.rep_id + '"]'
+            : '.schedule-item[data-source="schedule"][data-sched-id="' + entry.sched_id + '"]';
+        flashHighlight(scheduleListHolder.querySelector(sel));
+    }
+
+    function highlightInCapsuleView(entry) {
+        const board = document.getElementById('capsuleBoard');
+        if (!board) return;
+        const sel = entry.source === 'report'
+            ? '.capsule-card[data-cap-source="report"][data-cap-rep-id="' + entry.rep_id + '"]'
+            : '.capsule-card[data-cap-source="schedule"][data-cap-sched-id="' + entry.sched_id + '"]';
+        flashHighlight(board.querySelector(sel));
+    }
+
+    function highlightInCalendarView(entry) {
+        if (!entry.schedule_date || !calendarGrid) return;
+        const target = new Date(entry.schedule_date + 'T00:00:00');
+        currentDate = new Date(target.getFullYear(), target.getMonth(), 1);
+        renderCalendar();
+        requestAnimationFrame(function () {
+            const dayEl = calendarGrid.querySelector('.calendar-day[data-date="' + entry.schedule_date + '"]');
+            if (!dayEl) return;
+            clearScheduleHighlights();
+            dayEl.classList.add('sched-item-highlighted');
+            dayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            dayEl.click(); // opens the day's task list in the details panel below
+            setTimeout(function () { dayEl.classList.remove('sched-item-highlighted'); }, 5000);
+        });
+    }
+
+    // Public entry point: highlight one schedule/report item, regardless of
+    // which view (calendar / list / capsule) is currently active.
+    window.schedHighlightItem = function (source, id) {
+        const entry = findScheduleEntry(source, id);
+        if (!entry) return;
+        if (currentView === 'list') {
+            highlightInListView(entry);
+        } else if (currentView === 'capsule') {
+            renderCapsuleView();
+            requestAnimationFrame(function () { highlightInCapsuleView(entry); });
+        } else {
+            highlightInCalendarView(entry);
+        }
+    };
+
     function renderCalendar(){
         closeDropdown && closeDropdown();
         if (!calendarGrid || !calendarDetails) return;
@@ -1109,6 +1209,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             dayDiv.addEventListener('click', function () {
+                // Manual day selection (as opposed to a programmatic
+                // highlight-driven click from schedHighlightItem) should
+                // clear any lingering highlight from a previous jump.
+                document.querySelectorAll('.calendar-day.sched-item-highlighted').forEach(function (el) {
+                    if (el !== dayDiv) el.classList.remove('sched-item-highlighted');
+                });
+
                 const titleEl = document.getElementById('calDetailsTitle');
                 const iconEl  = document.getElementById('calDetailsIcon');
                 const hintEl  = document.getElementById('calScrollHint');
@@ -1482,6 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
             card.setAttribute('data-cap-category',(t.category || '').toLowerCase());
             card.setAttribute('data-cap-date',     t.schedule_date || '');
             card.setAttribute('data-cap-rep-id',   t.rep_id || 0);
+            card.setAttribute('data-cap-sched-id', t.sched_id || 0);
             card.setAttribute('data-cap-source',   t.source || 'schedule');
             card.setAttribute('data-cap-key',      key);
 
@@ -1574,6 +1682,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                (x.task || '').toLowerCase() === taskName;
                     });
                 }
+                clearScheduleHighlights();
+                card.classList.add('sched-item-highlighted');
                 if (matches.length) openModal(matches, 0);
             });
 
@@ -2227,6 +2337,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Restore saved view — must be LAST so all functions and wireViewSwitcher are ready
     switchToView(currentView);
+
+    // ── Arrived here from employee.php's "Upcoming Maintenance" widget? ────
+    // ?highlight_source=schedule|report&highlight_id=<id> — locate the
+    // matching item in whichever view (calendar/list/capsule) is currently
+    // active and highlight it, regardless of which view that happens to be.
+    (function initHighlightFromQuery() {
+        let params;
+        try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+        const hSource = params.get('highlight_source');
+        const hId     = params.get('highlight_id');
+        if (!hSource || !hId) return;
+        setTimeout(function () { window.schedHighlightItem(hSource, hId); }, 150);
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    })();
 
     // ── CPRF facility schedule form (admin) ─────────────────────────────
     if (window.IS_ADMIN) {

@@ -528,6 +528,7 @@ if ($schedRes) {
             'engineer_name' => '',
             'source'        => 'schedule',
             'rep_id'        => 0,
+            'sched_id'      => (int)($row['sched_id'] ?? 0),
         ];
     }
 }
@@ -579,6 +580,7 @@ if ($rptUpRes) {
             'engineer_name' => trim($rRow['engineer_name'] ?? '') ?: '—',
             'source'        => 'report',
             'rep_id'        => (int)$rRow['rep_id'],
+            'sched_id'      => 0,
         ];
     }
 }
@@ -588,6 +590,16 @@ usort($upcomingSchedules, function($a, $b) {
     return strcmp($a['starting_date'] ?? '', $b['starting_date'] ?? '');
 });
 $upcomingSchedules = array_slice($upcomingSchedules, 0, 5);
+
+// Builds the sched.php link for an "Upcoming Maintenance" row so the target
+// page can locate + highlight the exact matching item (calendar day, list
+// row, or capsule card — whichever view is currently active there).
+function upcomingMaintenanceHref(array $schedule): string
+{
+    $source = $schedule['source'] ?? 'schedule';
+    $id     = $source === 'report' ? (int)($schedule['rep_id'] ?? 0) : (int)($schedule['sched_id'] ?? 0);
+    return 'sched.php?highlight_source=' . urlencode($source) . '&highlight_id=' . $id;
+}
 
 // ===== SCHEDULE STATUS BREAKDOWN (for doughnut chart — mirrors sched.php logic) =====
 // Personalised: engineers only see their own report counts; maintenance_schedule has no engineer_id so shows for all.
@@ -2869,6 +2881,29 @@ body {
 [data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover {
     background: #4a7aef;
 }
+
+/* ── Dashboard row highlight (Current/Pending/Archive Reports, Recent
+   Activity, Citizen Feedback) — clicking a row highlights it in place
+   instead of navigating away. ── */
+.dash-highlightable {
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    border-left: 3px solid transparent;
+}
+.dash-item-highlighted {
+    background: rgba(95, 140, 255, 0.12) !important;
+    border-left: 3px solid #5f8cff !important;
+    box-shadow: 0 0 0 1px rgba(95, 140, 255, 0.35), 0 4px 14px rgba(95, 140, 255, 0.18);
+    transform: translateX(2px);
+    animation: dashHighlightPulse 0.9s ease-out;
+}
+[data-theme="dark"] .dash-item-highlighted {
+    background: rgba(95, 140, 255, 0.18) !important;
+}
+@keyframes dashHighlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(95, 140, 255, 0.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(95, 140, 255, 0); }
+    100% { box-shadow: 0 0 0 1px rgba(95, 140, 255, 0.35), 0 4px 14px rgba(95, 140, 255, 0.18); }
+}
 @media (max-width: 768px) {
     .main-content {
         scrollbar-width: none;
@@ -2879,6 +2914,31 @@ body {
 }
 </style>
 <script>
+/* ── Dashboard row highlight ──────────────────────────────────────────────
+   Used by Current Reports / Pending Reports / Archive Reports / Recent
+   Activity / Citizen Feedback rows. Clicking a row highlights it in place
+   (instead of navigating to the linked page) and stops the click from
+   bubbling up to the parent chart-card, which still navigates on a
+   background click / "View all →". ── */
+function dashHighlight(el, evt) {
+    if (evt) {
+        evt.stopPropagation();
+        if (typeof evt.preventDefault === 'function') evt.preventDefault();
+    }
+    if (!el) return;
+    const wasHighlighted = el.classList.contains('dash-item-highlighted');
+    const container = el.closest('.activity-list') || el.parentElement;
+    if (container) {
+        container.querySelectorAll('.dash-item-highlighted').forEach(function (sib) {
+            if (sib !== el) sib.classList.remove('dash-item-highlighted');
+        });
+    }
+    el.classList.toggle('dash-item-highlighted', !wasHighlighted);
+    if (!wasHighlighted) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
 (function() {
@@ -3235,7 +3295,7 @@ HTML;
                                     default       => '📅',
                                 };
                         ?>
-                        <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
+                        <div class="schedule-item" data-href="<?= htmlspecialchars(upcomingMaintenanceHref($schedule)) ?>" style="cursor:pointer;">
                             <div class="schedule-icon status-<?= $statusKey ?>"><?= $statusIcon ?></div>
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
@@ -3335,7 +3395,7 @@ HTML;
                                     ? $schedule['engineer_name']
                                     : ($schedule['source'] === 'schedule' ? ($schedule['assigned_team'] ?: 'Unassigned') : 'Unassigned');
                         ?>
-                        <div class="schedule-item" onclick="window.location.href='sched.php'" style="cursor:pointer;">
+                        <div class="schedule-item" data-href="<?= htmlspecialchars(upcomingMaintenanceHref($schedule)) ?>" style="cursor:pointer;">
                             <div class="schedule-icon status-<?= $statusKey ?>"><?= $statusIcon ?></div>
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
@@ -3469,7 +3529,7 @@ HTML;
                             $priorityColor  = $priorityColors[$priority] ?? '#2196f3';
                             $initial = substr($rep['infrastructure'] ?? 'R', 0, 1);
                         ?>
-                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='current_reports.php'">
+                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
                             <div class="activity-avatar" style="background: <?= $repColors[$repColorIndex % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3549,7 +3609,7 @@ HTML;
                             $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
                             $hasEngineer = !empty($rep['engineer_id']) && trim($rep['engineer_name'] ?? '') !== '';
                         ?>
-                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='pending_reports.php'">
+                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
                             <div class="activity-avatar" style="background:<?= $pColors[$pIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3609,7 +3669,7 @@ HTML;
                             $engName = trim($rep['engineer_name'] ?? '');
                             $hasEngineer = !empty($rep['engineer_id']) && $engName !== '';
                         ?>
-                        <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='archive_reports.php'">
+                        <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
                             <div class="activity-avatar" style="background:<?= $aColors[$aIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3660,7 +3720,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item" style="cursor:pointer;" onclick="window.location.href='request.php'">
+                    <div class="activity-item dash-highlightable" style="cursor:pointer;" onclick="dashHighlight(this, event)">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
@@ -3756,7 +3816,7 @@ HTML;
 
                             $fbDate = date('M d, Y', strtotime($fb['created_at']));
                         ?>
-                            <div class="activity-item" data-feedback data-href="emp_feedback.php" style="cursor:pointer;" onclick="window.location.href='emp_feedback.php'">
+                            <div class="activity-item dash-highlightable" data-feedback style="cursor:pointer;" onclick="dashHighlight(this, event)">
                                 <div class="activity-avatar" style="background:<?= $fbAvatarBg ?>">
                                     <?= htmlspecialchars($fbInitial) ?>
                                 </div>
@@ -5037,11 +5097,23 @@ document.addEventListener('keydown', function(e) {
 <script>
 (function () {
     // ── 1. Wire up [data-href] cards (metric cards + any others) ──
+    // Elements marked .dash-highlightable manage their own click behavior
+    // via dashHighlight() (highlight-in-place, no navigation) and are never
+    // wired here, so this navigation layer never overrides them.
     function makeClickable(selector) {
         document.querySelectorAll(selector + '[data-href]').forEach(function (el) {
+            if (el.classList.contains('dash-highlightable')) return;
             el.addEventListener('click', function (e) {
                 // Don't navigate if the click was on an inner button/link
                 if (e.target.closest('button, a, input, select, textarea')) return;
+                // Don't navigate if a nested handler (e.g. dashHighlight, or a
+                // more specific data-href already handled below us) already
+                // stopped this click from bubbling.
+                if (e.defaultPrevented) return;
+                // Stop the click here so an ancestor with its own [data-href]
+                // (e.g. a chart-card wrapping an Upcoming Maintenance row)
+                // doesn't also navigate and overwrite this more specific link.
+                e.stopPropagation();
                 window.location.href = el.dataset.href;
             });
             el.addEventListener('keydown', function (e) {
@@ -5055,15 +5127,20 @@ document.addEventListener('keydown', function(e) {
 
     makeClickable('.metric-card');
 
-    // ── 2. Activity items → requests.php (skip feedback items which have their own onclick) ──
-    document.querySelectorAll('.activity-item:not([data-feedback])').forEach(function (el) {
+    // ── 2. Activity items → requests.php (skip feedback items and
+    //      highlight-only items, which manage their own click behavior) ──
+    document.querySelectorAll('.activity-item:not([data-feedback]):not(.dash-highlightable)').forEach(function (el) {
         if (!el.dataset.href) el.dataset.href = 'requests.php';
     });
     makeClickable('.activity-item');
 
-    // ── 3. Schedule items → sched.php ─────────────────────────────
+    // ── 3. Schedule items → sched.php. "Upcoming Maintenance" rows already
+    //      carry their own data-href (built server-side with
+    //      ?highlight_source=&highlight_id= so sched.php can highlight the
+    //      matching item) — only fall back to a plain link when one wasn't
+    //      already set. ─────────────────────────────────────────────────
     document.querySelectorAll('.schedule-item').forEach(function (el) {
-        el.dataset.href = 'sched.php';
+        if (!el.dataset.href) el.dataset.href = 'sched.php';
     });
     makeClickable('.schedule-item');
 

@@ -5871,3 +5871,40 @@ Sidebar (250px) takes the most relative space here.
     .notif-popup .notif-close { font-size: 18px; margin-left: 6px; margin-top: 1px; }
 }
 #schedEngDetailsModal.eng-theme-delayed .eng-det-section-title { color: #c62828; }
+/* ══════════════════════════════════════════════════════════════════════
+   CROSS-VIEW ITEM HIGHLIGHT
+   Applied to whichever DOM node represents a schedule/report item —
+   .schedule-item (list view), .calendar-day (calendar view), or
+   .capsule-card (capsule view) — when the user clicks it directly, or
+   when arriving from employee.php's "Upcoming Maintenance" widget with
+   ?highlight_source=&highlight_id= in the URL.
+   ══════════════════════════════════════════════════════════════════════ */
+.schedule-item.sched-item-highlighted,
+.calendar-day.sched-item-highlighted,
+.capsule-card.sched-item-highlighted {
+    position: relative;
+    z-index: 2;
+    outline: 2px solid #5f8cff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(95, 140, 255, 0.22), 0 6px 18px rgba(95, 140, 255, 0.28);
+    animation: schedHighlightPulse 1.1s ease-out;
+}
+.schedule-item.sched-item-highlighted {
+    background: rgba(95, 140, 255, 0.08);
+}
+.calendar-day.sched-item-highlighted {
+    background: rgba(95, 140, 255, 0.14);
+    border-radius: 8px;
+}
+.capsule-card.sched-item-highlighted {
+    transform: translateY(-2px);
+}
+[data-theme="dark"] .schedule-item.sched-item-highlighted,
+[data-theme="dark"] .calendar-day.sched-item-highlighted {
+    background: rgba(95, 140, 255, 0.22);
+}
+@keyframes schedHighlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(95, 140, 255, 0.6); }
+    60%  { box-shadow: 0 0 0 12px rgba(95, 140, 255, 0); }
+    100% { box-shadow: 0 0 0 4px rgba(95, 140, 255, 0.22), 0 6px 18px rgba(95, 140, 255, 0.28); }
+}

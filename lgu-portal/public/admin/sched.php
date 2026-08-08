@@ -882,6 +882,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     data-source="<?= htmlspecialchars($row['source'] ?? 'schedule') ?>"
                     data-rep="<?= $row['source'] === 'report' ? 'rep-' . (int)$row['rep_id'] : '' ?>"
                     data-rep-id="<?= (int)($row['rep_id'] ?? 0) ?>"
+                    data-sched-id="<?= (int)($row['sched_id'] ?? 0) ?>"
                     data-budget="<?= $row['source'] === 'report' ? htmlspecialchars(strtolower($row['budget_display'] ?? '')) : '' ?>"
                     data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>"
                     data-shared="<?= !empty($row['is_shared']) ? 'cprf' : '' ?>"
