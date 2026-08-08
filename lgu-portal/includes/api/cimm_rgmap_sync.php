@@ -197,6 +197,8 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
             rep.budget,
             rep.starting_date,
             rep.estimated_end_date,
+            rep.engineer_id,
+            CONCAT(eng.first_name, ' ', eng.last_name) AS engineer_full_name,
             ai.is_legitimate,
             ai.legitimacy_score,
             ai.damage_severity,
@@ -207,6 +209,7 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
         FROM requests r
         LEFT JOIN request_resolutions rr ON rr.req_id = r.req_id
         LEFT JOIN reports rep ON rep.res_id = rr.res_id
+        LEFT JOIN employees eng ON eng.user_id = rep.engineer_id
         LEFT JOIN request_ai_analysis ai ON ai.req_id = r.req_id
         WHERE r.req_id = ?
         ORDER BY rr.res_id DESC, rep.rep_id DESC
@@ -274,6 +277,16 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
         'resolved_at' => $row['resolved_at'] !== null ? (string)$row['resolved_at'] : null,
         'priority' => $row['priority_lvl'] !== null ? (string)$row['priority_lvl'] : ($row['priority_recommendation'] ?? null),
         'budget' => isset($row['budget']) ? (float)$row['budget'] : null,
+        // The assigned engineer's full name (reports.engineer_id -> employees,
+        // joined above as CONCAT(first_name, ' ', last_name)). Previously this
+        // key was never set on the outgoing payload at all — reports.engineer_id
+        // wasn't even selected — so RGMAO's webhook always received
+        // $data['engineer'] as absent/null and stored NULL, leaving the
+        // Engineer column blank on the CIMM Reports panel in verification
+        // monitoring regardless of who was actually assigned in CIMM.
+        'engineer' => (isset($row['engineer_id']) && (int)$row['engineer_id'] > 0 && trim((string)($row['engineer_full_name'] ?? '')) !== '')
+            ? trim((string)$row['engineer_full_name'])
+            : null,
         'starting_date' => $row['starting_date'] !== null ? (string)$row['starting_date'] : null,
         'estimated_end_date' => $row['estimated_end_date'] !== null ? (string)$row['estimated_end_date'] : null,
         'submitted_at' => (string)$row['created_at'],
