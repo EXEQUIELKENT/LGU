@@ -475,6 +475,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Only a Super Admin can edit a Super Admin account.']); exit;
         }
 
+        // ── Capture "before" state — used below to diff against the new values
+        // so the notification sent to the employee can deep-link straight to
+        // the specific fields that changed on their profile.php page. ──────────
+        $oldEmpStmt = $conn->prepare("SELECT first_name, last_name, email FROM employees WHERE user_id = ?");
+        $oldEmpStmt->bind_param('i', $targetId);
+        $oldEmpStmt->execute();
+        $oldEmp = $oldEmpStmt->get_result()->fetch_assoc() ?: [];
+        $oldEmpStmt->close();
+
+        $oldEngineerProfile = [];
+        if (in_array($target['role'], ['Engineer', 'Area Engineer'], true)) {
+            $oldEpStmt = $conn->prepare("SELECT * FROM engineer_profiles WHERE user_id = ?");
+            $oldEpStmt->bind_param('i', $targetId);
+            $oldEpStmt->execute();
+            $oldEngineerProfile = $oldEpStmt->get_result()->fetch_assoc() ?: [];
+            $oldEpStmt->close();
+        }
+
         $firstName = trim($input['first_name'] ?? '');
         $lastName  = trim($input['last_name'] ?? '');
         $email     = trim($input['email'] ?? '');
@@ -609,14 +627,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'User Management',
             $currentUserId
         );
+
+        // ── Diff old vs new to know exactly which fields changed ──────────────
+        // This varies by role: Admin/Super Admin/Office Staff only ever have
+        // the base employees-table fields; Engineer has the full
+        // engineer_profiles field set; Area Engineer only has 'district'.
+        // profile.php uses these short codes to highlight the matching fields
+        // on that role's own layout. Short codes (not full field names / JSON)
+        // are used because notifications.url is varchar(255) — the worst case
+        // (every Engineer field changed at once) would be ~380 chars as full
+        // JSON field names and get silently truncated by MySQL.
+        $fieldCodeMap = [
+            'first_name' => 'fn', 'last_name' => 'ln', 'email' => 'em',
+            'full_name' => 'full', 'gender' => 'gen', 'date_of_birth' => 'dob',
+            'address' => 'addr', 'contact_number' => 'ph',
+            'engineering_discipline' => 'disc', 'department' => 'dept',
+            'years_of_experience' => 'yrs', 'areas_of_specialization' => 'spec',
+            'cad_software' => 'cad', 'district' => 'dist', 'skills' => 'sk',
+        ];
+        $changedFields = [];
+        if (trim((string)($oldEmp['first_name'] ?? '')) !== $firstName) $changedFields[] = 'first_name';
+        if (trim((string)($oldEmp['last_name']  ?? '')) !== $lastName)  $changedFields[] = 'last_name';
+        if (trim((string)($oldEmp['email']      ?? '')) !== $email)     $changedFields[] = 'email';
+
+        if ($target['role'] === 'Area Engineer') {
+            $oldAeDistrict = trim((string)($oldEngineerProfile['district'] ?? ''));
+            if ($oldAeDistrict !== $epDistrict) $changedFields[] = 'district';
+        }
+
+        if ($target['role'] === 'Engineer') {
+            $engFieldsToCompare = [
+                'full_name'               => $epFullName,
+                'gender'                  => (string)($epGender ?? ''),
+                'date_of_birth'           => (string)($epDob ?? ''),
+                'address'                 => $epAddress,
+                'contact_number'          => $epContact,
+                'engineering_discipline'  => $epDiscipline,
+                'department'              => $epDepartment,
+                'years_of_experience'     => $epExperience !== null ? (string)$epExperience : '',
+                'areas_of_specialization' => $epSpecialization,
+                'cad_software'            => $epCad,
+                'district'                => $epDistrict,
+            ];
+            foreach ($engFieldsToCompare as $fieldKey => $newVal) {
+                $oldVal = trim((string)($oldEngineerProfile[$fieldKey] ?? ''));
+                if ($oldVal !== trim((string)$newVal)) $changedFields[] = $fieldKey;
+            }
+            // The 3 skill checkboxes map to a single "Technical Skills" section
+            // on profile.php, so flag them under one 'skills' key.
+            $skillChanged = false;
+            foreach (['skill_structural_design' => $epStructural, 'skill_site_inspection' => $epSite, 'skill_project_planning' => $epPlanning] as $skillKey => $newVal) {
+                if ((int)($oldEngineerProfile[$skillKey] ?? 0) !== (int)$newVal) { $skillChanged = true; break; }
+            }
+            if ($skillChanged) $changedFields[] = 'skills';
+        }
+
+        $changedFields = array_values(array_unique($changedFields));
+        $profileUrl = 'profile.php';
+        if (!empty($changedFields)) {
+            $changedCodes = array_values(array_filter(array_map(
+                static fn($f) => $fieldCodeMap[$f] ?? null,
+                $changedFields
+            )));
+            if (!empty($changedCodes)) {
+                $profileUrl .= '?highlight_fields=' . urlencode(implode(',', $changedCodes));
+            }
+        }
+
         // Notify the employee themselves — user_management.php is admin-only
-        // so their notification deep-links to their own profile page instead.
+        // so their notification deep-links to their own profile page instead,
+        // with the changed fields highlighted there (see profile.php's
+        // notification-highlight script).
         insertNotification(
             $conn,
             $targetId,
             '✏️ Your Account Was Updated',
             "{$actor} made changes to your account information. Review your profile to see what changed.",
-            'profile.php',
+            $profileUrl,
             'Account'
         );
 

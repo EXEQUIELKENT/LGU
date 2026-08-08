@@ -689,59 +689,20 @@ function cimm_build_location_filters(array $catalog): array
 
 
 /**
-
- * Whether a schedule row should sync with CPRF (explicit ID or Culiat-related location).
-
+ * Whether a schedule row should sync with CPRF — true only when it is actually
+ * linked to a real facility in the catalog (explicit facility ID, or a
+ * confident text match already resolved via cimm_resolve_facility() /
+ * cimm_match_facility_by_text(), which score-gates matches at >= 65).
+ *
+ * NOTE: this previously also matched any row whose location text merely
+ * contained "culiat" or "quezon city", or any facility keyword substring.
+ * Since every address in this LGU portal is in Quezon City / Culiat, that
+ * caught virtually all schedules — showing the 🔗 CPRF badge and a facility
+ * name on rows that were never actually linked to a CPRF facility. Removed.
  */
-
 function cimm_is_shared_with_cprf(?int $cprfFacilityId, string $location, array $catalog): bool
-
 {
-
-    if ($cprfFacilityId !== null && $cprfFacilityId > 0 && cimm_get_facility_by_id($cprfFacilityId, $catalog) !== null) {
-
-        return true;
-
-    }
-
-
-
-    $loc = strtolower($location);
-
-    if ($loc === '') {
-
-        return false;
-
-    }
-
-
-
-    if (str_contains($loc, 'culiat') || str_contains($loc, 'quezon city')) {
-
-        return true;
-
-    }
-
-
-
-    foreach ($catalog as $facility) {
-
-        foreach ($facility['keywords'] as $kw) {
-
-            if ($kw !== '' && str_contains($loc, $kw)) {
-
-                return true;
-
-            }
-
-        }
-
-    }
-
-
-
-    return false;
-
+    return $cprfFacilityId !== null && $cprfFacilityId > 0 && cimm_get_facility_by_id($cprfFacilityId, $catalog) !== null;
 }
 
 

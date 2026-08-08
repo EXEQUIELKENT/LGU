@@ -340,10 +340,15 @@ if ($reportResult && $reportResult->num_rows > 0) {
         $priorityMap = ['High' => 'High', 'Medium' => 'Medium', 'Low' => 'Low', 'Critical' => 'Critical'];
         $priority = $priorityMap[$rRow['priority_lvl'] ?? 'Low'] ?? 'Low';
 
-        $reportTaskText = trim(($rRow['infrastructure'] ?? '') . ' ' . $resNote);
-        $rFacilityMatch = getMatchingFacility(null, $rRow['location'] ?? '', $reportTaskText);
-        $rFacility = $rFacilityMatch['name'] ?? '';
-        $rShared   = isSharedWithCPRF(null, $rRow['location'] ?? '');
+        // Report-based schedules are citizen infrastructure reports — a data
+        // source entirely separate from the CPRF/Energy-imported
+        // maintenance_schedule rows above. They are never actually linked to
+        // a CPRF facility, so no fuzzy text match is attempted here; doing so
+        // previously produced false-positive matches (e.g. tagging an
+        // unrelated report as CPRF-linked to "Bernardo Court" just because
+        // its location loosely matched a facility keyword/alias).
+        $rFacility = '';
+        $rShared   = false;
 
         $schedules[] = [
             'id'              => 0,

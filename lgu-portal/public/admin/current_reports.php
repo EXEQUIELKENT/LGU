@@ -5151,7 +5151,10 @@ function openRepModal(repId) {
             document.getElementById('repAdminApproveBtn').style.display    = 'none';
             document.getElementById('repAdminReturnBtn').style.display     = 'none';
             document.getElementById('repDeclineBtn').style.display         = 'inline-flex';
-            document.getElementById('repAcceptBtn').style.display          = 'inline-flex';
+            const repAcceptBtnEl = document.getElementById('repAcceptBtn');
+            repAcceptBtnEl.disabled   = false;
+            repAcceptBtnEl.innerHTML  = '<i class="fas fa-check-circle"></i> Accept Assignment';
+            repAcceptBtnEl.style.display = 'inline-flex';
             document.getElementById('repReviewDeclineBtn').style.display   = 'none';
         } else {
             // Accepted — editable fields + save/submit buttons

@@ -2456,6 +2456,60 @@ textarea:-webkit-autofill:active {
         line-height: 1.55;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION FIELD HIGHLIGHT — same functionality as
+   current_reports.php's rep-field-highlighted / notif-highlight-banner,
+   adapted for profile.php's .form-group / .eng-form-group field cards.
+   Applied when arriving here via a "Your Account Was Updated" notification.
+═══════════════════════════════════════════════════════ */
+.profile-field-highlighted {
+    border-radius: 10px;
+    border: 2px solid rgba(55,98,200,.65) !important;
+    background: rgba(55,98,200,.07);
+    padding: 10px 12px;
+    margin: -2px -2px 4px -2px;
+    position: relative;
+    animation: profileFieldPulse 2s ease-in-out 2;
+}
+.profile-field-highlighted::after {
+    content: '✏️ Recently updated';
+    display: block; font-size: 10px; font-weight: 700; color: #3762c8;
+    text-transform: uppercase; letter-spacing: .05em; margin-top: 8px;
+    padding-top: 6px; border-top: 1px solid rgba(55,98,200,.2);
+    width: 100%;
+}
+@keyframes profileFieldPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(55,98,200,.35); }
+    50%      { box-shadow: 0 0 0 6px rgba(55,98,200,0); }
+}
+[data-theme="dark"] .profile-field-highlighted {
+    border-color: rgba(95,140,255,.75) !important;
+    background: rgba(95,140,255,.12);
+}
+[data-theme="dark"] .profile-field-highlighted::after { color: #8fb4ff; }
+
+.notif-highlight-banner {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    background: linear-gradient(135deg, rgba(55,98,200,.13), rgba(55,98,200,.07));
+    border: 1.5px solid rgba(55,98,200,.30);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #3762c8;
+    margin-bottom: 16px;
+    animation: bannerFadeIn .35s ease, bannerFadeOut .5s ease 5.5s forwards;
+}
+[data-theme="dark"] .notif-highlight-banner {
+    background: linear-gradient(135deg, rgba(95,140,255,.16), rgba(95,140,255,.08));
+    border-color: rgba(95,140,255,.35);
+    color: #8fb4ff;
+}
+@keyframes bannerFadeIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+@keyframes bannerFadeOut { from { opacity:1; } to { opacity:0; pointer-events:none; } }
 </style>
 <script>
 const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
@@ -3210,6 +3264,91 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
 </div>
 
 <?php include __DIR__ . '/../../includes/partials/admin_scripts.php'; ?>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION HIGHLIGHT — profile.php
+   Reads ?highlight_fields=[...] from the URL (set by
+   user_management.php when an admin edits this employee's
+   account) and highlights exactly the fields that changed.
+   Field keys are role-agnostic — only the ones actually present
+   in the DOM for this employee's role (Admin/Super Admin/Office
+   Staff, Engineer, or Area Engineer) get highlighted; the rest are
+   silently skipped since this page only renders one role's layout
+   at a time. Same visual pattern as current_reports.php's
+   rep-field-highlighted / notif-highlight-banner.
+═══════════════════════════════════════════════════════ */
+(function initProfileNotifHighlight() {
+    const params = new URLSearchParams(window.location.search);
+    const raw    = params.get('highlight_fields');
+    if (!raw) return;
+
+    // Clean URL immediately
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('highlight_fields');
+    history.replaceState(null, '', cleanUrl);
+
+    // Compact short codes (see user_management.php's $fieldCodeMap) — kept
+    // short because notifications.url is varchar(255).
+    const flagged = raw.split(',').map(s => s.trim()).filter(Boolean);
+    if (flagged.length === 0) return;
+
+    setTimeout(function () {
+        // Short code → the field's wrapper element (whichever this role's
+        // layout renders — missing ones simply resolve to null and are skipped).
+        const fieldMap = {
+            'fn':   document.getElementById('first_name')?.closest('.form-group'),
+            'ln':   document.getElementById('last_name')?.closest('.form-group'),
+            'em':   document.getElementById('email')?.closest('.form-group'),
+            // Engineer fields
+            'full': document.getElementById('epFullName')?.closest('.eng-form-group'),
+            'gen':  document.getElementById('cbGenderDisplay')?.closest('.eng-form-group'),
+            'dob':  document.getElementById('dobDisplay')?.closest('.eng-form-group'),
+            'addr': document.getElementById('epAddressField')?.closest('.eng-form-group'),
+            'ph':   document.getElementById('epContactNumber')?.closest('.eng-form-group'),
+            'disc': document.getElementById('cbDiscDisplay')?.closest('.eng-form-group'),
+            'dept': document.getElementById('cbDeptDisplay')?.closest('.eng-form-group'),
+            'yrs':  document.querySelector('[name="ep_years_of_experience"]')?.closest('.eng-form-group'),
+            'spec': document.getElementById('specGrid')?.closest('.eng-form-group'),
+            'sk':   document.querySelector('[name="ep_skill_structural_design"]')?.closest('.eng-form-group'),
+            'cad':  document.querySelector('[name="ep_cad_software"]')?.closest('.eng-form-group'),
+            // District — Engineer uses #cbDistrictDisplay, Area Engineer uses #cbAeDistrictDisplay
+            'dist': document.getElementById('cbDistrictDisplay')?.closest('.eng-form-group')
+                 || document.getElementById('cbAeDistrictDisplay')?.closest('.eng-form-group'),
+        };
+
+        let firstHighlighted = null;
+        flagged.forEach(function (code) {
+            const el = fieldMap[code];
+            if (!el) return; // not on this role's layout — skip
+            el.classList.add('profile-field-highlighted');
+            if (!firstHighlighted) firstHighlighted = el;
+        });
+        if (!firstHighlighted) return;
+
+        firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Banner above the form
+        if (!document.getElementById('notifHighlightBanner')) {
+            const banner = document.createElement('div');
+            banner.id        = 'notifHighlightBanner';
+            banner.className = 'notif-highlight-banner';
+            banner.innerHTML = '<span style="font-size:16px;flex-shrink:0;">🔔</span>' +
+                                '<span>You were directed here from a notification — the fields an admin changed are highlighted below.</span>';
+            const form = document.getElementById('profileForm');
+            if (form) form.insertBefore(banner, form.firstChild);
+        }
+
+        // Remove the highlight (but keep the "recently updated" cue readable
+        // for a bit) after a few seconds.
+        setTimeout(function () {
+            Object.values(fieldMap).forEach(function (el) {
+                if (el) el.classList.remove('profile-field-highlighted');
+            });
+        }, 6000);
+    }, 400);
+})();
+</script>
 
 <script>
 
