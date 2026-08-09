@@ -429,50 +429,88 @@ body.sidebar-collapsed .desktop-top-nav {
 }
 
 /* ═══════════════════════════════════════════════════════
-   NOTIFICATION BELL — circular gradient button (redesigned from
-   the plain rounded-square .nav-btn base) with a soft glow ring
-   while unread notifications exist, plus a click-pop + expanding
-   ripple whenever it's clicked (open or close). This is separate
-   from .ringing below, which JS adds only when new notifications
-   genuinely arrive via polling — clicking never triggers .ringing,
-   and .ringing never triggers the click ripple, so the two read
-   as distinct signals ("something new happened" vs "you opened
-   this"). ═══════════════════════════════════════════════════ */
+   NOTIFICATION BELL — circular glass-gradient button shared by
+   the desktop top nav (#notifBtn) and the mobile top nav
+   (#mobileNotifBtn), redesigned with a softer glassy surface, an
+   inset highlight ring, and a lift-on-hover for more depth.
+
+   IMPORTANT — animation target: every bit of motion (the new-
+   notification "ring" wobble and the per-click "pop") is applied
+   to the inner .notif-bell-icon span, never to the button itself.
+   The mobile button is vertically centred by its page layout via
+   `top:50%; transform:translateY(-50%)`, so animating the BUTTON's
+   own transform used to require re-declaring that translateY
+   offset inside every keyframe just to stop it snapping out of
+   place — a "position animation" that existed purely to patch
+   around itself. Animating the icon instead means the button's
+   box never moves, on mobile or desktop, so no such workaround
+   (and no separate mobile keyframes) are needed at all.
+═══════════════════════════════════════════════════════ */
 .nav-btn.notif-btn {
     position: relative;
     overflow: visible;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(55,98,200,.16), rgba(55,98,200,.06));
-    box-shadow: 0 0 0 0 rgba(233,68,68,0);
-    transition: background .3s ease, box-shadow .3s ease, transform .2s ease;
-    animation: none;
+    background: linear-gradient(135deg, rgba(55,98,200,.18), rgba(55,98,200,.05));
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.14), 0 1px 2px rgba(16,24,48,.06);
+    transition: background .3s ease, box-shadow .3s ease;
 }
 .nav-btn.notif-btn:hover {
-    background: linear-gradient(135deg, rgba(55,98,200,.26), rgba(55,98,200,.1));
+    background: linear-gradient(135deg, rgba(55,98,200,.28), rgba(55,98,200,.08));
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.22), 0 3px 10px rgba(55,98,200,.18);
 }
 [data-theme="dark"] .nav-btn.notif-btn {
-    background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+    background: linear-gradient(135deg, rgba(255,255,255,.11), rgba(255,255,255,.03));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 1px 2px rgba(0,0,0,.3);
 }
 [data-theme="dark"] .nav-btn.notif-btn:hover {
-    background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 3px 10px rgba(0,0,0,.35);
 }
 
 /* has-notif: soft red glow ring while there's something unread — a
    static styling cue only, no animation, so it doesn't compete with
    the badge's own pulse or distract during normal browsing. */
 .nav-btn.notif-btn.has-notif {
-    box-shadow: 0 0 0 3px rgba(233,68,68,.14);
-    animation: none;
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.14), 0 0 0 3px rgba(233,68,68,.16);
+}
+.nav-btn.notif-btn.has-notif:hover {
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.22), 0 0 0 3px rgba(233,68,68,.22);
+}
+
+/* The bell glyph itself — a dedicated layer so ring/click motion
+   never touches the button's own box (see comment block above). */
+.notif-bell-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transform-origin: 50% 15%;
 }
 
 /* ringing: added only by JS when genuinely new notifications arrive */
-.nav-btn.notif-btn.ringing {
-    animation: bellRing 0.5s ease-in-out;
+.notif-btn.ringing .notif-bell-icon {
+    animation: bellRing .5s ease-in-out;
+}
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0deg); }
+    15%, 45% { transform: rotate(-14deg); }
+    30%, 60% { transform: rotate(14deg); }
+    75% { transform: rotate(-6deg); }
+    100% { transform: rotate(0deg); }
 }
 
-/* clicked: brief pop + expanding ripple on every click, open or close */
-.nav-btn.notif-btn.clicked {
+/* clicked: brief icon pop + expanding ripple on every click, open or
+   close. The ripple lives on the button (::before, inset:0) so it
+   fills the circular button — but since it's a separate layer with
+   its own box, scaling it never moves the button itself either. */
+.notif-btn.clicked .notif-bell-icon {
     animation: notifClickPop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes notifClickPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.8); }
+    65%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
 }
 .nav-btn.notif-btn.clicked::before {
     content: "";
@@ -486,42 +524,20 @@ body.sidebar-collapsed .desktop-top-nav {
 [data-theme="dark"] .nav-btn.notif-btn.clicked::before {
     background: rgba(255,255,255,.22);
 }
-@keyframes notifClickPop {
-    0%   { transform: scale(1); }
-    35%  { transform: scale(0.82); }
-    65%  { transform: scale(1.14); }
-    100% { transform: scale(1); }
-}
 @keyframes notifRipple {
     0%   { transform: scale(0.35); opacity: .65; }
     100% { transform: scale(1.9);  opacity: 0; }
 }
 
-/* Mobile bell needs translateY(-50%) preserved through the pop, same
-   reasoning as .mobile-notif-btn.ringing below. */
-.mobile-notif-btn.clicked {
-    animation: notifClickPopMobile .4s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes notifClickPopMobile {
-    0%   { transform: translateY(-50%) scale(1); }
-    35%  { transform: translateY(-50%) scale(0.82); }
-    65%  { transform: translateY(-50%) scale(1.14); }
-    100% { transform: translateY(-50%) scale(1); }
-}
-
-/* Mobile button needs translateY(-50%) preserved throughout animation,
-   otherwise the button snaps out of position after animation ends */
-.mobile-notif-btn.ringing {
-    animation: bellRingMobile 0.5s ease-in-out;
-}
-
-/* Base: always keep the button vertically centred via translateY(-50%).
-   Individual pages position it with top:50% — translateY(-50%) must not
-   be lost on hover or active, which is what causes the downward jump. */
+/* Base: keep the mobile button vertically centred via translateY(-50%)
+   at all times (its page layout positions it with top:50%). Nothing
+   here ever changes on ring/click any more — only hover/active need
+   to re-assert it so the base .nav-btn hover/active scale doesn't
+   replace it and snap the button out of place. */
 .mobile-notif-btn {
     transform: translateY(-50%);
 }
-.mobile-notif-btn:hover  {
+.mobile-notif-btn:hover {
     background: rgba(55, 98, 200, 0.2);
     transform: translateY(-50%);   /* preserve centering, no scale */
 }
@@ -529,43 +545,35 @@ body.sidebar-collapsed .desktop-top-nav {
     transform: translateY(-50%);   /* preserve centering, no scale */
 }
 
-@keyframes bellRing {
-    0%, 100% { transform: rotate(0deg); }
-    10%, 30% { transform: rotate(-10deg); }
-    20%, 40% { transform: rotate(10deg); }
-    50% { transform: rotate(0deg); }
-}
-
-@keyframes bellRingMobile {
-    0%, 100% { transform: translateY(-50%) rotate(0deg); }
-    10%, 30% { transform: translateY(-50%) rotate(-10deg); }
-    20%, 40% { transform: translateY(-50%) rotate(10deg); }
-    50% { transform: translateY(-50%) rotate(0deg); }
-}
+/* Unread count pill — a small gradient badge "cut out" from the
+   button surface via a background-colour ring, so it reads as a
+   distinct layer sitting on top rather than a flat overlay. */
 .notif-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #e94444;
+    top: -3px;
+    right: -3px;
+    background: linear-gradient(135deg, #ff6b6b, #e63946);
     color: #fff;
-    border-radius: 10px;
-    padding: 2px 6px;
+    border-radius: 999px;
+    padding: 1px 5px;
     font-size: 10px;
-    font-weight: 700;
-    min-width: 18px;
+    font-weight: 800;
+    min-width: 17px;
+    height: 16px;
+    line-height: 16px;
     text-align: center;
-    box-shadow: 0 2px 6px rgba(233, 68, 68, 0.4);
+    box-shadow: 0 2px 6px rgba(230,57,70,.45), 0 0 0 2px var(--bg-secondary, #fff);
     display: none;
 }
 
 .notif-badge.show {
     display: block;
-    animation: pulse 1.5s ease-in-out infinite;
+    animation: pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.9; }
+    50% { transform: scale(1.12); opacity: 0.88; }
 }
 
 /* Notification Dropdown — Redesigned */

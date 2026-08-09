@@ -1698,7 +1698,7 @@ tr.notif-highlight > td:first-child {
                 <span class="light-icon" style="display:none;">☀️</span>
             </button>
             <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
-                🔔
+                <span class="notif-bell-icon">🔔</span>
                 <span class="notif-badge hidden" id="notifBadge"></span>
             </button>
         </div>
@@ -1721,7 +1721,7 @@ tr.notif-highlight > td:first-child {
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
-        🔔 <span class="notif-badge" id="mobileNotifBadge"></span>
+        <span class="notif-bell-icon">🔔</span> <span class="notif-badge" id="mobileNotifBadge"></span>
     </button>
 </div>
 
@@ -3255,8 +3255,6 @@ if (typeof L === 'undefined') {
     document.head.appendChild(_ll);
 }
 </script>
-
-<script src="../assets/js/sort-dropdown-fix.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sort-dropdown-fix.js') ?>"></script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>

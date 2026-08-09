@@ -3118,7 +3118,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                 <span class="light-icon" style="display: none;">☀️</span>
             </button>
             <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
-                🔔
+                <span class="notif-bell-icon">🔔</span>
                 <span class="notif-badge hidden" id="notifBadge"></span>
             </button>
         </div>
@@ -3142,7 +3142,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
-        🔔
+        <span class="notif-bell-icon">🔔</span>
         <span class="notif-badge" id="mobileNotifBadge"></span>
     </button>
 </div>

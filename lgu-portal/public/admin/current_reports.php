@@ -3329,7 +3329,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <span class="dark-icon">🌙</span><span class="light-icon" style="display:none;">☀️</span>
             </button>
             <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
-                🔔<span class="notif-badge hidden" id="notifBadge"></span>
+                <span class="notif-bell-icon">🔔</span><span class="notif-badge hidden" id="notifBadge"></span>
             </button>
         </div>
     </div>
@@ -3351,7 +3351,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
-        🔔<span class="notif-badge" id="mobileNotifBadge"></span>
+        <span class="notif-bell-icon">🔔</span><span class="notif-badge" id="mobileNotifBadge"></span>
     </button>
 </div>
 
@@ -7495,7 +7495,6 @@ document.addEventListener('DOMContentLoaded', function() {
     body.map-view-active .table-wrapper,
     body.map-view-active .mobile-report-list { display: none !important; }
 </style>
-<script src="../assets/js/sort-dropdown-fix.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sort-dropdown-fix.js') ?>"></script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
