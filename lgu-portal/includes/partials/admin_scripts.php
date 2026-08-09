@@ -516,10 +516,6 @@ startClock();
     const mobileDarkModeBtn = document.getElementById('mobileDarkModeBtn');
     if (!darkModeBtn && !mobileDarkModeBtn) return;
 
-    const darkIcon       = darkModeBtn?.querySelector('.dark-icon')  || mobileDarkModeBtn?.querySelector('.dark-icon');
-    const lightIcon      = darkModeBtn?.querySelector('.light-icon') || mobileDarkModeBtn?.querySelector('.light-icon');
-    const mobileDarkIcon  = mobileDarkModeBtn?.querySelector('.dark-icon');
-    const mobileLightIcon = mobileDarkModeBtn?.querySelector('.light-icon');
     const html = document.documentElement;
 
     const THEME_KEY        = 'theme';
@@ -533,10 +529,12 @@ startClock();
             localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
             localStorage.setItem(THEME_BACKUP_KEY, isDark ? 'dark' : 'light');
 
-            if (darkIcon)       darkIcon.style.display  = isDark ? 'none'   : 'inline';
-            if (lightIcon)      lightIcon.style.display = isDark ? 'inline' : 'none';
-            if (mobileDarkIcon)  mobileDarkIcon.style.display  = isDark ? 'none'   : 'inline';
-            if (mobileLightIcon) mobileLightIcon.style.display = isDark ? 'inline' : 'none';
+            // Visibility of the .dark-icon / .light-icon layers is driven
+            // entirely by CSS via the [data-theme] attribute set above (see
+            // emp-global.css) — they're opacity-crossfaded "sky" / "night
+            // sky" scenes now, not literal show/hide emoji, so no JS
+            // display toggling here; that would fight the CSS transition
+            // and make it snap instead of animate.
 
             if (animate) {
                 if (darkModeBtn)       darkModeBtn.classList.add('active');

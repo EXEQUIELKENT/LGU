@@ -105,6 +105,7 @@
 
         var home = { parent: dropdown.parentElement, next: dropdown.nextSibling };
         var wasOpen = wrap.classList.contains('open');
+        var entry = { btn: btn, dropdown: dropdown };
 
         var observer = new MutationObserver(function () {
             var isOpen = wrap.classList.contains('open');
@@ -112,28 +113,37 @@
             wasOpen = isOpen;
             if (isOpen) {
                 openDropdown(btn, dropdown, home);
+                if (openDropdowns.indexOf(entry) === -1) openDropdowns.push(entry);
             } else {
                 closeDropdown(dropdown, home);
+                var idx = openDropdowns.indexOf(entry);
+                if (idx !== -1) openDropdowns.splice(idx, 1);
             }
         });
         observer.observe(wrap, { attributes: true, attributeFilter: ['class'] });
     }
 
-    function closeAllOpenDropdowns() {
-        document.querySelectorAll('.sort-dropdown-wrap.open').forEach(function (wrap) {
-            wrap.classList.remove('open');
+    // Keep every open dropdown anchored to its trigger button instead of
+    // dismissing it on scroll/resize. The dropdown is a viewport-fixed
+    // "portal" element (see openDropdown() above), so its trigger button
+    // can move underneath it as the page scrolls; re-running the same
+    // positioning math used on open keeps it correctly aligned instead.
+    var openDropdowns = []; // { btn, dropdown } pairs currently open/portaled
+
+    function repositionOpenDropdowns() {
+        openDropdowns.forEach(function (entry) {
+            positionDropdown(entry.btn, entry.dropdown);
         });
     }
 
     function init() {
         document.querySelectorAll('.sort-dropdown-wrap').forEach(watch);
 
-        // If a dropdown is open and the page scrolls or resizes, its anchor
-        // button has likely moved — closing it (rather than silently leaving
-        // a stale, misplaced menu on screen) matches how native/select
-        // dropdowns typically behave and keeps this fix simple and reliable.
-        window.addEventListener('scroll', closeAllOpenDropdowns, true);
-        window.addEventListener('resize', closeAllOpenDropdowns);
+        // Reposition (not close) open dropdowns on scroll/resize, so they
+        // track their anchor button and stay visible/usable while the page
+        // scrolls, instead of dismissing unexpectedly mid-scroll.
+        window.addEventListener('scroll', repositionOpenDropdowns, true);
+        window.addEventListener('resize', repositionOpenDropdowns);
     }
 
     if (document.readyState === 'loading') {
