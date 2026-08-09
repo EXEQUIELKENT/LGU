@@ -16,6 +16,10 @@
 declare(strict_types=1);
 
 function rgmap_road_reports_ensure_schema(mysqli $conn): void {
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
     $conn->query("
         CREATE TABLE IF NOT EXISTS rgmap_road_reports (
             id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -51,6 +55,15 @@ function rgmap_road_reports_ensure_schema(mysqli $conn): void {
             INDEX idx_submitted (submitted_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
+
+    // Links this mirror row to the real CIMM report it was auto-converted
+    // into on verify (see rgmap_road_reports_convert_to_cimm_report()) — a
+    // pre-existing installation's table won't have these yet, hence the
+    // ALTER rather than relying on CREATE TABLE IF NOT EXISTS alone.
+    $conn->query("ALTER TABLE rgmap_road_reports ADD COLUMN IF NOT EXISTS cimm_req_id INT UNSIGNED NULL DEFAULT NULL AFTER verified_at");
+    $conn->query("ALTER TABLE rgmap_road_reports ADD COLUMN IF NOT EXISTS cimm_rep_id INT UNSIGNED NULL DEFAULT NULL AFTER cimm_req_id");
+
+    $ensured = true;
 }
 
 /**
@@ -169,4 +182,210 @@ function rgmap_road_reports_push_verified(int $reportPk, string $reportId, strin
         error_log('CIMM->RGMAO verify callback failed (pk=' . $reportPk . '): http=' . $httpCode . ' err=' . ($err ?? substr((string)$resp, 0, 200)));
     }
     return ['ok' => $ok, 'http_code' => $httpCode, 'error' => $ok ? null : ($err ?? ('HTTP ' . $httpCode))];
+}
+
+/**
+ * Convert a verified Road Monitoring report into a real CIMM report —
+ * requests -> request_resolutions -> reports, exactly the same 3-table
+ * shape validate_request.php builds for a citizen-submitted request, so it
+ * shows up on current_reports.php ready to be assigned, budgeted, and
+ * scheduled like any other report. Evidence photos are copied in from
+ * RGMAO's attachment URLs so AI image analysis (triggered client-side right
+ * after this returns — see road_monitoring.php) has local files to work
+ * from, same as a citizen submission.
+ *
+ * Idempotent: if this row was already converted (cimm_req_id already set),
+ * returns the existing req_id/rep_id instead of creating a duplicate —
+ * matters because rgmap_road_reports_verify() already guards against
+ * double-verification via its own affected_rows check, but this function
+ * may still be called defensively.
+ *
+ * @return array{ok:bool,req_id:int,rep_id:int,evidence_paths:array<int,string>,already_converted:bool,error:?string}
+ */
+function rgmap_road_reports_convert_to_cimm_report(mysqli $conn, int $localId, int $actingEmployeeId): array {
+    rgmap_road_reports_ensure_schema($conn);
+
+    $row = $conn->query("SELECT * FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
+    if (!$row) {
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'Road report not found'];
+    }
+
+    if (!empty($row['cimm_req_id'])) {
+        $existingPaths = [];
+        $imgRes = $conn->prepare('SELECT img_path FROM evidence_images WHERE req_id = ? ORDER BY img_id ASC');
+        $reqIdExisting = (int)$row['cimm_req_id'];
+        $imgRes->bind_param('i', $reqIdExisting);
+        $imgRes->execute();
+        $imgRows = $imgRes->get_result();
+        while ($imgRow = $imgRows->fetch_assoc()) {
+            $existingPaths[] = (string)$imgRow['img_path'];
+        }
+        $imgRes->close();
+        return [
+            'ok' => true, 'req_id' => (int)$row['cimm_req_id'], 'rep_id' => (int)$row['cimm_rep_id'],
+            'evidence_paths' => $existingPaths, 'already_converted' => true, 'error' => null,
+        ];
+    }
+
+    // ── Map RGMAO fields onto CIMM's requests schema ──────────────────────
+    // This is a Road Monitoring system, so every converted report is a Roads
+    // infrastructure item — that also gates it into the existing CIMM->RGMAO
+    // "Roads only" sync (cimm_rgmap_sync_request() in cimm_rgmap_sync.php),
+    // so future engineer/budget/date/status changes on this report already
+    // flow back out automatically with zero extra wiring here.
+    $infrastructure = 'Roads';
+    $location = trim((string)($row['location'] ?? '')) ?: 'Unspecified location';
+    $issue = trim((string)($row['description'] ?? '')) ?: (trim((string)($row['title'] ?? '')) ?: 'Road issue reported via Road Monitoring');
+    $contactNumber = trim((string)($row['reporter_phone'] ?? ''));
+    $reporterName = trim((string)($row['reporter_name'] ?? ''));
+    $name = $reporterName !== '' ? $reporterName : null;
+    $reporterEmail = trim((string)($row['reporter_email'] ?? ''));
+    $email = $reporterEmail !== '' ? $reporterEmail : null;
+    $coordinates = null;
+    if ($row['coord_lat'] !== null && $row['coord_lng'] !== null) {
+        $coordinates = $row['coord_lat'] . ',' . $row['coord_lng'];
+    }
+    $source = 'road_monitoring';
+    $createdAt = date('Y-m-d H:i:s');
+
+    $reqStmt = $conn->prepare(
+        "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, source)
+         VALUES (?, ?, ?, ?, ?, 'Approved', ?, ?, ?)"
+    );
+    if (!$reqStmt) {
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB prepare error (requests): ' . $conn->error];
+    }
+    $reqStmt->bind_param('ssssssss', $infrastructure, $location, $issue, $contactNumber, $name, $coordinates, $email, $source);
+    // created_at isn't in the bind list above (8 placeholders, 8 vars) — the
+    // column has its own DEFAULT CURRENT_TIMESTAMP, but we still want PHP's
+    // own clock (see this session's established timestamp-mismatch fixes),
+    // so it's set explicitly right after insert instead of bound inline.
+    if (!$reqStmt->execute()) {
+        $err = $reqStmt->error; $reqStmt->close();
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB error (requests): ' . $err];
+    }
+    $reqStmt->close();
+    $reqId = (int)$conn->insert_id;
+    $conn->query("UPDATE requests SET created_at = '" . $conn->real_escape_string($createdAt) . "' WHERE req_id = " . $reqId);
+
+    // ── request_resolutions — status 'Approved' routes straight to
+    //    current_reports.php via resolveRepPage() (only 'pending'/'awaiting
+    //    engineer'/'' route to Pending, only 'completed'/'archived' route to
+    //    Archive — everything else, including 'Approved', is Current). ─────
+    $resStatus = 'Approved';
+    $resStmt = $conn->prepare("INSERT INTO request_resolutions (req_id, status, res_note, resolved_by) VALUES (?, ?, ?, ?)");
+    if (!$resStmt) {
+        $conn->query("DELETE FROM requests WHERE req_id = {$reqId}");
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB prepare error (resolution): ' . $conn->error];
+    }
+    $resStmt->bind_param('issi', $reqId, $resStatus, $issue, $actingEmployeeId);
+    if (!$resStmt->execute()) {
+        $err = $resStmt->error; $resStmt->close();
+        $conn->query("DELETE FROM requests WHERE req_id = {$reqId}");
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB error (resolution): ' . $err];
+    }
+    $resStmt->close();
+    $resId = (int)$conn->insert_id;
+
+    // ── reports — engineer left unassigned (admin assigns on Current
+    //    Reports, per the requested workflow); dates default the same way
+    //    validate_request.php defaults them (today / today+30) since
+    //    reports.starting_date/estimated_end_date are NOT NULL — the admin
+    //    edits these to the real schedule from current_reports.php. ───────
+    $priorityMap = ['critical' => 'Critical', 'high' => 'High', 'medium' => 'Medium', 'low' => 'Low'];
+    $rawPriority = strtolower(trim((string)($row['priority'] ?? '')));
+    if ($rawPriority === '' || !isset($priorityMap[$rawPriority])) {
+        $rawPriority = strtolower(trim((string)($row['severity'] ?? '')));
+    }
+    $priority = $priorityMap[$rawPriority] ?? 'Low';
+    $startDate = date('Y-m-d');
+    $endDate = date('Y-m-d', strtotime('+30 days'));
+    $engineerId = null;
+    $budget = 0.00;
+
+    $repStmt = $conn->prepare(
+        "INSERT INTO reports (res_id, starting_date, estimated_end_date, engineer_id, report_by, priority_lvl, budget)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    if (!$repStmt) {
+        $conn->query("DELETE FROM request_resolutions WHERE res_id = {$resId}");
+        $conn->query("DELETE FROM requests WHERE req_id = {$reqId}");
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB prepare error (report): ' . $conn->error];
+    }
+    $repStmt->bind_param('issiisd', $resId, $startDate, $endDate, $engineerId, $actingEmployeeId, $priority, $budget);
+    if (!$repStmt->execute()) {
+        $err = $repStmt->error; $repStmt->close();
+        $conn->query("DELETE FROM request_resolutions WHERE res_id = {$resId}");
+        $conn->query("DELETE FROM requests WHERE req_id = {$reqId}");
+        return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB error (report): ' . $err];
+    }
+    $repStmt->close();
+    $repId = (int)$conn->insert_id;
+
+    // ── Copy evidence images so they render identically to a citizen
+    //    submission (and so AI analysis has local files to fetch) ─────────
+    $evidencePaths = [];
+    $attachments = json_decode((string)($row['attachments_json'] ?? '[]'), true);
+    if (is_array($attachments)) {
+        $uploadDirAbs = __DIR__ . '/../../public/uploads/evidence/';
+        if (!is_dir($uploadDirAbs)) {
+            @mkdir($uploadDirAbs, 0755, true);
+        }
+        $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+        foreach ($attachments as $url) {
+            if (!is_string($url) || trim($url) === '') {
+                continue;
+            }
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 12], 'https' => ['timeout' => 12]]);
+                $bytes = @file_get_contents($url, false, $ctx);
+                if ($bytes === false || $bytes === '') {
+                    continue;
+                }
+                $ext = strtolower(pathinfo((string)parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowedExt, true)) {
+                    $ext = 'jpg';
+                }
+                $newName = "evidence_{$reqId}_" . uniqid() . '.' . $ext;
+                if (@file_put_contents($uploadDirAbs . $newName, $bytes) === false) {
+                    continue;
+                }
+                $relPath = 'uploads/evidence/' . $newName;
+                $imgStmt = $conn->prepare('INSERT INTO evidence_images (req_id, img_path, uploaded_at) VALUES (?, ?, NOW())');
+                if ($imgStmt) {
+                    $imgStmt->bind_param('is', $reqId, $relPath);
+                    $imgStmt->execute();
+                    $imgStmt->close();
+                    $evidencePaths[] = $relPath;
+                }
+            } catch (\Throwable $e) {
+                error_log('RGMAO->CIMM evidence copy failed (' . $url . '): ' . $e->getMessage());
+            }
+        }
+    }
+
+    // ── Link this mirror row back to the CIMM report it just became ───────
+    $linkStmt = $conn->prepare('UPDATE rgmap_road_reports SET cimm_req_id = ?, cimm_rep_id = ? WHERE id = ?');
+    if ($linkStmt) {
+        $linkStmt->bind_param('iii', $reqId, $repId, $localId);
+        $linkStmt->execute();
+        $linkStmt->close();
+    }
+
+    // ── Seed the CIMM->RGMAO "Roads" sync immediately so the new report
+    //    (and every future engineer/budget/date/status change to it) is
+    //    visible back on the RGMAO side without waiting for the next
+    //    unrelated status transition to trigger it. Best-effort — a sync
+    //    hiccup here must never undo report creation. ──────────────────────
+    try {
+        require_once __DIR__ . '/cimm_rgmap_sync.php';
+        cimm_rgmap_sync_request_async($conn, $reqId, 'validated');
+    } catch (\Throwable $e) {
+        error_log('RGMAO->CIMM initial sync-back failed for req ' . $reqId . ': ' . $e->getMessage());
+    }
+
+    return [
+        'ok' => true, 'req_id' => $reqId, 'rep_id' => $repId,
+        'evidence_paths' => $evidencePaths, 'already_converted' => false, 'error' => null,
+    ];
 }

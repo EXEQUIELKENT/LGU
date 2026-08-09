@@ -17,6 +17,16 @@ if (!cimm_is_admin()) {
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
+
+// Export CSV/PDF — same shared widget (button + password-gated modal, via
+// functionality/generate_report.php) every other admin page uses. This page
+// is already hard-gated Admin-only above, so $canGenerateReports is always
+// true here — kept explicit for consistency with the widget's contract.
+$canGenerateReports = cimm_is_admin();
+$exportReportType    = 'user_management';
+$exportReportLabel   = 'User Accounts';
+$exportReportIcon    = '👥';
+
 require __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
@@ -160,47 +170,6 @@ function showNotification() {
 
 $profilePictureSrc = getProfilePicture($currentUserId, $conn);
 $displayName        = getDisplayName();
-
-// ── Export to CSV ────────────────────────────────────────────────────────────
-if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-    while (ob_get_level() > 0) ob_end_clean();
-
-    $exportRes = $conn->query("
-        SELECT first_name, last_name, email, role, email_verified, account_locked, last_login, last_activity
-        FROM employees
-        ORDER BY FIELD(role, 'Super Admin', 'Admin', 'Office Staff', 'Engineer', 'Area Engineer'),
-                 first_name ASC, last_name ASC
-    ");
-    $rows = [];
-    while ($r = $exportRes->fetch_assoc()) {
-        $rows[] = [
-            trim($r['first_name'] . ' ' . $r['last_name']),
-            $r['email'],
-            $r['role'],
-            $r['account_locked'] ? 'Locked' : 'Active',
-            $r['email_verified'] ? 'Yes' : 'No',
-            $r['last_login'] ? date('M j, Y g:i A', strtotime($r['last_login'])) : 'Never',
-        ];
-    }
-
-    $actor = activity_actor_name();
-
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="user_accounts_' . date('Y-m-d') . '.csv"');
-
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so spreadsheet apps don't mangle accented names
-    fputcsv($out, ['Name', 'Email', 'Role', 'Status', 'Verified', 'Last Login']);
-    foreach ($rows as $row) {
-        fputcsv($out, $row);
-    }
-    fclose($out);
-
-    log_activity($conn, 'user_management', 'user', $currentUserId, 'export',
-        "{$actor} exported the user list to CSV (" . count($rows) . " accounts).");
-
-    exit;
-}
 
 // ── AJAX POST handler ─────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1364,11 +1333,6 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 [data-theme="dark"] .btn-delete { background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.30); color: #cbd5e1; }
 
 .um-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.btn-export {
-    background: rgba(22,163,74,.10); color: #15803d; border: 1.5px solid rgba(22,163,74,.25);
-}
-.btn-export:hover { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; border-color: transparent; transform: translateY(-2px); box-shadow: 0 5px 14px rgba(22,163,74,.38); }
-[data-theme="dark"] .btn-export { background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.30); color: #86efac; }
 .btn-add-user {
     background: linear-gradient(135deg, #3762c8, #5f8cff); color: #fff; border: none;
     box-shadow: 0 2px 8px rgba(55,98,200,.30);
@@ -2400,9 +2364,7 @@ textarea.vp-edit-input-wrap {
                 <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
             </h2>
             <div class="um-header-actions">
-                <button class="btn-action btn-export" id="umExportBtn" title="Export the full user list to CSV">
-                    <i class="fas fa-file-csv"></i> Export
-                </button>
+                <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
                 <button class="btn-action btn-add-user" id="umAddUserBtn">
                     <i class="fas fa-user-plus"></i> Add User
                 </button>
@@ -2655,21 +2617,6 @@ textarea.vp-edit-input-wrap {
         <div class="lo-btns">
             <button class="lo-btn lo-cancel" id="lockCancelBtn">Cancel</button>
             <button class="lo-btn lo-confirm-lock" id="lockConfirmBtn">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<!-- Export confirm modal -->
-<div class="confirm-modal-backdrop" id="exportConfirmBackdrop">
-    <div class="confirm-modal role-confirm">
-        <div class="lo-icon-wrap">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3762c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8M8 17h8M8 9h1"/></svg>
-        </div>
-        <div class="lo-title">Export to CSV?</div>
-        <div class="lo-desc" id="exportConfirmDesc">This will download a CSV file containing every employee account currently in the system.</div>
-        <div class="lo-btns">
-            <button class="lo-btn lo-cancel" id="exportCancelBtn">Cancel</button>
-            <button class="lo-btn lo-confirm-role" id="exportConfirmBtn"><i class="fas fa-file-csv"></i> Export</button>
         </div>
     </div>
 </div>
@@ -3194,25 +3141,6 @@ function showInlineNotif(type, message) {
         confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm';
         pending = null;
         closeModal();
-    });
-})();
-
-// ── Export to CSV (with confirmation) ──────────────────────────────────────
-(function(){
-    var btn = document.getElementById('umExportBtn');
-    var backdrop = document.getElementById('exportConfirmBackdrop');
-    var cancelBtn = document.getElementById('exportCancelBtn');
-    var confirmBtn = document.getElementById('exportConfirmBtn');
-    if (!btn || !backdrop) return;
-
-    function closeModal(){ backdrop.classList.remove('active'); }
-
-    btn.addEventListener('click', function(){ backdrop.classList.add('active'); });
-    cancelBtn.addEventListener('click', closeModal);
-    backdrop.addEventListener('mousedown', function(e){ if (e.target === backdrop) closeModal(); });
-    confirmBtn.addEventListener('click', function(){
-        closeModal();
-        window.location.href = window.location.pathname + '?export=csv';
     });
 })();
 
@@ -4489,5 +4417,6 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
 })();
 </script>
 
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

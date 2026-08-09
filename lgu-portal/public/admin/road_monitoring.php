@@ -34,6 +34,14 @@ $isAdmin        = cimm_is_admin();
 $isOfficeStaff  = cimm_is_office_staff();
 $isAreaEngineer = cimm_is_area_engineer();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php).
+// This page itself is Admin-only (role guard above), so in practice only
+// admins ever see this button here — kept consistent with the other pages.
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'road_monitoring';
+$exportReportLabel   = 'Road Monitoring';
+$exportReportIcon    = '🛣️';
+
 // ── Helpers (duplicated per-page, matching this codebase's existing convention) ──
 function getProfilePicture($employeeId, $conn) {
     if (!$employeeId) return 'profile.png';
@@ -123,22 +131,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $verifierName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
         $result = rgmap_road_reports_verify($conn, $localId, $verifierName);
+        $conversion = ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => []];
         if ($result['ok']) {
             $rmRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = " . (int)$localId)->fetch_assoc();
             $rmLabel = trim(($rmRow['rgmap_report_id'] ?? '') . ' — ' . ($rmRow['title'] ?? ''), ' —');
+
+            // ── Turn it into a real, assignable CIMM report on Current
+            //    Reports — see rgmap_road_reports_convert_to_cimm_report()
+            //    for the full mapping. Best-effort: if this fails, the
+            //    verification itself (already committed above) still stands;
+            //    an admin can re-verify-triggering isn't possible, but the
+            //    error is surfaced in the response so it's not silent. ─────
+            $conversion = rgmap_road_reports_convert_to_cimm_report($conn, $localId, $engineerId);
+
+            $convNote = $conversion['ok']
+                ? (" → became Report #REP-" . str_pad((string)$conversion['rep_id'], 3, '0', STR_PAD_LEFT) . " on Current Reports.")
+                : (" (could not create a CIMM report: " . ($conversion['error'] ?? 'unknown error') . ")");
+
             // ref_type 'road_report' (rgmap_road_reports.id's own sequence),
             // matching what pending_reports.php always logged this under —
             // History Logs below reads by ref_type/ref_id, not by page, so
             // entries from before this page existed still show up here.
             log_activity(
                 $conn, 'road_monitoring', 'road_report', $localId, 'validated',
-                "{$verifierName} verified Road Monitoring report {$rmLabel}" . ($result['callback_ok'] ? ' — synced back to Road Monitoring.' : ' (sync back to Road Monitoring failed).')
+                "{$verifierName} verified Road Monitoring report {$rmLabel}" . ($result['callback_ok'] ? ' — synced back to Road Monitoring.' : ' (sync back to Road Monitoring failed).') . $convNote
             );
             notifyAdminsOnly(
                 $conn,
                 '✅ Road Monitoring Report Verified',
-                "{$verifierName} verified {$rmLabel} on Road Monitoring.",
-                'road_monitoring.php?highlight_id=' . $localId,
+                "{$verifierName} verified {$rmLabel} on Road Monitoring.{$convNote}",
+                $conversion['ok'] ? ('current_reports.php?highlight_rep=' . $conversion['rep_id']) : ('road_monitoring.php?highlight_id=' . $localId),
                 'Road Monitoring Report',
                 $engineerId
             );
@@ -146,8 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             'success' => $result['ok'],
             'message' => $result['ok']
-                ? ($result['callback_ok'] ? 'Verified and synced back to Road Monitoring.' : 'Verified here, but the sync back to Road Monitoring failed — it will still show verified on the CIMM side.')
+                ? (($result['callback_ok'] ? 'Verified and synced back to Road Monitoring.' : 'Verified here, but the sync back to Road Monitoring failed — it will still show verified on the CIMM side.')
+                    . ($conversion['ok'] ? ' Report #REP-' . str_pad((string)$conversion['rep_id'], 3, '0', STR_PAD_LEFT) . ' created on Current Reports.' : ''))
                 : ($result['error'] ?? 'Failed to verify report.'),
+            'req_id'         => $conversion['req_id'],
+            'rep_id'         => $conversion['rep_id'],
+            'infrastructure' => $conversion['ok'] ? 'Roads' : null,
+            'evidence_paths' => array_map(fn($p) => '../' . $p, $conversion['evidence_paths']),
         ]);
         exit;
     }
@@ -979,6 +1006,7 @@ tr.notif-highlight > td:first-child {
                 <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
             </span>
             <span class="page-badge"><?= count($road_monitoring_reports) ?> Report<?= count($road_monitoring_reports) === 1 ? '' : 's' ?></span>
+            <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
         </div>
 
         <div class="search-toolbar">
@@ -1183,6 +1211,14 @@ tr.notif-highlight > td:first-child {
 </div>
 
 <script src="card_limit.js"></script>
+<!-- Same TensorFlow.js + InfraAI stack requests.php uses to analyze evidence
+     photos on validate — loaded here too so a verified Road Monitoring
+     report's freshly-copied evidence images get the same AI pass right
+     after conversion (see doVerifyRoadReport() below). -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+<script src="../assets/js/ai_tfjs_analysis.js"></script>
 <script>
 const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 let currentRoadReportData = null;
@@ -1430,6 +1466,30 @@ function showRepNotif(type, msg) {
     setTimeout(() => { d.style.opacity = '0'; setTimeout(() => d.remove(), 400); }, 4500);
 }
 
+// ── Same helpers requests.php uses to run AI analysis on evidence photos
+//    after validating a citizen request — mirrored here so a Road Monitoring
+//    report gets the same treatment right after it becomes a CIMM report. ──
+async function imagePathToFile(path) {
+    const response = await fetch(path);
+    const blob     = await response.blob();
+    const filename = path.split('/').pop() || 'evidence.jpg';
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+}
+async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts = 2) {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis');
+            const files = await Promise.all(evidencePaths.map(imagePathToFile));
+            return await InfraAI.analyzeImages(files, infraType, onProgress);
+        } catch (err) {
+            lastErr = err;
+            console.error(`[InfraAI] Attempt ${attempt}/${maxAttempts} failed:`, err);
+        }
+    }
+    throw lastErr;
+}
+
 async function doVerifyRoadReport() {
     if (!currentRoadReportData) return;
     const id = currentRoadReportData.id;
@@ -1446,6 +1506,26 @@ async function doVerifyRoadReport() {
             hideRepOverlay();
             showRepNotif('error', '❌ Server error. Please try again.'); return;
         }
+
+        // ── AI image analysis on the newly-copied evidence photos — best
+        //    effort, never blocks the verify success message. Mirrors
+        //    requests.php's own post-validate AI trigger. ──────────────────
+        if (data.success && data.req_id > 0 && Array.isArray(data.evidence_paths) && data.evidence_paths.length > 0 && typeof InfraAI !== 'undefined') {
+            try {
+                const aiResult = await runAiAnalysis(
+                    data.evidence_paths, data.infrastructure || 'Roads',
+                    (msg) => showRepOverlay(msg)
+                );
+                aiResult.req_id = data.req_id;
+                await fetch('../functionality/save_ai_analysis.php', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(aiResult)
+                });
+            } catch (aiErr) {
+                console.error('[InfraAI] Road Monitoring conversion analysis failed:', aiErr);
+            }
+        }
+
         hideRepOverlay();
         if (data.success) {
             closeRoadReportModal();
@@ -1630,5 +1710,6 @@ function pokeActivityLog() {
 </script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_scripts.php'; ?>
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

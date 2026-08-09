@@ -5379,5 +5379,6 @@ if (saveAlertBackdrop) {
 </script>
 <?php endif; ?>
 
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

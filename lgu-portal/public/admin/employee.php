@@ -12,6 +12,29 @@ if ($showWelcomeAnimation) {
 $serverTimestamp = time();
 
 require __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
+require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/api/cimm_energy_maintenance.php';
+
+cimm_ensure_maintenance_schedule_schema($conn);
+cimm_energy_ensure_schedule_schema($conn);
+$cprfCatalog = cimm_fetch_cprf_facility_catalog();
+function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
+{
+    global $cprfCatalog;
+    $match = cimm_resolve_facility($cprfFacilityId, $locationText, $taskText, $cprfCatalog);
+    return [
+        'facility_id' => (int)($match['facility_id'] ?? 0),
+        'name' => (string)($match['name'] ?? ''),
+        'score' => (int)($match['score'] ?? 0),
+        'method' => (string)($match['method'] ?? ''),
+    ];
+}
+function isSharedWithCPRF(?int $cprfFacilityId, string $location): bool
+{
+    global $cprfCatalog;
+    return cimm_is_shared_with_cprf($cprfFacilityId, $location, $cprfCatalog);
+}
 
 // Get user profile picture
 function getProfilePicture($employeeId, $conn) {
@@ -301,6 +324,64 @@ if ($recentArchiveResult && $recentArchiveResult->num_rows > 0) {
     }
 }
 
+// Recent Case Management preview — top 5 most recent cases (unified
+// requests → resolution → report lifecycle, same source case_management.php
+// itself reads from, just capped to 5 rows for the dashboard card).
+$recentCaseQuery = "
+    SELECT
+        req.req_id, req.infrastructure, req.location, req.approval_status,
+        res.status AS resolution_status,
+        rp.rep_id, rp.priority_lvl,
+        CONCAT(eng.first_name, ' ', eng.last_name) AS engineer_name, rp.engineer_id
+    FROM requests req
+    LEFT JOIN (
+        SELECT rr.* FROM request_resolutions rr
+        INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id
+                    FROM request_resolutions GROUP BY req_id) latest
+          ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+    ) res ON res.req_id = req.req_id
+    LEFT JOIN reports rp    ON rp.res_id = res.res_id
+    LEFT JOIN employees eng ON eng.user_id = rp.engineer_id
+    ORDER BY req.req_id DESC
+    LIMIT 5
+";
+$recentCaseResult = $conn->query($recentCaseQuery);
+$recentCaseRows = [];
+if ($recentCaseResult && $recentCaseResult->num_rows > 0) {
+    while ($r = $recentCaseResult->fetch_assoc()) {
+        $recentCaseRows[] = $r;
+    }
+}
+function dashCaseStage(array $row): string {
+    $resSt = $row['resolution_status'] ?? '';
+    if ($resSt !== '') return $resSt;
+    $appSt = $row['approval_status'] ?? 'Pending';
+    return $appSt === 'Rejected' ? 'Rejected' : 'Pending Review';
+}
+
+// Same resolution case_management.php's own "Action" links use — which
+// lifecycle page currently owns a case, so the dashboard card's rows can
+// deep-link straight there instead of to case_management.php itself (a
+// read-only aggregator with no highlight-on-load of its own).
+function dashCaseTargetUrl(array $row): string {
+    $resStatus = $row['resolution_status'] ?: null;
+    if ($resStatus === null) {
+        $targetPage = 'requests.php';
+    } elseif (in_array($resStatus, ['Completed', 'Cancelled'], true)) {
+        $targetPage = 'archive_reports.php';
+    } elseif (in_array($resStatus, ['Approved', 'Pending Admin Approval'], true)) {
+        $targetPage = 'current_reports.php';
+    } else {
+        $targetPage = 'pending_reports.php';
+    }
+    return !empty($row['rep_id'])
+        ? "{$targetPage}?highlight_rep=" . (int)$row['rep_id'] . '&open_modal=1'
+        : "{$targetPage}?highlight_req=" . (int)$row['req_id'] . '&open_modal=1';
+}
+
+// Recent Road Monitoring preview — top 5 most recent RGMAP reports
+$recentRoadRows = array_slice(rgmap_road_reports_fetch($conn, 5), 0, 5);
+
 // Active Reports by Priority (for chart)
 $activeReportsByPriorityQuery = "SELECT 
     r.priority_lvl,
@@ -498,7 +579,7 @@ $todayDt = new DateTime('today', new DateTimeZone('Asia/Manila'));
 
 // ── 1. maintenance_schedule (no engineer filter — assigned_team, not engineer_id) ──
 $schedSql = "SELECT sched_id, task, location, starting_date, estimated_completion_date AS end_date,
-              status, priority, category, assigned_team
+              status, priority, category, assigned_team, cprf_facility_id, energy_source
               FROM maintenance_schedule
               WHERE status != 'Completed'
               ORDER BY starting_date ASC";
@@ -516,6 +597,9 @@ if ($schedRes) {
                 else                     { $status_label = 'Scheduled'; }
             } catch (Exception $e) {}
         }
+        $storedCprfId  = isset($row['cprf_facility_id']) ? (int)$row['cprf_facility_id'] : 0;
+        $facilityMatch = getMatchingFacility($storedCprfId > 0 ? $storedCprfId : null, $row['location'] ?? '', $row['task'] ?? '');
+        $resolvedCprfId = $facilityMatch['facility_id'] > 0 ? $facilityMatch['facility_id'] : $storedCprfId;
         $upcomingSchedules[] = [
             'task'          => $row['task'],
             'location'      => $row['location'],
@@ -529,6 +613,8 @@ if ($schedRes) {
             'source'        => 'schedule',
             'rep_id'        => 0,
             'sched_id'      => (int)($row['sched_id'] ?? 0),
+            'is_shared'     => isSharedWithCPRF($resolvedCprfId > 0 ? $resolvedCprfId : null, $row['location'] ?? ''),
+            'energy_source' => $row['energy_source'] ?? '',
         ];
     }
 }
@@ -581,6 +667,8 @@ if ($rptUpRes) {
             'source'        => 'report',
             'rep_id'        => (int)$rRow['rep_id'],
             'sched_id'      => 0,
+            'is_shared'     => false,
+            'energy_source' => '',
         ];
     }
 }
@@ -1380,6 +1468,39 @@ body {
 .schedule-location {
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+.schedule-item-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.badge-shared-cprf {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(99,102,241,.1); color: #4f46e5;
+    border: 1px solid rgba(99,102,241,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .badge-shared-cprf {
+    background: rgba(129,140,248,.12); color: #a5b4fc;
+    border-color: rgba(129,140,248,.28);
+}
+
+.badge-shared-energy {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(13,158,158,.12); color: #0a6e6e;
+    border: 1px solid rgba(13,158,158,.3);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .badge-shared-energy {
+    background: rgba(45,212,191,.14); color: #2dd4bf;
+    border-color: rgba(45,212,191,.3);
 }
 
 .schedule-date-container {
@@ -3175,7 +3296,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card purple">
+                <div class="metric-card purple"<?php if ($isAdmin): ?> data-href="user_management.php" style="cursor:pointer;"<?php endif; ?>>
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Active Users</div>
@@ -3300,6 +3421,16 @@ HTML;
                             <div class="schedule-content">
                                 <div class="schedule-task"><?= htmlspecialchars($schedule['task']) ?></div>
                                 <div class="schedule-location"><?= htmlspecialchars($schedule['location']) ?></div>
+                                <?php if (!empty($schedule['is_shared']) || !empty($schedule['energy_source'])): ?>
+                                <div class="schedule-item-badges">
+                                    <?php if (!empty($schedule['is_shared'])): ?>
+                                        <span class="badge-shared-cprf" title="This schedule is shared with the CPRF integration">🔗 CPRF</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($schedule['energy_source'])): ?>
+                                        <span class="badge-shared-energy" title="Imported from the Energy Management System">⚡ Energy</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="schedule-date-container">
                                 <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
@@ -3403,6 +3534,16 @@ HTML;
                                     <?= htmlspecialchars($schedule['location']) ?>
                                     · <em style="color:var(--text-secondary);font-size:11px;"><?= htmlspecialchars($engLabel) ?></em>
                                 </div>
+                                <?php if (!empty($schedule['is_shared']) || !empty($schedule['energy_source'])): ?>
+                                <div class="schedule-item-badges">
+                                    <?php if (!empty($schedule['is_shared'])): ?>
+                                        <span class="badge-shared-cprf" title="This schedule is shared with the CPRF integration">🔗 CPRF</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($schedule['energy_source'])): ?>
+                                        <span class="badge-shared-energy" title="Imported from the Energy Management System">⚡ Energy</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="schedule-date-container">
                                 <div class="schedule-date"><?= !empty($schedule['starting_date']) ? date('M d, Y', strtotime($schedule['starting_date'])) : '—' ?></div>
@@ -3507,8 +3648,12 @@ HTML;
             </div><!-- end charts-grid (District + Engineer Leaderboard) -->
             <?php endif; ?>
 
+            <!-- Current Reports + Pending Reports — paired side-by-side to save
+                 vertical space, matching the Top Facilities / Upcoming
+                 Maintenance grid above. -->
+            <div class="charts-grid" style="margin-top: 20px;">
             <!-- Current Reports Preview -->
-            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='current_reports.php'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='current_reports.php'">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
@@ -3566,7 +3711,7 @@ HTML;
             </div>
 
             <!-- ── Pending Reports Preview ─────────────────────────────────── -->
-            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='pending_reports.php'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='pending_reports.php'">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
@@ -3642,9 +3787,12 @@ HTML;
                     <?php endif; ?>
                 </div>
             </div>
+            </div><!-- end charts-grid (Current + Pending Reports) -->
 
+            <!-- Archive Reports + Case Management — paired side-by-side. -->
+            <div class="charts-grid" style="margin-top: 20px;">
             <!-- ── Archive Reports Preview ────────────────────────────────────── -->
-            <div class="chart-card" style="margin-top: 20px; cursor:pointer;" onclick="window.location.href='archive_reports.php'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='archive_reports.php'">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
@@ -3703,8 +3851,103 @@ HTML;
                 </div>
             </div>
 
+            <!-- ── Case Management Preview ────────────────────────────────────── -->
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='case_management.php'">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><a href="case_management.php" style="color:inherit;text-decoration:none;">Case Management</a></div>
+                        <div class="chart-subtitle">Unified case lifecycle — intake through closure</div>
+                    </div>
+                    <a href="case_management.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentCaseRows)): ?>
+                        <?php
+                        $ccColors = ['#3762c8','#9c27b0','#ff9800','#2196f3','#4caf50'];
+                        $ccIdx = 0;
+                        foreach ($recentCaseRows as $c):
+                            $stage = dashCaseStage($c);
+                            $initial = strtoupper(substr($c['infrastructure'] ?? 'C', 0, 1));
+                            $ccEngName = trim($c['engineer_name'] ?? '');
+                            $ccHasEngineer = !empty($c['engineer_id']) && $ccEngName !== '';
+                        ?>
+                        <div class="activity-item" data-href="<?= htmlspecialchars(dashCaseTargetUrl($c)) ?>" style="cursor:pointer;">
+                            <div class="activity-avatar" style="background:<?= $ccColors[$ccIdx % 5] ?>">
+                                <?= htmlspecialchars($initial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    #REQ-<?= str_pad((string)$c['req_id'], 4, '0', STR_PAD_LEFT) ?> — <?= htmlspecialchars($c['infrastructure'] ?? '—') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($c['location'] ?? '—') ?>
+                                    · <?= $ccHasEngineer ? htmlspecialchars($ccEngName) : '<em style="color:var(--text-secondary)">No engineer</em>' ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:#3762c8;background:#3762c822;padding:3px 9px;border-radius:12px;">
+                                    <?= htmlspecialchars($stage) ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $ccIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            📋 No cases yet.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+            </div><!-- end charts-grid (Archive Reports + Case Management) -->
+
+            <!-- Road Monitoring + Recent Activity — paired side-by-side. -->
+            <div class="charts-grid" style="margin-top: 20px;">
+            <!-- ── Road Monitoring Preview ────────────────────────────────────── -->
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='road_monitoring.php'">
+                <div class="chart-header">
+                    <div>
+                        <div class="chart-title"><a href="road_monitoring.php" style="color:inherit;text-decoration:none;">Road Monitoring</a></div>
+                        <div class="chart-subtitle">Reports synced in from the Road Monitoring (RGMAP) system</div>
+                    </div>
+                    <a href="road_monitoring.php" class="view-all-link">View all →</a>
+                </div>
+                <div class="activity-list">
+                    <?php if (!empty($recentRoadRows)): ?>
+                        <?php
+                        $rmIdx = 0;
+                        foreach ($recentRoadRows as $rm):
+                            $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
+                            $rmInitial = strtoupper(substr($rm['title'] ?? 'R', 0, 1));
+                        ?>
+                        <div class="activity-item" data-href="road_monitoring.php?highlight_id=<?= (int)$rm['id'] ?>" style="cursor:pointer;">
+                            <div class="activity-avatar" style="background:#c84b10">
+                                <?= htmlspecialchars($rmInitial) ?>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">
+                                    <?= htmlspecialchars($rm['rgmap_report_id'] ?? '—') ?> — <?= htmlspecialchars($rm['title'] ?? 'Untitled report') ?>
+                                </div>
+                                <div class="activity-description">
+                                    <?= htmlspecialchars($rm['location'] ?? '—') ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $rmVerified ? 'var(--metric-green)' : '#c84b10' ?>;background:<?= $rmVerified ? 'rgba(76,175,80,.13)' : 'rgba(200,75,16,.13)' ?>;padding:3px 9px;border-radius:12px;">
+                                    <?= $rmVerified ? 'Verified' : 'Awaiting Verification' ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php $rmIdx++; endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:var(--text-secondary);padding:30px 20px;font-size:14px;">
+                            🛣️ No Road Monitoring reports yet.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <!-- Recent Activity -->
-            <div class="chart-card" style="margin-top: 20px;">
+            <div class="chart-card">
                 <div class="chart-header">
                     <div>
                         <div class="chart-title">Recent Activity</div>
@@ -3720,7 +3963,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>" style="cursor:pointer;">
+                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>&open_modal=1" style="cursor:pointer;">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
@@ -3742,6 +3985,7 @@ HTML;
 
             </div>
             <!-- end Recent Activity chart-card -->
+            </div><!-- end charts-grid (Road Monitoring + Recent Activity) -->
 
             <?php if ($feedbackWidget !== null || $canGenerateReports): ?>
             <!-- Citizen Feedback / Report Generation -->
@@ -3816,7 +4060,7 @@ HTML;
 
                             $fbDate = date('M d, Y', strtotime($fb['created_at']));
                         ?>
-                            <div class="activity-item" data-feedback data-href="emp_feedback.php?highlight_fbk=<?= (int)$fb['feedback_id'] ?>" style="cursor:pointer;">
+                            <div class="activity-item dash-highlightable" data-feedback data-href="emp_feedback.php?highlight_fbk=<?= (int)$fb['feedback_id'] ?>" onclick="dashHighlight(this, event)" style="cursor:pointer;">
                                 <div class="activity-avatar" style="background:<?= $fbAvatarBg ?>">
                                     <?= htmlspecialchars($fbInitial) ?>
                                 </div>
@@ -5177,5 +5421,6 @@ document.addEventListener('keydown', function(e) {
 })();
 </script>
 
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

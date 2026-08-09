@@ -70,6 +70,12 @@ $userRole   = cimm_current_role();
 $canAssignEngineer = in_array($userRole, ['office staff', 'manager', 'admin', 'super admin']);
 $isOfficeStaff = cimm_is_office_staff();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'pending_reports';
+$exportReportLabel   = 'Pending Reports';
+$exportReportIcon    = '⏳';
+
 // ── Area Engineer: detect role and load their assigned district ──────────────
 $isAreaEngineer = cimm_is_area_engineer();
 $aeDistrict    = '';
@@ -2401,6 +2407,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
             <span class="rgmap-sync-dot"></span>
             <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
         </span>
+        <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
 <?php if ($isEngineer): ?>
     <div class="eng-self-profile-wrap" id="engSelfProfileWrap">
         <button class="eng-self-profile-btn" id="engSelfProfileBtn" title="View My Profile">
@@ -4804,5 +4811,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

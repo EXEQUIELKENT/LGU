@@ -59,6 +59,13 @@ $profilePictureSrc = getProfilePicture($_SESSION['employee_id'] ?? null, $conn);
 $displayName       = getDisplayName();
 $userRole          = $_SESSION['employee_role'] ?? '';
 $isAdmin           = cimm_is_admin();
+$isOfficeStaff     = cimm_is_office_staff();
+
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'emp_feedback';
+$exportReportLabel   = 'Citizen Feedback';
+$exportReportIcon    = '💬';
 
 // ── Ensure tables exist ───────────────────────────────────────────────────────
 $conn->query("
@@ -1861,7 +1868,10 @@ tr.notif-highlight > td:first-child {
                 Feedback List
                 <span class="badge-count" id="rowCount"><?= $totalFeedback ?></span>
             </h2>
-            <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
+                <span class="admin-badge"><i class="fas fa-shield-alt"></i> Admin Only</span>
+            </div>
         </div>
 
         <!-- Search & sort toolbar inside card (requests.php style) -->
@@ -3249,5 +3259,6 @@ if (typeof L === 'undefined') {
 }
 </script>
 
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

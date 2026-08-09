@@ -8,6 +8,8 @@ $serverTimestamp = time();
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
+require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
+rgmap_road_reports_ensure_schema($conn);
 
 // ── Safe migration: add Pending Admin Approval to the status enum ────────────
 $conn->query("
@@ -636,6 +638,12 @@ $userRole          = cimm_current_role();
 $canAssignEngineer = ($isAreaEngineer && $aeHasDistrict);
 $isOfficeStaff = cimm_is_office_staff();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'current_reports';
+$exportReportLabel   = 'Current Reports';
+$exportReportIcon    = '📌';
+
 $conn->query("SET SESSION group_concat_max_len = 4096");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
 // Area Engineers: restrict to their assigned district only
@@ -660,6 +668,7 @@ $sql = "
         COALESCE(req.district, '') AS req_district,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
+        rm.rgmap_report_id AS road_monitoring_ref,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
         CONCAT(adm.first_name, ' ', adm.last_name) AS admin_name,
         adm.profile_picture AS admin_pic,
@@ -680,6 +689,7 @@ $sql = "
     LEFT JOIN request_ai_analysis  ai  ON res.req_id    = ai.req_id
     LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
     LEFT JOIN employees            adm ON COALESCE(res.admin_feedback_by, res.resolved_by) = adm.user_id
+    LEFT JOIN rgmap_road_reports   rm  ON rm.cimm_req_id = req.req_id
     WHERE res.status IN ('Approved', 'Pending Admin Approval') {$ef} {$df}
     GROUP BY r.rep_id
     ORDER BY r.rep_id DESC
@@ -805,6 +815,7 @@ foreach ($rows as $row) {
         'ai_immediate'      => (bool)($row['ai_immediate'] ?? false),
         'ai_images_count'   => (int)($row['ai_images_count'] ?? 0),
         'req_district'      => $row['req_district']  ?? '',
+        'road_monitoring_ref' => $row['road_monitoring_ref'] ?? '',
         'images'            => $imgs,
     ];
 }
@@ -915,6 +926,22 @@ foreach ($rows as $row) {
     background: linear-gradient(135deg, #ff9800, #ffb74d);
     color: #fff; font-size: 11px; font-weight: 700;
     padding: 4px 12px; border-radius: 20px; letter-spacing: .04em;
+}
+
+/* Road Monitoring origin badge — same RGMAP orange used by .notif-page-road
+   and road_monitoring.php's own badges, sized for a per-row chip instead of
+   that page's larger animated header pill. */
+.road-monitoring-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(200,75,16,.12); color: #a83e0c;
+    border: 1px solid rgba(200,75,16,.25);
+    border-radius: 20px; padding: 2px 9px;
+    font-size: 10.5px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .02em; vertical-align: middle;
+}
+[data-theme="dark"] .road-monitoring-badge {
+    background: rgba(251,146,60,.16); color: #fdba74;
+    border-color: rgba(251,146,60,.3);
 }
 
 /* CIMM ⇄ RGMAP integration badge — same animated-pill language as the
@@ -3454,6 +3481,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
             <span class="rgmap-sync-dot"></span>
             <span class="rgmap-sync-label"><span class="rgmap-sync-label-full">CIMM ⇄ </span>RGMAP Synced</span>
         </span>
+        <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
 <?php if ($isEngineer): ?>
     <div class="eng-self-profile-wrap" id="engSelfProfileWrap">
         <button class="eng-self-profile-btn" id="engSelfProfileBtn" title="View My Profile">
@@ -3689,7 +3717,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
                     <td class="searchable" title="..."> <?= htmlspecialchars($notes) ?></td>
                     <?php if (!$isEngineer): ?>
@@ -3753,7 +3781,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         ?>
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <?php if (!$isEngineer): ?>
@@ -7445,5 +7473,6 @@ document.addEventListener('DOMContentLoaded', function() {
     body.map-view-active .table-wrapper,
     body.map-view-active .mobile-report-list { display: none !important; }
 </style>
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

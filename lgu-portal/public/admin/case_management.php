@@ -75,6 +75,12 @@ $engineerId = (int)($_SESSION['employee_id'] ?? 0);
 $isAdmin    = cimm_is_admin();
 $isOfficeStaff = cimm_is_office_staff();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'case_management';
+$exportReportLabel   = 'Case Management';
+$exportReportIcon    = '🗂️';
+
 $isAreaEngineer = cimm_is_area_engineer();
 $aeDistrict    = '';
 $aeHasDistrict = false;
@@ -951,6 +957,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
         <div class="page-header">
             <h1 class="page-title">Case Management</h1>
             <span class="page-badge"><?= $totalCases ?> Case<?= $totalCases === 1 ? '' : 's' ?></span>
+            <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
         </div>
 
         <div class="search-toolbar">
@@ -1004,7 +1011,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         $targetPage = casePageForStatus($r['resolution_status'] ?: null);
                         $actionUrl  = $r['rep_id']
                             ? "{$targetPage}?highlight_rep={$r['rep_id']}&open_modal=1"
-                            : "{$targetPage}?highlight={$r['req_id']}";
+                            : "{$targetPage}?highlight_req={$r['req_id']}&open_modal=1";
                     ?>
                     <tr data-req-id="<?= (int)$r['req_id'] ?>"
                         data-priority-rank="<?= $priorityRank ?>"
@@ -1389,7 +1396,7 @@ function openCaseModal(reqId) {
     }
 
     const openBtn = document.getElementById('caseModalOpenBtn');
-    openBtn.href = c.rep_id ? `${c.target_page}?highlight_rep=${c.rep_id}&open_modal=1` : `${c.target_page}?highlight=${c.req_id}`;
+    openBtn.href = c.rep_id ? `${c.target_page}?highlight_rep=${c.rep_id}&open_modal=1` : `${c.target_page}?highlight_req=${c.req_id}&open_modal=1`;
 
     document.getElementById('caseModalBackdrop').classList.add('active');
 
@@ -1681,5 +1688,6 @@ function pokeActivityLog() {
 </script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_scripts.php'; ?>
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

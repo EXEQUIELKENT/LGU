@@ -71,19 +71,23 @@ require __DIR__ . '/../../includes/core/notif_helper.php';
 
 // ── Input validation ──────────────────────────────────────────────────────────
 $format     = in_array($_POST['format'] ?? '', ['csv','pdf']) ? $_POST['format'] : 'csv';
-$reportType = in_array($_POST['report_type'] ?? '', ['requests','schedules','summary','current_reports','pending_reports','archive_reports'])
+$reportType = in_array($_POST['report_type'] ?? '', ['requests','schedules','summary','current_reports','pending_reports','archive_reports','emp_feedback','road_monitoring','case_management','user_management'])
               ? $_POST['report_type'] : 'requests';
 $dateFrom   = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-01')));
 $dateTo     = date('Y-m-d', strtotime($_POST['date_to']   ?? date('Y-m-d')));
 if ($dateFrom > $dateTo) { [$dateFrom, $dateTo] = [$dateTo, $dateFrom]; }
 
 $reportTitles = [
-    'requests'        => 'Infrastructure Repair Requests Report',
-    'schedules'       => 'Maintenance Schedule Report',
-    'summary'         => 'Executive Summary Report',
-    'current_reports' => 'Current Reports',
-    'pending_reports' => 'Pending Reports',
-    'archive_reports' => 'Archive Reports',
+    'requests'         => 'Infrastructure Repair Requests Report',
+    'schedules'        => 'Maintenance Schedule Report',
+    'summary'          => 'Executive Summary Report',
+    'current_reports'  => 'Current Reports',
+    'pending_reports'  => 'Pending Reports',
+    'archive_reports'  => 'Archive Reports',
+    'emp_feedback'     => 'Citizen Feedback Report',
+    'road_monitoring'  => 'Road Monitoring Reports',
+    'case_management'  => 'Case Management Report',
+    'user_management'  => 'User Accounts Report',
 ];
 $reportTitle = $reportTitles[$reportType];
 $generatedBy = trim(($_SESSION['employee_first_name'] ?? '') . ' ' . ($_SESSION['employee_last_name'] ?? '')) ?: 'Admin';
@@ -321,6 +325,81 @@ function fetchArchiveReports($conn, $from, $to) {
 }
 
 
+function fetchEmpFeedback($conn, $from, $to) {
+    $stmt = $conn->prepare("
+        SELECT
+            CONCAT('FBK-', LPAD(f.feedback_id, 4, '0'))  AS feedback_id_fmt,
+            f.full_name, f.feedback_type, f.title,
+            f.rating, f.status,
+            IFNULL(req.infrastructure, f.infrastructure) AS infrastructure,
+            DATE_FORMAT(f.created_at,'%d-%b-%Y %H:%i')   AS created_fmt
+        FROM citizen_feedback f
+        LEFT JOIN reports r          ON r.rep_id      = f.rep_id
+        LEFT JOIN request_resolutions res ON r.res_id = res.res_id
+        LEFT JOIN requests req        ON res.req_id    = req.req_id
+        WHERE DATE(f.created_at) BETWEEN ? AND ?
+        ORDER BY f.created_at DESC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function fetchRoadMonitoring($conn, $from, $to) {
+    $stmt = $conn->prepare("
+        SELECT
+            rgmap_report_id, title, report_type, location,
+            priority, severity, verification_status, verified_by,
+            DATE_FORMAT(submitted_at,'%d-%b-%Y %H:%i') AS submitted_fmt
+        FROM rgmap_road_reports
+        WHERE DATE(submitted_at) BETWEEN ? AND ?
+        ORDER BY submitted_at DESC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function fetchCaseManagement($conn, $from, $to) {
+    $stmt = $conn->prepare("
+        SELECT
+            CONCAT('REQ-', LPAD(req.req_id, 4, '0'))     AS req_id_fmt,
+            req.infrastructure, req.location, req.issue,
+            req.approval_status,
+            res.status                                    AS resolution_status,
+            rp.priority_lvl,
+            TRIM(CONCAT(IFNULL(eng.first_name,''),' ',IFNULL(eng.last_name,''))) AS engineer_name,
+            DATE_FORMAT(req.created_at,'%d-%b-%Y %H:%i') AS created_fmt
+        FROM requests req
+        LEFT JOIN (
+            SELECT rr.* FROM request_resolutions rr
+            INNER JOIN (SELECT req_id, MAX(res_id) AS latest_res_id
+                        FROM request_resolutions GROUP BY req_id) latest
+              ON latest.req_id = rr.req_id AND latest.latest_res_id = rr.res_id
+        ) res ON res.req_id = req.req_id
+        LEFT JOIN reports rp    ON rp.res_id = res.res_id
+        LEFT JOIN employees eng ON eng.user_id = rp.engineer_id
+        WHERE DATE(req.created_at) BETWEEN ? AND ?
+        ORDER BY req.req_id DESC
+    ");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+// User Management is a full roster snapshot, not a time-windowed report
+// (matches the page's own pre-existing ?export=csv/pdf behavior) — $from/$to
+// are accepted for signature consistency with every other fetcher but unused.
+function fetchUserManagement($conn, $from, $to) {
+    $res = $conn->query("
+        SELECT first_name, last_name, email, role, email_verified, account_locked, last_login
+        FROM employees
+        ORDER BY FIELD(role, 'Super Admin', 'Admin', 'Office Staff', 'Engineer', 'Area Engineer'),
+                 first_name ASC, last_name ASC
+    ");
+    return $res->fetch_all(MYSQLI_ASSOC);
+}
+
 function fetchSummary($conn, $from, $to) {
     $n = function($sql) use ($conn, $from, $to) {
         $s = $conn->prepare($sql); $s->bind_param('ss', $from, $to);
@@ -472,6 +551,94 @@ function buildPDFHtml(string $reportTitle,string $reportType,string $dateFrom,st
             $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
             $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
         }
+
+    } elseif ($reportType === 'emp_feedback') {
+        $countNote = count($data) . ' record' . (count($data) !== 1 ? 's' : '');
+        $heads = ['Feedback ID','Submitted By','Type','Title','Infrastructure','Rating','Status','Date Submitted'];
+        $rows  = '';
+        foreach ($data as $i => $r) {
+            $sc = $statusCss($r['status']);
+            $rows .= '<tr class="'.($i%2?'even':'').'">'
+                . "<td class='mono'>{$r['feedback_id_fmt']}</td>"
+                . '<td>'.htmlspecialchars($r['full_name'] ?: 'Anonymous').'</td>'
+                . '<td class="small">'.htmlspecialchars($r['feedback_type']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['title']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['infrastructure'] ?: '—').'</td>'
+                . '<td style="text-align:center">'.number_format((float)$r['rating'], 1).' ★</td>'
+                . '<td>'.$badge($r['status'], $sc).'</td>'
+                . "<td class='nowrap small'>{$r['created_fmt']}</td></tr>";
+        }
+        if (!$rows) $rows = '<tr><td colspan="8" class="empty-row">No records found for this period.</td></tr>';
+        $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
+        $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
+
+    } elseif ($reportType === 'road_monitoring') {
+        $countNote = count($data) . ' record' . (count($data) !== 1 ? 's' : '');
+        $heads = ['Report ID','Title','Type','Location','Priority','Severity','Verification','Verified By','Date Submitted'];
+        $rows  = '';
+        foreach ($data as $i => $r) {
+            $pc = $priorityCss($r['priority']);
+            $vStatus = $r['verification_status'] ?: 'Pending';
+            $sc = $statusCss($vStatus === 'Verified' ? 'completed' : 'pending');
+            $rows .= '<tr class="'.($i%2?'even':'').'">'
+                . "<td class='mono'>{$r['rgmap_report_id']}</td>"
+                . '<td>'.htmlspecialchars($r['title']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['report_type']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['location']).'</td>'
+                . '<td style="text-align:center">'.$badge($r['priority'], $pc).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['severity']).'</td>'
+                . '<td>'.$badge($vStatus, $sc).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['verified_by'] ?: '—').'</td>'
+                . "<td class='nowrap small'>{$r['submitted_fmt']}</td></tr>";
+        }
+        if (!$rows) $rows = '<tr><td colspan="9" class="empty-row">No records found for this period.</td></tr>';
+        $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
+        $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
+
+    } elseif ($reportType === 'case_management') {
+        $countNote = count($data) . ' record' . (count($data) !== 1 ? 's' : '');
+        $heads = ['Request ID','Infrastructure','Location','Issue','Priority','Stage','Engineer','Date Created'];
+        $rows  = '';
+        foreach ($data as $i => $r) {
+            $stage = $r['resolution_status'] ?: $r['approval_status'];
+            $sc = $statusCss($stage);
+            $pc = $priorityCss($r['priority_lvl'] ?? '—');
+            $rows .= '<tr class="'.($i%2?'even':'').'">'
+                . "<td class='mono'>{$r['req_id_fmt']}</td>"
+                . '<td>'.htmlspecialchars($r['infrastructure']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['location']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['issue']).'</td>'
+                . '<td style="text-align:center">'.$badge($r['priority_lvl'] ?? '—', $pc).'</td>'
+                . '<td>'.$badge($stage, $sc).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['engineer_name'] ?: 'Unassigned').'</td>'
+                . "<td class='nowrap small'>{$r['created_fmt']}</td></tr>";
+        }
+        if (!$rows) $rows = '<tr><td colspan="8" class="empty-row">No records found for this period.</td></tr>';
+        $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
+        $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
+
+    } elseif ($reportType === 'user_management') {
+        $countNote = count($data) . ' account' . (count($data) !== 1 ? 's' : '');
+        $heads = ['Name','Email','Role','Status','Verified','Last Login'];
+        $rows  = '';
+        foreach ($data as $i => $r) {
+            $name = htmlspecialchars(trim($r['first_name'] . ' ' . $r['last_name']));
+            $locked = (bool)$r['account_locked'];
+            $statusHtml = $locked
+                ? "<span class='badge' style='background:#fee2e2;color:#7f1d1d;border:1px solid #dc262640'>Locked</span>"
+                : "<span class='badge' style='background:#dcfce7;color:#166534;border:1px solid #16a34a40'>Active</span>";
+            $lastLogin = $r['last_login'] ? date('M j, Y g:i A', strtotime($r['last_login'])) : 'Never';
+            $rows .= '<tr class="'.($i%2?'even':'').'">'
+                . "<td><strong>{$name}</strong></td>"
+                . '<td class="small">'.htmlspecialchars($r['email']).'</td>'
+                . '<td class="small">'.htmlspecialchars($r['role']).'</td>'
+                . '<td>'.$statusHtml.'</td>'
+                . '<td style="text-align:center">'.($r['email_verified'] ? 'Yes' : 'No').'</td>'
+                . "<td class='small nowrap'>{$lastLogin}</td></tr>";
+        }
+        if (!$rows) $rows = '<tr><td colspan="6" class="empty-row">No accounts found.</td></tr>';
+        $th = implode('',array_map(fn($h)=>"<th>{$h}</th>",$heads));
+        $bodyHtml = "<table><thead><tr>{$th}</tr></thead><tbody>{$rows}</tbody></table>";
 
     } else {
         $d = $data;
@@ -793,6 +960,90 @@ if ($format === 'csv') {
                 ['Cancelled',  $cancelled],
             ],
         ];
+
+    } elseif ($reportType === 'emp_feedback') {
+        $rows = fetchEmpFeedback($conn, $dateFrom, $dateTo);
+        $byStatus = [];
+        foreach ($rows as $r) { $byStatus[$r['status']] = ($byStatus[$r['status']] ?? 0) + 1; }
+        $sections[] = [
+            'title'   => 'Citizen Feedback',
+            'headers' => ['Feedback ID','Submitted By','Type','Title','Infrastructure','Rating','Status','Date Submitted'],
+            'rows'    => array_map(fn($r) => [
+                $r['feedback_id_fmt'], $r['full_name'] ?: 'Anonymous', $r['feedback_type'],
+                $r['title'],           $r['infrastructure'] ?: '—',    number_format((float)$r['rating'], 1),
+                $r['status'],          $d($r['created_fmt']),
+            ], $rows),
+            'summary' => array_merge(
+                [['Total Feedback', count($rows)]],
+                array_map(fn($s,$c) => [$s,$c], array_keys($byStatus), array_values($byStatus))
+            ),
+        ];
+
+    } elseif ($reportType === 'road_monitoring') {
+        $rows = fetchRoadMonitoring($conn, $dateFrom, $dateTo);
+        $verified = count(array_filter($rows, fn($r) => $r['verification_status'] === 'Verified'));
+        $sections[] = [
+            'title'   => 'Road Monitoring Reports (RGMAP)',
+            'headers' => ['Report ID','Title','Type','Location','Priority','Severity','Verification','Verified By','Date Submitted'],
+            'rows'    => array_map(fn($r) => [
+                $r['rgmap_report_id'], $r['title'],    $r['report_type'],
+                $r['location'],        $r['priority'], $r['severity'],
+                $r['verification_status'] ?: 'Pending', $r['verified_by'] ?: '—',
+                $d($r['submitted_fmt']),
+            ], $rows),
+            'summary' => [
+                ['Total Reports', count($rows)],
+                ['Verified',      $verified],
+                ['Awaiting Verification', count($rows) - $verified],
+            ],
+        ];
+
+    } elseif ($reportType === 'case_management') {
+        $rows = fetchCaseManagement($conn, $dateFrom, $dateTo);
+        $byStage = [];
+        foreach ($rows as $r) {
+            $stage = $r['resolution_status'] ?: $r['approval_status'];
+            $byStage[$stage] = ($byStage[$stage] ?? 0) + 1;
+        }
+        $sections[] = [
+            'title'   => 'Case Management — Unified Case Lifecycle',
+            'headers' => ['Request ID','Infrastructure','Location','Issue','Priority','Stage','Engineer','Date Created'],
+            'rows'    => array_map(fn($r) => [
+                $r['req_id_fmt'], $r['infrastructure'], $r['location'],
+                $r['issue'],      $r['priority_lvl'] ?: '—',
+                $r['resolution_status'] ?: $r['approval_status'],
+                $r['engineer_name'] ?: 'Unassigned', $d($r['created_fmt']),
+            ], $rows),
+            'summary' => array_merge(
+                [['Total Cases', count($rows)]],
+                array_map(fn($s,$c) => [$s,$c], array_keys($byStage), array_values($byStage))
+            ),
+        ];
+
+    } elseif ($reportType === 'user_management') {
+        $rows = fetchUserManagement($conn, $dateFrom, $dateTo);
+        $byRole = [];
+        $locked = 0;
+        foreach ($rows as $r) {
+            $byRole[$r['role']] = ($byRole[$r['role']] ?? 0) + 1;
+            if ($r['account_locked']) $locked++;
+        }
+        $sections[] = [
+            'title'   => 'User Accounts',
+            'headers' => ['Name','Email','Role','Status','Verified','Last Login'],
+            'rows'    => array_map(fn($r) => [
+                trim($r['first_name'] . ' ' . $r['last_name']),
+                $r['email'],
+                $r['role'],
+                $r['account_locked'] ? 'Locked' : 'Active',
+                $r['email_verified'] ? 'Yes' : 'No',
+                $r['last_login'] ? $d(date('M j, Y g:i A', strtotime($r['last_login']))) : 'Never',
+            ], $rows),
+            'summary' => array_merge(
+                [['Total Accounts', count($rows)], ['Locked', $locked], ['Active', count($rows) - $locked]],
+                array_map(fn($r,$c) => [$r,$c], array_keys($byRole), array_values($byRole))
+            ),
+        ];
     }
 
     // Note: the \t prefix $d() added to date-like values above is deliberately
@@ -849,6 +1100,10 @@ if ($format === 'csv') {
         'current_reports' => fetchCurrentReports($conn, $dateFrom, $dateTo),
         'pending_reports' => fetchPendingReports($conn, $dateFrom, $dateTo),
         'archive_reports' => fetchArchiveReports($conn, $dateFrom, $dateTo),
+        'emp_feedback'    => fetchEmpFeedback($conn, $dateFrom, $dateTo),
+        'road_monitoring' => fetchRoadMonitoring($conn, $dateFrom, $dateTo),
+        'case_management' => fetchCaseManagement($conn, $dateFrom, $dateTo),
+        'user_management' => fetchUserManagement($conn, $dateFrom, $dateTo),
         default           => fetchRequests($conn, $dateFrom, $dateTo),
     };
 

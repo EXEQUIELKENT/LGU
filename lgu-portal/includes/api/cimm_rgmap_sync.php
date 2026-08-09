@@ -252,11 +252,35 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
     $reqIdInt = (int)$row['req_id'];
     $repId = isset($row['rep_id']) ? (int)$row['rep_id'] : 0;
 
+    // If this request originated from a Road Monitoring report (see
+    // rgmap_road_reports_convert_to_cimm_report() in the CIMM repo), include
+    // the original RGMAO row's own primary key so the receiving webhook can
+    // also update that specific road_transportation_reports row — not just
+    // the separate cimm_verification_reports mirror — keeping the report
+    // LGU staff already have open in Road Monitoring current too.
+    // require_once (not a hard dependency at file scope) since most callers
+    // of this file have nothing to do with Road Monitoring and the table may
+    // not exist yet on an install that's never loaded road_monitoring.php.
+    require_once __DIR__ . '/rgmap_road_reports.php';
+    rgmap_road_reports_ensure_schema($conn);
+    $rgmapReportPk = null;
+    $rmStmt = $conn->prepare('SELECT rgmap_report_pk FROM rgmap_road_reports WHERE cimm_req_id = ? LIMIT 1');
+    if ($rmStmt) {
+        $rmStmt->bind_param('i', $reqIdInt);
+        $rmStmt->execute();
+        $rmRow = $rmStmt->get_result()->fetch_assoc();
+        $rmStmt->close();
+        if ($rmRow && !empty($rmRow['rgmap_report_pk'])) {
+            $rgmapReportPk = (int)$rmRow['rgmap_report_pk'];
+        }
+    }
+
     return [
         'source_system' => 'cimm',
         'event' => 'upsert',
         'cimm_req_id' => $reqIdInt,
         'cimm_rep_id' => $repId > 0 ? $repId : null,
+        'rgmap_report_pk' => $rgmapReportPk,
         'reference' => 'REQ-' . str_pad((string)$reqIdInt, 3, '0', STR_PAD_LEFT),
         'report_reference' => $repId > 0 ? 'REP-' . str_pad((string)$repId, 3, '0', STR_PAD_LEFT) : null,
         'infrastructure' => (string)$row['infrastructure'],

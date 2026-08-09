@@ -77,6 +77,13 @@ $upd->bind_param('ii', $engineerId, $repId);
 if (!$upd->execute()) { $e = $upd->error; $upd->close(); jsonOut(false, "DB error: $e"); }
 $upd->close();
 
+// Keep RGMAO's copy of this report current if it's a "Roads" request —
+// cimm_rgmap_sync_request() itself no-ops for any other infrastructure type,
+// same gate current_reports.php/pending_reports.php's own status-change
+// hooks already rely on.
+require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
+cimm_rgmap_sync_by_rep_id($conn, $repId, 'updated');
+
 // ── Notifications ─────────────────────────────────────────────────────────
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
 

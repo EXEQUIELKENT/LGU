@@ -50,6 +50,12 @@ $isAdmin     = cimm_is_admin();
 $canValidate = cimm_is_engineer() || cimm_is_admin();
 $isOfficeStaff = cimm_is_office_staff();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'requests';
+$exportReportLabel   = 'Requests';
+$exportReportIcon    = '📋';
+
 // ── AJAX/POST handler ───────────────────────────────────────────────────
 // Currently only used to record "who viewed this request" for the History
 // Logs panel — mirrors the log_view action on current_reports.php.
@@ -2828,10 +2834,13 @@ tbody td {
                 </div>
                 <p>Live geographic overview of all infrastructure repair requests</p>
             </div>
-            <button class="view-toggle-btn" onclick="switchView('requests')" title="View Requests">
-                <i class="fas fa-clipboard-list"></i>
-                <span class="btn-text">View Requests</span>
-            </button>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
+                <button class="view-toggle-btn" onclick="switchView('requests')" title="View Requests">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span class="btn-text">View Requests</span>
+                </button>
+            </div>
         </div>
 
         <!-- Toolbar + Map — unified card -->
@@ -3030,11 +3039,18 @@ tbody td {
                 <span class="ipms-sync-label"><span class="ipms-sync-label-full">CIMM ⇄ </span>IPMS Synced</span>
             </span>
         </div>
-        <!-- Desktop: button sits beside the title -->
-        <button class="view-toggle-btn req-gis-btn-desktop" onclick="switchView('gis')" title="View GIS Map">
-            <i class="fas fa-map-marked-alt"></i>
-            <span class="btn-text">View GIS Map</span>
-        </button>
+        <!-- Desktop: buttons sit beside the title -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <?php if ($canGenerateReports): ?>
+            <button type="button" class="export-report-btn" onclick="openReportModal()" title="Export Requests report">
+                <i class="fas fa-download"></i><span class="export-btn-label">Export</span>
+            </button>
+            <?php endif; ?>
+            <button class="view-toggle-btn req-gis-btn-desktop" onclick="switchView('gis')" title="View GIS Map">
+                <i class="fas fa-map-marked-alt"></i>
+                <span class="btn-text">View GIS Map</span>
+            </button>
+        </div>
     </div>
 
     <div class="search-toolbar">
@@ -6026,5 +6042,6 @@ function initRequestSort() {
     };
 })();
 </script>
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

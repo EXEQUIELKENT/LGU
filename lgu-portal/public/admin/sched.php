@@ -157,6 +157,12 @@ if ($isAreaEngineer) {
 
 $isOfficeStaff = cimm_is_office_staff();
 
+// Export CSV/PDF — Office Staff & Admin only (see report_export_widget.php)
+$canGenerateReports = $isAdmin || $isOfficeStaff;
+$exportReportType    = 'schedules';
+$exportReportLabel   = 'Schedules';
+$exportReportIcon    = '📅';
+
 // Energy + CPRF integration schedules (the maintenance_schedule table, imported
 // from the Energy "Facilities Needing Maintenance" catalog and matched against
 // the CPRF facility catalog — the rows that carry the ⚡ Energy / 🔗 CPRF badges)
@@ -614,10 +620,17 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <?php endif; ?>
                 </div>
             </div>
-            <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : 'title="Add a new maintenance schedule"' ?>>
-                <span class="sched-add-btn-icon"><i class="fas fa-plus"></i></span>
-                <span class="sched-add-btn-label">Add Schedule</span>
-            </button>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
+                <button type="button" id="btnAddSchedule" class="sched-add-btn" <?= empty($cprfFacilitiesForJs) ? 'disabled title="CPRF catalog unavailable"' : 'title="Add a new maintenance schedule"' ?>>
+                    <span class="sched-add-btn-icon"><i class="fas fa-plus"></i></span>
+                    <span class="sched-add-btn-label">Add Schedule</span>
+                </button>
+            </div>
+        </div>
+        <?php elseif ($canGenerateReports): ?>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+            <?php include __DIR__ . '/../../includes/partials/report_export_widget.php'; ?>
         </div>
         <?php endif; ?>
 
@@ -1480,6 +1493,7 @@ window.CURRENT_EMP_ID    = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
     <div class="sched-lb-counter" id="schedLbCounter"></div>
 </div>
 
+<?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 
 
