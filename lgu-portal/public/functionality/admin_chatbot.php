@@ -12,12 +12,19 @@
  *   • The system prompt is built per-role from $ROLE_INFO so answers stay
  *     scoped to what the logged-in employee can actually see/do
  *   • Answers live-data questions ("what's the latest report", "requests
- *     from district 1") via a small set of whitelisted, read-only,
- *     role-scoped SQL lookups (see tryAnswerDataQuestion()) — answered
- *     deterministically from the query result, never handed to Claude to
- *     phrase freely, since this app has no tool-calling loop and letting an
- *     LLM free-associate specific report numbers/names risks hallucinating
- *     data that was never actually in the database.
+ *     from district 1", "which district has the most delayed reports",
+ *     "which engineer should I assign this to", "what needs my attention
+ *     today") via a whitelisted, read-only, role-scoped SQL layer (see
+ *     tryAnswerDataQuestion()) — answered deterministically from the query
+ *     result, never handed to Claude to phrase freely, since this app has
+ *     no tool-calling loop and letting an LLM free-associate specific
+ *     report numbers/names/counts risks hallucinating data that was never
+ *     actually in the database. This layer also powers simple decision
+ *     support (workload-aware engineer recommendations, a daily digest of
+ *     delayed/unassigned/pending-approval items, at-risk-of-delay reports,
+ *     and "why is this request stuck") by composing the same read-only
+ *     queries rather than asking Claude to reason about live data it
+ *     doesn't actually have.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -370,7 +377,9 @@ function getGreetingResponse(string $context, array $pageContextInfo, string $fi
            "• 🛣️ Road Monitoring verification & CIMM sync\n" .
            "• 📅 CPRF/Energy schedule integrations\n" .
            "• 📤 Exporting reports\n" .
-           "• 👥 User Management (if your role has access)\n\n" .
+           "• 👥 User Management (if your role has access)\n" .
+           "• 📊 Live counts, trends, and workload comparisons\n" .
+           "• 🎯 Decisions — \"who should I assign this to\", \"what needs my attention today\"\n\n" .
            "What would you like help with?";
 }
 
@@ -387,7 +396,9 @@ function getFallbackResponse(string $context, array $pageContextInfo, string $re
            "• Road Monitoring verification\n" .
            "• CPRF/Energy schedule integrations\n" .
            "• Exporting reports\n" .
-           "• User Management" .
+           "• User Management\n" .
+           "• Live counts, trends, and workload comparisons\n" .
+           "• Decisions like \"who should I assign this to\"" .
            $topicHint .
            "\n\nTry rephrasing your question, or ask about one of the topics above.";
 }
@@ -440,6 +451,7 @@ function callClaudeText(
 5. Exporting reports (CSV/PDF)
 6. User Management (roles, invites, deactivation) — Admin/Super Admin only
 7. General navigation of the admin portal
+8. Live counts, trends, and workload comparisons pulled from the database (handled deterministically before this prompt runs — see the data-question layer), and decision support like \"who should I assign this to\" or \"what needs my attention today\"
 
 ## Rules
 1. If asked something outside scope (e.g. weather, unrelated topics, or a request to look up specific live data you don't have access to), politely redirect: 'I can help with CIMM workflow and decisions — let me know if you have a question about that!'
@@ -522,6 +534,35 @@ function dataq_requestLabel(array $r): string {
 }
 
 /**
+ * Parses a relative date-range phrase out of a lowercased message and
+ * returns a ready-to-append SQL condition on $column, plus a human label
+ * for the response text. Returns ['sql' => '', 'label' => ''] when no
+ * recognized date phrase is present (i.e. don't filter by date at all).
+ */
+function dataq_dateRangeFilter(string $lower, string $column): array {
+    if (preg_match('/\btoday\b/i', $lower)) {
+        return ['sql' => " AND DATE({$column}) = CURDATE()", 'label' => 'today'];
+    }
+    if (preg_match('/\bthis week\b/i', $lower)) {
+        return ['sql' => " AND YEARWEEK({$column}, 1) = YEARWEEK(CURDATE(), 1)", 'label' => 'this week'];
+    }
+    if (preg_match('/\blast month\b/i', $lower)) {
+        return ['sql' => " AND YEAR({$column}) = YEAR(CURDATE() - INTERVAL 1 MONTH) AND MONTH({$column}) = MONTH(CURDATE() - INTERVAL 1 MONTH)", 'label' => 'last month'];
+    }
+    if (preg_match('/\bthis month\b/i', $lower)) {
+        return ['sql' => " AND YEAR({$column}) = YEAR(CURDATE()) AND MONTH({$column}) = MONTH(CURDATE())", 'label' => 'this month'];
+    }
+    if (preg_match('/\blast (\d{1,3}) days?\b/i', $lower, $m)) {
+        $n = (int)$m[1];
+        return ['sql' => " AND {$column} >= DATE_SUB(CURDATE(), INTERVAL {$n} DAY)", 'label' => "the last {$n} days"];
+    }
+    if (preg_match('/\bpast week\b/i', $lower)) {
+        return ['sql' => " AND {$column} >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)", 'label' => 'the past week'];
+    }
+    return ['sql' => '', 'label' => ''];
+}
+
+/**
  * @return string|null  A ready-to-send answer, or null if this message
  *                       doesn't match any recognized data question.
  */
@@ -543,6 +584,47 @@ function tryAnswerDataQuestion(mysqli $conn, string $message, string $role, int 
         $safeDistrict = $conn->real_escape_string($employeeDistrict);
         $reqDistrictFilter = " AND req.district = '{$safeDistrict}'";
         $repDistrictFilter = " AND COALESCE(req.district,'') = '{$safeDistrict}'";
+    }
+
+    // ── 1a. "What's blocking REQ-xxx?" — explain the current bottleneck.
+    //    Checked BEFORE the generic REQ lookup below so a blocking-intent
+    //    question about a specific request gets the bottleneck explanation
+    //    rather than just the plain status card. ─────────────────────────────
+    if ((str_contains($lower, 'blocking') || str_contains($lower, 'stuck') || str_contains($lower, 'why is'))
+        && (preg_match('/\bREQ-?\s*0*(\d+)\b/i', $message, $m) || preg_match('/\brequest\s*#?\s*(\d+)\b/i', $lower, $m))) {
+        $reqId = (int)$m[1];
+        $stmt = $conn->prepare("SELECT req_id, infrastructure, location, approval_status, district FROM requests WHERE req_id = ?" . ($isAreaEngineer ? " AND district = '{$conn->real_escape_string($employeeDistrict)}'" : '') . " LIMIT 1");
+        $stmt->bind_param('i', $reqId);
+        $stmt->execute();
+        $req = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$req) return "I couldn't find Request #REQ-" . str_pad((string)$reqId, 3, '0', STR_PAD_LEFT) . " — either it doesn't exist, or it's outside what your role can see.";
+        if ($req['approval_status'] === 'Pending') return "**" . dataq_requestLabel($req) . "** is still **awaiting approval** on Requests — that's the current blocker.";
+        if ($req['approval_status'] === 'Rejected') return "**" . dataq_requestLabel($req) . "** was **rejected** — it won't move forward unless resubmitted.";
+
+        $stmt = $conn->prepare("
+            SELECT rp.rep_id, res.status AS resolution_status, rp.engineer_id, rp.estimated_end_date,
+                   CONCAT(e.first_name,' ',e.last_name) AS engineer_name
+            FROM request_resolutions res
+            LEFT JOIN reports rp ON rp.res_id = res.res_id
+            LEFT JOIN employees e ON e.user_id = rp.engineer_id
+            WHERE res.req_id = ?
+            ORDER BY res.res_id DESC LIMIT 1
+        ");
+        $stmt->bind_param('i', $reqId);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$res) return "**" . dataq_requestLabel($req) . "** was approved but doesn't have a report yet — that's the current blocker.";
+
+        $status = $res['resolution_status'];
+        $isDelayed = !empty($res['estimated_end_date']) && strtotime($res['estimated_end_date']) < strtotime('today') && !in_array($status, ['Completed', 'Cancelled', 'Pending Completion'], true);
+        if ($isDelayed) return "**" . dataq_requestLabel($req) . "** is **Delayed** — it passed its estimated end date ({$res['estimated_end_date']}) without completing.";
+        if (empty($res['engineer_id'])) return "**" . dataq_requestLabel($req) . "** is approved but has **no engineer assigned yet** — that's the current blocker.";
+        if ($status === 'Pending Admin Approval') return "**" . dataq_requestLabel($req) . "** is done by the engineer and **awaiting admin approval** to be marked complete — that's the current blocker.";
+        if (in_array($status, ['Completed', 'Cancelled'], true)) return "**" . dataq_requestLabel($req) . "** is already **{$status}** — nothing is blocking it.";
+        $eng = trim($res['engineer_name'] ?? '');
+        return "**" . dataq_requestLabel($req) . "** is **{$status}**, assigned to **" . ($eng !== '' ? $eng : 'an engineer') . "** — actively moving, no blocker right now.";
     }
 
     // ── 1. Specific #REQ-xxx / #REP-xxx / "report 12" / "request 12" lookup ──
@@ -687,16 +769,17 @@ function tryAnswerDataQuestion(mysqli $conn, string $message, string $role, int 
             foreach (['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $kw => $val) {
                 if (str_contains($lower, $kw)) { $status = $val; break; }
             }
+            $dateRange = dataq_dateRangeFilter($lower, 'created_at');
             if ($status) {
-                $stmt = $conn->prepare("SELECT COUNT(*) c FROM requests WHERE approval_status = ?" . $reqDistrictFilter);
+                $stmt = $conn->prepare("SELECT COUNT(*) c FROM requests WHERE approval_status = ?" . $reqDistrictFilter . $dateRange['sql']);
                 $stmt->bind_param('s', $status);
             } else {
-                $stmt = $conn->prepare("SELECT COUNT(*) c FROM requests WHERE 1=1" . $reqDistrictFilter);
+                $stmt = $conn->prepare("SELECT COUNT(*) c FROM requests WHERE 1=1" . $reqDistrictFilter . $dateRange['sql']);
             }
             $stmt->execute();
             $c = (int)$stmt->get_result()->fetch_assoc()['c'];
             $stmt->close();
-            return "There " . ($c === 1 ? 'is' : 'are') . " **{$c}** " . ($status ? strtolower($status) . ' ' : '') . "request" . ($c === 1 ? '' : 's') . ($isAreaEngineer ? " in {$employeeDistrict}" : '') . ".";
+            return "There " . ($c === 1 ? 'is' : 'are') . " **{$c}** " . ($status ? strtolower($status) . ' ' : '') . "request" . ($c === 1 ? '' : 's') . ($isAreaEngineer ? " in {$employeeDistrict}" : '') . ($dateRange['label'] ? " from {$dateRange['label']}" : '') . ".";
         }
         if (preg_match('/\breport/i', $lower)) {
             $statusFilter = '';
@@ -704,17 +787,198 @@ function tryAnswerDataQuestion(mysqli $conn, string $message, string $role, int 
             if (str_contains($lower, 'current') || str_contains($lower, 'progress')) { $statusFilter = " AND res.status IN ('Approved','Pending Admin Approval')"; $label = 'current '; }
             elseif (str_contains($lower, 'pending')) { $statusFilter = " AND res.status IN ('Scheduled','In Progress','Pending','','Pending Completion')"; $label = 'pending '; }
             elseif (str_contains($lower, 'archiv') || str_contains($lower, 'complet')) { $statusFilter = " AND res.status IN ('Completed','Cancelled')"; $label = 'archived '; }
+            $dateRange = dataq_dateRangeFilter($lower, 'rp.created_at');
             $stmt = $conn->prepare("
                 SELECT COUNT(*) c FROM reports rp
                 LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
                 LEFT JOIN requests req ON req.req_id = res.req_id
-                WHERE 1=1{$statusFilter}{$engFilter}{$repDistrictFilter}
+                WHERE 1=1{$statusFilter}{$engFilter}{$repDistrictFilter}{$dateRange['sql']}
             ");
             $stmt->execute();
             $c = (int)$stmt->get_result()->fetch_assoc()['c'];
             $stmt->close();
-            return "There " . ($c === 1 ? 'is' : 'are') . " **{$c}** {$label}report" . ($c === 1 ? '' : 's') . ($isEngineer ? ' assigned to you' : '') . ($isAreaEngineer ? " in {$employeeDistrict}" : '') . ".";
+            return "There " . ($c === 1 ? 'is' : 'are') . " **{$c}** {$label}report" . ($c === 1 ? '' : 's') . ($isEngineer ? ' assigned to you' : '') . ($isAreaEngineer ? " in {$employeeDistrict}" : '') . ($dateRange['label'] ? " from {$dateRange['label']}" : '') . ".";
         }
+    }
+
+    // ── 6. Most common infrastructure type ──────────────────────────────────
+    if ((str_contains($lower, 'most common') || str_contains($lower, 'top infrastructure') || str_contains($lower, 'top issue'))
+        && (str_contains($lower, 'infrastructure') || str_contains($lower, 'issue') || str_contains($lower, 'type'))) {
+        $stmt = $conn->prepare("SELECT infrastructure, COUNT(*) c FROM requests WHERE 1=1{$reqDistrictFilter} GROUP BY infrastructure ORDER BY c DESC LIMIT 5");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (empty($rows)) return "There's no request data yet to find a most-common infrastructure type.";
+        $lines = array_map(fn($r) => "• {$r['infrastructure']} — {$r['c']} request" . ($r['c'] == 1 ? '' : 's'), $rows);
+        return "**Most common infrastructure types**" . ($isAreaEngineer ? " in {$employeeDistrict}" : '') . ":\n" . implode("\n", $lines);
+    }
+
+    // ── 7. District with the most delayed reports (Admin/Super Admin/Office
+    //    Staff see all districts; Area Engineers/Engineers naturally get
+    //    results scoped to what they can already see via the existing
+    //    $engFilter/$repDistrictFilter). ─────────────────────────────────────
+    if (str_contains($lower, 'district') && (str_contains($lower, 'delayed') || str_contains($lower, 'most delay'))) {
+        $stmt = $conn->prepare("
+            SELECT req.district AS district, COUNT(*) c
+            FROM reports rp
+            LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
+            LEFT JOIN requests req ON req.req_id = res.req_id
+            WHERE rp.estimated_end_date IS NOT NULL
+              AND rp.estimated_end_date < CURDATE()
+              AND res.status NOT IN ('Completed','Cancelled','Pending Completion')
+              {$engFilter}{$repDistrictFilter}
+            GROUP BY req.district
+            ORDER BY c DESC
+            LIMIT 5
+        ");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (empty($rows)) return "No districts currently have delayed reports — nice! 🎉";
+        $lines = array_map(fn($r) => '• ' . ($r['district'] ?: 'Unspecified') . " — {$r['c']} delayed", $rows);
+        return "**Delayed reports by district:**\n" . implode("\n", $lines);
+    }
+
+    // ── 8. Engineer workload comparison (busiest / lightest load) — decision
+    //    support for who to assign next. Admin/Super Admin/Office Staff only
+    //    (Engineers/Area Engineers only ever see their own single workload). ──
+    if (str_contains($lower, 'engineer')
+        && (str_contains($lower, 'most reports') || str_contains($lower, 'busiest') || str_contains($lower, 'workload')
+            || str_contains($lower, 'lightest') || str_contains($lower, 'least load') || str_contains($lower, 'capacity'))) {
+        if (!in_array($role, ['admin', 'super admin', 'office staff'], true)) {
+            return "Comparing engineer workloads is available to Admin, Super Admin, and Office Staff roles.";
+        }
+        $ascending = str_contains($lower, 'lightest') || str_contains($lower, 'least load') || str_contains($lower, 'capacity');
+        $stmt = $conn->prepare("
+            SELECT e.user_id, CONCAT(e.first_name,' ',e.last_name) AS name,
+                (SELECT COUNT(*) FROM reports rp2
+                   LEFT JOIN request_resolutions res2 ON res2.res_id = rp2.res_id
+                   WHERE rp2.engineer_id = e.user_id AND res2.status NOT IN ('Completed','Cancelled')
+                ) AS active_count
+            FROM employees e
+            WHERE e.role IN ('Engineer','Area Engineer')
+            ORDER BY active_count " . ($ascending ? 'ASC' : 'DESC') . "
+            LIMIT 5
+        ");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (empty($rows)) return "There are no Engineer or Area Engineer accounts yet.";
+        $lines = array_map(fn($r) => "• {$r['name']} — {$r['active_count']} active report" . ($r['active_count'] == 1 ? '' : 's'), $rows);
+        $heading = $ascending ? '**Engineers with the most capacity right now:**' : '**Busiest engineers right now:**';
+        return "{$heading}\n" . implode("\n", $lines);
+    }
+
+    // ── 9. Citizen Feedback aggregates ──────────────────────────────────────
+    if (str_contains($lower, 'feedback') && (str_contains($lower, 'average') || str_contains($lower, 'rating') || str_contains($lower, 'breakdown') || str_contains($lower, 'star'))) {
+        $dateRange = dataq_dateRangeFilter($lower, 'created_at');
+        if (str_contains($lower, 'breakdown') || str_contains($lower, 'type')) {
+            $stmt = $conn->prepare("SELECT feedback_type, COUNT(*) c FROM citizen_feedback WHERE 1=1{$dateRange['sql']} GROUP BY feedback_type ORDER BY c DESC");
+            $stmt->execute();
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            if (empty($rows)) return "No feedback submitted yet" . ($dateRange['label'] ? " for {$dateRange['label']}" : '') . ".";
+            $lines = array_map(fn($r) => "• {$r['feedback_type']} — {$r['c']}", $rows);
+            return "**Feedback breakdown by type" . ($dateRange['label'] ? " ({$dateRange['label']})" : '') . ":**\n" . implode("\n", $lines);
+        }
+        $stmt = $conn->prepare("SELECT AVG(rating) avg_rating, COUNT(*) c FROM citizen_feedback WHERE 1=1{$dateRange['sql']}");
+        $stmt->execute();
+        $r = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ((int)$r['c'] === 0) return "No feedback submitted yet" . ($dateRange['label'] ? " for {$dateRange['label']}" : '') . ".";
+        return "Average feedback rating" . ($dateRange['label'] ? " for {$dateRange['label']}" : '') . " is **" . number_format((float)$r['avg_rating'], 1) . "/5** across **{$r['c']}** submission" . ((int)$r['c'] === 1 ? '' : 's') . ".";
+    }
+
+    // ── 10. Decision support: who should I assign this to? ─────────────────
+    if ((str_contains($lower, 'who should i assign') || str_contains($lower, 'which engineer should i assign')
+        || str_contains($lower, 'best engineer') || str_contains($lower, 'recommend an engineer') || str_contains($lower, 'who has capacity'))) {
+        if (!in_array($role, ['admin', 'super admin', 'office staff'], true)) {
+            return "Assignment recommendations are available to Admin, Super Admin, and Office Staff roles.";
+        }
+        $districtFilter = '';
+        if (preg_match('/district\s*(\d+)/i', $lower, $m)) {
+            $wantDistrict = 'District ' . $m[1];
+            $safe = $conn->real_escape_string($wantDistrict);
+            $districtFilter = " AND (ep.district = '{$safe}' OR e.role = 'Engineer')";
+        }
+        $stmt = $conn->prepare("
+            SELECT e.user_id, CONCAT(e.first_name,' ',e.last_name) AS name, e.role,
+                (SELECT COUNT(*) FROM reports rp2
+                   LEFT JOIN request_resolutions res2 ON res2.res_id = rp2.res_id
+                   WHERE rp2.engineer_id = e.user_id AND res2.status NOT IN ('Completed','Cancelled')
+                ) AS active_count
+            FROM employees e
+            LEFT JOIN engineer_profiles ep ON ep.user_id = e.user_id
+            WHERE e.role IN ('Engineer','Area Engineer'){$districtFilter}
+            ORDER BY active_count ASC
+            LIMIT 3
+        ");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (empty($rows)) return "I couldn't find any engineers to recommend" . ($districtFilter ? ' for that district' : '') . " — check User Management.";
+        $top = $rows[0];
+        $others = array_slice($rows, 1);
+        $answer = "**{$top['name']}** ({$top['role']}) currently has the lightest load — **{$top['active_count']}** active report" . ($top['active_count'] == 1 ? '' : 's') . ". Recommend assigning to them.";
+        if (!empty($others)) {
+            $lines = array_map(fn($r) => "• {$r['name']} — {$r['active_count']} active", $others);
+            $answer .= "\n\nOther options:\n" . implode("\n", $lines);
+        }
+        return $answer;
+    }
+
+    // ── 11. Daily digest / "what needs my attention" ────────────────────────
+    if (str_contains($lower, 'need my attention') || str_contains($lower, 'needs attention') || str_contains($lower, 'daily digest')
+        || str_contains($lower, 'anything urgent') || str_contains($lower, 'focus on today') || str_contains($lower, 'what should i focus')) {
+        $delayed = $conn->query("
+            SELECT COUNT(*) c FROM reports rp
+            LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
+            LEFT JOIN requests req ON req.req_id = res.req_id
+            WHERE rp.estimated_end_date IS NOT NULL AND rp.estimated_end_date < CURDATE()
+              AND res.status NOT IN ('Completed','Cancelled','Pending Completion'){$engFilter}{$repDistrictFilter}
+        ")->fetch_assoc()['c'];
+        $pendingApproval = $conn->query("
+            SELECT COUNT(*) c FROM reports rp
+            LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
+            LEFT JOIN requests req ON req.req_id = res.req_id
+            WHERE res.status = 'Pending Admin Approval'{$engFilter}{$repDistrictFilter}
+        ")->fetch_assoc()['c'];
+        $lines = [];
+        if ((int)$delayed > 0)          $lines[] = "🔴 **{$delayed}** delayed report" . ((int)$delayed == 1 ? '' : 's') . " past their estimated end date";
+        if ((int)$pendingApproval > 0)  $lines[] = "🟣 **{$pendingApproval}** report" . ((int)$pendingApproval == 1 ? '' : 's') . " awaiting your admin approval to schedule";
+        if (in_array($role, ['admin', 'super admin', 'office staff'], true)) {
+            $unassigned = $conn->query("
+                SELECT COUNT(*) c FROM reports rp
+                LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
+                WHERE rp.engineer_id IS NULL AND rp.priority_lvl = 'High' AND res.status NOT IN ('Completed','Cancelled')
+            ")->fetch_assoc()['c'];
+            if ((int)$unassigned > 0) $lines[] = "🟠 **{$unassigned}** high-priority report" . ((int)$unassigned == 1 ? '' : 's') . " with no engineer assigned yet";
+            $underReview = $conn->query("SELECT COUNT(*) c FROM citizen_feedback WHERE status = 'Under Review'")->fetch_assoc()['c'];
+            if ((int)$underReview > 0) $lines[] = "💬 **{$underReview}** citizen feedback item" . ((int)$underReview == 1 ? '' : 's') . " awaiting review";
+        }
+        if (empty($lines)) return "You're all caught up — nothing urgent needs your attention right now. ✅";
+        return "**Here's what needs your attention:**\n" . implode("\n", $lines);
+    }
+
+    // ── 12. Reports at risk of becoming delayed (due within 3 days) ─────────
+    if (str_contains($lower, 'at risk') || str_contains($lower, 'about to be late') || str_contains($lower, 'approaching due')
+        || str_contains($lower, 'close to due') || str_contains($lower, 'soon due') || str_contains($lower, 'about to be delayed')) {
+        $stmt = $conn->prepare("
+            SELECT rp.rep_id, req.infrastructure, req.location, rp.estimated_end_date
+            FROM reports rp
+            LEFT JOIN request_resolutions res ON res.res_id = rp.res_id
+            LEFT JOIN requests req ON req.req_id = res.req_id
+            WHERE rp.estimated_end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+              AND res.status NOT IN ('Completed','Cancelled','Pending Completion'){$engFilter}{$repDistrictFilter}
+            ORDER BY rp.estimated_end_date ASC
+            LIMIT 8
+        ");
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if (empty($rows)) return "No reports are close to their due date right now.";
+        $lines = array_map(fn($r) => '• ' . dataq_reportLabel($r) . " — due " . date('M j', strtotime($r['estimated_end_date'])), $rows);
+        return "**Reports due within 3 days:**\n" . implode("\n", $lines);
     }
 
     return null;

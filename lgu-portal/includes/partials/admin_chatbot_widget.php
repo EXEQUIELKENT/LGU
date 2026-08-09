@@ -427,18 +427,18 @@
     }
 
     var CHIP_SETS = {
-        dashboard:        ['How do I assign an engineer?', 'What do the report statuses mean?', 'How do I export reports?'],
+        dashboard:        ['What needs my attention today?', 'Which engineer should I assign this to?', 'How do I export reports?'],
         requests:         ['How does AI image analysis work?', 'What happens after a request is approved?'],
-        current_reports:  ['How do I assign an engineer?', 'How do I edit budget and dates?'],
-        pending_reports:  ['What does "pending" mean?', 'When does this move to Current Reports?'],
+        current_reports:  ['Which engineer has capacity right now?', 'How do I edit budget and dates?'],
+        pending_reports:  ['Are any reports at risk of becoming delayed?', 'When does this move to Current Reports?'],
         archive_reports:  ['How do I export archived reports?'],
         schedules:        ['What does the CPRF badge mean?', 'What does the Energy badge mean?'],
         case_management:  ['What is Case Management?', 'How do I find where a case currently sits?'],
         road_monitoring:  ['How do I verify a report?', 'What happens after I verify a report?'],
-        feedback:         ['What feedback types are there?', 'How do I export feedback?'],
+        feedback:         ['What\u2019s our average feedback rating this month?', 'How do I export feedback?'],
         user_management:  ['How do I create an account?', 'How do I deactivate an account?'],
         profile:          ['How do I export reports?', 'What do the report statuses mean?'],
-        general:          ['How do I assign an engineer?', 'What is Case Management?', 'How do I export reports?'],
+        general:          ['What needs my attention today?', 'What is Case Management?', 'How do I export reports?'],
     };
 
     function renderContextChips() {

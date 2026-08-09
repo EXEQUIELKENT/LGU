@@ -359,6 +359,27 @@ function dashCaseStage(array $row): string {
     return $appSt === 'Rejected' ? 'Rejected' : 'Pending Review';
 }
 
+// Same color per status that's already used across the app — request
+// filters on requests.php (Pending/Approved/Rejected), the status pills on
+// current_reports.php / pending_reports.php (Approved="Validated" green,
+// Pending Admin Approval purple, In Progress amber, Scheduled blue), and
+// the Archive Reports preview on this dashboard (Completed/Cancelled).
+function dashCaseStageColor(string $stage): string {
+    $colors = [
+        'Pending Review'         => '#ff9800', // orange — requests.php "Pending" filter
+        'Rejected'                => '#f44336', // red    — requests.php "Rejected" filter
+        'Approved'                => '#4caf50', // green  — current_reports.php "Validated" pill
+        'Pending Admin Approval'  => '#8b5cf6', // purple — current/pending_reports.php pill
+        'Pending Completion'      => '#7c3aed', // purple — pending_reports.php "Pending Approval"
+        'Scheduled'               => '#1565c0', // blue   — pending_reports.php "Scheduled"
+        'Pending'                 => '#1565c0', // blue   — treated as Scheduled
+        'In Progress'             => '#f57f17', // amber  — pending_reports.php "In Progress"
+        'Completed'               => '#4caf50', // green  — Archive Reports preview
+        'Cancelled'                => '#f44336', // red    — Archive Reports preview
+    ];
+    return $colors[$stage] ?? '#607d8b';
+}
+
 // Same resolution case_management.php's own "Action" links use — which
 // lifecycle page currently owns a case, so the dashboard card's rows can
 // deep-link straight there instead of to case_management.php itself (a
@@ -375,8 +396,8 @@ function dashCaseTargetUrl(array $row): string {
         $targetPage = 'pending_reports.php';
     }
     return !empty($row['rep_id'])
-        ? "{$targetPage}?highlight_rep=" . (int)$row['rep_id'] . '&open_modal=1'
-        : "{$targetPage}?highlight_req=" . (int)$row['req_id'] . '&open_modal=1';
+        ? "{$targetPage}?highlight_rep=" . (int)$row['rep_id']
+        : "{$targetPage}?highlight_req=" . (int)$row['req_id'];
 }
 
 // Recent Road Monitoring preview — top 5 most recent RGMAP reports
@@ -866,7 +887,7 @@ body {
 .dashboard-container {
     width: 100%;
     box-sizing: border-box;
-    padding: 0 20px 40px;
+    padding: 0 20px 8px;
 }
 
 /* Card wrapper for all dashboard content */
@@ -3867,6 +3888,7 @@ HTML;
                         $ccIdx = 0;
                         foreach ($recentCaseRows as $c):
                             $stage = dashCaseStage($c);
+                            $stageColor = dashCaseStageColor($stage);
                             $initial = strtoupper(substr($c['infrastructure'] ?? 'C', 0, 1));
                             $ccEngName = trim($c['engineer_name'] ?? '');
                             $ccHasEngineer = !empty($c['engineer_id']) && $ccEngName !== '';
@@ -3885,7 +3907,7 @@ HTML;
                                 </div>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
-                                <span style="font-size:11px;font-weight:700;color:#3762c8;background:#3762c822;padding:3px 9px;border-radius:12px;">
+                                <span style="font-size:11px;font-weight:700;color:<?= $stageColor ?>;background:<?= $stageColor ?>22;padding:3px 9px;border-radius:12px;">
                                     <?= htmlspecialchars($stage) ?>
                                 </span>
                             </div>
@@ -3963,7 +3985,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>&open_modal=1" style="cursor:pointer;">
+                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>" style="cursor:pointer;">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
