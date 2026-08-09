@@ -1405,17 +1405,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rep    = item.getAttribute('data-rep') || '';
                 const budget = item.getAttribute('data-budget') || '';
                 const shared = item.getAttribute('data-shared') || '';
+                const energy = item.getAttribute('data-energy') || '';
 
                 // Legend filter check
                 const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
 
-                // Search check — includes CPRF/shared
+                // Search check — includes CPRF/shared and Energy
                 const searchOk = !searchVal.length || (
                     task.includes(sl)   || loc.includes(sl)    || date.includes(sl)  ||
                     cat.includes(sl)    || stat.includes(sl)   || prio.includes(sl)  ||
                     rep.includes(sl)    || budget.includes(sl) || shared.includes(sl) ||
+                    energy.includes(sl) ||
                     'cprf'.includes(sl) || 'shared'.includes(sl)
-                        && shared === 'cprf'
+                        && shared === 'cprf' ||
+                    'energy'.includes(sl) && energy === 'energy'
                 );
 
                 const show = legendOk && searchOk;
@@ -1535,9 +1538,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Sort / Filter
         let data = (window.scheduleData || []).slice();
-        const isCprfFilter = (_capsuleSortMode === 'cprf');
+        const isCprfFilter   = (_capsuleSortMode === 'cprf');
+        const isEnergyFilter = (_capsuleSortMode === 'energy');
 
-        if (!isCprfFilter) {
+        if (!isCprfFilter && !isEnergyFilter) {
             data.sort(function(a, b) {
                 if (_capsuleSortMode === 'date-asc')   return (a.schedule_date || '') < (b.schedule_date || '') ? -1 : 1;
                 if (_capsuleSortMode === 'date-desc')  return (a.schedule_date || '') > (b.schedule_date || '') ? -1 : 1;
@@ -1559,6 +1563,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // CPRF filter: only show shared items
             if (isCprfFilter && !t.is_shared) return;
+
+            // Energy filter: only show items imported from the Energy Management System
+            if (isEnergyFilter && !t.energy_source) return;
 
             // Legend filter — use shared activeLegendFilter
             if (activeLegendFilter && key !== activeLegendFilter) return;
@@ -1917,6 +1924,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'alpha-asc':  'alpha-asc',
             'alpha-desc': 'alpha-desc',
             'cprf':       'cprf',
+            'energy':     'energy',
         };
         if (capSortMap[sort]) {
             _capsuleSortMode = capSortMap[sort];
@@ -2220,9 +2228,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rep    = item.getAttribute('data-rep') || '';
                 const budget = item.getAttribute('data-budget') || '';
                 const shared = item.getAttribute('data-shared') || '';
+                const energy = item.getAttribute('data-energy') || '';
                 return task.includes(searchVal)   || loc.includes(searchVal)    || date.includes(searchVal)  ||
                        cat.includes(searchVal)    || stat.includes(searchVal)   || prio.includes(searchVal)  ||
-                       rep.includes(searchVal)    || budget.includes(searchVal) || shared.includes(searchVal);
+                       rep.includes(searchVal)    || budget.includes(searchVal) || shared.includes(searchVal) ||
+                       energy.includes(searchVal);
             }
 
             // CPRF mode = FILTER: show only shared items (that also satisfy legend + search), hide the rest
@@ -2239,6 +2249,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (noMsg) {
                     const noMsgText = noMsg.querySelector('#noResultMsgText');
                     if (noMsgText) noMsgText.textContent = 'No CPRF-shared schedules found.';
+                    noMsg.style.display = shownCount === 0 ? '' : 'none';
+                }
+                return;
+            }
+
+            // Energy mode = FILTER: show only Energy-imported items (that also
+            // satisfy legend + search), hide the rest — mirrors the CPRF mode above.
+            if (mode === 'energy') {
+                let shownCount = 0;
+                items.forEach(item => {
+                    const isEnergy = (item.dataset.energy || '') === 'energy';
+                    const stat = item.getAttribute('data-status') || '';
+                    const legendOk = !activeLegendFilter || getStatusKey(stat) === activeLegendFilter;
+                    const show = isEnergy && legendOk && matchesSearch(item);
+                    item.classList.toggle('filter-hidden', !show);
+                    if (show) shownCount++;
+                });
+                if (noMsg) {
+                    const noMsgText = noMsg.querySelector('#noResultMsgText');
+                    if (noMsgText) noMsgText.textContent = 'No Energy-imported schedules found.';
                     noMsg.style.display = shownCount === 0 ? '' : 'none';
                 }
                 return;

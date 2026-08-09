@@ -117,11 +117,18 @@
     flex:1; overflow-y:auto; padding:16px 16px 8px;
     display:flex; flex-direction:column; gap:10px;
     background:var(--bg-secondary,#f8fafd); scroll-behavior:smooth;
+    /* Firefox thin-scrollbar fallback — same treatment as the citizen widget */
+    scrollbar-width:thin; scrollbar-color:rgba(46,84,184,.35) transparent;
 }
 [data-theme="dark"] .adm-chatbot-messages { background:rgba(18,18,22,.95); }
 .adm-chatbot-messages::-webkit-scrollbar { width:4px; }
 .adm-chatbot-messages::-webkit-scrollbar-track { background:transparent; }
 .adm-chatbot-messages::-webkit-scrollbar-thumb { background:rgba(46,84,184,.25); border-radius:2px; }
+.adm-chatbot-messages::-webkit-scrollbar-thumb:hover { background:rgba(46,84,184,.45); }
+/* Without this, Chromium on Windows falls back to the native up/down arrow
+   buttons at each end of the track even though the thumb itself is styled —
+   this is what was showing instead of the citizen widget's plain thin bar. */
+.adm-chatbot-messages::-webkit-scrollbar-button { display:none; width:0; height:0; }
 
 .adm-chatbot-message {
     max-width:82%; padding:10px 14px; border-radius:16px;

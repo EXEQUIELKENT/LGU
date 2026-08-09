@@ -8,9 +8,11 @@
  *
  * Deliberately read-only — it never writes to requests/request_resolutions/
  * reports. The Action column deep-links to whichever of the 4 existing pages
- * currently owns that case's stage (same ?highlight_rep=&open_modal=1
- * convention requests.php already uses to link into those pages), so this
- * page adds zero new mutation logic and the 4 existing pages stay untouched.
+ * currently owns that case's stage (same ?highlight_rep=/?highlight_req=
+ * highlight-only convention those pages already support — no &open_modal=1,
+ * so arriving there scrolls to and highlights the case instead of forcing
+ * its detail modal open), so this page adds zero new mutation logic and the
+ * 4 existing pages stay untouched.
  */
 session_start();
 require_once __DIR__ . '/../../includes/core/session_guard.php';
@@ -1009,9 +1011,12 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         }
 
                         $targetPage = casePageForStatus($r['resolution_status'] ?: null);
+                        // Highlight-only redirect — deliberately no &open_modal=1: the
+                        // "Open" action should scroll to and highlight the case on its
+                        // lifecycle page, not force its detail modal open on arrival.
                         $actionUrl  = $r['rep_id']
-                            ? "{$targetPage}?highlight_rep={$r['rep_id']}&open_modal=1"
-                            : "{$targetPage}?highlight_req={$r['req_id']}&open_modal=1";
+                            ? "{$targetPage}?highlight_rep={$r['rep_id']}"
+                            : "{$targetPage}?highlight_req={$r['req_id']}";
                     ?>
                     <tr data-req-id="<?= (int)$r['req_id'] ?>"
                         data-priority-rank="<?= $priorityRank ?>"
@@ -1070,9 +1075,11 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                     } catch (Exception $e) {}
                 }
                 $targetPage = casePageForStatus($r['resolution_status'] ?: null);
+                // Highlight-only redirect — see matching comment in the desktop
+                // table block above for why &open_modal=1 is intentionally omitted.
                 $actionUrl  = $r['rep_id']
-                    ? "{$targetPage}?highlight_rep={$r['rep_id']}&open_modal=1"
-                    : "{$targetPage}?highlight={$r['req_id']}";
+                    ? "{$targetPage}?highlight_rep={$r['rep_id']}"
+                    : "{$targetPage}?highlight_req={$r['req_id']}";
             ?>
             <div class="report-card" data-req-id="<?= (int)$r['req_id'] ?>"
                  data-priority-rank="<?= $priorityRank ?>"
@@ -1411,8 +1418,11 @@ function openCaseModal(reqId) {
         ec.innerHTML = '<span class="rep-no-evidence"><i class="fas fa-image"></i>No evidence images</span>';
     }
 
+    // Highlight-only redirect — no &open_modal=1 (see the PHP action-url
+    // comments above); the lifecycle page should highlight this case, not
+    // force its modal open.
     const openBtn = document.getElementById('caseModalOpenBtn');
-    openBtn.href = c.rep_id ? `${c.target_page}?highlight_rep=${c.rep_id}&open_modal=1` : `${c.target_page}?highlight_req=${c.req_id}&open_modal=1`;
+    openBtn.href = c.rep_id ? `${c.target_page}?highlight_rep=${c.rep_id}` : `${c.target_page}?highlight_req=${c.req_id}`;
 
     document.getElementById('caseModalBackdrop').classList.add('active');
 

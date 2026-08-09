@@ -660,6 +660,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
                     <div class="sort-dropdown-divider"></div>
                     <div class="sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
+                    <div class="sort-option" data-sort="energy"><i class="fas fa-bolt"></i> Energy Facilities First</div>
                 </div>
             </div>
             <div class="mob-view-switcher-wrap" id="mobListViewSwitcherWrap">
@@ -826,6 +827,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="sort-option" data-sort="alpha-desc"><i class="fas fa-sort-alpha-down-alt"></i> Task Z → A</div>
                         <div class="sort-dropdown-divider"></div>
                         <div class="sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
+                        <div class="sort-option" data-sort="energy"><i class="fas fa-bolt"></i> Energy Facilities First</div>
                     </div>
                 </div>
                 <div class="view-switcher-wrap" id="listViewSwitcherWrap">
@@ -899,6 +901,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     data-budget="<?= $row['source'] === 'report' ? htmlspecialchars(strtolower($row['budget_display'] ?? '')) : '' ?>"
                     data-date="<?= htmlspecialchars(strtolower(date("F d, Y", strtotime($row['schedule_date']))) . '|' . strtolower($row['schedule_date'])) ?>"
                     data-shared="<?= !empty($row['is_shared']) ? 'cprf' : '' ?>"
+                    data-energy="<?= !empty($row['energy_source']) ? 'energy' : '' ?>"
                     style="cursor:pointer;">
 
                     <div class="schedule-item-accent <?= $accentClass ?>"></div>
@@ -1021,6 +1024,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                         <div class="cap-sort-option" data-sort="status"><i class="fas fa-layer-group"></i> By Status</div>
                         <div class="sort-dropdown-divider"></div>
                         <div class="cap-sort-option" data-sort="cprf"><i class="fas fa-link"></i> Shared CPRF First</div>
+                        <div class="cap-sort-option" data-sort="energy"><i class="fas fa-bolt"></i> Energy Facilities First</div>
                     </div>
                 </div>
                 <!-- View switcher — same structure as list view -->

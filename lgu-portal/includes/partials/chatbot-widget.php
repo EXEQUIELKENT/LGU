@@ -129,12 +129,14 @@
     flex:1; overflow-y:auto; padding:16px 16px 8px;
     display:flex; flex-direction:column; gap:10px;
     background:var(--bg-secondary,#f8fafd); scroll-behavior:smooth;
+    scrollbar-width:thin; scrollbar-color:rgba(43,108,176,.35) transparent;
 }
 [data-theme="dark"] .chatbot-messages { background:rgba(18,18,22,.95); }
 .chatbot-messages::-webkit-scrollbar { width:4px; }
 .chatbot-messages::-webkit-scrollbar-track { background:transparent; }
 .chatbot-messages::-webkit-scrollbar-thumb { background:rgba(43,108,176,.25); border-radius:2px; }
 .chatbot-messages::-webkit-scrollbar-thumb:hover { background:rgba(43,108,176,.45); }
+.chatbot-messages::-webkit-scrollbar-button { display:none; width:0; height:0; }
 
 .chat-date-divider {
     display:flex; align-items:center; gap:10px; margin:4px 0;
