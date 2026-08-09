@@ -432,15 +432,19 @@ startClock();
             localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
             localStorage.setItem(BACKUP_KEY, isDark ? 'dark' : 'light');
 
-            [darkModeBtn, mobileDarkModeBtn].forEach(btn => {
-                if (!btn) return;
-                btn.querySelector('.dark-icon').style.display  = isDark ? 'none'   : 'inline';
-                btn.querySelector('.light-icon').style.display = isDark ? 'inline' : 'none';
-                if (animate) {
+            // Visibility of the .dark-icon / .light-icon layers is driven
+            // entirely by CSS via the [data-theme] attribute set above (see
+            // citizen_global.css) — they're opacity-crossfaded "sky" / "night
+            // sky" scenes now, not literal show/hide emoji, so no JS display
+            // toggling here; that would fight the CSS transition and make it
+            // snap instead of animate.
+            if (animate) {
+                [darkModeBtn, mobileDarkModeBtn].forEach(btn => {
+                    if (!btn) return;
                     btn.classList.add('active');
                     setTimeout(() => btn.classList.remove('active'), 500);
-                }
-            });
+                });
+            }
         } catch(e) {}
     }
 

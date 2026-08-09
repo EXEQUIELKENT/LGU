@@ -2493,7 +2493,17 @@ body {
         transition: color 0.3s ease;
     }
 
-    .mobile-notif-btn {
+    /* Specificity must beat emp-global.css's .nav-btn.notif-btn (which sets
+       position:relative, 2 classes) — this button carries all 3 classes
+       (nav-btn notif-btn mobile-notif-btn), so matching all 3 here (3
+       classes) unambiguously wins regardless of stylesheet load order.
+       Previously this was a single-class .mobile-notif-btn selector (1
+       class, lower specificity), so position:absolute silently lost to
+       .nav-btn.notif-btn's position:relative — the button fell into normal
+       flex flow and rendered mid-nav instead of pinned to the right edge,
+       landing to the LEFT of the (correctly absolute-positioned)
+       .mobile-clock instead of past it. */
+    .nav-btn.notif-btn.mobile-notif-btn {
         position: absolute;
         right: 12px;
         top: 50%;

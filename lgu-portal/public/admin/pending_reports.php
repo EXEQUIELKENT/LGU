@@ -1166,7 +1166,10 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
     /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-    .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
+    /* 3-class selector to beat emp-global.css's .nav-btn.notif-btn
+       (position:relative, 2 classes) — see employee.php for the full
+       explanation of why a single-class selector here silently lost. */
+    .nav-btn.notif-btn.mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }
     .mobile-dark-mode-btn { display: flex; position: absolute; margin-top: 42px; top: 18px; right: 18px; width: 38px; height: 38px; z-index: 1005; align-items: center; justify-content: center; }
     .sidebar-nav { left: -110%; width: calc(100% - 24px); height: calc(100vh - 24px); height: calc(100dvh - 24px); top: 12px; bottom: 12px; border-radius: 18px; transition: left 0.35s ease; z-index: 4000; }
     .sidebar-nav.mobile-active { left: 12px; }
@@ -4830,7 +4833,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
-<script src="../assets/js/sort-dropdown-fix.js"></script>
+<script src="../assets/js/sort-dropdown-fix.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sort-dropdown-fix.js') ?>"></script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>

@@ -428,18 +428,85 @@ body.sidebar-collapsed .desktop-top-nav {
     100% { transform: scale(1); }
 }
 
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION BELL — circular gradient button (redesigned from
+   the plain rounded-square .nav-btn base) with a soft glow ring
+   while unread notifications exist, plus a click-pop + expanding
+   ripple whenever it's clicked (open or close). This is separate
+   from .ringing below, which JS adds only when new notifications
+   genuinely arrive via polling — clicking never triggers .ringing,
+   and .ringing never triggers the click ripple, so the two read
+   as distinct signals ("something new happened" vs "you opened
+   this"). ═══════════════════════════════════════════════════ */
 .nav-btn.notif-btn {
+    position: relative;
+    overflow: visible;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(55,98,200,.16), rgba(55,98,200,.06));
+    box-shadow: 0 0 0 0 rgba(233,68,68,0);
+    transition: background .3s ease, box-shadow .3s ease, transform .2s ease;
     animation: none;
 }
+.nav-btn.notif-btn:hover {
+    background: linear-gradient(135deg, rgba(55,98,200,.26), rgba(55,98,200,.1));
+}
+[data-theme="dark"] .nav-btn.notif-btn {
+    background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+}
+[data-theme="dark"] .nav-btn.notif-btn:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+}
 
-/* has-notif: badge/styling indicator only — NO animation here */
+/* has-notif: soft red glow ring while there's something unread — a
+   static styling cue only, no animation, so it doesn't compete with
+   the badge's own pulse or distract during normal browsing. */
 .nav-btn.notif-btn.has-notif {
+    box-shadow: 0 0 0 3px rgba(233,68,68,.14);
     animation: none;
 }
 
 /* ringing: added only by JS when genuinely new notifications arrive */
 .nav-btn.notif-btn.ringing {
     animation: bellRing 0.5s ease-in-out;
+}
+
+/* clicked: brief pop + expanding ripple on every click, open or close */
+.nav-btn.notif-btn.clicked {
+    animation: notifClickPop .4s cubic-bezier(.34,1.56,.64,1);
+}
+.nav-btn.notif-btn.clicked::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(55,98,200,.35);
+    animation: notifRipple .5s ease-out;
+    pointer-events: none;
+}
+[data-theme="dark"] .nav-btn.notif-btn.clicked::before {
+    background: rgba(255,255,255,.22);
+}
+@keyframes notifClickPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.82); }
+    65%  { transform: scale(1.14); }
+    100% { transform: scale(1); }
+}
+@keyframes notifRipple {
+    0%   { transform: scale(0.35); opacity: .65; }
+    100% { transform: scale(1.9);  opacity: 0; }
+}
+
+/* Mobile bell needs translateY(-50%) preserved through the pop, same
+   reasoning as .mobile-notif-btn.ringing below. */
+.mobile-notif-btn.clicked {
+    animation: notifClickPopMobile .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes notifClickPopMobile {
+    0%   { transform: translateY(-50%) scale(1); }
+    35%  { transform: translateY(-50%) scale(0.82); }
+    65%  { transform: translateY(-50%) scale(1.14); }
+    100% { transform: translateY(-50%) scale(1); }
 }
 
 /* Mobile button needs translateY(-50%) preserved throughout animation,

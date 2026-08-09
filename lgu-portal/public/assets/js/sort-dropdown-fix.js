@@ -34,19 +34,25 @@
     var Z_INDEX_ABOVE_EVERYTHING = 99999;
     var VIEWPORT_MARGIN = 8;
 
+    // This used to compute `left = btnRect.right - menuWidth`, mixing
+    // dropdown.offsetWidth (always a ROUNDED whole pixel) with
+    // btnRect.right (a SUBPIXEL float from getBoundingClientRect()). Every
+    // scroll-triggered reposition re-ran that subtraction fresh, and the two
+    // values round very slightly differently from one frame to the next —
+    // visibly reading as the menu creeping a pixel or two to the right as
+    // you scrolled. Anchoring with CSS `right` instead of a JS-computed
+    // `left` removes the subtraction (and the width measurement it needed)
+    // entirely: the browser lays the box out from its own live width on
+    // every paint, so there's nothing left to round inconsistently.
     function positionDropdown(btn, dropdown) {
         var btnRect = btn.getBoundingClientRect();
-        var menuWidth = dropdown.offsetWidth || 190;
         var menuHeight = dropdown.scrollHeight || dropdown.offsetHeight || 260;
         var viewportW = window.innerWidth;
         var viewportH = window.innerHeight;
 
         // Right-align to the button by default — matches the original `right: 0` CSS.
-        var left = btnRect.right - menuWidth;
-        if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
-        if (left + menuWidth > viewportW - VIEWPORT_MARGIN) {
-            left = viewportW - VIEWPORT_MARGIN - menuWidth;
-        }
+        var right = viewportW - btnRect.right;
+        if (right < VIEWPORT_MARGIN) right = VIEWPORT_MARGIN;
 
         // Open below the button by default; flip above it if there isn't room
         // below but there IS room above (keeps it fully visible either way).
@@ -58,10 +64,20 @@
 
         dropdown.style.position = 'fixed';
         dropdown.style.top = top + 'px';
-        dropdown.style.left = left + 'px';
-        dropdown.style.right = 'auto';
+        dropdown.style.left = 'auto';
+        dropdown.style.right = right + 'px';
         dropdown.style.margin = '0';
         dropdown.style.zIndex = String(Z_INDEX_ABOVE_EVERYTHING);
+
+        // Left-edge overflow guard — reads the box's OWN live rendered
+        // position (accurate regardless of content/font timing, since this
+        // reads AFTER layout with the styles above already applied) and
+        // only then falls back to a left-margin clamp for menus too wide to
+        // fit right-aligned near the left edge of the viewport.
+        if (dropdown.getBoundingClientRect().left < VIEWPORT_MARGIN) {
+            dropdown.style.right = 'auto';
+            dropdown.style.left = VIEWPORT_MARGIN + 'px';
+        }
     }
 
     // Remembers where each dropdown originally lived in the DOM, so it can

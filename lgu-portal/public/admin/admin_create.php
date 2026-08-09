@@ -1057,7 +1057,10 @@ input:-webkit-autofill:focus {
         color: var(--text-primary); white-space: nowrap;
     }
 
-    .mobile-notif-btn {
+    /* 3-class selector to beat emp-global.css's .nav-btn.notif-btn
+       (position:relative, 2 classes) — see employee.php for the full
+       explanation of why a single-class selector here silently lost. */
+    .nav-btn.notif-btn.mobile-notif-btn {
         position: absolute; right: 12px; top: 50%;
         transform: translateY(-50%); width: 38px; height: 38px; z-index: 1;
     }

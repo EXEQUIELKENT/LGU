@@ -1497,7 +1497,7 @@ window.CURRENT_EMP_ID    = <?= (int)($_SESSION['employee_id'] ?? 0) ?>;</script>
     <div class="sched-lb-counter" id="schedLbCounter"></div>
 </div>
 
-<script src="../assets/js/sort-dropdown-fix.js"></script>
+<script src="../assets/js/sort-dropdown-fix.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sort-dropdown-fix.js') ?>"></script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>

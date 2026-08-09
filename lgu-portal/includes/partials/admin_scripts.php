@@ -803,6 +803,17 @@ startClock();
         e.stopPropagation();
         notifDropdown.classList.toggle('show');
         if (notifDropdown.classList.contains('show')) fetchNotifications();
+
+        // Brief click-pop + ripple feedback (distinct from the "ringing"
+        // wobble above, which is reserved for genuinely new notifications
+        // arriving via polling). This fires on every click, open or close.
+        const btn = e.currentTarget;
+        if (btn) {
+            btn.classList.remove('clicked');
+            void btn.offsetWidth; // restart animation if clicked again quickly
+            btn.classList.add('clicked');
+            btn.addEventListener('animationend', () => btn.classList.remove('clicked'), { once: true });
+        }
     }
     if (notifBtn)       notifBtn.addEventListener('click', toggleDropdown);
     if (mobileNotifBtn) mobileNotifBtn.addEventListener('click', toggleDropdown);

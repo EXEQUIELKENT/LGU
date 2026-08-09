@@ -1323,7 +1323,10 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         font-size: 14px; font-weight: 600;
         color: var(--text-primary); white-space: nowrap;
     }
-    .mobile-notif-btn {
+    /* 3-class selector to beat emp-global.css's .nav-btn.notif-btn
+       (position:relative, 2 classes) — see employee.php for the full
+       explanation of why a single-class selector here silently lost. */
+    .nav-btn.notif-btn.mobile-notif-btn {
         position: absolute; right: 12px; top: 50%;
         transform: translateY(-50%);
         width: 38px; height: 38px; z-index: 1;
@@ -3253,7 +3256,7 @@ if (typeof L === 'undefined') {
 }
 </script>
 
-<script src="../assets/js/sort-dropdown-fix.js"></script>
+<script src="../assets/js/sort-dropdown-fix.js?v=<?= @filemtime(__DIR__ . '/../assets/js/sort-dropdown-fix.js') ?>"></script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>

@@ -289,14 +289,131 @@
 
         .nav-btn:active { transform: scale(0.95); }
 
-        .nav-btn.dark-mode-btn.active {
-            animation: rotateSun 0.5s ease;
+        /* ═══════════════════════════════════════════════════════
+           DAY/NIGHT TOGGLE — same pill-shaped switch used on the
+           admin side (see emp-global.css): a sun + clouds sky in
+           light mode morphing into a moon + stars night sky in
+           dark mode. Overrides the generic .nav-btn sizing above
+           for both #darkModeBtn (desktop) and #mobileDarkModeBtn
+           (mobile) since they share the exact same markup/classes.
+           Markup relied upon (already present on every citizen page):
+             <button class="nav-btn dark-mode-btn" id="darkModeBtn">
+                 <span class="dark-icon">🌙</span>
+                 <span class="light-icon">☀️</span>
+             </button>
+           The two spans are repurposed as full-size crossfading
+           layers (sky vs night-sky) instead of literal emoji glyphs.
+        ═══════════════════════════════════════════════════════ */
+        .nav-btn.dark-mode-btn {
+            width: 62px;
+            height: 30px;
+            padding: 0;
+            border-radius: 999px;
+            background: transparent;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(31,95,168,.35), inset 0 0 0 1px rgba(255,255,255,.10);
+            transition: box-shadow .5s ease;
+            backdrop-filter: none;
+            flex-shrink: 0;
+        }
+        [data-theme="dark"] .nav-btn.dark-mode-btn {
+            box-shadow: 0 2px 10px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.08);
+        }
+        .nav-btn.dark-mode-btn:hover  { background: transparent; transform: scale(1.04); }
+        .nav-btn.dark-mode-btn:active { transform: scale(0.96); }
+
+        .nav-btn.dark-mode-btn .dark-icon,
+        .nav-btn.dark-mode-btn .light-icon {
+            display: block !important; /* override inline style="display:none" in markup */
+            position: absolute;
+            inset: 0;
+            font-size: 0;               /* hide the literal emoji glyph */
+            border-radius: inherit;
+            transition: opacity .5s ease;
+            pointer-events: none;
+        }
+        .nav-btn.dark-mode-btn .light-icon {
+            z-index: 2;
+            opacity: 1;
+            background: linear-gradient(135deg, #86d3ff 0%, #4d9fe8 55%, #2c72c4 100%);
+        }
+        .nav-btn.dark-mode-btn .dark-icon {
+            z-index: 1;
+            opacity: 0;
+            background: linear-gradient(135deg, #2c3050 0%, #181a2e 55%, #0b0c17 100%);
+        }
+        [data-theme="dark"] .nav-btn.dark-mode-btn .light-icon { opacity: 0; }
+        [data-theme="dark"] .nav-btn.dark-mode-btn .dark-icon  { opacity: 1; }
+
+        /* Clouds — a small cluster of overlapping soft circles on the sky layer */
+        .nav-btn.dark-mode-btn .light-icon::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 68% 42%, rgba(255,255,255,.95) 0 5.5px, transparent 6.5px),
+                radial-gradient(circle at 78% 58%, rgba(255,255,255,.92) 0 6.5px, transparent 7.5px),
+                radial-gradient(circle at 90% 46%, rgba(255,255,255,.9)  0 4.5px, transparent 5.5px),
+                radial-gradient(circle at 82% 70%, rgba(255,255,255,.85) 0 4px,   transparent 5px);
         }
 
-        @keyframes rotateSun {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.2); }
-            100% { transform: rotate(360deg) scale(1); }
+        /* Stars — tiny dots plus one small sparkle glyph on the night layer */
+        .nav-btn.dark-mode-btn .dark-icon::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 16% 28%, #fff 0 1.2px, transparent 2px),
+                radial-gradient(circle at 30% 68%, #fff 0 1px,   transparent 1.8px),
+                radial-gradient(circle at 12% 72%, #fff 0 1px,   transparent 1.6px),
+                radial-gradient(circle at 44% 22%, #fff 0 1.3px, transparent 2px),
+                radial-gradient(circle at 26% 48%, #fff 0 1px,   transparent 1.6px);
+        }
+        .nav-btn.dark-mode-btn .dark-icon::after {
+            content: "✦";
+            position: absolute;
+            left: 20%; top: 26%;
+            transform: translate(-50%, -50%);
+            font-size: 8px;
+            line-height: 1;
+            color: #fff;
+            opacity: .95;
+        }
+
+        /* The sliding knob — sun in light mode, moon (with crater shading) in
+           dark mode. A single element on the button itself (::after), always
+           on top of both scene layers, sliding left/right as the theme flips. */
+        .nav-btn.dark-mode-btn::after {
+            content: "";
+            position: absolute;
+            z-index: 3;
+            top: 2px;
+            left: 2px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 34% 30%, #ffe9a8 0%, #ffb703 55%, #f08c00 100%);
+            box-shadow: 0 1px 3px rgba(0,0,0,.35);
+            transition: left .5s cubic-bezier(.4,1.6,.6,1), background .45s ease, box-shadow .45s ease;
+        }
+        [data-theme="dark"] .nav-btn.dark-mode-btn::after {
+            left: 34px; /* 62 - 2 - 26 */
+            background: radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
+            box-shadow:
+                inset -3px -2px 0 -1px rgba(140,145,160,.55),
+                inset 4px 5px 0 -3px rgba(140,145,160,.5),
+                inset -6px 4px 0 -4px rgba(140,145,160,.5),
+                0 1px 3px rgba(0,0,0,.5);
+        }
+
+        /* Brief "pop" on the knob when actively toggled (JS adds .active for ~500ms) */
+        .nav-btn.dark-mode-btn.active::after {
+            animation: dmKnobPop .5s cubic-bezier(.4,1.6,.6,1);
+        }
+        @keyframes dmKnobPop {
+            0%   { transform: scale(1); }
+            45%  { transform: scale(1.22); }
+            100% { transform: scale(1); }
         }
 
         /* ============================================
