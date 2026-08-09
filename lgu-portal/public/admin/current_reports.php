@@ -7492,6 +7492,8 @@ document.addEventListener('DOMContentLoaded', function() {
     body.map-view-active .table-wrapper,
     body.map-view-active .mobile-report-list { display: none !important; }
 </style>
+<script src="../assets/js/sort-dropdown-fix.js"></script>
+
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

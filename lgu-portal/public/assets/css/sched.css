@@ -4076,19 +4076,12 @@ Sidebar (250px) takes the most relative space here.
         font-size: 20px;
         cursor: pointer;
     }
-    /* Mobile CIMM Label */
-    .mobile-cimm-label {
-        position: absolute;
-        left: 70px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #3762c8;
-        letter-spacing: 0.05em;
-    }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css — this page's
+       old local rule above (plain blue text, no badge chip) was loading
+       *after* emp-global.css and winning the cascade, so sched.php's mobile
+       top nav showed a plain-text "CIMM" instead of the gradient chip badge
+       every other admin page shows. Removed so the centralized style applies
+       here too. */
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;

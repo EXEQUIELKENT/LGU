@@ -3253,6 +3253,8 @@ if (typeof L === 'undefined') {
 }
 </script>
 
+<script src="../assets/js/sort-dropdown-fix.js"></script>
+
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>

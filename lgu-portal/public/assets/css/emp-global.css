@@ -300,7 +300,7 @@ body.sidebar-collapsed .desktop-top-nav {
 
 /* has-notif: badge/styling indicator only — NO animation here */
 .nav-btn.notif-btn.has-notif {
-    /* intentionally empty — animation handled by .ringing class */
+    animation: none;
 }
 
 /* ringing: added only by JS when genuinely new notifications arrive */

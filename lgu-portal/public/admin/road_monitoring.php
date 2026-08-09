@@ -1750,6 +1750,8 @@ function pokeActivityLog() {
 </script>
 
 <?php include __DIR__ . '/../../includes/partials/admin_scripts.php'; ?>
+<script src="../assets/js/sort-dropdown-fix.js"></script>
+
 <?php include __DIR__ . '/../../includes/partials/admin_chatbot_widget.php'; ?>
 </body>
 </html>
