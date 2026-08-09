@@ -491,25 +491,42 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
 .mobile-report-list { display: none; }
 
 .action-cell { white-space: normal !important; }
-.action-cell .btn-view-rep,
-.rc-footer-stacked .btn-view-rep { width: 100%; justify-content: center; }
-.action-cell .btn-view-rep + .btn-view-rep,
-.rc-footer-stacked .btn-view-rep + .btn-view-rep { margin-top: 6px; }
-.rc-footer-stacked { flex-direction: column; align-items: stretch; }
+.case-actions {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; flex-wrap: wrap;
+}
+.rc-footer-stacked {
+    display: flex; align-items: center; justify-content: flex-start;
+    gap: 8px; flex-wrap: wrap;
+}
 
+/* ── Case Management action buttons — compact "soft outline" style:
+   content-sized (never stretched), colored border/text at rest, solid
+   fill on hover. Distinct from the solid-pill buttons used elsewhere in
+   this codebase (requests.php's .btn-validate/.btn-reject use that solid
+   look), by design, per the redesign request — same sizing/shape logic,
+   different visual treatment. ── */
 .btn-view-rep {
-    display:inline-flex; align-items:center; gap:3px;
-    background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;border:none;
-    padding:5px 12px;border-radius:999px;cursor:pointer;
-    font-size:11px;font-weight:600;white-space:nowrap; line-height:1.2;
-    box-shadow:0 2px 8px rgba(13,148,136,.3);
-    transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(13,148,136,.08); color:#0d9488;
+    border:1.5px solid rgba(13,148,136,.35);
+    padding:7px 14px; border-radius:10px; cursor:pointer;
+    font-size:12px; font-weight:700; white-space:nowrap; line-height:1.2;
+    transition:background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease;
     text-decoration: none;
 }
-.btn-view-rep i { font-size: 10px; }
-.btn-view-rep:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 6px 16px rgba(13,148,136,.45); filter:brightness(1.06); }
-.btn-view-case { background:linear-gradient(135deg,#3762c8,#2851b3); box-shadow:0 2px 8px rgba(55,98,200,.3); }
-.btn-view-case:hover { box-shadow:0 6px 16px rgba(55,98,200,.45); }
+.btn-view-rep i { font-size: 11px; }
+.btn-view-rep:hover {
+    background:#0d9488; color:#fff; border-color:#0d9488;
+    transform:translateY(-1px); box-shadow:0 4px 14px rgba(13,148,136,.35);
+}
+.btn-view-rep:active { transform:translateY(0); }
+.btn-view-case { background:rgba(55,98,200,.08); color:#3762c8; border-color:rgba(55,98,200,.35); }
+.btn-view-case:hover { background:#3762c8; color:#fff; border-color:#3762c8; box-shadow:0 4px 14px rgba(55,98,200,.35); }
+[data-theme="dark"] .btn-view-rep { background:rgba(20,184,166,.12); color:#5eead4; border-color:rgba(20,184,166,.4); }
+[data-theme="dark"] .btn-view-rep:hover { background:#0d9488; color:#fff; border-color:#0d9488; }
+[data-theme="dark"] .btn-view-case { background:rgba(94,129,255,.14); color:#93a5ff; border-color:rgba(94,129,255,.4); }
+[data-theme="dark"] .btn-view-case:hover { background:#3762c8; color:#fff; border-color:#3762c8; }
 
 .rep-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:8000; }
 .rep-modal-backdrop.active { display:flex; }
@@ -580,8 +597,8 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
     color:var(--text-secondary); font-size:13px; font-style:normal; text-align:center;
 }
 .rep-no-evidence i { font-size:22px; opacity:.35; }
-.rep-footer { display:flex; gap:10px; padding: 14px 24px 20px; flex-shrink: 0; border-top:1px solid var(--border-color); }
-.rep-footer .btn-view-rep { flex: 1; justify-content: center; padding: 11px 0; font-size: 14px; border-radius: 10px; }
+.rep-footer { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; padding: 14px 24px 20px; flex-shrink: 0; border-top:1px solid var(--border-color); }
+.rep-footer .btn-view-rep { padding: 11px 22px; font-size: 14px; border-radius: 11px; }
 
 /* ── Office Staff: "Create Report" Word export button (ported from
    archive_reports.php / pending_reports.php) ── */
@@ -1022,8 +1039,10 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         data-priority-rank="<?= $priorityRank ?>"
                         data-urgency-ratio="<?= htmlspecialchars((string)round($urgencyRatio, 3)) ?>">
                         <td class="action-cell">
-                            <a class="btn-view-rep" href="<?= htmlspecialchars($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
-                            <button class="btn-view-rep btn-view-case" onclick="openCaseModal(<?= (int)$r['req_id'] ?>)"><i class="fas fa-eye"></i> View</button>
+                            <div class="case-actions">
+                                <a class="btn-view-rep" href="<?= htmlspecialchars($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
+                                <button class="btn-view-rep btn-view-case" onclick="openCaseModal(<?= (int)$r['req_id'] ?>)"><i class="fas fa-eye"></i> View</button>
+                            </div>
                         </td>
                         <td class="searchable">REQ-<?= str_pad((string)$r['req_id'], 4, '0', STR_PAD_LEFT) ?></td>
                         <td class="wrap searchable"><?= htmlspecialchars($r['infrastructure']) ?></td>
