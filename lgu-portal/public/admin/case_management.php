@@ -1037,6 +1037,15 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         </div>
                     </td></tr>
                 <?php endif; ?>
+                <tr id="noCaseResult" style="display:none;">
+                    <td colspan="8" style="text-align:center;padding:48px 20px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                            <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                            <div style="font-size:15px;font-weight:700;">No matching cases found</div>
+                            <div style="font-size:13px;opacity:.7;">Try a different keyword</div>
+                        </div>
+                    </td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -1088,6 +1097,13 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                 </div>
             </div>
         <?php endif; ?>
+        <div id="noCaseMobileResult" class="report-card" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching cases found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword</div>
+            </div>
+        </div>
         </div>
     </div>
 
@@ -1167,10 +1183,10 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">👤 Requester</div><div class="rep-field-value" id="caseModalRequester"></div></div>
                 <div class="rep-field"><div class="rep-field-label">📞 Contact</div><div class="rep-field-value" id="caseModalContact"></div></div>
-                <div class="rep-field"><div class="rep-field-label">📧 Email</div><div class="rep-field-value" id="caseModalEmail"></div></div>
+                <div class="rep-field"><div class="rep-field-label">📧 Email</div><div class="rep-field-value" id="caseModalEmail" style="font-size:12px;word-break:break-all;"></div></div>
                 <div class="rep-field"><div class="rep-field-label">🗺️ District</div><div class="rep-field-value" id="caseModalDistrict"></div></div>
                 <div class="rep-field"><div class="rep-field-label">📅 Submitted</div><div class="rep-field-value" id="caseModalSubmitted"></div></div>
-                <div class="rep-field"><div class="rep-field-label">🌍 Coordinates</div><div class="rep-field-value" id="caseModalCoords"></div></div>
+                <div class="rep-field"><div class="rep-field-label">🌍 Coordinates</div><div class="rep-field-value" id="caseModalCoords" style="font-size:12px;word-break:break-all;"></div></div>
             </div>
             <div class="rep-divider"></div>
 
@@ -1435,12 +1451,26 @@ document.addEventListener('click', function (e) {
 const caseSearch = document.getElementById('caseSearch');
 function applyCaseSearch() {
     const q = caseSearch.value.trim().toLowerCase();
-    document.querySelectorAll('#caseTableBody > tr[data-req-id]').forEach(row => {
-        row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    let visibleRows = 0, visibleCards = 0;
+    const allRows  = document.querySelectorAll('#caseTableBody > tr[data-req-id]');
+    const allCards = document.querySelectorAll('#caseMobileList > .report-card[data-req-id]');
+    allRows.forEach(row => {
+        const show = (!q || row.textContent.toLowerCase().includes(q));
+        row.style.display = show ? '' : 'none';
+        if (show) visibleRows++;
     });
-    document.querySelectorAll('#caseMobileList > .report-card[data-req-id]').forEach(card => {
-        card.style.display = (!q || card.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    allCards.forEach(card => {
+        const show = (!q || card.textContent.toLowerCase().includes(q));
+        card.style.display = show ? '' : 'none';
+        if (show) visibleCards++;
     });
+    // Only surface "no matching results" when there was actual data to search
+    // through — otherwise (zero cases in the system at all) it would stack on
+    // top of the permanent "No cases found" empty-state.
+    const noRow = document.getElementById('noCaseResult');
+    if (noRow) noRow.style.display = (q && visibleRows === 0 && allRows.length > 0) ? '' : 'none';
+    const noCard = document.getElementById('noCaseMobileResult');
+    if (noCard) noCard.style.display = (q && visibleCards === 0 && allCards.length > 0) ? '' : 'none';
 }
 caseSearch.addEventListener('input', applyCaseSearch);
 

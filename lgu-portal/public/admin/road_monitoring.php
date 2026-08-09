@@ -1077,6 +1077,15 @@ tr.notif-highlight > td:first-child {
                         </div>
                     </td></tr>
                 <?php endif; ?>
+                <tr id="noRoadResult" style="display:none;">
+                    <td colspan="9" style="text-align:center;padding:48px 20px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                            <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                            <div style="font-size:15px;font-weight:700;">No matching reports found</div>
+                            <div style="font-size:13px;opacity:.7;">Try a different keyword</div>
+                        </div>
+                    </td>
+                </tr>
                 </tbody>
             </table>
         </div>
@@ -1119,6 +1128,13 @@ tr.notif-highlight > td:first-child {
                 </div>
             </div>
         <?php endif; ?>
+        <div id="noRoadMobileResult" class="report-card" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching reports found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword</div>
+            </div>
+        </div>
         </div>
     </div>
 
@@ -1544,12 +1560,27 @@ async function doVerifyRoadReport() {
 const roadSearch = document.getElementById('roadSearch');
 function applyRoadSearch() {
     const q = roadSearch.value.trim().toLowerCase();
-    document.querySelectorAll('#roadMonitoringTableBody > tr[data-rm-id]').forEach(row => {
-        row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    let visibleRows = 0, visibleCards = 0;
+    const allRows  = document.querySelectorAll('#roadMonitoringTableBody > tr[data-rm-id]');
+    const allCards = document.querySelectorAll('#roadMonitoringMobileList > .report-card[data-rm-id]');
+    allRows.forEach(row => {
+        const show = (!q || row.textContent.toLowerCase().includes(q));
+        row.style.display = show ? '' : 'none';
+        if (show) visibleRows++;
     });
-    document.querySelectorAll('#roadMonitoringMobileList > .report-card[data-rm-id]').forEach(card => {
-        card.style.display = (!q || card.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    allCards.forEach(card => {
+        const show = (!q || card.textContent.toLowerCase().includes(q));
+        card.style.display = show ? '' : 'none';
+        if (show) visibleCards++;
     });
+    // Only surface "no matching results" when there was actual data to
+    // search through — otherwise (system has zero road monitoring reports
+    // at all) it would stack on top of the permanent "No Road Monitoring
+    // reports yet" empty-state that already covers that case.
+    const noRow = document.getElementById('noRoadResult');
+    if (noRow) noRow.style.display = (q && visibleRows === 0 && allRows.length > 0) ? '' : 'none';
+    const noCard = document.getElementById('noRoadMobileResult');
+    if (noCard) noCard.style.display = (q && visibleCards === 0 && allCards.length > 0) ? '' : 'none';
 }
 roadSearch.addEventListener('input', applyRoadSearch);
 

@@ -20,7 +20,7 @@
 <style>
 .adm-chatbot-toggle {
     position: fixed; bottom: 24px; right: 24px;
-    width: 60px; height: 60px; border-radius: 50%;
+    width: 62px; height: 62px; border-radius: 50%;
     background: linear-gradient(135deg, #2e54b8 0%, #7b5cfa 100%);
     color: #fff; border: none; cursor: pointer;
     box-shadow: 0 4px 22px rgba(46,84,184,.45);
@@ -43,7 +43,7 @@
 .adm-chatbot-toggle:active { transform:scale(.95); }
 .adm-chatbot-toggle.active { background:linear-gradient(135deg,#dc3545 0%,#c82333 100%); }
 .adm-chatbot-toggle.active::before { border-color:rgba(220,53,69,.3); }
-.adm-chatbot-icon { width:30px; height:30px; transition:all .3s ease; }
+.adm-chatbot-icon { width:32px; height:32px; transition:all .3s ease; }
 .adm-chatbot-toggle.active .adm-chatbot-icon { transform:rotate(180deg); }
 
 .adm-chatbot-badge {
@@ -60,7 +60,7 @@
 
 .adm-chatbot-container {
     position:fixed; bottom:96px; right:24px;
-    width:380px; height:560px;
+    width:400px; height:590px;
     background:var(--card-bg,#ffffff);
     border-radius:22px;
     box-shadow:0 20px 60px rgba(0,0,0,.18), 0 0 0 1px rgba(46,84,184,.08);
@@ -82,7 +82,7 @@
 
 .adm-chatbot-header {
     background:linear-gradient(135deg,#20336e 0%,#2e54b8 55%,#7b5cfa 100%);
-    color:#fff; padding:0 18px; height:66px;
+    color:#fff; padding:0 18px; height:68px;
     display:flex; justify-content:space-between; align-items:center;
     flex-shrink:0; position:relative; overflow:hidden;
 }
@@ -92,11 +92,11 @@
 }
 .adm-chatbot-header-info { display:flex; align-items:center; gap:12px; z-index:1; }
 .adm-chatbot-avatar {
-    width:38px; height:38px; background:rgba(255,255,255,.2); border-radius:50%;
-    display:flex; align-items:center; justify-content:center; font-size:19px;
+    width:40px; height:40px; background:rgba(255,255,255,.2); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:20px;
     border:2px solid rgba(255,255,255,.3); flex-shrink:0;
 }
-.adm-chatbot-header-text h3 { margin:0 0 2px; font-size:14.5px; font-weight:700; letter-spacing:.02em; }
+.adm-chatbot-header-text h3 { margin:0 0 2px; font-size:15px; font-weight:700; letter-spacing:.02em; }
 .adm-chatbot-status { display:flex; align-items:center; gap:5px; font-size:11px; opacity:.85; }
 .adm-chatbot-status-dot {
     width:7px; height:7px; background:#4ade80; border-radius:50%;
@@ -106,9 +106,9 @@
 .adm-chatbot-header-actions { display:flex; gap:6px; z-index:1; }
 .adm-chatbot-header-btn {
     background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); color:#fff;
-    width:30px; height:30px; border-radius:10px; cursor:pointer;
+    width:32px; height:32px; border-radius:10px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    transition:all .2s ease; font-size:13px; backdrop-filter:blur(4px);
+    transition:all .2s ease; font-size:14px; backdrop-filter:blur(4px);
 }
 .adm-chatbot-header-btn:hover { background:rgba(255,255,255,.28); transform:translateY(-1px); }
 .adm-chatbot-header-btn:active { transform:scale(.92); }
@@ -124,7 +124,7 @@
 .adm-chatbot-messages::-webkit-scrollbar-thumb { background:rgba(46,84,184,.25); border-radius:2px; }
 
 .adm-chatbot-message {
-    max-width:84%; padding:10px 14px; border-radius:16px;
+    max-width:82%; padding:10px 14px; border-radius:16px;
     font-size:13.5px; line-height:1.55; word-wrap:break-word;
     animation:admMsgFade .3s ease; position:relative;
 }
@@ -150,7 +150,7 @@
 }
 .adm-chatbot-message .message-time { font-size:10px; opacity:.55; margin-top:5px; display:block; font-weight:500; }
 .adm-chatbot-message.user .message-time { text-align:right; }
-.adm-chatbot-message.bot::before { content:'🛠️'; position:absolute; left:-16px; top:8px; font-size:13px; line-height:1; }
+.adm-chatbot-message.bot::before { content:'🛠️'; position:absolute; left:-14px; top:8px; font-size:14px; line-height:1; }
 
 .adm-chatbot-typing {
     align-self:flex-start;
@@ -216,8 +216,8 @@
 
 .adm-chatbot-icon-btn {
     background:var(--bg-secondary,#f1f5f9); border:1.5px solid var(--border-color,#e2e8f0);
-    color:var(--text-secondary,#64748b); width:38px; height:38px; border-radius:50%;
-    cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
+    color:var(--text-secondary,#64748b); width:40px; height:40px; border-radius:50%;
+    cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
     transition:all .2s ease; flex-shrink:0; padding:0; position:relative;
 }
 [data-theme="dark"] .adm-chatbot-icon-btn { background:rgba(36,36,44,.9); border-color:rgba(255,255,255,.1); color:var(--text-secondary,#94a3b8); }
@@ -232,8 +232,8 @@
 
 .adm-chatbot-send {
     background:linear-gradient(135deg,#2e54b8 0%,#7b5cfa 100%);
-    border:none; color:#fff; width:38px; height:38px; border-radius:50%;
-    cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
+    border:none; color:#fff; width:40px; height:40px; border-radius:50%;
+    cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
     transition:all .2s ease; flex-shrink:0; box-shadow:0 3px 10px rgba(46,84,184,.3);
 }
 .adm-chatbot-send:hover { transform:scale(1.1) translateY(-1px); box-shadow:0 6px 16px rgba(46,84,184,.4); }
@@ -249,12 +249,70 @@
 }
 .adm-chatbot-toast.show { opacity:1; }
 
-@media (max-width:768px) {
-    .adm-chatbot-container { bottom:88px; right:10px; left:10px; width:auto; height:500px; border-radius:18px; }
-    .adm-chatbot-toggle    { bottom:16px; right:14px; width:56px; height:56px; }
-    .adm-chatbot-icon      { width:26px; height:26px; }
+/* Shrink the panel on shorter screens — mirrors chatbot-widget.php's
+   (max-height:800px) breakpoint. Previously missing here entirely, which is
+   why the admin assistant rendered noticeably bigger (unshrunk container +
+   full-size fonts) than the citizen chatbot on the same laptop screen. */
+@media (max-height: 800px) and (min-width: 769px) {
+    .adm-chatbot-container {
+        height: 500px;          /* was 590px */
+        bottom: 72px;           /* was 96px */
+    }
+    .adm-chatbot-header {
+        height: 56px;           /* was 66px */
+        padding: 0 14px;
+    }
+    .adm-chatbot-header-text h3 { font-size: 13px; }
+    .adm-chatbot-status         { font-size: 10px; }
+    .adm-chatbot-avatar         { width: 34px; height: 34px; font-size: 17px; }
+
+    .adm-chatbot-messages {
+        padding: 10px 12px 6px;
+        gap: 7px;
+    }
+    .adm-chatbot-message {
+        padding: 8px 11px;
+        font-size: 12.5px;
+    }
+    .adm-chatbot-message .message-time { font-size: 9.5px; margin-top: 3px; }
+
+    .adm-chatbot-suggestions {
+        padding: 5px 12px 7px;
+        gap: 5px;
+    }
+    .adm-suggestion-chip {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+
+    .adm-chatbot-input-wrapper {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+    .adm-chatbot-input {
+        padding: 8px 13px;
+        font-size: 12.5px;
+    }
+    .adm-chatbot-icon-btn,
+    .adm-chatbot-send {
+        width: 36px;
+        height: 36px;
+    }
+    .adm-chatbot-icon-btn svg,
+    .adm-chatbot-send svg { width: 15px; height: 15px; }
+
+    .adm-chatbot-typing {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
 }
-@media (max-width:480px) { .adm-chatbot-container { height:450px; } }
+
+@media (max-width:768px) {
+    .adm-chatbot-container { bottom:88px; right:10px; left:10px; width:auto; height:520px; border-radius:18px; }
+    .adm-chatbot-toggle    { bottom:16px; right:14px; width:58px; height:58px; }
+    .adm-chatbot-icon      { width:28px; height:28px; }
+}
+@media (max-width:480px) { .adm-chatbot-container { height:470px; } }
 
 .adm-chatbot-clear-backdrop {
     position:fixed; z-index:10000; inset:0;

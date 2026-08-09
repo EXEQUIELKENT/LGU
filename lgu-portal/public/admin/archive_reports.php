@@ -1870,7 +1870,13 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     </div>
                 </td></tr>
             <?php endif; ?>
-                <tr id="noDesktopResult" style="display:none;"><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:20px;font-weight:500;opacity:.6;">No matching reports</td></tr>
+                <tr id="noDesktopResult" style="display:none;"><td colspan="<?= $isEngineer ? 11 : 12 ?>" style="text-align:center;padding:48px 20px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                        <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                        <div style="font-size:15px;font-weight:700;">No matching reports found</div>
+                        <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or priority filter</div>
+                    </div>
+                </td></tr>
             </tbody>
         </table>
     </div>
@@ -1923,7 +1929,13 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
             </div>
         </div>
     <?php endif; ?>
-        <div id="noMobileResult" class="report-card" style="display:none;text-align:center;opacity:.7;font-weight:600;">No matching reports</div>
+        <div id="noMobileResult" class="report-card" style="display:none;text-align:center;padding:48px 20px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-secondary);">
+                <i class="fas fa-search" style="font-size:2.2rem;opacity:.35;"></i>
+                <div style="font-size:15px;font-weight:700;">No matching reports found</div>
+                <div style="font-size:13px;opacity:.7;">Try a different keyword, status, or priority filter</div>
+            </div>
+        </div>
     </div>
     <div class="card-limit-more-wrap" id="repCardMoreWrap" style="display:none;">
         <button type="button" class="card-limit-more-btn" id="repCardMoreBtn">

@@ -338,11 +338,27 @@ $exportReportIcon  = $exportReportIcon  ?? '📄';
             </div>
         </div>
         <div class="pw-modal-body">
+            <!--
+                Fix: this field previously had no enclosing <form>, so when a
+                browser detected it as password-like (it becomes type=password
+                on focus) it searched the WHOLE document — not just this modal
+                — for the nearest text input to pair as "username", and could
+                land on the page's own search box, stuffing a saved email into
+                it. Scoping everything in its own <form> with a hidden decoy
+                username field keeps that autofill pairing confined to here.
+                autocomplete="new-password" is used instead of "off" because
+                Chrome specifically ignores "off" for password-like fields but
+                does honor "new-password".
+            -->
+            <form id="pwConfirmForm" autocomplete="off" onsubmit="return false;">
             <label for="pwInput">Password</label>
             <div class="pw-input-wrap">
-                <input type="text" id="pwInput"
+                <input type="text" name="username" autocomplete="username"
+                       tabindex="-1" aria-hidden="true"
+                       style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+                <input type="text" id="pwInput" name="export_identity_pw"
                        placeholder="Enter your password"
-                       autocomplete="off"
+                       autocomplete="new-password"
                        data-lpignore="true"
                        data-form-type="other"
                        style="-webkit-text-security:disc;font-family:text-security-disc,inherit"
@@ -352,6 +368,7 @@ $exportReportIcon  = $exportReportIcon  ?? '📄';
                         id="pwToggleBtn" title="Show/hide password"
                         tabindex="-1"><i class="far fa-eye-slash"></i></button>
             </div>
+            </form>
             <div class="pw-error-msg" id="pwErrorMsg">
                 <span>⚠️</span><span id="pwErrorText">Incorrect password.</span>
             </div>
