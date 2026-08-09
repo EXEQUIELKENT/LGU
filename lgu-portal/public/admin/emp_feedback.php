@@ -1698,7 +1698,14 @@ tr.notif-highlight > td:first-child {
                 <span class="light-icon" style="display:none;">☀️</span>
             </button>
             <button class="nav-btn notif-btn" id="notifBtn" title="Notifications">
-                <span class="notif-bell-icon">🔔</span>
+                <span class="notif-bell-icon">
+                    <svg class="bell-icon-svg" viewBox="0 0 50 30" aria-hidden="true">
+                        <g class="bell-icon__group">
+                            <path class="bell-icon__ball" d="M28.7,25c0,1.9-1.7,3.5-3.7,3.5s-3.7-1.6-3.7-3.5s1.7-3.5,3.7-3.5S28.7,23,28.7,25z"/>
+                            <path class="bell-icon__shell" d="M35.9,21.8c-1.2-0.7-4.1-3-3.4-8.7c0.1-1,0.1-2.1,0-3.1h0c-0.3-4.1-3.9-7.2-8.1-6.9c-3.7,0.3-6.6,3.2-6.9,6.9h0c-0.1,1-0.1,2.1,0,3.1c0.6,5.7-2.2,8-3.4,8.7c-0.4,0.2-0.6,0.6-0.6,1v1.8c0,0.2,0.2,0.4,0.4,0.4h22.2c0.2,0,0.4-0.2,0.4-0.4v-1.8C36.5,22.4,36.3,22,35.9,21.8L35.9,21.8z"/>
+                        </g>
+                    </svg>
+                </span>
                 <span class="notif-badge hidden" id="notifBadge"></span>
             </button>
         </div>
@@ -1721,7 +1728,14 @@ tr.notif-highlight > td:first-child {
     <img src="../assets/img/officiallogo.png" alt="LGU Logo">
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn notif-btn mobile-notif-btn" id="mobileNotifBtn" title="Notifications">
-        <span class="notif-bell-icon">🔔</span> <span class="notif-badge" id="mobileNotifBadge"></span>
+        <span class="notif-bell-icon">
+                    <svg class="bell-icon-svg" viewBox="0 0 50 30" aria-hidden="true">
+                        <g class="bell-icon__group">
+                            <path class="bell-icon__ball" d="M28.7,25c0,1.9-1.7,3.5-3.7,3.5s-3.7-1.6-3.7-3.5s1.7-3.5,3.7-3.5S28.7,23,28.7,25z"/>
+                            <path class="bell-icon__shell" d="M35.9,21.8c-1.2-0.7-4.1-3-3.4-8.7c0.1-1,0.1-2.1,0-3.1h0c-0.3-4.1-3.9-7.2-8.1-6.9c-3.7,0.3-6.6,3.2-6.9,6.9h0c-0.1,1-0.1,2.1,0,3.1c0.6,5.7-2.2,8-3.4,8.7c-0.4,0.2-0.6,0.6-0.6,1v1.8c0,0.2,0.2,0.4,0.4,0.4h22.2c0.2,0,0.4-0.2,0.4-0.4v-1.8C36.5,22.4,36.3,22,35.9,21.8L35.9,21.8z"/>
+                        </g>
+                    </svg>
+                </span> <span class="notif-badge" id="mobileNotifBadge"></span>
     </button>
 </div>
 

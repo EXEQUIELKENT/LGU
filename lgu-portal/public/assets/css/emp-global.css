@@ -477,26 +477,81 @@ body.sidebar-collapsed .desktop-top-nav {
     box-shadow: inset 0 0 0 1px rgba(55,98,200,.22), 0 0 0 3px rgba(233,68,68,.22);
 }
 
-/* The bell glyph itself — a dedicated layer so ring/click motion
-   never touches the button's own box (see comment block above). */
+/* The bell glyph itself — an animated SVG (shell + a small clapper
+   "ball" that swings independently), based on a classic ring-bell
+   icon pattern. It's a dedicated layer so ring/click motion never
+   touches the button's own box (see comment block above); the SVG
+   inherits the button's text colour via currentColor, so it follows
+   light/dark theme automatically. */
 .notif-bell-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
-    transform-origin: 50% 15%;
+}
+.notif-bell-icon .bell-icon-svg {
+    width: 21px;
+    height: 13px;
+    overflow: visible;
+    position: relative;
+    right: 2%; /* re-centres the bell within its non-square viewBox */
+}
+.notif-bell-icon .bell-icon__shell {
+    fill: var(--bg-secondary, #fff);
+    stroke: currentColor;
+    stroke-width: 2;
+}
+.notif-bell-icon .bell-icon__ball {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+}
+/* Resting tilt — a small permanent lean that both swing keyframes
+   below start and end on, so the bell settles back exactly here. */
+.notif-bell-icon .bell-icon__group {
+    transform-origin: 50% 2px;
+    transform: rotate(-8deg);
+}
+.notif-bell-icon .bell-icon__ball {
+    transform-origin: 50% 2px;
+    transform: translateX(-6.5%);
 }
 
-/* ringing: added only by JS when genuinely new notifications arrive */
-.notif-btn.ringing .notif-bell-icon {
-    animation: bellRing .5s ease-in-out;
+/* Swing: the shell rocks side to side while the clapper ball lags
+   and overshoots inside it, like a real bell being struck. Triggers
+   on hover/focus for discoverability, and on .ringing — added only
+   by JS when a genuinely new notification arrives via polling. */
+.notif-btn:hover .bell-icon__group,
+.notif-btn:focus-visible .bell-icon__group,
+.notif-btn.ringing .bell-icon__group {
+    animation: bellSwingGroup 2.3s ease-in-out;
 }
-@keyframes bellRing {
-    0%, 100% { transform: rotate(0deg); }
-    15%, 45% { transform: rotate(-14deg); }
-    30%, 60% { transform: rotate(14deg); }
-    75% { transform: rotate(-6deg); }
-    100% { transform: rotate(0deg); }
+.notif-btn:hover .bell-icon__ball,
+.notif-btn:focus-visible .bell-icon__ball,
+.notif-btn.ringing .bell-icon__ball {
+    animation: bellSwingBall 2.3s ease-in-out;
+}
+@keyframes bellSwingGroup {
+    0%, 100% { transform: rotate(-8deg); }
+    17.54%   { transform: rotate(0deg); }
+    35.08%   { transform: rotate(-20deg); }
+    48.24%   { transform: rotate(20deg); }
+    57.01%   { transform: rotate(-20deg); }
+    64.91%   { transform: rotate(8deg); }
+    74.55%   { transform: rotate(-15deg); }
+    78.94%   { transform: rotate(-7deg); }
+}
+@keyframes bellSwingBall {
+    0%, 100% { transform: translateX(-6.5%); }
+    17.54%   { transform: translateX(0%); }
+    21.93%   { transform: translateX(-1%); }
+    35.08%   { transform: translateX(11%); }
+    48.24%   { transform: translateX(-11%); }
+    52.63%   { transform: translateX(0%); }
+    59.64%   { transform: translateX(10%); }
+    68.41%   { transform: translateX(-11%); }
+    78.94%   { transform: translateX(11%); }
+    85.96%   { transform: translateX(-11%); }
 }
 
 /* clicked: brief icon pop + expanding ripple on every click, open or
@@ -568,7 +623,17 @@ body.sidebar-collapsed .desktop-top-nav {
 
 .notif-badge.show {
     display: block;
-    animation: pulse 1.6s ease-in-out infinite;
+    animation: badgeBounceIn .8s cubic-bezier(.34,1.56,.64,1) both,
+               pulse 1.6s ease-in-out .8s infinite;
+}
+
+@keyframes badgeBounceIn {
+    0%   { transform: scale(0); }
+    14%  { transform: scale(1.15); }
+    28%  { transform: scale(1); }
+    42%  { transform: scale(1.15); }
+    70%  { transform: scale(1); }
+    100% { transform: scale(1); }
 }
 
 @keyframes pulse {
