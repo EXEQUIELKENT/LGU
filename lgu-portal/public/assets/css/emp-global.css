@@ -282,10 +282,10 @@ body.sidebar-collapsed .desktop-top-nav {
 
 /* ═══════════════════════════════════════════════════════
    DAY/NIGHT TOGGLE — pill-shaped switch styled after a sky
-   (sun + clouds, light mode) morphing into a night sky
-   (moon + stars, dark mode). Used for both #darkModeBtn
-   (desktop top nav) and #mobileDarkModeBtn (mobile), which
-   share the exact same .dark-mode-btn markup/classes, so
+   (sun + shaded clouds, light mode) morphing into a night sky
+   (cratered moon + twinkling stars, dark mode). Used for both
+   #darkModeBtn (desktop top nav) and #mobileDarkModeBtn (mobile),
+   which share the exact same .dark-mode-btn markup/classes, so
    this single block styles both automatically — including
    on mobile, since no page overrides these rules any more
    (any leftover per-page width/height overrides for
@@ -304,6 +304,17 @@ body.sidebar-collapsed .desktop-top-nav {
    can animate the transition. admin_scripts.php has been
    updated to match: it no longer sets .style.display on
    these spans, leaving visibility entirely to [data-theme].
+
+   Each scene layer now carries its OWN cloud/star art built
+   entirely from ::before/::after on the two spans (no extra
+   markup needed): .light-icon gets a two-tone shaded cloud
+   cluster (bluish underside via ::before, white puffy tops via
+   ::after, drifting gently), and .dark-icon gets a starfield
+   (dots via ::before, twinkling sparkles via ::after — three of
+   them, faked from one glyph using text-shadow so no extra
+   elements are needed). The sliding knob (button::after) is the
+   sun in light mode and a moon with three shaded craters (layered
+   radial-gradients) in dark mode.
 ═══════════════════════════════════════════════════════ */
 .nav-btn.dark-mode-btn {
     width: 62px;
@@ -326,7 +337,10 @@ body.sidebar-collapsed .desktop-top-nav {
 /* The two state layers — each is a full sky/night-sky "scene" that
    crossfades via opacity so the transition animates smoothly no matter
    how different the two backgrounds are (gradients can't reliably
-   interpolate directly, but opacity always can). */
+   interpolate directly, but opacity always can). Each is now a
+   multi-stop gradient (several visible colour bands, not just two)
+   plus a soft radial "glow" seated behind the knob's resting spot,
+   so the scene reads as lit by the sun/moon rather than a flat wash. */
 .nav-btn.dark-mode-btn .dark-icon,
 .nav-btn.dark-mode-btn .light-icon {
     display: block !important; /* override inline style="display:none" in markup */
@@ -340,29 +354,56 @@ body.sidebar-collapsed .desktop-top-nav {
 .nav-btn.dark-mode-btn .light-icon {
     z-index: 2;
     opacity: 1;
-    background: linear-gradient(135deg, #86d3ff 0%, #4d9fe8 55%, #2c72c4 100%);
+    background:
+        radial-gradient(circle at 22% 38%, rgba(255,238,180,.45) 0%, transparent 42%),
+        radial-gradient(circle at 78% 55%, rgba(255,255,255,.5)  0%, transparent 55%),
+        linear-gradient(100deg, #2c72c4 0%, #4d9fe8 38%, #86d3ff 68%, #cdeeff 100%);
 }
 .nav-btn.dark-mode-btn .dark-icon {
     z-index: 1;
     opacity: 0;
-    background: linear-gradient(135deg, #2c3050 0%, #181a2e 55%, #0b0c17 100%);
+    background:
+        radial-gradient(circle at 78% 50%, rgba(130,150,200,.4) 0%, transparent 55%),
+        linear-gradient(100deg, #12142a 0%, #1f2340 35%, #2b2f52 65%, #3d4270 100%);
 }
 [data-theme="dark"] .nav-btn.dark-mode-btn .light-icon { opacity: 0; }
 [data-theme="dark"] .nav-btn.dark-mode-btn .dark-icon  { opacity: 1; }
 
-/* Clouds — a small cluster of overlapping soft circles on the sky layer */
+/* Clouds — two layered clusters for a puffy, shaded look instead of
+   flat dots: ::before is the bluish-grey "underside" shadow (slightly
+   larger, sitting low), ::after is the white highlighted tops directly
+   above it. A slow drift keeps the scene from feeling static. */
 .nav-btn.dark-mode-btn .light-icon::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image:
-        radial-gradient(circle at 68% 42%, rgba(255,255,255,.95) 0 5.5px, transparent 6.5px),
-        radial-gradient(circle at 78% 58%, rgba(255,255,255,.92) 0 6.5px, transparent 7.5px),
-        radial-gradient(circle at 90% 46%, rgba(255,255,255,.9)  0 4.5px, transparent 5.5px),
-        radial-gradient(circle at 82% 70%, rgba(255,255,255,.85) 0 4px,   transparent 5px);
+        radial-gradient(circle at 70% 47%, rgba(146,182,222,.55) 0 6.5px, transparent 7.5px),
+        radial-gradient(circle at 80% 63%, rgba(146,182,222,.5)  0 7.5px, transparent 8.5px),
+        radial-gradient(circle at 91% 51%, rgba(146,182,222,.5)  0 5.5px, transparent 6.5px),
+        radial-gradient(circle at 84% 75%, rgba(146,182,222,.45) 0 4.5px, transparent 5.5px);
+}
+.nav-btn.dark-mode-btn .light-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 68% 42%, #fff 0 6px,   transparent 7px),
+        radial-gradient(circle at 78% 58%, #fff 0 7px,   transparent 8px),
+        radial-gradient(circle at 90% 45%, #fff 0 5px,   transparent 6px),
+        radial-gradient(circle at 82% 68%, #fff 0 4.5px, transparent 5.5px),
+        radial-gradient(circle at 74% 60%, #fff 0 4px,   transparent 5px);
+    animation: cloudDrift 6s ease-in-out infinite;
+}
+@keyframes cloudDrift {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(-1.5px); }
 }
 
-/* Stars — tiny dots plus one small sparkle glyph on the night layer */
+/* Stars — small dot field plus three twinkling sparkles (one real
+   "✦" glyph, two more faked via text-shadow at different offsets so
+   no extra markup is needed). Dots and sparkles twinkle on separate
+   timings so they don't pulse in unison. */
 .nav-btn.dark-mode-btn .dark-icon::before {
     content: "";
     position: absolute;
@@ -373,6 +414,7 @@ body.sidebar-collapsed .desktop-top-nav {
         radial-gradient(circle at 12% 72%, #fff 0 1px,   transparent 1.6px),
         radial-gradient(circle at 44% 22%, #fff 0 1.3px, transparent 2px),
         radial-gradient(circle at 26% 48%, #fff 0 1px,   transparent 1.6px);
+    animation: starTwinkleDots 3.4s ease-in-out infinite;
 }
 .nav-btn.dark-mode-btn .dark-icon::after {
     content: "✦";
@@ -383,11 +425,23 @@ body.sidebar-collapsed .desktop-top-nav {
     line-height: 1;
     color: #fff;
     opacity: .95;
+    text-shadow: 15px 24px 0 rgba(255,255,255,.7), 4px 34px 0 rgba(255,255,255,.55);
+    animation: starTwinkleSparkle 2.4s ease-in-out infinite;
+}
+@keyframes starTwinkleDots {
+    0%, 100% { opacity: .6; }
+    50%      { opacity: 1; }
+}
+@keyframes starTwinkleSparkle {
+    0%, 100% { opacity: .55; }
+    50%      { opacity: 1; }
 }
 
-/* The sliding knob — sun in light mode, moon (with crater shading) in
-   dark mode. A single element on the button itself (::after), always on
-   top of both scene layers, sliding left/right as the theme flips. */
+/* The sliding knob — sun in light mode, moon (with three shaded
+   craters) in dark mode. A single element on the button itself
+   (::after), always on top of both scene layers, sliding left/right
+   as the theme flips with a bouncy arc-hop-and-spin instead of a
+   flat linear slide. */
 .nav-btn.dark-mode-btn::after {
     content: "";
     position: absolute;
@@ -398,16 +452,16 @@ body.sidebar-collapsed .desktop-top-nav {
     height: 26px;
     border-radius: 50%;
     background: radial-gradient(circle at 34% 30%, #ffe9a8 0%, #ffb703 55%, #f08c00 100%);
-    box-shadow:
-        inset -3px -2px 0 -1px rgba(150,155,170,0),
-        inset 4px 5px 0 -3px rgba(150,155,170,0),
-        inset -6px 4px 0 -4px rgba(150,155,170,0),
-        0 1px 3px rgba(0,0,0,.35);
+    box-shadow: 0 1px 3px rgba(0,0,0,.35);
     transition: left .5s cubic-bezier(.4,1.6,.6,1), background .45s ease, box-shadow .45s ease;
 }
 [data-theme="dark"] .nav-btn.dark-mode-btn::after {
     left: 34px; /* 62 - 2 - 26 */
-    background: radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
+    background:
+        radial-gradient(circle at 33% 30%, rgba(118,126,146,.65) 0 3px,   transparent 3.4px),
+        radial-gradient(circle at 62% 60%, rgba(118,126,146,.6)  0 2.6px, transparent 3px),
+        radial-gradient(circle at 70% 36%, rgba(118,126,146,.55) 0 1.8px, transparent 2.2px),
+        radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
     box-shadow:
         inset -3px -2px 0 -1px rgba(140,145,160,.55),
         inset 4px 5px 0 -3px rgba(140,145,160,.5),
@@ -415,18 +469,20 @@ body.sidebar-collapsed .desktop-top-nav {
         0 1px 3px rgba(0,0,0,.5);
 }
 
-/* Brief "pop" on the knob when actively toggled (JS adds .active for
-   ~500ms) — replaces the old whole-button rotateSun spin, which read
-   oddly once the button became an asymmetric pill instead of a square
-   icon. */
+/* Arc-hop + spin + pop on the knob when actively toggled (JS adds
+   .active for ~500ms) — runs alongside the "left" slide above so the
+   sun/moon lifts off the track, spins over, and drops back down
+   instead of just sliding flat. Replaces the old plain scale-only pop. */
 .nav-btn.dark-mode-btn.active::after {
     animation: dmKnobPop .5s cubic-bezier(.4,1.6,.6,1);
 }
 @keyframes dmKnobPop {
-    0%   { transform: scale(1); }
-    45%  { transform: scale(1.22); }
-    100% { transform: scale(1); }
+    0%   { transform: translateY(0)    scale(1)    rotate(0deg); }
+    35%  { transform: translateY(-5px) scale(1.18) rotate(90deg); }
+    70%  { transform: translateY(-2px) scale(1.08) rotate(150deg); }
+    100% { transform: translateY(0)    scale(1)    rotate(180deg); }
 }
+
 
 /* ═══════════════════════════════════════════════════════
    NOTIFICATION BELL — circular glass-gradient button shared by
@@ -480,9 +536,9 @@ body.sidebar-collapsed .desktop-top-nav {
 /* The bell glyph itself — an animated SVG (shell + a small clapper
    "ball" that swings independently), based on a classic ring-bell
    icon pattern. It's a dedicated layer so ring/click motion never
-   touches the button's own box (see comment block above); the SVG
-   inherits the button's text colour via currentColor, so it follows
-   light/dark theme automatically. */
+   touches the button's own box (see comment block above); shell and
+   ball are filled solid yellow with a black outline, fixed for both
+   light & dark theme. */
 .notif-bell-icon {
     display: inline-flex;
     align-items: center;
@@ -490,20 +546,20 @@ body.sidebar-collapsed .desktop-top-nav {
     line-height: 1;
 }
 .notif-bell-icon .bell-icon-svg {
-    width: 21px;
-    height: 13px;
+    width: 42px;
+    height: 26px;
     overflow: visible;
     position: relative;
     right: 2%; /* re-centres the bell within its non-square viewBox */
 }
 .notif-bell-icon .bell-icon__shell {
-    fill: var(--bg-secondary, #fff);
-    stroke: currentColor;
+    fill: #ffc107;
+    stroke: #000;
     stroke-width: 2;
 }
 .notif-bell-icon .bell-icon__ball {
-    fill: none;
-    stroke: currentColor;
+    fill: #ffc107;
+    stroke: #000;
     stroke-width: 1.5;
 }
 /* Resting tilt — a small permanent lean that both swing keyframes
