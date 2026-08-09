@@ -772,8 +772,7 @@ tbody tr:hover { background: rgba(46,125,50,.09); }
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
     .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
-    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: 0.05em; }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
@@ -982,17 +981,25 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
     color:var(--text-secondary); font-size:13px; font-style:normal; text-align:center;
 }
 .rep-no-evidence i { font-size:22px; opacity:.35; }
+/* ── View button — soft outline style (matches case_management.php's
+   .btn-view-case reference design): content-sized, colored border/text
+   at rest, solid fill on hover. Archive Reports keeps its green accent. ── */
 .btn-view-rep {
-    display:inline-flex; align-items:center; gap:3px;
-    background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;
-    padding:5px 12px;border-radius:999px;cursor:pointer;
-    font-size:11px;font-weight:600;white-space:nowrap; line-height:1.2;
-    box-shadow:0 2px 8px rgba(46,125,50,.3);
-    transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(46,125,50,.08); color:#2e7d32;
+    border:1.5px solid rgba(46,125,50,.35);
+    padding:5px 11px; border-radius:9px; cursor:pointer;
+    font-size:11px; font-weight:700; white-space:nowrap; line-height:1.2;
+    transition:background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease;
 }
 .btn-view-rep i { font-size: 10px; }
-.btn-view-rep:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 6px 16px rgba(46,125,50,.45); filter:brightness(1.06); }
-.btn-view-rep:active { transform:translateY(0) scale(.98); }
+.btn-view-rep:hover {
+    background:#2e7d32; color:#fff; border-color:#2e7d32;
+    transform:translateY(-1px); box-shadow:0 4px 14px rgba(46,125,50,.35);
+}
+.btn-view-rep:active { transform:translateY(0); }
+[data-theme="dark"] .btn-view-rep { background:rgba(67,160,71,.14); color:#81c784; border-color:rgba(67,160,71,.4); }
+[data-theme="dark"] .btn-view-rep:hover { background:#2e7d32; color:#fff; border-color:#2e7d32; }
 .rep-confirm-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:9600; }
 .rep-confirm-backdrop.active { display:flex; }
 .rep-confirm-modal { background:var(--bg-primary,#fff);border-radius:20px;box-shadow:0 25px 50px rgba(15,23,42,.25),0 0 0 1px rgba(0,0,0,.05);padding:32px 26px 24px;width:320px;max-width:92vw;animation:repConfirmPop .28s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column;align-items:center;text-align:center; }

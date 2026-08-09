@@ -1163,8 +1163,7 @@ tbody tr:hover { background: rgba(230,81,0,.09); }
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
     .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
-    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: 0.05em; }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; width: 38px; height: 38px; z-index: 1; }
@@ -1327,17 +1326,25 @@ td { padding: 10px 7px; font-size: 11.5px; white-space: normal; word-break: brea
 /* Keep status/priority cells contained */
 td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 /* View button */
+/* View button — soft outline style (matches case_management.php's
+   .btn-view-case reference design): content-sized, colored border/text
+   at rest, solid fill on hover. Pending Reports keeps its dark-orange accent. */
 .btn-view-rep {
-    display:inline-flex; align-items:center; gap:3px;
-    background:linear-gradient(135deg,#e65100,#ff6d00);color:#fff;border:none;
-    padding:5px 12px;border-radius:999px;cursor:pointer;
-    font-size:11px;font-weight:600;white-space:nowrap; line-height:1.2;
-    box-shadow:0 2px 8px rgba(230,81,0,.3);
-    transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(230,81,0,.08); color:#e65100;
+    border:1.5px solid rgba(230,81,0,.35);
+    padding:5px 11px; border-radius:9px; cursor:pointer;
+    font-size:11px; font-weight:700; white-space:nowrap; line-height:1.2;
+    transition:background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease;
 }
 .btn-view-rep i { font-size: 10px; }
-.btn-view-rep:hover { transform:translateY(-2px) scale(1.03); box-shadow:0 6px 16px rgba(230,81,0,.45); filter:brightness(1.06); }
-.btn-view-rep:active { transform:translateY(0) scale(.98); }
+.btn-view-rep:hover {
+    background:#e65100; color:#fff; border-color:#e65100;
+    transform:translateY(-1px); box-shadow:0 4px 14px rgba(230,81,0,.35);
+}
+.btn-view-rep:active { transform:translateY(0); }
+[data-theme="dark"] .btn-view-rep { background:rgba(255,109,0,.14); color:#ffab5e; border-color:rgba(255,109,0,.4); }
+[data-theme="dark"] .btn-view-rep:hover { background:#e65100; color:#fff; border-color:#e65100; }
 /* Modal styles */
 .rep-modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:8000; }
 .rep-modal-backdrop.active { display:flex; }

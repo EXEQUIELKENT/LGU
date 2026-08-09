@@ -188,18 +188,24 @@ body.sidebar-collapsed .desktop-top-nav {
     transition: max-width 0.3s ease, padding 0.3s ease;
     padding-left: 12px;
 }
-/* CIMM Label — plain brand wordmark. Not a link/button, so it must not look
-   like one: no pill fill, no shadow, no hover lift. Blue for brand identity,
-   carried by the text/icon color alone rather than a filled background. */
+/* CIMM Label — brand wordmark styled as a compact badge/chip: blue-gradient
+   rounded rect, square icon token, bold white text — matching the badge
+   language used elsewhere in the app (.rgmap-sync-badge, .admin-badge,
+   .page-badge) but in brand blue rather than a status/role color, and in
+   a rounded-rect shape (not a full pill) to read as "brand", not "status". */
 .desktop-cimm-label {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: 7px;
+    font-size: 13px;
     font-weight: 800;
-    color: #3762c8;
-    letter-spacing: 0.06em;
+    color: #fff;
+    letter-spacing: 0.04em;
     margin-right: auto;
+    background: linear-gradient(135deg, #3762c8, #1f3e99);
+    border-radius: 10px;
+    padding: 6px 13px 6px 6px;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35), 0 0 0 1px rgba(255,255,255,.12) inset;
 }
 .cimm-badge-icon {
     display: inline-flex;
@@ -208,16 +214,38 @@ body.sidebar-collapsed .desktop-top-nav {
     width: 20px;
     height: 20px;
     border-radius: 6px;
-    background: rgba(55, 98, 200, .12);
-    font-size: 12px;
+    background: rgba(255, 255, 255, .18);
+    font-size: 11px;
     line-height: 1;
 }
-[data-theme="dark"] .desktop-cimm-label,
-[data-theme="dark"] .mobile-cimm-label {
-    color: #8fb0ff;
+[data-theme="dark"] .desktop-cimm-label {
+    background: linear-gradient(135deg, #1f3e99, #14245c);
+    box-shadow: 0 3px 12px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14) inset;
 }
 [data-theme="dark"] .cimm-badge-icon {
-    background: rgba(143, 176, 255, .18);
+    background: rgba(255, 255, 255, .16);
+}
+
+/* Mobile CIMM label — same chip treatment, scaled down for the mobile
+   top nav (defined centrally here so every page — including sched.php,
+   which had no local rule for this at all — gets a consistent, styled
+   badge instead of relying on each page's own duplicated CSS). */
+.mobile-cimm-label {
+    position: absolute; left: 70px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 800; color: #fff;
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, #3762c8, #1f3e99);
+    border-radius: 9px;
+    padding: 4px 10px 4px 4px;
+    box-shadow: 0 2px 8px rgba(55,98,200,.35), 0 0 0 1px rgba(255,255,255,.12) inset;
+}
+.mobile-cimm-label .cimm-badge-icon {
+    width: 16px; height: 16px; border-radius: 5px; font-size: 9px;
+}
+[data-theme="dark"] .mobile-cimm-label {
+    background: linear-gradient(135deg, #1f3e99, #14245c);
+    box-shadow: 0 2px 10px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14) inset;
 }
 /* Dark Mode & Notification Buttons */
 .nav-actions {

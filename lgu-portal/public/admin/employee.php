@@ -2477,19 +2477,7 @@ body {
         font-size: 20px;
         cursor: pointer;
     }
-    /* Mobile CIMM Label */
-    .mobile-cimm-label {
-        position: absolute;
-        left: 70px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #3762c8;
-        letter-spacing: 0.05em;
-    }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img {
         height: 42px;
         object-fit: contain;
@@ -4009,10 +3997,9 @@ HTML;
             <!-- end Recent Activity chart-card -->
             </div><!-- end charts-grid (Road Monitoring + Recent Activity) -->
 
-            <?php if ($feedbackWidget !== null || $canGenerateReports): ?>
-            <!-- Citizen Feedback / Report Generation -->
+            <?php if ($feedbackWidget !== null): ?>
+            <!-- Citizen Feedback -->
             <div class="chart-card" style="margin-top: 20px;">
-                <?php if ($feedbackWidget !== null): ?>
                 <div class="chart-header">
                     <div>
                         <div class="chart-title" style="display:flex;align-items:center;gap:8px;">
@@ -4107,10 +4094,13 @@ HTML;
                     <?php endif; ?>
 
                 </div><!-- /fb-widget-wrapper -->
-                <?php endif; ?>
+            </div>
+            <!-- end Citizen Feedback chart-card -->
+            <?php endif; ?>
 
-                <?php if ($canGenerateReports): ?>
-                <!-- OFFICE STAFF / ADMIN: Report Generation Section -->
+            <?php if ($canGenerateReports): ?>
+            <!-- OFFICE STAFF / ADMIN: Report Generation -->
+            <div class="chart-card" style="margin-top: 20px;">
                 <div class="report-gen-section">
                     <div class="report-gen-header">
                         <h3>📊 Report Generation</h3>
@@ -4149,10 +4139,8 @@ HTML;
                         </button>
                     </div><!-- /report-type-grid -->
                 </div><!-- /report-gen-section -->
-                <?php endif; ?>
-
             </div>
-            <!-- end Citizen Feedback / Report Generation chart-card -->
+            <!-- end Report Generation chart-card -->
             <?php endif; ?>
 
         </div>

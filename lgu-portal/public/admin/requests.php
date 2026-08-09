@@ -652,17 +652,26 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
 
 /* View / View Details / View Evidence action button — same gradient-pill design
    in both the table and the mobile card view. */
+/* View / View Details / View Evidence action button — soft outline style
+   (matches case_management.php's .btn-view-case reference design):
+   content-sized, colored border/text at rest, solid fill on hover.
+   Icon stays a CSS pseudo-element since the markup uses plain text. */
 .btn-view {
     display: inline-flex; align-items: center; gap: 6px;
-    background: linear-gradient(135deg, #3762c8, #5f8cff); color: #fff; border: none;
-    padding: 8px 16px; border-radius: 999px; cursor: pointer;
-    font-size: 12.5px; font-weight: 700;
-    box-shadow: 0 3px 10px rgba(55,98,200,.3);
-    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    background: rgba(55,98,200,.08); color: #3762c8;
+    border: 1.5px solid rgba(55,98,200,.35);
+    padding: 7px 14px; border-radius: 10px; cursor: pointer;
+    font-size: 12px; font-weight: 700; white-space: nowrap; line-height: 1.2;
+    transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease;
 }
 .btn-view::before { content: '\f06e'; font-family: 'Font Awesome 5 Free'; font-weight: 900; font-size: 11px; }
-.btn-view:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 16px rgba(55,98,200,.45); filter: brightness(1.06); }
-.btn-view:active { transform: translateY(0) scale(.98); }
+.btn-view:hover {
+    background: #3762c8; color: #fff; border-color: #3762c8;
+    transform: translateY(-1px); box-shadow: 0 4px 14px rgba(55,98,200,.35);
+}
+.btn-view:active { transform: translateY(0); }
+[data-theme="dark"] .btn-view { background: rgba(94,129,255,.14); color: #93a5ff; border-color: rgba(94,129,255,.4); }
+[data-theme="dark"] .btn-view:hover { background: #3762c8; color: #fff; border-color: #3762c8; }
 
 .evidence-thumb-wrapper { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
 .evidence-thumb {
@@ -2132,8 +2141,7 @@ tbody td {
     .desktop-top-nav { display: none; }
     .mobile-top-nav { display: flex; position: fixed; top: 0; left: 0; height: 64px; width: 100%; align-items: center; justify-content: center; background: var(--bg-secondary); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 5000; box-shadow: 0 4px 18px var(--shadow-color); border-bottom: 1px solid var(--border-color); }
     .mobile-toggle { position: absolute; left: 14px; background: #3762c8; color: #fff; border: none; border-radius: 10px; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
-    .mobile-cimm-label { position: absolute; left: 70px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #3762c8; letter-spacing: .05em; }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
     .mobile-notif-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 1; }

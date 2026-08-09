@@ -1316,13 +1316,7 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
         width: 38px; height: 38px; font-size: 20px; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
     }
-    .mobile-cimm-label {
-        position: absolute; left: 70px;
-        display: inline-flex; align-items: center; gap: 5px;
-        font-size: 13px; font-weight: 800;
-        color: #3762c8; letter-spacing: .05em;
-    }
-    .mobile-cimm-label .cimm-badge-icon { font-size: 11px; }
+    /* .mobile-cimm-label now styled centrally in emp-global.css */
     .mobile-top-nav img { height: 42px; object-fit: contain; }
     .mobile-clock {
         position: absolute; right: 56px;
