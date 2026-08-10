@@ -22,7 +22,7 @@ if (!function_exists('cimm_smtp_credentials')) {
         return [
             'host'       => 'smtp.gmail.com',
             'username'   => 'lguportal2026@gmail.com',
-            'password'   => 'iisp igik etma csma',
+            'password'   => 'Kent136647090132',
             'port'       => 587,
             'secure'     => 'tls', // PHPMailer::ENCRYPTION_STARTTLS
             'from_email' => 'lguportal2026@gmail.com',
