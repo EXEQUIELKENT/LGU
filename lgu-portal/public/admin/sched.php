@@ -964,11 +964,16 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                     💰 <?= htmlspecialchars($row['budget_display']) ?>
                                 </span>
                             <?php endif; ?>
+                            <?php /* A schedule can genuinely be tracked in both the Energy
+                                     Management System and the CPRF catalog at once — show
+                                     both badges together when both apply, instead of the
+                                     old either/or logic that hid Energy whenever CPRF matched. */ ?>
                             <?php if (!empty($row['is_shared'])): ?>
                                 <span class="badge badge-shared-cprf searchable" title="This schedule is shared with the CPRF integration">
                                     🔗 CPRF
                                 </span>
-                            <?php elseif (!empty($row['energy_source'])): ?>
+                            <?php endif; ?>
+                            <?php if (!empty($row['energy_source'])): ?>
                                 <span class="badge badge-shared-energy searchable" title="Imported from the Energy Management System — edits here sync back automatically">
                                     ⚡ Energy
                                 </span>

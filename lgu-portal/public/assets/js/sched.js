@@ -1253,9 +1253,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         const facilityTag = e.facility_name
                             ? `<span class="cal-facility-tag">🏢 ${escH(e.facility_name)}</span>`
                             : (e.energy_facility_name ? `<span class="cal-facility-tag">⚡ ${escH(e.energy_facility_name)}</span>` : '');
-                        const sharedTag   = e.is_shared
-                            ? `<span class="badge-shared-cprf" style="margin-top:3px;display:inline-flex;">🔗 Shared with CPRF</span>`
-                            : (e.energy_source ? `<span class="badge-shared-energy" style="margin-top:3px;display:inline-flex;">⚡ Energy</span>` : '');
+                        // Same fix as the list/capsule badges: a schedule can be linked
+                        // to both integrations at once, so show both tags, not either/or.
+                        const cprfSharedTag = e.is_shared
+                            ? `<span class="badge-shared-cprf" style="margin-top:3px;display:inline-flex;">🔗 Shared with CPRF</span>` : '';
+                        const energySharedTag = e.energy_source
+                            ? `<span class="badge-shared-energy" style="margin-top:3px;display:inline-flex;">⚡ Energy</span>` : '';
+                        const sharedTag = cprfSharedTag + energySharedTag;
                         html += `
                             <div class="cal-task-row">
                                 <span class="cal-task-dot ${key}"></span>
@@ -1609,9 +1613,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const repTag    = t.rep_id  ? `<span class="capsule-rep-badge cap-hl-rep">REP-${escH(String(t.rep_id))}</span>` : '';
             const catTag    = (t.category && t.category !== 'Infrastructure Report' && t.category !== 'General Maintenance')
                             ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
+            // A schedule can be tracked in both the Energy Management System and
+            // the CPRF catalog at once — show both badges together when both
+            // apply (previously energyTag was suppressed whenever is_shared was
+            // true, hiding it on combo items).
             const cprfTag   = t.is_shared
                             ? `<span class="cap-cprf-badge">🔗 CPRF</span>` : '';
-            const energyTag = (!t.is_shared && t.energy_source)
+            const energyTag = t.energy_source
                             ? `<span class="cap-energy-badge">⚡ Energy</span>` : '';
             const numStr    = String(cardIndex);
 
