@@ -250,11 +250,13 @@ $recentReportsQuery = "SELECT
     req.location,
     res.status AS resolution_status,
     CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
-    r.engineer_id
+    r.engineer_id,
+    rm.rgmap_report_id AS road_monitoring_ref
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id = res.res_id
     LEFT JOIN requests req ON res.req_id = req.req_id
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    LEFT JOIN rgmap_road_reports rm ON rm.cimm_req_id = req.req_id
     WHERE res.status = 'Approved'
     {$engFilter}
     {$districtFilter}
@@ -278,11 +280,13 @@ $recentPendingQuery = "SELECT
     req.location,
     res.status AS resolution_status,
     CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
-    r.engineer_id
+    r.engineer_id,
+    rm.rgmap_report_id AS road_monitoring_ref
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id = res.res_id
     LEFT JOIN requests req ON res.req_id = req.req_id
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    LEFT JOIN rgmap_road_reports rm ON rm.cimm_req_id = req.req_id
     WHERE res.status IN ('Scheduled','Pending','In Progress','Pending Completion','')
     {$engFilter}
     {$districtFilter}
@@ -306,11 +310,13 @@ $recentArchiveQuery = "SELECT
     req.location,
     res.status AS resolution_status,
     CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
-    r.engineer_id
+    r.engineer_id,
+    rm.rgmap_report_id AS road_monitoring_ref
     FROM reports r
     LEFT JOIN request_resolutions res ON r.res_id = res.res_id
     LEFT JOIN requests req ON res.req_id = req.req_id
     LEFT JOIN employees e1 ON r.engineer_id = e1.user_id
+    LEFT JOIN rgmap_road_reports rm ON rm.cimm_req_id = req.req_id
     WHERE res.status IN ('Completed','Cancelled')
     {$engFilter}
     {$districtFilter}
@@ -1522,6 +1528,23 @@ body {
 [data-theme="dark"] .badge-shared-energy {
     background: rgba(45,212,191,.14); color: #2dd4bf;
     border-color: rgba(45,212,191,.3);
+}
+
+/* Road Monitoring origin chip — same compact design as .badge-shared-cprf/
+   .badge-shared-energy above, RGMAP orange instead of CPRF indigo / Energy
+   teal, so a report that originated from Road Monitoring reads the same way
+   here as it does on current_reports.php/pending_reports.php/archive_reports.php. */
+.road-monitoring-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(200,75,16,.1); color: #a83e0c;
+    border: 1px solid rgba(200,75,16,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+[data-theme="dark"] .road-monitoring-badge {
+    background: rgba(251,146,60,.12); color: #fdba74;
+    border-color: rgba(251,146,60,.28);
 }
 
 .schedule-date-container {
@@ -3719,6 +3742,11 @@ HTML;
                                     <?= htmlspecialchars($rep['location'] ?? '—') ?>
                                     · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
                                 </div>
+                                <?php if (!empty($rep['road_monitoring_ref'])): ?>
+                                <div class="schedule-item-badges">
+                                    <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($rep['road_monitoring_ref']) ?>">🛣️ RGMAP</span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
                                 <span style="font-size:11px;font-weight:700;color:<?= $priorityColor ?>;background:<?= $priorityColor ?>22;padding:3px 9px;border-radius:12px;">
@@ -3732,7 +3760,7 @@ HTML;
                                 </span>
                             </div>
                         </div>
-                        <?php 
+                        <?php
                         $repColorIndex++;
                         endforeach; ?>
                     <?php else: ?>
@@ -3799,6 +3827,11 @@ HTML;
                                     <?= htmlspecialchars($rep['location'] ?? '—') ?>
                                     · <?= $hasEngineer ? htmlspecialchars($rep['engineer_name']) : '<em style="color:var(--metric-orange)">Unassigned</em>' ?>
                                 </div>
+                                <?php if (!empty($rep['road_monitoring_ref'])): ?>
+                                <div class="schedule-item-badges">
+                                    <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($rep['road_monitoring_ref']) ?>">🛣️ RGMAP</span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
                                 <span style="font-size:11px;font-weight:700;color:<?= $pColor ?>;background:<?= $pColor ?>22;padding:3px 9px;border-radius:12px;">
@@ -3862,6 +3895,11 @@ HTML;
                                     <?= htmlspecialchars($rep['location'] ?? '—') ?>
                                     · <?= $hasEngineer ? htmlspecialchars($engName) : '<em style="color:var(--text-secondary)">No engineer</em>' ?>
                                 </div>
+                                <?php if (!empty($rep['road_monitoring_ref'])): ?>
+                                <div class="schedule-item-badges">
+                                    <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($rep['road_monitoring_ref']) ?>">🛣️ RGMAP</span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
                                 <span style="font-size:11px;font-weight:700;color:<?= $aColor ?>;background:<?= $aColor ?>22;padding:3px 9px;border-radius:12px;">

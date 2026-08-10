@@ -1902,7 +1902,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
-                    <td class="wrap searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></td>
+                    <td class="wrap searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ RGMAP</span><?php endif; ?></td>
                     <td class="wrap searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['district'] ?? '') ?></td>
                     <td class="wrap searchable" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
                     <?php if (!$isEngineer):
@@ -1955,7 +1955,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         ?>
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ RGMAP</span><?php endif; ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['district'] ?? '') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <?php if (!$isEngineer):
