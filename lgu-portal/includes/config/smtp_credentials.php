@@ -22,7 +22,7 @@ if (!function_exists('cimm_smtp_credentials')) {
         return [
             'host'       => 'smtp.gmail.com',
             'username'   => 'lguportal2026@gmail.com',
-            'password'   => 'Kent136647090132',
+            'password'   => 'whcq ieci jieq dctj',
             'port'       => 587,
             'secure'     => 'tls', // PHPMailer::ENCRYPTION_STARTTLS
             'from_email' => 'lguportal2026@gmail.com',
