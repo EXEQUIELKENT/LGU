@@ -247,10 +247,13 @@ $sql = "
         r.priority_lvl, r.budget, r.created_at, r.engineer_id,
         res.req_id, res.status AS resolution_status, res.res_note,
         req.infrastructure, req.location, req.issue, req.approval_status,
-        req.name AS requester_name, req.contact_number, req.coordinates, req.email AS req_email,
+        req.name AS requester_name, req.coordinates,
+        COALESCE(NULLIF(req.contact_number, ''), rm.reporter_phone, '') AS contact_number,
+        COALESCE(NULLIF(req.email, ''), rm.reporter_email) AS req_email,
         req.district, req.created_at AS req_created_at,
         CONCAT(e1.first_name, ' ', e1.last_name) AS engineer_name,
         e1.profile_picture AS engineer_pic,
+        rm.rgmap_report_id AS road_monitoring_ref,
         CONCAT(e2.first_name, ' ', e2.last_name) AS reporter_name,
         GROUP_CONCAT(DISTINCT ev.img_path  ORDER BY ev.uploaded_at  ASC SEPARATOR ',') AS evidence_images,
         GROUP_CONCAT(DISTINCT rpi.img_path ORDER BY rpi.uploaded_at ASC SEPARATOR ',') AS progress_images
@@ -261,6 +264,7 @@ $sql = "
     LEFT JOIN employees            e2  ON r.report_by   = e2.user_id
     LEFT JOIN evidence_images      ev  ON res.req_id    = ev.req_id
     LEFT JOIN report_progress_images rpi ON rpi.rep_id  = r.rep_id
+    LEFT JOIN rgmap_road_reports   rm  ON rm.cimm_req_id = req.req_id
     WHERE res.status IN ('Completed','Cancelled') {$df}
     GROUP BY r.rep_id
     ORDER BY r.rep_id DESC
@@ -352,6 +356,7 @@ foreach ($rows as $row) {
         'engineer_pic'      => $row['engineer_pic'] ?? '',
         'reporter_name'     => $row['reporter_name'] ?? '',
         'requester_name'    => $row['requester_name'] ?? '',
+        'road_monitoring_ref' => $row['road_monitoring_ref'] ?? '',
         'contact_number'    => $row['contact_number'] ?? '',
         'coordinates'       => $row['coordinates'] ?? '',
         'req_email'         => $row['req_email']     ?? '',
@@ -952,6 +957,22 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-modal-infra { font-size:20px;font-weight:700;color:var(--text-primary);line-height:1.2; }
 .rep-modal-close { background:none;border:none;font-size:26px;color:var(--text-secondary);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s;flex-shrink:0; }
 .rep-modal-close:hover { background:rgba(46,125,50,.1);color:#2e7d32; }
+/* Road Monitoring origin badge — same solid RGMAP orange gradient as
+   road_monitoring.php's own .page-badge/.rgmap-sync-badge and
+   current_reports.php's row/modal badge. */
+.road-monitoring-badge {
+    display: inline-block; max-width: 100%;
+    background: linear-gradient(135deg, #c84b10, #8b3000);
+    color: #fff; border: none;
+    border-radius: 12px; padding: 2px 9px;
+    font-size: 10px; font-weight: 700;
+    white-space: normal; word-break: break-word; line-height: 1.35;
+    letter-spacing: .02em; vertical-align: middle;
+    box-shadow: 0 2px 6px rgba(200,75,16,.35);
+}
+[data-theme="dark"] .road-monitoring-badge { box-shadow: 0 2px 8px rgba(251,146,60,.4); }
+.rep-modal-rm-badge { flex-shrink:0; align-self:center; margin:2px 2px 0 0; white-space:nowrap; }
+.rep-modal-rm-badge i { margin-right:2px; }
 .rep-modal-body { padding:0 24px 20px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#43a047 rgba(0,0,0,.07); }
 .rep-modal-footer { padding:14px 24px;border-top:1px solid var(--border-color);background:var(--bg-secondary);border-radius:0 0 20px 20px;flex-shrink:0; }
 .rep-footer-inner { display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap; }
@@ -1999,6 +2020,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <div class="rep-modal-rep-id" id="repModalId"></div>
                 <div class="rep-modal-infra" id="repModalInfra"></div>
             </div>
+            <span class="road-monitoring-badge rep-modal-rm-badge" id="repModalRmBadge" style="display:none;"><i class="fas fa-road"></i> Road Monitoring</span>
             <button class="rep-modal-close" id="repModalClose">&#215;</button>
         </div>
         <div class="rep-modal-body">
@@ -2540,6 +2562,11 @@ function openRepModal(repId) {
 
     document.getElementById('repModalId').textContent    = '#REP-' + data.rep_id + (data.req_id ? '  ·  REQ-' + String(data.req_id).padStart(3,'0') : '');
     document.getElementById('repModalInfra').textContent = data.infrastructure || '—';
+    const rmBadgeEl = document.getElementById('repModalRmBadge');
+    if (rmBadgeEl) {
+        rmBadgeEl.style.display = data.road_monitoring_ref ? 'inline-flex' : 'none';
+        rmBadgeEl.title = data.road_monitoring_ref ? ('Originated from Road Monitoring — ' + data.road_monitoring_ref) : '';
+    }
     const st = data.resolution_status || 'Completed';
     const statusEl = document.getElementById('repModalStatus');
     statusEl.textContent = st;

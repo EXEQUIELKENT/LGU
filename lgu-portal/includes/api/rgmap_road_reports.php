@@ -248,14 +248,26 @@ function rgmap_road_reports_convert_to_cimm_report(mysqli $conn, int $localId, i
     $source = 'road_monitoring';
     $createdAt = date('Y-m-d H:i:s');
 
+    // ── District — RGMAO reports carry no district of their own, so resolve
+    //    one from coordinates (nearest QC barangay centroid) with a free-text
+    //    address fallback, reusing the same barangay->district map the
+    //    citizen map picker uses, so it colours identically everywhere
+    //    (district-badge.d1..d6) once this shows up on Current Reports. ─────
+    require_once __DIR__ . '/cimm_district_resolver.php';
+    $district = cimm_resolve_district(
+        $row['coord_lat'] !== null ? (float)$row['coord_lat'] : null,
+        $row['coord_lng'] !== null ? (float)$row['coord_lng'] : null,
+        $location
+    );
+
     $reqStmt = $conn->prepare(
-        "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, source)
-         VALUES (?, ?, ?, ?, ?, 'Approved', ?, ?, ?)"
+        "INSERT INTO requests (infrastructure, location, issue, contact_number, name, approval_status, coordinates, email, source, district)
+         VALUES (?, ?, ?, ?, ?, 'Approved', ?, ?, ?, ?)"
     );
     if (!$reqStmt) {
         return ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => [], 'already_converted' => false, 'error' => 'DB prepare error (requests): ' . $conn->error];
     }
-    $reqStmt->bind_param('ssssssss', $infrastructure, $location, $issue, $contactNumber, $name, $coordinates, $email, $source);
+    $reqStmt->bind_param('sssssssss', $infrastructure, $location, $issue, $contactNumber, $name, $coordinates, $email, $source, $district);
     // created_at isn't in the bind list above (8 placeholders, 8 vars) — the
     // column has its own DEFAULT CURRENT_TIMESTAMP, but we still want PHP's
     // own clock (see this session's established timestamp-mismatch fixes),

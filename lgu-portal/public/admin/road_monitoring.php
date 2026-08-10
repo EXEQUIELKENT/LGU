@@ -27,6 +27,7 @@ require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
 require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
+require_once __DIR__ . '/../../includes/api/cimm_district_resolver.php';
 
 $isEngineer     = cimm_is_engineer();
 $engineerId     = (int)($_SESSION['employee_id'] ?? 0);
@@ -106,6 +107,16 @@ if (!function_exists('priorityBadge')) {
              . "border:1px solid {$s['bd']};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;"
              . "font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;\">"
              . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
+    }
+}
+if (!function_exists('districtBadge')) {
+    function districtBadge(?string $district): string {
+        if (!$district) {
+            return '';
+        }
+        $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
+        $cls = $map[strtolower(trim($district))] ?? 'd-other';
+        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
     }
 }
 
@@ -215,8 +226,114 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// ── Backfill: convert any road reports that were already marked Verified
+//    BEFORE rgmap_road_reports_convert_to_cimm_report() existed — those rows
+//    flipped verification_status but never got a matching requests/reports
+//    row, so they had no way to ever reach Current Reports (no engineer/
+//    budget/date controls exist here, only on Current Reports) and stayed
+//    permanently stuck showing "Verified" with nothing further possible.
+//    rgmap_road_reports_convert_to_cimm_report() is itself idempotent
+//    (checks cimm_req_id first), so this is safe to run on every page load —
+//    capped per load so a large backlog can't turn one page view into a slow
+//    batch job; any remainder just gets picked up on the next load. ────────
+$stuckVerifiedRes = $conn->query(
+    "SELECT id FROM rgmap_road_reports WHERE verification_status = 'Verified' AND cimm_req_id IS NULL LIMIT 5"
+);
+if ($stuckVerifiedRes && $stuckVerifiedRes->num_rows > 0) {
+    $backfillActorId = (int)($_SESSION['employee_id'] ?? 0);
+    while ($stuckRow = $stuckVerifiedRes->fetch_assoc()) {
+        $stuckId = (int)$stuckRow['id'];
+        $backfillResult = rgmap_road_reports_convert_to_cimm_report($conn, $stuckId, $backfillActorId);
+        if ($backfillResult['ok'] && !$backfillResult['already_converted']) {
+            $bfRow = $conn->query("SELECT rgmap_report_id, title FROM rgmap_road_reports WHERE id = {$stuckId}")->fetch_assoc();
+            $bfLabel = trim(($bfRow['rgmap_report_id'] ?? '') . ' — ' . ($bfRow['title'] ?? ''), ' —');
+            log_activity(
+                $conn, 'road_monitoring', 'road_report', $stuckId, 'validated',
+                "System backfill linked previously-verified report {$bfLabel} to Report #REP-"
+                    . str_pad((string)$backfillResult['rep_id'], 3, '0', STR_PAD_LEFT) . " on Current Reports."
+            );
+        }
+    }
+}
+
+// ── Backfill: fill in requests.district for rows that were converted to
+//    CIMM reports before district resolution existed (cimm_req_id set, but
+//    the linked requests row still has district NULL) — same capped,
+//    idempotent-by-construction sweep pattern as the stuck-verified backfill
+//    above (re-running finds nothing once every row has a district). ────────
+$districtBackfillRes = $conn->query(
+    "SELECT rr.id, rr.coord_lat, rr.coord_lng, rr.location, r.req_id
+     FROM rgmap_road_reports rr
+     INNER JOIN requests r ON r.req_id = rr.cimm_req_id
+     WHERE rr.cimm_req_id IS NOT NULL AND (r.district IS NULL OR r.district = '')
+     LIMIT 5"
+);
+if ($districtBackfillRes && $districtBackfillRes->num_rows > 0) {
+    while ($dbfRow = $districtBackfillRes->fetch_assoc()) {
+        $dbfDistrict = cimm_resolve_district(
+            $dbfRow['coord_lat'] !== null ? (float)$dbfRow['coord_lat'] : null,
+            $dbfRow['coord_lng'] !== null ? (float)$dbfRow['coord_lng'] : null,
+            (string)($dbfRow['location'] ?? '')
+        );
+        if ($dbfDistrict !== null) {
+            $dbfStmt = $conn->prepare('UPDATE requests SET district = ? WHERE req_id = ?');
+            if ($dbfStmt) {
+                $dbfReqId = (int)$dbfRow['req_id'];
+                $dbfStmt->bind_param('si', $dbfDistrict, $dbfReqId);
+                $dbfStmt->execute();
+                $dbfStmt->close();
+            }
+        }
+    }
+}
+
+// ── Backfill: collect road-monitoring-linked CIMM reports that have
+//    evidence images but were never AI-analyzed — covers both reports that
+//    predate the AI-analysis-on-convert step entirely, and any that were
+//    just created by the stuck-verified backfill above (its INSERTs have
+//    already committed by the time this query runs). Capped like the other
+//    backfill sweeps; the actual TF.js analysis runs client-side below,
+//    since that's a browser-only capability (no server-side equivalent). ──
+$pendingAiAnalysis = [];
+$aiBackfillRes = $conn->query(
+    "SELECT req.req_id, req.infrastructure,
+            GROUP_CONCAT(DISTINCT ev.img_path ORDER BY ev.uploaded_at ASC SEPARATOR ',') AS evidence_paths
+     FROM requests req
+     INNER JOIN rgmap_road_reports rm ON rm.cimm_req_id = req.req_id
+     INNER JOIN evidence_images ev ON ev.req_id = req.req_id
+     LEFT JOIN request_ai_analysis ai ON ai.req_id = req.req_id
+     WHERE ai.req_id IS NULL
+     GROUP BY req.req_id
+     LIMIT 3"
+);
+if ($aiBackfillRes) {
+    while ($aiRow = $aiBackfillRes->fetch_assoc()) {
+        $paths = array_values(array_filter(array_map('trim', explode(',', (string)($aiRow['evidence_paths'] ?? '')))));
+        if (empty($paths)) {
+            continue;
+        }
+        $pendingAiAnalysis[] = [
+            'req_id'         => (int)$aiRow['req_id'],
+            'infrastructure' => $aiRow['infrastructure'] ?: 'Roads',
+            'evidence_paths' => array_map(fn($p) => '../' . $p, $paths),
+        ];
+    }
+}
+
 // ── Data fetch — identical query/shape to what pending_reports.php used ──
 $road_monitoring_reports = rgmap_road_reports_fetch($conn);
+
+// ── District — resolved from coordinates (nearest QC barangay centroid),
+//    falling back to a free-text match against the address, so every row
+//    shows a district badge even before it's converted into a CIMM report. ──
+foreach ($road_monitoring_reports as &$rm) {
+    $rm['district'] = cimm_resolve_district(
+        $rm['coord_lat'] !== null ? (float)$rm['coord_lat'] : null,
+        $rm['coord_lng'] !== null ? (float)$rm['coord_lng'] : null,
+        (string)($rm['location'] ?? '')
+    );
+}
+unset($rm);
 
 $roadReportsJson = array_map(function ($rm) {
     return [
@@ -230,6 +347,7 @@ $roadReportsJson = array_map(function ($rm) {
         'severity'            => $rm['severity'],
         'description'         => $rm['description'],
         'location'            => $rm['location'],
+        'district'            => $rm['district'],
         'reporter_name'       => $rm['reporter_name'],
         'reporter_email'      => $rm['reporter_email'],
         'reporter_phone'      => $rm['reporter_phone'],
@@ -659,10 +777,13 @@ tr.notif-highlight > td:first-child {
 .activity-log-more-btn:hover { background: rgba(200,75,16,.16); border-color: #c84b10; }
 [data-theme="dark"] .activity-log-more-btn { background: rgba(251,146,60,.16); color: #fdba74; }
 
-/* ── CIMM loading overlay (matches requests.php / pending_reports.php) ── */
+/* ── CIMM loading overlay — same blue theme as requests.php's own
+   #loadingOverlay (this page's spinner previously used the RGMAP orange
+   accent, which read as an error/warning state instead of a neutral
+   loading state). ─────────────────────────────────────────────────────── */
 #repEmailOverlay {
     position: fixed; inset: 0;
-    background: radial-gradient(circle at 50% 42%, rgba(82,48,34,.8), rgba(20,10,6,.94));
+    background: radial-gradient(circle at 50% 42%, rgba(34,46,82,.78), rgba(6,9,20,.92));
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     display: none; justify-content: center; align-items: center;
     z-index: 19000; opacity: 0; transition: opacity .3s ease;
@@ -682,18 +803,18 @@ tr.notif-highlight > td:first-child {
 }
 #repEmailOverlay .rep-email-spinner::before {
     content: ''; position: absolute; inset: 0; border-radius: 50%;
-    border: 3px solid rgba(200,75,16,.18);
+    border: 3px solid rgba(99,132,210,.18);
 }
 #repEmailOverlay .rep-email-spinner::after {
     content: ''; position: absolute; inset: 0; border-radius: 50%;
     border: 3px solid transparent;
-    border-top-color: #c84b10; border-right-color: #c84b10;
+    border-top-color: #6384d2; border-right-color: #6384d2;
     animation: repRingSpin .85s linear infinite;
-    filter: drop-shadow(0 0 8px rgba(200,75,16,.55));
+    filter: drop-shadow(0 0 8px rgba(99,132,210,.55));
 }
 #repEmailOverlay .rep-email-spinner span {
     font-size: 12px; font-weight: 800; letter-spacing: 2.2px;
-    color: #fff; text-shadow: 0 2px 10px rgba(200,75,16,.6);
+    color: #fff; text-shadow: 0 2px 10px rgba(99,132,210,.6);
 }
 @keyframes repRingSpin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
 #repEmailOverlay .rep-email-text {
@@ -868,6 +989,37 @@ tr.notif-highlight > td:first-child {
     border-color: rgba(255,255,255,.12) !important;
 }
 [data-theme="dark"] #logoutAlertModal .lo-cancel:hover { background: rgba(255,255,255,.13) !important; }
+
+/* ── District Badge — same colour scheme/markup as current_reports.php,
+   requests.php, pending_reports.php, archive_reports.php and profile.php's
+   Area Engineer badges, so a district reads identically everywhere. ────── */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    white-space: nowrap;
+    margin-left: 6px;
+}
+.district-badge i { font-size: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8,#5b8aff); color:#fff; box-shadow: 0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42,#34c774); color:#fff; box-shadow: 0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00,#f59033); color:#fff; box-shadow: 0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457,#ec4899); color:#fff; box-shadow: 0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8,#8b5cf6); color:#fff; box-shadow: 0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a,#0ea5c9); color:#fff; box-shadow: 0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563,#9ca3af); color:#fff; box-shadow: 0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1 { background: linear-gradient(135deg,#2851b3,#5b8aff); box-shadow: 0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2 { background: linear-gradient(135deg,#156335,#34c774); box-shadow: 0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3 { background: linear-gradient(135deg,#a04f00,#f59033); box-shadow: 0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4 { background: linear-gradient(135deg,#9b1050,#ec4899); box-shadow: 0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5 { background: linear-gradient(135deg,#47259a,#8b5cf6); box-shadow: 0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 </style>
 </head>
 <body>
@@ -1082,7 +1234,7 @@ tr.notif-highlight > td:first-child {
                         <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
                         <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
                         <td class="searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></td>
-                        <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></td>
+                        <td class="searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?><?= districtBadge($rm['district']) ?></td>
                         <td class="searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></td>
                         <td class="searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></td>
                         <td class="searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></td>
@@ -1132,7 +1284,7 @@ tr.notif-highlight > td:first-child {
                 <div class="rc-row"><span class="rc-label">Report ID:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Title:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['title']) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></span></div>
-                <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?></span></div>
+                <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($rm['location'] ?? '—') ?><?= districtBadge($rm['district']) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['priority'] ?? 'medium')) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Severity:</span><span class="rc-value searchable"><?= priorityBadge(ucfirst($rm['severity'] ?? 'medium')) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Reported:</span><span class="rc-value searchable"><?= $rm['submitted_at'] ? date('M d, Y', strtotime($rm['submitted_at'])) : '—' ?></span></div>
@@ -1208,6 +1360,10 @@ tr.notif-highlight > td:first-child {
             <div class="rep-divider"></div>
             <div class="rep-field"><div class="rep-field-label">📍 Location</div><div class="rep-field-value" id="rmModalLocation"></div></div>
             <div class="rep-field"><div class="rep-field-label">👤 Reporter</div><div class="rep-field-value" id="rmModalReporter"></div></div>
+            <div class="rep-grid-2" id="rmModalContactGrid">
+                <div class="rep-field"><div class="rep-field-label">✉️ Email</div><div class="rep-field-value" id="rmModalReporterEmail"></div></div>
+                <div class="rep-field"><div class="rep-field-label">📞 Phone</div><div class="rep-field-value" id="rmModalReporterPhone"></div></div>
+            </div>
             <div class="rep-field"><div class="rep-field-label">📝 Description</div><div class="rep-field-value" id="rmModalDescription"></div></div>
             <div class="rep-divider"></div>
             <div class="rep-field-label" style="margin-bottom:8px;">🖼️ Attachments</div>
@@ -1263,9 +1419,16 @@ tr.notif-highlight > td:first-child {
 <script src="../assets/js/ai_tfjs_analysis.js"></script>
 <script>
 const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const PENDING_AI_ANALYSIS = <?= json_encode($pendingAiAnalysis, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 let currentRoadReportData = null;
 
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function districtBadgeHtml(district){
+    if (!district) return '';
+    const map = {'district 1':'d1','district 2':'d2','district 3':'d3','district 4':'d4','district 5':'d5','district 6':'d6'};
+    const cls = map[(district||'').toLowerCase().trim()] || 'd-other';
+    return `<span class="district-badge ${cls}"><i class="fas fa-location-dot"></i>${escH(district)}</span>`;
+}
 function priBadge(l){
     const st={
         Critical:{bg:'#fce7f3',fg:'#831843',bd:'#f472b6',dot:'#db2777'},
@@ -1292,8 +1455,11 @@ function openRoadReportModal(id) {
     document.getElementById('rmModalPriority').innerHTML = priBadge(data.priority ? (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) : 'Medium');
     document.getElementById('rmModalSeverity').innerHTML = priBadge(data.severity ? (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) : 'Medium');
     document.getElementById('rmModalSubmitted').textContent = data.submitted_at ? new Date(data.submitted_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}) : '—';
-    document.getElementById('rmModalLocation').textContent = data.location || '—';
-    document.getElementById('rmModalReporter').textContent = data.reporter_name || data.reporter_email || data.reporter_phone || '— (submitted by LGU staff)';
+    document.getElementById('rmModalLocation').innerHTML = escH(data.location || '—') + districtBadgeHtml(data.district);
+    document.getElementById('rmModalReporter').textContent = data.reporter_name || '— (submitted by LGU staff)';
+    document.getElementById('rmModalReporterEmail').textContent = data.reporter_email || '—';
+    document.getElementById('rmModalReporterPhone').textContent = data.reporter_phone || '—';
+    document.getElementById('rmModalContactGrid').style.display = (data.reporter_email || data.reporter_phone) ? '' : 'none';
     document.getElementById('rmModalDescription').textContent = data.description || '—';
 
     const attGrid = document.getElementById('rmModalAttachmentsGrid');
@@ -1531,6 +1697,36 @@ async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts =
     }
     throw lastErr;
 }
+
+// ── Catch-up AI analysis for older Road Monitoring conversions that never
+//    got an AI pass (predate this step entirely, or were just created by the
+//    server-side stuck-verified backfill on this exact page load) — runs
+//    quietly in the background right after page load. Capped server-side
+//    (PENDING_AI_ANALYSIS is built with LIMIT 3) so this never tries to
+//    analyze more than a few reports in one visit; any remainder is picked
+//    up on the next page load, same pattern as the other backfill sweeps. ──
+async function runPendingAiBackfill() {
+    if (!Array.isArray(PENDING_AI_ANALYSIS) || PENDING_AI_ANALYSIS.length === 0) return;
+    if (typeof InfraAI === 'undefined') return;
+    let completed = 0;
+    for (const item of PENDING_AI_ANALYSIS) {
+        try {
+            const aiResult = await runAiAnalysis(item.evidence_paths, item.infrastructure || 'Roads', () => {});
+            aiResult.req_id = item.req_id;
+            await fetch('../functionality/save_ai_analysis.php', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(aiResult)
+            });
+            completed++;
+        } catch (err) {
+            console.error('[InfraAI] Backfill analysis failed for req_id ' + item.req_id + ':', err);
+        }
+    }
+    if (completed > 0) {
+        showRepNotif('success', `🤖 AI analysis completed for ${completed} previously unanalyzed Road Monitoring report${completed === 1 ? '' : 's'}.`);
+    }
+}
+runPendingAiBackfill();
 
 async function doVerifyRoadReport() {
     if (!currentRoadReportData) return;
