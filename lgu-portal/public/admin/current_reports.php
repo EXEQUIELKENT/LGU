@@ -729,6 +729,16 @@ function priorityBadge(?string $lvl): string {
          . "font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;\">"
          . "<span style=\"width:6px;height:6px;border-radius:50%;background:{$s['dot']};display:inline-block;flex-shrink:0;\"></span>{$lvl}</span>";
 }
+if (!function_exists('districtBadge')) {
+    function districtBadge(?string $district): string {
+        if (!$district) {
+            return '';
+        }
+        $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
+        $cls = $map[strtolower(trim($district))] ?? 'd-other';
+        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+    }
+}
 
 function engProfileBtn(int $engineerId, ?string $picPath, int $repId = 0): string {
     $FALLBACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#fff3e0"/><circle cx="50" cy="36" r="20" fill="#ff9800"/><ellipse cx="50" cy="80" rx="30" ry="24" fill="#ff9800"/></svg>';
@@ -939,11 +949,11 @@ foreach ($rows as $row) {
     display: inline-block; max-width: 100%;
     background: linear-gradient(135deg, #c84b10, #8b3000);
     color: #fff; border: none;
-    border-radius: 12px; padding: 2px 9px;
-    font-size: 10px; font-weight: 700;
-    white-space: normal; word-break: break-word; line-height: 1.35;
-    letter-spacing: .02em; vertical-align: middle;
-    box-shadow: 0 2px 6px rgba(200,75,16,.35);
+    border-radius: 9px; padding: 1px 6px;
+    font-size: 8px; font-weight: 700;
+    white-space: normal; word-break: break-word; line-height: 1.25;
+    letter-spacing: .01em; vertical-align: middle;
+    box-shadow: 0 1px 4px rgba(200,75,16,.35);
 }
 [data-theme="dark"] .road-monitoring-badge {
     box-shadow: 0 2px 8px rgba(251,146,60,.4);
@@ -2255,8 +2265,9 @@ tr.notif-highlight > td:first-child {
 .rep-modal-rep-id { font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
 .rep-modal-infra { font-size:20px;font-weight:700;color:var(--text-primary);line-height:1.2; }
 .rep-modal-close { background:none;border:none;font-size:26px;color:var(--text-secondary);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s;flex-shrink:0; }
-.rep-modal-rm-badge { flex-shrink:0; align-self:center; margin:2px 2px 0 0; white-space:nowrap; }
-.rep-modal-rm-badge i { margin-right:2px; }
+.rep-modal-rep-id-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.rep-modal-rep-id-row .rep-modal-rep-id { margin-bottom:0; }
+.rep-modal-rm-badge { flex-shrink:0; padding:3px 10px; font-size:9.5px; }
 .rep-modal-close:hover { background:rgba(255,152,0,.1);color:#ff9800; }
 .rep-modal-body { padding:0 24px 20px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#ffb74d rgba(0,0,0,.07); }
 .rep-modal-body::-webkit-scrollbar { width:6px; }
@@ -3749,7 +3760,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['req_district'] ?? '') ?></td>
                     <td class="searchable" title="..."> <?= htmlspecialchars($notes) ?></td>
                     <?php if (!$isEngineer): ?>
                     <td class="engineer-cell" data-rep-id="<?= $row['rep_id'] ?>">
@@ -3819,7 +3830,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
             <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></span></div>
-            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['req_district'] ?? '') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <?php if (!$isEngineer): ?>
             <div class="rc-row">
@@ -3910,10 +3921,15 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         <div class="rep-modal-band"></div>
         <div class="rep-modal-header">
             <div class="rep-modal-header-left">
-                <div class="rep-modal-rep-id" id="repModalId"></div>
+                <div class="rep-modal-rep-id-row">
+                    <div class="rep-modal-rep-id" id="repModalId"></div>
+                    <span class="rgmap-sync-badge rep-modal-rm-badge" id="repModalRmBadge" style="display:none;">
+                        <span class="rgmap-sync-dot"></span>
+                        <span class="rgmap-sync-label">Road Monitoring</span>
+                    </span>
+                </div>
                 <div class="rep-modal-infra"  id="repModalInfra"></div>
             </div>
-            <span class="road-monitoring-badge rep-modal-rm-badge" id="repModalRmBadge" style="display:none;"><i class="fas fa-road"></i> Road Monitoring</span>
             <button class="rep-modal-close" id="repModalClose">&#215;</button>
         </div>
         <div class="rep-modal-body">

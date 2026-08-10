@@ -245,6 +245,16 @@ function format_datetime_ampm($datetime) {
     if ($ts === false) return htmlspecialchars($datetime);
     return date('F j, Y h:i A', $ts);
 }
+if (!function_exists('districtBadge')) {
+    function districtBadge(?string $district): string {
+        if (!$district) {
+            return '';
+        }
+        $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
+        $cls = $map[strtolower(trim($district))] ?? 'd-other';
+        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -3177,7 +3187,7 @@ tbody td {
                         <span class="searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span>
                     </td>
                     <td class="searchable"><?= htmlspecialchars($row['infrastructure']) ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['location']) ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['location']) ?><?= districtBadge($row['district'] ?? '') ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['issue']) ?></td>
                     <td class="searchable"><?= format_datetime_ampm($row['created_at']) ?></td>
                     <td>
@@ -3254,7 +3264,7 @@ tbody td {
             data-source="<?= htmlspecialchars($row['source'] ?? 'citizen') ?>">
             <div class="cimmReqRow"><span class="cimmReqLabel">Request ID:</span> <span class="cimmReqValue searchable">#REQ-<?= str_pad($row['req_id'], 3, '0', STR_PAD_LEFT) ?></span><?php if (($row['source'] ?? '') === 'ipms'): ?> <span class="badge-source-ipms" title="This request was forwarded from the IPMS citizen portal">🌐 IPMS</span><?php endif; ?></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Infrastructure:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['infrastructure']) ?></span></div>
-            <div class="cimmReqRow"><span class="cimmReqLabel">Location:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['location']) ?></span></div>
+            <div class="cimmReqRow"><span class="cimmReqLabel">Location:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['location']) ?><?= districtBadge($row['district'] ?? '') ?></span></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Issue:</span> <span class="cimmReqValue searchable"><?= htmlspecialchars($row['issue']) ?></span></div>
             <div class="cimmReqRow"><span class="cimmReqLabel">Date Submitted:</span> <span class="cimmReqValue searchable"><?= format_datetime_ampm($row['created_at']) ?></span></div>
             <div class="cimmReqRow">

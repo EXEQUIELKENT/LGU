@@ -281,6 +281,16 @@ function casePageForStatus(?string $resStatus): string {
     if (in_array($resStatus, ['Approved', 'Pending Admin Approval'], true)) return 'current_reports.php';
     return 'pending_reports.php'; // '', Scheduled, Pending, In Progress, Pending Completion
 }
+if (!function_exists('districtBadge')) {
+    function districtBadge(?string $district): string {
+        if (!$district) {
+            return '';
+        }
+        $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
+        $cls = $map[strtolower(trim($district))] ?? 'd-other';
+        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+    }
+}
 
 $rows = [];
 if ($result) { while ($r = $result->fetch_assoc()) $rows[] = $r; }
@@ -482,6 +492,50 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
 .scheduled-st { background: #e3f2fd; color: #1565c0; border: 1.5px solid rgba(21,101,192,.3); }
 .cancelled-st { background: #ffcdd2; color: #b71c1c; }
 .delayed-st   { background: #ffebee; color: #c62828; border: 1.5px solid rgba(198,40,40,.3); }
+
+/* ── District Badge (matches requests.php / current_reports.php) ── */
+.district-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 9px;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.5;
+    position: relative;
+    cursor: default;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .18s ease,
+                filter .18s ease;
+    animation: districtPop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes districtPop {
+    from { opacity: 0; transform: scale(.7) translateY(2px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.district-badge:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.08); }
+.district-badge i { font-size: 10px; flex-shrink: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+.district-badge.d1 { background: linear-gradient(135deg,#3762c8,#5b8aff); color:#fff; box-shadow: 0 2px 10px rgba(55,98,200,.40),0 0 0 2px rgba(55,98,200,.15); }
+.district-badge.d2 { background: linear-gradient(135deg,#1a7a42,#34c774); color:#fff; box-shadow: 0 2px 10px rgba(26,122,66,.40),0 0 0 2px rgba(26,122,66,.15); }
+.district-badge.d3 { background: linear-gradient(135deg,#b85c00,#f59033); color:#fff; box-shadow: 0 2px 10px rgba(184,92,0,.40),0 0 0 2px rgba(184,92,0,.15); }
+.district-badge.d4 { background: linear-gradient(135deg,#ad1457,#ec4899); color:#fff; box-shadow: 0 2px 10px rgba(173,20,87,.40),0 0 0 2px rgba(173,20,87,.15); }
+.district-badge.d5 { background: linear-gradient(135deg,#512da8,#8b5cf6); color:#fff; box-shadow: 0 2px 10px rgba(81,45,168,.40),0 0 0 2px rgba(81,45,168,.15); }
+.district-badge.d6 { background: linear-gradient(135deg,#00607a,#0ea5c9); color:#fff; box-shadow: 0 2px 10px rgba(0,96,122,.40),0 0 0 2px rgba(0,96,122,.15); }
+.district-badge.d-other { background: linear-gradient(135deg,#4b5563,#9ca3af); color:#fff; box-shadow: 0 2px 10px rgba(75,85,99,.30),0 0 0 2px rgba(75,85,99,.12); }
+[data-theme="dark"] .district-badge.d1 { background: linear-gradient(135deg,#2851b3,#5b8aff); box-shadow: 0 2px 14px rgba(91,138,255,.50),0 0 0 2px rgba(91,138,255,.22); }
+[data-theme="dark"] .district-badge.d2 { background: linear-gradient(135deg,#156335,#34c774); box-shadow: 0 2px 14px rgba(52,199,116,.50),0 0 0 2px rgba(52,199,116,.22); }
+[data-theme="dark"] .district-badge.d3 { background: linear-gradient(135deg,#a04f00,#f59033); box-shadow: 0 2px 14px rgba(245,144,51,.50),0 0 0 2px rgba(245,144,51,.22); }
+[data-theme="dark"] .district-badge.d4 { background: linear-gradient(135deg,#9b1050,#ec4899); box-shadow: 0 2px 14px rgba(236,72,153,.50),0 0 0 2px rgba(236,72,153,.22); }
+[data-theme="dark"] .district-badge.d5 { background: linear-gradient(135deg,#47259a,#8b5cf6); box-shadow: 0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
+[data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
+[data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 [data-theme="dark"] .status.delayed-st    { background: rgba(244,67,54,.2);    color: #e57373; border-color: rgba(229,115,115,.3); }
 [data-theme="dark"] .status.on-going      { background: rgba(245,158,11,.18);  color: #fdd835; }
 [data-theme="dark"] .status.completed     { background: rgba(76,175,80,.2);    color: #81c784; }
@@ -1062,7 +1116,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         </td>
                         <td class="searchable">REQ-<?= str_pad((string)$r['req_id'], 4, '0', STR_PAD_LEFT) ?></td>
                         <td class="wrap searchable"><?= htmlspecialchars($r['infrastructure']) ?></td>
-                        <td class="wrap searchable"><?= htmlspecialchars($r['location']) ?></td>
+                        <td class="wrap searchable"><?= htmlspecialchars($r['location']) ?><?= districtBadge($r['req_district'] ?? '') ?></td>
                         <td class="status-cell"><span class="status <?= caseStagePillClass($stage) ?>"><?= htmlspecialchars($stage) ?></span></td>
                         <td class="status-cell"><?= priorityBadge($priority) ?></td>
                         <td class="status-cell"><?= case_urgency_badge_html($priority, $anchorDate, $isClosed) ?></td>
@@ -1121,7 +1175,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                  data-urgency-ratio="<?= htmlspecialchars((string)round($urgencyRatio, 3)) ?>">
                 <div class="rc-row"><span class="rc-label">Case ID:</span><span class="rc-value searchable">REQ-<?= str_pad((string)$r['req_id'], 4, '0', STR_PAD_LEFT) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Type:</span><span class="rc-value searchable"><?= htmlspecialchars($r['infrastructure']) ?></span></div>
-                <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($r['location']) ?></span></div>
+                <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($r['location']) ?><?= districtBadge($r['req_district'] ?? '') ?></span></div>
                 <div class="rc-row"><span class="rc-label">Stage:</span><span class="rc-value"><span class="status <?= caseStagePillClass($stage) ?>"><?= htmlspecialchars($stage) ?></span></span></div>
                 <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value"><?= priorityBadge($priority) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Urgency:</span><span class="rc-value"><?= case_urgency_badge_html($priority, $anchorDate, $isClosed) ?></span></div>
