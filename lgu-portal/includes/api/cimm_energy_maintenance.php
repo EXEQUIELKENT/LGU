@@ -56,12 +56,17 @@ function cimm_energy_is_local_env(): bool
 
 function cimm_energy_detect_base_url(): string
 {
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $isLocal = cimm_energy_is_local_env();
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 
     if ($isLocal) {
-        return $protocol . '://' . $host . '/Lgu1-energy/public';
+        // Lgu1-energy is Laravel 12, which requires PHP ^8.2 — XAMPP's own
+        // PHP (used to serve CIMM itself) is 8.0, so Energy can't be served
+        // as a plain htdocs subfolder through XAMPP's Apache like RGMAP is.
+        // Locally it instead runs standalone via `php artisan serve` on its
+        // own port (see the PHP 8.2 install at C:\php82 and the .env this
+        // was set up with). ENERGY_API_BASE_URL overrides this if the local
+        // port ever changes.
+        return 'http://127.0.0.1:8010';
     }
 
     // Energy runs on its own domain (energy.infragovservices.com), separate
