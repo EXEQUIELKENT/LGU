@@ -252,7 +252,7 @@ if (!function_exists('districtBadge')) {
         }
         $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
         $cls = $map[strtolower(trim($district))] ?? 'd-other';
-        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+        return '<span class="district-badge district-badge-loc ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
     }
 }
 ?>
@@ -1393,6 +1393,10 @@ tr.notif-highlight > td:first-child {
     background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
     box-shadow: 0 2px 14px rgba(107,114,128,.40), 0 0 0 2px rgba(107,114,128,.18);
 }
+
+/* Table/card location variant — sized to match the location text next to
+   it instead of the badge's own fixed decorative size. */
+.district-badge-loc { font-size: inherit; }
 
 /* ======================================================
    REQUEST DETAIL MODAL (Requests view)

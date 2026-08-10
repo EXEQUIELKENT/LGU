@@ -282,6 +282,21 @@ if ($districtBackfillRes && $districtBackfillRes->num_rows > 0) {
                 $dbfStmt->bind_param('si', $dbfDistrict, $dbfReqId);
                 $dbfStmt->execute();
                 $dbfStmt->close();
+
+                // Push the now-resolved district straight back out to Road
+                // Monitoring (RGMAP) — without this, rows converted before
+                // district resolution existed would fix themselves here on
+                // CIMM but RGMAP's own "LGU Monitoring Reports" table would
+                // keep showing "—" under District forever, since RGMAP only
+                // ever learns a district value through this sync call, not
+                // by reading CIMM's database directly. Best-effort: a sync
+                // hiccup here must never break the page load.
+                try {
+                    require_once __DIR__ . '/../../includes/api/cimm_rgmap_sync.php';
+                    cimm_rgmap_sync_request_async($conn, $dbfReqId, 'validated');
+                } catch (\Throwable $e) {
+                    error_log('District backfill sync-out failed for req ' . $dbfReqId . ': ' . $e->getMessage());
+                }
             }
         }
     }

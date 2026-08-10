@@ -298,7 +298,7 @@ if (!function_exists('districtBadge')) {
         }
         $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
         $cls = $map[strtolower(trim($district))] ?? 'd-other';
-        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+        return '<span class="district-badge district-badge-loc ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
     }
 }
 
@@ -970,6 +970,22 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 .rep-modal-rep-id-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
 .rep-modal-rep-id-row .rep-modal-rep-id { margin-bottom:0; }
 .rep-modal-rm-badge { flex-shrink:0; padding:3px 10px; font-size:9.5px; }
+/* Road Monitoring origin chip — same compact design as sched.php's
+   .badge-shared-cprf, RGMAP orange instead of CPRF indigo, sized to match
+   the infrastructure text next to it via inherit rather than a fixed size. */
+.road-monitoring-badge {
+    display: inline-block; max-width: 100%;
+    background: rgba(200,75,16,.1); color: #a83e0c;
+    border: 1px solid rgba(200,75,16,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: inherit; font-weight: 600;
+    white-space: normal; word-break: break-word; line-height: 1.4;
+    letter-spacing: .01em; vertical-align: middle;
+}
+[data-theme="dark"] .road-monitoring-badge {
+    background: rgba(251,146,60,.12); color: #fdba74;
+    border-color: rgba(251,146,60,.28);
+}
 .rep-modal-body { padding:0 24px 20px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#43a047 rgba(0,0,0,.07); }
 .rep-modal-footer { padding:14px 24px;border-top:1px solid var(--border-color);background:var(--bg-secondary);border-radius:0 0 20px 20px;flex-shrink:0; }
 .rep-footer-inner { display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap; }
@@ -1512,6 +1528,9 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 [data-theme="dark"] .district-badge.d5     { background:linear-gradient(135deg,#47259a 0%,#8b5cf6 100%); box-shadow:0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
 [data-theme="dark"] .district-badge.d6     { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other{ background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
+/* Table/card location variant — sized to match the location text next to
+   it instead of the badge's own fixed decorative size. */
+.district-badge-loc { font-size: inherit; }
 
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }
@@ -1878,8 +1897,8 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['district'] ?? '') ?></td>
+                    <td class="wrap searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></td>
+                    <td class="wrap searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['district'] ?? '') ?></td>
                     <td class="wrap searchable" title="<?= htmlspecialchars($notes) ?>"><?= htmlspecialchars(mb_strimwidth($notes, 0, 60, '…')) ?></td>
                     <?php if (!$isEngineer):
                         $hasEngineer = !empty($row['engineer_id']) && !empty($row['engineer_name'])
@@ -1931,7 +1950,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         ?>
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['district'] ?? '') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <?php if (!$isEngineer):

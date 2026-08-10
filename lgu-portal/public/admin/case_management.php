@@ -288,7 +288,7 @@ if (!function_exists('districtBadge')) {
         }
         $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
         $cls = $map[strtolower(trim($district))] ?? 'd-other';
-        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+        return '<span class="district-badge district-badge-loc ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
     }
 }
 
@@ -536,6 +536,9 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
 [data-theme="dark"] .district-badge.d5 { background: linear-gradient(135deg,#47259a,#8b5cf6); box-shadow: 0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
 [data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
+/* Table/card location variant — sized to match the location text next to
+   it instead of the badge's own fixed decorative size. */
+.district-badge-loc { font-size: inherit; }
 [data-theme="dark"] .status.delayed-st    { background: rgba(244,67,54,.2);    color: #e57373; border-color: rgba(229,115,115,.3); }
 [data-theme="dark"] .status.on-going      { background: rgba(245,158,11,.18);  color: #fdd835; }
 [data-theme="dark"] .status.completed     { background: rgba(76,175,80,.2);    color: #81c784; }

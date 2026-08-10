@@ -736,7 +736,7 @@ if (!function_exists('districtBadge')) {
         }
         $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
         $cls = $map[strtolower(trim($district))] ?? 'd-other';
-        return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+        return '<span class="district-badge district-badge-loc ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
     }
 }
 
@@ -940,23 +940,24 @@ foreach ($rows as $row) {
     padding: 4px 12px; border-radius: 20px; letter-spacing: .04em;
 }
 
-/* Road Monitoring origin badge — same solid RGMAP orange gradient used by
-   road_monitoring.php's own .page-badge/.rgmap-sync-badge, so a report that
-   originated there reads as visually "branded" the same way everywhere.
-   inline-block + normal wrapping (not inline-flex) so it can wrap onto its
-   own line inside a narrow table column instead of overflowing it. */
+/* Road Monitoring origin badge — same compact chip design as sched.php's
+   .badge-shared-cprf (small border-radius, translucent tint + border, not a
+   pill), just in the RGMAP orange instead of CPRF's indigo. Sized to match
+   the infrastructure text next to it (td's own 11.5px), not a smaller
+   decorative label — and inline-block + normal wrapping so it can wrap
+   onto its own line inside a narrow table column instead of overflowing. */
 .road-monitoring-badge {
     display: inline-block; max-width: 100%;
-    background: linear-gradient(135deg, #c84b10, #8b3000);
-    color: #fff; border: none;
-    border-radius: 9px; padding: 1px 6px;
-    font-size: 8px; font-weight: 700;
-    white-space: normal; word-break: break-word; line-height: 1.25;
+    background: rgba(200,75,16,.1); color: #a83e0c;
+    border: 1px solid rgba(200,75,16,.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-size: inherit; font-weight: 600;
+    white-space: normal; word-break: break-word; line-height: 1.4;
     letter-spacing: .01em; vertical-align: middle;
-    box-shadow: 0 1px 4px rgba(200,75,16,.35);
 }
 [data-theme="dark"] .road-monitoring-badge {
-    box-shadow: 0 2px 8px rgba(251,146,60,.4);
+    background: rgba(251,146,60,.12); color: #fdba74;
+    border-color: rgba(251,146,60,.28);
 }
 
 /* CIMM ⇄ RGMAP integration badge — same animated-pill language as the
@@ -3187,6 +3188,13 @@ select.rep-editable-field { cursor:pointer; }
 [data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 
+/* Table/card location variant — sized to match the location text next to it
+   instead of the badge's own fixed decorative size, and never clipped: the
+   badge stays nowrap internally (doesn't split "District 6" across lines)
+   but the containing wrap-class td/rc-value is free to place it on its own
+   line, so it's never cut off by a narrow column. */
+.district-badge-loc { font-size: inherit; }
+
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }
 .activity-log-header {
@@ -3759,7 +3767,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
                 <tr data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
                     <td><button class="btn-view-rep" onclick="openRepModal(<?= $row['rep_id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
                     <td class="searchable">#REP-<?= $row['rep_id'] ?></td>
-                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></td>
+                    <td class="searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></td>
                     <td class="searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['req_district'] ?? '') ?></td>
                     <td class="searchable" title="..."> <?= htmlspecialchars($notes) ?></td>
                     <?php if (!$isEngineer): ?>
@@ -3829,7 +3837,7 @@ try { sessionStorage.removeItem('rep_notif'); } catch(e) {}
         ?>
         <div class="report-card" data-rep-id="<?= $row['rep_id'] ?>" data-date="<?= htmlspecialchars($row['starting_date'] ?? '') ?>" data-infra="<?= htmlspecialchars(strtolower($row['infrastructure'] ?? '')) ?>">
             <div class="rc-row"><span class="rc-label">Rep #:</span><span class="rc-value searchable">#REP-<?= $row['rep_id'] ?></span></div>
-            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🛣️ Road Monitoring</span><?php endif; ?></span></div>
+            <div class="rc-row"><span class="rc-label">Infrastructure:</span><span class="rc-value searchable"><?= htmlspecialchars($row['infrastructure'] ?? '—') ?><?php if (!empty($row['road_monitoring_ref'])): ?> <span class="road-monitoring-badge" title="Originated from Road Monitoring — <?= htmlspecialchars($row['road_monitoring_ref']) ?>">🔗 RGMAP</span><?php endif; ?></span></div>
             <div class="rc-row"><span class="rc-label">Location:</span><span class="rc-value searchable"><?= htmlspecialchars($row['location'] ?? '—') ?><?= districtBadge($row['req_district'] ?? '') ?></span></div>
             <div class="rc-row"><span class="rc-label">Issue / Notes:</span><span class="rc-value searchable"><?= htmlspecialchars($notes) ?></span></div>
             <?php if (!$isEngineer): ?>
