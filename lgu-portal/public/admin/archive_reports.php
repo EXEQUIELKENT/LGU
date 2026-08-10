@@ -1528,9 +1528,14 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
 [data-theme="dark"] .district-badge.d5     { background:linear-gradient(135deg,#47259a 0%,#8b5cf6 100%); box-shadow:0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
 [data-theme="dark"] .district-badge.d6     { background:linear-gradient(135deg,#00526a 0%,#0ea5c9 100%); box-shadow:0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other{ background:linear-gradient(135deg,#374151 0%,#6b7280 100%); box-shadow:0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
-/* Table/card location variant — sized to match the location text next to
-   it instead of the badge's own fixed decorative size. */
-.district-badge-loc { font-size: inherit; }
+/* Table/card location variant — previously `font-size: inherit`, which
+   made the badge inherit whatever text size surrounded it (e.g. a large
+   heading in a report's Location detail card), blowing it up way past
+   its intended pill size and clipping against the card's rounded
+   corners. Pinned to the same fixed size as the base badge (matches
+   road_monitoring.php's reference sizing) so it always reads as a small
+   badge, never a giant one. */
+.district-badge-loc { font-size: 9.5px; }
 
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }

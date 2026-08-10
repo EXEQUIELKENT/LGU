@@ -3188,12 +3188,16 @@ select.rep-editable-field { cursor:pointer; }
 [data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
 
-/* Table/card location variant — sized to match the location text next to it
-   instead of the badge's own fixed decorative size, and never clipped: the
-   badge stays nowrap internally (doesn't split "District 6" across lines)
+/* Table/card location variant — previously `font-size: inherit`, which made
+   the badge inherit whatever text size surrounded it (e.g. a large heading
+   in a report's Location detail card), blowing it up way past its intended
+   pill size and clipping against the card's rounded corners. Pinned to the
+   same fixed size as the base badge (matches road_monitoring.php's
+   reference sizing) so it always reads as a small badge, never a giant one.
+   Still stays nowrap internally (doesn't split "District 6" across lines),
    but the containing wrap-class td/rc-value is free to place it on its own
    line, so it's never cut off by a narrow column. */
-.district-badge-loc { font-size: inherit; }
+.district-badge-loc { font-size: 9.5px; }
 
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }

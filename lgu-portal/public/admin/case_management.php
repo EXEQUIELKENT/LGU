@@ -536,9 +536,14 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
 [data-theme="dark"] .district-badge.d5 { background: linear-gradient(135deg,#47259a,#8b5cf6); box-shadow: 0 2px 14px rgba(139,92,246,.50),0 0 0 2px rgba(139,92,246,.22); }
 [data-theme="dark"] .district-badge.d6 { background: linear-gradient(135deg,#00526a,#0ea5c9); box-shadow: 0 2px 14px rgba(14,165,201,.50),0 0 0 2px rgba(14,165,201,.22); }
 [data-theme="dark"] .district-badge.d-other { background: linear-gradient(135deg,#374151,#6b7280); box-shadow: 0 2px 14px rgba(107,114,128,.40),0 0 0 2px rgba(107,114,128,.18); }
-/* Table/card location variant — sized to match the location text next to
-   it instead of the badge's own fixed decorative size. */
-.district-badge-loc { font-size: inherit; }
+/* Table/card location variant — previously `font-size: inherit`, which
+   made the badge inherit whatever text size surrounded it (e.g. a large
+   heading in a report's Location detail card), blowing it up way past
+   its intended pill size and clipping against the card's rounded
+   corners. Pinned to the same fixed size as the base badge (matches
+   road_monitoring.php's reference sizing) so it always reads as a small
+   badge, never a giant one. */
+.district-badge-loc { font-size: 9.5px; }
 [data-theme="dark"] .status.delayed-st    { background: rgba(244,67,54,.2);    color: #e57373; border-color: rgba(229,115,115,.3); }
 [data-theme="dark"] .status.on-going      { background: rgba(245,158,11,.18);  color: #fdd835; }
 [data-theme="dark"] .status.completed     { background: rgba(76,175,80,.2);    color: #81c784; }

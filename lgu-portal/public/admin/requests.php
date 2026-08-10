@@ -1394,9 +1394,14 @@ tr.notif-highlight > td:first-child {
     box-shadow: 0 2px 14px rgba(107,114,128,.40), 0 0 0 2px rgba(107,114,128,.18);
 }
 
-/* Table/card location variant — sized to match the location text next to
-   it instead of the badge's own fixed decorative size. */
-.district-badge-loc { font-size: inherit; }
+/* Table/card location variant — previously `font-size: inherit`, which
+   made the badge inherit whatever text size surrounded it (e.g. a large
+   heading in a report's Location detail card), blowing it up way past
+   its intended pill size and clipping against the card's rounded
+   corners. Pinned to the same fixed size as the base badge (matches
+   road_monitoring.php's reference sizing) so it always reads as a small
+   badge, never a giant one. */
+.district-badge-loc { font-size: 9.5px; }
 
 /* ======================================================
    REQUEST DETAIL MODAL (Requests view)
