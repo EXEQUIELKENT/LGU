@@ -265,10 +265,30 @@ if ($result && $result->num_rows > 0) {
         $row['budget_raw']    = (float)($row['budget'] ?? 0);
         $row['budget_display']= '₱' . number_format((float)($row['budget'] ?? 0), 2);
         $storedCprfId = isset($row['cprf_facility_id']) ? (int)$row['cprf_facility_id'] : 0;
-        $facilityMatch = getMatchingFacility($storedCprfId > 0 ? $storedCprfId : null, $row['location'] ?? '', $row['task'] ?? '');
-        $row['cprf_facility_id'] = $facilityMatch['facility_id'] > 0 ? $facilityMatch['facility_id'] : $storedCprfId;
-        $row['facility_name'] = $facilityMatch['name'] !== '' ? $facilityMatch['name'] : trim((string)($row['cprf_facility_name'] ?? ''));
-        $row['is_shared'] = isSharedWithCPRF($row['cprf_facility_id'] > 0 ? $row['cprf_facility_id'] : null, $row['location'] ?? '');
+        $isEnergySourced = !empty($row['energy_source']);
+
+        if ($isEnergySourced && $storedCprfId <= 0) {
+            // Energy-imported row with no genuine, explicit CPRF facility
+            // link. Previously this still ran through the fuzzy CPRF
+            // text-matcher (location/task vs. facility name/keywords), which
+            // could spuriously "find" a CPRF facility just because the
+            // location text loosely resembled one — showing a facility name
+            // + 🔗 CPRF badge alongside ⚡ Energy on data that only ever came
+            // from Energy. Skipping the match entirely here means an
+            // Energy-only row shows just the Energy badge, as it should.
+            $row['facility_name'] = '';
+            $row['is_shared']     = false;
+        } else {
+            // Either not Energy-sourced (a normal CPRF-integration schedule,
+            // where fuzzy matching is the intended behavior), or it has a
+            // genuine explicit cprf_facility_id already on the row (meaning
+            // this facility really is tracked in both systems) — resolve
+            // the facility normally.
+            $facilityMatch = getMatchingFacility($storedCprfId > 0 ? $storedCprfId : null, $row['location'] ?? '', $row['task'] ?? '');
+            $row['cprf_facility_id'] = $facilityMatch['facility_id'] > 0 ? $facilityMatch['facility_id'] : $storedCprfId;
+            $row['facility_name'] = $facilityMatch['name'] !== '' ? $facilityMatch['name'] : trim((string)($row['cprf_facility_name'] ?? ''));
+            $row['is_shared'] = isSharedWithCPRF($row['cprf_facility_id'] > 0 ? $row['cprf_facility_id'] : null, $row['location'] ?? '');
+        }
         $row['rep_id']        = 0;
         $row['district']      = '';
 
@@ -948,8 +968,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                                 <span class="badge badge-shared-cprf searchable" title="This schedule is shared with the CPRF integration">
                                     🔗 CPRF
                                 </span>
-                            <?php endif; ?>
-                            <?php if (!empty($row['energy_source'])): ?>
+                            <?php elseif (!empty($row['energy_source'])): ?>
                                 <span class="badge badge-shared-energy searchable" title="Imported from the Energy Management System — edits here sync back automatically">
                                     ⚡ Energy
                                 </span>

@@ -191,6 +191,19 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
     </script>
     
     <style>
+        /* Page-specific overflow guard — this landing page has several
+           decorative/grid sections (stats grid, trust-indicator connecting
+           lines, hero elements) that can momentarily compute a width wider
+           than the viewport while the layout settles into a narrow/mobile
+           breakpoint (e.g. toggling the DevTools device toolbar without a
+           full reload). When that happens, centered content (margin:0 auto)
+           renders relative to that wider overflowed document instead of the
+           actual visible viewport, making the whole page appear shifted to
+           the right. Clamping horizontal overflow here — scoped to this page
+           only, since no other citizen page has this landing-page content —
+           keeps everything anchored to the visible viewport. */
+        html, body { max-width: 100%; overflow-x: hidden; }
+
         body {
             background: url("<?= $BASE_URL ?>assets/img/cityhall.jpeg") center/cover no-repeat fixed;
             min-height: 100vh;

@@ -1608,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             ? `<span class="capsule-mini-badge">${escH(t.category)}</span>` : '';
             const cprfTag   = t.is_shared
                             ? `<span class="cap-cprf-badge">🔗 CPRF</span>` : '';
-            const energyTag = t.energy_source
+            const energyTag = (!t.is_shared && t.energy_source)
                             ? `<span class="cap-energy-badge">⚡ Energy</span>` : '';
             const numStr    = String(cardIndex);
 
