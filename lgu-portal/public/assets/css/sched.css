@@ -941,6 +941,44 @@
     margin-bottom: 3px;
 }
 
+/* ═══════════════════════════════════════════════════════
+   COMBINED ENERGY + CPRF BADGE — a facility can genuinely be tracked
+   in both the Energy Management System AND the CPRF catalog at once, so
+   this isn't an either/or in the underlying data. Same animated-pill
+   language as the two badges above, blending both brand colors (Energy's
+   teal → CPRF's purple) into one gradient rather than picking a side.
+═══════════════════════════════════════════════════════ */
+.combo-sync-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #2dd4bf 0%, #7c5cfa 55%, #4c1f8f 100%);
+    color: #fff; border: none;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    letter-spacing: .04em; cursor: default;
+    box-shadow: 0 2px 6px rgba(45,212,191,.35), 0 2px 6px rgba(167,139,250,.35), 0 0 0 1px rgba(255,255,255,.15) inset;
+    text-shadow: 0 1px 1px rgba(0,0,0,.12);
+    animation: comboBadgeGlow 2.6s ease-in-out infinite;
+}
+.combo-sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    background: #fff;
+    box-shadow: 0 0 0 0 rgba(255,255,255,.75);
+    animation: cprfSyncPulse 2s infinite;
+}
+@keyframes comboBadgeGlow {
+    0%, 100% { box-shadow: 0 2px 6px rgba(45,212,191,.35),  0 2px 6px rgba(167,139,250,.35), 0 0 0 1px rgba(255,255,255,.15) inset; }
+    50%      { box-shadow: 0 2px 9px rgba(45,212,191,.55),  0 2px 9px rgba(167,139,250,.55), 0 0 0 1px rgba(255,255,255,.22) inset; }
+}
+[data-theme="dark"] .combo-sync-badge {
+    background: linear-gradient(135deg, #0d9e9e 0%, #6d3fd6 55%, #35155d 100%);
+    box-shadow: 0 3px 14px rgba(94,168,220,.55), 0 0 0 1px rgba(255,255,255,.15) inset;
+}
+.combo-sync-badge-modal {
+    padding: 3px 10px;
+    font-size: 10px;
+    margin-bottom: 3px;
+}
+
 .cal-facility-tag {
     display: inline-flex;
     align-items: center;

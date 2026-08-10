@@ -1126,6 +1126,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="modal-header-text">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <span class="modal-label">Maintenance Task</span>
+                    <span class="combo-sync-badge combo-sync-badge-modal" id="modalComboBadge" style="display:none;" title="This schedule is linked to both the Energy Management System and the CPRF facility catalog">
+                        <span class="combo-sync-dot"></span>
+                        <span class="combo-sync-label">Energy &amp; CPRF Integration</span>
+                    </span>
                     <span class="cprf-sync-badge cprf-sync-badge-modal" id="modalCprfBadge" style="display:none;" title="This schedule is shared with the CPRF integration">
                         <span class="cprf-sync-dot"></span>
                         <span class="cprf-sync-label">CPRF Integration</span>

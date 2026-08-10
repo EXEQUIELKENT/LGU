@@ -515,15 +515,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Apply status theme to header + nav bar
         applyModalTheme(key);
 
-        // CPRF vs Energy sync badge — a schedule row is linked to at most one
-        // of the two, never both (see cimm_energy_import_catalog()'s
-        // insert-only design), so exactly one badge (or neither, for
-        // report-source items and unlinked manual schedules) shows at a time.
+        // CPRF vs Energy sync badge — a facility can genuinely be tracked in
+        // both the Energy Management System and the CPRF catalog at once, so
+        // this is not strictly either/or. When both apply, show the combined
+        // badge instead of either individual one.
         const isEnergyItem = !!t.energy_source;
+        const isComboItem  = !!(t.is_shared && t.energy_source);
+        const modalComboBadgeEl = document.getElementById('modalComboBadge');
         const modalCprfBadgeEl = document.getElementById('modalCprfBadge');
         const modalEnergyBadgeEl = document.getElementById('modalEnergyBadge');
-        if (modalCprfBadgeEl) modalCprfBadgeEl.style.display = (!isEnergyItem && t.is_shared) ? '' : 'none';
-        if (modalEnergyBadgeEl) modalEnergyBadgeEl.style.display = isEnergyItem ? '' : 'none';
+        if (modalComboBadgeEl) modalComboBadgeEl.style.display = isComboItem ? '' : 'none';
+        if (modalCprfBadgeEl) modalCprfBadgeEl.style.display = (!isComboItem && !isEnergyItem && t.is_shared) ? '' : 'none';
+        if (modalEnergyBadgeEl) modalEnergyBadgeEl.style.display = (!isComboItem && isEnergyItem) ? '' : 'none';
 
         // Slide animation
         if (direction) {
@@ -583,7 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
-        const cprfFacilityRow = (!isEnergyItem && (t.cprf_facility_id || t.facility_name))
+        const cprfFacilityRow = ((!isEnergyItem || isComboItem) && (t.cprf_facility_id || t.facility_name))
             ? `<div class="modal-task-row modal-cprf-facility-row">
                     <div class="modal-task-row-icon"><i class="fas fa-building"></i></div>
                     <div class="modal-task-row-content">
