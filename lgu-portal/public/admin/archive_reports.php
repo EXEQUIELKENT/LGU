@@ -752,7 +752,14 @@ thead th { padding: 14px 16px; font-size: 13px; font-weight: 600; text-align: le
 thead th:first-child { border-top-left-radius: 12px; }
 thead th:last-child  { border-top-right-radius: 12px; text-align: center; }
 td { padding: 11px 12px; font-size: 13px; text-align: left; color: var(--text-primary); border-bottom: 1px solid var(--border-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-td.wrap { white-space: normal; word-break: break-word; }
+td.wrap {
+    white-space: normal; word-break: break-word;
+    /* The base td rule above sets overflow:hidden (for the ellipsis-truncation
+       columns); .wrap cells (Infrastructure, Location) need the opposite —
+       they're meant to wrap onto multiple lines, and overflow:hidden was
+       silently clipping the district/RGMAP badge's glow at the cell edge. */
+    overflow: visible;
+}
 td.status-cell { white-space: normal; overflow: visible; text-overflow: clip; }
 tbody tr { transition: background .18s ease; }
 tbody tr:nth-child(even) { background: rgba(46,125,50,.03); }
@@ -1537,6 +1544,27 @@ td:nth-child(10), td:nth-child(12) { white-space: nowrap; overflow: hidden; }
    road_monitoring.php's reference sizing) so it always reads as a small
    badge, never a giant one. */
 .district-badge-loc { font-size: 9.5px; }
+
+/* Table view only: the base .district-badge's outer ring shadow
+   ("0 0 0 2px" — a hard, non-blurred edge, unlike the soft blurred glow
+   before it) was getting abruptly cut off at this fixed-width column's
+   boundary with the next column, rendering as a stray vertical line
+   through the badge's glow. Scoped to #reportsTable so the mobile card
+   view (.report-card .district-badge-loc) keeps its full glow/ring. */
+#reportsTable .district-badge-loc.d1      { box-shadow: 0 2px 10px rgba(55,98,200,.40); }
+#reportsTable .district-badge-loc.d2      { box-shadow: 0 2px 10px rgba(26,122,66,.40); }
+#reportsTable .district-badge-loc.d3      { box-shadow: 0 2px 10px rgba(184,92,0,.40); }
+#reportsTable .district-badge-loc.d4      { box-shadow: 0 2px 10px rgba(173,20,87,.40); }
+#reportsTable .district-badge-loc.d5      { box-shadow: 0 2px 10px rgba(81,45,168,.40); }
+#reportsTable .district-badge-loc.d6      { box-shadow: 0 2px 10px rgba(0,96,122,.40); }
+#reportsTable .district-badge-loc.d-other { box-shadow: 0 2px 10px rgba(75,85,99,.30); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d1      { box-shadow: 0 2px 14px rgba(91,138,255,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d2      { box-shadow: 0 2px 14px rgba(52,199,116,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d3      { box-shadow: 0 2px 14px rgba(245,144,51,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d4      { box-shadow: 0 2px 14px rgba(236,72,153,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d5      { box-shadow: 0 2px 14px rgba(139,92,246,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d6      { box-shadow: 0 2px 14px rgba(14,165,201,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d-other { box-shadow: 0 2px 14px rgba(107,114,128,.40); }
 
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }

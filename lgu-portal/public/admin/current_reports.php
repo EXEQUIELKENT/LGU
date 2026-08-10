@@ -1448,6 +1448,10 @@ foreach ($rows as $row) {
     border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border-color);
     background: var(--bg-secondary); overflow-x: auto; -webkit-overflow-scrolling: touch;
     max-height: 560px; overflow-y: auto;
+    /* Own compositing/paint boundary — pairs with the sticky thead th fix
+       below to stop stray repaint artifacts from bleeding into this
+       scroll area on mobile browsers. */
+    isolation: isolate;
     /* Thin, glowing branded scrollbar — matches requests.php's .table-scroll-wrap */
     scrollbar-width: thin;
     scrollbar-color: #ffb74d transparent;
@@ -1486,6 +1490,15 @@ thead th {
     color: #fff; white-space: nowrap;
     position: sticky; top: 0; z-index: 2;
     background: linear-gradient(135deg, #e65100, #ff9800);
+    /* Force each sticky header cell onto its own GPU compositing layer.
+       Without this, some mobile/WebKit browsers leave a stray repaint
+       "ghost" line trailing down from a sticky element's edge as the
+       table scrolls — invisible against the plain background, but
+       visible wherever it crosses something bright like the district
+       badge's glow. */
+    -webkit-transform: translateZ(0); transform: translateZ(0);
+    will-change: transform;
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
 thead th:last-child { text-align: center; }
 tbody tr td:last-child { text-align: center; }
@@ -3199,6 +3212,27 @@ select.rep-editable-field { cursor:pointer; }
    but the containing wrap-class td/rc-value is free to place it on its own
    line, so it's never cut off by a narrow column. */
 .district-badge-loc { font-size: 9.5px; }
+
+/* Table view only: the base .district-badge's outer ring shadow
+   ("0 0 0 2px" — a hard, non-blurred edge, unlike the soft blurred glow
+   before it) was getting abruptly cut off at this fixed-width column's
+   boundary with the next column, rendering as a stray vertical line
+   through the badge's glow. Scoped to #reportsTable so the mobile card
+   view (.report-card .district-badge-loc) keeps its full glow/ring. */
+#reportsTable .district-badge-loc.d1      { box-shadow: 0 2px 10px rgba(55,98,200,.40); }
+#reportsTable .district-badge-loc.d2      { box-shadow: 0 2px 10px rgba(26,122,66,.40); }
+#reportsTable .district-badge-loc.d3      { box-shadow: 0 2px 10px rgba(184,92,0,.40); }
+#reportsTable .district-badge-loc.d4      { box-shadow: 0 2px 10px rgba(173,20,87,.40); }
+#reportsTable .district-badge-loc.d5      { box-shadow: 0 2px 10px rgba(81,45,168,.40); }
+#reportsTable .district-badge-loc.d6      { box-shadow: 0 2px 10px rgba(0,96,122,.40); }
+#reportsTable .district-badge-loc.d-other { box-shadow: 0 2px 10px rgba(75,85,99,.30); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d1      { box-shadow: 0 2px 14px rgba(91,138,255,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d2      { box-shadow: 0 2px 14px rgba(52,199,116,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d3      { box-shadow: 0 2px 14px rgba(245,144,51,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d4      { box-shadow: 0 2px 14px rgba(236,72,153,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d5      { box-shadow: 0 2px 14px rgba(139,92,246,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d6      { box-shadow: 0 2px 14px rgba(14,165,201,.50); }
+[data-theme="dark"] #reportsTable .district-badge-loc.d-other { box-shadow: 0 2px 14px rgba(107,114,128,.40); }
 
 /* ══════════════ ACTIVITY HISTORY + CARD LIMIT ══════════════ */
 .activity-log-card { gap: 14px; margin-top: 10px; }

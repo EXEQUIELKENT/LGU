@@ -898,6 +898,7 @@ tr.notif-highlight > td:first-child {
     .report-card .rc-label { font-weight: 600; color: #8b3000; flex-shrink: 0; min-width: 90px; }
     .report-card .rc-value { color: var(--text-primary); flex: 1; word-break: break-word; }
     .report-card .rc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 6px; }
+    .btn-view-rep-mobile { padding: 10px 22px !important; font-size: 14px !important; }
     .rep-grid-2 { grid-template-columns: 1fr; }
 }
 
@@ -1309,7 +1310,7 @@ tr.notif-highlight > td:first-child {
                     <?php else: ?>
                         <span class="status pending-st"><i class="fas fa-hourglass-half"></i> Awaiting Verification</span>
                     <?php endif; ?>
-                    <button type="button" class="btn-view-rep" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
+                    <button type="button" class="btn-view-rep btn-view-rep-mobile" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
                 </div>
             </div>
             <?php endforeach; ?>
