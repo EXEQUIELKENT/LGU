@@ -2136,6 +2136,7 @@ tr.notif-highlight > td:first-child {
     .report-card .rc-row { display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; }
     .report-card .rc-label { font-weight: 600; color: #ff9800; flex-shrink: 0; min-width: 110px; }
     .report-card .rc-value { color: var(--text-primary); flex: 1; word-break: break-word; }
+    .report-card .road-monitoring-badge { font-size: 9.5px; padding: 1px 6px; }
     .report-card .rc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 6px; }
     .sidebar-divider:not(.logo-divider), .sidebar-toggle, .sidebar-toggle-divider { display: none !important; }
     .notif-popup { top: 76px !important; z-index: 5050 !important; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; padding: 14px 12px; font-size: 16px; }
