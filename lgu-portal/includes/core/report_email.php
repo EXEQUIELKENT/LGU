@@ -10,6 +10,7 @@ use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require_once __DIR__ . '/../../vendor/PHPMailer/Exception.php';
+require_once __DIR__ . '/../config/smtp_credentials.php';
 
 /**
  * Build the absolute base URL, matching login.php logic.
@@ -125,13 +126,14 @@ function sendReportUpdateEmail(
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug  = 0;
+        $smtpCreds = cimm_smtp_credentials();
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $smtpCreds['host'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportal2026@gmail.com';
-        $mail->Password   = 'krdatioghgqriruh';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
+        $mail->Username   = $smtpCreds['username'];
+        $mail->Password   = $smtpCreds['password'];
+        $mail->SMTPSecure = $smtpCreds['secure'];
+        $mail->Port       = $smtpCreds['port'];
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'quoted-printable';
         $mail->Timeout    = 30;
@@ -145,7 +147,7 @@ function sendReportUpdateEmail(
         $mail->SMTPKeepAlive = false;
         $mail->WordWrap      = 0;
 
-        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+        $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = $subjectLine;
@@ -332,13 +334,14 @@ function sendRejectionEmail(
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug  = 0;
+        $smtpCreds = cimm_smtp_credentials();
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $smtpCreds['host'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportal2026@gmail.com';
-        $mail->Password   = 'krdatioghgqriruh';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
+        $mail->Username   = $smtpCreds['username'];
+        $mail->Password   = $smtpCreds['password'];
+        $mail->SMTPSecure = $smtpCreds['secure'];
+        $mail->Port       = $smtpCreds['port'];
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'quoted-printable';
         $mail->Timeout    = 30;
@@ -351,7 +354,7 @@ function sendRejectionEmail(
         $mail->SMTPAutoTLS   = true;
         $mail->SMTPKeepAlive = false;
 
-        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+        $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Request {$reqLabel} Has Been Rejected — LGU Portal";
@@ -521,13 +524,14 @@ function sendFeedbackStatusEmail(
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug  = 0;
+        $smtpCreds = cimm_smtp_credentials();
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $smtpCreds['host'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportal2026@gmail.com';
-        $mail->Password   = 'krdatioghgqriruh';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
+        $mail->Username   = $smtpCreds['username'];
+        $mail->Password   = $smtpCreds['password'];
+        $mail->SMTPSecure = $smtpCreds['secure'];
+        $mail->Port       = $smtpCreds['port'];
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'quoted-printable';
         $mail->Timeout    = 30;
@@ -541,7 +545,7 @@ function sendFeedbackStatusEmail(
         $mail->SMTPKeepAlive = false;
         $mail->WordWrap      = 0;
 
-        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+        $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Feedback {$fbkId} Has Been {$status} — LGU Portal";
@@ -637,13 +641,14 @@ function sendValidationEmail(
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug  = 0;
+        $smtpCreds = cimm_smtp_credentials();
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $smtpCreds['host'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'lguportal2026@gmail.com';
-        $mail->Password   = 'krdatioghgqriruh';
-        $mail->SMTPSecure = 'tls';
-        $mail->Port       = 587;
+        $mail->Username   = $smtpCreds['username'];
+        $mail->Password   = $smtpCreds['password'];
+        $mail->SMTPSecure = $smtpCreds['secure'];
+        $mail->Port       = $smtpCreds['port'];
         $mail->CharSet    = 'UTF-8';
         $mail->Encoding   = 'quoted-printable';
         $mail->Timeout    = 30;
@@ -656,7 +661,7 @@ function sendValidationEmail(
         $mail->SMTPAutoTLS   = true;
         $mail->SMTPKeepAlive = false;
 
-        $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+        $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
         $mail->addAddress($toEmail, $name);
         $mail->isHTML(true);
         $mail->Subject = "Your Request {$reqLabel} Has Been Approved — LGU Portal";

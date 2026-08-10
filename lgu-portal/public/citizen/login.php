@@ -55,6 +55,7 @@ require __DIR__ . '/../../includes/config/db.php';
 require __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
+require_once __DIR__ . '/../../includes/config/smtp_credentials.php';
 
 define('OTP_RESEND_COOLDOWN', 30);
 define('OTP_MAX_RESENDS', 1);
@@ -71,15 +72,16 @@ if (!isset($_SESSION['otp_total_resends'])) $_SESSION['otp_total_resends'] = 0;
  * Centralises SMTP settings so changes only need to be made here.
  */
 function createMailer(): PHPMailer {
+    $smtpCreds = cimm_smtp_credentials();
     $mail = new PHPMailer(true);
     $mail->isSMTP();
     $mail->SMTPDebug  = 0;                       // 0 = off; set to 2 temporarily to debug
-    $mail->Host       = 'smtp.gmail.com';
+    $mail->Host       = $smtpCreds['host'];
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'lguportal2026@gmail.com';
-    $mail->Password   = 'krdatioghgqriruh';      // Gmail App Password (16 chars, no spaces)
+    $mail->Username   = $smtpCreds['username'];
+    $mail->Password   = $smtpCreds['password'];  // Gmail App Password — see smtp_credentials.php
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // STARTTLS on port 587
-    $mail->Port       = 587;
+    $mail->Port       = $smtpCreds['port'];
     $mail->CharSet    = 'UTF-8';
     $mail->Encoding   = 'quoted-printable';
     $mail->Timeout    = 30;
@@ -98,7 +100,7 @@ function createMailer(): PHPMailer {
         ],
     ];
 
-    $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+    $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
     return $mail;
 }
 
@@ -2585,7 +2587,10 @@ body:has(#resetPasswordModal) {
 
     .mobile-clock {
         position: absolute;
-        right: 56px;
+        /* The dark-mode toggle is a 62px-wide pill anchored at right:12px,
+           so its left edge sits at 74px from the nav's right edge —
+           right:56px put the clock's text directly underneath it. */
+        right: 82px;
         font-size: 14px;
         font-weight: 600;
         color: var(--text-primary);
@@ -2774,7 +2779,7 @@ body:has(#resetPasswordModal) {
 @media (max-width: 360px) {
     .mobile-clock {
         font-size: 12px;
-        right: 52px;
+        right: 78px;
     }
 
     .title {

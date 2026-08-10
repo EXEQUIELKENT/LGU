@@ -553,14 +553,16 @@ body.sidebar-collapsed .desktop-top-nav {
     right: 2%; /* re-centres the bell within its non-square viewBox */
 }
 .notif-bell-icon .bell-icon__shell {
-    fill: #ffc107;
+    fill: #ffc107; /* fallback for the rare case the external gradient fails to load */
+    fill: url("../img/icon-gradients.svg#bellShellGrad");
     stroke: #000;
-    stroke-width: 2;
+    stroke-width: 1;
 }
 .notif-bell-icon .bell-icon__ball {
     fill: #ffc107;
+    fill: url("../img/icon-gradients.svg#bellBallGrad");
     stroke: #000;
-    stroke-width: 1.5;
+    stroke-width: 0.75;
 }
 /* Resting tilt — a small permanent lean that both swing keyframes
    below start and end on, so the bell settles back exactly here. */

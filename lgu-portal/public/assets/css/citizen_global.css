@@ -290,12 +290,14 @@
         .nav-btn:active { transform: scale(0.95); }
 
         /* ═══════════════════════════════════════════════════════
-           DAY/NIGHT TOGGLE — same pill-shaped switch used on the
-           admin side (see emp-global.css): a sun + clouds sky in
-           light mode morphing into a moon + stars night sky in
-           dark mode. Overrides the generic .nav-btn sizing above
-           for both #darkModeBtn (desktop) and #mobileDarkModeBtn
-           (mobile) since they share the exact same markup/classes.
+           DAY/NIGHT TOGGLE — byte-for-byte the same block as the
+           admin side (see emp-global.css) so both sides look and
+           animate identically: a sun + shaded clouds sky in light
+           mode morphing into a cratered moon + twinkling starfield
+           night sky in dark mode. Used for both #darkModeBtn
+           (desktop) and #mobileDarkModeBtn (mobile), which share the
+           exact same markup/classes, so this single block styles
+           both automatically.
            Markup relied upon (already present on every citizen page):
              <button class="nav-btn dark-mode-btn" id="darkModeBtn">
                  <span class="dark-icon">🌙</span>
@@ -322,6 +324,13 @@
         .nav-btn.dark-mode-btn:hover  { background: transparent; transform: scale(1.04); }
         .nav-btn.dark-mode-btn:active { transform: scale(0.96); }
 
+        /* The two state layers — each is a full sky/night-sky "scene" that
+           crossfades via opacity so the transition animates smoothly no matter
+           how different the two backgrounds are (gradients can't reliably
+           interpolate directly, but opacity always can). Each is a multi-stop
+           gradient (several visible colour bands, not just two) plus a soft
+           radial "glow" seated behind the knob's resting spot, so the scene
+           reads as lit by the sun/moon rather than a flat wash. */
         .nav-btn.dark-mode-btn .dark-icon,
         .nav-btn.dark-mode-btn .light-icon {
             display: block !important; /* override inline style="display:none" in markup */
@@ -335,29 +344,56 @@
         .nav-btn.dark-mode-btn .light-icon {
             z-index: 2;
             opacity: 1;
-            background: linear-gradient(135deg, #86d3ff 0%, #4d9fe8 55%, #2c72c4 100%);
+            background:
+                radial-gradient(circle at 22% 38%, rgba(255,238,180,.45) 0%, transparent 42%),
+                radial-gradient(circle at 78% 55%, rgba(255,255,255,.5)  0%, transparent 55%),
+                linear-gradient(100deg, #2c72c4 0%, #4d9fe8 38%, #86d3ff 68%, #cdeeff 100%);
         }
         .nav-btn.dark-mode-btn .dark-icon {
             z-index: 1;
             opacity: 0;
-            background: linear-gradient(135deg, #2c3050 0%, #181a2e 55%, #0b0c17 100%);
+            background:
+                radial-gradient(circle at 78% 50%, rgba(130,150,200,.4) 0%, transparent 55%),
+                linear-gradient(100deg, #12142a 0%, #1f2340 35%, #2b2f52 65%, #3d4270 100%);
         }
         [data-theme="dark"] .nav-btn.dark-mode-btn .light-icon { opacity: 0; }
         [data-theme="dark"] .nav-btn.dark-mode-btn .dark-icon  { opacity: 1; }
 
-        /* Clouds — a small cluster of overlapping soft circles on the sky layer */
+        /* Clouds — two layered clusters for a puffy, shaded look instead of
+           flat dots: ::before is the bluish-grey "underside" shadow (slightly
+           larger, sitting low), ::after is the white highlighted tops directly
+           above it. A slow drift keeps the scene from feeling static. */
         .nav-btn.dark-mode-btn .light-icon::before {
             content: "";
             position: absolute;
             inset: 0;
             background-image:
-                radial-gradient(circle at 68% 42%, rgba(255,255,255,.95) 0 5.5px, transparent 6.5px),
-                radial-gradient(circle at 78% 58%, rgba(255,255,255,.92) 0 6.5px, transparent 7.5px),
-                radial-gradient(circle at 90% 46%, rgba(255,255,255,.9)  0 4.5px, transparent 5.5px),
-                radial-gradient(circle at 82% 70%, rgba(255,255,255,.85) 0 4px,   transparent 5px);
+                radial-gradient(circle at 70% 47%, rgba(146,182,222,.55) 0 6.5px, transparent 7.5px),
+                radial-gradient(circle at 80% 63%, rgba(146,182,222,.5)  0 7.5px, transparent 8.5px),
+                radial-gradient(circle at 91% 51%, rgba(146,182,222,.5)  0 5.5px, transparent 6.5px),
+                radial-gradient(circle at 84% 75%, rgba(146,182,222,.45) 0 4.5px, transparent 5.5px);
+        }
+        .nav-btn.dark-mode-btn .light-icon::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 68% 42%, #fff 0 6px,   transparent 7px),
+                radial-gradient(circle at 78% 58%, #fff 0 7px,   transparent 8px),
+                radial-gradient(circle at 90% 45%, #fff 0 5px,   transparent 6px),
+                radial-gradient(circle at 82% 68%, #fff 0 4.5px, transparent 5.5px),
+                radial-gradient(circle at 74% 60%, #fff 0 4px,   transparent 5px);
+            animation: cloudDrift 6s ease-in-out infinite;
+        }
+        @keyframes cloudDrift {
+            0%, 100% { transform: translateX(0); }
+            50%      { transform: translateX(-1.5px); }
         }
 
-        /* Stars — tiny dots plus one small sparkle glyph on the night layer */
+        /* Stars — small dot field plus three twinkling sparkles (one real
+           "✦" glyph, two more faked via text-shadow at different offsets so
+           no extra markup is needed). Dots and sparkles twinkle on separate
+           timings so they don't pulse in unison. */
         .nav-btn.dark-mode-btn .dark-icon::before {
             content: "";
             position: absolute;
@@ -368,6 +404,7 @@
                 radial-gradient(circle at 12% 72%, #fff 0 1px,   transparent 1.6px),
                 radial-gradient(circle at 44% 22%, #fff 0 1.3px, transparent 2px),
                 radial-gradient(circle at 26% 48%, #fff 0 1px,   transparent 1.6px);
+            animation: starTwinkleDots 3.4s ease-in-out infinite;
         }
         .nav-btn.dark-mode-btn .dark-icon::after {
             content: "✦";
@@ -378,11 +415,23 @@
             line-height: 1;
             color: #fff;
             opacity: .95;
+            text-shadow: 15px 24px 0 rgba(255,255,255,.7), 4px 34px 0 rgba(255,255,255,.55);
+            animation: starTwinkleSparkle 2.4s ease-in-out infinite;
+        }
+        @keyframes starTwinkleDots {
+            0%, 100% { opacity: .6; }
+            50%      { opacity: 1; }
+        }
+        @keyframes starTwinkleSparkle {
+            0%, 100% { opacity: .55; }
+            50%      { opacity: 1; }
         }
 
-        /* The sliding knob — sun in light mode, moon (with crater shading) in
-           dark mode. A single element on the button itself (::after), always
-           on top of both scene layers, sliding left/right as the theme flips. */
+        /* The sliding knob — sun in light mode, moon (with three shaded
+           craters) in dark mode. A single element on the button itself
+           (::after), always on top of both scene layers, sliding left/right
+           as the theme flips with a bouncy arc-hop-and-spin instead of a
+           flat linear slide. */
         .nav-btn.dark-mode-btn::after {
             content: "";
             position: absolute;
@@ -398,7 +447,11 @@
         }
         [data-theme="dark"] .nav-btn.dark-mode-btn::after {
             left: 34px; /* 62 - 2 - 26 */
-            background: radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
+            background:
+                radial-gradient(circle at 33% 30%, rgba(118,126,146,.65) 0 3px,   transparent 3.4px),
+                radial-gradient(circle at 62% 60%, rgba(118,126,146,.6)  0 2.6px, transparent 3px),
+                radial-gradient(circle at 70% 36%, rgba(118,126,146,.55) 0 1.8px, transparent 2.2px),
+                radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
             box-shadow:
                 inset -3px -2px 0 -1px rgba(140,145,160,.55),
                 inset 4px 5px 0 -3px rgba(140,145,160,.5),
@@ -406,14 +459,18 @@
                 0 1px 3px rgba(0,0,0,.5);
         }
 
-        /* Brief "pop" on the knob when actively toggled (JS adds .active for ~500ms) */
+        /* Arc-hop + spin + pop on the knob when actively toggled (JS adds
+           .active for ~500ms) — runs alongside the "left" slide above so the
+           sun/moon lifts off the track, spins over, and drops back down
+           instead of just sliding flat. */
         .nav-btn.dark-mode-btn.active::after {
             animation: dmKnobPop .5s cubic-bezier(.4,1.6,.6,1);
         }
         @keyframes dmKnobPop {
-            0%   { transform: scale(1); }
-            45%  { transform: scale(1.22); }
-            100% { transform: scale(1); }
+            0%   { transform: translateY(0)    scale(1)    rotate(0deg); }
+            35%  { transform: translateY(-5px) scale(1.18) rotate(90deg); }
+            70%  { transform: translateY(-2px) scale(1.08) rotate(150deg); }
+            100% { transform: translateY(0)    scale(1)    rotate(180deg); }
         }
 
         /* ============================================
@@ -911,17 +968,33 @@
 
             .mobile-clock {
                 position: absolute;
-                right: 56px;
+                /* The dark-mode toggle is a 62px-wide pill anchored at
+                   right:12px, so its own left edge sits at 74px from the
+                   nav's right edge — right:56px put the clock's text
+                   directly underneath/behind it. 82px clears the pill with
+                   an 8px gap. */
+                right: 82px;
                 font-size: 14px;
                 font-weight: 600;
                 color: var(--text-primary);
+                white-space: nowrap;
             }
 
             .mobile-dark-mode-btn {
                 position: absolute;
                 right: 12px;
-                width: 38px;
-                height: 38px;
+                /* No width/height override here — this toggle is the same
+                   hand-built 62x30 pill as desktop, and its internal knob
+                   (::after) and sky/night gradient layers are positioned
+                   with math calibrated for exactly that size (see the
+                   "62 - 2 - 26" comment further down). The old attempt to
+                   shrink it to 38x38 here never actually took effect anyway
+                   (.nav-btn.dark-mode-btn, 2 classes, already wins that
+                   fight over this 1-class selector and keeps it at 62x30
+                   regardless) — but .mobile-clock's `right` offset was set
+                   as if the button really were only 38px wide, so the two
+                   visually overlapped/clipped. Fixed by widening the
+                   clock's own clearance instead — see .mobile-clock below. */
             }
 
             .cta-button {

@@ -1488,7 +1488,10 @@ input[type="file"] {
     }
     .mobile-toggle:active { transform: scale(0.95); }
     .mobile-top-nav img { height: 42px; object-fit: contain; }
-    .mobile-clock { position: absolute; right: 56px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; transition: color 0.3s ease; }
+    /* right:82px (not 56px) — the dark-mode toggle is a 62px-wide pill
+       anchored at right:12px, so its own left edge sits at 74px from the
+       nav's right edge; 82px clears it with an 8px gap. */
+    .mobile-clock { position: absolute; right: 82px; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; transition: color 0.3s ease; }
     .mobile-dark-mode-btn { position: absolute; right: 12px; width: 38px; height: 38px; z-index: 1; }
     .sidebar-nav { display: flex !important; }
     .form-wrapper { margin-top: 20px !important; padding-left: 20px !important; padding-right: 20px !important; padding-top: 90px !important; }
@@ -1540,7 +1543,7 @@ input[type="file"] {
     .map-actions button { padding: 9px 18px; font-size: 13px; }
 }
 @media (max-width: 360px) {
-    .mobile-clock { font-size: 12px; right: 52px; }
+    .mobile-clock { font-size: 12px; right: 78px; }
     .report-card h2 { font-size: 1.5rem; }
     .report-card { padding: 22px 16px !important; }
 }

@@ -30,6 +30,7 @@ $exportReportIcon    = '👥';
 require __DIR__ . '/../../vendor/PHPMailer/PHPMailer.php';
 require __DIR__ . '/../../vendor/PHPMailer/SMTP.php';
 require __DIR__ . '/../../vendor/PHPMailer/Exception.php';
+require_once __DIR__ . '/../../includes/config/smtp_credentials.php';
 
 // Keep the live-status column available regardless of whether session_guard.php's
 // heartbeat has run yet on a fresh install.
@@ -762,14 +763,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $mail = new PHPMailer(true);
         try {
+            $smtpCreds = cimm_smtp_credentials();
             $mail->SMTPDebug  = 0;
             $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
+            $mail->Host       = $smtpCreds['host'];
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'lguportal2026@gmail.com';
-            $mail->Password   = 'krdatioghgqriruh';
-            $mail->SMTPSecure = 'tls';
-            $mail->Port       = 587;
+            $mail->Username   = $smtpCreds['username'];
+            $mail->Password   = $smtpCreds['password'];
+            $mail->SMTPSecure = $smtpCreds['secure'];
+            $mail->Port       = $smtpCreds['port'];
             $mail->CharSet    = 'UTF-8';
             $mail->Encoding   = 'quoted-printable';
             $mail->Timeout    = 30;
@@ -778,7 +780,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->SMTPKeepAlive = false;
             $mail->WordWrap = 0;
 
-            $mail->setFrom('lguportal2026@gmail.com', 'LGU Portal', false);
+            $mail->setFrom($smtpCreds['from_email'], $smtpCreds['from_name'], false);
             $mail->addAddress($emailNormalized, htmlspecialchars($firstName . ' ' . $lastName));
             $mail->isHTML(true);
             $mail->Subject = 'Verify Your Email Address - LGU Portal Account Creation';

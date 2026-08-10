@@ -1246,7 +1246,11 @@ foreach ($maintenance_data as $_item) {
 
             .mobile-clock {
                 position: absolute;
-                right: 56px;
+                /* The dark-mode toggle is a 62px-wide pill anchored at
+                   right:12px, so its left edge sits at 74px from the nav's
+                   right edge — right:56px put the clock's text directly
+                   underneath it. */
+                right: 82px;
                 font-size: 14px;
                 font-weight: 600;
                 color: var(--text-primary);
@@ -1355,7 +1359,7 @@ foreach ($maintenance_data as $_item) {
         }
 
         @media (max-width: 360px) {
-            .mobile-clock { font-size: 12px; right: 52px; }
+            .mobile-clock { font-size: 12px; right: 78px; }
             .report-card { padding: 12px 3vw !important; }
         }
 
