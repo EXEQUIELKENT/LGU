@@ -1773,6 +1773,29 @@
 [data-theme="dark"] .modal-body::-webkit-scrollbar-thumb { background: rgba(95,140,255,0.35); }
 [data-theme="dark"] .modal-body::-webkit-scrollbar-thumb:hover { background: rgba(95,140,255,0.60); }
 
+/* Task Detail modal — pinned footer for the "Edit Schedule / Energy /
+   CPRF Facility" button. Same fix as .sched-form-footer below: this button
+   used to be the last row inside the scrolling task detail body, so on a
+   task with lots of rows (facility details, evidence images, etc.) it
+   scrolled out of view and needed extra scrolling to reach. Splitting the
+   body into a scrolling area (.task-modal-scroll, reuses .modal-body's own
+   padding/scrollbar) + a pinned non-scrolling footer keeps the button
+   always visible without scrolling. */
+.task-modal-body-outer {
+    display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;
+}
+.task-modal-scroll { flex: 1; min-height: 0; }
+.task-modal-footer {
+    display: none; flex-shrink: 0;
+    padding: 12px 20px; margin: 0;
+    border-top: 1px solid rgba(0,0,0,.08);
+    background: #ffffff; border-radius: 0 0 20px 20px;
+}
+[data-theme="dark"] .task-modal-footer {
+    background: #191b24; border-top-color: rgba(255,255,255,.08);
+}
+.task-modal-footer .sched-modal-edit-btn { margin-top: 0; }
+
 /* ── Task Detail Card (inside taskModal) ── */
 .modal-task-item {
     background: #f7f9ff;
@@ -2119,7 +2142,14 @@
 /* Scrollable body */
 .calendar-details {
     max-height: 280px !important;
-    padding-bottom: 0 !important;
+    /* BUG FIX — this was 0, but .cal-details-scroll-hint sits absolutely
+       positioned over the bottom of this scroll area ("scroll for more").
+       With zero bottom padding reserved, the last task row(s) in a busy
+       day scrolled up flush against the bottom edge and sat directly
+       underneath the hint's gradient/bar, making them unreadable. Reserve
+       space equal to the hint's own footprint so the last row can always
+       scroll fully clear of it. */
+    padding-bottom: 38px !important;
     overflow-y: auto;
     padding: 12px 16px 10px;
     font-size: 13.5px;

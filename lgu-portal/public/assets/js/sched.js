@@ -688,8 +688,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${engineerRow}
                 ${budgetRow}
                 ${evidenceRow}
-                ${editScheduleBtn}
             </div>`;
+
+        // Edit Schedule button now lives in the pinned modal footer (not the
+        // scrolling body) so it's always reachable without scrolling — see
+        // .task-modal-footer / #taskModalFooter.
+        const taskModalFooterEl = document.getElementById('taskModalFooter');
+        if (taskModalFooterEl) {
+            if (editScheduleBtn) {
+                taskModalFooterEl.innerHTML = editScheduleBtn;
+                taskModalFooterEl.style.display = 'flex';
+            } else {
+                taskModalFooterEl.innerHTML = '';
+                taskModalFooterEl.style.display = 'none';
+            }
+        }
 
         // Async fetch evidence for report-sourced items
         if (t.source === 'report' && t.rep_id) {

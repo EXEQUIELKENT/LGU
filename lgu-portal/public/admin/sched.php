@@ -670,9 +670,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <div class="sched-admin-bar-info">
                 <div class="sched-admin-bar-icon"><i class="fas fa-link"></i></div>
                 <div class="sched-admin-bar-text">
-                    <span class="cprf-sync-badge" title="CIMM is connected and syncing with the CPRF facility catalog">
-                        <span class="cprf-sync-dot"></span>
-                        <span class="cprf-sync-label">CPRF Integration</span>
+                    <span class="combo-sync-badge" title="CIMM is connected and syncing with both the CPRF facility catalog and the Energy Management System">
+                        <span class="combo-sync-dot"></span>
+                        <span class="combo-sync-label">CPRF and Energy Integration</span>
                     </span>
                     <?php if (empty($cprfFacilitiesForJs)): ?>
                     <span class="sched-catalog-warn"><i class="fas fa-exclamation-triangle"></i> CPRF facilities could not be loaded — check <code>CPRF_FACILITIES_API_URL</code> on the CIMM server.</span>
@@ -1184,7 +1184,10 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <span class="modal-nav-counter" id="modalNavCounter">1 / 3</span>
             <button class="modal-nav-btn" id="modalNavNext" aria-label="Next task">&#8594;</button>
         </div>
-        <div class="modal-body" id="modalBody"></div>
+        <div class="task-modal-body-outer">
+            <div class="modal-body task-modal-scroll" id="modalBody"></div>
+            <div class="modal-footer task-modal-footer" id="taskModalFooter" style="display:none;"></div>
+        </div>
     </div>
 </div>
 <!-- Multi-Task Chooser Modal -->
