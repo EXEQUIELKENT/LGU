@@ -1304,7 +1304,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <div class="sfr-row">
                         <div class="sfr-label-row">
                             <div class="sfr-icon"><i class="fas fa-flag-checkered"></i></div>
-                            <label class="sfr-label" for="sfEndDateDisplay">Est. Completion</label>
+                            <label class="sfr-label" for="sfEndDateDisplay">Est. Completion <span class="req">*</span></label>
                         </div>
                         <div class="sfr-content">
                             <input type="hidden" id="sfEndDate" name="estimated_completion_date" value="">

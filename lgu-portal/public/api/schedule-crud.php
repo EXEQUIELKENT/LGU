@@ -87,6 +87,16 @@ if ($startingDate === '') {
     echo json_encode(['success' => false, 'error' => 'Start date is required']);
     exit;
 }
+if ($endDate === '' || $endDate === '0000-00-00') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'error' => 'Estimated completion date is required']);
+    exit;
+}
+if (strtotime($endDate) < strtotime($startingDate)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'error' => 'Estimated completion date cannot be before the start date']);
+    exit;
+}
 
 $cprfFacilityName = '';
 if ($energyLink === null) {
@@ -117,10 +127,7 @@ if (!in_array($category, $allowedCategory, true)) {
     $category = 'General Maintenance';
 }
 
-$endDateDb = ($endDate !== '' && $endDate !== '0000-00-00') ? $endDate : null;
-if ($endDateDb === null) {
-    $endDateDb = $startingDate;
-}
+$endDateDb = $endDate;
 
 $engineerId = (int)($data['engineer_id'] ?? 0);
 if ($engineerId <= 0) {

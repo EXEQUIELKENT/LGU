@@ -3038,13 +3038,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 showFormError('');
 
+                const startDateVal = document.getElementById('sfStartDate').value;
+                const endDateVal   = document.getElementById('sfEndDate').value;
+                if (!startDateVal) {
+                    showFormError('Start date is required.');
+                    return;
+                }
+                if (!endDateVal) {
+                    showFormError('Estimated completion date is required — without it, the synced duration in the Facilities Reservation System will always show as 0.');
+                    return;
+                }
+                if (endDateVal < startDateVal) {
+                    showFormError('Estimated completion date cannot be before the start date.');
+                    return;
+                }
+
                 const payload = {
                     sched_id: parseInt(document.getElementById('sfSchedId').value, 10) || 0,
                     cprf_facility_id: parseInt(sfFacility.value, 10),
                     task: document.getElementById('sfTask').value.trim(),
                     location: document.getElementById('sfLocation').value.trim(),
-                    starting_date: document.getElementById('sfStartDate').value,
-                    estimated_completion_date: document.getElementById('sfEndDate').value,
+                    starting_date: startDateVal,
+                    estimated_completion_date: endDateVal,
                     category: document.getElementById('sfCategory').value,
                     priority: document.getElementById('sfPriority').value,
                     status: document.getElementById('sfStatus').value,
