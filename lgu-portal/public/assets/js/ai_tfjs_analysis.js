@@ -266,6 +266,29 @@ const InfraAI = (() => {
     let _cocoSsd     = null;
     let _loadPromise = null;
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3b. MAIN-THREAD YIELD  [perf fix]
+    //     analyzePixels/analyzeQuality/analyzePixelsForType are pure synchronous
+    //     nested-loop passes over a 224×224 canvas — cheap for one image, but
+    //     with no await between them, a multi-image batch ran as one long
+    //     unbroken synchronous block. On a handful of images that's enough
+    //     continuous main-thread time to freeze the scan animation and, in the
+    //     worst case, trip the browser's "page unresponsive" warning. Awaiting
+    //     this between the heavy steps hands control back to the browser for a
+    //     tick (paint, input, the loading UI) without changing any analysis
+    //     result — pure scheduling, same numbers in/out.
+    // ─────────────────────────────────────────────────────────────────────────
+    function yieldToMain() {
+        if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.yield === 'function') {
+            return window.scheduler.yield();
+        }
+        return new Promise(resolve => {
+            const ric = (typeof window !== 'undefined' && window.requestIdleCallback) || null;
+            if (ric) ric(resolve, { timeout: 100 });
+            else setTimeout(resolve, 0);
+        });
+    }
+
     async function loadModels(onProgress) {
         // Skip if models are already loaded and healthy
         if (_mobilenet) return;
@@ -1343,9 +1366,17 @@ const InfraAI = (() => {
             onProgress?.(`Analysing image ${idx + 1} of ${files.length}…`, stepPercent, { index: idx + 1, total: files.length });
             try {
                 const img        = await fileToImage(files[idx]);
+                // Yield right before the synchronous pixel-analysis trio below —
+                // lets the just-updated progress text/filmstrip actually paint
+                // instead of queuing behind the CPU work (see yieldToMain above).
+                await yieldToMain();
                 const pixels     = analyzePixels(img);
                 const quality    = analyzeQuality(img);
                 const typePixels = analyzePixelsForType(img, declaredType, pixels);
+                // Another yield between the synchronous pixel passes and the
+                // model inference call so a long batch never blocks for more
+                // than one image's pixel-analysis time in a single stretch.
+                await yieldToMain();
                 const { mobilenetPreds, cocoDetections } = await classifyImage(img);
                 const score = scoreClassifications(mobilenetPreds, cocoDetections, declaredType, pixels);
                 qualityResults.push(quality);

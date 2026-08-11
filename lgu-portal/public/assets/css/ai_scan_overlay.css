@@ -1,39 +1,43 @@
 /* ═════════════════════════════════════════════════════════════════════════
-   AI SCAN OVERLAY — shared "image analyzer" visualization
+   AI SCAN OVERLAY — minimal "image analyzer" visualization
    ─────────────────────────────────────────────────────────────────────────
    Used by requests.php (#loadingOverlay) and road_monitoring.php
-   (#repEmailOverlay) to replace the plain spinner+text with a live
-   sci-fi scanner view of the actual evidence photo(s) being analyzed by
-   InfraAI (cyan grid, laser sweep, corner brackets, simulated detection
-   boxes, filmstrip + real progress bar). See assets/js/ai_scan_overlay.js
-   for the behavior that drives these classes.
+   (#repEmailOverlay) to replace the plain spinner+text while InfraAI scores
+   evidence photo(s): the current photo, one scan-line sweep, a live %
+   badge, status text, and — for multi-image batches — a small step-dot row.
+   See assets/js/ai_scan_overlay.js for the behavior driving these classes.
 
-   Design language: dark navy/cyan to sit on top of the existing overlay's
-   radial dark-blue backdrop (kept as-is in requests.php / road_monitoring.php)
-   without clashing with the CIMM brand blue used elsewhere on the page.
+   Matches the site's existing blue brand accent (#6384d2, same as the
+   .lgu-spinner / .rep-email-spinner rings elsewhere) rather than the
+   earlier cyan sci-fi palette, so this reads as part of the same product
+   instead of a bolted-on effect.
+
+   Deliberately does NOT include: a grid overlay, corner brackets, simulated
+   "detection boxes", a filmstrip, or a separate progress-bar track — all of
+   those were removed in the minimal redesign. The % badge alone carries
+   progress; the dot row alone carries position in a multi-image batch.
    ═════════════════════════════════════════════════════════════════════════ */
 
 .ai-scan-wrap {
     display: none;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
-    width: min(90vw, 380px);
+    gap: 16px;
+    width: min(86vw, 260px);
     animation: aiScanPopIn .45s cubic-bezier(.34,1.56,.64,1) both;
 }
 .ai-scan-wrap.active { display: flex; }
 
 /* ── Brand row ─────────────────────────────────────────────────────────── */
 .ai-scan-brand {
-    display: flex; align-items: center; gap: 8px;
-    font: 800 11px/1 'Poppins', Arial, sans-serif;
-    letter-spacing: 2.5px; text-transform: uppercase;
-    color: #67e8f9; text-shadow: 0 0 10px rgba(34,211,238,.45);
+    display: flex; align-items: center; gap: 7px;
+    font: 800 10px/1 'Poppins', Arial, sans-serif;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: #8fa8e0;
 }
 .ai-scan-brand-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #22d3ee; box-shadow: 0 0 8px 2px rgba(34,211,238,.9);
-    animation: aiScanPulseDot 1.2s ease-in-out infinite;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #6384d2; box-shadow: 0 0 6px 1px rgba(99,132,210,.7);
 }
 
 /* ── Main scan frame ──────────────────────────────────────────────────── */
@@ -41,143 +45,67 @@
     position: relative; width: 100%; aspect-ratio: 4 / 3;
     border-radius: 14px; overflow: hidden;
     background: #0a1120;
-    border: 1px solid rgba(34,211,238,.25);
-    box-shadow: 0 0 0 1px rgba(34,211,238,.08), 0 18px 40px rgba(0,0,0,.55),
-                inset 0 0 60px rgba(34,211,238,.06);
+    border: 1px solid rgba(99,132,210,.25);
 }
 .ai-scan-img {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; display: block;
-    filter: saturate(1.15) brightness(.9) contrast(1.06);
-    opacity: 0; transition: opacity .4s ease;
+    opacity: 0; transition: opacity .3s ease;
 }
 .ai-scan-img.loaded { opacity: 1; }
 .ai-scan-noimg {
     position: absolute; inset: 0; display: flex;
     align-items: center; justify-content: center;
-    font-size: 34px; color: rgba(103,232,249,.35);
+    font-size: 30px; color: rgba(99,132,210,.35);
 }
 
-/* Cyan grid overlay */
-.ai-scan-grid {
-    position: absolute; inset: 0; pointer-events: none; opacity: .55;
-    mix-blend-mode: screen;
-    background-image:
-        linear-gradient(rgba(34,211,238,.16) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(34,211,238,.16) 1px, transparent 1px);
-    background-size: 24px 24px;
-}
-
-/* Laser sweep */
+/* Single scan-line sweep — pure CSS, runs on the compositor, no JS driving it */
 .ai-scan-sweep {
-    position: absolute; left: 0; right: 0; height: 40%; top: -40%;
-    pointer-events: none; filter: blur(1px);
+    position: absolute; left: 0; right: 0; height: 34%; top: -34%;
+    pointer-events: none;
     background: linear-gradient(180deg,
-        rgba(34,211,238,0) 0%,
-        rgba(34,211,238,.32) 42%,
-        rgba(148,241,255,.85) 50%,
-        rgba(34,211,238,.32) 58%,
-        rgba(34,211,238,0) 100%);
-    animation: aiScanSweepMove 2.4s cubic-bezier(.45,0,.55,1) infinite;
+        rgba(99,132,210,0) 0%,
+        rgba(99,132,210,.28) 45%,
+        rgba(147,172,235,.75) 50%,
+        rgba(99,132,210,.28) 55%,
+        rgba(99,132,210,0) 100%);
+    animation: aiScanSweepMove 2.3s ease-in-out infinite;
 }
-@keyframes aiScanSweepMove { 0% { top: -40%; } 100% { top: 100%; } }
-
-/* Corner brackets — targeting-reticle feel */
-.ai-scan-corner {
-    position: absolute; width: 22px; height: 22px;
-    border: 2px solid #67e8f9; opacity: .9; pointer-events: none;
-    filter: drop-shadow(0 0 6px rgba(34,211,238,.7));
-}
-.ai-scan-corner.tl { top: 10px;    left: 10px;  border-right: none;  border-bottom: none; border-top-left-radius: 6px; }
-.ai-scan-corner.tr { top: 10px;    right: 10px; border-left: none;   border-bottom: none; border-top-right-radius: 6px; }
-.ai-scan-corner.bl { bottom: 10px; left: 10px;  border-right: none;  border-top: none;    border-bottom-left-radius: 6px; }
-.ai-scan-corner.br { bottom: 10px; right: 10px; border-left: none;   border-top: none;    border-bottom-right-radius: 6px; }
-
-/* Simulated live "detection" boxes that pulse in/out over the image while
-   analysis is running on that frame — purely visual feedback, not real
-   bounding boxes, to make the wait feel active instead of a dead spinner. */
-.ai-scan-boxes { position: absolute; inset: 0; pointer-events: none; }
-.ai-scan-detbox {
-    position: absolute; border: 1.5px solid #34d9ee; border-radius: 4px;
-    box-shadow: 0 0 10px rgba(34,211,238,.55);
-    opacity: 0; animation: aiScanDetBox 1.45s ease-out forwards;
-}
-.ai-scan-detbox::after {
-    content: attr(data-label);
-    position: absolute; left: 0; top: -16px;
-    font: 700 9px/1 'Poppins', Arial, sans-serif; letter-spacing: .4px;
-    color: #06222b; background: #67e8f9; padding: 2px 5px; border-radius: 3px;
-    white-space: nowrap;
-}
-@keyframes aiScanDetBox {
-    0%   { opacity: 0; transform: scale(1.12); }
-    14%  { opacity: 1; transform: scale(1); }
-    78%  { opacity: 1; }
-    100% { opacity: 0; }
-}
+@keyframes aiScanSweepMove { 0% { top: -34%; } 100% { top: 100%; } }
 
 /* Percent badge, bottom-right of the frame */
 .ai-scan-badge {
     position: absolute; bottom: 8px; right: 8px;
-    background: rgba(10,17,32,.75); border: 1px solid rgba(34,211,238,.4);
-    color: #67e8f9; font: 800 12px/1 'Poppins', Arial, sans-serif;
-    letter-spacing: .5px; padding: 5px 9px; border-radius: 8px;
-    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-}
-
-/* ── Filmstrip of evidence thumbnails ─────────────────────────────────── */
-.ai-scan-filmstrip {
-    display: flex; gap: 8px; width: 100%; overflow-x: auto; padding-bottom: 2px;
-    scrollbar-width: none;
-}
-.ai-scan-filmstrip::-webkit-scrollbar { display: none; }
-.ai-scan-thumb {
-    flex: 0 0 auto; width: 46px; height: 46px; border-radius: 8px;
-    overflow: hidden; position: relative;
-    border: 2px solid rgba(255,255,255,.14); opacity: .5;
-    transition: opacity .25s ease, border-color .25s ease, transform .25s ease;
-}
-.ai-scan-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ai-scan-thumb.active {
-    opacity: 1; border-color: #22d3ee; transform: translateY(-2px);
-    box-shadow: 0 0 10px rgba(34,211,238,.5);
-}
-.ai-scan-thumb.done { opacity: .85; }
-.ai-scan-thumb.done::after {
-    content: '\f00c'; font-family: 'Font Awesome 5 Free'; font-weight: 900;
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: rgba(10,17,32,.55); color: #4ade80; font-size: 14px;
-}
-
-/* ── Progress bar ──────────────────────────────────────────────────────── */
-.ai-scan-progress-track {
-    width: 100%; height: 6px; border-radius: 6px;
-    background: rgba(255,255,255,.08); overflow: hidden;
-}
-.ai-scan-progress-fill {
-    height: 100%; width: 0%; border-radius: 6px;
-    background: linear-gradient(90deg, #0ea5b7, #67e8f9);
-    box-shadow: 0 0 8px rgba(34,211,238,.6);
-    transition: width .35s ease;
+    background: rgba(10,17,32,.75); border: 1px solid rgba(99,132,210,.4);
+    color: #8fa8e0; font: 800 11px/1 'Poppins', Arial, sans-serif;
+    letter-spacing: .4px; padding: 4px 8px; border-radius: 8px;
 }
 
 /* ── Status line ───────────────────────────────────────────────────────── */
 .ai-scan-status {
-    color: #e2f6fb; font-size: 14px; font-weight: 500; letter-spacing: .2px;
+    color: #fff; font-size: 14px; font-weight: 500; letter-spacing: .2px;
     text-align: center; font-family: 'Poppins', Arial, sans-serif;
     min-height: 18px;
 }
+
+/* ── Step dots — only rendered when there's more than one image ────────── */
+.ai-scan-dots { display: none; gap: 8px; align-items: center; min-height: 12px; }
+.ai-scan-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    transition: width .25s ease, height .25s ease, background-color .25s ease;
+}
+.ai-scan-dot.active {
+    width: 10px; height: 10px;
+    background: #6384d2; box-shadow: 0 0 6px rgba(99,132,210,.7);
+}
+.ai-scan-dot.done { background: rgba(99,132,210,.55); }
 
 @keyframes aiScanPopIn {
     from { opacity: 0; transform: scale(.9) translateY(10px); }
     to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
-@keyframes aiScanPulseDot {
-    0%, 100% { transform: scale(1);   opacity: 1;  }
-    50%      { transform: scale(1.4); opacity: .6; }
-}
 
 @media (max-width: 480px) {
-    .ai-scan-wrap { width: 88vw; gap: 12px; }
-    .ai-scan-thumb { width: 40px; height: 40px; }
+    .ai-scan-wrap { width: 82vw; gap: 14px; }
 }
