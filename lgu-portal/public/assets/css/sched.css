@@ -1927,6 +1927,45 @@
 [data-theme="dark"] .modal-task-row-label { color: #9ca3af; }
 [data-theme="dark"] .modal-task-row-value { color: #f1f5f9; }
 
+/* ── Energy Facility Registry details (Barangay/Floor Area/Floors/Year
+   Built/Operating Hours/Size) — compact chip grid, same row/icon language
+   as the other modal-task-row entries above it. ── */
+.modal-facility-chip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+}
+.modal-facility-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    background: rgba(55, 98, 200, 0.06);
+    border: 1px solid rgba(55, 98, 200, 0.12);
+}
+.modal-facility-chip i { font-size: 10px; color: #6b7280; margin-bottom: 1px; }
+.modal-facility-chip-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.modal-facility-chip-value {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1f2937;
+}
+[data-theme="dark"] .modal-facility-chip {
+    background: rgba(55,98,200,0.14);
+    border-color: rgba(96,141,255,0.25);
+}
+[data-theme="dark"] .modal-facility-chip i,
+[data-theme="dark"] .modal-facility-chip-label { color: #9ca3af; }
+[data-theme="dark"] .modal-facility-chip-value { color: #f1f5f9; }
+
 /* ── District Badge ── */
 .district-badge {
     display: inline-flex;

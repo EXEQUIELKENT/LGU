@@ -210,18 +210,42 @@ function cimm_fetch_energy_maintenance_catalog(bool $forceRefresh = false): arra
 
 function cimm_energy_normalize_row(array $row, string $source): ?array
 {
-    $id = (int)($row['id'] ?? 0);
-    $facilityId = (int)($row['facility']['id'] ?? 0);
-    $facilityName = trim((string)($row['facility']['name'] ?? ''));
+    // 'active' rows use their own maintenance.id. 'history' rows use
+    // source_maintenance_id — the id of the active row they were archived
+    // from (see IntegrationDataController::maintenanceHistory() on the
+    // Energy side) — so the SAME task keeps the same identity across the
+    // active -> completed/history transition instead of looking like a
+    // brand new issue the moment it's marked Completed.
+    $id = $source === 'history'
+        ? (int)($row['source_maintenance_id'] ?? $row['id'] ?? 0)
+        : (int)($row['id'] ?? 0);
+    $facility = is_array($row['facility'] ?? null) ? $row['facility'] : [];
+    $facilityId = (int)($facility['id'] ?? 0);
+    $facilityName = trim((string)($facility['name'] ?? ''));
     if ($id <= 0 || $facilityName === '') {
         return null;
     }
+
+    $facilityAddress = trim((string)($facility['address'] ?? ''));
 
     return [
         'energy_id' => $id,
         'source' => $source,
         'facility_id' => $facilityId,
         'facility_name' => $facilityName,
+        // Real street address when Energy has one on file; otherwise fall
+        // back to the facility name rather than leaving it blank (matches
+        // what admins are already used to seeing here).
+        'facility_address' => $facilityAddress !== '' ? $facilityAddress : $facilityName,
+        'facility_details' => [
+            'address' => $facility['address'] ?? null,
+            'barangay' => $facility['barangay'] ?? null,
+            'floor_area_sqm' => $facility['floor_area_sqm'] ?? null,
+            'floors' => $facility['floors'] ?? null,
+            'year_built' => $facility['year_built'] ?? null,
+            'operating_hours' => $facility['operating_hours'] ?? null,
+            'size_label' => $facility['size_label'] ?? null,
+        ],
         'issue_type' => (string)($row['issue_type'] ?? ''),
         'trigger_month' => (string)($row['trigger_month'] ?? ''),
         'maintenance_type' => (string)($row['maintenance_type'] ?? ''),
@@ -340,9 +364,41 @@ function cimm_energy_ensure_schedule_schema(mysqli $conn): void
     if (!isset($columns['energy_facility_name'])) {
         $conn->query('ALTER TABLE maintenance_schedule ADD COLUMN energy_facility_name VARCHAR(150) NULL DEFAULT NULL AFTER energy_facility_id');
     }
+    // Extra facility details for the schedule task modal (address, barangay,
+    // floor area, floors, year built, operating hours, size label) — kept as
+    // one JSON blob rather than six more columns since the modal only ever
+    // reads them together, never queries by them.
+    if (!isset($columns['energy_facility_details'])) {
+        $conn->query('ALTER TABLE maintenance_schedule ADD COLUMN energy_facility_details TEXT NULL DEFAULT NULL AFTER energy_facility_name');
+    }
+
     if (!isset($columns['energy_maintenance_id']) || !isset($columns['energy_source'])) {
-        // Only need to (re)try the index the first time either backing column was just added.
-        $conn->query('ALTER TABLE maintenance_schedule ADD UNIQUE INDEX idx_energy_source (energy_maintenance_id, energy_source)');
+        // Originally a composite (energy_maintenance_id, energy_source)
+        // key — but Energy's own "active" maintenance row and its archived
+        // "history" copy have two DIFFERENT ids for the same underlying
+        // task (see cimm_energy_normalize_row() below), so keying on both
+        // columns together made a task's completion look like a brand new,
+        // never-seen entry and created a duplicate schedule row every time.
+        // energy_maintenance_id alone (now sourced from Energy's stable
+        // original-task id on both branches) is the real identity; multiple
+        // NULLs are still allowed since non-Energy rows leave it unset.
+        $conn->query('ALTER TABLE maintenance_schedule ADD UNIQUE INDEX idx_energy_maintenance_id (energy_maintenance_id)');
+    }
+    // Drop the old composite index left over from before the fix above, if
+    // this install already had it — a leftover composite unique index would
+    // still let a (same id, different source) pair insert as a "new" row
+    // even after idx_energy_maintenance_id is added, since MySQL doesn't
+    // dedupe against indexes it isn't using for the lookup.
+    $indexes = [];
+    $idxResult = $conn->query('SHOW INDEX FROM maintenance_schedule');
+    if ($idxResult) {
+        while ($idxRow = $idxResult->fetch_assoc()) {
+            $indexes[(string)$idxRow['Key_name']] = true;
+        }
+        $idxResult->free();
+    }
+    if (isset($indexes['idx_energy_source'])) {
+        $conn->query('ALTER TABLE maintenance_schedule DROP INDEX idx_energy_source');
     }
 }
 
@@ -359,14 +415,20 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
         return 0;
     }
 
-    $checkStmt = $conn->prepare('SELECT sched_id FROM maintenance_schedule WHERE energy_maintenance_id = ? AND energy_source = ? LIMIT 1');
+    // Keyed on energy_maintenance_id alone (see the idx_energy_maintenance_id
+    // comment in cimm_energy_ensure_schedule_schema()) — energy_source is
+    // still stored on the row, just no longer part of the "have we already
+    // imported this task" check, so a task completing on Energy's side
+    // (active -> history, different Energy-table id) is recognized as the
+    // same task instead of importing a second time.
+    $checkStmt = $conn->prepare('SELECT sched_id FROM maintenance_schedule WHERE energy_maintenance_id = ? LIMIT 1');
     $insertStmt = $conn->prepare("
         INSERT INTO maintenance_schedule (
             task, location, category, priority, status, assigned_team, budget,
             starting_date, estimated_completion_date,
-            energy_maintenance_id, energy_source, energy_facility_id, energy_facility_name,
+            energy_maintenance_id, energy_source, energy_facility_id, energy_facility_name, energy_facility_details,
             created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
     if (!$checkStmt || !$insertStmt) {
         $msg = 'Import prepare failed: ' . $conn->error;
@@ -380,7 +442,7 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
         $energyId = $entry['energy_id'];
         $source = $entry['source'];
 
-        $checkStmt->bind_param('is', $energyId, $source);
+        $checkStmt->bind_param('i', $energyId);
         $checkStmt->execute();
         $exists = $checkStmt->get_result()->fetch_assoc();
         if ($exists) {
@@ -391,7 +453,11 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
         if ($task === '') {
             $task = 'Energy maintenance issue';
         }
-        $location = $entry['facility_name'];
+        // Real facility street address (falls back to the facility name
+        // only if Energy has no address on file for it — see
+        // cimm_energy_normalize_row()), not the bare facility name every
+        // time the way this used to read.
+        $location = $entry['facility_address'] ?? $entry['facility_name'];
         $category = cimm_energy_map_category($entry['issue_type']);
         $priority = cimm_energy_map_priority($entry['issue_type']);
         $status = cimm_energy_map_status_to_cimm($entry['status']);
@@ -401,8 +467,9 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
 
         $facilityId = $entry['facility_id'];
         $facilityName = $entry['facility_name'];
+        $facilityDetailsJson = json_encode($entry['facility_details'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: null;
         $insertStmt->bind_param(
-            'ssssssssisis',
+            'ssssssssisiss',
             $task,
             $location,
             $category,
@@ -414,7 +481,8 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
             $energyId,
             $source,
             $facilityId,
-            $facilityName
+            $facilityName,
+            $facilityDetailsJson
         );
 
         try {

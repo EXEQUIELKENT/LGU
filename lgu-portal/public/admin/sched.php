@@ -46,13 +46,17 @@ require_once __DIR__ . '/../../includes/api/cimm_energy_maintenance.php';
 
 $cprfCatalog = cimm_fetch_cprf_facility_catalog();
 cimm_ensure_maintenance_schedule_schema($conn);
+
+// energy_source must exist before cimm_backfill_schedule_facility_ids()
+// below — it now excludes Energy-imported rows from CPRF fuzzy-matching
+// entirely, so on a fresh install this needs to run first, not after.
+cimm_energy_ensure_schedule_schema($conn);
 cimm_backfill_schedule_facility_ids($conn, $cprfCatalog);
 
 // Pull "Facilities Needing Maintenance" (active + completed-history) from the
 // Energy app and import any not-yet-seen issues as maintenance_schedule rows
 // tagged with an Energy badge. Insert-only — see cimm_energy_import_catalog()
 // docblock for why re-pulling never overwrites an already-imported row.
-cimm_energy_ensure_schedule_schema($conn);
 cimm_energy_import_catalog($conn, cimm_fetch_energy_maintenance_catalog());
 
 function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
@@ -205,6 +209,11 @@ if ($result && $result->num_rows > 0) {
     $today = new DateTime('today');
 
     while ($row = $result->fetch_assoc()) {
+        // Decode once here so the frontend gets a real object (t.energy_facility_details.address, etc.)
+        // instead of a JSON string it would have to parse itself.
+        $row['energy_facility_details'] = !empty($row['energy_facility_details'])
+            ? (json_decode((string)$row['energy_facility_details'], true) ?: null)
+            : null;
         $taskLower = strtolower($row['task'] ?? '');
         $autoCategory = false;
         if (empty($row['category']) || $row['category'] === "General Maintenance") {

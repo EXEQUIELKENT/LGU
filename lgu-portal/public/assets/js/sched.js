@@ -606,6 +606,36 @@ document.addEventListener('DOMContentLoaded', function() {
                </div>`
             : '';
 
+        // Extra Energy Facility Registry fields (barangay, floor area, floors,
+        // year built, operating hours, size) — same data shown on the
+        // facility's own profile page in Energy, surfaced here too so an
+        // admin doesn't have to leave CIMM to see them. Only rendered when
+        // Energy actually sent at least one of these (older imports made
+        // before this existed won't have them).
+        const fd = (isEnergyItem && t.energy_facility_details && typeof t.energy_facility_details === 'object')
+            ? t.energy_facility_details : null;
+        const fdChip = (icon, label, value) => (value === null || value === undefined || value === '')
+            ? '' : `<div class="modal-facility-chip"><i class="fas fa-${icon}"></i><span class="modal-facility-chip-label">${escH(label)}</span><span class="modal-facility-chip-value">${escH(String(value))}</span></div>`;
+        const facilityDetailsRow = fd
+            ? (() => {
+                const chips = fdChip('map-pin', 'Barangay', fd.barangay)
+                    + fdChip('ruler-combined', 'Floor Area', fd.floor_area_sqm ? `${fd.floor_area_sqm} sqm` : '')
+                    + fdChip('building', 'Floors', fd.floors)
+                    + fdChip('calendar', 'Year Built', fd.year_built)
+                    + fdChip('clock', 'Operating Hours', fd.operating_hours)
+                    + fdChip('chart-simple', 'Facility Size', fd.size_label && fd.size_label !== 'N/A' ? fd.size_label : '');
+                return chips
+                    ? `<div class="modal-task-row modal-facility-details-row">
+                            <div class="modal-task-row-icon"><i class="fas fa-building-circle-check"></i></div>
+                            <div class="modal-task-row-content">
+                                <div class="modal-task-row-label">Facility Details</div>
+                                <div class="modal-facility-chip-grid">${chips}</div>
+                            </div>
+                       </div>`
+                    : '';
+            })()
+            : '';
+
         const editScheduleBtn = (window.IS_ADMIN && t.source === 'schedule' && t.sched_id)
             ? `<button type="button" class="sched-modal-edit-btn" onclick="schedOpenEditForm(${parseInt(t.sched_id, 10)})">
                     <i class="fas fa-pen"></i> Edit Schedule / ${isEnergyItem ? 'Energy Facility' : 'CPRF Facility'}
@@ -621,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="modal-task-row-value">${escH(t.task)}</div>
                     </div>
                 </div>
-                ${cprfFacilityRow}${energyFacilityRow}
+                ${cprfFacilityRow}${energyFacilityRow}${facilityDetailsRow}
                 <div class="modal-task-row">
                     <div class="modal-task-row-icon"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="modal-task-row-content">

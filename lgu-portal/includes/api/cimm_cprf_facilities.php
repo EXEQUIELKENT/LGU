@@ -840,7 +840,28 @@ function cimm_backfill_schedule_facility_ids(mysqli $conn, array $catalog): int
 
     $updated = 0;
 
-    $result = $conn->query('SELECT sched_id, task, location, cprf_facility_id FROM maintenance_schedule WHERE cprf_facility_id IS NULL OR cprf_facility_id = 0');
+    // Energy-imported rows are excluded here entirely — not just at display
+    // time (see sched.php's own isEnergySourced guard). Their location text
+    // used to just be the Energy facility's bare name, which could easily
+    // fuzzy-match an unrelated same/similar-named CPRF facility and get a
+    // cprf_facility_id PERMANENTLY written onto the row right here — after
+    // that, the row looks like a genuine explicit CPRF link everywhere else
+    // in the app, including sched.php's own guard (which only protects rows
+    // where cprf_facility_id is still empty). Energy and CPRF are unrelated
+    // catalogs; a name collision between them isn't a real shared facility.
+    //
+    // energy_source is checked for existence rather than assumed present:
+    // this function has callers (maintenance-schedules.php) that never load
+    // cimm_energy_maintenance.php, so on a fresh install the column may not
+    // have been created yet by the time this runs.
+    $energySourceExists = false;
+    $colCheck = $conn->query("SHOW COLUMNS FROM maintenance_schedule LIKE 'energy_source'");
+    if ($colCheck) {
+        $energySourceExists = $colCheck->num_rows > 0;
+        $colCheck->free();
+    }
+    $energyExclusion = $energySourceExists ? " AND (energy_source IS NULL OR energy_source = '')" : '';
+    $result = $conn->query("SELECT sched_id, task, location, cprf_facility_id FROM maintenance_schedule WHERE (cprf_facility_id IS NULL OR cprf_facility_id = 0){$energyExclusion}");
 
     if (!$result) {
 
