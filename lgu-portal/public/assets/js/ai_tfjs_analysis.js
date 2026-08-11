@@ -1,5 +1,22 @@
 /**
- * ai_tfjs_analysis.js — InfraGovServices v4.1
+ * ai_tfjs_analysis.js — InfraGovServices v4.2
+ *
+ * FIXES in v4.2 (loading UI could freeze indefinitely — no timeouts anywhere):
+ *  ! BUG — loadModels() awaited mobilenet.load()/cocoSsd.load() with nothing
+ *    bounding how long that could take. Model downloads go through a public
+ *    CDN (jsdelivr) with no app-level timeout, so a stalled connection, a
+ *    slow/throttled network, or a CDN hiccup left the promise pending
+ *    forever. The scan overlay has no way to know the difference between
+ *    "still working" and "never coming back", so the UI sat stuck on
+ *    "Loading AI model (1/2)…" permanently — this is the exact freeze
+ *    reported on road_monitoring.php / requests.php. Same problem existed
+ *    for classifyImage()'s per-image classify()/detect() calls and for
+ *    fileToImage(). All four now go through withTimeout() (below); a
+ *    timeout is treated exactly like any other failure the surrounding
+ *    try/catch already handled (loadModels → buildFallbackResult, classify →
+ *    reset-and-continue, fileToImage → per-image fallback result), so the
+ *    scan always finishes — either with a real result or a graceful
+ *    fallback — instead of hanging.
  *
  * FIXES in v4.1 (severity/description no longer matched the actual photo):
  *  ! BUG — roadDamageScore (drives "Major road failure — structural collapse"
@@ -289,6 +306,31 @@ const InfraAI = (() => {
         });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3c. TIMEOUT GUARD  [freeze fix, v4.2]
+    //     Wraps any promise so it can never hang the scan forever. If `promise`
+    //     hasn't settled within `ms`, the returned promise rejects with a
+    //     descriptive error instead of waiting indefinitely. Every network- or
+    //     GPU-bound call in this file (model downloads, classify/detect, blob
+    //     reads) is wrapped with this so a stalled connection or a stuck WebGL
+    //     call degrades into a normal, already-handled error path rather than
+    //     an infinite "Loading AI model…" freeze. The underlying promise is
+    //     left to settle on its own in the background (browsers don't offer a
+    //     way to truly cancel a fetch/tensor op from here) — we just stop
+    //     waiting on it and move on.
+    // ─────────────────────────────────────────────────────────────────────────
+    function withTimeout(promise, ms, label) {
+        let timer;
+        const timeout = new Promise((_, reject) => {
+            timer = setTimeout(() => {
+                reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+            }, ms);
+        });
+        return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+    }
+    const MODEL_LOAD_TIMEOUT_MS = 25000; // first-load CDN fetch + shader compile — generous, but bounded
+    const INFERENCE_TIMEOUT_MS = 15000;  // a single classify()/detect() call on an already-loaded model
+
     async function loadModels(onProgress) {
         // Skip if models are already loaded and healthy
         if (_mobilenet) return;
@@ -298,10 +340,16 @@ const InfraAI = (() => {
         try {
             _loadPromise = (async () => {
                 onProgress?.('Loading AI model (1/2)…', 12);
-                _mobilenet = await mobilenet.load({ version: 2, alpha: 1.0 });
+                _mobilenet = await withTimeout(
+                    mobilenet.load({ version: 2, alpha: 1.0 }), MODEL_LOAD_TIMEOUT_MS, 'MobileNet load'
+                );
                 if (typeof cocoSsd !== 'undefined') {
                     onProgress?.('Loading AI model (2/2)…', 24);
-                    try { _cocoSsd = await cocoSsd.load({ base: 'mobilenet_v2' }); }
+                    try {
+                        _cocoSsd = await withTimeout(
+                            cocoSsd.load({ base: 'mobilenet_v2' }), MODEL_LOAD_TIMEOUT_MS, 'COCO-SSD load'
+                        );
+                    }
                     catch (e) { console.warn('[InfraAI] COCO-SSD skipped:', e); }
                 }
             })();
@@ -755,7 +803,7 @@ const InfraAI = (() => {
         const canvas = prepareCanvasElement(img);
         let mobilenetPreds;
         try {
-            mobilenetPreds = await _mobilenet.classify(canvas, 20);
+            mobilenetPreds = await withTimeout(_mobilenet.classify(canvas, 20), INFERENCE_TIMEOUT_MS, 'MobileNet classify');
         } catch(e) {
             console.warn('[InfraAI] MobileNet classify failed — resetting models for next call:', e);
             // Reset ALL model state so loadModels() reloads cleanly on the next
@@ -775,7 +823,7 @@ const InfraAI = (() => {
         if (_cocoSsd) {
             try {
                 const cocoCanvas = prepareCanvasElement(img);
-                cocoDetections = await _cocoSsd.detect(cocoCanvas);
+                cocoDetections = await withTimeout(_cocoSsd.detect(cocoCanvas), INFERENCE_TIMEOUT_MS, 'COCO-SSD detect');
             } catch(e) {
                 console.warn('[InfraAI] COCO-SSD detect failed:', e);
                 _cocoSsd = null;  // Reset so it reloads with the model on the next call
@@ -1365,7 +1413,7 @@ const InfraAI = (() => {
             const stepPercent = 30 + Math.round(((idx + 1) / files.length) * 50);
             onProgress?.(`Analysing image ${idx + 1} of ${files.length}…`, stepPercent, { index: idx + 1, total: files.length });
             try {
-                const img        = await fileToImage(files[idx]);
+                const img        = await withTimeout(fileToImage(files[idx]), INFERENCE_TIMEOUT_MS, 'Image decode');
                 // Yield right before the synchronous pixel-analysis trio below —
                 // lets the just-updated progress text/filmstrip actually paint
                 // instead of queuing behind the CPU work (see yieldToMain above).

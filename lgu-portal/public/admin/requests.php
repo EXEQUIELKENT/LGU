@@ -4519,11 +4519,35 @@ const aiScan = (typeof AIScanOverlay !== 'undefined')
     : null;
 
 // ── Helper: convert an image path to a File object for InfraAI ────────
+// [freeze fix] fetch() has no built-in timeout — a stalled connection to
+// our own server would hang here forever, same class of bug as the
+// unbounded model loads fixed in ai_tfjs_analysis.js. AbortController
+// bounds it so a bad network still fails fast into the existing retry /
+// fallback path instead of freezing the overlay.
 async function imagePathToFile(path) {
-    const response = await fetch(path);
-    const blob     = await response.blob();
-    const filename = path.split('/').pop() || 'evidence.jpg';
-    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch(path, { signal: controller.signal });
+        const blob     = await response.blob();
+        const filename = path.split('/').pop() || 'evidence.jpg';
+        return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+// [freeze fix] Belt-and-suspenders bound around the whole AI pipeline call.
+// ai_tfjs_analysis.js already times out its own internal network/GPU calls
+// (see withTimeout() there), so this should rarely if ever actually fire —
+// but if some future change adds an awaited call there without a timeout,
+// this guarantees the loading overlay still can't hang forever on this page.
+function withOverlayTimeout(promise, ms, label) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // ── Helper: run the AI analysis pipeline with one automatic retry. ─────
@@ -4542,7 +4566,9 @@ async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts =
         try {
             onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis', 2);
             const files = await Promise.all(evidencePaths.map(imagePathToFile));
-            return await InfraAI.analyzeImages(files, infraType, onProgress);
+            return await withOverlayTimeout(
+                InfraAI.analyzeImages(files, infraType, onProgress), 60000, 'AI analysis'
+            );
         } catch (err) {
             lastErr = err;
             console.error(`[InfraAI] Attempt ${attempt}/${maxAttempts} failed:`, err);

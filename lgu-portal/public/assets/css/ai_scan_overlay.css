@@ -1,10 +1,11 @@
 /* ═════════════════════════════════════════════════════════════════════════
-   AI SCAN OVERLAY — minimal "image analyzer" visualization
+   AI SCAN OVERLAY — "image analyzer" visualization
    ─────────────────────────────────────────────────────────────────────────
    Used by requests.php (#loadingOverlay) and road_monitoring.php
    (#repEmailOverlay) to replace the plain spinner+text while InfraAI scores
-   evidence photo(s): the current photo, one scan-line sweep, a live %
-   badge, status text, and — for multi-image batches — a small step-dot row.
+   evidence photo(s): the current photo, a scan-line sweep, an animated
+   corner-bracket outline, a live % badge, status text, and — for
+   multi-image batches — a small step-dot row.
    See assets/js/ai_scan_overlay.js for the behavior driving these classes.
 
    Matches the site's existing blue brand accent (#6384d2, same as the
@@ -12,10 +13,13 @@
    earlier cyan sci-fi palette, so this reads as part of the same product
    instead of a bolted-on effect.
 
-   Deliberately does NOT include: a grid overlay, corner brackets, simulated
-   "detection boxes", a filmstrip, or a separate progress-bar track — all of
-   those were removed in the minimal redesign. The % badge alone carries
-   progress; the dot row alone carries position in a multi-image batch.
+   v3: brought the corner-bracket outline back (removed in the v2 minimal
+   redesign) as four static, absolutely-positioned elements with a slow
+   compositor-only pulse — no grid, no simulated "detection boxes", no
+   filmstrip, no per-frame JS. The % badge still carries progress and the
+   dot row still carries position in a multi-image batch; the brackets are
+   purely a framing/design accent so the photo reads as "actively being
+   scanned" rather than a static preview.
    ═════════════════════════════════════════════════════════════════════════ */
 
 .ai-scan-wrap {
@@ -73,6 +77,29 @@
 }
 @keyframes aiScanSweepMove { 0% { top: -34%; } 100% { top: 100%; } }
 
+/* ── Corner-bracket outline — the "actively scanning" frame design ───────
+   Four L-shaped brackets, one per corner, drawn with two borders each.
+   Pure CSS: fixed position/size, single opacity+scale pulse per corner
+   (compositor-only, staggered via animation-delay so it reads as one
+   flowing effect rather than four elements blinking in sync). No JS ever
+   touches these after creation — same "nothing to pile up after a
+   main-thread stall" guarantee as the sweep. ───────────────────────────── */
+.ai-scan-corner {
+    position: absolute; width: 22px; height: 22px;
+    pointer-events: none;
+    border: 2.5px solid #7ea0e8;
+    filter: drop-shadow(0 0 4px rgba(99,132,210,.65));
+    animation: aiScanCornerPulse 2.3s ease-in-out infinite;
+}
+.ai-scan-corner-tl { top: 10px; left: 10px; border-right: none; border-bottom: none; border-radius: 4px 0 0 0; animation-delay: 0s; }
+.ai-scan-corner-tr { top: 10px; right: 10px; border-left: none; border-bottom: none; border-radius: 0 4px 0 0; animation-delay: .15s; }
+.ai-scan-corner-bl { bottom: 10px; left: 10px; border-right: none; border-top: none; border-radius: 0 0 0 4px; animation-delay: .3s; }
+.ai-scan-corner-br { bottom: 10px; right: 10px; border-left: none; border-top: none; border-radius: 0 0 4px 0; animation-delay: .45s; }
+@keyframes aiScanCornerPulse {
+    0%, 100% { opacity: .55; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.08); }
+}
+
 /* Percent badge, bottom-right of the frame */
 .ai-scan-badge {
     position: absolute; bottom: 8px; right: 8px;
@@ -86,6 +113,20 @@
     color: #fff; font-size: 14px; font-weight: 500; letter-spacing: .2px;
     text-align: center; font-family: 'Poppins', Arial, sans-serif;
     min-height: 18px;
+    transition: opacity .4s ease;
+}
+
+/* ── Stalled state [freeze fix] ───────────────────────────────────────────
+   Toggled by the JS watchdog when update() hasn't fired in a while (see
+   ai_scan_overlay.js). Softly pulses the status text and badge so a long
+   step (e.g. first-time model download) visibly reads as "still working"
+   instead of looking identical to a frozen page. Cosmetic only — does not
+   pause or alter the sweep/corner animations. ───────────────────────────── */
+.ai-scan-stalled .ai-scan-status { animation: aiScanStalledPulse 1.6s ease-in-out infinite; }
+.ai-scan-stalled .ai-scan-badge  { animation: aiScanStalledPulse 1.6s ease-in-out infinite; }
+@keyframes aiScanStalledPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .55; }
 }
 
 /* ── Step dots — only rendered when there's more than one image ────────── */
@@ -108,4 +149,13 @@
 
 @media (max-width: 480px) {
     .ai-scan-wrap { width: 82vw; gap: 14px; }
+    .ai-scan-corner { width: 18px; height: 18px; }
+}
+
+/* Respect reduced-motion preferences: keep the visualization but drop the
+   pulsing/sweeping animations so it reads as a static "processing" frame. */
+@media (prefers-reduced-motion: reduce) {
+    .ai-scan-sweep, .ai-scan-corner, .ai-scan-stalled .ai-scan-status, .ai-scan-stalled .ai-scan-badge {
+        animation: none;
+    }
 }
