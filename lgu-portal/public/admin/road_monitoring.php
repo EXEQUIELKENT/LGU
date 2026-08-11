@@ -1418,10 +1418,12 @@ tr.notif-highlight > td:first-child {
 </div>
 
 <div id="repEmailOverlay">
-    <div class="rep-email-content">
+    <div class="rep-email-content" id="repEmailSimpleContent">
         <div class="rep-email-spinner"><span>CIMM</span></div>
         <div class="rep-email-text" id="repEmailOverlayText">Saving &amp; Sending Update…</div>
     </div>
+    <!-- AI scan visualization is appended here at runtime by AIScanOverlay.attach()
+         and toggled on top of the block above whenever AI analysis is running. -->
 </div>
 
 <script src="card_limit.js"></script>
@@ -1433,6 +1435,11 @@ tr.notif-highlight > td:first-child {
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 <script src="../assets/js/ai_tfjs_analysis.js"></script>
+<!-- AI Scan Overlay — replaces the plain "Analyzing evidence images…" text
+     with a live scanning visualization over the actual evidence photos.
+     See assets/js/ai_scan_overlay.js. -->
+<link rel="stylesheet" href="../assets/css/ai_scan_overlay.css?v=<?= @filemtime(__DIR__ . '/../assets/css/ai_scan_overlay.css') ?>">
+<script src="../assets/js/ai_scan_overlay.js"></script>
 <script>
 const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const PENDING_AI_ANALYSIS = <?= json_encode($pendingAiAnalysis, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -1679,8 +1686,16 @@ function hideRepOverlay() {
     const overlay = document.getElementById('repEmailOverlay');
     if (!overlay) return;
     overlay.classList.remove('show');
+    if (aiScanRoad) aiScanRoad.stop();
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
+
+// ── AI Scan visualization — swaps in over the simple spinner above
+//    whenever InfraAI is actually running on the freshly-copied evidence
+//    photos. See assets/js/ai_scan_overlay.js. ─────────────────────────
+const aiScanRoad = (typeof AIScanOverlay !== 'undefined')
+    ? AIScanOverlay.attach(document.getElementById('repEmailOverlay'), document.getElementById('repEmailSimpleContent'))
+    : null;
 function showRepNotif(type, msg) {
     const e = document.getElementById('notifPopup'); if (e) e.remove();
     const d = document.createElement('div'); d.id = 'notifPopup'; d.className = `notif-popup notif-${type}`;
@@ -1703,7 +1718,7 @@ async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts =
     let lastErr = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis');
+            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis', 2);
             const files = await Promise.all(evidencePaths.map(imagePathToFile));
             return await InfraAI.analyzeImages(files, infraType, onProgress);
         } catch (err) {
@@ -1765,10 +1780,14 @@ async function doVerifyRoadReport() {
         //    effort, never blocks the verify success message. Mirrors
         //    requests.php's own post-validate AI trigger. ──────────────────
         if (data.success && data.req_id > 0 && Array.isArray(data.evidence_paths) && data.evidence_paths.length > 0 && typeof InfraAI !== 'undefined') {
+            // Swap the plain spinner for the live scan visualization, seeded
+            // with the freshly-copied evidence photos so the wait shows the
+            // real images being "analyzed" instead of a rotating text string.
+            aiScanRoad?.start(data.evidence_paths);
             try {
                 const aiResult = await runAiAnalysis(
                     data.evidence_paths, data.infrastructure || 'Roads',
-                    (msg) => showRepOverlay(msg)
+                    (msg, percent, meta) => aiScanRoad ? aiScanRoad.update(msg, percent, meta) : showRepOverlay(msg)
                 );
                 aiResult.req_id = data.req_id;
                 await fetch('../functionality/save_ai_analysis.php', {
@@ -1777,6 +1796,8 @@ async function doVerifyRoadReport() {
                 });
             } catch (aiErr) {
                 console.error('[InfraAI] Road Monitoring conversion analysis failed:', aiErr);
+            } finally {
+                aiScanRoad?.stop();
             }
         }
 

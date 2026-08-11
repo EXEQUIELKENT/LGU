@@ -2392,6 +2392,11 @@ tbody td {
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 <script src="../assets/js/ai_tfjs_analysis.js"></script>
+<!-- AI Scan Overlay — replaces the plain "Analyzing evidence images…" text
+     with a live scanning visualization over the actual evidence photos.
+     See assets/js/ai_scan_overlay.js. -->
+<link rel="stylesheet" href="../assets/css/ai_scan_overlay.css?v=<?= @filemtime(__DIR__ . '/../assets/css/ai_scan_overlay.css') ?>">
+<script src="../assets/js/ai_scan_overlay.js"></script>
 </head>
 <body>
 
@@ -2724,10 +2729,12 @@ tbody td {
 @media (min-width: 769px) { .card-limit-more-wrap { display: none !important; } }
 </style>
 <div id="loadingOverlay">
-    <div class="loading-content">
+    <div class="loading-content" id="loadingSimpleContent">
         <div class="lgu-spinner"><span>CIMM</span></div>
         <div class="loading-text" id="loadingText">Processing</div>
     </div>
+    <!-- AI scan visualization is appended here at runtime by AIScanOverlay.attach()
+         and toggled on top of the block above whenever AI analysis is running. -->
 </div>
 
 <!-- DESKTOP TOP NAV -->
@@ -4500,8 +4507,16 @@ function hideOverlay() {
     if (!overlay) return;
     if (_overlayDotsInterval) { clearInterval(_overlayDotsInterval); _overlayDotsInterval = null; }
     overlay.classList.remove('show');
+    if (aiScan) aiScan.stop();
     setTimeout(() => { overlay.style.display = 'none'; }, 300);
 }
+
+// ── AI Scan visualization — swaps in over the simple spinner above
+//    whenever InfraAI is actually running on evidence photos. See
+//    assets/js/ai_scan_overlay.js. ─────────────────────────────────────
+const aiScan = (typeof AIScanOverlay !== 'undefined')
+    ? AIScanOverlay.attach(document.getElementById('loadingOverlay'), document.getElementById('loadingSimpleContent'))
+    : null;
 
 // ── Helper: convert an image path to a File object for InfraAI ────────
 async function imagePathToFile(path) {
@@ -4525,7 +4540,7 @@ async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts =
     let lastErr = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis');
+            onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis', 2);
             const files = await Promise.all(evidencePaths.map(imagePathToFile));
             return await InfraAI.analyzeImages(files, infraType, onProgress);
         } catch (err) {
@@ -4572,11 +4587,15 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
 
             // ── 2. Run AI analysis (retries once; never blocks validation) ────
             if (typeof InfraAI !== 'undefined' && reqSnapshot.evidence && reqSnapshot.evidence.length > 0) {
+                // Swap the plain spinner for the live scan visualization, seeded
+                // with the actual evidence photos so the wait shows the real
+                // images being "analyzed" instead of a rotating text string.
+                aiScan?.start(reqSnapshot.evidence);
                 try {
                     const aiResult = await runAiAnalysis(
                         reqSnapshot.evidence,
                         reqSnapshot.infrastructure,
-                        (msg) => updateOverlayText(msg)
+                        (msg, percent, meta) => aiScan ? aiScan.update(msg, percent, meta) : updateOverlayText(msg)
                     );
                     aiResult.req_id = reqId;
                     const saveResp = await fetch('../functionality/save_ai_analysis.php', {
@@ -4592,6 +4611,8 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
                 } catch(aiErr) {
                     console.error('[InfraAI] Analysis failed after retry:', aiErr);
                     aiWarning = ' ⚠️ AI analysis did not complete for this request — see console.';
+                } finally {
+                    aiScan?.stop();
                 }
             }
 

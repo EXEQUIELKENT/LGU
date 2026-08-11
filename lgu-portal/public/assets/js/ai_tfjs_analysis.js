@@ -274,10 +274,10 @@ const InfraAI = (() => {
 
         try {
             _loadPromise = (async () => {
-                onProgress?.('Loading AI model (1/2)…');
+                onProgress?.('Loading AI model (1/2)…', 12);
                 _mobilenet = await mobilenet.load({ version: 2, alpha: 1.0 });
                 if (typeof cocoSsd !== 'undefined') {
-                    onProgress?.('Loading AI model (2/2)…');
+                    onProgress?.('Loading AI model (2/2)…', 24);
                     try { _cocoSsd = await cocoSsd.load({ base: 'mobilenet_v2' }); }
                     catch (e) { console.warn('[InfraAI] COCO-SSD skipped:', e); }
                 }
@@ -1326,17 +1326,21 @@ const InfraAI = (() => {
         if (!files || files.length === 0) throw new Error('No files provided.');
         if (!declaredType || !declaredType.trim()) declaredType = 'Other';
 
-        onProgress?.('Initialising AI engine…');
+        onProgress?.('Initialising AI engine…', 4);
         try { await loadModels(onProgress); }
         catch (err) { return buildFallbackResult(declaredType, err.message); }
 
-        onProgress?.(`Analysing ${files.length} image${files.length > 1 ? 's' : ''}…`);
+        onProgress?.(`Analysing ${files.length} image${files.length > 1 ? 's' : ''}…`, 30, { index: 1, total: files.length });
 
         const scoreResults   = [];
         const qualityResults = [];
 
         for (let idx = 0; idx < files.length; idx++) {
-            onProgress?.(`Analysing image ${idx + 1} of ${files.length}…`);
+            // 30–80%: spread evenly across however many images are in this batch,
+            // and pass {index, total} so the loading UI can highlight which
+            // evidence photo is currently being scanned.
+            const stepPercent = 30 + Math.round(((idx + 1) / files.length) * 50);
+            onProgress?.(`Analysing image ${idx + 1} of ${files.length}…`, stepPercent, { index: idx + 1, total: files.length });
             try {
                 const img        = await fileToImage(files[idx]);
                 const pixels     = analyzePixels(img);
@@ -1423,7 +1427,7 @@ const InfraAI = (() => {
             .map(p => `${p.className} (${Math.round(p.probability * 100)}%)`)
             .join('; ');
 
-        onProgress?.('Estimating repair cost…');
+        onProgress?.('Estimating repair cost…', 88);
         const costEstimation = estimateCost(bestType, severity, complexity, legitimacyScore, bestByConf.pixels);
 
         const matchConfidence = parseFloat(Math.min(
@@ -1433,7 +1437,7 @@ const InfraAI = (() => {
             avgConf + pixelConfBoost + typePixelBoost + consensus.consensusBonus, 1
         ).toFixed(3));
 
-        onProgress?.('Finalising result…');
+        onProgress?.('Finalising result…', 96);
         const result = {
             detected_infrastructure:     bestType,
             infrastructure_match:        infMatch,
@@ -1457,7 +1461,7 @@ const InfraAI = (() => {
 
         console.log('[InfraAI v4.1] Analysis complete:', result);
         console.log('[InfraAI v4.1] Consensus:', consensus);
-        onProgress?.('Analysis complete.');
+        onProgress?.('Analysis complete.', 100);
         return result;
     }
     function fileToImage(file) {
