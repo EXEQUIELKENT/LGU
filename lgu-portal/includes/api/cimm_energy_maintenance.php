@@ -610,6 +610,81 @@ function cimm_energy_refresh_existing_rows(mysqli $conn, array $catalog): array
 }
 
 /**
+ * One-time cleanup for duplicate schedule rows the active/history id-
+ * mismatch bug already created before it was fixed (see
+ * cimm_energy_import_catalog()'s docblock on idx_energy_maintenance_id) —
+ * completing a task on Energy's side used to always import as a second,
+ * brand-new row instead of being recognized as the same task. This finds
+ * groups of Energy-imported rows that share the same facility + task text
+ * (the two rows a single duplicated task would have) and removes all but
+ * one, keeping whichever reflects the task's real final state: a
+ * Completed/history row if one exists in the group, otherwise the most
+ * recently created row.
+ *
+ * Safe to run on every page load — a group only ever has one row left
+ * after its first pass, so there is nothing left to dedupe on subsequent
+ * calls (idempotent, same as the other backfills in this file).
+ *
+ * @return int number of duplicate rows removed
+ */
+function cimm_energy_dedupe_schedule_rows(mysqli $conn): int
+{
+    $result = $conn->query("
+        SELECT sched_id, task, energy_facility_id, energy_source, status
+        FROM maintenance_schedule
+        WHERE energy_facility_id IS NOT NULL AND energy_facility_id > 0
+          AND task IS NOT NULL AND task != ''
+        ORDER BY sched_id ASC
+    ");
+    if (!$result) {
+        return 0;
+    }
+
+    $groups = [];
+    while ($row = $result->fetch_assoc()) {
+        $key = $row['energy_facility_id'] . '|' . $row['task'];
+        $groups[$key][] = $row;
+    }
+    $result->free();
+
+    $toDelete = [];
+    foreach ($groups as $rows) {
+        if (count($rows) < 2) {
+            continue;
+        }
+
+        // Prefer a Completed/history row as the authoritative final state;
+        // otherwise fall back to the most recently created row (already
+        // last in $rows, since the query is ordered by sched_id ASC).
+        $keeper = null;
+        foreach ($rows as $row) {
+            if ($row['energy_source'] === 'history' || $row['status'] === 'Completed') {
+                $keeper = $row;
+                break;
+            }
+        }
+        if ($keeper === null) {
+            $keeper = end($rows);
+        }
+
+        foreach ($rows as $row) {
+            if ((int)$row['sched_id'] !== (int)$keeper['sched_id']) {
+                $toDelete[] = (int)$row['sched_id'];
+            }
+        }
+    }
+
+    if ($toDelete === []) {
+        return 0;
+    }
+
+    $ids = implode(',', array_map('intval', $toDelete));
+    $conn->query("DELETE FROM maintenance_schedule WHERE sched_id IN ({$ids})");
+
+    return count($toDelete);
+}
+
+/**
  * Push a CIMM-side edit back to the originating Energy maintenance record.
  * Fire-and-forget-safe: failures are logged, never thrown, so a down/
  * misconfigured Energy instance can't block saving the CIMM schedule row.

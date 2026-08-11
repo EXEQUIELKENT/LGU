@@ -71,6 +71,12 @@ cimm_energy_import_catalog($conn, $energyMaintenanceCatalog);
 // cprf_facility_id the old, unguarded backfill wrote onto an Energy row.
 cimm_energy_refresh_existing_rows($conn, $energyMaintenanceCatalog);
 
+// One-time cleanup for duplicate rows the active/history id-mismatch bug
+// already created before it was fixed — see cimm_energy_dedupe_schedule_rows()
+// docblock. Idempotent: once a duplicate group is down to one row there's
+// nothing left to remove on later loads.
+cimm_energy_dedupe_schedule_rows($conn);
+
 function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
 {
     global $cprfCatalog;
