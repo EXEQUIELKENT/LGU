@@ -919,7 +919,61 @@ function cimm_backfill_schedule_facility_ids(mysqli $conn, array $catalog): int
 
 }
 
+/**
+ * cimm_backfill_schedule_facility_ids() above only ever SETS
+ * cprf_facility_name once, the first time a row gets linked — if the CPRF
+ * facility is later renamed on CPRF's own side, every schedule row already
+ * linked to it stays frozen on the old name forever. This refreshes the
+ * stored name (only — never touches which facility a row is linked to, nor
+ * task/status/dates) for every row whose cprf_facility_id still resolves in
+ * the live catalog, so CPRF-linked schedule data stays current the same way
+ * cimm_energy_refresh_existing_rows() now does for Energy-linked rows.
+ */
+function cimm_refresh_linked_cprf_names(mysqli $conn, array $catalog): int
+{
+    if ($catalog === []) {
+        return 0;
+    }
 
+    $updated = 0;
+    $result = $conn->query('SELECT sched_id, cprf_facility_id, cprf_facility_name FROM maintenance_schedule WHERE cprf_facility_id IS NOT NULL AND cprf_facility_id > 0');
+    if (!$result) {
+        return 0;
+    }
+
+    $stmt = $conn->prepare('UPDATE maintenance_schedule SET cprf_facility_name = ? WHERE sched_id = ?');
+    if (!$stmt) {
+        $result->free();
+        return 0;
+    }
+
+    while ($row = $result->fetch_assoc()) {
+        $facilityId = (int)($row['cprf_facility_id'] ?? 0);
+        $facility = cimm_get_facility_by_id($facilityId, $catalog);
+        if ($facility === null) {
+            // No longer in the live catalog (removed/renamed away entirely
+            // on CPRF's side) — leave the stored name as the last-known
+            // value rather than blanking a real, still-valid link.
+            continue;
+        }
+
+        $currentName = (string)($facility['name'] ?? '');
+        if ($currentName === '' || $currentName === (string)($row['cprf_facility_name'] ?? '')) {
+            continue;
+        }
+
+        $schedId = (int)($row['sched_id'] ?? 0);
+        $stmt->bind_param('si', $currentName, $schedId);
+        if ($stmt->execute()) {
+            $updated++;
+        }
+    }
+
+    $stmt->close();
+    $result->free();
+
+    return $updated;
+}
 
 /**
 

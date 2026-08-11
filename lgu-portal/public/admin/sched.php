@@ -52,12 +52,24 @@ cimm_ensure_maintenance_schedule_schema($conn);
 // entirely, so on a fresh install this needs to run first, not after.
 cimm_energy_ensure_schedule_schema($conn);
 cimm_backfill_schedule_facility_ids($conn, $cprfCatalog);
+// Keep already-linked CPRF facility names current too — same staleness fix
+// as the Energy refresh below, just for rows linked the other way (CIMM
+// admin picked a CPRF facility) instead of imported from an external pull.
+cimm_refresh_linked_cprf_names($conn, $cprfCatalog);
 
 // Pull "Facilities Needing Maintenance" (active + completed-history) from the
 // Energy app and import any not-yet-seen issues as maintenance_schedule rows
 // tagged with an Energy badge. Insert-only — see cimm_energy_import_catalog()
 // docblock for why re-pulling never overwrites an already-imported row.
-cimm_energy_import_catalog($conn, cimm_fetch_energy_maintenance_catalog());
+$energyMaintenanceCatalog = cimm_fetch_energy_maintenance_catalog();
+cimm_energy_import_catalog($conn, $energyMaintenanceCatalog);
+
+// Rows imported before this refresh existed (or before Energy's API even
+// sent an address) are otherwise frozen forever at whatever their location/
+// facility details were the moment they were first pulled — descriptive
+// fields only, status/dates/remarks still stay CIMM-owned. Also strips any
+// cprf_facility_id the old, unguarded backfill wrote onto an Energy row.
+cimm_energy_refresh_existing_rows($conn, $energyMaintenanceCatalog);
 
 function getMatchingFacility(?int $cprfFacilityId, string $locationText, string $taskText = ''): array
 {

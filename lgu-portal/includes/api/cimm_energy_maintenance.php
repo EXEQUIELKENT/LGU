@@ -512,6 +512,104 @@ function cimm_energy_import_catalog(mysqli $conn, array $catalog): int
 }
 
 /**
+ * Refresh already-imported Energy rows' descriptive fields (location,
+ * facility name/id, facility details) from a fresh catalog pull, and strip
+ * any cprf_facility_id/cprf_facility_name that cimm_backfill_schedule_facility_ids()
+ * incorrectly wrote onto an Energy row before it excluded them (see that
+ * function's docblock in cimm_cprf_facilities.php).
+ *
+ * Deliberately narrower than cimm_energy_import_catalog(): only touches
+ * location/facility/details columns, never status/dates/remarks/task — CIMM
+ * still owns those once a row is imported, same as before. This just keeps
+ * the *description* of an already-imported row (its address, facility
+ * details) in sync instead of freezing it at whatever it was the moment it
+ * was first pulled — which, before this existed, was often just the bare
+ * facility name because Energy's API didn't send an address yet.
+ *
+ * @return array{refreshed:int,cprf_cleared:int}
+ */
+function cimm_energy_refresh_existing_rows(mysqli $conn, array $catalog): array
+{
+    $stats = ['refreshed' => 0, 'cprf_cleared' => 0];
+
+    // Always strip stray CPRF links off Energy rows, even ones that no
+    // longer match anything in the current catalog (a task removed on
+    // Energy's side shouldn't keep showing a bogus CPRF badge either).
+    $clearStmt = $conn->prepare("UPDATE maintenance_schedule SET cprf_facility_id = NULL, cprf_facility_name = NULL WHERE (energy_source IS NOT NULL AND energy_source != '') AND cprf_facility_id IS NOT NULL AND cprf_facility_id > 0");
+    if ($clearStmt) {
+        $clearStmt->execute();
+        $stats['cprf_cleared'] = $clearStmt->affected_rows > 0 ? $clearStmt->affected_rows : 0;
+        $clearStmt->close();
+    }
+
+    if ($catalog === []) {
+        return $stats;
+    }
+
+    $byId = [];
+    foreach ($catalog as $entry) {
+        $byId[$entry['energy_id']] = $entry;
+    }
+
+    $existingStmt = $conn->prepare("SELECT sched_id, energy_maintenance_id, location, energy_source, energy_facility_id, energy_facility_name, energy_facility_details FROM maintenance_schedule WHERE energy_maintenance_id IS NOT NULL");
+    if (!$existingStmt) {
+        return $stats;
+    }
+    $existingStmt->execute();
+    $existingRows = $existingStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $existingStmt->close();
+
+    if ($existingRows === []) {
+        return $stats;
+    }
+
+    $updateStmt = $conn->prepare('UPDATE maintenance_schedule SET location = ?, energy_source = ?, energy_facility_id = ?, energy_facility_name = ?, energy_facility_details = ? WHERE sched_id = ?');
+    if (!$updateStmt) {
+        return $stats;
+    }
+
+    foreach ($existingRows as $row) {
+        $entry = $byId[(int)$row['energy_maintenance_id']] ?? null;
+        if ($entry === null) {
+            // No longer present in either the active or history pull (e.g.
+            // it was archived before original_maintenance_id existed, so
+            // its stable identity was lost on Energy's side) — nothing to
+            // refresh it against, leave the row as-is.
+            continue;
+        }
+
+        $newLocation = $entry['facility_address'] ?? $entry['facility_name'];
+        $newFacilityDetailsJson = json_encode($entry['facility_details'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: null;
+
+        $unchanged = $row['location'] === $newLocation
+            && $row['energy_source'] === $entry['source']
+            && (int)$row['energy_facility_id'] === $entry['facility_id']
+            && $row['energy_facility_name'] === $entry['facility_name']
+            && $row['energy_facility_details'] === $newFacilityDetailsJson;
+        if ($unchanged) {
+            continue;
+        }
+
+        $schedId = (int)$row['sched_id'];
+        $updateStmt->bind_param(
+            'ssissi',
+            $newLocation,
+            $entry['source'],
+            $entry['facility_id'],
+            $entry['facility_name'],
+            $newFacilityDetailsJson,
+            $schedId
+        );
+        if ($updateStmt->execute()) {
+            $stats['refreshed']++;
+        }
+    }
+    $updateStmt->close();
+
+    return $stats;
+}
+
+/**
  * Push a CIMM-side edit back to the originating Energy maintenance record.
  * Fire-and-forget-safe: failures are logged, never thrown, so a down/
  * misconfigured Energy instance can't block saving the CIMM schedule row.
