@@ -579,9 +579,11 @@ $isAdmin = cimm_is_admin();
 // ─── FETCH: Pending/Scheduled reports only ───────────────────────────────────
 $conn->query("SET SESSION group_concat_max_len = 8192");
 $ef = $isEngineer ? "AND r.engineer_id = {$engineerId}" : "";
-// Area Engineers: restrict to their assigned district only
+// Area Engineers: restrict to their assigned district only.
+// Accounts whose profile district is the "All Districts" sentinel (see
+// roles.php) are treated the same as Admin/Office Staff here — no filter.
 $df = '';
-if ($isAreaEngineer) {
+if ($isAreaEngineer && !cimm_district_is_all($aeDistrict)) {
     if ($aeHasDistrict) {
         $safeDistrict = $conn->real_escape_string($aeDistrict);
         $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";

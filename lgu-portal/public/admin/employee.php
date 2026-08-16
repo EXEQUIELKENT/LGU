@@ -176,9 +176,11 @@ if ($isAreaEngineer) {
     $aeHasDistrict = $aeDistrict !== '';
 }
 
-// District filter for queries that JOIN the requests table (Area Engineer only)
+// District filter for queries that JOIN the requests table (Area Engineer only).
+// Accounts whose profile district is the "All Districts" sentinel (see
+// roles.php) are treated the same as Admin/Office Staff here — no filter.
 $districtFilter = '';
-if ($isAreaEngineer) {
+if ($isAreaEngineer && !cimm_district_is_all($aeDistrict)) {
     if ($aeHasDistrict) {
         $safeAEDist     = $conn->real_escape_string($aeDistrict);
         $districtFilter = "AND COALESCE(req.district, '') = '{$safeAEDist}'";

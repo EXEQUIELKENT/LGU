@@ -69,3 +69,27 @@ if (!function_exists('cimm_is_office_staff')) {
         return cimm_current_role() === 'office staff';
     }
 }
+
+/**
+ * "All Districts" sentinel — an engineer_profiles.district value that means
+ * "not scoped to a single district" instead of the usual literal district
+ * name. Lets specific Engineer / Area Engineer accounts (e.g. senior staff
+ * who cover the whole city) see and be assigned reports from every district,
+ * without adding a second access-control system alongside the existing
+ * single-district column.
+ *
+ * Set an account's engineer_profiles.district to this value (see
+ * sql/grant_all_districts.sql) and every place that reads that column
+ * — current_reports.php, pending_reports.php, archive_reports.php,
+ * employee.php, get_engineers.php, assign_engineer.php — treats them as
+ * unrestricted rather than matching a single literal district.
+ */
+if (!defined('CIMM_ALL_DISTRICTS_LABEL')) {
+    define('CIMM_ALL_DISTRICTS_LABEL', 'All Districts');
+}
+
+if (!function_exists('cimm_district_is_all')) {
+    function cimm_district_is_all(?string $district): bool {
+        return strcasecmp(trim((string)$district), CIMM_ALL_DISTRICTS_LABEL) === 0;
+    }
+}

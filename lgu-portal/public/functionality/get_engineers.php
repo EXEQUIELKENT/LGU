@@ -43,9 +43,12 @@ require __DIR__ . '/../../includes/config/db.php';
 // District is always resolved server-side from the actor's own profile — the
 // ?district= query param some frontends send is only a display hint and is
 // never trusted for scoping.
-$heDistrict     = '';
-$districtClause = '';
+$heDistrict      = '';
+$heDistrictIsAll = false;
+$districtClause  = '';
 if ($isDistrictScoped) {
+    require_once __DIR__ . '/../../includes/core/roles.php';
+
     $hdStmt = $conn->prepare("SELECT district FROM engineer_profiles WHERE user_id = ? LIMIT 1");
     $hdStmt->bind_param('i', $sessionId);
     $hdStmt->execute();
@@ -56,8 +59,19 @@ if ($isDistrictScoped) {
     if ($heDistrict === '') {
         jsonOut(false, 'No district is assigned to your profile.', ['engineers' => []]);
     }
-    // Case-insensitive match — handles any capitalisation difference between tables
-    $districtClause = ' AND LOWER(ep.district) = LOWER(?)';
+    $heDistrictIsAll = cimm_district_is_all($heDistrict);
+
+    if ($heDistrictIsAll) {
+        // "All Districts" accounts see every Engineer, regardless of that
+        // engineer's own district — no WHERE clause needed.
+        $districtClause = '';
+    } else {
+        // Case-insensitive match — handles any capitalisation difference
+        // between tables. Also match engineers who are themselves flagged
+        // "All Districts", so a city-wide engineer shows up in every
+        // district-scoped actor's list, not just their own literal district.
+        $districtClause = " AND (LOWER(ep.district) = LOWER(?) OR LOWER(ep.district) = LOWER('" . CIMM_ALL_DISTRICTS_LABEL . "'))";
+    }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -95,12 +109,16 @@ if (!$stmt) {
     jsonOut(false, 'DB prepare error: ' . $conn->error);
 }
 
-// Bind params based on which WHERE clauses are active
-if ($singleId > 0 && $isDistrictScoped) {
+// Bind params based on which WHERE clauses are active.
+// $districtClause has no placeholder at all when the actor is "All
+// Districts" scoped (see above), so that case binds like a plain $singleId
+// (or no params) query even though $isDistrictScoped is true.
+$districtScopedWithClause = $isDistrictScoped && !$heDistrictIsAll;
+if ($singleId > 0 && $districtScopedWithClause) {
     $stmt->bind_param('is', $singleId, $heDistrict);
 } elseif ($singleId > 0) {
     $stmt->bind_param('i', $singleId);
-} elseif ($isDistrictScoped) {
+} elseif ($districtScopedWithClause) {
     $stmt->bind_param('s', $heDistrict);
 }
 // else: no dynamic params — WHERE clause is fully static

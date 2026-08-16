@@ -27,6 +27,7 @@ $engineerId = (int)($input['engineer_id'] ?? 0);
 if ($repId <= 0 || $engineerId <= 0) jsonOut(false, 'Invalid parameters.');
 
 require __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 // Verify engineer exists and has correct role
 $ec = $conn->prepare(
@@ -65,7 +66,13 @@ if ($userRole === 'area engineer') {
     $targetStmt->close();
     $engDistrict = trim($targetRow['district'] ?? '');
 
-    if (strcasecmp($aeDistrict, $engDistrict) !== 0) {
+    // Allow the match when either side is the "All Districts" sentinel:
+    // an "All Districts" Area Engineer can assign anyone, and an
+    // "All Districts" Engineer can be assigned by any Area Engineer.
+    $sameDistrict = strcasecmp($aeDistrict, $engDistrict) === 0;
+    $allDistricts = cimm_district_is_all($aeDistrict) || cimm_district_is_all($engDistrict);
+
+    if (!$sameDistrict && !$allDistricts) {
         jsonOut(false, "You can only assign engineers within your district ({$aeDistrict}).");
     }
 }

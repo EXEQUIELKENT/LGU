@@ -231,9 +231,11 @@ $conn->query("
         INDEX idx_rdi (rep_id, log_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
-// Area Engineers: restrict to their assigned district only
+// Area Engineers: restrict to their assigned district only.
+// Accounts whose profile district is the "All Districts" sentinel (see
+// roles.php) are treated the same as Admin/Office Staff here — no filter.
 $df = '';
-if ($isAreaEngineer) {
+if ($isAreaEngineer && !cimm_district_is_all($aeDistrict)) {
     if ($aeHasDistrict) {
         $safeDistrict = $conn->real_escape_string($aeDistrict);
         $df = "AND COALESCE(req.district, '') = '{$safeDistrict}'";
