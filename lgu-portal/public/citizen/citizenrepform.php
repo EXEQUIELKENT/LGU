@@ -110,6 +110,31 @@ function assignEmployeeId($infrastructure, $location) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ! BUG FIX — citizen submissions with several evidence photos attached
+    // silently vanished on the live domain (never appeared in the admin
+    // requests.php table/cards/GIS map at all) while the exact same
+    // submission worked fine on XAMPP/localhost. Root cause: when a POST
+    // body exceeds PHP's post_max_size, PHP silently empties BOTH $_POST
+    // and $_FILES for that request — no warning, no exception. Every field
+    // below then reads back empty, so the code fell straight into the "At
+    // least one evidence image is required" branch a few lines down even
+    // though the citizen clearly attached photos, and nothing was ever
+    // written to the requests table. Local XAMPP ships with a generous
+    // default post_max_size (commonly 40M+); the live host's default is
+    // much smaller, and this form allows up to 10 photos. Detect that exact
+    // condition here — POST method, but $_POST came back completely empty
+    // while the client clearly sent a body — and surface an honest error
+    // instead of the misleading "no image" message. (Also raise the actual
+    // PHP limits — see citizen/.htaccess — this check is a clear diagnostic
+    // + fallback, not a substitute for that.)
+    $__contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    if ($__contentLength > 0 && empty($_POST) && empty($_FILES)) {
+        $__postMax = ini_get('post_max_size') ?: 'the server limit';
+        setNotification('error', "Your evidence photos are too large to submit together (server limit: {$__postMax}). Please attach fewer photos, or smaller ones, and try again.");
+        header("Location: citizenrepform.php");
+        exit;
+    }
+
     $infrastructure = isset($_POST['infrastructure']) ? trim($_POST['infrastructure']) : '';
 
     $location = isset($_POST['location']) ? trim($_POST['location']) : '';
@@ -238,7 +263,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     if (count($files) > $max_files) {
-                        $delete_stmt = $conn->prepare("DELETE FROM requests WHERE request_id = ?");
+                        // ! BUG FIX — this used to say "WHERE request_id = ?" but the
+                        // requests table's primary key is req_id, not request_id.
+                        // Preparing against a nonexistent column made $conn->prepare()
+                        // return false (or throw, depending on the host's mysqli error
+                        // mode), so the very next line — $delete_stmt->bind_param(...)
+                        // — fatally crashed PHP before the redirect ever ran. The
+                        // orphaned, evidence-less requests row from the INSERT above
+                        // was left behind (never actually deleted) and the citizen saw
+                        // a blank/broken page instead of the "Maximum of 10 images"
+                        // notice.
+                        $delete_stmt = $conn->prepare("DELETE FROM requests WHERE req_id = ?");
                         $delete_stmt->bind_param("i", $request_id);
                         $delete_stmt->execute();
                         $delete_stmt->close();
@@ -276,7 +311,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if (!$upload_success || $uploaded_count === 0) {
-                    $delete_stmt = $conn->prepare("DELETE FROM requests WHERE request_id = ?");
+                    // ! BUG FIX — same wrong-column issue as above (req_id, not
+                    // request_id). This is the branch that actually fires most
+                    // often in practice: e.g. a citizen attaches only HEIC photos
+                    // (the iPhone default format) which aren't in $allowed_ext,
+                    // so $uploaded_count stays 0. Before this fix, that crashed
+                    // PHP here instead of cleanly deleting the row and showing
+                    // the "please use JPG/PNG/WEBP" notice.
+                    $delete_stmt = $conn->prepare("DELETE FROM requests WHERE req_id = ?");
                     $delete_stmt->bind_param("i", $request_id);
                     $delete_stmt->execute();
                     $delete_stmt->close();
