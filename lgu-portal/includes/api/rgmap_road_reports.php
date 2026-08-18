@@ -63,6 +63,18 @@ function rgmap_road_reports_ensure_schema(mysqli $conn): void {
     $conn->query("ALTER TABLE rgmap_road_reports ADD COLUMN IF NOT EXISTS cimm_req_id INT UNSIGNED NULL DEFAULT NULL AFTER verified_at");
     $conn->query("ALTER TABLE rgmap_road_reports ADD COLUMN IF NOT EXISTS cimm_rep_id INT UNSIGNED NULL DEFAULT NULL AFTER cimm_req_id");
 
+    // Belt-and-suspenders against schema drift: CREATE TABLE IF NOT EXISTS
+    // only sets the 'Pending' default at first-ever creation. If this table
+    // was created by an older/manual version of this schema (or hand-edited)
+    // with a different column default, every subsequent webhook insert —
+    // which never lists verification_status in its column list, relying
+    // entirely on the column default — would silently land as that stale
+    // default instead of 'Pending', with no code-level trace of why. Forcing
+    // the default back on every request makes that whole class of drift
+    // self-correcting on the next deploy, regardless of how the table
+    // actually got into a bad state.
+    $conn->query("ALTER TABLE rgmap_road_reports MODIFY COLUMN verification_status VARCHAR(20) NOT NULL DEFAULT 'Pending'");
+
     $ensured = true;
 }
 

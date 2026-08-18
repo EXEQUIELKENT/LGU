@@ -235,9 +235,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 //    rgmap_road_reports_convert_to_cimm_report() is itself idempotent
 //    (checks cimm_req_id first), so this is safe to run on every page load —
 //    capped per load so a large backlog can't turn one page view into a slow
-//    batch job; any remainder just gets picked up on the next load. ────────
+//    batch job; any remainder just gets picked up on the next load.
+//    verified_by IS NOT NULL is required here: a real Verify click always
+//    stamps verified_by (see rgmap_road_reports_verify()). Without this
+//    guard, any row that reached 'Verified' through something OTHER than an
+//    actual admin click (e.g. a stale/drifted column default on an
+//    already-existing table — see the MODIFY COLUMN fix in
+//    rgmap_road_reports_ensure_schema()) would get silently promoted into a
+//    real, assignable Current Reports entry by this very backfill, which is
+//    exactly the "synchronization must never automatically verify" failure
+//    this integration exists to prevent. ─────────────────────────────────
 $stuckVerifiedRes = $conn->query(
-    "SELECT id FROM rgmap_road_reports WHERE verification_status = 'Verified' AND cimm_req_id IS NULL LIMIT 5"
+    "SELECT id FROM rgmap_road_reports WHERE verification_status = 'Verified' AND verified_by IS NOT NULL AND cimm_req_id IS NULL LIMIT 5"
 );
 if ($stuckVerifiedRes && $stuckVerifiedRes->num_rows > 0) {
     $backfillActorId = (int)($_SESSION['employee_id'] ?? 0);
@@ -253,6 +262,84 @@ if ($stuckVerifiedRes && $stuckVerifiedRes->num_rows > 0) {
                     . str_pad((string)$backfillResult['rep_id'], 3, '0', STR_PAD_LEFT) . " on Current Reports."
             );
         }
+    }
+}
+
+// ── Repair: reset road reports that show 'Verified' but were never actually
+//    verified by an admin (verified_by/verified_at are both blank — a real
+//    Verify click always stamps both, see rgmap_road_reports_verify()). This
+//    is the data-side fix for the auto-verify bug: on some installs the
+//    rgmap_road_reports table was created before verification_status's
+//    'Pending' default existed, so every webhook insert (which never lists
+//    verification_status explicitly) silently landed on whatever stale
+//    default the table already had instead. rgmap_road_reports_ensure_schema()
+//    now forces the correct default going forward; this repairs rows already
+//    corrupted by it. Only rows never linked to a real CIMM report
+//    (cimm_req_id IS NULL) are touched automatically — safe, since nothing
+//    downstream has acted on them yet. Capped like the other backfills above;
+//    a full backlog self-heals over a few page loads. ───────────────────────
+$falseVerifiedRes = $conn->query(
+    "SELECT id, rgmap_report_id, title FROM rgmap_road_reports
+     WHERE verification_status = 'Verified' AND verified_by IS NULL AND verified_at IS NULL AND cimm_req_id IS NULL
+     LIMIT 25"
+);
+if ($falseVerifiedRes && $falseVerifiedRes->num_rows > 0) {
+    $falseVerifiedRows = [];
+    while ($fvRow = $falseVerifiedRes->fetch_assoc()) {
+        $falseVerifiedRows[] = $fvRow;
+    }
+    $idList = implode(',', array_map(fn($r) => (int)$r['id'], $falseVerifiedRows));
+    $conn->query("UPDATE rgmap_road_reports SET verification_status = 'Pending' WHERE id IN ({$idList})");
+    // log_activity() no-ops on ref_id <= 0, and fetch_activity_log() below
+    // only matches entries whose ref_id is one of this page's actual report
+    // ids — so this logs one entry per repaired row (real ids) rather than a
+    // single bulk entry, both so it isn't silently dropped and so it shows
+    // up in each affected report's own History Logs trail.
+    foreach ($falseVerifiedRows as $fvRow) {
+        $fvLabel = trim(($fvRow['rgmap_report_id'] ?? '') . ' — ' . ($fvRow['title'] ?? ''), ' —');
+        log_activity(
+            $conn, 'road_monitoring', 'road_report', (int)$fvRow['id'], 'system_repair',
+            "System repair reset {$fvLabel} from \"Verified\" (no recorded verifier) back to \"Awaiting "
+                . "Verification\" — auto-verify bug data fix.",
+            'System (auto-verify bug repair)'
+        );
+    }
+}
+
+// ── Flag (never auto-modify): rows with the same "never actually verified"
+//    signature as above, but that DO already have a linked CIMM report
+//    (cimm_req_id IS NOT NULL) — meaning an earlier, looser version of the
+//    stuck-verified backfill above already promoted them into a real,
+//    possibly staff-touched Current Reports entry before this fix existed.
+//    Auto-resetting verification_status here wouldn't undo that linked
+//    requests/reports row, and silently deleting a report staff may have
+//    already assigned/budgeted would be destructive — so this only surfaces
+//    them in History Logs for manual admin review instead of acting. ───────
+$flaggedForReviewRes = $conn->query(
+    "SELECT id, rgmap_report_id, title, cimm_req_id FROM rgmap_road_reports
+     WHERE verification_status = 'Verified' AND verified_by IS NULL AND verified_at IS NULL AND cimm_req_id IS NOT NULL
+     LIMIT 10"
+);
+if ($flaggedForReviewRes && $flaggedForReviewRes->num_rows > 0) {
+    while ($flagRow = $flaggedForReviewRes->fetch_assoc()) {
+        $flagId = (int)$flagRow['id'];
+        // Nothing about this row's matched state changes once flagged (unlike
+        // the backfills above, which each update a column that removes the
+        // row from their own WHERE clause) — without this existence check,
+        // every page load would re-log the same "needs review" entry forever.
+        $alreadyFlagged = $conn->query(
+            "SELECT 1 FROM activity_log WHERE ref_type = 'road_report' AND ref_id = {$flagId} AND action = 'needs_review' LIMIT 1"
+        );
+        if ($alreadyFlagged && $alreadyFlagged->num_rows > 0) {
+            continue;
+        }
+        $flagLabel = trim(($flagRow['rgmap_report_id'] ?? '') . ' — ' . ($flagRow['title'] ?? ''), ' —');
+        log_activity(
+            $conn, 'road_monitoring', 'road_report', $flagId, 'needs_review',
+            "NEEDS MANUAL REVIEW: {$flagLabel} was marked Verified with no recorded verifier, and was already "
+                . "converted to CIMM Report linked to req_id {$flagRow['cimm_req_id']} — likely promoted by the "
+                . "auto-verify bug before this fix. Review before treating it as a legitimately verified report."
+        );
     }
 }
 

@@ -182,6 +182,8 @@ function activity_icon_for(string $action): array {
         'images_viewed'           => ['fa-images',          'info'],
         'downloaded'              => ['fa-file-word',       'info'],
         'redirected'              => ['fa-arrow-up-right-from-square', 'info'],
+        'system_repair'           => ['fa-wrench',          'warning'],
+        'needs_review'            => ['fa-triangle-exclamation', 'danger'],
     ];
     return $map[$action] ?? ['fa-clock-rotate-left', 'info'];
 }
