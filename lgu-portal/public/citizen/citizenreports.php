@@ -140,6 +140,8 @@ foreach ($maintenance_data as $_item) {
     <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
     <!-- CRITICAL: Block rendering FIRST - before anything else loads -->
     <script>
@@ -2195,6 +2197,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <!-- ═══════════════ LIST / MAP VIEW TOGGLE + ISSUE MAP ═══════════════ -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 (function () {
     const API_BASE   = <?= json_encode($BASE_URL) ?>;
@@ -2259,6 +2262,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const STATUS_RANK = { 'Completed': 1, 'Scheduled': 2, 'In Progress': 3 };
 
     let map = null, satelliteLayer = null, streetLayer = null;
+    // All markers render through this cluster group instead of individually
+    // onto the map — this dataset is every request that's ever entered the
+    // reports pipeline (not just recent ones), so without clustering a busy
+    // district can mean hundreds of overlapping pins slowing pan/zoom down.
+    // This page still fetches its full dataset in one shot (see loadMarkers()
+    // below) and filters client-side rather than adopting a bounds-driven
+    // per-pan refetch like admin/requests.php's GisMapLoader: citizens expect
+    // to browse their whole report history at once, not a viewport slice,
+    // and the Status/District/Period/search filters here are already shared
+    // with the non-map list view above via applyLegendFilter() — converting
+    // those to server round-trips would risk desyncing the two views for no
+    // real benefit on what is a comparatively small, read-only dataset.
+    let clusterGroup = null;
     let markers = [];   // { marker, filter }
     let loaded = false;
 
@@ -2306,11 +2322,15 @@ document.addEventListener("DOMContentLoaded", () => {
     function loadMarkers() {
         if (loaded) return;
         loaded = true;
-        fetch(`${API_BASE}api/reports-map.php`)
+        // limit= matches api/requests-map.php's hard cap — a defensive upper
+        // bound, not a behavior change: today's dataset is comfortably under
+        // it, so this only guards against an unbounded query as it grows.
+        fetch(`${API_BASE}api/reports-map.php?limit=2000`)
             .then(r => r.json())
             .then(json => {
                 if (mapLoading) mapLoading.classList.add('hidden');
                 if (!json || !json.success || !Array.isArray(json.data)) return;
+                const built = [];
                 json.data.forEach(item => {
                     const meta = STATUS_META[item.status];
                     if (!meta || typeof item.lat !== 'number' || typeof item.lng !== 'number') return;
@@ -2331,7 +2351,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         this.closePopup();
                         if (window.openSchedModalFromRecord) window.openSchedModalFromRecord(recordFromMapItem(item));
                     });
-                    marker.addTo(map);
+                    built.push(marker);
                     markers.push({
                         marker, filter: meta.filter,
                         searchText: ((item.type || '') + ' ' + (item.location || '')).toLowerCase(),
@@ -2340,6 +2360,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         district: (item.district || '').toLowerCase().trim(),
                     });
                 });
+                if (clusterGroup) {
+                    if (typeof clusterGroup.addLayers === 'function') clusterGroup.addLayers(built);
+                    else built.forEach(m => clusterGroup.addLayer(m));
+                }
                 sortMarkers(currentSort);
                 applyMapFilter(window.__reportsActiveLegendFilter || null);
             })
@@ -2396,7 +2420,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function applyMapFilter(filter) {
-        if (!map) return;
+        if (!map || !clusterGroup) return;
         currentStatusFilter = filter;
         syncStatusDropdownUI(filter);
         let visible = 0;
@@ -2412,8 +2436,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const districtOk = districtFilterVal === 'all'
                 || (districtFilterVal === 'other' ? !KNOWN_DISTRICTS.includes(district) : district === districtFilterVal);
             const show = (!filter || f === filter) && (!searchQuery || searchText.indexOf(searchQuery) !== -1) && districtOk && dateOk;
-            if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
-            else if (map.hasLayer(marker)) map.removeLayer(marker);
+            if (show) { if (!clusterGroup.hasLayer(marker)) clusterGroup.addLayer(marker); visible++; }
+            else if (clusterGroup.hasLayer(marker)) clusterGroup.removeLayer(marker);
         });
         if (searchQuery && resultsBadge) {
             resultsBadge.classList.add('visible');
@@ -2451,7 +2475,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const cmp = (a.createdAt || '').localeCompare(b.createdAt || '');
             return order === 'oldest' ? -cmp : cmp;
         });
-        markers.forEach(({ marker }) => { if (map.hasLayer(marker)) { marker.remove(); marker.addTo(map); } });
+        if (!clusterGroup) return;
+        markers.forEach(({ marker }) => { if (clusterGroup.hasLayer(marker)) { clusterGroup.removeLayer(marker); clusterGroup.addLayer(marker); } });
     }
 
     function toggleLayer() {
@@ -2485,6 +2510,10 @@ document.addEventListener("DOMContentLoaded", () => {
             satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19, attribution: 'Tiles &copy; Esri',
             });
+            clusterGroup = (typeof L.markerClusterGroup === 'function')
+                ? L.markerClusterGroup({ showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 55 })
+                : L.layerGroup();
+            map.addLayer(clusterGroup);
             if (layerBtn) layerBtn.addEventListener('click', toggleLayer);
         }
         setTimeout(() => map.invalidateSize(), 60);

@@ -174,6 +174,43 @@ if (!function_exists('cimm_qc_barangay_district_points')) {
     }
 }
 
+if (!function_exists('cimm_district_options')) {
+    /**
+     * The 6 valid Quezon City districts, derived from the barangay-centroid
+     * map above — the single source of truth every district picker (Area
+     * Engineer's own profile.php section, User Management's edit modal)
+     * should read from instead of each hardcoding its own copy of this list.
+     */
+    function cimm_district_options(): array {
+        static $options = null;
+        if ($options !== null) {
+            return $options;
+        }
+        $seen = [];
+        foreach (cimm_qc_barangay_district_points() as $p) {
+            $seen[$p['district']] = true;
+        }
+        $options = array_keys($seen);
+        sort($options, SORT_NATURAL);
+        return $options;
+    }
+}
+
+if (!function_exists('cimm_is_valid_district')) {
+    /**
+     * Strict membership check against cimm_district_options(). $allowEmpty
+     * defaults true because every existing save path treats "no district
+     * assigned yet" (empty string) as valid — engineers/area engineers can
+     * save their profile before picking a district.
+     */
+    function cimm_is_valid_district(string $district, bool $allowEmpty = true): bool {
+        if ($district === '') {
+            return $allowEmpty;
+        }
+        return in_array($district, cimm_district_options(), true);
+    }
+}
+
 if (!function_exists('cimm_resolve_district_from_coords')) {
     /** Nearest-centroid match against the 142 barangay points above. */
     function cimm_resolve_district_from_coords(?float $lat, ?float $lng): ?string {

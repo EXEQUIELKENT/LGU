@@ -167,6 +167,14 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
         return null;
     }
 
+    // Ensures rgmap_road_reports exists (idempotent CREATE TABLE IF NOT
+    // EXISTS) before the LEFT JOIN below references it — same guard
+    // requests.php/current_reports.php already use before their own
+    // identical JOIN, so this outbound sync can't fail on a fresh install
+    // where no RGMap traffic has happened yet.
+    require_once __DIR__ . '/rgmap_road_reports.php';
+    rgmap_road_reports_ensure_schema($conn);
+
     $optionalColumns = cimm_rgmap_requests_columns($conn);
     $cprfFacilityIdSelect = $optionalColumns['cprf_facility_id'] ? 'r.cprf_facility_id' : 'NULL AS cprf_facility_id';
     $cprfFacilityNameSelect = $optionalColumns['cprf_facility_name'] ? 'r.cprf_facility_name' : 'NULL AS cprf_facility_name';
@@ -178,7 +186,7 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
             r.infrastructure,
             r.location,
             r.issue,
-            r.contact_number,
+            COALESCE(NULLIF(r.contact_number, ''), rm.reporter_phone, '') AS contact_number,
             r.name,
             r.email,
             r.approval_status,
@@ -207,6 +215,7 @@ function cimm_rgmap_fetch_report(mysqli $conn, int $reqId, ?string $baseUrl = nu
             ai.detected_infrastructure,
             ai.declared_infrastructure
         FROM requests r
+        LEFT JOIN rgmap_road_reports rm ON rm.cimm_req_id = r.req_id
         LEFT JOIN request_resolutions rr ON rr.req_id = r.req_id
         LEFT JOIN reports rep ON rep.res_id = rr.res_id
         LEFT JOIN employees eng ON eng.user_id = rep.engineer_id

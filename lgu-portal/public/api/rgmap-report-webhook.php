@@ -107,7 +107,20 @@ try {
     $coordLng = $data['coord_lng'] ?? null;
     $reporterName = $data['reporter_name'] ?? null;
     $reporterEmail = $data['reporter_email'] ?? null;
-    $reporterPhone = $data['reporter_phone'] ?? null;
+    // RGMAO is a separate codebase we don't control the sender side of — if
+    // its payload shape ever drifts from the documented 'reporter_phone'
+    // field, fall back to the most plausible alternate names rather than
+    // silently storing NULL and losing the contact number for every report
+    // synced while the mismatch goes unnoticed.
+    $reporterPhone = $data['reporter_phone']
+        ?? $data['contact_number']
+        ?? $data['phone']
+        ?? $data['mobile_number']
+        ?? $data['reporter_contact']
+        ?? null;
+    if ($reporterPhone === null || trim((string)$reporterPhone) === '') {
+        error_log('CIMM RGMAO road-report webhook: reporter_phone missing/empty for rgmap_report_pk=' . $reportPk . ' — payload keys: ' . implode(',', array_keys($data)));
+    }
     $portalUrl = $data['portal_url'] ?? null;
     $createdDate = $data['created_date'] ?? null;
     $submittedAt = $data['submitted_at'] ?? null;

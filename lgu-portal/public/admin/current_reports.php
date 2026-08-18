@@ -844,6 +844,10 @@ foreach ($rows as $row) {
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- Leaflet.markercluster — groups the Active Reports Map's pins instead of
+     rendering thousands of individual markers. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <title>Current Reports — In Progress</title>
 <style>
 :root {
@@ -6915,6 +6919,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 // ══════════════ TRIAGE MAP — List / Map view toggle ══════════════
 // Reuses ALL_REPORTS (already role/district-scoped by the server query above)
@@ -6981,6 +6986,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const STATUS_RANK = { 'Pending Admin Approval': 1, 'In Progress': 2, 'Pending Acceptance': 3, 'Awaiting Engineer': 4 };
     let markers = [];
     let searchQuery = '';
+    // Markers render through a cluster group instead of individually onto
+    // the map — created once map exists (see showMap() below). Unlike
+    // requests.php's GIS map, this map's data source (ALL_REPORTS) stays as
+    // a single already-loaded, already-filtered array on purpose: it's
+    // mutated in place by many other handlers on this page (accept/decline/
+    // budget/admin-note actions all update ALL_REPORTS directly to keep the
+    // non-map card/kanban view in sync without a reload), so fetching a
+    // separate bounds-scoped dataset for the map would silently drift out of
+    // sync with those mutations. Clustering is still the real fix needed
+    // here — the SQL feeding ALL_REPORTS is already scoped to active
+    // (Approved/Pending Admin Approval) + role/district-filtered reports,
+    // not the unbounded history requests.php's map used to load.
+    let clusterGroup = null;
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -7007,6 +7025,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (loaded) return;
         loaded = true;
         let plotted = 0;
+        const builtMarkers = [];
         ALL_REPORTS.forEach(r => {
             const coords = (r.coordinates || '').split(',');
             if (coords.length !== 2) return;
@@ -7029,7 +7048,7 @@ document.addEventListener('DOMContentLoaded', function() {
             marker.on('mouseover', function () { this.openPopup(); });
             marker.on('mouseout', function () { this.closePopup(); });
             marker.on('click', function () { this.closePopup(); openRepModal(r.rep_id); });
-            marker.addTo(map);
+            builtMarkers.push(marker);
             markers.push({
                 marker, status,
                 searchText: ((r.infrastructure || '') + ' ' + (r.location || '')).toLowerCase(),
@@ -7040,6 +7059,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             plotted++;
         });
+        // One bulk add to the cluster group instead of one marker at a time
+        // directly on the map — see clusterGroup's own comment above.
+        if (clusterGroup) clusterGroup.addLayers(builtMarkers);
         sortMarkers(currentSort);
         applyMapSearch();
     }
@@ -7084,7 +7106,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function applyMapSearch() {
-        if (!map) return;
+        if (!map || !clusterGroup) return;
         let visible = 0;
         const dateRange = getDateFilterRange(periodFilterVal);
         markers.forEach(({ marker, searchText, status, district, createdAt }) => {
@@ -7099,8 +7121,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 || (districtFilterVal === 'other' ? !KNOWN_DISTRICTS.includes(district) : district === districtFilterVal);
             const statusOk = statusFilterVal === 'all' || status === statusFilterVal;
             const show = (!searchQuery || searchText.indexOf(searchQuery) !== -1) && districtOk && dateOk && statusOk;
-            if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
-            else if (map.hasLayer(marker)) map.removeLayer(marker);
+            if (show) { if (!clusterGroup.hasLayer(marker)) clusterGroup.addLayer(marker); visible++; }
+            else if (clusterGroup.hasLayer(marker)) clusterGroup.removeLayer(marker);
         });
         if (searchQuery && resultsBadge) {
             resultsBadge.classList.add('visible');
@@ -7126,7 +7148,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const cmp = (a.createdAt || '').localeCompare(b.createdAt || '');
             return order === 'oldest' ? -cmp : cmp;
         });
-        markers.forEach(({ marker }) => { if (map.hasLayer(marker)) { marker.remove(); marker.addTo(map); } });
+        // Re-adding in sorted order still influences paint order within a
+        // cluster's spiderfied/expanded view; clustering itself already
+        // handles the overlapping-pins case this originally targeted.
+        markers.forEach(({ marker }) => { if (clusterGroup && clusterGroup.hasLayer(marker)) { clusterGroup.removeLayer(marker); clusterGroup.addLayer(marker); } });
     }
 
     function toggleLayer() {
@@ -7159,6 +7184,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 maxZoom: 19, attribution: 'Tiles &copy; Esri',
             });
             if (layerBtn) layerBtn.addEventListener('click', toggleLayer);
+            clusterGroup = (typeof L.markerClusterGroup === 'function')
+                ? L.markerClusterGroup({ showCoverageOnHover: false, spiderfyOnMaxZoom: true, maxClusterRadius: 55 })
+                : L.layerGroup(); // graceful fallback if the CDN plugin ever fails to load
+            map.addLayer(clusterGroup);
         }
         setTimeout(() => map.invalidateSize(), 60);
         loadMarkers();

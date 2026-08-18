@@ -20,6 +20,26 @@ date_default_timezone_set('Asia/Manila');
 $isStaff = isset($_SESSION['employee_logged_in']) && $_SESSION['employee_logged_in'] === true;
 $scope = ($isStaff && isset($_GET['scope']) && $_GET['scope'] === 'admin') ? 'admin' : 'public';
 
+// ── optional bounds ("south,west,north,east") + limit ──────────────────
+// Both optional and off by default so existing callers that fetch the full
+// dataset once (e.g. citizen/citizenreports.php's one-shot load-then-filter
+// map) keep working unchanged; a caller that wants viewport-scoped/capped
+// results (e.g. a future GisMapLoader adoption) can opt in with either param.
+$hasBounds = false;
+$south = $west = $north = $east = 0.0;
+$boundsRaw = trim((string)($_GET['bounds'] ?? ''));
+if ($boundsRaw !== '') {
+    $boundsParts = array_map('trim', explode(',', $boundsRaw));
+    if (count($boundsParts) === 4 && array_reduce($boundsParts, fn($ok, $p) => $ok && is_numeric($p), true)) {
+        [$south, $west, $north, $east] = array_map('floatval', $boundsParts);
+        $hasBounds = true;
+    }
+}
+$limit = (int)($_GET['limit'] ?? 0);
+if ($limit < 0) $limit = 0;
+if ($limit > 2000) $limit = 2000;
+$hasLimit = $limit > 0;
+
 $data = [];
 
 // ── Validated reports (requests that made it into the reports pipeline) ──
@@ -34,10 +54,32 @@ $sql = "
     INNER JOIN request_resolutions res ON res.req_id = req.req_id
     LEFT JOIN reports r ON r.res_id = res.res_id
     LEFT JOIN evidence_images ev ON ev.req_id = req.req_id
-    WHERE req.coordinates IS NOT NULL AND req.coordinates <> ''
+    WHERE req.coordinates IS NOT NULL AND req.coordinates <> ''" .
+    ($hasBounds ? "
+      AND (SUBSTRING_INDEX(req.coordinates, ',', 1) + 0) BETWEEN ? AND ?
+      AND (SUBSTRING_INDEX(req.coordinates, ',', -1) + 0) BETWEEN ? AND ?" : '') . "
     GROUP BY req.req_id
-";
-$result = $conn->query($sql);
+    ORDER BY req.created_at DESC" .
+    ($hasLimit ? "\n    LIMIT ?" : '');
+
+if ($hasBounds || $hasLimit) {
+    $stmt = $conn->prepare($sql);
+    $types = '';
+    $params = [];
+    if ($hasBounds) {
+        $types .= 'dddd';
+        array_push($params, $south, $north, $west, $east);
+    }
+    if ($hasLimit) {
+        $types .= 'i';
+        $params[] = $limit;
+    }
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $result = $conn->query($sql);
+}
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $coords = explode(',', (string)$row['coordinates']);
@@ -80,6 +122,7 @@ if ($result) {
         $data[] = $entry;
     }
 }
+if (isset($stmt)) { $stmt->close(); unset($stmt); }
 
 // Admins also get to see pending (not-yet-validated) requests, so they can
 // triage/dispatch before approval — citizens only see validated reports.
@@ -88,9 +131,31 @@ if ($scope === 'admin') {
         SELECT req_id, infrastructure, location, district, coordinates, created_at
         FROM requests
         WHERE approval_status = 'Pending'
-          AND coordinates IS NOT NULL AND coordinates <> ''
-    ";
-    $pendingResult = $conn->query($pendingSql);
+          AND coordinates IS NOT NULL AND coordinates <> ''" .
+        ($hasBounds ? "
+          AND (SUBSTRING_INDEX(coordinates, ',', 1) + 0) BETWEEN ? AND ?
+          AND (SUBSTRING_INDEX(coordinates, ',', -1) + 0) BETWEEN ? AND ?" : '') . "
+        ORDER BY created_at DESC" .
+        ($hasLimit ? "\n        LIMIT ?" : '');
+
+    if ($hasBounds || $hasLimit) {
+        $pendingStmt = $conn->prepare($pendingSql);
+        $pTypes = '';
+        $pParams = [];
+        if ($hasBounds) {
+            $pTypes .= 'dddd';
+            array_push($pParams, $south, $north, $west, $east);
+        }
+        if ($hasLimit) {
+            $pTypes .= 'i';
+            $pParams[] = $limit;
+        }
+        $pendingStmt->bind_param($pTypes, ...$pParams);
+        $pendingStmt->execute();
+        $pendingResult = $pendingStmt->get_result();
+    } else {
+        $pendingResult = $conn->query($pendingSql);
+    }
     if ($pendingResult) {
         while ($row = $pendingResult->fetch_assoc()) {
             $coords = explode(',', (string)$row['coordinates']);
@@ -111,6 +176,7 @@ if ($scope === 'admin') {
             ];
         }
     }
+    if (isset($pendingStmt)) { $pendingStmt->close(); }
 }
 
 echo json_encode([

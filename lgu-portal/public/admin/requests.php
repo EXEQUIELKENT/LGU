@@ -7,6 +7,12 @@ $serverTimestamp = time();
 
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
+// Needed for the rgmap_road_reports LEFT JOIN below (contact-number fallback
+// for RGMap-originated requests) — ensures the table exists on a fresh
+// install where no RGMap sync has run yet, same guard current_reports.php
+// already uses before its own identical JOIN.
+require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
+rgmap_road_reports_ensure_schema($conn);
 
 // ── Profile Picture ──────────────────────────────────────────────────────
 function getProfilePicture($employeeId, $conn) {
@@ -141,7 +147,8 @@ $conn->query("ALTER TABLE requests ADD COLUMN IF NOT EXISTS source VARCHAR(32) N
 
 $sql = "SELECT
     r.req_id, r.infrastructure, r.location, r.issue, r.approval_status,
-    r.created_at, r.name, r.contact_number, r.coordinates, r.email, r.district, r.source,
+    r.created_at, r.name, COALESCE(NULLIF(r.contact_number, ''), rm.reporter_phone, '') AS contact_number,
+    r.coordinates, r.email, r.district, r.source,
     res.res_id, res.status AS resolution_status,
     rp.rep_id,
     rp.engineer_id,
@@ -151,6 +158,7 @@ $sql = "SELECT
     GROUP_CONCAT(e.img_path ORDER BY e.uploaded_at ASC SEPARATOR ',') AS evidence_images
 FROM requests r
 LEFT JOIN evidence_images e        ON e.req_id      = r.req_id
+LEFT JOIN rgmap_road_reports rm    ON rm.cimm_req_id = r.req_id
 LEFT JOIN (
     SELECT rr.*
     FROM request_resolutions rr
@@ -167,40 +175,10 @@ ORDER BY r.created_at DESC";
 $result = $conn->query($sql);
 
 // ── Compute the live report workflow status from joined columns ───────────────
-// Maps the raw approval_status value to what should be shown to the user (Approved → Validated)
-function statusDisplayLabel(string $status): string {
-    return $status === 'Approved' ? 'Validated' : $status;
-}
-
-function computeReportStatus(array $row): string {
-    $resSt       = $row['resolution_status'] ?? '';
-    $engId       = (int)($row['engineer_id']       ?? 0);
-    $engAccepted = (bool)($row['engineer_accepted'] ?? false);
-    $endDate     = $row['estimated_end_date']       ?? '';
-
-    if (!$resSt) return '';                                           // no report created yet
-    if ($resSt === 'Pending Admin Approval') return 'Pending Approval';
-    if ($resSt === 'Completed')   return 'Completed';
-    if ($resSt === 'Cancelled')   return 'Cancelled';
-    if ($resSt === 'Pending Completion') return 'Pending Completion';
-
-    // Check for Delayed: past estimated end date and not yet completed/cancelled
-    if ($endDate) {
-        try {
-            $today  = new DateTime('today', new DateTimeZone('Asia/Manila'));
-            $endDt  = new DateTime($endDate, new DateTimeZone('Asia/Manila'));
-            if ($today > $endDt) return 'Delayed';
-        } catch (Exception $e) {}
-    }
-
-    if ($resSt === 'Scheduled')   return 'Scheduled';
-    if (in_array($resSt, ['Approved', 'In Progress'])) {
-        if (!$engId)       return 'Awaiting Engineer';
-        if (!$engAccepted) return 'Pending Acceptance';
-        return 'In Progress';
-    }
-    return $resSt;
-}
+// Shared with public/api/requests-map.php (the GIS map's bounds-filtered
+// endpoint) so both compute the exact same status label from the same kind
+// of joined row — see includes/core/report_status.php.
+require_once __DIR__ . '/../../includes/core/report_status.php';
 
 // Build JS-safe array for GIS map
 $requests     = [];
@@ -266,6 +244,11 @@ if (!function_exists('districtBadge')) {
 <link rel="stylesheet" href="../assets/css/sidebar_dropdown_additions.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- Leaflet.markercluster — new dependency for the bounds-based GIS map
+     rewrite (see assets/js/gis_map_loader.js). Not previously used anywhere
+     in this codebase. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <title>Requests &amp; GIS Map</title>
 <script>
 const SERVER_TIME       = <?= $serverTimestamp ?> * 1000;
@@ -2397,6 +2380,8 @@ tbody td {
      See assets/js/ai_scan_overlay.js. -->
 <link rel="stylesheet" href="../assets/css/ai_scan_overlay.css?v=<?= @filemtime(__DIR__ . '/../assets/css/ai_scan_overlay.css') ?>">
 <script src="../assets/js/ai_scan_overlay.js"></script>
+<!-- Reusable cancel-state-machine backing the AI scan's Cancel button — see assets/js/cancellable_task.js -->
+<script src="../assets/js/cancellable_task.js"></script>
 </head>
 <body>
 
@@ -3035,10 +3020,6 @@ tbody td {
                 <div id="mapLoadingOverlay">
                     <div class="map-spinner"></div>
                     <div class="map-loading-text">Loading request locations…</div>
-                    <div class="geocode-progress-bar-wrap">
-                        <div class="geocode-progress-bar" id="geocodeProgressBar"></div>
-                    </div>
-                    <div class="map-loading-sub" id="geocodeProgressText">Preparing map…</div>
                 </div>
                 <div id="gisNoResultsOverlay">
                     <div class="no-results-icon">🔍</div>
@@ -3689,6 +3670,9 @@ tbody td {
 
 <?php include __DIR__ . '/../../includes/partials/admin_scripts.php'; ?>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- Shared bounds-based/clustered/debounced/cancellable GIS data loader — see assets/js/gis_map_loader.js -->
+<script src="../assets/js/gis_map_loader.js"></script>
 <script src="card_limit.js"></script>
 
 <script>
@@ -3703,12 +3687,11 @@ function switchView(target) {
         gisEl.style.display = '';
         setTimeout(() => {
             if (map) {
+                // Leaflet keeps its own center/zoom across the container being
+                // hidden/shown (display:none doesn't reset view state) — just
+                // fix the cached pixel size and refresh with current data.
                 map.invalidateSize();
-                if (savedGisBounds) {
-                    map.fitBounds(savedGisBounds, { animate: false, maxZoom: 16 });
-                } else {
-                    map.setView(QC_CENTER, 13, { animate: false });
-                }
+                mainLoader?.refresh({ immediate: true });
             }
         }, 120);
     } else {
@@ -3729,11 +3712,6 @@ function switchView(target) {
         // default is already gis (set in HTML)
     } catch(e) {}
 })();
-
-// ═══════════════════════════════════════════════════════
-//  DATA
-// ═══════════════════════════════════════════════════════
-const ALL_REQUESTS = <?= json_encode($requests, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
 // ═══════════════════════════════════════════════════════
 //  SHARED STATE
@@ -4185,7 +4163,10 @@ function formatDate(dt) {
 }
 
 function openGisDetailModal(reqId) {
-    const req = ALL_REQUESTS.find(r => r.req_id == reqId);
+    // Whichever loader's marker was actually clicked (main map or the
+    // fullscreen modal clone) has this item cached — check both since either
+    // view can be the one currently on screen.
+    const req = mainLoader?.getItem(reqId) || modalLoader?.getItem(reqId);
     if (!req) return;
 
     // Fire-and-forget: record this view in the Requests History Logs.
@@ -4513,9 +4494,16 @@ function hideOverlay() {
 
 // ── AI Scan visualization — swaps in over the simple spinner above
 //    whenever InfraAI is actually running on evidence photos. See
-//    assets/js/ai_scan_overlay.js. ─────────────────────────────────────
+//    assets/js/ai_scan_overlay.js. The Cancel button it renders indirects
+//    through currentAiTask (set fresh for each validate click below) since
+//    attach() only runs once at page load, before any task exists yet. ──
+let currentAiTask = null;
 const aiScan = (typeof AIScanOverlay !== 'undefined')
-    ? AIScanOverlay.attach(document.getElementById('loadingOverlay'), document.getElementById('loadingSimpleContent'))
+    ? AIScanOverlay.attach(
+        document.getElementById('loadingOverlay'),
+        document.getElementById('loadingSimpleContent'),
+        { onCancel: () => currentAiTask?.cancel() }
+      )
     : null;
 
 // ── Helper: convert an image path to a File object for InfraAI ────────
@@ -4523,10 +4511,14 @@ const aiScan = (typeof AIScanOverlay !== 'undefined')
 // our own server would hang here forever, same class of bug as the
 // unbounded model loads fixed in ai_tfjs_analysis.js. AbortController
 // bounds it so a bad network still fails fast into the existing retry /
-// fallback path instead of freezing the overlay.
-async function imagePathToFile(path) {
+// fallback path instead of freezing the overlay. parentSignal (from a
+// CancellableTask, see cancellable_task.js) lets a user-initiated cancel
+// abort this same fetch too, alongside the pre-existing 15s timeout.
+async function imagePathToFile(path, parentSignal) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
+    const onParentAbort = () => controller.abort();
+    if (parentSignal) parentSignal.addEventListener('abort', onParentAbort);
     try {
         const response = await fetch(path, { signal: controller.signal });
         const blob     = await response.blob();
@@ -4534,20 +4526,8 @@ async function imagePathToFile(path) {
         return new File([blob], filename, { type: blob.type || 'image/jpeg' });
     } finally {
         clearTimeout(timer);
+        if (parentSignal) parentSignal.removeEventListener('abort', onParentAbort);
     }
-}
-
-// [freeze fix] Belt-and-suspenders bound around the whole AI pipeline call.
-// ai_tfjs_analysis.js already times out its own internal network/GPU calls
-// (see withTimeout() there), so this should rarely if ever actually fire —
-// but if some future change adds an awaited call there without a timeout,
-// this guarantees the loading overlay still can't hang forever on this page.
-function withOverlayTimeout(promise, ms, label) {
-    let timer;
-    const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
-    });
-    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // ── Helper: run the AI analysis pipeline with one automatic retry. ─────
@@ -4559,19 +4539,22 @@ function withOverlayTimeout(promise, ms, label) {
 // AI had failed. Retrying once here also gives the TF.js layer a fresh
 // chance to reload its models if the first attempt left them in a bad
 // state, which is the same effect a full page reload had — just without
-// needing the reload.
-async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts = 2) {
+// needing the reload. The overall 60s timeout previously wrapped around
+// analyzeImages() here (withOverlayTimeout()) now lives one level up, on
+// the CancellableTask.run() call that wraps this whole function — see the
+// validateConfirmBtn handler below.
+async function runAiAnalysis(evidencePaths, infraType, onProgress, signal, maxAttempts = 2) {
     let lastErr = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         try {
             onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis', 2);
-            const files = await Promise.all(evidencePaths.map(imagePathToFile));
-            return await withOverlayTimeout(
-                InfraAI.analyzeImages(files, infraType, onProgress), 60000, 'AI analysis'
-            );
+            const files = await Promise.all(evidencePaths.map(path => imagePathToFile(path, signal)));
+            return await InfraAI.analyzeImages(files, infraType, onProgress);
         } catch (err) {
             lastErr = err;
             console.error(`[InfraAI] Attempt ${attempt}/${maxAttempts} failed:`, err);
+            if (signal?.aborted) throw err; // cancelled/timed out mid-attempt — don't retry
         }
     }
     throw lastErr;
@@ -4610,43 +4593,52 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
         if (data.success) {
             const reqId = reqSnapshot.reqId;
             let aiWarning = '';
+            let aiFailed = false;
 
-            // ── 2. Run AI analysis (retries once; never blocks validation) ────
+            // ── 2. Run AI analysis (retries once; never blocks validation;
+            //      cancellable via the Cancel button AIScanOverlay renders) ──
             if (typeof InfraAI !== 'undefined' && reqSnapshot.evidence && reqSnapshot.evidence.length > 0) {
                 // Swap the plain spinner for the live scan visualization, seeded
                 // with the actual evidence photos so the wait shows the real
                 // images being "analyzed" instead of a rotating text string.
                 aiScan?.start(reqSnapshot.evidence);
-                try {
+                currentAiTask = CancellableTask.create();
+                await currentAiTask.run(async ({ signal, isCancelled }) => {
                     const aiResult = await runAiAnalysis(
                         reqSnapshot.evidence,
                         reqSnapshot.infrastructure,
-                        (msg, percent, meta) => aiScan ? aiScan.update(msg, percent, meta) : updateOverlayText(msg)
+                        (msg, percent, meta) => aiScan ? aiScan.update(msg, percent, meta) : updateOverlayText(msg),
+                        signal
                     );
+                    if (isCancelled()) return; // discard — a fresh validate or a cancel already moved on
                     aiResult.req_id = reqId;
                     const saveResp = await fetch('../functionality/save_ai_analysis.php', {
-                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        method: 'POST', headers: {'Content-Type':'application/json'}, signal,
                         body: JSON.stringify(aiResult)
                     });
                     const saveData = await saveResp.json();
                     console.log('[InfraAI] Saved:', saveData);
                     if (!saveData || saveData.success === false) {
                         console.error('[InfraAI] save_ai_analysis.php reported failure:', saveData);
-                        aiWarning = ' ⚠️ AI analysis ran but could not be saved — see console.';
+                        throw new Error('AI result could not be saved');
                     }
-                } catch(aiErr) {
-                    console.error('[InfraAI] Analysis failed after retry:', aiErr);
+                }, { timeoutMs: 60000, timeoutLabel: 'AI analysis' });
+
+                if (currentAiTask.getState() === 'cancelled') {
+                    aiWarning = ' ℹ️ AI analysis was cancelled — request stays validated.';
+                } else if (currentAiTask.getState() === 'failed') {
+                    aiFailed = true;
                     aiWarning = ' ⚠️ AI analysis did not complete for this request — see console.';
-                } finally {
-                    aiScan?.stop();
                 }
+                currentAiTask = null;
+                aiScan?.stop();
             }
 
             // ── 3. Update UI ─────────────────────────────────────────────
             updateRowStatus(reqId, 'Approved', 'completed');
             updateGisMarker(reqId, 'Approved');
             refreshActivityLog();
-            showInlineNotif(aiWarning ? 'error' : 'success',
+            showInlineNotif(aiFailed ? 'error' : 'success',
                 `✔️ Request #REQ-${String(reqId).padStart(3,'0')} validated. ` +
                 `Report #REP-${data.rep_id} created. Assign an engineer in Current Reports.` +
                 aiWarning
@@ -4766,32 +4758,17 @@ function updateRowStatus(reqId, statusText, cssClass) {
         const span = card.querySelector('.status.searchable');
         if (span) { span.className = `status ${cssClass} searchable`; span.dataset.original = ''; span.textContent = displayText; }
     }
-    // Update in ALL_REQUESTS array for GIS
-    const req = ALL_REQUESTS.find(r => r.req_id == reqId);
-    if (req) req.approval_status = statusText;
+    // GIS map markers are updated separately, in updateGisMarker() below —
+    // each GisMapLoader owns its own cached item set (see mainLoader/modalLoader).
 }
 
+// Updates whichever loader(s) currently have this request cached — a
+// GisMapLoader's updateItem() patches the cached item and re-renders its
+// marker in place, without waiting for the next bounds/filter reload.
 function updateGisMarker(reqId, newStatus) {
-    // Rebuild marker icon with new status colour
-    const entry = markersMap[reqId];
-    if (!entry) return;
-    const req = ALL_REQUESTS.find(r => r.req_id == reqId);
-    if (!req) return;
-    req.approval_status = newStatus;
-    entry.status = newStatus;
-    entry.searchText = buildSearchText(req);
-    const newIcon = makeIcon(req);
-    entry.marker.setIcon(newIcon);
-    entry.marker.setPopupContent(makePopupHtml(req));
-
-    // Also update modal map if open
-    const mEntry = modalMarkersMap[reqId];
-    if (mEntry) {
-        mEntry.status = newStatus;
-        mEntry.searchText = buildSearchText(req);
-        mEntry.marker.setIcon(newIcon);
-        mEntry.marker.setPopupContent(makePopupHtml(req));
-    }
+    const patch = (req) => { req.approval_status = newStatus; };
+    mainLoader?.updateItem(reqId, patch);
+    modalLoader?.updateItem(reqId, patch);
 }
 
 function showInlineNotif(type, message) {
@@ -4958,10 +4935,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════════════
 //  GIS MAP LOGIC
 // ═══════════════════════════════════════════════════════
-let savedGisBounds = null;
 let map, satelliteLayer, streetLayer;
 let currentLayer = 'street';
-let markersMap   = {};
+let mainLoader = null; // GisMapLoader instance for #gisMap — see assets/js/gis_map_loader.js
 let activeStatus = 'all', activeInfra = 'all', activeSearch = '', activeDateFilter = 'all', activeDistrict = 'all';
 
 const QC_CENTER = [14.6760, 121.0437];
@@ -4995,11 +4971,6 @@ function statusClass(s) {
     return l === 'pending' ? 'pending' : l === 'approved' ? 'approved' : l === 'rejected' ? 'rejected' : 'unknown';
 }
 
-function buildSearchText(req) {
-    const id = `#REQ-${String(req.req_id).padStart(3,'0')} REQ${req.req_id}`;
-    return [id, req.infrastructure||'', req.location||'', req.issue||'', req.approval_status||'', req.requester_name||'', req.contact_number||'', req.created_at||''].join(' ').toLowerCase();
-}
-
 function makeIcon(req) {
     const sc    = statusClass(req.approval_status);
     const emoji = infraEmoji(req.infrastructure);
@@ -5026,50 +4997,55 @@ function makePopupHtml(req) {
     </div>`;
 }
 
-const geocodeCache = {};
-async function geocodeAddress(address) {
-    if (geocodeCache[address]) return geocodeCache[address];
-    const query = encodeURIComponent(address + ', Quezon City, Philippines');
-    const url   = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&countrycodes=ph&limit=1`;
-    try {
-        const res  = await fetch(url, {headers:{'Accept-Language':'en-US,en'}});
-        const data = await res.json();
-        if (data && data.length > 0) {
-            const r = {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
-            geocodeCache[address] = r; return r;
-        }
-    } catch(e) {}
-    const fb = {lat: QC_CENTER[0]+(Math.random()-.5)*0.06, lng: QC_CENTER[1]+(Math.random()-.5)*0.06};
-    geocodeCache[address] = fb; return fb;
+// Parses a coordinates string (server already guarantees it's present and
+// non-empty — requests-map.php only ever returns rows with valid
+// coordinates, so there's no client-side geocoding fallback needed here
+// any more; a request without coordinates simply doesn't appear on the
+// map, same as current_reports.php's/reports-map.php's existing behavior).
+function parseLatLng(coordinates) {
+    if (!coordinates) return null;
+    const parts = coordinates.split(',');
+    if (parts.length !== 2) return null;
+    const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
+    return (!isNaN(lat) && !isNaN(lng)) ? L.latLng(lat, lng) : null;
 }
 
-function placeAllMarkers() {
-    ALL_REQUESTS.forEach(req => {
-        if (markersMap[req.req_id]) return;
-        let latlng = null;
-        if (req.coordinates) {
-            const parts = req.coordinates.split(',');
-            if (parts.length === 2) { const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]); if (!isNaN(lat) && !isNaN(lng)) latlng = L.latLng(lat, lng); }
-        }
-        if (!latlng) { const cached = geocodeCache[req.location]; if (cached) latlng = L.latLng(cached.lat, cached.lng); else return; }
-        const icon   = makeIcon(req);
-        const marker = L.marker(latlng, {icon, riseOnHover:true})
-            .bindPopup(makePopupHtml(req), {maxWidth:280, autoPan:false, closeButton:false})
-            .on('mouseover', function() { this.openPopup(); })
-            .on('mouseout',  function() { this.closePopup(); })
-            .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
-        marker.addTo(map);
-        markersMap[req.req_id] = { marker, status: req.approval_status || 'unknown', infraType: normalizeInfraType(req.infrastructure), district: normalizeDistrict(req.district), searchText: buildSearchText(req), createdAt: req.created_at || '' };
-    });
-    const latlngs = Object.values(markersMap).map(m => m.marker.getLatLng());
-    if (latlngs.length > 0) {
-        const bounds = L.latLngBounds(latlngs).pad(0.15);
-        savedGisBounds = bounds;
-        map.fitBounds(bounds, {maxZoom: 16});
-    }
-    // Re-apply the current filter after placing/updating markers so that any
-    // filter already set by the user is honoured even when geocoding completes.
-    applyVisibility();
+// Builds one marker for GisMapLoader — shared shape/behavior between the
+// main map (#gisMap) and the fullscreen modal clone (#gisModalMap), each
+// with their own GisMapLoader instance (see initMap()/initModalMap()).
+function buildRequestMarker(req) {
+    const latlng = parseLatLng(req.coordinates);
+    if (!latlng) return null;
+    return L.marker(latlng, { icon: makeIcon(req), riseOnHover: true })
+        .bindPopup(makePopupHtml(req), { maxWidth: 280, autoPan: false, closeButton: false })
+        .on('mouseover', function () { this.openPopup(); })
+        .on('mouseout',  function () { this.closePopup(); })
+        .on('click',     function () { this.closePopup(); openGisDetailModal(req.req_id); });
+}
+
+function refreshRequestMarker(marker, req) {
+    marker.setIcon(makeIcon(req));
+    marker.setPopupContent(makePopupHtml(req));
+}
+
+// Converts the page's existing preset/custom date-filter tokens (see
+// getDateFilterRange() below) into date_from/date_to (Y-m-d) query params —
+// the filtering itself now happens server-side in requests-map.php instead
+// of client-side over an already-loaded array.
+function toDateParam(d) {
+    if (!d) return '';
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function gisFilterParams(status, infra, district, dateFilter, search) {
+    const range = getDateFilterRange(dateFilter);
+    return {
+        status: status,
+        infra: infra,
+        district: district,
+        date_from: range && range.from ? toDateParam(range.from) : '',
+        date_to:   range && range.to   ? toDateParam(range.to)   : '',
+        q: search,
+    };
 }
 
 function getDateFilterRange(filter) {
@@ -5189,7 +5165,7 @@ function setDateFilter(filter) {
     // Reset custom picker labels when a preset is chosen
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('gisPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('gisPickDay'); }
-    applyVisibility();
+    mainLoader?.refresh({ immediate: true });
     // Also filter the requests table/card list
     if (window._applyRequestListFilter) window._applyRequestListFilter();
 }
@@ -5207,7 +5183,7 @@ function setStatusFilter(filter) {
     document.querySelectorAll('.gis-filter-btn[id^="filter"]').forEach(b => b.classList.remove('active'));
     const legMap={all:'filterAll',Pending:'filterPending',Approved:'filterApproved',Rejected:'filterRejected'};
     const el=document.getElementById(legMap[filter]); if(el) el.classList.add('active');
-    applyVisibility();
+    mainLoader?.refresh({ immediate: true });
 }
 
 function setInfraFilter(infra) {
@@ -5219,7 +5195,7 @@ function setInfraFilter(infra) {
     if (btn) { btn.classList.toggle('has-filter', infra !== 'all'); btn.classList.toggle('infra', true); }
     document.querySelectorAll('#gisTypeMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === infra));
     const w = document.getElementById('gisTypeWrap'); if(w) w.classList.remove('open');
-    applyVisibility();
+    mainLoader?.refresh({ immediate: true });
 }
 
 function setDistrictFilter(district) {
@@ -5231,44 +5207,29 @@ function setDistrictFilter(district) {
     if (btn) { btn.classList.toggle('has-filter', district !== 'all'); btn.classList.toggle('district', true); }
     document.querySelectorAll('#gisDistrictMenu .gis-dd-item').forEach(i => i.classList.toggle('active', i.dataset.val === district));
     const w = document.getElementById('gisDistrictWrap'); if(w) w.classList.remove('open');
-    applyVisibility();
+    mainLoader?.refresh({ immediate: true });
     // Also filter the requests table/card list
     if (window._applyRequestListFilter) window._applyRequestListFilter();
 }
 
-function applyVisibility() {
-    const keyword   = activeSearch.toLowerCase().trim();
+// Filtering (status/type/district/date/search) now happens server-side in
+// requests-map.php (see gisFilterParams()) instead of client-side show/hide
+// over an already-loaded array — this just reflects the count the server
+// already returned into the existing badge/no-results UI. Called from
+// mainLoader's onLoadEnd.
+function updateGisResultsUI(count) {
     const noResults = document.getElementById('gisNoResultsOverlay');
     const badge     = document.getElementById('gisResultsBadge');
     const countEl   = document.getElementById('gisResultsCount');
-    const dateRange = getDateFilterRange(activeDateFilter);
-    let visible = 0;
-    Object.values(markersMap).forEach(({marker, status, infraType, district, searchText, createdAt}) => {
-        let dateOk = true;
-        if (dateRange && createdAt) {
-            // Parse MySQL datetime string safely. Append explicit local-time
-            // offset to prevent browsers from treating the string as UTC.
-            const normalized = createdAt.replace(' ', 'T');
-            const dt = new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
-            if (dateRange.from && dt < dateRange.from) dateOk = false;
-            if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
-        }
-        const show = (activeStatus === 'all' || status === activeStatus) &&
-                     (activeInfra  === 'all' || infraType === activeInfra) &&
-                     (activeDistrict === 'all' || district === activeDistrict) &&
-                     dateOk &&
-                     (!keyword || searchText.includes(keyword));
-        if (show) { if (!map.hasLayer(marker)) marker.addTo(map); visible++; }
-        else       { if (map.hasLayer(marker)) map.removeLayer(marker); }
-    });
+    const keyword   = activeSearch.trim();
+    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDistrict !== 'all' || activeDateFilter !== 'all' || keyword;
     if (keyword) {
-        badge.classList.add('visible'); badge.classList.toggle('no-results', visible === 0);
-        countEl.textContent = visible;
-        const totalEl = document.getElementById('gisTotalCount'); if (totalEl) totalEl.textContent = Object.keys(markersMap).length;
+        badge.classList.add('visible'); badge.classList.toggle('no-results', count === 0);
+        countEl.textContent = count;
+        const totalEl = document.getElementById('gisTotalCount'); if (totalEl) totalEl.textContent = count;
         positionGisResultsBadge();
     } else { badge.classList.remove('visible'); }
-    const anyFilter = activeStatus !== 'all' || activeInfra !== 'all' || activeDistrict !== 'all' || activeDateFilter !== 'all' || keyword;
-    if (anyFilter && visible === 0 && Object.keys(markersMap).length > 0) noResults.classList.add('visible');
+    if (anyFilter && count === 0) noResults.classList.add('visible');
     else noResults.classList.remove('visible');
 }
 
@@ -5297,46 +5258,17 @@ function toggleLayer() {
 function initSearch() {
     const input    = document.getElementById('gisSearch');
     const clearBtn = document.getElementById('gisSearchClear');
-    input.addEventListener('input', () => { activeSearch = input.value; clearBtn.classList.toggle('visible', activeSearch.length > 0); applyVisibility(); });
-    clearBtn.addEventListener('click', () => { input.value = ''; activeSearch = ''; clearBtn.classList.remove('visible'); applyVisibility(); input.focus(); });
+    // Debounced (not immediate) — mainLoader.refresh() without {immediate:true}
+    // uses GisMapLoader's own debounce timer so fast typing doesn't fire a
+    // server request per keystroke.
+    input.addEventListener('input', () => { activeSearch = input.value; clearBtn.classList.toggle('visible', activeSearch.length > 0); mainLoader?.refresh(); });
+    clearBtn.addEventListener('click', () => { input.value = ''; activeSearch = ''; clearBtn.classList.remove('visible'); mainLoader?.refresh({ immediate: true }); input.focus(); });
     input.addEventListener('keydown', e => { if (e.key === 'Escape') clearBtn.click(); });
     window.addEventListener('resize', positionGisResultsBadge);
     window.addEventListener('scroll', positionGisResultsBadge, true);
 }
 
 const QC_POLY = [[14.7646242,121.1095933],[14.7639251,121.1093054],[14.7631436,121.1090833],[14.7627981,121.1073723],[14.7622963,121.105793],[14.7618357,121.104773],[14.7638675,121.1025355],[14.7655348,121.1016249],[14.7654178,121.1012409],[14.7651862,121.0997995],[14.7640376,121.0997537],[14.7626015,121.0990606],[14.7623292,121.0984063],[14.7615898,121.0964583],[14.7615413,121.0956111],[14.7609386,121.0948137],[14.7598163,121.0934468],[14.7591997,121.0925497],[14.7585362,121.091745],[14.7579449,121.0907068],[14.7582575,121.0896539],[14.7582657,121.089366],[14.7579696,121.0887985],[14.758085,121.0857106],[14.7578089,121.0856433],[14.7566921,121.0853354],[14.7558102,121.0851033],[14.7556543,121.08507],[14.7552569,121.0850078],[14.753781,121.0849007],[14.7533543,121.0848696],[14.7520288,121.0847854],[14.7421927,121.0663291],[14.7421837,121.0587677],[14.742157,121.0531742],[14.7422036,121.0464397],[14.7421201,121.0404931],[14.740294,121.0385103],[14.7380574,121.0362582],[14.732682,121.0308457],[14.7298826,121.0280557],[14.7292097,121.0273872],[14.7275181,121.0257601],[14.7243718,121.0224236],[14.7225911,121.0205352],[14.7204784,121.0183472],[14.7159085,121.0136441],[14.708755,121.0161294],[14.7033858,121.0179631],[14.6884807,121.0223396],[14.6851812,121.0192022],[14.6806545,121.014895],[14.6710675,121.0058529],[14.667334,121.0022246],[14.6653244,121.0003125],[14.664741,120.9997577],[14.6643627,120.9994174],[14.663877,120.9994138],[14.6634339,120.9994033],[14.661943,120.9993861],[14.6581224,120.999302],[14.6551673,120.9976659],[14.6543814,120.9972619],[14.6539536,120.9970642],[14.6528858,120.9965706],[14.6521912,120.9962495],[14.6507248,120.9955689],[14.6497136,120.9951615],[14.6480502,120.9945753],[14.6374219,120.9925993],[14.6362678,120.9921888],[14.6359804,120.9930436],[14.6305282,120.9912426],[14.6262495,120.9898201],[14.6245355,120.9913147],[14.6235329,120.9926137],[14.6226129,120.9938057],[14.6217104,120.9949749],[14.6200392,120.997134],[14.6193355,120.9978929],[14.6170829,121.0009647],[14.6150944,121.003646],[14.6139723,121.0052731],[14.6125167,121.0069471],[14.6115939,121.0081408],[14.6107331,121.0092936],[14.6098411,121.0104299],[14.607205,121.0139822],[14.6061298,121.0153858],[14.6053799,121.0163648],[14.6044948,121.0175128],[14.6029514,121.0193839],[14.607049,121.0510734],[14.6063175,121.0513718],[14.6048031,121.051977],[14.6065867,121.0567956],[14.602265,121.0590045],[14.5986502,121.0597438],[14.5983444,121.0597432],[14.5896463,121.0582621],[14.5900235,121.0596451],[14.5904899,121.0614237],[14.5919521,121.0680469],[14.5930667,121.0695316],[14.5923335,121.07788],[14.5905369,121.0826503],[14.5921634,121.0827285],[14.5951453,121.0823165],[14.5989494,121.082531],[14.6017929,121.0823531],[14.6033745,121.083786],[14.6022288,121.0863878],[14.6003282,121.0874234],[14.599318,121.0879024],[14.599072,121.0895263],[14.6001564,121.0904543],[14.6024379,121.0900155],[14.6054058,121.0883546],[14.6138249,121.079012],[14.6155269,121.0784392],[14.616765,121.0784541],[14.6177381,121.0788822],[14.6195429,121.0758218],[14.6208781,121.0765039],[14.6218147,121.0764557],[14.6228017,121.0759409],[14.6237732,121.0750915],[14.6264184,121.0747689],[14.6279073,121.0744536],[14.6286421,121.074425],[14.628847,121.0751483],[14.6296256,121.0769013],[14.6309563,121.0774626],[14.6322159,121.0776147],[14.6333002,121.0787821],[14.6336149,121.0795619],[14.6345357,121.0802379],[14.6362589,121.0806885],[14.636861,121.0813323],[14.6379116,121.0819219],[14.6383388,121.0816883],[14.6391565,121.0814591],[14.6400111,121.0817834],[14.640833,121.0823068],[14.6413518,121.0824574],[14.6424372,121.0823549],[14.6433858,121.0831803],[14.6439511,121.0835988],[14.6436446,121.084572],[14.6437206,121.0853712],[14.6444918,121.0855999],[14.6448987,121.0876123],[14.6458583,121.0874867],[14.6464517,121.0889727],[14.6468726,121.0896603],[14.6485394,121.0877901],[14.6493282,121.0868934],[14.6514982,121.0865934],[14.651506,121.0874307],[14.652202,121.0866746],[14.6527812,121.0858927],[14.6545518,121.0861472],[14.6554682,121.0857081],[14.6562612,121.0859908],[14.6566853,121.0867891],[14.6573361,121.0874608],[14.6566672,121.0882081],[14.6596216,121.0912009],[14.6609324,121.0914765],[14.6617729,121.0920319],[14.6634173,121.0935248],[14.6643486,121.0936995],[14.6646918,121.0941136],[14.6649347,121.0948585],[14.6652424,121.0956829],[14.6648805,121.0961861],[14.6642299,121.0967374],[14.6637413,121.0979213],[14.664832,121.0983915],[14.667012,121.0987996],[14.6678005,121.0987592],[14.66828,121.0989231],[14.6692092,121.0993176],[14.6700618,121.1002379],[14.6723195,121.103246],[14.6744874,121.1050187],[14.6752513,121.105877],[14.6757895,121.1066178],[14.6772824,121.1079596],[14.6787885,121.1088846],[14.6808973,121.1101685],[14.6834048,121.1116706],[14.6844409,121.1119916],[14.6852978,121.1121855],[14.6892498,121.1113444],[14.6912424,121.1113873],[14.6930258,121.1115295],[14.6957288,121.1114141],[14.6964194,121.1121743],[14.6973898,121.112502],[14.6979009,121.1134183],[14.6980488,121.1139303],[14.7208067,121.1171018],[14.7298888,121.1183676],[14.7327323,121.118638],[14.7332343,121.1176351],[14.7340306,121.1166812],[14.7343126,121.1160177],[14.7344121,121.1157523],[14.7350341,121.1148897],[14.735565,121.1144336],[14.7372321,121.1137369],[14.7376302,121.1141598],[14.7379454,121.1151634],[14.7385508,121.1157523],[14.7396788,121.1166398],[14.7398421,121.1167681],[14.7406808,121.1175255],[14.7413675,121.117651],[14.7420636,121.1178619],[14.7428784,121.1180428],[14.7434952,121.1183029],[14.74502,121.1181852],[14.745882,121.1176944],[14.7462763,121.1177004],[14.7464168,121.1177821],[14.7475179,121.1186965],[14.7495936,121.1181479],[14.7509132,121.1196186],[14.7520088,121.1206314],[14.7527807,121.1208202],[14.7539178,121.1210519],[14.7550217,121.1207944],[14.7559513,121.1213609],[14.7568643,121.1211807],[14.7578437,121.1215498],[14.7579018,121.123069],[14.7598938,121.1235239],[14.7608898,121.1253091],[14.7626983,121.125776],[14.7631133,121.1251752],[14.764273,121.1246215],[14.7645778,121.1239254],[14.7658129,121.1247996],[14.7668581,121.1259981],[14.7681074,121.1269178],[14.7693315,121.1272269],[14.7700103,121.1278939],[14.7714835,121.1290096],[14.7713221,121.1297934],[14.7714603,121.1308227],[14.771775,121.1322758],[14.7720049,121.132411],[14.7741422,121.1327295],[14.7752992,121.1337681],[14.7756687,121.1331762],[14.7764137,121.1332033],[14.7764085,121.1317064],[14.7758509,121.1311391],[14.7751283,121.1309266],[14.7762065,121.1289228],[14.7760592,121.1272065],[14.7757419,121.126301],[14.7733002,121.123635],[14.774863,121.1204059],[14.7740299,121.1191841],[14.7723201,121.1175027],[14.772087,121.116914],[14.7712492,121.1139187],[14.7693916,121.1134127],[14.7679537,121.112593],[14.7673232,121.112048],[14.7665244,121.1113289],[14.7651342,121.1099963],[14.7646242,121.1095933]];
-
-async function initializeAndGeocode() {
-    const overlay  = document.getElementById('mapLoadingOverlay');
-    const progress = document.getElementById('geocodeProgressBar');
-    const progText = document.getElementById('geocodeProgressText');
-
-    const withCoords  = ALL_REQUESTS.filter(r => r.coordinates);
-    const needGeocode = ALL_REQUESTS.filter(r => !r.coordinates);
-
-    if (progText) progText.textContent = `Placing ${withCoords.length} pinned location(s)…`;
-    placeAllMarkers();
-
-    if (needGeocode.length > 0) {
-        const unique = [...new Set(needGeocode.map(r => r.location).filter(Boolean))];
-        let done = 0;
-        if (progText) progText.textContent = `Geocoding ${unique.length} address(es)…`;
-        const promises = unique.map((loc, i) =>
-            new Promise(resolve => setTimeout(async () => {
-                await geocodeAddress(loc); done++;
-                const pct = Math.round((done / unique.length) * 100);
-                if (progress) progress.style.width = pct + '%';
-                if (progText) progText.textContent = `Geocoding ${done} / ${unique.length}…`;
-                resolve();
-            }, i * 350))
-        );
-        await Promise.all(promises);
-        placeAllMarkers();
-    }
-
-    applyVisibility();
-    if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }
-}
 
 function initMap() {
     map = L.map('gisMap', { center: QC_CENTER, zoom: 13, maxBounds: QC_BOUNDS, maxBoundsViscosity: 0.8 });
@@ -5356,18 +5288,36 @@ function initMap() {
         _resizeTimer = setTimeout(() => { if (map) map.invalidateSize(false); }, 200);
     });
 
-    if (ALL_REQUESTS.length === 0) {
-        const overlay = document.getElementById('mapLoadingOverlay');
-        if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }
-        return;
-    }
-    initializeAndGeocode();
+    // Bounds-based, clustered, debounced, cancellable data loading — see
+    // assets/js/gis_map_loader.js and public/api/requests-map.php. Replaces
+    // the old inline-embedded ALL_REQUESTS array + client-side Nominatim
+    // geocoding pass (removed) that used to run here on every page load.
+    const mapLoadingOverlay = document.getElementById('mapLoadingOverlay');
+    mainLoader = GisMapLoader.create({
+        map,
+        endpoint: '../api/requests-map.php',
+        idField: 'req_id',
+        getFilterParams: () => gisFilterParams(activeStatus, activeInfra, activeDistrict, activeDateFilter, activeSearch),
+        buildMarker: buildRequestMarker,
+        refreshMarker: refreshRequestMarker,
+        onLoadEnd: (count) => {
+            updateGisResultsUI(count);
+            if (mapLoadingOverlay) { mapLoadingOverlay.style.opacity = '0'; setTimeout(() => mapLoadingOverlay.remove(), 400); }
+        },
+        onError: (err) => {
+            console.error('[GisMapLoader] requests-map.php load failed:', err);
+            if (mapLoadingOverlay) { mapLoadingOverlay.style.opacity = '0'; setTimeout(() => mapLoadingOverlay.remove(), 400); }
+        },
+    });
+    map.addLayer(mainLoader.getClusterGroup());
+    mainLoader.refresh({ immediate: true });
 }
 
 // ═══════════════════════════════════════════════════════
 //  FULLSCREEN MAP MODAL
 // ═══════════════════════════════════════════════════════
-let modalMap = null, modalMarkersMap = {};
+let modalMap = null;
+let modalLoader = null; // second, independent GisMapLoader instance for #gisModalMap
 let modalActiveStatus = 'all', modalActiveInfra = 'all', modalActiveSearch = '', modalActiveDateFilter = 'all', modalActiveDistrict = 'all';
 let modalCurrentLayer = 'street', modalSatelliteLayer, modalStreetLayer;
 
@@ -5389,11 +5339,7 @@ function openGisMapModal() {
     if (modalInput) { modalInput.value = activeSearch; document.getElementById('gisModalSearchClear').classList.toggle('visible', activeSearch.length > 0); }
     requestAnimationFrame(() => {
         if (!modalMap) { initModalMap(); }
-        else {
-            modalMap.invalidateSize(false); placeModalMarkers(); applyModalVisibility();
-            const latlngs = Object.values(modalMarkersMap).filter(m => modalMap.hasLayer(m.marker)).map(m => m.marker.getLatLng());
-            if (latlngs.length > 0) modalMap.fitBounds(L.latLngBounds(latlngs).pad(0.12), {maxZoom:16});
-        }
+        else { modalMap.invalidateSize(false); modalLoader?.refresh({ immediate: true }); }
     });
 }
 function closeGisMapModal() {
@@ -5405,59 +5351,41 @@ function closeGisMapModal() {
 document.getElementById('gisFullMapBackdrop').addEventListener('click', function(e) { if (e.target === this) closeGisMapModal(); });
 
 
+function updateGisModalResultsUI(count) {
+    const noRes   = document.getElementById('gisModalNoResults');
+    const badge   = document.getElementById('gisModalResultsBadge');
+    const countEl = document.getElementById('gisModalResultsCount');
+    const totalEl = document.getElementById('gisModalTotalCount');
+    const keyword = modalActiveSearch.trim();
+    if (keyword) { badge.classList.add('visible'); badge.classList.toggle('no-results', count===0); countEl.textContent=count; if (totalEl) totalEl.textContent=count; }
+    else badge.classList.remove('visible');
+    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || modalActiveDistrict !== 'all' || modalActiveDateFilter !== 'all' || keyword;
+    if (anyFilter && count===0) noRes.classList.add('visible');
+    else noRes.classList.remove('visible');
+}
+
 function initModalMap() {
     modalMap = L.map('gisModalMap', { center: QC_CENTER, zoom: 13, maxBounds: QC_BOUNDS, maxBoundsViscosity: 0.8, scrollWheelZoom: true, touchZoom: true, doubleClickZoom: true });
     modalStreetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap', maxZoom:19}).addTo(modalMap);
     modalSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Satellite &copy; Esri', maxZoom:19});
     L.polygon(QC_POLY, {color:'#3762c8',weight:3,fillColor:'#3762c8',fillOpacity:.05,dashArray:'10,6',interactive:false}).addTo(modalMap);
-    placeModalMarkers(); applyModalVisibility();
-    const latlngs = Object.values(modalMarkersMap).map(m => m.marker.getLatLng());
-    if (latlngs.length > 0) modalMap.fitBounds(L.latLngBounds(latlngs).pad(0.12), {maxZoom:16});
-}
-function placeModalMarkers() {
-    ALL_REQUESTS.forEach(req => {
-        if (modalMarkersMap[req.req_id]) return;
-        let latlng = null;
-        if (req.coordinates) { const p = req.coordinates.split(','); if (p.length===2) { const lat=parseFloat(p[0]),lng=parseFloat(p[1]); if (!isNaN(lat)&&!isNaN(lng)) latlng=L.latLng(lat,lng); } }
-        if (!latlng) { const c=geocodeCache[req.location]; if (c) latlng=L.latLng(c.lat,c.lng); else return; }
-        const icon   = makeIcon(req);
-        const marker = L.marker(latlng, {icon, riseOnHover:true})
-            .bindPopup(makePopupHtml(req), {maxWidth:280, autoPan:false, closeButton:false})
-            .on('mouseover', function() { this.openPopup(); })
-            .on('mouseout',  function() { this.closePopup(); })
-            .on('click',     function() { this.closePopup(); openGisDetailModal(req.req_id); });
-        marker.addTo(modalMap);
-        modalMarkersMap[req.req_id] = { marker, status: req.approval_status||'unknown', infraType: normalizeInfraType(req.infrastructure), district: normalizeDistrict(req.district), searchText: buildSearchText(req), createdAt: req.created_at||'' };
+
+    // Independent GisMapLoader instance — own Leaflet map, own cluster layer,
+    // same endpoint/marker builders as the main map's loader, filter state
+    // read from the modalActiveX variables (synced from the main map's own
+    // state each time this modal opens — see openGisMapModal() above).
+    modalLoader = GisMapLoader.create({
+        map: modalMap,
+        endpoint: '../api/requests-map.php',
+        idField: 'req_id',
+        getFilterParams: () => gisFilterParams(modalActiveStatus, modalActiveInfra, modalActiveDistrict, modalActiveDateFilter, modalActiveSearch),
+        buildMarker: buildRequestMarker,
+        refreshMarker: refreshRequestMarker,
+        onLoadEnd: (count) => updateGisModalResultsUI(count),
+        onError: (err) => console.error('[GisMapLoader] modal requests-map.php load failed:', err),
     });
-}
-function applyModalVisibility() {
-    const keyword   = modalActiveSearch.toLowerCase().trim();
-    const noRes     = document.getElementById('gisModalNoResults');
-    const badge     = document.getElementById('gisModalResultsBadge');
-    const countEl   = document.getElementById('gisModalResultsCount');
-    const totalEl   = document.getElementById('gisModalTotalCount');
-    const dateRange = getDateFilterRange(modalActiveDateFilter);
-    let visible = 0;
-    Object.values(modalMarkersMap).forEach(({marker, status, infraType, district, searchText, createdAt}) => {
-        let dateOk = true;
-        if (dateRange && createdAt) {
-            const normalized = createdAt.replace(' ', 'T');
-            const dt = new Date(normalized.includes('+') || normalized.endsWith('Z') ? normalized : normalized + '+08:00');
-            if (dateRange.from && dt < dateRange.from) dateOk = false;
-            if (dateRange.to   && dt >= dateRange.to)  dateOk = false;
-        }
-        const show = (modalActiveStatus === 'all' || status === modalActiveStatus) &&
-                     (modalActiveInfra  === 'all' || infraType === modalActiveInfra) &&
-                     (modalActiveDistrict === 'all' || district === modalActiveDistrict) &&
-                     dateOk && (!keyword || searchText.includes(keyword));
-        if (show) { if (!modalMap.hasLayer(marker)) marker.addTo(modalMap); visible++; }
-        else       { if (modalMap.hasLayer(marker)) modalMap.removeLayer(marker); }
-    });
-    if (keyword) { badge.classList.add('visible'); badge.classList.toggle('no-results', visible===0); countEl.textContent=visible; if (totalEl) totalEl.textContent=Object.keys(modalMarkersMap).length; }
-    else badge.classList.remove('visible');
-    const anyFilter = modalActiveStatus !== 'all' || modalActiveInfra !== 'all' || modalActiveDistrict !== 'all' || modalActiveDateFilter !== 'all' || keyword;
-    if (anyFilter && visible===0 && Object.keys(modalMarkersMap).length>0) noRes.classList.add('visible');
-    else noRes.classList.remove('visible');
+    modalMap.addLayer(modalLoader.getClusterGroup());
+    modalLoader.refresh({ immediate: true });
 }
 function setModalStatusFilter(filter) {
     modalActiveStatus = filter;
@@ -5470,7 +5398,7 @@ function setModalStatusFilter(filter) {
     document.querySelectorAll('#gisFullMapBackdrop .gis-filter-btn[id^="mFilter"]').forEach(b=>b.classList.remove('active'));
     const m={all:'mFilterAll',Pending:'mFilterPending',Approved:'mFilterApproved',Rejected:'mFilterRejected'};
     const el=document.getElementById(m[filter]); if(el) el.classList.add('active');
-    applyModalVisibility();
+    modalLoader?.refresh({ immediate: true });
 }
 function setModalInfraFilter(infra) {
     modalActiveInfra = infra;
@@ -5479,7 +5407,7 @@ function setModalInfraFilter(infra) {
     const btn=document.getElementById('mTypeBtn'); if(btn) { btn.classList.toggle('has-filter',infra!=='all'); btn.classList.add('infra'); }
     document.querySelectorAll('#mTypeMenu .gis-dd-item').forEach(i=>i.classList.toggle('active',i.dataset.val===infra));
     const w=document.getElementById('mTypeWrap'); if(w) w.classList.remove('open');
-    applyModalVisibility();
+    modalLoader?.refresh({ immediate: true });
 }
 function setModalDistrictFilter(district) {
     modalActiveDistrict = district;
@@ -5488,7 +5416,7 @@ function setModalDistrictFilter(district) {
     const btn=document.getElementById('mDistrictBtn'); if(btn) { btn.classList.toggle('has-filter', district!=='all'); btn.classList.add('district'); }
     document.querySelectorAll('#mDistrictMenu .gis-dd-item').forEach(i=>i.classList.toggle('active', i.dataset.val===district));
     const w=document.getElementById('mDistrictWrap'); if(w) w.classList.remove('open');
-    applyModalVisibility();
+    modalLoader?.refresh({ immediate: true });
 }
 function setModalDateFilter(filter) {
     modalActiveDateFilter = filter;
@@ -5499,7 +5427,7 @@ function setModalDateFilter(filter) {
     // Reset custom picker labels when a preset is chosen
     if (!filter.startsWith('specificMonth:') && window._gisDpReset) { window._gisDpReset('mPickMonth'); }
     if (!filter.startsWith('specificDay:')   && window._gisDpReset) { window._gisDpReset('mPickDay'); }
-    applyModalVisibility();
+    modalLoader?.refresh({ immediate: true });
 }
 function toggleModalLayer() {
     const btn = document.getElementById('modalLayerBtn');
@@ -5531,8 +5459,8 @@ function syncModalFilterButtons() {
     const input    = document.getElementById('gisModalSearch');
     const clearBtn = document.getElementById('gisModalSearchClear');
     if (!input) return;
-    input.addEventListener('input', () => { modalActiveSearch=input.value; clearBtn.classList.toggle('visible',modalActiveSearch.length>0); applyModalVisibility(); });
-    clearBtn.addEventListener('click', () => { input.value=''; modalActiveSearch=''; clearBtn.classList.remove('visible'); applyModalVisibility(); input.focus(); });
+    input.addEventListener('input', () => { modalActiveSearch=input.value; clearBtn.classList.toggle('visible',modalActiveSearch.length>0); modalLoader?.refresh(); });
+    clearBtn.addEventListener('click', () => { input.value=''; modalActiveSearch=''; clearBtn.classList.remove('visible'); modalLoader?.refresh({ immediate: true }); input.focus(); });
     input.addEventListener('keydown', e => { if (e.key==='Escape') clearBtn.click(); });
 })();
 

@@ -1440,6 +1440,8 @@ tr.notif-highlight > td:first-child {
      See assets/js/ai_scan_overlay.js. -->
 <link rel="stylesheet" href="../assets/css/ai_scan_overlay.css?v=<?= @filemtime(__DIR__ . '/../assets/css/ai_scan_overlay.css') ?>">
 <script src="../assets/js/ai_scan_overlay.js"></script>
+<!-- Reusable cancel-state-machine backing the AI scan's Cancel button — see assets/js/cancellable_task.js -->
+<script src="../assets/js/cancellable_task.js"></script>
 <script>
 const ALL_ROAD_REPORTS = <?= json_encode($roadReportsJson, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const PENDING_AI_ANALYSIS = <?= json_encode($pendingAiAnalysis, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -1692,9 +1694,16 @@ function hideRepOverlay() {
 
 // ── AI Scan visualization — swaps in over the simple spinner above
 //    whenever InfraAI is actually running on the freshly-copied evidence
-//    photos. See assets/js/ai_scan_overlay.js. ─────────────────────────
+//    photos. See assets/js/ai_scan_overlay.js. The Cancel button it renders
+//    indirects through currentAiTask (set fresh for each Verify click below)
+//    since attach() only runs once at page load, before any task exists. ──
+let currentAiTask = null;
 const aiScanRoad = (typeof AIScanOverlay !== 'undefined')
-    ? AIScanOverlay.attach(document.getElementById('repEmailOverlay'), document.getElementById('repEmailSimpleContent'))
+    ? AIScanOverlay.attach(
+        document.getElementById('repEmailOverlay'),
+        document.getElementById('repEmailSimpleContent'),
+        { onCancel: () => currentAiTask?.cancel() }
+      )
     : null;
 function showRepNotif(type, msg) {
     const e = document.getElementById('notifPopup'); if (e) e.remove();
@@ -1713,9 +1722,15 @@ function showRepNotif(type, msg) {
 // unbounded model loads fixed in ai_tfjs_analysis.js. AbortController
 // bounds it so a bad network still fails fast into the existing retry /
 // fallback path instead of freezing the overlay.
-async function imagePathToFile(path) {
+// parentSignal (from a CancellableTask, see cancellable_task.js) lets a
+// user-initiated cancel abort this same fetch too, alongside the
+// pre-existing 15s timeout. runPendingAiBackfill() below never passes one,
+// so its own fetches are never affected by a foreground Verify cancel.
+async function imagePathToFile(path, parentSignal) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
+    const onParentAbort = () => controller.abort();
+    if (parentSignal) parentSignal.addEventListener('abort', onParentAbort);
     try {
         const response = await fetch(path, { signal: controller.signal });
         const blob     = await response.blob();
@@ -1723,32 +1738,26 @@ async function imagePathToFile(path) {
         return new File([blob], filename, { type: blob.type || 'image/jpeg' });
     } finally {
         clearTimeout(timer);
+        if (parentSignal) parentSignal.removeEventListener('abort', onParentAbort);
     }
 }
 
-// [freeze fix] Belt-and-suspenders bound around the whole AI pipeline call —
-// see the matching comment in requests.php for why this is here even though
-// ai_tfjs_analysis.js already times out its own internal calls.
-function withOverlayTimeout(promise, ms, label) {
-    let timer;
-    const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
-    });
-    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-async function runAiAnalysis(evidencePaths, infraType, onProgress, maxAttempts = 2) {
+// The overall 60s timeout previously wrapped around analyzeImages() here
+// (withOverlayTimeout(), now removed) lives one level up, on the
+// CancellableTask.run() call in doVerifyRoadReport() below — see the
+// matching comment in requests.php.
+async function runAiAnalysis(evidencePaths, infraType, onProgress, signal, maxAttempts = 2) {
     let lastErr = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         try {
             onProgress?.(attempt === 1 ? 'Analyzing evidence images' : 'Retrying AI analysis', 2);
-            const files = await Promise.all(evidencePaths.map(imagePathToFile));
-            return await withOverlayTimeout(
-                InfraAI.analyzeImages(files, infraType, onProgress), 60000, 'AI analysis'
-            );
+            const files = await Promise.all(evidencePaths.map(path => imagePathToFile(path, signal)));
+            return await InfraAI.analyzeImages(files, infraType, onProgress);
         } catch (err) {
             lastErr = err;
             console.error(`[InfraAI] Attempt ${attempt}/${maxAttempts} failed:`, err);
+            if (signal?.aborted) throw err; // cancelled/timed out mid-attempt — don't retry
         }
     }
     throw lastErr;
@@ -1803,33 +1812,43 @@ async function doVerifyRoadReport() {
 
         // ── AI image analysis on the newly-copied evidence photos — best
         //    effort, never blocks the verify success message. Mirrors
-        //    requests.php's own post-validate AI trigger. ──────────────────
+        //    requests.php's own post-validate AI trigger, including the
+        //    Cancel button AIScanOverlay renders. ───────────────────────────
+        let aiCancelled = false;
         if (data.success && data.req_id > 0 && Array.isArray(data.evidence_paths) && data.evidence_paths.length > 0 && typeof InfraAI !== 'undefined') {
             // Swap the plain spinner for the live scan visualization, seeded
             // with the freshly-copied evidence photos so the wait shows the
             // real images being "analyzed" instead of a rotating text string.
             aiScanRoad?.start(data.evidence_paths);
-            try {
+            currentAiTask = CancellableTask.create();
+            await currentAiTask.run(async ({ signal, isCancelled }) => {
                 const aiResult = await runAiAnalysis(
                     data.evidence_paths, data.infrastructure || 'Roads',
-                    (msg, percent, meta) => aiScanRoad ? aiScanRoad.update(msg, percent, meta) : showRepOverlay(msg)
+                    (msg, percent, meta) => aiScanRoad ? aiScanRoad.update(msg, percent, meta) : showRepOverlay(msg),
+                    signal
                 );
+                if (isCancelled()) return;
                 aiResult.req_id = data.req_id;
                 await fetch('../functionality/save_ai_analysis.php', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, signal,
                     body: JSON.stringify(aiResult)
                 });
-            } catch (aiErr) {
-                console.error('[InfraAI] Road Monitoring conversion analysis failed:', aiErr);
-            } finally {
-                aiScanRoad?.stop();
+            }, { timeoutMs: 60000, timeoutLabel: 'AI analysis' });
+
+            if (currentAiTask.getState() === 'cancelled') {
+                aiCancelled = true;
+            } else if (currentAiTask.getState() === 'failed') {
+                console.error('[InfraAI] Road Monitoring conversion analysis failed');
             }
+            currentAiTask = null;
+            aiScanRoad?.stop();
         }
 
         hideRepOverlay();
         if (data.success) {
             closeRoadReportModal();
-            showRepNotif('success', '✔️ ' + (data.message || 'Report verified.'));
+            showRepNotif('success', '✔️ ' + (data.message || 'Report verified.') +
+                (aiCancelled ? ' ℹ️ AI analysis was cancelled.' : ''));
             setTimeout(() => location.reload(), 1500);
         } else {
             showRepNotif('error', '❌ ' + (data.message || 'Failed to verify.'));

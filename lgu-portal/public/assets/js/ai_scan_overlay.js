@@ -50,14 +50,24 @@
  *                (active/done/pending), driven by the {index, total} meta
  *                ai_tfjs_analysis.js already sends per image via onProgress.
  *
- * Usage (unchanged):
+ * Usage:
  *   const scan = AIScanOverlay.attach(
  *       document.getElementById('loadingOverlay'),      // host to append into
- *       document.getElementById('loadingSimpleContent') // legacy block to hide while active
+ *       document.getElementById('loadingSimpleContent'), // legacy block to hide while active
+ *       { onCancel: () => aiTask.cancel() }              // optional — omit for no Cancel button
  *   );
  *   scan.start(['/path/to/evidence1.jpg', '/path/to/evidence2.jpg']);
  *   scan.update('Analysing image 1 of 2…', 42, { index: 1, total: 2 });
  *   scan.stop(); // reverts to the legacy spinner block for next use
+ *
+ * Cancel button (opts.onCancel):
+ *   When supplied, start() shows a "Cancel" button under the status line.
+ *   Clicking it disables the button, relabels it "Cancelling…", and calls
+ *   opts.onCancel() — it does NOT call stop() itself. The actual work of
+ *   aborting in-flight requests and deciding when the overlay is torn down
+ *   belongs to the caller's CancellableTask (see cancellable_task.js),
+ *   mirroring how stop() has always only ever been called from each page's
+ *   own hideOverlay()/hideRepOverlay(), never from inside this module.
  */
 (function (global) {
     'use strict';
@@ -67,8 +77,9 @@
     const STALL_PULSE_MS  = 2500;  // no update() in this long → gentle "still working" pulse on the status line
     const STALL_NOTICE_MS = 9000;  // no update() in this long → reassure the user it hasn't actually frozen
 
-    function attach(hostEl, legacyEl) {
+    function attach(hostEl, legacyEl, opts) {
         if (!hostEl) return null;
+        opts = opts || {};
 
         const wrap = document.createElement('div');
         wrap.className = 'ai-scan-wrap';
@@ -85,7 +96,8 @@
                 '<div class="ai-scan-badge" data-role="badge">0%</div>' +
             '</div>' +
             '<div class="ai-scan-status" data-role="status">Initialising AI engine…</div>' +
-            '<div class="ai-scan-dots" data-role="dots"></div>';
+            '<div class="ai-scan-dots" data-role="dots"></div>' +
+            (opts.onCancel ? '<button type="button" class="ai-scan-cancel-btn" data-role="cancelBtn">Cancel</button>' : '');
         hostEl.appendChild(wrap);
 
         const els = {
@@ -94,7 +106,17 @@
             badge:   wrap.querySelector('[data-role="badge"]'),
             status:  wrap.querySelector('[data-role="status"]'),
             dots:    wrap.querySelector('[data-role="dots"]'),
+            cancelBtn: wrap.querySelector('[data-role="cancelBtn"]'),
         };
+
+        if (els.cancelBtn) {
+            els.cancelBtn.addEventListener('click', () => {
+                if (els.cancelBtn.disabled) return;
+                els.cancelBtn.disabled = true;
+                els.cancelBtn.textContent = 'Cancelling…';
+                opts.onCancel();
+            });
+        }
 
         let images = [];
         let activeIdx = 0;
@@ -217,6 +239,7 @@
 
             wrap.classList.add('active');
             if (legacyEl) legacyEl.style.display = 'none';
+            if (els.cancelBtn) { els.cancelBtn.disabled = false; els.cancelBtn.textContent = 'Cancel'; }
 
             els.badge.textContent = '0%';
             els.status.textContent = 'Initialising AI engine…';

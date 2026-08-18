@@ -17,6 +17,7 @@ if (!cimm_is_admin()) {
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
+require_once __DIR__ . '/../../includes/api/cimm_district_resolver.php';
 
 // Export CSV/PDF — same shared widget (button + password-gated modal, via
 // functionality/generate_report.php) every other admin page uses. This page
@@ -497,9 +498,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // district column here avoids silently blanking out any Personal/
         // Professional data a Super Admin may have filled in earlier.
         if ($target['role'] === 'Area Engineer') {
-            $epDistrict     = trim($input['district'] ?? '');
-            $validDistricts = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6', ''];
-            if (!in_array($epDistrict, $validDistricts, true)) {
+            $epDistrict = trim($input['district'] ?? '');
+            if (!cimm_is_valid_district($epDistrict)) {
                 echo json_encode(['success' => false, 'message' => 'Invalid district.']); exit;
             }
             $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
@@ -540,8 +540,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $epDistrict      = trim($input['district'] ?? '');
             $epAddrLat       = is_numeric($input['address_lat'] ?? '') ? (float)$input['address_lat'] : null;
             $epAddrLng       = is_numeric($input['address_lng'] ?? '') ? (float)$input['address_lng'] : null;
-            $validDistricts  = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6', ''];
-            if (!in_array($epDistrict, $validDistricts, true)) {
+            if (!cimm_is_valid_district($epDistrict)) {
                 echo json_encode(['success' => false, 'message' => 'Invalid district.']); exit;
             }
 
@@ -3904,7 +3903,10 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
     function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
     function fv(v){ return v ? esc(v) : '<span style="opacity:.5;">—</span>'; }
 
-    var DISTRICT_OPTIONS = ['District 1', 'District 2', 'District 3', 'District 4', 'District 5', 'District 6'];
+    // Sourced from cimm_district_resolver.php's cimm_district_options() — the
+    // same single source of truth the Area Engineer's own picker on
+    // profile.php reads, instead of a separately hardcoded list here.
+    var DISTRICT_OPTIONS = <?= json_encode(cimm_district_options()) ?>;
     var GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
     var currentProfile = null;
 

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../includes/core/roles.php';
 $serverTimestamp = time();
 
 require __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/api/cimm_district_resolver.php';
 
 // --- Engineer role detection ---
 $isEngineer     = cimm_is_engineer();
@@ -443,8 +444,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         // ── Area Engineer district-only save ─────────────────────────────────────────
         if ($isAreaEngineer) {
             $ep_district     = trim($_POST['ae_district'] ?? '');
-            $validDistricts  = ['District 1','District 2','District 3','District 4','District 5','District 6',''];
-            if (in_array($ep_district, $validDistricts)) {
+            if (cimm_is_valid_district($ep_district)) {
                 $epCheck = $conn->prepare("SELECT id FROM engineer_profiles WHERE user_id = ?");
                 $epCheck->bind_param("i", $employeeId);
                 $epCheck->execute();
@@ -2906,7 +2906,7 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                                 <label><span class="lbl-icon">🗺️</span> District (Quezon City)</label>
                                 <?php
                                     $savedDistrict = $engineerProfile['district'] ?? '';
-                                    $districtOpts  = ['District 1','District 2','District 3','District 4','District 5','District 6'];
+                                    $districtOpts  = cimm_district_options();
                                     $distLocked    = $cooldownActive && !$isSuperAdmin;
                                 ?>
                                 <input type="hidden" name="ep_district" id="epDistrictVal" value="<?= htmlspecialchars($savedDistrict) ?>">
@@ -3135,7 +3135,7 @@ window.empEngineerIncomplete = <?= !empty($isEngineerProfileIncomplete) ? 'true'
                             <label><span class="lbl-icon">🗺️</span> District (Quezon City)</label>
                             <?php
                                 $aeCurrentDistrict = $engineerProfile['district'] ?? '';
-                                $districtOpts      = ['District 1','District 2','District 3','District 4','District 5','District 6'];
+                                $districtOpts      = cimm_district_options();
                             ?>
                             <input type="hidden" name="ae_district" id="aeDistrictVal"
                                    value="<?= htmlspecialchars($aeCurrentDistrict) ?>">

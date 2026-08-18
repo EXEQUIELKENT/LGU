@@ -142,6 +142,31 @@
 }
 .ai-scan-dot.done { background: rgba(99,132,210,.55); }
 
+/* ── Cancel button — only rendered when AIScanOverlay.attach() is given
+   opts.onCancel (see ai_scan_overlay.js). Matches the overlay's own blue
+   accent rather than a red "danger" treatment, since cancelling here isn't
+   destructive — it just stops waiting on the AI enrichment step. ────────── */
+.ai-scan-cancel-btn {
+    background: transparent;
+    border: 1px solid rgba(99,132,210,.45);
+    color: #8fa8e0;
+    font: 700 12px/1 'Poppins', Arial, sans-serif;
+    letter-spacing: .3px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.ai-scan-cancel-btn:hover:not(:disabled) {
+    background: rgba(99,132,210,.15);
+    color: #fff;
+    border-color: rgba(99,132,210,.7);
+}
+.ai-scan-cancel-btn:disabled {
+    opacity: .6;
+    cursor: default;
+}
+
 @keyframes aiScanPopIn {
     from { opacity: 0; transform: scale(.9) translateY(10px); }
     to   { opacity: 1; transform: scale(1)   translateY(0); }
