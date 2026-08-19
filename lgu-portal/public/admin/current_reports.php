@@ -346,7 +346,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             activity_actor_name() . " updated Report #REP-{$repId} — priority: {$priority}, budget: ₱" . number_format($budget, 2) . ".{$dateNote}");
         while (ob_get_level() > 0) ob_end_clean();
         echo json_encode(['success' => true]);
-        $stmt->close(); exit;
+        $stmt->close();
+        // Push the engineer's new budget/schedule straight out to Road
+        // Monitoring. Every other mutating action in this file already syncs;
+        // this one didn't, so for a report that originated from RGMAP the
+        // engineer's budget and start/end dates kept showing their pre-edit
+        // values over there until some *later* action (admin approve/return)
+        // happened to trigger a sync for an unrelated reason.
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        cimm_rgmap_sync_by_rep_id($conn, $repId, 'updated');
+        exit;
     }
 
     // ── Admin approves engineer submission → moves to Pending Reports (Scheduled) ──
