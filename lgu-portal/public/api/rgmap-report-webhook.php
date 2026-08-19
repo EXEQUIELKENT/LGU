@@ -125,6 +125,63 @@ try {
     $createdDate = $data['created_date'] ?? null;
     $submittedAt = $data['submitted_at'] ?? null;
 
+    // ── Guard: recycled rgmap_report_pk (the real auto-verify cause) ───────
+    // This table's identity is UNIQUE(rgmap_report_pk) — but that value is
+    // just RGMAO's road_transportation_reports.id, an AUTO_INCREMENT that is
+    // NOT globally stable: it restarts/reuses numbers whenever that table is
+    // reseeded or restored from a dump, when rows are deleted and MySQL later
+    // restarts (InnoDB re-derives AUTO_INCREMENT as MAX(id)+1), and it
+    // collides outright when two RGMAO environments push into one CIMM.
+    //
+    // When a genuinely NEW report lands on a pk some OLD report already used,
+    // the upsert below takes its ON DUPLICATE KEY UPDATE branch instead of
+    // inserting. That branch rewrites the content to the new report but
+    // deliberately does NOT touch verification_status/verified_by/verified_at
+    // (so that a harmless re-push of a real report can never un-verify it) —
+    // so the new report inherits the old one's "Verified" + verifier name and
+    // appears verified the moment it arrives. Writing 'Pending' explicitly in
+    // the INSERT column list (the previous fix) cannot help here, because the
+    // INSERT branch never runs. road_monitoring.php's repair sweep can't
+    // correct it either: that sweep only resets rows whose verified_by IS
+    // NULL, and this row carries the old report's verifier.
+    //
+    // Identity is therefore checked on rgmap_report_id — RGMAO builds it as
+    // 'RPT-<Ymd>-<His>-<uniqid>', which is unique per submission and never
+    // recycled — and any stale verification state is cleared before the write.
+    $pkRecycled = false;
+    if ($rgmapReportId !== '') {
+        $prevStmt = $conn->prepare('SELECT rgmap_report_id, verification_status, verified_by FROM rgmap_road_reports WHERE rgmap_report_pk = ? LIMIT 1');
+        if ($prevStmt) {
+            $prevStmt->bind_param('i', $reportPk);
+            $prevStmt->execute();
+            $prevRow = $prevStmt->get_result()->fetch_assoc();
+            $prevStmt->close();
+
+            $prevReportId = (string)($prevRow['rgmap_report_id'] ?? '');
+            if ($prevRow && $prevReportId !== '' && $prevReportId !== $rgmapReportId) {
+                $pkRecycled = true;
+                $reset = $conn->prepare(
+                    "UPDATE rgmap_road_reports
+                     SET verification_status = 'Pending', verified_by = NULL, verified_at = NULL,
+                         cimm_req_id = NULL, cimm_rep_id = NULL
+                     WHERE rgmap_report_pk = ?"
+                );
+                if ($reset) {
+                    $reset->bind_param('i', $reportPk);
+                    $reset->execute();
+                    $reset->close();
+                }
+                error_log(
+                    'CIMM RGMAO road-report webhook: rgmap_report_pk=' . $reportPk
+                    . ' was reused by a different report (' . $prevReportId . ' -> ' . $rgmapReportId
+                    . '); cleared stale verification state ('
+                    . (string)($prevRow['verification_status'] ?? '') . ' by '
+                    . (string)($prevRow['verified_by'] ?? 'unknown') . ') so it starts as Pending.'
+                );
+            }
+        }
+    }
+
     // verification_status is written EXPLICITLY as 'Pending' rather than being
     // left to the column DEFAULT. Relying on the default is what caused the
     // auto-verify bug: on installs whose rgmap_road_reports table predates the
@@ -157,6 +214,10 @@ try {
             ?, ?, 'Pending'
         )
         ON DUPLICATE KEY UPDATE
+            -- Kept in sync deliberately: without this the stored identity went
+            -- stale whenever a pk was reused, leaving the row labelled with the
+            -- OLD report's reference while showing the NEW report's content.
+            rgmap_report_id = VALUES(rgmap_report_id),
             title = VALUES(title),
             report_type = VALUES(report_type),
             report_category = VALUES(report_category),
@@ -215,13 +276,37 @@ try {
     $isNewInsert = $stmt->affected_rows === 1;
     $stmt->close();
 
-    $localIdStmt = $conn->prepare('SELECT id FROM rgmap_road_reports WHERE rgmap_report_pk = ? LIMIT 1');
+    $localIdStmt = $conn->prepare('SELECT id, verification_status, verified_by FROM rgmap_road_reports WHERE rgmap_report_pk = ? LIMIT 1');
     $localIdStmt->bind_param('i', $reportPk);
     $localIdStmt->execute();
-    $localId = (int)($localIdStmt->get_result()->fetch_assoc()['id'] ?? 0);
+    $storedRow = $localIdStmt->get_result()->fetch_assoc() ?: [];
+    $localId = (int)($storedRow['id'] ?? 0);
     $localIdStmt->close();
 
-    if ($isNewInsert && $localId > 0) {
+    // ── Write-time invariant: a report is only ever "Verified" if a real admin
+    //    verified it, and rgmap_road_reports_verify() always stamps verified_by
+    //    when they do. Anything Verified without a verifier got there through
+    //    schema drift or pk reuse, never through a human — so correct it right
+    //    here, at the moment of the write, instead of depending on someone
+    //    later opening road_monitoring.php for its repair sweep to run.
+    $verificationStatus = (string)($storedRow['verification_status'] ?? 'Pending');
+    if (strcasecmp($verificationStatus, 'Verified') === 0 && ($storedRow['verified_by'] ?? null) === null) {
+        $fix = $conn->prepare("UPDATE rgmap_road_reports SET verification_status = 'Pending' WHERE rgmap_report_pk = ?");
+        if ($fix) {
+            $fix->bind_param('i', $reportPk);
+            $fix->execute();
+            $fix->close();
+        }
+        $verificationStatus = 'Pending';
+        error_log('CIMM RGMAO road-report webhook: forced rgmap_report_pk=' . $reportPk . ' back to Pending — it arrived "Verified" with no recorded verifier.');
+    }
+
+    // A reused pk takes the UPDATE branch (affected_rows 2, or 0 when nothing
+    // changed), so $isNewInsert alone is false for it — yet it IS a brand-new
+    // report that nobody has been told about. Without counting it here, exactly
+    // the reports hit by the pk-reuse bug above were also the ones that silently
+    // notified no admins at all.
+    if (($isNewInsert || $pkRecycled) && $localId > 0) {
         $displayTitle = $title !== '' ? $title : 'Untitled report';
         log_activity(
             $conn, 'road_monitoring', 'road_report', $localId, 'submitted',
@@ -237,11 +322,17 @@ try {
         );
     }
 
+    // verification_status / pk_recycled are echoed back so the outcome of this
+    // write is directly observable from the RGMAO side (and in any webhook log)
+    // — a report arriving as anything other than "Pending" is now visible at
+    // the moment it syncs, instead of only being noticed later in the CIMM UI.
     echo json_encode([
         'success' => true,
         'message' => 'Report synced to CIMM pending reports',
         'id' => $localId,
         'rgmap_report_pk' => $reportPk,
+        'verification_status' => $verificationStatus,
+        'pk_recycled' => $pkRecycled,
     ]);
 } catch (\Throwable $e) {
     error_log('CIMM RGMAO road-report webhook error: ' . $e->getMessage());
