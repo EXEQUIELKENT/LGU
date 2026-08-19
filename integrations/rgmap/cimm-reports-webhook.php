@@ -94,14 +94,16 @@ try {
             district, coord_lat, coord_lng, cprf_facility_id, cprf_facility_name,
             approval_status, rejection_reason, resolution_status, resolution_note, resolved_at,
             priority, budget, starting_date, estimated_end_date, submitted_at,
-            evidence_json, ai_json, portal_url, payload_json, last_event
+            evidence_json, ai_json, portal_url, payload_json, last_event,
+            verification_status
         ) VALUES (
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?,
+            'Pending Review'
         )
         ON DUPLICATE KEY UPDATE
             cimm_rep_id = VALUES(cimm_rep_id),
