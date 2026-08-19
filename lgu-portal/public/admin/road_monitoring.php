@@ -140,7 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Invalid report ID.']);
             exit;
         }
-        $verifierName = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
+        $verifierName     = function_exists('activity_actor_name') ? activity_actor_name() : ($_SESSION['employee_first_name'] ?? 'CIMM Staff');
+        $verifierActorId  = (int)($_SESSION['employee_id'] ?? 0);
         $result = rgmap_road_reports_verify($conn, $localId, $verifierName);
         $conversion = ['ok' => false, 'req_id' => 0, 'rep_id' => 0, 'evidence_paths' => []];
         if ($result['ok']) {
@@ -153,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //    verification itself (already committed above) still stands;
             //    an admin can re-verify-triggering isn't possible, but the
             //    error is surfaced in the response so it's not silent. ─────
-            $conversion = rgmap_road_reports_convert_to_cimm_report($conn, $localId, $engineerId);
+            $conversion = rgmap_road_reports_convert_to_cimm_report($conn, $localId, $verifierActorId);
 
             $convNote = $conversion['ok']
                 ? (" → became Report #REP-" . str_pad((string)$conversion['rep_id'], 3, '0', STR_PAD_LEFT) . " on Current Reports.")
@@ -249,7 +250,9 @@ $stuckVerifiedRes = $conn->query(
     "SELECT id FROM rgmap_road_reports WHERE verification_status = 'Verified' AND verified_by IS NOT NULL AND cimm_req_id IS NULL LIMIT 5"
 );
 if ($stuckVerifiedRes && $stuckVerifiedRes->num_rows > 0) {
-    $backfillActorId = (int)($_SESSION['employee_id'] ?? 0);
+    // Use 0 (system) — this is a background backfill, not an admin action,
+    // so the logged-in user must never be stamped as the verifier/approver.
+    $backfillActorId = 0;
     while ($stuckRow = $stuckVerifiedRes->fetch_assoc()) {
         $stuckId = (int)$stuckRow['id'];
         $backfillResult = rgmap_road_reports_convert_to_cimm_report($conn, $stuckId, $backfillActorId);
