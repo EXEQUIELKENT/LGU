@@ -125,24 +125,36 @@ try {
     $createdDate = $data['created_date'] ?? null;
     $submittedAt = $data['submitted_at'] ?? null;
 
-    // CIMM verification is a local staff action — always start inbound reports
-    // as Pending (UI: "Awaiting Verification"). Never read verification state
-    // from the RGMAP payload or rely on the column default (schema drift on
-    // existing installs silently auto-verified rows). Resyncs must not touch
-    // verification_status — see ON DUPLICATE KEY UPDATE below.
+    // verification_status is written EXPLICITLY as 'Pending' rather than being
+    // left to the column DEFAULT. Relying on the default is what caused the
+    // auto-verify bug: on installs whose rgmap_road_reports table predates the
+    // current 'Pending' default (or was hand-edited), the column's default was
+    // 'Verified', so every report pushed from Road Monitoring arrived already
+    // marked verified with no admin ever having clicked Verify.
+    //
+    // rgmap_road_reports_ensure_schema() does try to correct the default with
+    // ALTER TABLE ... MODIFY COLUMN, but that needs ALTER privilege, which some
+    // shared-hosting DB users are not provisioned with (the same hazard this
+    // codebase already documents for `requests` in cimm_rgmap_sync.php). When
+    // that ALTER silently fails, the stale default keeps winning — which is why
+    // this reproduced on the live domain but not on local XAMPP. Writing the
+    // value here removes the dependency on both the default and ALTER rights.
+    //
+    // Deliberately NOT in the ON DUPLICATE KEY UPDATE list below: a re-push of
+    // an already-verified report must never reset it back to Pending.
     $stmt = $conn->prepare("
         INSERT INTO rgmap_road_reports (
             rgmap_report_pk, rgmap_report_id, title, report_type, report_category,
             department, priority, status, severity, description, location,
             coord_lat, coord_lng, reporter_name, reporter_email, reporter_phone,
             attachments_json, portal_url, created_date, submitted_at,
-            verification_status, payload_json, last_event
+            payload_json, last_event, verification_status
         ) VALUES (
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            'Pending', ?, ?
+            ?, ?, 'Pending'
         )
         ON DUPLICATE KEY UPDATE
             title = VALUES(title),
