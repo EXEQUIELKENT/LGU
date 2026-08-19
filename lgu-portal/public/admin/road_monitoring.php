@@ -28,6 +28,10 @@ require_once __DIR__ . '/../../includes/core/activity_log.php';
 require_once __DIR__ . '/../../includes/core/notif_helper.php';
 require_once __DIR__ . '/../../includes/api/rgmap_road_reports.php';
 require_once __DIR__ . '/../../includes/api/cimm_district_resolver.php';
+// computeReportStatus() — the same shared workflow-status logic requests.php
+// uses for its Report Status tracker, so a road report's live status reads
+// identically on both pages instead of being derived a second way here.
+require_once __DIR__ . '/../../includes/core/report_status.php';
 
 $isEngineer     = cimm_is_engineer();
 $engineerId     = (int)($_SESSION['employee_id'] ?? 0);
@@ -117,6 +121,32 @@ if (!function_exists('districtBadge')) {
         $map = ['district 1' => 'd1', 'district 2' => 'd2', 'district 3' => 'd3', 'district 4' => 'd4', 'district 5' => 'd5', 'district 6' => 'd6'];
         $cls = $map[strtolower(trim($district))] ?? 'd-other';
         return '<span class="district-badge ' . $cls . '"><i class="fas fa-location-dot"></i>' . htmlspecialchars($district) . '</span>';
+    }
+}
+
+/**
+ * Which lifecycle page currently holds a given report, from its RAW
+ * request_resolutions.status.
+ *
+ * Mirrors the WHERE clause each page actually queries with — NOT the
+ * human-friendly display label, which collapses several raw statuses together
+ * and would send "Open" to a page that doesn't contain the report (the exact
+ * bug requests.php documents against its own reportPageForStatus()):
+ *   current_reports.php  status IN ('Approved','Pending Admin Approval')
+ *   pending_reports.php  status IN ('Scheduled','Pending','In Progress','Pending Completion','')
+ *   archive_reports.php  status IN ('Completed','Cancelled')
+ *
+ * NOTE: deliberately not reusing resolveRepPage() from notif_helper.php —
+ * that one selects a `resolution_status` column that does not exist on
+ * request_resolutions (the column is `status`), so its prepare() fails and it
+ * silently returns 'current_reports.php' for every report regardless of state.
+ */
+if (!function_exists('rmReportPageForStatus')) {
+    function rmReportPageForStatus(?string $resStatus): string {
+        $s = trim((string)$resStatus);
+        if (in_array($s, ['Completed', 'Cancelled'], true))              return 'archive_reports.php';
+        if (in_array($s, ['Approved', 'Pending Admin Approval'], true))  return 'current_reports.php';
+        return 'pending_reports.php';
     }
 }
 
@@ -428,6 +458,39 @@ if ($aiBackfillRes) {
 // ── Data fetch — identical query/shape to what pending_reports.php used ──
 $road_monitoring_reports = rgmap_road_reports_fetch($conn);
 
+// ── Live CIMM report state for rows that have been verified ──────────────
+//    Verifying a road report converts it into a real CIMM report (see
+//    rgmap_road_reports_convert_to_cimm_report()), after which it moves
+//    through the normal Current → Pending → Archive lifecycle. Load that
+//    report's current state here — in ONE batched query rather than per row —
+//    so each entry can show its live status and deep-link to whichever page
+//    actually holds it right now.
+$rmRepIds = [];
+foreach ($road_monitoring_reports as $rmRow) {
+    $rid = (int)($rmRow['cimm_rep_id'] ?? 0);
+    if ($rid > 0) {
+        $rmRepIds[$rid] = true;
+    }
+}
+$rmReportState = [];
+if (!empty($rmRepIds)) {
+    $rmIdList = implode(',', array_map('intval', array_keys($rmRepIds)));
+    $rmStateRes = $conn->query(
+        "SELECT rep.rep_id, res.status AS resolution_status, rep.engineer_id,
+                rep.engineer_accepted, rep.estimated_end_date,
+                CONCAT(e.first_name, ' ', e.last_name) AS engineer_name
+         FROM reports rep
+         JOIN request_resolutions res ON res.res_id = rep.res_id
+         LEFT JOIN employees e ON e.user_id = rep.engineer_id
+         WHERE rep.rep_id IN ({$rmIdList})"
+    );
+    if ($rmStateRes) {
+        while ($rmStateRow = $rmStateRes->fetch_assoc()) {
+            $rmReportState[(int)$rmStateRow['rep_id']] = $rmStateRow;
+        }
+    }
+}
+
 // ── District — resolved from coordinates (nearest QC barangay centroid),
 //    falling back to a free-text match against the address, so every row
 //    shows a district badge even before it's converted into a CIMM report. ──
@@ -437,6 +500,17 @@ foreach ($road_monitoring_reports as &$rm) {
         $rm['coord_lng'] !== null ? (float)$rm['coord_lng'] : null,
         (string)($rm['location'] ?? '')
     );
+
+    // Attach the linked CIMM report's live workflow state (empty for rows
+    // still awaiting verification — they have no CIMM report yet).
+    $rmRepId = (int)($rm['cimm_rep_id'] ?? 0);
+    $rmState = $rmReportState[$rmRepId] ?? null;
+    $rm['report_status']        = $rmState ? computeReportStatus($rmState) : '';
+    $rm['report_raw_status']    = $rmState ? (string)($rmState['resolution_status'] ?? '') : '';
+    $rm['report_page']          = $rmState ? rmReportPageForStatus($rmState['resolution_status'] ?? '') : '';
+    $rm['report_engineer_name'] = ($rmState && trim((string)($rmState['engineer_name'] ?? '')) !== '')
+        ? trim((string)$rmState['engineer_name'])
+        : '';
 }
 unset($rm);
 
@@ -460,6 +534,11 @@ $roadReportsJson = array_map(function ($rm) {
         'submitted_at'        => $rm['submitted_at'],
         'verification_status' => $rm['verification_status'],
         'verified_by'         => $rm['verified_by'],
+        // Linked CIMM report — drives the modal's Report Status section.
+        'cimm_rep_id'         => (int)($rm['cimm_rep_id'] ?? 0),
+        'report_status'       => $rm['report_status'],
+        'report_page'         => $rm['report_page'],
+        'report_engineer_name'=> $rm['report_engineer_name'],
     ];
 }, $road_monitoring_reports);
 
@@ -645,6 +724,128 @@ tbody tr:hover { background: rgba(200,75,16,.09); }
 .btn-view-rep:active { transform:translateY(0); }
 [data-theme="dark"] .btn-view-rep { background:rgba(200,75,16,.16); color:#ff9c5e; border-color:rgba(200,75,16,.45); }
 [data-theme="dark"] .btn-view-rep:hover { background:#c84b10; color:#fff; border-color:#c84b10; }
+
+/* Action cell — "Open" + "View" side by side (same layout as
+   case_management.php's .case-actions). */
+.rm-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ── Report Status Tracker — ported from requests.php's modal tracker so a
+   verified road report shows the exact same live status treatment here.
+   Only rendered once the report has been verified and converted into a real
+   CIMM report (before that there is no report to track or link to). ── */
+.report-status-section {
+    position: relative;
+    margin: 0 0 16px 0;
+    padding: 14px 16px;
+    background: #eef3ff;
+    border: 1.5px solid #b8ccf5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(55,98,200,.10);
+}
+.report-status-section::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #3762c8 0%, #6690f5 100%);
+    border-radius: 14px 0 0 14px;
+}
+[data-theme="dark"] .report-status-section {
+    background: rgba(55,98,200,.07);
+    border-color: rgba(95,140,255,.22);
+}
+[data-theme="dark"] .report-status-section::before {
+    background: linear-gradient(180deg, #5f8cff 0%, #8ab4f8 100%);
+}
+.report-status-label {
+    font-size: 10px; font-weight: 800; color: #3762c8;
+    text-transform: uppercase; letter-spacing: .10em;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 11px;
+}
+[data-theme="dark"] .report-status-label { color: #8ab4f8; }
+.report-status-label i { font-size: 10px; margin-right: 4px; }
+.report-status-rep-link {
+    font-size: 11px; font-weight: 700; color: #3762c8;
+    background: rgba(55,98,200,.12); border: 1px solid rgba(55,98,200,.28);
+    padding: 3px 9px; border-radius: 8px; letter-spacing: .01em;
+}
+[data-theme="dark"] .report-status-rep-link { background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.22); color: #94a3b8; }
+.report-status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.report-status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 13px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; letter-spacing: .01em; flex-shrink: 0;
+}
+.report-status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.report-status-pill.rsp-none         { background:#f1f5f9;  color:#475569;  border:1px solid #e2e8f0; }
+.report-status-pill.rsp-none::before { background:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.25); }
+.report-status-pill.rsp-awaiting     { background:#fff7ed;  color:#9a3412;  border:1px solid rgba(253,186,116,.4); }
+.report-status-pill.rsp-awaiting::before { background:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,.2); }
+.report-status-pill.rsp-pending-acc  { background:#fef3c7;  color:#92400e;  border:1px solid rgba(252,211,77,.5); }
+.report-status-pill.rsp-pending-acc::before { background:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.2); }
+.report-status-pill.rsp-pending-appr { background:#ede9fe;  color:#4c1d95;  border:1px solid rgba(196,181,253,.5); }
+.report-status-pill.rsp-pending-appr::before { background:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.2); }
+.report-status-pill.rsp-in-progress  { background:#fff8e1;  color:#b45309;  border:1px solid rgba(245,127,23,.3); }
+.report-status-pill.rsp-in-progress::before { background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2); animation:rspPulseDot 1.4s ease infinite; }
+.report-status-pill.rsp-scheduled    { background:#e3f2fd;  color:#1565c0;  border:1px solid rgba(21,101,192,.25); }
+.report-status-pill.rsp-scheduled::before { background:#1565c0; box-shadow:0 0 0 3px rgba(21,101,192,.2); }
+.report-status-pill.rsp-pending-comp { background:#fef9c3;  color:#713f12;  border:1px solid rgba(253,224,71,.5); }
+.report-status-pill.rsp-pending-comp::before { background:#ca8a04; box-shadow:0 0 0 3px rgba(202,138,4,.2); }
+.report-status-pill.rsp-completed    { background:#e8f5e9;  color:#2e7d32;  border:1px solid rgba(46,125,50,.25); }
+.report-status-pill.rsp-completed::before { background:#2e7d32; box-shadow:0 0 0 3px rgba(46,125,50,.2); }
+.report-status-pill.rsp-cancelled    { background:#fee2e2;  color:#7f1d1d;  border:1px solid rgba(252,165,165,.5); }
+.report-status-pill.rsp-cancelled::before { background:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.2); }
+.report-status-pill.rsp-delayed      { background:#ffebee;  color:#c62828;  border:1px solid rgba(198,40,40,.25); }
+.report-status-pill.rsp-delayed::before { background:#c62828; box-shadow:0 0 0 3px rgba(198,40,40,.2); }
+@keyframes rspPulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.55;transform:scale(.75)} }
+[data-theme="dark"] .report-status-pill.rsp-none         { background:rgba(100,116,139,.16); color:#94a3b8; border-color:rgba(100,116,139,.28); }
+[data-theme="dark"] .report-status-pill.rsp-awaiting     { background:rgba(251,146,60,.12);  color:#fb923c; border-color:rgba(251,146,60,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-acc  { background:rgba(252,211,77,.10);  color:#fbbf24; border-color:rgba(252,211,77,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-appr { background:rgba(167,139,250,.13); color:#a78bfa; border-color:rgba(167,139,250,.28); }
+[data-theme="dark"] .report-status-pill.rsp-in-progress  { background:rgba(245,158,11,.15);  color:#fbbf24; border-color:rgba(245,158,11,.28); }
+[data-theme="dark"] .report-status-pill.rsp-scheduled    { background:rgba(21,101,192,.18);  color:#93c5fd; border-color:rgba(147,197,253,.28); }
+[data-theme="dark"] .report-status-pill.rsp-pending-comp { background:rgba(250,204,21,.10);  color:#facc15; border-color:rgba(250,204,21,.28); }
+[data-theme="dark"] .report-status-pill.rsp-completed    { background:rgba(76,175,80,.18);   color:#86efac; border-color:rgba(134,239,172,.28); }
+[data-theme="dark"] .report-status-pill.rsp-cancelled    { background:rgba(248,113,113,.11); color:#f87171; border-color:rgba(248,113,113,.28); }
+[data-theme="dark"] .report-status-pill.rsp-delayed      { background:rgba(244,67,54,.18);   color:#fca5a5; border-color:rgba(252,165,165,.28); }
+.report-status-eng {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; color: #1e3a8a;
+    padding: 6px 10px; background: rgba(55,98,200,.12);
+    border-radius: 8px; border: 1px solid rgba(55,98,200,.28);
+    margin-bottom: 10px; width: fit-content; max-width: 100%;
+}
+.eng-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: linear-gradient(135deg, #3762c8, #6690f5);
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff;
+    letter-spacing: .02em; text-transform: uppercase; line-height: 1;
+}
+[data-theme="dark"] .report-status-eng { background: rgba(55,98,200,.12); border-color: rgba(95,140,255,.18); color: #93c5fd; }
+[data-theme="dark"] .eng-avatar { background: linear-gradient(135deg, #2851b3, #5f8cff); }
+.btn-view-report {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px 9px 12px;
+    background: #0e9f82; color: #fff; border: none; border-radius: 10px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer; text-decoration: none;
+    transition: background .18s ease, transform .15s ease;
+    font-family: inherit; white-space: nowrap; width: fit-content;
+    align-self: flex-start; box-sizing: border-box; letter-spacing: .01em;
+}
+.btn-view-report .bvr-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; background: rgba(255,255,255,.2);
+    border-radius: 6px; font-size: 11px; flex-shrink: 0;
+}
+.btn-view-report .bvr-arrow { font-size: 11px; opacity: .8; transition: transform .18s ease; flex-shrink: 0; margin-left: auto; }
+.btn-view-report:hover { background: #0b8a70; transform: translateY(-1px); color: #fff; text-decoration: none; }
+.btn-view-report:hover .bvr-arrow { transform: translateX(3px); }
+.btn-view-report:active { transform: scale(.97) translateY(0); }
+[data-theme="dark"] .btn-view-report { background: #12b896; }
+[data-theme="dark"] .btn-view-report:hover { background: #0e9f82; }
 
 .rm-verify-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -1336,7 +1537,24 @@ tr.notif-highlight > td:first-child {
                         data-severity-rank="<?= $rmSeverityRank ?>"
                         data-submitted="<?= $rmSubmittedTs ?>"
                         data-verified="<?= $rmVerified ? 1 : 0 ?>">
-                        <td><button type="button" class="btn-view-rep" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button></td>
+                        <td>
+                            <div class="rm-actions">
+                                <?php if (!empty($rm['report_page']) && (int)($rm['cimm_rep_id'] ?? 0) > 0): ?>
+                                    <?php
+                                    // Highlight-only deep link (no &open_modal=1) — matching
+                                    // case_management.php's "Open": scroll to and highlight the
+                                    // report on whichever lifecycle page holds it, rather than
+                                    // forcing its detail modal open on arrival.
+                                    $rmOpenUrl = $rm['report_page'] . '?highlight_rep=' . (int)$rm['cimm_rep_id'];
+                                    ?>
+                                    <a class="btn-view-rep" href="<?= htmlspecialchars($rmOpenUrl) ?>"
+                                       title="Open this report on <?= htmlspecialchars(str_replace('_', ' ', basename($rm['report_page'], '.php'))) ?>">
+                                        <i class="fas fa-arrow-up-right-from-square"></i> Open
+                                    </a>
+                                <?php endif; ?>
+                                <button type="button" class="btn-view-rep" onclick="openRoadReportModal(<?= (int)$rm['id'] ?>)"><i class="fas fa-eye"></i> View</button>
+                            </div>
+                        </td>
                         <td class="searchable"><?= htmlspecialchars($rm['rgmap_report_id']) ?></td>
                         <td class="wrap searchable" title="<?= htmlspecialchars($rm['description'] ?? '') ?>"><?= htmlspecialchars(mb_strimwidth($rm['title'], 0, 50, '…')) ?></td>
                         <td class="searchable"><?= rmTypeLabel($rm['report_type'] ?? '') ?></td>
@@ -1455,6 +1673,27 @@ tr.notif-highlight > td:first-child {
             <button type="button" class="rep-modal-close" onclick="closeRoadReportModal()" aria-label="Close">&times;</button>
         </div>
         <div class="rep-modal-body">
+            <!-- Live Report Status — only shown once this road report has been
+                 verified and converted into a real CIMM report (see
+                 applyRoadReportStatus() below). -->
+            <div class="report-status-section" id="rmReportStatusSection" style="display:none;">
+                <div class="report-status-label">
+                    <span><i class="fas fa-clipboard-list"></i> Report Status</span>
+                    <span class="report-status-rep-link" id="rmRepIdBadge"></span>
+                </div>
+                <div class="report-status-row">
+                    <span class="report-status-pill" id="rmReportStatusPill"></span>
+                </div>
+                <div class="report-status-eng" id="rmReportEngineer" style="display:none;">
+                    <span class="eng-avatar" id="rmEngAvatar"></span>
+                    <span id="rmReportEngineerName"></span>
+                </div>
+                <a id="rmViewReportBtn" class="btn-view-report" href="#" target="_self" style="display:none;">
+                    <span class="bvr-icon"><i class="fas fa-file-alt"></i></span>
+                    Open Report
+                    <i class="fas fa-arrow-right bvr-arrow"></i>
+                </a>
+            </div>
             <div class="rep-grid-2">
                 <div class="rep-field"><div class="rep-field-label">🏷️ Type</div><div class="rep-field-value" id="rmModalType"></div></div>
                 <div class="rep-field"><div class="rep-field-label">📂 Category</div><div class="rep-field-value" id="rmModalCategory"></div></div>
@@ -1555,6 +1794,84 @@ function priBadge(l){
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};color:${s.fg};border:1px solid ${s.bd};padding:3px 10px 3px 7px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:${s.dot};display:inline-block;flex-shrink:0;"></span>${escH(l)}</span>`;
 }
 
+// ── Report Status tracker — same status vocabulary/icons requests.php uses,
+//    so a report reads identically on both pages. ─────────────────────────
+const RM_REPORT_STATUS_CLASS = {
+    'Awaiting Engineer':  'rsp-awaiting',
+    'Pending Acceptance': 'rsp-pending-acc',
+    'Pending Approval':   'rsp-pending-appr',
+    'In Progress':        'rsp-in-progress',
+    'Scheduled':          'rsp-scheduled',
+    'Pending Completion': 'rsp-pending-comp',
+    'Completed':          'rsp-completed',
+    'Cancelled':          'rsp-cancelled',
+    'Delayed':            'rsp-delayed',
+};
+const RM_REPORT_STATUS_ICON = {
+    'Awaiting Engineer':  '⏳',
+    'Pending Acceptance': '🔔',
+    'Pending Approval':   '📋',
+    'In Progress':        '🔧',
+    'Scheduled':          '📅',
+    'Pending Completion': '🕐',
+    'Completed':          '✅',
+    'Cancelled':          '🚫',
+    'Delayed':            '⚠️',
+};
+
+// Fills (or hides) the modal's Report Status section. The section only exists
+// for a road report that has been verified and turned into a real CIMM report
+// — until then there is no report to show a status for or link to, so it stays
+// hidden. report_status / report_page are computed server-side (see
+// computeReportStatus() + rmReportPageForStatus() above).
+function applyRoadReportStatus(data) {
+    const section = document.getElementById('rmReportStatusSection');
+    if (!section) return;
+
+    const status = (data.report_status || '').trim();
+    const repId  = parseInt(data.cimm_rep_id) || 0;
+    if (!status || repId <= 0) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+
+    const pill = document.getElementById('rmReportStatusPill');
+    if (pill) {
+        pill.textContent = (RM_REPORT_STATUS_ICON[status] || '📄') + ' ' + status;
+        pill.className   = 'report-status-pill ' + (RM_REPORT_STATUS_CLASS[status] || 'rsp-none');
+    }
+
+    const badge = document.getElementById('rmRepIdBadge');
+    if (badge) badge.textContent = '#REP-' + repId;
+
+    const engWrap = document.getElementById('rmReportEngineer');
+    const engName = (data.report_engineer_name || '').trim();
+    if (engWrap && engName) {
+        document.getElementById('rmReportEngineerName').textContent = engName;
+        const avatarEl = document.getElementById('rmEngAvatar');
+        if (avatarEl) {
+            const parts = engName.split(/\s+/);
+            avatarEl.textContent = parts.length >= 2
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                : parts[0].slice(0, 2).toUpperCase();
+        }
+        engWrap.style.display = '';
+    } else if (engWrap) {
+        engWrap.style.display = 'none';
+    }
+
+    const viewBtn = document.getElementById('rmViewReportBtn');
+    if (viewBtn) {
+        if (data.report_page) {
+            viewBtn.href = data.report_page + '?highlight_rep=' + repId + '&open_modal=1';
+            viewBtn.style.display = 'inline-flex';
+        } else {
+            viewBtn.style.display = 'none';
+        }
+    }
+}
+
 function openRoadReportModal(id) {
     const data = ALL_ROAD_REPORTS.find(r => r.id == id);
     if (!data) return;
@@ -1594,6 +1911,8 @@ function openRoadReportModal(id) {
         attGrid.style.display = 'none';
         noEvidence.style.display = '';
     }
+
+    applyRoadReportStatus(data);
 
     const footer = document.getElementById('rmModalFooter');
     if ((data.verification_status || 'Pending') === 'Verified') {
