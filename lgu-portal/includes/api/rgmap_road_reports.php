@@ -134,7 +134,7 @@ function rgmap_road_reports_verify(mysqli $conn, int $localId, string $verifiedB
     $stmt = $conn->prepare(
         "UPDATE rgmap_road_reports
          SET verification_status = 'Verified', verified_by = ?, verified_at = NOW()
-         WHERE id = ?"
+         WHERE id = ? AND verification_status = 'Pending'"
     );
     if (!$stmt) {
         return ['ok' => false, 'callback_ok' => false, 'error' => 'DB prepare error: ' . $conn->error];

@@ -125,19 +125,24 @@ try {
     $createdDate = $data['created_date'] ?? null;
     $submittedAt = $data['submitted_at'] ?? null;
 
+    // CIMM verification is a local staff action — always start inbound reports
+    // as Pending (UI: "Awaiting Verification"). Never read verification state
+    // from the RGMAP payload or rely on the column default (schema drift on
+    // existing installs silently auto-verified rows). Resyncs must not touch
+    // verification_status — see ON DUPLICATE KEY UPDATE below.
     $stmt = $conn->prepare("
         INSERT INTO rgmap_road_reports (
             rgmap_report_pk, rgmap_report_id, title, report_type, report_category,
             department, priority, status, severity, description, location,
             coord_lat, coord_lng, reporter_name, reporter_email, reporter_phone,
             attachments_json, portal_url, created_date, submitted_at,
-            payload_json, last_event
+            verification_status, payload_json, last_event
         ) VALUES (
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?
+            'Pending', ?, ?
         )
         ON DUPLICATE KEY UPDATE
             title = VALUES(title),
