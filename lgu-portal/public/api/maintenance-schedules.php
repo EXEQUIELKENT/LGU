@@ -7,6 +7,27 @@
 
 require_once __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/core/infra_type.php';
+
+/**
+ * Whether a maintenance category/task actually affects the facility's own
+ * usability, or is just work happening near it (roads, street lights,
+ * drainage) that resolveScheduleFacility()'s location-text matching pulled
+ * in. Reuses the same "roads" / "street lights" / "drainage" buckets
+ * cimm_normalize_infra_type() already applies to citizen reports elsewhere -
+ * this is the first place that taxonomy gets used to gate a facility status
+ * push instead of just a map filter label.
+ *
+ * Denylist, not allowlist: unrecognized/blank text defaults to true
+ * (affects facility) since an unknown category might genuinely be a real
+ * problem - only buckets positively identified as vicinity-only infra are
+ * excluded.
+ */
+function cimmCategoryAffectsFacility(string $category, string $task = ''): bool
+{
+    $bucket = cimm_normalize_infra_type(trim($category . ' ' . $task));
+    return !in_array($bucket, ['roads', 'street lights', 'drainage'], true);
+}
 
 // --- Integration config (override via server env when deployed) ---
 $CPRF_FACILITIES_API_URL = getenv('CPRF_FACILITIES_API_URL') ?: 'https://cprf.infragovservices.com/public/api/facilities-share.php?key=FACILITIES_SECURE_KEY_2025';
@@ -73,7 +94,7 @@ function cimmSaveWebhookState(string $path, array $state): void
     file_put_contents($path, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 }
 
-function sendFacilityStatusUpdate(string $scheduleKey, int $facilityId, string $facilityName, string $action, string $maintenanceStatus): bool
+function sendFacilityStatusUpdate(string $scheduleKey, int $facilityId, string $facilityName, string $action, string $maintenanceStatus, string $category = '', string $task = ''): bool
 {
     global $CPRF_WEBHOOK_URL, $CPRF_WEBHOOK_KEY, $WEBHOOK_STATE_FILE;
 
@@ -88,6 +109,11 @@ function sendFacilityStatusUpdate(string $scheduleKey, int $facilityId, string $
         'facility_name' => $facilityName,
         'maintenance_status' => $maintenanceStatus,
         'action' => $action,
+        // Lets CPRF independently verify this maintenance actually affects the
+        // facility itself (not just nearby infrastructure a location match
+        // pulled in) instead of trusting the action blindly.
+        'category' => $category,
+        'task' => $task,
     ];
 
     $ch = curl_init($CPRF_WEBHOOK_URL);
@@ -212,10 +238,11 @@ while ($row = $result->fetch_assoc()) {
     }
 
     $scheduleKey = 'S-' . (string)($row['sched_id'] ?? '0');
-    if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Delayed'], true)) {
-        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
+    if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Delayed'], true)
+        && cimmCategoryAffectsFacility((string)$row['category'], (string)($row['task'] ?? ''))) {
+        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel, (string)$row['category'], (string)($row['task'] ?? ''));
     } elseif ($facilityId > 0 && $statusLabel === 'Completed') {
-        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
+        sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed', (string)$row['category'], (string)($row['task'] ?? ''));
     }
 
     $data[] = [
@@ -314,10 +341,12 @@ if ($result2) {
         $facilityName = $facilityMatch['name'] ?? '';
         $facilityId = (int)($facilityMatch['facility_id'] ?? 0);
         $scheduleKey = 'R-' . (string)($rRow['rep_id'] ?? '0');
-        if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Scheduled', 'Delayed'], true)) {
-            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel);
+        $reportInfraType = (string)($rRow['infrastructure'] ?? '');
+        if ($facilityId > 0 && in_array($statusLabel, ['In Progress', 'Scheduled', 'Delayed'], true)
+            && cimmCategoryAffectsFacility('Infrastructure Report', $reportInfraType)) {
+            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'start_maintenance', $statusLabel, 'Infrastructure Report', $reportInfraType);
         } elseif ($facilityId > 0 && $statusLabel === 'Completed') {
-            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed');
+            sendFacilityStatusUpdate($scheduleKey, $facilityId, $facilityName, 'end_maintenance', 'completed', 'Infrastructure Report', $reportInfraType);
         }
 
         $data[] = [
