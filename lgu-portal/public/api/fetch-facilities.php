@@ -5,7 +5,7 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');

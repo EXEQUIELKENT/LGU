@@ -1,0 +1,36 @@
+# ! BUG FIX — citizenrepform.php lets a citizen attach up to 10 evidence
+# photos. On XAMPP/localhost, PHP's default post_max_size/upload_max_filesize
+# are generous (commonly 40M+), so that always worked in local testing. Most
+# live cPanel/shared-hosting PHP configs default much lower (often 8M or
+# 2M) — nowhere near enough for 10 real phone-camera photos. When a POST body
+# exceeds post_max_size, PHP silently empties BOTH $_POST and $_FILES with no
+# warning, so the submission looked like it had "no evidence image attached"
+# and nothing was ever written to the requests table — explaining why
+# multi-photo submissions never appeared on the admin requests.php page even
+# though the exact same flow worked locally.
+#
+# Values below are per-directory overrides (mod_php only — no effect, and no
+# harm, under php-fpm; ask hosting support to raise the equivalent pool
+# settings if this folder runs under FPM instead). Adjust the numbers to
+# whatever the host actually allows.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 32M
+    php_value post_max_size       48M
+    php_value max_file_uploads    12
+    php_value max_execution_time  60
+    php_value max_input_time      60
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 32M
+    php_value post_max_size       48M
+    php_value max_file_uploads    12
+    php_value max_execution_time  60
+    php_value max_input_time      60
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 32M
+    php_value post_max_size       48M
+    php_value max_file_uploads    12
+    php_value max_execution_time  60
+    php_value max_input_time      60
+</IfModule>

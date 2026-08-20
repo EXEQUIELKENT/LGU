@@ -1,6 +1,7 @@
 <?php
 session_start();
-require '../db.php';
+require __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/core/roles.php';
 
 header('Content-Type: application/json');
 
@@ -10,13 +11,15 @@ if (!isset($_SESSION['employee_id'])) {
 }
 
 $employeeId = $_SESSION['employee_id'];
-// Prefer the new key but remain backward-compatible if older session key exists
-$role       = $_SESSION['employee_role'] ?? ($_SESSION['role'] ?? '');
 
 // Role flags are kept for possible UI use, but queries will always be per-employee.
-$isAdmin   = ($role === 'Super Admin');
-$isManager = ($role === 'Manager');
-$isEngineer = ($role === 'Engineer');
+// (These 3 fields aren't currently read by any client-side code. Preserving
+// exact prior semantics rather than "fixing" them here: $isAdmin was always
+// Super-Admin-only despite its name — see cimm_is_super_admin() — and
+// $isManager can never be true since 'Manager' isn't a real DB enum value.)
+$isAdmin    = cimm_is_super_admin();
+$isManager  = false;
+$isEngineer = cimm_is_engineer();
 
 
 $input = json_decode(file_get_contents('php://input'), true);

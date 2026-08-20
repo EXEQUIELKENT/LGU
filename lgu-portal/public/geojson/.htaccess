@@ -1,0 +1,22 @@
+# ! BUG FIX — QuezonCity_Barangays.geojson loaded fine on XAMPP/localhost (Apache
+# serves any file extension by default) but silently failed to fetch on the
+# production domain, because ".geojson" has no registered MIME type there and
+# many hosts refuse/mis-serve unrecognized extensions. That made the citizen
+# report map's barangayGeoJSON stay null in production, forcing every district
+# border to fall back to an approximate 600m circle centered on a hardcoded
+# per-barangay point instead of the real polygon — explaining both the missing
+# district colors (only partially covered by the circle fallback) and the
+# inaccurate/"jumping" borders reported when panning to a new location.
+<IfModule mod_mime.c>
+    AddType application/geo+json .geojson
+    AddType application/json .geojson
+</IfModule>
+
+# Ensure the file isn't blocked by a "deny unknown extensions" host policy.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+    <!--
+      Shared gradient defs, referenced cross-document via CSS
+      `fill: url(icon-gradients.svg#id)` from emp-global.css (and any other
+      shared admin/citizen stylesheet) — keeps every bell icon instance
+      (desktop + mobile, one pair per admin page) pointed at ONE definition
+      instead of duplicating <defs> markup in ~24 separate inline SVGs.
+      A diagonal top-left → bottom-right sweep (pale highlight to deep gold
+      shadow) reads as a glossy, curved-metal surface catching light — the
+      "reflection" effect — without needing a separate highlight shape.
+    -->
+    <defs>
+        <linearGradient id="bellShellGrad" x1="15%" y1="5%" x2="85%" y2="100%">
+            <stop offset="0%"   stop-color="#fff8d6"/>
+            <stop offset="22%"  stop-color="#ffe066"/>
+            <stop offset="50%"  stop-color="#ffc107"/>
+            <stop offset="78%"  stop-color="#ffa000"/>
+            <stop offset="100%" stop-color="#f57600"/>
+        </linearGradient>
+        <linearGradient id="bellBallGrad" x1="15%" y1="0%" x2="85%" y2="100%">
+            <stop offset="0%"   stop-color="#fff8d6"/>
+            <stop offset="30%"  stop-color="#ffe066"/>
+            <stop offset="65%"  stop-color="#ffc107"/>
+            <stop offset="100%" stop-color="#f57600"/>
+        </linearGradient>
+    </defs>
+</svg>

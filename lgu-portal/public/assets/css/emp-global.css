@@ -1,0 +1,1871 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+
+/* =======================
+   CSS VARIABLES FOR THEME SUPPORT
+========================== */
+:root {
+    --sidebar-expanded: 260px;
+    --sidebar-collapsed: 72px;
+
+    --sb-accent:        #3762c8;
+    --sb-accent-glow:   rgba(55, 98, 200, 0.35);
+    --sb-accent-soft:   rgba(55, 98, 200, 0.10);
+    --sb-accent-mid:    rgba(55, 98, 200, 0.20);
+    --sb-gradient:      linear-gradient(135deg, #3762c8 0%, #5f8cff 100%);
+    --sb-gradient-warm: linear-gradient(135deg, #2e54b8 0%, #7b5cfa 100%);
+
+    --sb-bg:        rgba(255, 255, 255, 0.92);
+    --sb-border:    rgba(55, 98, 200, 0.12);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.18);
+    --sb-item-h:    46px;
+    --sb-radius:    14px;
+    --sb-text:      #1a2340;
+    --sb-muted:     #7a8aaa;
+    --sb-divider:   rgba(55, 98, 200, 0.12);
+}
+
+[data-theme="dark"] {
+    --sb-bg:        rgba(18, 22, 38, 0.96);
+    --sb-border:    rgba(95, 140, 255, 0.14);
+    --sb-shadow:    0 8px 40px rgba(0, 0, 0, 0.55);
+    --sb-text:      #e8edff;
+    --sb-muted:     #6b7a9a;
+    --sb-divider:   rgba(95, 140, 255, 0.12);
+    --sb-accent-soft: rgba(95, 140, 255, 0.12);
+    --sb-accent-mid:  rgba(95, 140, 255, 0.22);
+}
+
+/* Autofill — browsers hardcode a white/pale-yellow background on autofilled
+   fields that normal `background` CSS can't override, which flashed white
+   even in dark mode on every admin page (none of them had an override at
+   all). The inset-shadow trick is the standard workaround; using the theme
+   variables directly means one rule covers both themes instead of needing a
+   separate [data-theme="dark"] block. Unscoped (not tied to a specific
+   input-wrapper class) so it applies no matter how a given page wraps its
+   inputs. */
+input:-webkit-autofill, input:-webkit-autofill:hover,
+input:-webkit-autofill:focus, input:-webkit-autofill:active,
+textarea:-webkit-autofill, textarea:-webkit-autofill:hover, textarea:-webkit-autofill:focus,
+select:-webkit-autofill, select:-webkit-autofill:hover, select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-primary) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-secondary) inset !important;
+    box-shadow: 0 0 0 1000px var(--bg-secondary) inset !important;
+    caret-color: var(--text-primary);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Some browsers (Edge) inject their own native password-reveal icon inside
+   type="password" fields, which stacks visually with any custom eye-icon
+   toggle button the page already renders next to the field — showing two
+   overlapping eye icons. Hide the native one everywhere. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
+/* =======================
+   Custom SCROLLBAR STYLE
+========================== */
+body {
+    height: 100vh;
+    background: url("../img/cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
+    transition: background 0.3s ease;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+[data-theme="dark"] body::before {
+    background: rgba(0,0,0,0.6);
+}
+body, .main-content, .sidebar-top, .notif-dropdown-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9cafde rgba(0,0,0,0.07);
+}
+body::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.sidebar-top::-webkit-scrollbar,
+.notif-dropdown-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+body::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.sidebar-top::-webkit-scrollbar-track,
+.notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.07);
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.sidebar-top::-webkit-scrollbar-thumb,
+.notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #9cafde;
+    border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover,
+.sidebar-top::-webkit-scrollbar-thumb:hover,
+.notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #7a94c9;
+}
+[data-theme="dark"] body,
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .sidebar-top,
+[data-theme="dark"] .notif-dropdown-body {
+    scrollbar-color: #5f8cff rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-track,
+[data-theme="dark"] .main-content::-webkit-scrollbar-track,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-track,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb {
+    background: #5f8cff;
+}
+[data-theme="dark"] body::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .main-content::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .sidebar-top::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
+    background: #4a7aef;
+}
+@media (max-width: 768px) {
+    .main-content, .main-content.expanded {
+        scrollbar-width: none;
+    }
+    .main-content::-webkit-scrollbar {
+        display: none !important;
+    }
+}
+/* =========================
+   DESKTOP NAV ↔ SIDEBAR SYNC (FIXED)
+========================= */
+.desktop-top-nav {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-expanded);
+    right: 0;
+    height: 50px;
+    background: var(--bg-secondary);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px var(--shadow-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 22px;
+    z-index: 3000;
+    transition: left 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
+}
+body.sidebar-collapsed .desktop-top-nav {
+    left: var(--sidebar-collapsed);
+}
+
+.desktop-top-nav .desktop-nav-inner {
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-expanded));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    transition: max-width 0.3s ease, padding 0.3s ease;
+    padding-left: 12px;
+}
+/* CIMM Label — brand wordmark styled as a compact badge/chip: blue-gradient
+   rounded rect, square icon token, bold white text — matching the badge
+   language used elsewhere in the app (.rgmap-sync-badge, .admin-badge,
+   .page-badge) but in brand blue rather than a status/role color, and in
+   a rounded-rect shape (not a full pill) to read as "brand", not "status". */
+.desktop-cimm-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.04em;
+    margin-right: auto;
+    background: linear-gradient(135deg, #3762c8, #1f3e99);
+    border-radius: 10px;
+    padding: 6px 13px 6px 6px;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35), 0 0 0 1px rgba(255,255,255,.12) inset;
+}
+.cimm-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .18);
+    font-size: 11px;
+    line-height: 1;
+}
+[data-theme="dark"] .desktop-cimm-label {
+    background: linear-gradient(135deg, #1f3e99, #14245c);
+    box-shadow: 0 3px 12px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14) inset;
+}
+[data-theme="dark"] .cimm-badge-icon {
+    background: rgba(255, 255, 255, .16);
+}
+
+/* Mobile CIMM label — same chip treatment, scaled down for the mobile
+   top nav (defined centrally here so every page — including sched.php,
+   which had no local rule for this at all — gets a consistent, styled
+   badge instead of relying on each page's own duplicated CSS). */
+.mobile-cimm-label {
+    position: absolute; left: 70px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 800; color: #fff;
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, #3762c8, #1f3e99);
+    border-radius: 9px;
+    padding: 4px 10px 4px 4px;
+    box-shadow: 0 2px 8px rgba(55,98,200,.35), 0 0 0 1px rgba(255,255,255,.12) inset;
+}
+.mobile-cimm-label .cimm-badge-icon {
+    width: 16px; height: 16px; border-radius: 5px; font-size: 9px;
+}
+[data-theme="dark"] .mobile-cimm-label {
+    background: linear-gradient(135deg, #1f3e99, #14245c);
+    box-shadow: 0 2px 10px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14) inset;
+}
+/* Dark Mode & Notification Buttons */
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(55, 98, 200, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+.nav-btn:hover {
+    background: rgba(55, 98, 200, 0.2);
+    transform: scale(1.05);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DAY/NIGHT TOGGLE — pill-shaped switch styled after a sky
+   (sun + shaded clouds, light mode) morphing into a night sky
+   (cratered moon + twinkling stars, dark mode). Used for both
+   #darkModeBtn (desktop top nav) and #mobileDarkModeBtn (mobile),
+   which share the exact same .dark-mode-btn markup/classes, so
+   this single block styles both automatically — including
+   on mobile, since no page overrides these rules any more
+   (any leftover per-page width/height overrides for
+   .mobile-dark-mode-btn have been reconciled to match).
+
+   Markup relied upon (already present on every admin page):
+     <button class="nav-btn dark-mode-btn" id="darkModeBtn">
+         <span class="dark-icon">🌙</span>
+         <span class="light-icon">☀️</span>
+     </button>
+   The two spans are repurposed as full-size crossfading
+   layers (sky vs night-sky) instead of literal emoji glyphs
+   — see the "display:block!important" rule below, which
+   overrides the inline style="display:none" baked into the
+   markup so CSS opacity (not JS-driven display swapping)
+   can animate the transition. admin_scripts.php has been
+   updated to match: it no longer sets .style.display on
+   these spans, leaving visibility entirely to [data-theme].
+
+   Each scene layer now carries its OWN cloud/star art built
+   entirely from ::before/::after on the two spans (no extra
+   markup needed): .light-icon gets a two-tone shaded cloud
+   cluster (bluish underside via ::before, white puffy tops via
+   ::after, drifting gently), and .dark-icon gets a starfield
+   (dots via ::before, twinkling sparkles via ::after — three of
+   them, faked from one glyph using text-shadow so no extra
+   elements are needed). The sliding knob (button::after) is the
+   sun in light mode and a moon with three shaded craters (layered
+   radial-gradients) in dark mode.
+═══════════════════════════════════════════════════════ */
+.nav-btn.dark-mode-btn {
+    width: 62px;
+    height: 30px;
+    padding: 0;
+    border-radius: 999px;
+    background: transparent;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(31,95,168,.35), inset 0 0 0 1px rgba(255,255,255,.10);
+    transition: box-shadow .5s ease;
+    backdrop-filter: none;
+    flex-shrink: 0;
+}
+[data-theme="dark"] .nav-btn.dark-mode-btn {
+    box-shadow: 0 2px 10px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.nav-btn.dark-mode-btn:hover  { background: transparent; transform: scale(1.04); }
+.nav-btn.dark-mode-btn:active { transform: scale(0.96); }
+
+/* The two state layers — each is a full sky/night-sky "scene" that
+   crossfades via opacity so the transition animates smoothly no matter
+   how different the two backgrounds are (gradients can't reliably
+   interpolate directly, but opacity always can). Each is now a
+   multi-stop gradient (several visible colour bands, not just two)
+   plus a soft radial "glow" seated behind the knob's resting spot,
+   so the scene reads as lit by the sun/moon rather than a flat wash. */
+.nav-btn.dark-mode-btn .dark-icon,
+.nav-btn.dark-mode-btn .light-icon {
+    display: block !important; /* override inline style="display:none" in markup */
+    position: absolute;
+    inset: 0;
+    font-size: 0;               /* hide the literal emoji glyph */
+    border-radius: inherit;
+    transition: opacity .5s ease;
+    pointer-events: none;
+}
+.nav-btn.dark-mode-btn .light-icon {
+    z-index: 2;
+    opacity: 1;
+    background:
+        radial-gradient(circle at 22% 38%, rgba(255,238,180,.45) 0%, transparent 42%),
+        radial-gradient(circle at 78% 55%, rgba(255,255,255,.5)  0%, transparent 55%),
+        linear-gradient(100deg, #2c72c4 0%, #4d9fe8 38%, #86d3ff 68%, #cdeeff 100%);
+}
+.nav-btn.dark-mode-btn .dark-icon {
+    z-index: 1;
+    opacity: 0;
+    background:
+        radial-gradient(circle at 78% 50%, rgba(130,150,200,.4) 0%, transparent 55%),
+        linear-gradient(100deg, #12142a 0%, #1f2340 35%, #2b2f52 65%, #3d4270 100%);
+}
+[data-theme="dark"] .nav-btn.dark-mode-btn .light-icon { opacity: 0; }
+[data-theme="dark"] .nav-btn.dark-mode-btn .dark-icon  { opacity: 1; }
+
+/* Clouds — two layered clusters for a puffy, shaded look instead of
+   flat dots: ::before is the bluish-grey "underside" shadow (slightly
+   larger, sitting low), ::after is the white highlighted tops directly
+   above it. A slow drift keeps the scene from feeling static. */
+.nav-btn.dark-mode-btn .light-icon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 70% 47%, rgba(146,182,222,.55) 0 6.5px, transparent 7.5px),
+        radial-gradient(circle at 80% 63%, rgba(146,182,222,.5)  0 7.5px, transparent 8.5px),
+        radial-gradient(circle at 91% 51%, rgba(146,182,222,.5)  0 5.5px, transparent 6.5px),
+        radial-gradient(circle at 84% 75%, rgba(146,182,222,.45) 0 4.5px, transparent 5.5px);
+}
+.nav-btn.dark-mode-btn .light-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 68% 42%, #fff 0 6px,   transparent 7px),
+        radial-gradient(circle at 78% 58%, #fff 0 7px,   transparent 8px),
+        radial-gradient(circle at 90% 45%, #fff 0 5px,   transparent 6px),
+        radial-gradient(circle at 82% 68%, #fff 0 4.5px, transparent 5.5px),
+        radial-gradient(circle at 74% 60%, #fff 0 4px,   transparent 5px);
+    animation: cloudDrift 6s ease-in-out infinite;
+}
+@keyframes cloudDrift {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(-1.5px); }
+}
+
+/* Stars — small dot field plus three twinkling sparkles (one real
+   "✦" glyph, two more faked via text-shadow at different offsets so
+   no extra markup is needed). Dots and sparkles twinkle on separate
+   timings so they don't pulse in unison. */
+.nav-btn.dark-mode-btn .dark-icon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 16% 28%, #fff 0 1.2px, transparent 2px),
+        radial-gradient(circle at 30% 68%, #fff 0 1px,   transparent 1.8px),
+        radial-gradient(circle at 12% 72%, #fff 0 1px,   transparent 1.6px),
+        radial-gradient(circle at 44% 22%, #fff 0 1.3px, transparent 2px),
+        radial-gradient(circle at 26% 48%, #fff 0 1px,   transparent 1.6px);
+    animation: starTwinkleDots 3.4s ease-in-out infinite;
+}
+.nav-btn.dark-mode-btn .dark-icon::after {
+    content: "✦";
+    position: absolute;
+    left: 20%; top: 26%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    line-height: 1;
+    color: #fff;
+    opacity: .95;
+    text-shadow: 15px 24px 0 rgba(255,255,255,.7), 4px 34px 0 rgba(255,255,255,.55);
+    animation: starTwinkleSparkle 2.4s ease-in-out infinite;
+}
+@keyframes starTwinkleDots {
+    0%, 100% { opacity: .6; }
+    50%      { opacity: 1; }
+}
+@keyframes starTwinkleSparkle {
+    0%, 100% { opacity: .55; }
+    50%      { opacity: 1; }
+}
+
+/* The sliding knob — sun in light mode, moon (with three shaded
+   craters) in dark mode. A single element on the button itself
+   (::after), always on top of both scene layers, sliding left/right
+   as the theme flips with a bouncy arc-hop-and-spin instead of a
+   flat linear slide. */
+.nav-btn.dark-mode-btn::after {
+    content: "";
+    position: absolute;
+    z-index: 3;
+    top: 2px;
+    left: 2px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #ffe9a8 0%, #ffb703 55%, #f08c00 100%);
+    box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    transition: left .5s cubic-bezier(.4,1.6,.6,1), background .45s ease, box-shadow .45s ease;
+}
+[data-theme="dark"] .nav-btn.dark-mode-btn::after {
+    left: 34px; /* 62 - 2 - 26 */
+    background:
+        radial-gradient(circle at 33% 30%, rgba(118,126,146,.65) 0 3px,   transparent 3.4px),
+        radial-gradient(circle at 62% 60%, rgba(118,126,146,.6)  0 2.6px, transparent 3px),
+        radial-gradient(circle at 70% 36%, rgba(118,126,146,.55) 0 1.8px, transparent 2.2px),
+        radial-gradient(circle at 66% 34%, #f5f7fb 0%, #dde1ea 55%, #b9bfcf 100%);
+    box-shadow:
+        inset -3px -2px 0 -1px rgba(140,145,160,.55),
+        inset 4px 5px 0 -3px rgba(140,145,160,.5),
+        inset -6px 4px 0 -4px rgba(140,145,160,.5),
+        0 1px 3px rgba(0,0,0,.5);
+}
+
+/* Arc-hop + spin + pop on the knob when actively toggled (JS adds
+   .active for ~500ms) — runs alongside the "left" slide above so the
+   sun/moon lifts off the track, spins over, and drops back down
+   instead of just sliding flat. Replaces the old plain scale-only pop. */
+.nav-btn.dark-mode-btn.active::after {
+    animation: dmKnobPop .5s cubic-bezier(.4,1.6,.6,1);
+}
+@keyframes dmKnobPop {
+    0%   { transform: translateY(0)    scale(1)    rotate(0deg); }
+    35%  { transform: translateY(-5px) scale(1.18) rotate(90deg); }
+    70%  { transform: translateY(-2px) scale(1.08) rotate(150deg); }
+    100% { transform: translateY(0)    scale(1)    rotate(180deg); }
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   NOTIFICATION BELL — circular glass-gradient button shared by
+   the desktop top nav (#notifBtn) and the mobile top nav
+   (#mobileNotifBtn), redesigned with a softer glassy surface, an
+   inset highlight ring, and a lift-on-hover for more depth.
+
+   IMPORTANT — animation target: every bit of motion (the new-
+   notification "ring" wobble and the per-click "pop") is applied
+   to the inner .notif-bell-icon span, never to the button itself.
+   The mobile button is vertically centred by its page layout via
+   `top:50%; transform:translateY(-50%)`, so animating the BUTTON's
+   own transform used to require re-declaring that translateY
+   offset inside every keyframe just to stop it snapping out of
+   place — a "position animation" that existed purely to patch
+   around itself. Animating the icon instead means the button's
+   box never moves, on mobile or desktop, so no such workaround
+   (and no separate mobile keyframes) are needed at all.
+═══════════════════════════════════════════════════════ */
+.nav-btn.notif-btn {
+    position: relative;
+    overflow: visible;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(55,98,200,.18), rgba(55,98,200,.05));
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.14), 0 1px 2px rgba(16,24,48,.06);
+    transition: background .3s ease, box-shadow .3s ease;
+}
+.nav-btn.notif-btn:hover {
+    background: linear-gradient(135deg, rgba(55,98,200,.28), rgba(55,98,200,.08));
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.22), 0 3px 10px rgba(55,98,200,.18);
+}
+[data-theme="dark"] .nav-btn.notif-btn {
+    background: linear-gradient(135deg, rgba(255,255,255,.11), rgba(255,255,255,.03));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 1px 2px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .nav-btn.notif-btn:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 3px 10px rgba(0,0,0,.35);
+}
+
+/* has-notif: soft red glow ring while there's something unread — a
+   static styling cue only, no animation, so it doesn't compete with
+   the badge's own pulse or distract during normal browsing. */
+.nav-btn.notif-btn.has-notif {
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.14), 0 0 0 3px rgba(233,68,68,.16);
+}
+.nav-btn.notif-btn.has-notif:hover {
+    box-shadow: inset 0 0 0 1px rgba(55,98,200,.22), 0 0 0 3px rgba(233,68,68,.22);
+}
+
+/* The bell glyph itself — an animated SVG (shell + a small clapper
+   "ball" that swings independently), based on a classic ring-bell
+   icon pattern. It's a dedicated layer so ring/click motion never
+   touches the button's own box (see comment block above); shell and
+   ball are filled solid yellow with a black outline, fixed for both
+   light & dark theme. */
+.notif-bell-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.notif-bell-icon .bell-icon-svg {
+    width: 42px;
+    height: 26px;
+    overflow: visible;
+    position: relative;
+    right: 2%; /* re-centres the bell within its non-square viewBox */
+}
+.notif-bell-icon .bell-icon__shell {
+    fill: #ffc107; /* fallback for the rare case the external gradient fails to load */
+    fill: url("../img/icon-gradients.svg#bellShellGrad");
+    stroke: #000;
+    stroke-width: 1;
+}
+.notif-bell-icon .bell-icon__ball {
+    fill: #ffc107;
+    fill: url("../img/icon-gradients.svg#bellBallGrad");
+    stroke: #000;
+    stroke-width: 0.75;
+}
+/* Resting tilt — a small permanent lean that both swing keyframes
+   below start and end on, so the bell settles back exactly here. */
+.notif-bell-icon .bell-icon__group {
+    transform-origin: 50% 2px;
+    transform: rotate(-8deg);
+}
+.notif-bell-icon .bell-icon__ball {
+    transform-origin: 50% 2px;
+    transform: translateX(-6.5%);
+}
+
+/* Swing: the shell rocks side to side while the clapper ball lags
+   and overshoots inside it, like a real bell being struck. Triggers
+   on hover/focus for discoverability, and on .ringing — added only
+   by JS when a genuinely new notification arrives via polling. */
+.notif-btn:hover .bell-icon__group,
+.notif-btn:focus-visible .bell-icon__group,
+.notif-btn.ringing .bell-icon__group {
+    animation: bellSwingGroup 2.3s ease-in-out;
+}
+.notif-btn:hover .bell-icon__ball,
+.notif-btn:focus-visible .bell-icon__ball,
+.notif-btn.ringing .bell-icon__ball {
+    animation: bellSwingBall 2.3s ease-in-out;
+}
+@keyframes bellSwingGroup {
+    0%, 100% { transform: rotate(-8deg); }
+    17.54%   { transform: rotate(0deg); }
+    35.08%   { transform: rotate(-20deg); }
+    48.24%   { transform: rotate(20deg); }
+    57.01%   { transform: rotate(-20deg); }
+    64.91%   { transform: rotate(8deg); }
+    74.55%   { transform: rotate(-15deg); }
+    78.94%   { transform: rotate(-7deg); }
+}
+@keyframes bellSwingBall {
+    0%, 100% { transform: translateX(-6.5%); }
+    17.54%   { transform: translateX(0%); }
+    21.93%   { transform: translateX(-1%); }
+    35.08%   { transform: translateX(11%); }
+    48.24%   { transform: translateX(-11%); }
+    52.63%   { transform: translateX(0%); }
+    59.64%   { transform: translateX(10%); }
+    68.41%   { transform: translateX(-11%); }
+    78.94%   { transform: translateX(11%); }
+    85.96%   { transform: translateX(-11%); }
+}
+
+/* clicked: brief icon pop + expanding ripple on every click, open or
+   close. The ripple lives on the button (::before, inset:0) so it
+   fills the circular button — but since it's a separate layer with
+   its own box, scaling it never moves the button itself either. */
+.notif-btn.clicked .notif-bell-icon {
+    animation: notifClickPop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes notifClickPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.8); }
+    65%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+.nav-btn.notif-btn.clicked::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(55,98,200,.35);
+    animation: notifRipple .5s ease-out;
+    pointer-events: none;
+}
+[data-theme="dark"] .nav-btn.notif-btn.clicked::before {
+    background: rgba(255,255,255,.22);
+}
+@keyframes notifRipple {
+    0%   { transform: scale(0.35); opacity: .65; }
+    100% { transform: scale(1.9);  opacity: 0; }
+}
+
+/* Base: keep the mobile button vertically centred via translateY(-50%)
+   at all times (its page layout positions it with top:50%). Nothing
+   here ever changes on ring/click any more — only hover/active need
+   to re-assert it so the base .nav-btn hover/active scale doesn't
+   replace it and snap the button out of place. */
+.mobile-notif-btn {
+    transform: translateY(-50%);
+}
+.mobile-notif-btn:hover {
+    background: rgba(55, 98, 200, 0.2);
+    transform: translateY(-50%);   /* preserve centering, no scale */
+}
+.mobile-notif-btn:active {
+    transform: translateY(-50%);   /* preserve centering, no scale */
+}
+
+/* Unread count pill — a small gradient badge "cut out" from the
+   button surface via a background-colour ring, so it reads as a
+   distinct layer sitting on top rather than a flat overlay. */
+.notif-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    background: linear-gradient(135deg, #ff6b6b, #e63946);
+    color: #fff;
+    border-radius: 999px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 17px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(230,57,70,.45), 0 0 0 2px var(--bg-secondary, #fff);
+    display: none;
+}
+
+.notif-badge.show {
+    display: block;
+    animation: badgeBounceIn .8s cubic-bezier(.34,1.56,.64,1) both,
+               pulse 1.6s ease-in-out .8s infinite;
+}
+
+@keyframes badgeBounceIn {
+    0%   { transform: scale(0); }
+    14%  { transform: scale(1.15); }
+    28%  { transform: scale(1); }
+    42%  { transform: scale(1.15); }
+    70%  { transform: scale(1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.12); opacity: 0.88; }
+}
+
+/* Notification Dropdown — Redesigned */
+.notif-dropdown {
+    position: fixed;
+    top: 62px;
+    right: 18px;
+    width: 400px;
+    max-width: calc(100vw - 28px);
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 55px rgba(0,0,0,.2), 0 4px 16px rgba(0,0,0,.1), 0 0 0 1px rgba(0,0,0,.06);
+    z-index: 4500;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,.1);
+}
+
+.notif-dropdown.show {
+    display: flex;
+    animation: notifSlideIn .22s cubic-bezier(.34,1.4,.64,1) both;
+}
+
+@keyframes notifSlideIn {
+    from { opacity: 0; transform: translateY(-10px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 768px) {
+    .notif-dropdown { right: 8px; width: calc(100vw - 16px); top: 58px; }
+    .notif-dropdown.show { animation: none; }
+}
+
+/* Header */
+.notif-dropdown-header {
+    padding: 15px 18px 12px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f8f9fc;
+    flex-shrink: 0;
+}
+
+.notif-dropdown-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a2340;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.notif-header-icon { font-size: 15px; }
+
+.notif-unread-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3762c8, #5585f5);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 2px 7px;
+    min-width: 20px;
+    line-height: 1.4;
+}
+
+.notif-clear-btn {
+    background: none;
+    border: 1.5px solid rgba(55,98,200,.3);
+    color: #3762c8;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 11px;
+    border-radius: 20px;
+    transition: all .15s;
+    font-family: inherit;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.notif-clear-btn:hover {
+    background: rgba(55,98,200,.1);
+    border-color: #3762c8;
+}
+
+/* Body scroll area */
+.notif-dropdown-body {
+    overflow-y: auto;
+    max-height: 440px;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(55,98,200,.3) transparent;
+}
+
+.notif-dropdown-body::-webkit-scrollbar { width: 4px; }
+.notif-dropdown-body::-webkit-scrollbar-track { background: transparent; }
+.notif-dropdown-body::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 2px; }
+
+/* Empty state */
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #8896b0;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.notif-empty-icon { font-size: 34px; opacity: .35; }
+
+/* Date group label */
+.notif-date-group { padding: 10px 18px 4px; }
+
+.notif-date-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8896b0;
+}
+
+/* Notification item row */
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 11px 18px;
+    cursor: pointer;
+    position: relative;
+    transition: background .13s;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.notif-item:last-child { border-bottom: none; }
+
+.notif-item:hover { background: rgba(55,98,200,.05); }
+
+.notif-item.unread { background: rgba(55,98,200,.06); }
+
+.notif-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #3762c8, #5585f5);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Icon circle */
+.notif-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    background: rgba(55,98,200,.1);
+    margin-top: 1px;
+}
+
+.notif-icon-wrap.type-complete { background: rgba(46,125,50,.12); }
+.notif-icon-wrap.type-return   { background: rgba(239,68,68,.11); }
+.notif-icon-wrap.type-review   { background: rgba(255,152,0,.11); }
+.notif-icon-wrap.type-approved { background: rgba(55,98,200,.12); }
+.notif-icon-wrap.type-new      { background: rgba(124,58,237,.1); }
+
+/* Text content */
+.notif-content { flex: 1; min-width: 0; }
+
+.notif-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2340;
+    margin: 0 0 3px;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notif-item-desc {
+    font-size: 12px;
+    color: #5a6a8a;
+    margin: 0 0 4px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+
+
+.notif-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.notif-time-label {
+    font-size: 11px;
+    color: #8896b0;
+}
+
+/* Page indicator pill */
+.notif-page-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: .02em;
+    white-space: nowrap;
+    align-self: flex-start;
+    width: auto;
+    max-width: fit-content;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+.notif-page-pending  { background: rgba(255,152,0,.12);  color: #c25e00; }
+.notif-page-current  { background: rgba(55,98,200,.1);   color: #2a50a0; }
+.notif-page-archive  { background: rgba(46,125,50,.1);   color: #1b5e20; }
+.notif-page-requests { background: rgba(124,58,237,.1);  color: #5b21b6; }
+.notif-page-dashboard{ background: rgba(14,165,233,.1);  color: #0369a1; }
+.notif-page-road      { background: rgba(200,75,16,.12); color: #a83e0c; }
+
+/* Unread dot */
+.notif-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3762c8;
+    flex-shrink: 0;
+    margin-top: 6px;
+    box-shadow: 0 0 5px rgba(55,98,200,.5);
+    animation: unreadPulse 2s ease-in-out infinite;
+}
+
+@keyframes unreadPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .6; transform: scale(.8); }
+}
+
+/* ── Dark mode — true black, no blue tint ── */
+[data-theme="dark"] .notif-dropdown {
+    background: #111114;
+    border-color: rgba(255,255,255,.08);
+    box-shadow: 0 20px 60px rgba(0,0,0,.8), 0 4px 16px rgba(0,0,0,.5);
+}
+
+[data-theme="dark"] .notif-dropdown-header {
+    background: #18181c;
+    border-bottom-color: rgba(255,255,255,.07);
+}
+
+[data-theme="dark"] .notif-dropdown-header h3 { color: #e8edff; }
+
+[data-theme="dark"] .notif-item {
+    border-bottom-color: rgba(255,255,255,.05);
+}
+
+[data-theme="dark"] .notif-item:hover    { background: rgba(255,255,255,.04); }
+[data-theme="dark"] .notif-item.unread   { background: rgba(95,140,255,.09); }
+
+[data-theme="dark"] .notif-item.unread::before {
+    background: linear-gradient(180deg, #5585f5, #7aabff);
+}
+
+[data-theme="dark"] .notif-item-title  { color: #e8edff; }
+[data-theme="dark"] .notif-item-desc   { color: #7a88a8; }
+[data-theme="dark"] .notif-time-label  { color: #5a6a8a; }
+[data-theme="dark"] .notif-date-label  { color: #5a6a8a; }
+[data-theme="dark"] .notif-empty       { color: #5a6a8a; }
+
+[data-theme="dark"] .notif-icon-wrap              { background: rgba(255,255,255,.07); }
+[data-theme="dark"] .notif-icon-wrap.type-complete{ background: rgba(46,125,50,.2);   }
+[data-theme="dark"] .notif-icon-wrap.type-return  { background: rgba(239,68,68,.18);  }
+[data-theme="dark"] .notif-icon-wrap.type-review  { background: rgba(255,152,0,.18);  }
+[data-theme="dark"] .notif-icon-wrap.type-approved{ background: rgba(95,140,255,.18); }
+[data-theme="dark"] .notif-icon-wrap.type-new     { background: rgba(124,58,237,.18); }
+
+[data-theme="dark"] .notif-unread-dot {
+    background: #7aabff;
+    box-shadow: 0 0 5px rgba(122,171,255,.5);
+}
+
+[data-theme="dark"] .notif-unread-count { background: linear-gradient(135deg,#3762c8,#5585f5); }
+
+[data-theme="dark"] .notif-clear-btn {
+    color: #7aabff;
+    border-color: rgba(95,140,255,.3);
+}
+[data-theme="dark"] .notif-clear-btn:hover {
+    background: rgba(95,140,255,.12);
+    border-color: #7aabff;
+}
+
+/* Page pills — dark mode */
+[data-theme="dark"] .notif-page-pending  { background: rgba(255,152,0,.15);  color: #ffb74d; }
+[data-theme="dark"] .notif-page-current  { background: rgba(95,140,255,.15); color: #7aabff; }
+[data-theme="dark"] .notif-page-archive  { background: rgba(76,175,80,.15);  color: #81c784; }
+[data-theme="dark"] .notif-page-requests { background: rgba(167,139,250,.15);color: #c4b5fd; }
+[data-theme="dark"] .notif-page-dashboard{ background: rgba(56,189,248,.15); color: #7dd3fc; }
+[data-theme="dark"] .notif-page-road      { background: rgba(251,146,60,.16); color: #fdba74; }
+
+/* Keep old group/time classes non-breaking */
+.notif-group { padding-top: 0; border-top: none; }
+.notif-group-title { display: none; }
+.notif-item-time { display: none; }
+
+.notif-dropdown.show {
+    display: flex;
+    animation: notifSlideIn .22s cubic-bezier(.34,1.4,.64,1) both;
+}
+
+@keyframes notifSlideIn {
+    from { opacity: 0; transform: translateY(-10px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 768px) {
+    .notif-dropdown { right: 8px; width: calc(100vw - 16px); top: 58px; }
+    .notif-dropdown.show { animation: none; }
+}
+
+/* Header */
+.notif-dropdown-header {
+    padding: 15px 18px 12px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: linear-gradient(135deg, rgba(55,98,200,.07), rgba(55,98,200,.03));
+    flex-shrink: 0;
+}
+
+.notif-dropdown-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.notif-header-icon { font-size: 15px; }
+
+.notif-unread-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3762c8, #5585f5);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 2px 7px;
+    min-width: 20px;
+    line-height: 1.4;
+}
+
+.notif-clear-btn {
+    background: none;
+    border: 1.5px solid rgba(55,98,200,.3);
+    color: #3762c8;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 11px;
+    border-radius: 20px;
+    transition: all .15s;
+    font-family: inherit;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.notif-clear-btn:hover {
+    background: rgba(55,98,200,.1);
+    border-color: #3762c8;
+}
+
+/* Body scroll area */
+.notif-dropdown-body {
+    overflow-y: auto;
+    max-height: 440px;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(55,98,200,.3) transparent;
+}
+
+.notif-dropdown-body::-webkit-scrollbar { width: 4px; }
+.notif-dropdown-body::-webkit-scrollbar-track { background: transparent; }
+.notif-dropdown-body::-webkit-scrollbar-thumb { background: rgba(55,98,200,.3); border-radius: 2px; }
+
+/* Empty state */
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.notif-empty-icon { font-size: 34px; opacity: .35; }
+
+/* Date group label */
+.notif-date-group { padding: 10px 18px 4px; }
+
+.notif-date-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-secondary);
+    opacity: .6;
+}
+
+/* Notification item row */
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 11px 18px;
+    cursor: pointer;
+    position: relative;
+    transition: background .13s;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notif-item:last-child { border-bottom: none; }
+
+.notif-item:hover { background: rgba(55,98,200,.05); }
+
+.notif-item.unread {
+    background: rgba(55,98,200,.07);
+}
+
+.notif-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #3762c8, #5585f5);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Icon circle */
+.notif-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    background: rgba(55,98,200,.1);
+    margin-top: 1px;
+}
+
+.notif-icon-wrap.type-complete { background: rgba(46,125,50,.12); }
+.notif-icon-wrap.type-return   { background: rgba(239,68,68,.11); }
+.notif-icon-wrap.type-review   { background: rgba(255,152,0,.11); }
+.notif-icon-wrap.type-approved { background: rgba(55,98,200,.12); }
+.notif-icon-wrap.type-new      { background: rgba(124,58,237,.1); }
+
+/* Text content */
+.notif-content { flex: 1; min-width: 0; }
+
+.notif-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 3px;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notif-item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 4px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.notif-item-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: .65;
+}
+
+/* Unread dot */
+.notif-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3762c8;
+    flex-shrink: 0;
+    margin-top: 6px;
+    box-shadow: 0 0 5px rgba(55,98,200,.5);
+    animation: unreadPulse 2s ease-in-out infinite;
+}
+
+@keyframes unreadPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .6; transform: scale(.8); }
+}
+
+
+/* Keep old group/time classes non-breaking for any existing pages */
+.notif-group { padding-top: 0; border-top: none; }
+.notif-group-title { display: none; }
+.notif-item-time { display: none; }
+
+.desktop-top-nav .clock-timezone {
+    display: none;
+}
+
+body.sidebar-collapsed .desktop-top-nav .desktop-nav-inner {
+    max-width: calc(100vw - var(--sidebar-collapsed));
+}
+
+body.sidebar-collapsed .desktop-clock {
+    transform: translateX(-6px);
+}
+
+.desktop-clock {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    whitespace: nowrap;
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.desktop-clock .date-part {
+    opacity: 0.6;
+    font-weight: 400;
+}
+
+.desktop-clock .time-part {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.time-part span {
+    display: inline-block;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.time-part.flip span {
+    transform: translateY(-4px);
+    opacity: 0.6;
+}
+
+.desktop-clock::after {
+    content: "Server time";
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.desktop-clock:hover::after {
+    opacity: 1;
+}
+
+.clock-timezone {
+    margin-left: 6px;
+    font-size: 12px;
+    opacity: 0.65;
+    font-weight: 500;
+}
+
+/* Push main content down to avoid overlap */
+.main-content {
+    margin-left: calc(var(--sidebar-expanded) + 20px);
+    margin-right: 18px;
+    padding-top: 80px;
+    height: calc(100vh); /* account for top nav */ 
+    box-sizing: border-box;
+    display: flex;
+    transition: margin-left 0.3s ease;
+    overflow-y: auto;
+}
+
+.main-content.expanded {
+    margin-left: calc(var(--sidebar-collapsed) + 20px);
+}
+
+/* HIDE MOBILE TOP NAV ON DESKTOP */
+.mobile-top-nav {
+    display: none;
+}
+
+/* Z-INDEX LAYERING SAFETY */
+body {
+    height: 100vh;
+    background: url("../img/cityhall.jpeg") center center / cover no-repeat fixed;
+    position: relative;
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.35);
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+
+[data-theme="dark"] body::before {
+    background: rgba(0,0,0,0.6);
+}
+
+.sidebar-nav,
+.main-content,
+.mobile-top-nav {
+    position: relative;
+    z-index: 1;
+}
+.sidebar-profile-btn {
+    position: absolute;
+    top: 18px;
+    left: 15px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+    border: 1.5px solid rgba(59,130,246,.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    z-index: 1002;
+    outline: none;
+}
+[data-theme="dark"] .sidebar-profile-btn {
+    background: rgba(35,35,46,.95);
+    border-color: rgba(59,130,246,.4);
+}
+/* Highlight the sidebar profile-btn/avatar if on profile page */
+.sidebar-profile-btn.active,
+.profile-btn.active {
+    border: 1.5px solid #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.25) !important;
+}
+.sidebar-profile-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.profile-fallback-icon {
+    display: none;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+.profile-fallback-icon svg,
+.profile-fallback-icon img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 50%;
+}
+/* Show fallback when the real image is hidden or errors */
+.sidebar-profile-btn .profile-fallback-icon.visible {
+    display: flex;
+}
+
+.sidebar-profile-btn img {
+    position: relative;
+    z-index: 2;
+}
+.sidebar-profile-btn:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 10px rgba(59,130,246,.4);
+    transform: scale(1.12);
+}
+.sidebar-nav.collapsed .sidebar-profile-btn {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin: 52px auto 10px;
+}
+.sidebar-nav.collapsed .sidebar-top {
+    padding-top: 10px;
+}
+.sidebar-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    height: 100dvh; /* mobile browsers: 100vh includes space behind the collapsible address bar,
+                       which pushed the logout button (bottom of the sidebar) off-screen until
+                       the page was scrolled; dvh tracks the actual visible viewport instead */
+    background: var(--bg-secondary);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 25px var(--shadow-color);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0;
+    z-index: 1000;
+    transition: width 0.3s ease, left 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.sidebar-nav.collapsed {
+    width: 70px;
+}
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: 15px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, filter .25s ease;
+    z-index: 1003;
+    box-shadow: 0 3px 10px rgba(55,98,200,.35);
+    overflow: hidden;
+}
+.sidebar-toggle:hover {
+    transform: scale(1.1) translateY(-1px);
+    box-shadow: 0 5px 16px rgba(55,98,200,.5);
+    filter: brightness(1.08);
+}
+/* Click feedback: quick punch-in, then the bouncy transition above
+   springs it back out past 100% before settling — a lot more tactile
+   than a plain linear scale-down. */
+.sidebar-toggle:active {
+    transform: scale(0.82);
+    transition: transform .1s ease-out, box-shadow .1s ease-out;
+    box-shadow: 0 1px 4px rgba(55,98,200,.4);
+}
+.sidebar-nav.collapsed .sidebar-toggle {
+    right: 19px;
+}
+.toggle-icon {
+    transition: transform 0.45s cubic-bezier(.34,1.56,.64,1);
+}
+.sidebar-nav.collapsed .toggle-icon {
+    transform: rotate(180deg);
+}
+.sidebar-top {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    height: 100%;
+    padding: 20px 0;
+    overflow-y: auto;
+    position: relative;
+}
+.sidebar-logo-spacer {
+    height: 10px;
+    flex-shrink: 0;
+}
+.sidebar-nav .site-logo {
+    /* Extend the card frame UP and WIDE enough to actually contain the
+       profile button (top:18px, 42px tall, left:15px) and the sidebar
+       toggle (top:20px, 32px tall, right:15px) instead of sitting below
+       them. Both buttons are position:absolute with a higher z-index, so
+       they render visually "inside" this card's background/border once it
+       reaches up and out far enough — a negative margin-top pulls the box
+       above .sidebar-top's 20px padding, and the large top padding below
+       reserves room so the logo image itself still starts under the
+       buttons, not behind them. The margin-top/margin-left/margin-right
+       here are deliberately larger than the buttons' own inset (15px) so
+       there's a visible gap between the buttons and the frame edge instead
+       of the circles touching the border. */
+    margin-top: -12px;
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 40px 14px 20px;
+    width: calc(100% - 12px);
+    margin-left: 6px;
+    margin-right: 6px;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+    color: #fff;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(55,98,200,.18) 0%, rgba(55,98,200,.05) 100%);
+    border: 1px solid rgba(95,140,255,.25);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(55,98,200,.18), inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* Soft glow sitting behind the mark itself */
+.sidebar-nav .site-logo::before {
+    content: '';
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    width: 66px;
+    height: 66px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(95,140,255,.4) 0%, transparent 70%);
+    filter: blur(7px);
+    pointer-events: none;
+    z-index: 0;
+}
+.sidebar-nav .site-logo img {
+    width: 100px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 10px;
+    transition: all 0.3s ease, opacity 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+.sidebar-nav.collapsed .site-logo {
+    /* Collapsed state puts .sidebar-profile-btn back in normal flow above the
+       logo (see .sidebar-nav.collapsed .sidebar-profile-btn), so there's no
+       overlap to clear here — the large expanded-state margin-top would just
+       add an oversized gap. */
+    margin-top: 5px;
+    margin-left: 10px;
+    margin-right: 10px;
+    width: calc(100% - 20px);
+    margin-bottom: 0px;
+    padding: 10px 6px 8px;
+}
+.sidebar-nav.collapsed .site-logo::before {
+    width: 44px;
+    height: 44px;
+    top: 6px;
+}
+.sidebar-nav.collapsed .site-logo img {
+    opacity: 1;
+    visibility: visible;
+    width: 40px;
+    height: auto;
+}
+.sidebar-divider.logo-divider {
+    transition: opacity 0.3s ease, width 0.3s ease, margin 0.3s ease;
+    opacity: 1;
+    width: calc(100% - 50px);
+    margin: 8px 25px 0 25px;
+    border-bottom: none !important;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(95,140,255,.45) 50%, transparent);
+}
+.sidebar-nav.collapsed .sidebar-divider.logo-divider {
+    opacity: 1;
+    width: 40px;
+    margin: 5px 25px 0 25px;
+}
+.sidebar-nav .nav-list {
+    list-style: none;
+    font-size: 14px;
+    padding: 0 15px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 0;
+    flex-shrink: 0;
+    transition: padding 0.3s ease;
+}
+.sidebar-nav.collapsed .nav-list {
+    padding: 0 10px;
+}
+.sidebar-nav .nav-list li {
+    width: 100%;
+    margin: 2px 0;
+}
+.sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 10px 16px;
+    transition: transform .2s ease, background .2s ease, box-shadow .2s ease, color .2s ease;
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+.sidebar-nav .nav-link.active,
+.sidebar-nav .nav-link.active:hover {
+    background: linear-gradient(135deg, #3762c8, #5f8cff);
+    color: #fff;
+    transform: translateX(2px);
+    box-shadow: 0 3px 10px rgba(55,98,200,.35);
+}
+.sidebar-nav .nav-link:hover {
+    background: rgba(55,98,200,.1);
+    color: var(--text-primary);
+    transform: translateX(4px);
+}
+[data-theme="dark"] .sidebar-nav .nav-link:hover {
+    background: rgba(95,140,255,.16);
+}
+.sidebar-nav.collapsed .nav-link {
+    justify-content: center;
+    padding: 12px 10px;
+    position: relative;
+}
+.sidebar-nav.collapsed .nav-link span:last-child {
+    display: none;
+}
+.sidebar-nav.collapsed .nav-link:hover {
+    transform: translateX(0) scale(1.08);
+}
+.sidebar-tooltip-pop {
+    position: fixed;
+    z-index: 5555;
+    left: 85px;
+    top: 0;
+    background: #3762c8;
+    color: #fff;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 6px 24px rgba(41,87,179,0.13);
+    white-space: nowrap;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.24s, transform 0.23s;
+    transform: translateY(-50%) scale(0.97);
+    display:none;
+    letter-spacing: 0.03em;
+}
+.sidebar-tooltip-pop.active {
+    opacity: 1;
+    display: block;
+    transform: translateY(-50%) scale(1.03);
+}
+.sidebar-tooltip-pop::before {
+    content:"";
+    position:absolute;
+    left:-8px;
+    top:50%;
+    transform:translateY(-50%);
+    border-width:8px 8px 8px 0;
+    border-style:solid;
+    border-color:transparent #3762c8 transparent transparent;
+}
+.sidebar-divider {
+    border-bottom: 2px solid rgba(0, 0, 0, 0.551);
+    width: calc(100% - 50px);
+    margin: 20px 25px 0 25px;
+    transition: all 0.3s ease;
+}
+[data-theme="dark"] .sidebar-divider {
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+.sidebar-nav.collapsed .sidebar-divider {
+    width: calc(100% - 20px);
+    margin: 20px 10px 0 10px;
+}
+.sidebar-nav .user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+}
+.sidebar-nav .user-welcome,
+.sidebar-nav .user-rights {
+    text-align: center;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.sidebar-nav.collapsed .user-welcome {
+    display: none;
+}
+.sidebar-nav .logout-btn {
+    background: #3762c8;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s ease;
+    white-space: nowrap;
+    font-size: 16px;
+    min-width: 0;
+}
+.sidebar-nav.collapsed .logout-btn {
+    padding: 12px 4px !important;
+    width: 70%;
+    border-radius: 8px;
+    font-size: 0 !important;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    display: flex;
+}
+.sidebar-nav.collapsed .logout-btn::before {
+    content: "🚪";
+    font-size: 20px;
+    margin-right: 0;
+    display: inline-block;
+    line-height: 1;
+}
+.sidebar-nav .logout-btn:hover {
+    background: #3762c8;
+    color: #fff;
+    transform: translateY(-2px) scale(1.02);
+}
+.sidebar-nav.collapsed .logout-btn:hover {
+    transform: scale(1.08);
+    background: #2851b3;
+}
+.sidebar-nav.collapsed .logout-btn {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+.sidebar-nav.collapsed .logout-btn::after {
+    display: none;
+}
+.mobile-dark-mode-btn {
+    display: none;
+}
+.sidebar-tooltip-pop.logout-pop {
+    min-width: 120px;
+    max-width: 60vw;
+    white-space: normal;
+    text-align: center;
+    transition: none !important;
+}
+
+.mobile-dark-mode-btn {
+    display: none;
+}
+
+.notif-popup {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 280px;
+    max-width: 95vw;
+    padding: 18px 32px;
+    background: var(--bg-secondary);
+    border-radius: 13px;
+    box-shadow: 0 8px 38px var(--shadow-color);
+    z-index: 5001;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    opacity: 1;
+    transition: opacity .35s, background 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.notif-popup .notif-icon { font-size: 23px; }
+.notif-popup.notif-success { border-left: 5px solid #4fc97a; }
+.notif-popup.notif-error { border-left: 5px solid #d73f52; }
+.notif-popup.notif-warning { border-left: 5px solid #dda203; }
+.notif-popup.notif-info { border-left: 5px solid #527cdf; }
+
+.notif-popup .notif-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    margin-left: auto;
+    color: #888;
+    cursor: pointer;
+}
+
+.main-content::-webkit-scrollbar { 
+    width: 8px; 
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: rgba(55,98,200,0.3);
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+@media (min-width: 769px) and (max-width: 1200px) {
+    .desktop-top-nav {
+        padding: 0 16px;
+    }
+
+    .desktop-clock {
+        font-size: clamp(10px, 1vw, 13px);
+        white-space: nowrap;
+    }
+
+    .desktop-cimm-label {
+        font-size: 15px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1000px) {
+    .desktop-top-nav {
+        padding: 0 12px;
+    }
+
+    .desktop-clock {
+        font-size: 9px;
+        white-space: nowrap;
+    }
+
+    .desktop-cimm-label {
+        font-size: 13px;
+    }
+}

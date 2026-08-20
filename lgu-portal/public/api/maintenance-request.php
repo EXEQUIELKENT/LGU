@@ -40,8 +40,8 @@ if (!is_array($payload)) {
     exit;
 }
 
-require_once __DIR__ . '/../db.php';
-require_once __DIR__ . '/cimm_cprf_facilities.php';
+require_once __DIR__ . '/../../includes/config/db.php';
+require_once __DIR__ . '/../../includes/api/cimm_cprf_facilities.php';
 
 $catalog = cimm_fetch_cprf_facility_catalog(true);
 cimm_ensure_maintenance_schedule_schema($conn);

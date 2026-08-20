@@ -1,29 +1,9 @@
 <?php
-session_start();
-
-/* Destroy session */
-$_SESSION = [];
-session_destroy();
-
-/* Remove session cookie */
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
-    setcookie(
-        session_name(),
-        '',
-        time() - 42000,
-        $params["path"],
-        $params["domain"],
-        $params["secure"],
-        $params["httponly"]
-    );
-}
-
-/* Prevent caching */
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Pragma: no-cache");
-header("Expires: 0");
-
-/* ✅ Redirect with success flag */
-header("Location: login.php?logout=success");
+/**
+ * Compatibility redirect — this page moved to functionality/logout.php during the
+ * admin/citizen/functionality reorg. Kept here so old bookmarks and
+ * already-sent email links (see report_email.php, admin_create.php) don't 404.
+ */
+$qs = $_SERVER['QUERY_STRING'] ?? '';
+header('Location: functionality/logout.php' . ($qs !== '' ? '?' . $qs : ''));
 exit;
