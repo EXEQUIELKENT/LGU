@@ -213,7 +213,7 @@ if ($_engIsAreaEngineer && $_engUserId > 0) {
         <i class="fas fa-map-marker-alt"></i> No District Set
     </div>
     <div class="eng-warn-body">
-        Set your district in your <a href="profile.php#aeDistrictSection" style="color:#fff;text-decoration:underline;pointer-events:auto;">profile</a> to view and manage reports in your area.
+        Set your district in your <a href="<?= function_exists('cimm_url_attr') ? cimm_url_attr('profile.php', 'admin') : 'profile.php' ?>#aeDistrictSection" style="color:#fff;text-decoration:underline;pointer-events:auto;">profile</a> to view and manage reports in your area.
     </div>
 </div>
 

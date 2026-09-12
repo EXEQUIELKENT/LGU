@@ -476,7 +476,12 @@
 
     /* ── Page context (must match admin_chatbot.php's $allowedContexts) ── */
     function getCurrentPage() {
-        var path = window.location.pathname.toLowerCase();
+        // Prefer the real filename PHP hands us: pages are served under opaque
+        // URLs, so window.location.pathname no longer contains the page name and
+        // every lookup below would fall through to 'general', silently losing the
+        // chatbot's per-page context. Falls back to the path for any page that
+        // does not include admin_scripts.php.
+        var path = (window.CIMM_PAGE || window.location.pathname).toLowerCase();
         if (path.includes('employee.php'))         return 'dashboard';
         if (path.includes('requests.php'))          return 'requests';
         if (path.includes('current_reports.php'))   return 'current_reports';

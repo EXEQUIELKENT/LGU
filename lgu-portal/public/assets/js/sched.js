@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (profileIconBtn) {
         profileIconBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            window.location.href = 'profile.php';
+            window.location.href = window.CIMM_PROFILE_URL || 'profile.php';
         });
         profileIconBtn.addEventListener('mouseenter', navTooltipHandler);
         profileIconBtn.addEventListener('focus', navTooltipHandler);
