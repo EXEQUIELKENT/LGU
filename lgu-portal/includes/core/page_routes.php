@@ -333,6 +333,37 @@ if (!function_exists('cimm_url_attr')) {
 }
 
 /**
+ * cimm_url() with the query separator already attached, so the caller can
+ * concatenate raw "key=value" pairs onto the end:
+ *
+ *   fetch('<?= cimm_url_qs('emp_feedback.php', 'admin') ?>ajax=update')
+ *
+ * The separator depends on the routing mode, which is exactly why the call
+ * sites can't hardcode one:
+ *
+ *   off          emp_feedback.php?          -> emp_feedback.php?ajax=update
+ *   query        r.php?__h=<token>&         -> r.php?__h=<token>&ajax=update
+ *   path         <token>?                   -> <token>?ajax=update
+ *
+ * A target that already carries a query string gets '&' as well. Fragments
+ * are not supported here — a '#' has to stay last, and the caller appends
+ * after whatever this returns.
+ */
+if (!function_exists('cimm_url_qs')) {
+    function cimm_url_qs(string $target, ?string $dirOverride = null): string {
+        $url = cimm_url($target, $dirOverride);
+        return $url . (strpos($url, '?') === false ? '?' : '&');
+    }
+}
+
+/** cimm_url_qs() + htmlspecialchars, for building an href in markup. */
+if (!function_exists('cimm_url_qs_attr')) {
+    function cimm_url_qs_attr(string $target, ?string $dirOverride = null): string {
+        return htmlspecialchars(cimm_url_qs($target, $dirOverride), ENT_QUOTES, 'UTF-8');
+    }
+}
+
+/**
  * OPTIONAL, OFF BY DEFAULT — send a direct .php page hit to its token URL so
  * the real filename never survives in the address bar.
  *

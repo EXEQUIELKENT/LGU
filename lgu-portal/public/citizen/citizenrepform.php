@@ -79,7 +79,8 @@ function showNotification() {
         $trackLink = '';
         if ($type === 'success' && !empty($_SESSION['last_req_id'])) {
             $refId = (int)$_SESSION['last_req_id'];
-            $trackLink = "<a class='notif-track-link' href='<?= cimm_url_qs_attr('track_report.php') ?>ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
+            $trackHref = cimm_url_qs_attr('track_report.php');
+            $trackLink = "<a class='notif-track-link' href='{$trackHref}ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
         }
         // Success notifications stay on screen longer when there's a track
         // link to read/click, since they carry information the citizen needs.
