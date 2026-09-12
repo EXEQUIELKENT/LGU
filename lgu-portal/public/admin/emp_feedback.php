@@ -3007,7 +3007,7 @@ async function saveFeedbackUpdate(id) {
         fd.append('feedback_id', id);
         fd.append('status', status);
         fd.append('employee_notes', notes);
-        var resp = await fetch('emp_feedback.php?ajax=update', { method:'POST', body:fd });
+        var resp = await fetch('<?= cimm_url_qs('emp_feedback.php', 'admin') ?>ajax=update', { method:'POST', body:fd });
         var data = await resp.json();
         if (data.success) {
             closeDetail();
@@ -3053,7 +3053,7 @@ async function deleteFeedback(id) {
     fd.append('feedback_id', id);
     showFbkOverlay('Deleting Feedback…');
     try {
-        var resp = await fetch('emp_feedback.php?ajax=delete', { method:'POST', body:fd });
+        var resp = await fetch('<?= cimm_url_qs('emp_feedback.php', 'admin') ?>ajax=delete', { method:'POST', body:fd });
         var data = await resp.json();
         if (data.success) {
             closeDetail();

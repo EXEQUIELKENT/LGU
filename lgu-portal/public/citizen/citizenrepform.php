@@ -79,7 +79,7 @@ function showNotification() {
         $trackLink = '';
         if ($type === 'success' && !empty($_SESSION['last_req_id'])) {
             $refId = (int)$_SESSION['last_req_id'];
-            $trackLink = "<a class='notif-track-link' href='<?= cimm_url_attr('track_report.php') ?>?ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
+            $trackLink = "<a class='notif-track-link' href='<?= cimm_url_qs_attr('track_report.php') ?>ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
         }
         // Success notifications stay on screen longer when there's a track
         // link to read/click, since they carry information the citizen needs.
@@ -3733,7 +3733,7 @@ input[type="file"] {
     // see functionality/dpwh_roads.php) ──────────────────────────────────
     function loadDpwhRoads() {
         if (dpwhRoadsCache) return Promise.resolve(dpwhRoadsCache);
-        return fetch('../functionality/dpwh_roads.php')
+        return fetch('../functionality/<?= cimm_url('dpwh_roads.php', 'functionality') ?>')
             .then(r => { if (!r.ok) throw new Error('DPWH roads fetch failed: ' + r.status); return r.json(); })
             .then(data => {
                 const ways = (data.elements || []).filter(el => el.type === 'way' && Array.isArray(el.geometry) && el.geometry.length > 1);

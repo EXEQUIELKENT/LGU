@@ -2,7 +2,6 @@
 session_start();
 require __DIR__ . '/../../includes/config/db.php';
 require_once __DIR__ . '/../../includes/core/roles.php';
-require_once __DIR__ . '/../../includes/core/page_routes.php';
 
 header('Content-Type: application/json');
 
@@ -161,14 +160,7 @@ while ($row = $result->fetch_assoc()) {
         'id'           => $row['id'],
         'title'        => $row['title'],
         'description'  => $row['description'],
-        // Tokenised at render time, not in the DB: rows already stored (and
-        // every row written from here on, by notif_helper.php) keep their plain
-        // "current_reports.php?highlight_rep=12" form, so nothing needs
-        // migrating and an old row stays valid — while what the client
-        // actually navigates to is the opaque URL. 'admin' is passed
-        // explicitly because this script runs from public/api/, so the
-        // current-directory default would resolve against the wrong folder.
-        'url'          => cimm_url((string)$row['url'], 'admin'),
+        'url'          => $row['url'],
         'request_type' => $row['request_type'],
         'read'         => (bool)$row['is_read'],
         'time'         => $row['time'],

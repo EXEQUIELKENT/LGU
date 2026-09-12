@@ -4126,7 +4126,7 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
 
     async function fetchEngineerMetrics(engineerId) {
         try {
-            const res  = await fetch('../functionality/get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
+            const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineer_metrics.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             return data.success ? data.metrics : null;
         } catch(e) { return null; }
@@ -4134,7 +4134,7 @@ document.addEventListener('scroll', repositionOpenCombobox, true);
 
     async function fetchEngineerRating(engineerId) {
         try {
-            const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+            const res  = await fetch('<?= cimm_url_qs('archive_reports.php', 'admin') ?>ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             return data.success ? data : null;
         } catch(e) { return null; }

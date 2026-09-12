@@ -5,12 +5,6 @@ use PHPMailer\PHPMailer\Exception;
 // --- START SESSION FIRST (required for auth_config.php) ---
 session_start();
 
-// cimm_url()/cimm_url_attr() for this page's links. Required explicitly rather
-// than relying on auth_config.php (which loads it for every other citizen
-// page): the auth_config require below is inside a !$isLocalhost branch, so on
-// localhost it never runs and the helper would be undefined.
-require_once __DIR__ . '/../../includes/core/page_routes.php';
-
 // --- AUTH CONFIG BLOCK ---
 $localhostWhitelist = ['localhost', '127.0.0.1', '::1'];
 

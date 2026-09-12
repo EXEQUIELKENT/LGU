@@ -1362,7 +1362,7 @@ body {
             Feedback Form
         </div>
 
-        <form action="../functionality/handle_feedback.php" method="POST" enctype="multipart/form-data" id="feedbackForm">
+        <form action="../functionality/<?= cimm_url('handle_feedback.php', 'functionality') ?>" method="POST" enctype="multipart/form-data" id="feedbackForm">
 
             <div class="fbk-grid">
 

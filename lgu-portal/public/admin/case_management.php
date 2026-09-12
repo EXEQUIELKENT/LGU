@@ -1707,7 +1707,7 @@ async function exportCaseReport(btnEl) {
     btnEl.disabled = true;
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
     try {
-        const res = await fetch('../functionality/export_report_docx.php', {
+        const res = await fetch('../functionality/<?= cimm_url('export_report_docx.php', 'functionality') ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

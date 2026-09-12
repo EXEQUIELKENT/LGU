@@ -3744,7 +3744,7 @@ function openGalleryModal(images, index, requestId) {
 
     // Fire-and-forget: record this image view in the Requests History Logs.
     if (requestId) {
-        fetch('requests.php', {
+        fetch('<?= cimm_url('requests.php', 'admin') ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'log_image_view', req_id: parseInt(requestId) }),
@@ -3976,7 +3976,7 @@ function openRequestDetail(button) {
 
     // Fire-and-forget: record this view in the Requests History Logs.
     // keepalive lets it survive a modal close/navigation.
-    fetch('requests.php', {
+    fetch('<?= cimm_url('requests.php', 'admin') ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'table' }),
@@ -4171,7 +4171,7 @@ function openGisDetailModal(reqId) {
 
     // Fire-and-forget: record this view in the Requests History Logs.
     // keepalive lets it survive a modal close/navigation.
-    fetch('requests.php', {
+    fetch('<?= cimm_url('requests.php', 'admin') ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'gis_map' }),
@@ -4352,7 +4352,7 @@ async function exportRequestReport(view, btnEl) {
     btnEl.disabled = true;
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
     try {
-        const res = await fetch('../functionality/export_report_docx.php', {
+        const res = await fetch('../functionality/<?= cimm_url('export_report_docx.php', 'functionality') ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4376,7 +4376,7 @@ async function exportRequestReport(view, btnEl) {
         // Fire-and-forget: record this download in the Requests History Logs.
         const reqIdMatch = (payload.filename || '').match(/(\d+)/);
         if (reqIdMatch) {
-            fetch('requests.php', {
+            fetch('<?= cimm_url('requests.php', 'admin') ?>', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'log_word_download', req_id: parseInt(reqIdMatch[1], 10) }),
@@ -4580,7 +4580,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
 
     try {
         // ── 1. Validate request ──────────────────────────────────────────
-        const response = await fetch('../functionality/validate_request.php', {
+        const response = await fetch('../functionality/<?= cimm_url('validate_request.php', 'functionality') ?>', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({ req_id: parseInt(reqSnapshot.reqId, 10) })
         });
@@ -4612,7 +4612,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
                     );
                     if (isCancelled()) return; // discard — a fresh validate or a cancel already moved on
                     aiResult.req_id = reqId;
-                    const saveResp = await fetch('../functionality/save_ai_analysis.php', {
+                    const saveResp = await fetch('../functionality/<?= cimm_url('save_ai_analysis.php', 'functionality') ?>', {
                         method: 'POST', headers: {'Content-Type':'application/json'}, signal,
                         body: JSON.stringify(aiResult)
                     });
@@ -4694,7 +4694,7 @@ document.getElementById('rejectConfirmBtn').addEventListener('click', async () =
     showOverlay('Rejecting request');
 
     try {
-        const response = await fetch('../functionality/reject_request.php', {
+        const response = await fetch('../functionality/<?= cimm_url('reject_request.php', 'functionality') ?>', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({
                 req_id:  parseInt(currentRequestData.reqId, 10),

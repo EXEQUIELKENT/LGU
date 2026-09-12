@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         logoutConfirmBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.href = '../functionality/logout.php';
+            window.location.href = '../functionality/' + (window.CIMM_FN ? window.CIMM_FN.logout : 'logout.php');
         });
         logoutAlertBackdrop.addEventListener('mousedown', (e) => {
             if (e.target === logoutAlertBackdrop) {
@@ -3166,7 +3166,7 @@ let _schedEngCache = null;
 async function _schedLoadEngineers() {
     if (_schedEngCache !== null) return _schedEngCache;
     try {
-        const res  = await fetch('../functionality/get_engineers.php');
+        const res  = await fetch('../functionality/' + (window.CIMM_FN ? window.CIMM_FN.getEngineers : 'get_engineers.php'));
         const data = await res.json();
         _schedEngCache = (data.success && data.engineers.length) ? data.engineers : [];
     } catch(e) { _schedEngCache = []; }
@@ -3181,7 +3181,7 @@ async function schedOpenEngineerProfile(engineerId, statusKey) {
     eng = engineers.find(e => e.id == engineerId);
     if (!eng) {
         try {
-            const res  = await fetch('../functionality/get_engineers.php?id=' + encodeURIComponent(engineerId));
+            const res  = await fetch('../functionality/' + (window.CIMM_FN ? window.CIMM_FN.getEngineersQs : 'get_engineers.php?') + 'id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             if (data.success && data.engineers && data.engineers.length) {
                 eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
@@ -3337,7 +3337,7 @@ async function _schedPopulateEngModal(eng, statusKey) {
 
 async function _schedFetchMetrics(engineerId) {
     try {
-        const res  = await fetch('../functionality/get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
+        const res  = await fetch('../functionality/' + (window.CIMM_FN ? window.CIMM_FN.engineerMetricsQs : 'get_engineer_metrics.php?') + 'id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data.metrics : null;
     } catch(e) { return null; }

@@ -3531,7 +3531,7 @@ async function uploadFiles(files) {
         fd.append('log_date', logDate);
         fd.append('image',    file);
         try {
-            const res  = await fetch('pending_reports.php', { method:'POST', body: fd });
+            const res  = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', { method:'POST', body: fd });
             const data = await res.json();
             if (data.success) {
                 // Update in-memory daily_logs for this date
@@ -3595,7 +3595,7 @@ async function doSaveDesc() {
     btn.disabled = true;
     showRepOverlay('Saving & Sending Update');
     try {
-        const res  = await fetch('pending_reports.php', {
+        const res  = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc, day_number: currentDayIndex + 1})
         });
@@ -3673,7 +3673,7 @@ async function doRequestComplete() {
     // ── Step 1: Auto-save the current day's description if there is one ──────
     if (logDate && desc) {
         try {
-            await fetch('pending_reports.php', {
+            await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({action:'save_daily_log', rep_id: currentRepData.rep_id, log_date: logDate, description: desc, no_email: true})
             });
@@ -3691,7 +3691,7 @@ async function doRequestComplete() {
     // ── Step 2: Submit for admin review ──────────────────────────────────────
     updateRepOverlayText('Submitting for review');
     try {
-        const res  = await fetch('pending_reports.php', {
+        const res  = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'request_completion', rep_id: currentRepData.rep_id})
         });
@@ -3725,7 +3725,7 @@ async function doAdminComplete() {
     closeAdminCompleteConfirm();
     showRepOverlay('Confirming & Sending Completion Email');
     try {
-        const res  = await fetch('pending_reports.php', {
+        const res  = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'admin_complete', rep_id: repId})
         });
@@ -3811,7 +3811,7 @@ async function doAdminNotComplete() {
     const highlightDays = JSON.stringify(flaggedDays);
     closeAdminNotCompleteConfirm();
     try {
-        const res  = await fetch('pending_reports.php', {
+        const res  = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action:'admin_not_complete', rep_id: repId, return_note: returnNote, highlight_days: highlightDays})
         });
@@ -3957,7 +3957,7 @@ async function exportRepReport(btnEl) {
     btnEl.disabled = true;
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
     try {
-        const res = await fetch('../functionality/export_report_docx.php', {
+        const res = await fetch('../functionality/<?= cimm_url('export_report_docx.php', 'functionality') ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4292,7 +4292,7 @@ let engineersCache = null;
 async function loadEngineers() {
     if (engineersCache !== null) return engineersCache;
     try {
-        const res  = await fetch('../functionality/get_engineers.php');
+        const res  = await fetch('../functionality/<?= cimm_url('get_engineers.php', 'functionality') ?>');
         const data = await res.json();
         engineersCache = (data.success && data.engineers.length) ? data.engineers : [];
     } catch(e) { engineersCache = []; }
@@ -4307,7 +4307,7 @@ async function openEngineerProfileById(engineerId, repId = 0) {
     // (get_engineers.php bulk list may be restricted to manager/admin roles)
     if (IS_ENGINEER && engineerId == SELF_ENG_ID) {
         try {
-            const res  = await fetch('../functionality/get_engineers.php?id=' + encodeURIComponent(engineerId));
+            const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineers.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             if (data.success && data.engineers && data.engineers.length) {
                 eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
@@ -4334,7 +4334,7 @@ async function openEngineerProfileById(engineerId, repId = 0) {
         eng = engineers.find(e => e.id == engineerId);
         if (!eng) {
             try {
-                const res  = await fetch('../functionality/get_engineers.php?id=' + encodeURIComponent(engineerId));
+                const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineers.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
                 const data = await res.json();
                 if (data.success && data.engineers && data.engineers.length) {
                     eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
@@ -4668,7 +4668,7 @@ function renderProgressStrip(images) {
             if (!currentRepData) return;
             del.disabled=true; del.textContent='…';
             try {
-                const res = await fetch('pending_reports.php', {
+                const res = await fetch('<?= cimm_url('pending_reports.php', 'admin') ?>', {
                     method:'POST', headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({action:'delete_daily_image', rep_id: currentRepData.rep_id, img_path: src})
                 });
@@ -4807,7 +4807,7 @@ function renderProgressStrip(images) {
 
 async function fetchEngineerMetrics(engineerId) {
     try {
-        const res  = await fetch('../functionality/get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
+        const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineer_metrics.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data.metrics : null;
     } catch(e) { return null; }
@@ -4815,7 +4815,7 @@ async function fetchEngineerMetrics(engineerId) {
 
 async function fetchEngineerRating(engineerId) {
     try {
-        const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+        const res  = await fetch('<?= cimm_url_qs('archive_reports.php', 'admin') ?>ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data : null;
     } catch(e) { return null; }

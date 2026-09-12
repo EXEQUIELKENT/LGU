@@ -1835,7 +1835,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
         fd.append('check_email', '1');
         fd.append('email', email);
         try {
-            const res  = await fetch('admin_create.php', { method: 'POST', body: fd });
+            const res  = await fetch('<?= cimm_url('admin_create.php', 'admin') ?>', { method: 'POST', body: fd });
             const data = await res.json();
             return data;
         } catch (_) {

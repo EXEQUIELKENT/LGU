@@ -270,7 +270,7 @@ $exportReportIcon  = $exportReportIcon  ?? '📄';
             <p class="report-info-text">
                 You will be asked to confirm your password before the report is created.
             </p>
-            <form id="reportForm" action="../functionality/generate_report.php" method="POST" target="_blank" style="display:none">
+            <form id="reportForm" action="../functionality/<?= cimm_url('generate_report.php', 'functionality') ?>" method="POST" target="_blank" style="display:none">
                 <input type="hidden" name="report_type"   id="rptTypeInput" value="<?= htmlspecialchars($exportReportType) ?>">
                 <input type="hidden" name="format"        id="rptFormatInput">
                 <input type="hidden" name="date_from"     id="rptFromInput">
@@ -532,7 +532,7 @@ $exportReportIcon  = $exportReportIcon  ?? '📄';
 
         let resp;
         try {
-            resp = await fetch('../functionality/verify_password.php', {
+            resp = await fetch('../functionality/<?= cimm_url('verify_password.php', 'functionality') ?>', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
