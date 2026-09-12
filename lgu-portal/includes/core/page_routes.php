@@ -20,9 +20,10 @@
  * touching a single asset path.
  *
  * HOW A REQUEST IS SERVED
- *   .htaccess (per directory)  ^([A-Fa-f0-9]{16})$  ->  _r.php?__h=$1
- *   _r.php  resolves the token back to the real file and include()s it.
- * _r.php lives in the SAME directory as the page it serves, so __DIR__,
+ *   r.php?__h=<token>          resolves the token and include()s the page.
+ *   .htaccess (optional)       ^([A-Fa-f0-9]{16})$ -> r.php?__h=$1, which
+ *                              additionally allows the prettier /<token> form.
+ * r.php lives in the SAME directory as the page it serves, so __DIR__,
  * relative require_once and getcwd() all behave as if the page were hit
  * directly.
  *
@@ -72,10 +73,10 @@ if (!function_exists('cimm_route_dirs')) {
                 // Main LGU redirects straight here using the path stored in its
                 // connected_systems.sso_consume_path column.
                 'sso_consume.php',
-                '_r.php',
+                'r.php', '_r.php',
             ],
             'citizen' => [
-                '_r.php',
+                'r.php', '_r.php',
             ],
         ];
     }
@@ -115,22 +116,31 @@ if (!function_exists('cimm_route_secret')) {
 }
 
 /**
- * How (and whether) this directory can serve token URLs right now.
+ * The router filename, deliberately a plain name with no underscore prefix.
  *
- * This exists because a PARTIAL DEPLOY must never take the site down. Tokenised
- * links are only useful if the pieces that resolve them actually reached the
- * server, and the two pieces involved — "_r.php" and ".htaccess" — are exactly
- * the kind of files deployment tooling silently skips (dotfiles are hidden by
- * default in most FTP clients, and underscore-prefixed files are a common
- * exclude pattern). That happened on the live domain: the pages were uploaded
- * and started emitting tokens while _r.php had not been, so every link 404'd.
+ * This started life as "_r.php" and that is precisely why the live domain
+ * broke: the pages deployed (they are ordinary .php files) and began emitting
+ * tokens, while "_r.php" and ".htaccess" did not — dotfiles are hidden by
+ * default in most FTP clients and "_*" is a stock exclude pattern, so both
+ * were silently skipped and every tokenised link 404'd, including Log in.
+ * A normal filename deploys with everything else.
+ */
+if (!defined('CIMM_ROUTER_FILE')) {
+    define('CIMM_ROUTER_FILE', 'r.php');
+}
+
+/**
+ * How (and whether) this directory can serve token URLs right now, so that a
+ * PARTIAL DEPLOY can never take the site down.
  *
- * Returns one of:
- *   'pretty'  — _r.php and .htaccess both present: /citizen/<token>
- *   'query'   — _r.php present, .htaccess missing: /citizen/_r.php?__h=<token>
- *               (hides the page name just as well, and needs no mod_rewrite)
- *   'off'     — _r.php missing: fall back to the real .php URL, i.e. exactly
- *               how the site behaved before any of this existed
+ *   'pretty'  — router + .htaccess present: /citizen/<token>
+ *   'query'   — router only:                /citizen/r.php?__h=<token>
+ *               Hides the real page name just as well and needs no
+ *               mod_rewrite and no .htaccess — this is the default, because
+ *               it depends on nothing that deployment tooling skips.
+ *   'off'     — router missing: emit the real .php URL, i.e. exactly how the
+ *               site behaved before any of this existed. A page that never
+ *               received the router keeps working instead of 404ing.
  */
 if (!function_exists('cimm_route_mode')) {
     function cimm_route_mode(string $dir): string {
@@ -139,15 +149,29 @@ if (!function_exists('cimm_route_mode')) {
             return $cache[$dir];
         }
         $base = cimm_public_dir() . '/' . $dir;
-        if (!is_file($base . '/_r.php')) {
+
+        // Accept the old underscore name too, so an install that already has
+        // _r.php deployed keeps working without re-uploading anything.
+        $router = null;
+        foreach ([CIMM_ROUTER_FILE, '_r.php'] as $candidate) {
+            if (is_file($base . '/' . $candidate)) {
+                $router = $candidate;
+                break;
+            }
+        }
+        if ($router === null) {
             return $cache[$dir] = 'off';
         }
-        // The rewrite lives in this directory's .htaccess. Without it a bare
-        // token has nothing routing it, so use the query form instead.
-        if (!is_file($base . '/.htaccess')) {
-            return $cache[$dir] = 'query';
+
+        // Pretty (extensionless) URLs need the rewrite in this directory's
+        // .htaccess. Opt-in only: if .htaccess did not deploy, or the host
+        // ignores it, a bare token would have nothing routing it — so the
+        // query form, which cannot fail that way, is the default.
+        if (defined('CIMM_PRETTY_PAGE_URLS') && CIMM_PRETTY_PAGE_URLS === true
+            && is_file($base . '/.htaccess')) {
+            return $cache[$dir] = 'pretty';
         }
-        return $cache[$dir] = 'pretty';
+        return $cache[$dir] = 'query:' . $router;
     }
 }
 
@@ -277,7 +301,8 @@ if (!function_exists('cimm_url')) {
         $token = cimm_page_token($dir, $file);
         $base  = $prefix . ($sub !== '' ? $sub . '/' : '');
 
-        if ($mode === 'query') {
+        if (strncmp($mode, 'query', 5) === 0) {
+            $router = substr($mode, 6) ?: CIMM_ROUTER_FILE;
             // ?__h=<token> first, then any query the caller already had.
             $extra = '';
             if ($suffix !== '' && $suffix[0] === '?') {
@@ -291,9 +316,9 @@ if (!function_exists('cimm_url')) {
                     $hash  = substr($extra, $hp);
                     $extra = substr($extra, 0, $hp);
                 }
-                return $base . '_r.php?__h=' . $token . $extra . $hash;
+                return $base . $router . '?__h=' . $token . $extra . $hash;
             }
-            return $base . '_r.php?__h=' . $token . $extra;
+            return $base . $router . '?__h=' . $token . $extra;
         }
 
         return $base . $token . $suffix;

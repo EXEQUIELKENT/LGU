@@ -36,7 +36,7 @@
 </IfModule>
 
 # ── Opaque page URLs ──────────────────────────────────────────────────────
-# Serves /<16-hex-token> from this directory via _r.php, which resolves the
+# Serves /<16-hex-token> from this directory via r.php, which resolves the
 # token back to the real page. Only matches a bare 16-hex name, so it can
 # never shadow a real file (the RewriteCond makes that explicit). Real .php
 # URLs are intentionally left working — see includes/core/page_routes.php.
@@ -44,5 +44,5 @@
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^([A-Fa-f0-9]{16})$ _r.php?__h=$1 [QSA,L]
+    RewriteRule ^([A-Fa-f0-9]{16})$ r.php?__h=$1 [QSA,L]
 </IfModule>
