@@ -114,6 +114,43 @@ if (!function_exists('cimm_route_secret')) {
     }
 }
 
+/**
+ * How (and whether) this directory can serve token URLs right now.
+ *
+ * This exists because a PARTIAL DEPLOY must never take the site down. Tokenised
+ * links are only useful if the pieces that resolve them actually reached the
+ * server, and the two pieces involved — "_r.php" and ".htaccess" — are exactly
+ * the kind of files deployment tooling silently skips (dotfiles are hidden by
+ * default in most FTP clients, and underscore-prefixed files are a common
+ * exclude pattern). That happened on the live domain: the pages were uploaded
+ * and started emitting tokens while _r.php had not been, so every link 404'd.
+ *
+ * Returns one of:
+ *   'pretty'  — _r.php and .htaccess both present: /citizen/<token>
+ *   'query'   — _r.php present, .htaccess missing: /citizen/_r.php?__h=<token>
+ *               (hides the page name just as well, and needs no mod_rewrite)
+ *   'off'     — _r.php missing: fall back to the real .php URL, i.e. exactly
+ *               how the site behaved before any of this existed
+ */
+if (!function_exists('cimm_route_mode')) {
+    function cimm_route_mode(string $dir): string {
+        static $cache = [];
+        if (isset($cache[$dir])) {
+            return $cache[$dir];
+        }
+        $base = cimm_public_dir() . '/' . $dir;
+        if (!is_file($base . '/_r.php')) {
+            return $cache[$dir] = 'off';
+        }
+        // The rewrite lives in this directory's .htaccess. Without it a bare
+        // token has nothing routing it, so use the query form instead.
+        if (!is_file($base . '/.htaccess')) {
+            return $cache[$dir] = 'query';
+        }
+        return $cache[$dir] = 'pretty';
+    }
+}
+
 /** Token for a page, derived from "<dir>/<file>" so the same filename in two directories differs. */
 if (!function_exists('cimm_page_token')) {
     function cimm_page_token(string $dir, string $file): string {
@@ -232,8 +269,34 @@ if (!function_exists('cimm_url')) {
             return $target;                          // fail-safe: leave as-is
         }
 
+        $mode = cimm_route_mode($dir);
+        if ($mode === 'off') {
+            return $target;                          // router not deployed here
+        }
+
         $token = cimm_page_token($dir, $file);
-        return $prefix . ($sub !== '' ? $sub . '/' : '') . $token . $suffix;
+        $base  = $prefix . ($sub !== '' ? $sub . '/' : '');
+
+        if ($mode === 'query') {
+            // ?__h=<token> first, then any query the caller already had.
+            $extra = '';
+            if ($suffix !== '' && $suffix[0] === '?') {
+                $extra = '&' . substr($suffix, 1);
+            } elseif ($suffix !== '') {
+                $extra = $suffix;                    // bare #fragment
+            }
+            if ($extra !== '' && $extra[0] === '&') {
+                $hash = '';
+                if (($hp = strpos($extra, '#')) !== false) {
+                    $hash  = substr($extra, $hp);
+                    $extra = substr($extra, 0, $hp);
+                }
+                return $base . '_r.php?__h=' . $token . $extra . $hash;
+            }
+            return $base . '_r.php?__h=' . $token . $extra;
+        }
+
+        return $base . $token . $suffix;
     }
 }
 
