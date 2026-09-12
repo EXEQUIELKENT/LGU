@@ -10,6 +10,12 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
+// cimm_url()/cimm_url_attr() — opaque page URLs. Loaded here because every
+// citizen page already includes this file, so the helper is available to all
+// of them without touching each one individually.
+// See includes/core/page_routes.php.
+require_once __DIR__ . '/../core/page_routes.php';
+
 // ========================================
 // IP WHITELISTING + SECRET URL CONFIGURATION
 // ========================================

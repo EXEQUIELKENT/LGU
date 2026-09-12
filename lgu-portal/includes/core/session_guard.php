@@ -28,6 +28,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ── 1b. Opaque page URLs ──────────────────────────────────────────────────────
+// cimm_url()/cimm_url_attr(). Loaded here because every protected admin page
+// already includes this guard, so the helper is available to all of them
+// without touching each one. See includes/core/page_routes.php.
+require_once __DIR__ . '/page_routes.php';
+
 // ── 2. Timezone ───────────────────────────────────────────────────────────────
 date_default_timezone_set('Asia/Manila');
 

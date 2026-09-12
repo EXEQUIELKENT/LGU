@@ -403,9 +403,10 @@ function dashCaseTargetUrl(array $row): string {
     } else {
         $targetPage = 'pending_reports.php';
     }
-    return !empty($row['rep_id'])
+    // cimm_url() tokenises the page name and leaves the query string intact.
+    return cimm_url(!empty($row['rep_id'])
         ? "{$targetPage}?highlight_rep=" . (int)$row['rep_id']
-        : "{$targetPage}?highlight_req=" . (int)$row['req_id'];
+        : "{$targetPage}?highlight_req=" . (int)$row['req_id']);
 }
 
 // Recent Road Monitoring preview — top 5 most recent RGMAP reports
@@ -715,7 +716,7 @@ function upcomingMaintenanceHref(array $schedule): string
 {
     $source = $schedule['source'] ?? 'schedule';
     $id     = $source === 'report' ? (int)($schedule['rep_id'] ?? 0) : (int)($schedule['sched_id'] ?? 0);
-    return 'sched.php?highlight_source=' . urlencode($source) . '&highlight_id=' . $id;
+    return cimm_url('sched.php?highlight_source=' . urlencode($source) . '&highlight_id=' . $id);
 }
 
 // ===== SCHEDULE STATUS BREAKDOWN (for doughnut chart — mirrors sched.php logic) =====
