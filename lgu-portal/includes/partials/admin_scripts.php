@@ -1,19 +1,7 @@
 <script>
-/* ── Page identity + URLs for client-side code ────────────────────────────
-   Pages are served under opaque URLs (see includes/core/page_routes.php), so
-   the browser's path no longer contains the real filename. Any JS that needs
-   to know "which page am I on?" or wants to navigate to a page must be told
-   by PHP rather than parsing window.location:
-
-     CIMM_PAGE         real filename of the page being viewed. Correct under
-                       both a direct .php hit and a tokenised one, because the
-                       router restores PHP_SELF to the real page before
-                       including it.
-     CIMM_PROFILE_URL  tokenised link to the profile page, for the avatar
-                       button handlers (here and in assets/js/sched.js).
-*/
-window.CIMM_PAGE        = <?= json_encode(basename($_SERVER['PHP_SELF'] ?? ''), JSON_UNESCAPED_SLASHES) ?>;
-window.CIMM_PROFILE_URL = <?= json_encode(function_exists('cimm_url') ? cimm_url('profile.php', 'admin') : 'profile.php', JSON_UNESCAPED_SLASHES) ?>;
+/* CIMM_PAGE — filename of the page being viewed, for JS that has to know which
+   page it is on (see includes/partials/admin_chatbot_widget.php). */
+window.CIMM_PAGE = <?= json_encode(basename($_SERVER['PHP_SELF'] ?? ''), JSON_UNESCAPED_SLASHES) ?>;
 
 // Sidebar & Navigation Scripts
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -148,12 +136,7 @@ document.addEventListener('click', function(e) {
         // Also open if current page URL matches any sub-link href
         item.querySelectorAll('.nav-sub-link').forEach(function(link) {
             const href = link.getAttribute('href');
-            // Compare the href as-is first: under opaque page URLs the href is
-            // "r.php?__h=<token>", and stripping ".php" from that would leave
-            // "r?__h=...", which never matches the real location. The stripped
-            // form is kept as the fallback for plain .php links.
-            if (href && (window.location.href.includes(href) ||
-                         window.location.href.includes(href.replace('.php', '')))) {
+            if (href && window.location.href.includes(href.replace('.php', ''))) {
                 link.classList.add('active');
                 item.classList.add('open');
             }
@@ -226,7 +209,7 @@ const profileIconBtn = document.getElementById('profileIconBtn');
 if (profileIconBtn) {
     profileIconBtn.addEventListener('click', function(e) {
         e.preventDefault();
-        window.location.href = window.CIMM_PROFILE_URL || 'profile.php';
+        window.location.href = 'profile.php';
     });
 
     const engWarningPop = document.getElementById('engProfileWarningPop');

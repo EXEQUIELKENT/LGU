@@ -588,7 +588,7 @@
         STORAGE_STATE_KEY: 'chatbot_state_v4',
         MAX_MESSAGES:      60,
         AUTO_HIDE_CHIPS:   7000,
-        ENDPOINT: (window.CHATBOT_ENDPOINT || '../functionality/<?= cimm_url('chatbot.php', 'functionality') ?>')
+        ENDPOINT: (window.CHATBOT_ENDPOINT || '../functionality/chatbot.php')
     };
 
     /* ══════════════════════════════════════════════════════

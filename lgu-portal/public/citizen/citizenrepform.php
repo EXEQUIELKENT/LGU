@@ -79,7 +79,7 @@ function showNotification() {
         $trackLink = '';
         if ($type === 'success' && !empty($_SESSION['last_req_id'])) {
             $refId = (int)$_SESSION['last_req_id'];
-            $trackHref = cimm_url_qs_attr('track_report.php');
+            $trackHref = 'track_report.php?';
             $trackLink = "<a class='notif-track-link' href='{$trackHref}ref={$refId}'>Track this report (Ref #REQ-{$refId}) →</a>";
         }
         // Success notifications stay on screen longer when there's a track
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($__contentLength > 0 && empty($_POST) && empty($_FILES)) {
         $__postMax = ini_get('post_max_size') ?: 'the server limit';
         setNotification('error', "Your evidence photos are too large to submit together (server limit: {$__postMax}). Please attach fewer photos, or smaller ones, and try again.");
-        header("Location: " . cimm_url('citizenrepform.php'));
+        header("Location: " . 'citizenrepform.php');
         exit;
     }
 
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($consent_agree)) {
         setNotification('error', 'You must agree to the Terms and Conditions and Privacy Policy before submitting your request.');
-        header("Location: " . cimm_url('citizenrepform.php'));
+        header("Location: " . 'citizenrepform.php');
         exit;
     }
     elseif (!isset($_FILES['evidence']) ||
@@ -189,17 +189,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             count($_FILES['evidence']['name']) === 0 ||
             (count($_FILES['evidence']['name']) === 1 && empty($_FILES['evidence']['name'][0]))) {
         setNotification('error', 'At least one evidence image is required. Please upload or capture an image before submitting.');
-        header("Location: " . cimm_url('citizenrepform.php'));
+        header("Location: " . 'citizenrepform.php');
         exit;
     }
     elseif (!preg_match('/^09\d{9}$/', $pure_number)) {
         setNotification('error', 'Contact number must be 11 digits (09XX-XXX-XXXX) and start with 09.');
-        header("Location: " . cimm_url('citizenrepform.php'));
+        header("Location: " . 'citizenrepform.php');
         exit;
     }
     elseif (empty($infrastructure) || empty($location) || empty($issue) || empty($contact_number)) {
         setNotification('error', 'Infrastructure, Location, Issue, and Contact Number are required.');
-        header("Location: " . cimm_url('citizenrepform.php'));
+        header("Location: " . 'citizenrepform.php');
         exit;
     }
     else {
@@ -280,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $delete_stmt->close();
 
                         setNotification('error', 'Maximum of 10 images allowed.');
-                        header("Location: " . cimm_url('citizenrepform.php'));
+                        header("Location: " . 'citizenrepform.php');
                         exit;
                     }
 
@@ -325,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $delete_stmt->close();
 
                     setNotification('error', 'Failed to upload evidence images. Please try again with valid image files (JPG, JPEG, PNG, WEBP).');
-                    header("Location: " . cimm_url('citizenrepform.php'));
+                    header("Location: " . 'citizenrepform.php');
                     exit;
                 }
 
@@ -378,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'message' => 'Your request has been submitted successfully with ' . $uploaded_count . ' evidence image(s).'
                 ];
                 $_SESSION['last_req_id'] = $request_id;
-                header("Location: " . cimm_url('citizenrepform.php'));
+                header("Location: " . 'citizenrepform.php');
                 exit;
             }
             else {
@@ -1822,14 +1822,14 @@ input[type="file"] {
         <div class="nav-center">
             <div class="nav-links">
                 <?php if ($show_login): ?>
-                <a href="<?= cimm_url_attr('login.php') ?>" data-i18n="nav_login">Log in</a>
+                <a href="login.php" data-i18n="nav_login">Log in</a>
                 <?php endif; ?>
-                <a href="<?= cimm_url_attr('citizencimm.php') ?>" data-i18n="nav_home">Home</a>
-                <a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="nav_reports">Reports</a>
-                <a href="<?= cimm_url_attr('track_report.php') ?>" data-i18n="nav_track">Track</a>
+                <a href="citizencimm.php" data-i18n="nav_home">Home</a>
+                <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+                <a href="track_report.php" data-i18n="nav_track">Track</a>
                 <a href="#" class="active" data-i18n="nav_requests">Requests</a>
-                <a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="nav_feedback">Feedback</a>
-                <a href="<?= cimm_url_attr('about.php') ?>" data-i18n="nav_about">About</a>
+                <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
+                <a href="about.php" data-i18n="nav_about">About</a>
             </div>
             <div class="nav-divider"></div>
             <div class="nav-actions">
@@ -1862,14 +1862,14 @@ input[type="file"] {
             <div class="sidebar-logo-spacer"></div>
             <ul class="nav-list">
                 <?php if ($show_login): ?>
-                <li><a href="<?= cimm_url_attr('login.php') ?>" class="nav-link"><span><i class="fas fa-lock"></i></span><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="login.php" class="nav-link"><span><i class="fas fa-lock"></i></span><span data-i18n="nav_login">Log in</span></a></li>
                 <?php endif; ?>
-                <li><a href="<?= cimm_url_attr('citizencimm.php') ?>" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
-                <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
-                <li><a href="<?= cimm_url_attr('track_report.php') ?>" class="nav-link"><span><i class="fas fa-magnifying-glass-location"></i></span><span data-i18n="nav_track">Track</span></a></li>
+                <li><a href="citizencimm.php" class="nav-link"><span><i class="fas fa-home"></i></span><span data-i18n="nav_home">Home</span></a></li>
+                <li><a href="citizenreports.php" class="nav-link"><span><i class="fas fa-file-alt"></i></span><span data-i18n="nav_reports">Reports</span></a></li>
+                <li><a href="track_report.php" class="nav-link"><span><i class="fas fa-magnifying-glass-location"></i></span><span data-i18n="nav_track">Track</span></a></li>
                 <li><a href="#" class="nav-link active"><span><i class="fas fa-clipboard-list"></i></span><span data-i18n="nav_requests">Requests</span></a></li>
-                <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
-                <li><a href="<?= cimm_url_attr('about.php') ?>" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
+                <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
+                <li><a href="about.php" class="nav-link"><span><i class="fas fa-info-circle"></i></span><span data-i18n="nav_about">About</span></a></li>
             </ul>
         </div>
     </div>
@@ -3734,7 +3734,7 @@ input[type="file"] {
     // see functionality/dpwh_roads.php) ──────────────────────────────────
     function loadDpwhRoads() {
         if (dpwhRoadsCache) return Promise.resolve(dpwhRoadsCache);
-        return fetch('../functionality/<?= cimm_url('dpwh_roads.php', 'functionality') ?>')
+        return fetch('../functionality/dpwh_roads.php')
             .then(r => { if (!r.ok) throw new Error('DPWH roads fetch failed: ' + r.status); return r.json(); })
             .then(data => {
                 const ways = (data.elements || []).filter(el => el.type === 'way' && Array.isArray(el.geometry) && el.geometry.length > 1);
@@ -4490,12 +4490,12 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
         <div class="footer-links">
             <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= cimm_url_attr('citizencimm.php') ?>" data-i18n="footer_link_home">Home</a></li>
-                <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="footer_link_reports">Reports</a></li>
-                <li><a href="<?= cimm_url_attr('citizenrepform.php') ?>" data-i18n="footer_link_submit">Submit Request</a></li>
-                <li><a href="<?= cimm_url_attr('track_report.php') ?>" data-i18n="footer_link_track">Track My Report</a></li>
-                <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="footer_link_feedback">Feedback</a></li>
-                <li><a href="<?= cimm_url_attr('about.php') ?>" data-i18n="footer_link_about">About Us</a></li>
+                <li><a href="citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
+                <li><a href="citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         <div class="footer-links">
@@ -4510,8 +4510,8 @@ relation["name"]["building"~"^(commercial|retail|mall|supermarket|civic|public|u
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="<?= cimm_url_attr('privacy.php') ?>" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="<?= cimm_url_attr('termcon.php') ?>" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
                 <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
                 <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>

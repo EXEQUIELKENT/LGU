@@ -442,7 +442,7 @@
         STORAGE_STATE_KEY: 'admin_chatbot_state_v1',
         MAX_MESSAGES:      60,
         AUTO_HIDE_CHIPS:   7000,
-        ENDPOINT: (window.ADMIN_CHATBOT_ENDPOINT || '../functionality/<?= cimm_url('admin_chatbot.php', 'functionality') ?>')
+        ENDPOINT: (window.ADMIN_CHATBOT_ENDPOINT || '../functionality/admin_chatbot.php')
     };
 
     var WELCOME_TEXT =

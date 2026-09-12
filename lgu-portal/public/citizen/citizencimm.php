@@ -1329,14 +1329,14 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
     <div class="nav-center">
         <div class="nav-links">
             <?php if ($show_login): ?>
-                <a href="<?= cimm_url_attr('login.php') ?>" data-i18n="nav_login">Log in</a>
+                <a href="login.php" data-i18n="nav_login">Log in</a>
             <?php endif; ?>
             <a href="#" class="active" data-i18n="nav_home">Home</a>
-            <a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="nav_reports">Reports</a>
-            <a href="<?= cimm_url_attr('track_report.php') ?>" data-i18n="nav_track">Track</a>
-            <a href="<?= cimm_url_attr('citizenrepform.php') ?>" data-i18n="nav_requests">Requests</a>
-            <a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="nav_feedback">Feedback</a>
-            <a href="<?= cimm_url_attr('about.php') ?>" data-i18n="nav_about">About</a>
+            <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="track_report.php" data-i18n="nav_track">Track</a>
+            <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
+            <a href="about.php" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -1374,14 +1374,14 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         
         <ul class="nav-list">
             <?php if ($show_login): ?>
-                <li><a href="<?= cimm_url_attr('login.php') ?>" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
+                <li><a href="login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
             <li><a href="#" class="nav-link active"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= cimm_url_attr('track_report.php') ?>" class="nav-link"><i class="fas fa-magnifying-glass-location"></i><span data-i18n="nav_track">Track</span></a></li>
-            <li><a href="<?= cimm_url_attr('citizenrepform.php') ?>" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
-            <li><a href="<?= cimm_url_attr('about.php') ?>" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="track_report.php" class="nav-link"><i class="fas fa-magnifying-glass-location"></i><span data-i18n="nav_track">Track</span></a></li>
+            <li><a href="citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
+            <li><a href="about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -1423,7 +1423,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         <p class="hero-subtitle" data-i18n="hero_subtitle">Community Infrastructure Maintenance Management System</p>
         <p class="hero-tagline" data-i18n="hero_tagline">Empowering Quezon City residents with efficient, transparent, and responsive infrastructure services</p>
         <div class="hero-cta">
-            <a href="<?= cimm_url_attr('citizenrepform.php') ?>" class="cta-button cta-primary" data-i18n="cta_submit_report">Submit a Report</a>
+            <a href="citizenrepform.php" class="cta-button cta-primary" data-i18n="cta_submit_report">Submit a Report</a>
             <button type="button" class="cta-button cta-secondary guide-entry-btn" id="guideBtn" data-i18n="cta_guide">🗺️ Guide</button>
         </div>
     </section>
@@ -1494,31 +1494,31 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                 <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-clipboard-list"></i></div>
                 <h3 class="feature-title" data-i18n="feat1_title">Submit Requests</h3>
                 <p class="feature-description" data-i18n="feat1_desc">Report infrastructure concerns with detailed descriptions and photo evidence, ensuring fast and accurate response.</p>
-                <a href="<?= cimm_url_attr('citizenrepform.php') ?>" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
+                <a href="citizenrepform.php" class="feature-link" data-i18n="feat1_link">Submit Request →</a>
             </div>
             <div class="feature-card animate-on-scroll delay-2">
                 <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-chart-pie"></i></div>
                 <h3 class="feature-title" data-i18n="feat2_title">Track Maintenance</h3>
                 <p class="feature-description" data-i18n="feat2_desc">Monitor the status of maintenance schedules, view completed repairs, and stay informed about ongoing infrastructure improvements in your area.</p>
-                <a href="<?= cimm_url_attr('citizenreports.php') ?>" class="feature-link" data-i18n="feat2_link">View Reports →</a>
+                <a href="citizenreports.php" class="feature-link" data-i18n="feat2_link">View Reports →</a>
             </div>
             <div class="feature-card animate-on-scroll delay-3">
                 <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-map-marked-alt"></i></div>
                 <h3 class="feature-title" data-i18n="feat3_title">Location-Based Reporting</h3>
                 <p class="feature-description" data-i18n="feat3_desc">Use interactive maps and GPS-based tagging to accurately identify problem areas.</p>
-                <a href="<?= cimm_url_attr('citizenrepform.php') ?>" class="feature-link" data-i18n="feat3_link">Try It Now →</a>
+                <a href="citizenrepform.php" class="feature-link" data-i18n="feat3_link">Try It Now →</a>
             </div>
             <div class="feature-card animate-on-scroll delay-1">
                 <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-bolt"></i></div>
                 <h3 class="feature-title" data-i18n="feat4_title">Real-Time Updates</h3>
                 <p class="feature-description" data-i18n="feat4_desc">Receive instant notifications about report progress and maintenance activities.</p>
-                <a href="<?= cimm_url_attr('citizenreports.php') ?>" class="feature-link" data-i18n="feat4_link">Check Status →</a>
+                <a href="citizenreports.php" class="feature-link" data-i18n="feat4_link">Check Status →</a>
             </div>
             <div class="feature-card animate-on-scroll delay-2">
                 <div class="feature-icon" style="color: #042cb1;"><i class="fas fa-hands-helping"></i></div>
                 <h3 class="feature-title" data-i18n="feat5_title">Community Engagement</h3>
                 <p class="feature-description" data-i18n="feat5_desc">Encourage active participation of citizens in improving Quezon City's infrastructure through transparency and collaboration.</p>
-                <a href="<?= cimm_url_attr('about.php') ?>" class="feature-link" data-i18n="feat5_link">Learn More →</a>
+                <a href="about.php" class="feature-link" data-i18n="feat5_link">Learn More →</a>
             </div>
         </div>
     </section>
@@ -1558,7 +1558,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                     <?php endforeach; ?>
                 </ul>
                 <div style="text-align:center;margin-top:30px;">
-                    <a href="<?= cimm_url_attr('citizenreports.php') ?>" class="cta-button cta-primary" data-i18n="activity_view_all">View All Reports</a>
+                    <a href="citizenreports.php" class="cta-button cta-primary" data-i18n="activity_view_all">View All Reports</a>
                 </div>
             <?php else: ?>
                 <p style="text-align:center;color:var(--text-secondary);padding:40px;" data-i18n="activity_empty">No recent maintenance activities to display.</p>
@@ -1623,7 +1623,7 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
                     </div>
 
                     <div style="margin-top:50px;text-align:center;">
-                        <a href="<?= cimm_url_attr('about.php') ?>" class="cta-button cta-primary" data-i18n="about_learn_more">Learn More About Us</a>
+                        <a href="about.php" class="cta-button cta-primary" data-i18n="about_learn_more">Learn More About Us</a>
                     </div>
                 </div>
             </div>
@@ -1647,12 +1647,12 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         <div class="footer-links">
             <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= cimm_url_attr('citizencimm.php') ?>" data-i18n="footer_link_home">Home</a></li>
-                <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="footer_link_reports">Reports</a></li>
-                <li><a href="<?= cimm_url_attr('citizenrepform.php') ?>" data-i18n="footer_link_submit">Submit Request</a></li>
-                <li><a href="<?= cimm_url_attr('track_report.php') ?>" data-i18n="footer_link_track">Track My Report</a></li>
-                <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="footer_link_feedback">Feedback</a></li>
-                <li><a href="<?= cimm_url_attr('about.php') ?>" data-i18n="footer_link_about">About Us</a></li>
+                <li><a href="citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
+                <li><a href="citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         
@@ -1669,8 +1669,8 @@ $recent_maintenance = array_slice($recent_maintenance, 0, 5);
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="<?= cimm_url_attr('privacy.php') ?>" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="<?= cimm_url_attr('termcon.php') ?>" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
                 <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
                 <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>

@@ -2806,34 +2806,34 @@ tbody td {
         </div>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
-            <li><a href="<?= cimm_url_attr('employee.php') ?>" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
             <li><a href="#" class="nav-link active" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="<?= cimm_url_attr('case_management.php') ?>" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
                     <i class="fas fa-file-alt"></i><span>Reports</span>
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
-                    <li><a href="<?= cimm_url_attr('current_reports.php') ?>"  class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('pending_reports.php') ?>"  class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('archive_reports.php') ?>"  class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <li><a href="current_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php"  class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                     <?php if ($isAdmin): ?>
-                    <li><a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
-            <li><a href="<?= cimm_url_attr('sched.php') ?>" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('emp_feedback.php') ?>"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('admin_create.php') ?>" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('user_management.php') ?>" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
     </div>
@@ -3744,7 +3744,7 @@ function openGalleryModal(images, index, requestId) {
 
     // Fire-and-forget: record this image view in the Requests History Logs.
     if (requestId) {
-        fetch('<?= cimm_url('requests.php', 'admin') ?>', {
+        fetch('requests.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'log_image_view', req_id: parseInt(requestId) }),
@@ -3976,7 +3976,7 @@ function openRequestDetail(button) {
 
     // Fire-and-forget: record this view in the Requests History Logs.
     // keepalive lets it survive a modal close/navigation.
-    fetch('<?= cimm_url('requests.php', 'admin') ?>', {
+    fetch('requests.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'table' }),
@@ -4171,7 +4171,7 @@ function openGisDetailModal(reqId) {
 
     // Fire-and-forget: record this view in the Requests History Logs.
     // keepalive lets it survive a modal close/navigation.
-    fetch('<?= cimm_url('requests.php', 'admin') ?>', {
+    fetch('requests.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'log_view', req_id: parseInt(reqId), source: 'gis_map' }),
@@ -4352,7 +4352,7 @@ async function exportRequestReport(view, btnEl) {
     btnEl.disabled = true;
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
     try {
-        const res = await fetch('../functionality/<?= cimm_url('export_report_docx.php', 'functionality') ?>', {
+        const res = await fetch('../functionality/export_report_docx.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4376,7 +4376,7 @@ async function exportRequestReport(view, btnEl) {
         // Fire-and-forget: record this download in the Requests History Logs.
         const reqIdMatch = (payload.filename || '').match(/(\d+)/);
         if (reqIdMatch) {
-            fetch('<?= cimm_url('requests.php', 'admin') ?>', {
+            fetch('requests.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'log_word_download', req_id: parseInt(reqIdMatch[1], 10) }),
@@ -4580,7 +4580,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
 
     try {
         // ── 1. Validate request ──────────────────────────────────────────
-        const response = await fetch('../functionality/<?= cimm_url('validate_request.php', 'functionality') ?>', {
+        const response = await fetch('../functionality/validate_request.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({ req_id: parseInt(reqSnapshot.reqId, 10) })
         });
@@ -4612,7 +4612,7 @@ document.getElementById('validateConfirmBtn').addEventListener('click', async ()
                     );
                     if (isCancelled()) return; // discard — a fresh validate or a cancel already moved on
                     aiResult.req_id = reqId;
-                    const saveResp = await fetch('../functionality/<?= cimm_url('save_ai_analysis.php', 'functionality') ?>', {
+                    const saveResp = await fetch('../functionality/save_ai_analysis.php', {
                         method: 'POST', headers: {'Content-Type':'application/json'}, signal,
                         body: JSON.stringify(aiResult)
                     });
@@ -4694,7 +4694,7 @@ document.getElementById('rejectConfirmBtn').addEventListener('click', async () =
     showOverlay('Rejecting request');
 
     try {
-        const response = await fetch('../functionality/<?= cimm_url('reject_request.php', 'functionality') ?>', {
+        const response = await fetch('../functionality/reject_request.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
             body: JSON.stringify({
                 req_id:  parseInt(currentRequestData.reqId, 10),

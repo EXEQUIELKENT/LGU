@@ -1780,9 +1780,9 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         </div>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
-            <li><a href="<?= cimm_url_attr('employee.php') ?>" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
-            <li><a href="<?= cimm_url_attr('requests.php') ?>" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="<?= cimm_url_attr('case_management.php') ?>" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
 
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item open">
@@ -1792,26 +1792,26 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
-                    <li><a href="<?= cimm_url_attr('current_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('pending_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
                     <li><a href="#" class="nav-link nav-sub-link active"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                     <?php if ($isAdmin): ?>
-                    <li><a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
 
-            <li><a href="<?= cimm_url_attr('sched.php') ?>" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('emp_feedback.php') ?>"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('admin_create.php') ?>" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('user_management.php') ?>" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -1875,7 +1875,7 @@ const ACT_LATEST_LOG_ID = <?= (int)$actLatestLogId ?>;
         <i class="fas fa-exclamation-triangle"></i>
         <div>
             <strong>No district assigned</strong>
-            <span>Set your district in your <a href="<?= cimm_url_attr('profile.php') ?>#aeDistrictSection">profile</a> to view archived reports in your area.</span>
+            <span>Set your district in your <a href="profile.php#aeDistrictSection">profile</a> to view archived reports in your area.</span>
         </div>
     </div>
     <?php endif; ?>
@@ -2541,7 +2541,7 @@ async function exportRepReport(btnEl) {
     btnEl.disabled = true;
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
     try {
-        const res = await fetch('../functionality/<?= cimm_url('export_report_docx.php', 'functionality') ?>', {
+        const res = await fetch('../functionality/export_report_docx.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -3013,7 +3013,7 @@ let engineersCache = null;
 async function loadEngineers() {
     if (engineersCache !== null) return engineersCache;
     try {
-        const res  = await fetch('../functionality/<?= cimm_url('get_engineers.php', 'functionality') ?>');
+        const res  = await fetch('../functionality/get_engineers.php');
         const data = await res.json();
         engineersCache = (data.success && data.engineers.length) ? data.engineers : [];
     } catch(e) { engineersCache = []; }
@@ -3028,7 +3028,7 @@ async function openEngineerProfileById(engineerId, repId = 0) {
     // (get_engineers.php bulk list may be restricted to manager/admin roles)
     if (IS_ENGINEER && engineerId == SELF_ENG_ID) {
         try {
-            const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineers.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
+            const res  = await fetch('../functionality/get_engineers.php?id=' + encodeURIComponent(engineerId));
             const data = await res.json();
             if (data.success && data.engineers && data.engineers.length) {
                 eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
@@ -3055,7 +3055,7 @@ async function openEngineerProfileById(engineerId, repId = 0) {
         eng = engineers.find(e => e.id == engineerId);
         if (!eng) {
             try {
-                const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineers.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
+                const res  = await fetch('../functionality/get_engineers.php?id=' + encodeURIComponent(engineerId));
                 const data = await res.json();
                 if (data.success && data.engineers && data.engineers.length) {
                     eng = data.engineers.find(e => e.id == engineerId) || data.engineers[0];
@@ -3415,7 +3415,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function fetchEngineerMetrics(engineerId) {
     try {
-        const res  = await fetch('../functionality/<?= cimm_url_qs('get_engineer_metrics.php', 'functionality') ?>id=' + encodeURIComponent(engineerId));
+        const res  = await fetch('../functionality/get_engineer_metrics.php?id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data.metrics : null;
     } catch(e) { return null; }
@@ -3423,7 +3423,7 @@ async function fetchEngineerMetrics(engineerId) {
 
 async function fetchEngineerRating(engineerId) {
     try {
-        const res  = await fetch('<?= cimm_url_qs('archive_reports.php', 'admin') ?>ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
+        const res  = await fetch('archive_reports.php?ajax=engineer_rating&id=' + encodeURIComponent(engineerId));
         const data = await res.json();
         return data.success ? data : null;
     } catch(e) { return null; }

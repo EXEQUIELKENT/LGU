@@ -584,9 +584,9 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
         </div>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
-            <li><a href="<?= cimm_url_attr('employee.php') ?>" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
-            <li><a href="<?= cimm_url_attr('requests.php') ?>" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="<?= cimm_url_attr('case_management.php') ?>" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
+            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
+            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
@@ -595,11 +595,11 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
-                    <li><a href="<?= cimm_url_attr('current_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('pending_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('archive_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                     <?php if ($isAdmin): ?>
-                    <li><a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
@@ -607,13 +607,13 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <?php if ($isAdmin): ?>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('emp_feedback.php') ?>"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('admin_create.php') ?>" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('user_management.php') ?>" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -653,7 +653,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000; // ms
             <i class="fas fa-triangle-exclamation"></i>
             <div>
                 <strong>No district assigned</strong>
-                <span>Set your district in your <a href="<?= cimm_url_attr('profile.php') ?>#aeDistrictSection">profile</a> to view schedules in your area.</span>
+                <span>Set your district in your <a href="profile.php#aeDistrictSection">profile</a> to view schedules in your area.</span>
             </div>
         </div>
         <?php elseif ($isAreaEngineer && $aeHasDistrict): ?>

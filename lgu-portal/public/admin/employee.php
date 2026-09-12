@@ -403,10 +403,9 @@ function dashCaseTargetUrl(array $row): string {
     } else {
         $targetPage = 'pending_reports.php';
     }
-    // cimm_url() tokenises the page name and leaves the query string intact.
-    return cimm_url(!empty($row['rep_id'])
+    return !empty($row['rep_id'])
         ? "{$targetPage}?highlight_rep=" . (int)$row['rep_id']
-        : "{$targetPage}?highlight_req=" . (int)$row['req_id']);
+        : "{$targetPage}?highlight_req=" . (int)$row['req_id'];
 }
 
 // Recent Road Monitoring preview — top 5 most recent RGMAP reports
@@ -716,7 +715,7 @@ function upcomingMaintenanceHref(array $schedule): string
 {
     $source = $schedule['source'] ?? 'schedule';
     $id     = $source === 'report' ? (int)($schedule['rep_id'] ?? 0) : (int)($schedule['sched_id'] ?? 0);
-    return cimm_url('sched.php?highlight_source=' . urlencode($source) . '&highlight_id=' . $id);
+    return 'sched.php?highlight_source=' . urlencode($source) . '&highlight_id=' . $id;
 }
 
 // ===== SCHEDULE STATUS BREAKDOWN (for doughnut chart — mirrors sched.php logic) =====
@@ -3222,8 +3221,8 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
         <ul class="nav-list">
             <li><a href="#"  class="nav-link active" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
-            <li><a href="<?= cimm_url_attr('requests.php') ?>"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="<?= cimm_url_attr('case_management.php') ?>" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
+            <li><a href="requests.php"  class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="case_management.php" class="nav-link" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
@@ -3232,25 +3231,25 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
-                    <li><a href="<?= cimm_url_attr('current_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('pending_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
-                    <li><a href="<?= cimm_url_attr('archive_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                     <?php if ($isAdmin): ?>
-                    <li><a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
-            <li><a href="<?= cimm_url_attr('sched.php') ?>"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="sched.php"     class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('emp_feedback.php') ?>"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('admin_create.php') ?>" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="<?= cimm_url_attr('user_management.php') ?>" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -3306,7 +3305,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     <?php if ($aeHasDistrict): ?>
                         <span>Area Engineer view — showing data for <strong><?= htmlspecialchars($aeDistrict) ?></strong> only</span>
                     <?php else: ?>
-                        <span style="color:#ea580c;">No district assigned — <a href="<?= cimm_url_attr('profile.php') ?>#aeDistrictSection" style="color:#ea580c;text-decoration:underline;font-weight:700;">set your district</a> to see your data</span>
+                        <span style="color:#ea580c;">No district assigned — <a href="profile.php#aeDistrictSection" style="color:#ea580c;text-decoration:underline;font-weight:700;">set your district</a> to see your data</span>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
@@ -3314,7 +3313,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
             <!-- Metrics Grid -->
             <div class="metrics-grid">
-                <div class="metric-card blue"     data-href="<?= cimm_url_attr('requests.php') ?>"     tabindex="0" role="link">
+                <div class="metric-card blue"     data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Total Requests</div>
@@ -3328,7 +3327,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card orange"   data-href="<?= cimm_url_attr('requests.php') ?>"     tabindex="0" role="link">
+                <div class="metric-card orange"   data-href="requests.php"     tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Pending Requests</div>
@@ -3341,7 +3340,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card green"    data-href="<?= cimm_url_attr('archive_reports.php') ?>" tabindex="0" role="link">
+                <div class="metric-card green"    data-href="archive_reports.php" tabindex="0" role="link">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Completed Tasks<?= $isPersonalized ? ' (Mine)' : '' ?></div>
@@ -3355,7 +3354,7 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
                     </div>
                 </div>
 
-                <div class="metric-card purple"<?php if ($isAdmin): ?> data-href="<?= cimm_url_attr('user_management.php') ?>" style="cursor:pointer;"<?php endif; ?>>
+                <div class="metric-card purple"<?php if ($isAdmin): ?> data-href="user_management.php" style="cursor:pointer;"<?php endif; ?>>
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Active Users</div>
@@ -3372,22 +3371,22 @@ const SERVER_TIME = <?= $serverTimestamp ?> * 1000;
 
             <!-- Quick Actions -->
             <div class="quick-actions">
-                <a href="<?= cimm_url_attr('requests.php') ?>" class="action-btn">
+                <a href="requests.php" class="action-btn">
                     <div class="action-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div class="action-title">View Requests</div>
                     <div class="action-subtitle">Manage pending requests</div>
                 </a>
-                <a href="<?= cimm_url_attr('sched.php') ?>" class="action-btn">
+                <a href="sched.php" class="action-btn">
                     <div class="action-icon"><i class="fas fa-calendar-alt"></i></div>
                     <div class="action-title">Schedule</div>
                     <div class="action-subtitle">Maintenance calendar</div>
                 </a>
-                <a href="<?= cimm_url_attr('current_reports.php') ?>" class="action-btn">
+                <a href="current_reports.php" class="action-btn">
                     <div class="action-icon"><i class="fas fa-recycle"></i></div>
                     <div class="action-title">Current Reports</div>
                     <div class="action-subtitle">In-progress repairs</div>
                 </a>
-                <a href="<?= cimm_url_attr('pending_reports.php') ?>" class="action-btn">
+                <a href="pending_reports.php" class="action-btn">
                     <div class="action-icon"><i class="fas fa-hourglass-half"></i></div>
                     <div class="action-title">Pending Reports</div>
                     <div class="action-subtitle">Awaiting approval</div>
@@ -3415,13 +3414,13 @@ HTML;
             <div class="charts-grid">
                 <?php if ($isPersonalized): ?>
                 <!-- Schedule Status Breakdown Doughnut (top row for engineers / area engineers) -->
-                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('sched.php') ?>'">
+                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
                     <div class="chart-header sched-status-header">
                         <div style="min-width:0;flex:1;">
                             <div class="chart-title">Schedule Status<?= $isAreaEngineer && $aeHasDistrict ? ' (' . htmlspecialchars($aeDistrict) . ')' : ' (Mine)' ?></div>
                             <div class="chart-subtitle"><?= $isAreaEngineer ? 'Schedule breakdown for your district' : 'Your schedule breakdown' ?> — Scheduled, In Progress, Delayed &amp; Completed</div>
                         </div>
-                        <a href="<?= cimm_url_attr('sched.php') ?>" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
+                        <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
                     </div>
                     <div class="chart-container">
                         <canvas id="schedStatusChart"></canvas>
@@ -3455,7 +3454,7 @@ HTML;
                             <div class="chart-title">Upcoming Maintenance<?= $isAreaEngineer && $aeHasDistrict ? ' (' . htmlspecialchars($aeDistrict) . ')' : ' (Mine)' ?></div>
                             <div class="chart-subtitle"><?= $isAreaEngineer ? 'Next scheduled tasks in your district' : 'Next scheduled tasks assigned to you' ?></div>
                         </div>
-                        <a href="<?= cimm_url_attr('sched.php') ?>" class="view-all-link">View all →</a>
+                        <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
                     <div class="schedule-list">
                         <?php
@@ -3562,7 +3561,7 @@ HTML;
                             <div class="chart-title">Upcoming Maintenance</div>
                             <div class="chart-subtitle">Next scheduled tasks from schedule &amp; reports</div>
                         </div>
-                        <a href="<?= cimm_url_attr('sched.php') ?>" class="view-all-link">View all →</a>
+                        <a href="sched.php" class="view-all-link">View all →</a>
                     </div>
                     <div class="schedule-list">
                         <?php
@@ -3630,7 +3629,7 @@ HTML;
                             <div class="chart-title">Active Reports</div>
                             <div class="chart-subtitle">In-progress reports by priority &amp; assignment</div>
                         </div>
-                        <a href="<?= cimm_url_attr('current_reports.php') ?>" class="view-all-link">View all →</a>
+                        <a href="current_reports.php" class="view-all-link">View all →</a>
                     </div>
                     <div class="chart-container">
                         <canvas id="activeReportsChart"></canvas>
@@ -3650,13 +3649,13 @@ HTML;
                 <?= $requestTrendsCard ?>
                 <?php else: ?>
                 <!-- Schedule Status Breakdown Doughnut (bottom row for non-engineers) -->
-                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('sched.php') ?>'">
+                <div class="chart-card sched-status-card" id="schedStatusCard" style="cursor:pointer;" onclick="window.location.href='sched.php'">
                     <div class="chart-header sched-status-header">
                         <div style="min-width:0;flex:1;">
                             <div class="chart-title">Schedule Status</div>
                             <div class="chart-subtitle">Overall schedule breakdown — Scheduled, In Progress, Delayed &amp; Completed</div>
                         </div>
-                        <a href="<?= cimm_url_attr('sched.php') ?>" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
+                        <a href="sched.php" class="view-all-link" style="flex-shrink:0;white-space:nowrap;align-self:flex-start;" onclick="event.stopPropagation()">View all →</a>
                     </div>
                     <div class="chart-container">
                         <canvas id="schedStatusChart"></canvas>
@@ -3712,13 +3711,13 @@ HTML;
                  Maintenance grid above. -->
             <div class="charts-grid" style="margin-top: 20px;">
             <!-- Current Reports Preview -->
-            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('current_reports.php') ?>'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='current_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="<?= cimm_url_attr('current_reports.php') ?>" style="color:inherit;text-decoration:none;">Current Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-title"><a href="current_reports.php" style="color:inherit;text-decoration:none;">Current Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Active in-progress repair reports<?= $isPersonalized ? ' assigned to you' : '' ?></div>
                     </div>
-                    <a href="<?= cimm_url_attr('current_reports.php') ?>" class="view-all-link">View all →</a>
+                    <a href="current_reports.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php if (!empty($recentReportRows)): ?>
@@ -3733,7 +3732,7 @@ HTML;
                             $priorityColor  = $priorityColors[$priority] ?? '#2196f3';
                             $initial = substr($rep['infrastructure'] ?? 'R', 0, 1);
                         ?>
-                        <div class="activity-item" data-href="<?= cimm_url_attr('current_reports.php') ?>?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
+                        <div class="activity-item" data-href="current_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background: <?= $repColors[$repColorIndex % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3775,13 +3774,13 @@ HTML;
             </div>
 
             <!-- ── Pending Reports Preview ─────────────────────────────────── -->
-            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('pending_reports.php') ?>'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='pending_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="<?= cimm_url_attr('pending_reports.php') ?>" style="color:inherit;text-decoration:none;">Pending Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-title"><a href="pending_reports.php" style="color:inherit;text-decoration:none;">Pending Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Scheduled / In-progress reports awaiting completion<?= $isPersonalized ? ' assigned to you' : '' ?></div>
                     </div>
-                    <a href="<?= cimm_url_attr('pending_reports.php') ?>" class="view-all-link">View all →</a>
+                    <a href="pending_reports.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php if (!empty($recentPendingRows)): ?>
@@ -3818,7 +3817,7 @@ HTML;
                             $initial = strtoupper(substr($rep['infrastructure'] ?? 'R', 0, 1));
                             $hasEngineer = !empty($rep['engineer_id']) && trim($rep['engineer_name'] ?? '') !== '';
                         ?>
-                        <div class="activity-item" data-href="<?= cimm_url_attr('pending_reports.php') ?>?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
+                        <div class="activity-item" data-href="pending_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background:<?= $pColors[$pIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3861,13 +3860,13 @@ HTML;
             <!-- Archive Reports + Case Management — paired side-by-side. -->
             <div class="charts-grid" style="margin-top: 20px;">
             <!-- ── Archive Reports Preview ────────────────────────────────────── -->
-            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('archive_reports.php') ?>'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='archive_reports.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="<?= cimm_url_attr('archive_reports.php') ?>" style="color:inherit;text-decoration:none;">Archive Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
+                        <div class="chart-title"><a href="archive_reports.php" style="color:inherit;text-decoration:none;">Archive Reports<?= $isPersonalized ? ' (Mine)' : '' ?></a></div>
                         <div class="chart-subtitle">Completed &amp; cancelled reports<?= $isPersonalized ? ' you handled' : '' ?></div>
                     </div>
-                    <a href="<?= cimm_url_attr('archive_reports.php') ?>" class="view-all-link">View all →</a>
+                    <a href="archive_reports.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php if (!empty($recentArchiveRows)): ?>
@@ -3886,7 +3885,7 @@ HTML;
                             $engName = trim($rep['engineer_name'] ?? '');
                             $hasEngineer = !empty($rep['engineer_id']) && $engName !== '';
                         ?>
-                        <div class="activity-item" data-href="<?= cimm_url_attr('archive_reports.php') ?>?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
+                        <div class="activity-item" data-href="archive_reports.php?highlight_rep=<?= (int)$rep['rep_id'] ?>&open_modal=1" style="cursor:pointer;">
                             <div class="activity-avatar" style="background:<?= $aColors[$aIdx % 5] ?>">
                                 <?= htmlspecialchars($initial) ?>
                             </div>
@@ -3926,13 +3925,13 @@ HTML;
             </div>
 
             <!-- ── Case Management Preview ────────────────────────────────────── -->
-            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('case_management.php') ?>'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='case_management.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="<?= cimm_url_attr('case_management.php') ?>" style="color:inherit;text-decoration:none;">Case Management</a></div>
+                        <div class="chart-title"><a href="case_management.php" style="color:inherit;text-decoration:none;">Case Management</a></div>
                         <div class="chart-subtitle">Unified case lifecycle — intake through closure</div>
                     </div>
-                    <a href="<?= cimm_url_attr('case_management.php') ?>" class="view-all-link">View all →</a>
+                    <a href="case_management.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php if (!empty($recentCaseRows)): ?>
@@ -3978,13 +3977,13 @@ HTML;
             <!-- Road Monitoring + Recent Activity — paired side-by-side. -->
             <div class="charts-grid" style="margin-top: 20px;">
             <!-- ── Road Monitoring Preview ────────────────────────────────────── -->
-            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='<?= cimm_url_attr('road_monitoring.php') ?>'">
+            <div class="chart-card" style="cursor:pointer;" onclick="window.location.href='road_monitoring.php'">
                 <div class="chart-header">
                     <div>
-                        <div class="chart-title"><a href="<?= cimm_url_attr('road_monitoring.php') ?>" style="color:inherit;text-decoration:none;">Road Monitoring</a></div>
+                        <div class="chart-title"><a href="road_monitoring.php" style="color:inherit;text-decoration:none;">Road Monitoring</a></div>
                         <div class="chart-subtitle">Reports synced in from the Road Monitoring (RGMAP) system</div>
                     </div>
-                    <a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="view-all-link">View all →</a>
+                    <a href="road_monitoring.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php if (!empty($recentRoadRows)): ?>
@@ -3994,7 +3993,7 @@ HTML;
                             $rmVerified = ($rm['verification_status'] ?? 'Pending') === 'Verified';
                             $rmInitial = strtoupper(substr($rm['title'] ?? 'R', 0, 1));
                         ?>
-                        <div class="activity-item" data-href="<?= cimm_url_attr('road_monitoring.php') ?>?highlight_id=<?= (int)$rm['id'] ?>" style="cursor:pointer;">
+                        <div class="activity-item" data-href="road_monitoring.php?highlight_id=<?= (int)$rm['id'] ?>" style="cursor:pointer;">
                             <div class="activity-avatar" style="background:#c84b10">
                                 <?= htmlspecialchars($rmInitial) ?>
                             </div>
@@ -4028,7 +4027,7 @@ HTML;
                         <div class="chart-title">Recent Activity</div>
                         <div class="chart-subtitle">Latest maintenance requests</div>
                     </div>
-                    <a href="<?= cimm_url_attr('requests.php') ?>" class="view-all-link">View all →</a>
+                    <a href="requests.php" class="view-all-link">View all →</a>
                 </div>
                 <div class="activity-list">
                     <?php 
@@ -4038,7 +4037,7 @@ HTML;
                         $initial = substr($row['infrastructure'], 0, 1);
                         $timeAgo = date('M d, Y', strtotime($row['created_at']));
                     ?>
-                    <div class="activity-item" data-href="<?= cimm_url_attr('requests.php') ?>?highlight_req=<?= (int)$row['req_id'] ?>" style="cursor:pointer;">
+                    <div class="activity-item" data-href="requests.php?highlight_req=<?= (int)$row['req_id'] ?>" style="cursor:pointer;">
                         <div class="activity-avatar" style="background: <?= $avatarColors[$colorIndex % 5] ?>">
                             <?= $initial ?>
                         </div>
@@ -4073,7 +4072,7 @@ HTML;
                         </div>
                         <div class="chart-subtitle">Latest citizen submissions</div>
                     </div>
-                    <a href="<?= cimm_url_attr('emp_feedback.php') ?>" class="view-all-link" onclick="event.stopPropagation()">View all →</a>
+                    <a href="emp_feedback.php" class="view-all-link" onclick="event.stopPropagation()">View all →</a>
                 </div>
                 <!-- ── Citizen Feedback Summary (Admin / Super Admin) ── -->
                 <div class="fb-widget-wrapper" id="feedbackActivityWidget">
@@ -4134,7 +4133,7 @@ HTML;
 
                             $fbDate = date('M d, Y', strtotime($fb['created_at']));
                         ?>
-                            <div class="activity-item dash-highlightable" data-feedback data-href="<?= cimm_url_attr('emp_feedback.php') ?>?highlight_fbk=<?= (int)$fb['feedback_id'] ?>" onclick="dashHighlight(this, event)" style="cursor:pointer;">
+                            <div class="activity-item dash-highlightable" data-feedback data-href="emp_feedback.php?highlight_fbk=<?= (int)$fb['feedback_id'] ?>" onclick="dashHighlight(this, event)" style="cursor:pointer;">
                                 <div class="activity-avatar" style="background:<?= $fbAvatarBg ?>">
                                     <?= htmlspecialchars($fbInitial) ?>
                                 </div>
@@ -4571,7 +4570,7 @@ if (schedStatusCtx) {
                     }
                 }
             },
-            onClick: function() { window.location.href='<?= cimm_url_attr('sched.php') ?>'; }
+            onClick: function() { window.location.href='sched.php'; }
         }
     });
 }
@@ -5448,7 +5447,7 @@ document.addEventListener('keydown', function(e) {
     // ── 2. Activity items → requests.php (skip feedback items and
     //      highlight-only items, which manage their own click behavior) ──
     document.querySelectorAll('.activity-item:not([data-feedback]):not(.dash-highlightable)').forEach(function (el) {
-        if (!el.dataset.href) el.dataset.href='<?= cimm_url_attr('requests.php') ?>';
+        if (!el.dataset.href) el.dataset.href='requests.php';
     });
     makeClickable('.activity-item');
 
@@ -5458,13 +5457,13 @@ document.addEventListener('keydown', function(e) {
     //      matching item) — only fall back to a plain link when one wasn't
     //      already set. ─────────────────────────────────────────────────
     document.querySelectorAll('.schedule-item').forEach(function (el) {
-        if (!el.dataset.href) el.dataset.href='<?= cimm_url_attr('sched.php') ?>';
+        if (!el.dataset.href) el.dataset.href='sched.php';
     });
     makeClickable('.schedule-item');
 
     // ── 4. Facility items → requests.php ──────────────────────────
     document.querySelectorAll('.facility-item').forEach(function (el) {
-        el.dataset.href='<?= cimm_url_attr('requests.php') ?>';
+        el.dataset.href='requests.php';
     });
     makeClickable('.facility-item');
 
@@ -5476,13 +5475,13 @@ document.addEventListener('keydown', function(e) {
         const text = title.textContent.trim().toLowerCase();
 
         if (text.includes('request trend') || text.includes('status breakdown')) {
-            el.dataset.href='<?= cimm_url_attr('requests.php') ?>';
+            el.dataset.href='requests.php';
         } else if (text.includes('top facilities')) {
-            el.dataset.href='<?= cimm_url_attr('requests.php') ?>';
+            el.dataset.href='requests.php';
         } else if (text.includes('upcoming maintenance') || text.includes('schedule status')) {
-            el.dataset.href='<?= cimm_url_attr('sched.php') ?>';
+            el.dataset.href='sched.php';
         } else if (text.includes('recent activity')) {
-            el.dataset.href='<?= cimm_url_attr('requests.php') ?>';
+            el.dataset.href='requests.php';
         }
         // Only add cursor/pointer if href was assigned
         if (el.dataset.href) {
