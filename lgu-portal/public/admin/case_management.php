@@ -991,9 +991,9 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
         </div>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
-            <li><a href="employee.php" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
-            <li><a href="requests.php" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
-            <li><a href="case_management.php" class="nav-link active" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
+            <li><a href="<?= cimm_url_attr('employee.php') ?>" class="nav-link" data-tooltip="Dashboard"><i class="fas fa-chart-bar"></i><span>Dashboard</span></a></li>
+            <li><a href="<?= cimm_url_attr('requests.php') ?>" class="nav-link" data-tooltip="Requests"><i class="fas fa-clipboard-list"></i><span>Requests</span></a></li>
+            <li><a href="<?= cimm_url_attr('case_management.php') ?>" class="nav-link active" data-tooltip="Case Management"><i class="fas fa-diagram-project"></i><span>Case Management</span></a></li>
             <!-- Reports Dropdown -->
             <li class="nav-dropdown-item">
                 <a href="#" class="nav-link nav-dropdown-toggle" data-tooltip="Reports">
@@ -1002,25 +1002,25 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                     <i class="fas fa-chevron-down nav-arrow"></i>
                 </a>
                 <ul class="nav-sub-list">
-                    <li><a href="current_reports.php" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
-                    <li><a href="pending_reports.php" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
-                    <li><a href="archive_reports.php" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
+                    <li><a href="<?= cimm_url_attr('current_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-spinner"></i><span>Current Reports</span></a></li>
+                    <li><a href="<?= cimm_url_attr('pending_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-clock"></i><span>Pending Reports</span></a></li>
+                    <li><a href="<?= cimm_url_attr('archive_reports.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-archive"></i><span>Archive Reports</span></a></li>
                     <?php if ($isAdmin): ?>
-                    <li><a href="road_monitoring.php" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
+                    <li><a href="<?= cimm_url_attr('road_monitoring.php') ?>" class="nav-link nav-sub-link"><i class="fas fa-road"></i><span>Road Monitoring</span></a></li>
                     <?php endif; ?>
                 </ul>
             </li>
-            <li><a href="sched.php" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
+            <li><a href="<?= cimm_url_attr('sched.php') ?>" class="nav-link" data-tooltip="Maintenance Schedule"><i class="fas fa-calendar-alt"></i><span>Maintenance Schedule</span></a></li>
             <?php if ($isAdmin): ?>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="emp_feedback.php"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
+            <li><a href="<?= cimm_url_attr('emp_feedback.php') ?>"     class="nav-link" data-tooltip="Citizen Feedback"><i class="fas fa-comment-dots"></i><span>Citizen Feedback</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="admin_create.php" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
+            <li><a href="<?= cimm_url_attr('admin_create.php') ?>" class="nav-link" data-tooltip="Create Account"><i class="fas fa-user-plus"></i><span>Create Account</span></a></li>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-            <li><a href="user_management.php" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
+            <li><a href="<?= cimm_url_attr('user_management.php') ?>" class="nav-link" data-tooltip="User Management"><i class="fas fa-users-cog"></i><span>User Management</span></a></li>
             <?php endif; ?>
         </ul>
         <div style="flex-grow:1;"></div>
@@ -1118,7 +1118,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                         data-urgency-ratio="<?= htmlspecialchars((string)round($urgencyRatio, 3)) ?>">
                         <td class="action-cell">
                             <div class="case-actions">
-                                <a class="btn-view-rep" href="<?= htmlspecialchars($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
+                                <a class="btn-view-rep" href="<?= cimm_url_attr($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
                                 <button class="btn-view-rep btn-view-case" onclick="openCaseModal(<?= (int)$r['req_id'] ?>)"><i class="fas fa-eye"></i> View</button>
                             </div>
                         </td>
@@ -1188,7 +1188,7 @@ tbody tr:hover { background: rgba(13,148,136,.09); }
                 <div class="rc-row"><span class="rc-label">Priority:</span><span class="rc-value"><?= priorityBadge($priority) ?></span></div>
                 <div class="rc-row"><span class="rc-label">Urgency:</span><span class="rc-value"><?= case_urgency_badge_html($priority, $anchorDate, $isClosed) ?></span></div>
                 <div class="rc-footer rc-footer-stacked">
-                    <a class="btn-view-rep" href="<?= htmlspecialchars($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
+                    <a class="btn-view-rep" href="<?= cimm_url_attr($actionUrl) ?>"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
                     <button class="btn-view-rep btn-view-case" onclick="openCaseModal(<?= (int)$r['req_id'] ?>)"><i class="fas fa-eye"></i> View</button>
                 </div>
             </div>

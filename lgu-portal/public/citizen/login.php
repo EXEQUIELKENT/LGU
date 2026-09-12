@@ -5,6 +5,12 @@ use PHPMailer\PHPMailer\Exception;
 // --- START SESSION FIRST (required for auth_config.php) ---
 session_start();
 
+// cimm_url()/cimm_url_attr() for this page's links. Required explicitly rather
+// than relying on auth_config.php (which loads it for every other citizen
+// page): the auth_config require below is inside a !$isLocalhost branch, so on
+// localhost it never runs and the helper would be undefined.
+require_once __DIR__ . '/../../includes/core/page_routes.php';
+
 // --- AUTH CONFIG BLOCK ---
 $localhostWhitelist = ['localhost', '127.0.0.1', '::1'];
 
@@ -2834,12 +2840,12 @@ body:has(#resetPasswordModal) {
     <div class="nav-center">
         <div class="nav-links">
             <a href="#" class="active" data-i18n="nav_login">Log in</a>
-            <a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="nav_home">Home</a>
-            <a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="nav_reports">Reports</a>
-            <a href="<?= $BASE_URL ?>track_report.php" data-i18n="nav_track">Track</a>
-            <a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="nav_requests">Requests</a>
-            <a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
-            <a href="<?= $BASE_URL ?>about.php" data-i18n="nav_about">About</a>
+            <a href="<?= cimm_url_attr('citizencimm.php') ?>" data-i18n="nav_home">Home</a>
+            <a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="nav_reports">Reports</a>
+            <a href="<?= cimm_url_attr('track_report.php') ?>" data-i18n="nav_track">Track</a>
+            <a href="<?= cimm_url_attr('citizenrepform.php') ?>" data-i18n="nav_requests">Requests</a>
+            <a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="nav_feedback">Feedback</a>
+            <a href="<?= cimm_url_attr('about.php') ?>" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -2877,12 +2883,12 @@ body:has(#resetPasswordModal) {
         
         <ul class="nav-list">
             <li><a href="#" class="nav-link active"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="<?= $BASE_URL ?>track_report.php" class="nav-link"><i class="fas fa-search"></i><span data-i18n="nav_track">Track</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="<?= $BASE_URL ?>citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
-            <li><a href="<?= $BASE_URL ?>about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= cimm_url_attr('citizencimm.php') ?>" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= cimm_url_attr('track_report.php') ?>" class="nav-link"><i class="fas fa-search"></i><span data-i18n="nav_track">Track</span></a></li>
+            <li><a href="<?= cimm_url_attr('citizenrepform.php') ?>" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
+            <li><a href="<?= cimm_url_attr('about.php') ?>" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -3613,11 +3619,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="footer-links">
             <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="<?= $BASE_URL ?>citizencimm.php" data-i18n="footer_link_home">Home</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
-                <li><a href="<?= $BASE_URL ?>citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
-                <li><a href="<?= $BASE_URL ?>citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
-                <li><a href="<?= $BASE_URL ?>about.php" data-i18n="footer_link_about">About Us</a></li>
+                <li><a href="<?= cimm_url_attr('citizencimm.php') ?>" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= cimm_url_attr('citizenreports.php') ?>" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= cimm_url_attr('citizenrepform.php') ?>" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= cimm_url_attr('citizen_feedback.php') ?>" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="<?= cimm_url_attr('about.php') ?>" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         <div class="footer-links">
@@ -3632,8 +3638,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="<?= cimm_url_attr('privacy.php') ?>" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="<?= cimm_url_attr('termcon.php') ?>" data-i18n="footer_link_terms">Terms of Service</a></li>
                 <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
                 <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
