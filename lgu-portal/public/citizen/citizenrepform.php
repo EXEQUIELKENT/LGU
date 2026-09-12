@@ -3208,6 +3208,9 @@ input[type="file"] {
     let satelliteLayer, streetLayer;
     let labelsEnabled = true;
     let locationLabels = [];
+    // Lowest zoom at which a label of each importance tier may appear.
+    // The map opens at zoom 13, so only tier 1 shows on arrival.
+    const LABEL_TIER_MIN_ZOOM = { 1: 12, 2: 14, 3: 15 };
 
     const locationInput    = document.getElementById('locationInput');
     const manualAddressInput = document.getElementById('manualAddressInput');
@@ -3434,54 +3437,138 @@ input[type="file"] {
         locationLabels = [];
         const majorLocations = [
             // Neighborhoods / areas
-            { name: "Fairview", lat: 14.7056, lng: 121.0699 }, { name: "Novaliches", lat: 14.7195, lng: 121.0365 },
-            { name: "Commonwealth", lat: 14.7038, lng: 121.0854 }, { name: "San Martin de Porres", lat: 14.6165, lng: 121.0493 },
-            { name: "Lagro", lat: 14.7247, lng: 121.0640 }, { name: "Sauyo", lat: 14.6942, lng: 121.0434 },
-            { name: "Talipapa", lat: 14.6824, lng: 121.0238 }, { name: "Batasan Hills", lat: 14.6807, lng: 121.0961 },
-            { name: "Payatas", lat: 14.7123, lng: 121.0972 }, { name: "UP Diliman", lat: 14.6541, lng: 121.0641 },
-            { name: "Cubao", lat: 14.6194, lng: 121.0533 }, { name: "Project 6", lat: 14.6582, lng: 121.0405 },
-            { name: "Project 8", lat: 14.6669, lng: 121.0281 }, { name: "Tandang Sora", lat: 14.6796, lng: 121.0359 },
-            { name: "Kamuning", lat: 14.6272, lng: 121.0396 }, { name: "Loyola Heights", lat: 14.6383, lng: 121.0752 },
-            { name: "Libis", lat: 14.6161, lng: 121.0766 }, { name: "White Plains", lat: 14.6048, lng: 121.0738 },
-            { name: "Blue Ridge", lat: 14.6172, lng: 121.0745 }, { name: "Novaliches West", lat: 14.7059, lng: 121.0315 },
-            { name: "Sangandaan", lat: 14.6742, lng: 121.0211 }, { name: "Katipunan", lat: 14.6311, lng: 121.0730 },
-            { name: "Teachers Village", lat: 14.6439, lng: 121.0576 },
-            { name: "Diliman", lat: 14.6484, lng: 121.0495 }, { name: "Krus na Ligas", lat: 14.6437, lng: 121.0634 },
-            { name: "Holy Spirit", lat: 14.6794, lng: 121.0787 }, { name: "Bagumbayan", lat: 14.6070, lng: 121.0788 },
-            { name: "Culiat", lat: 14.6669, lng: 121.0535 }, { name: "Apolonio Samson", lat: 14.6542, lng: 121.0093 },
-            { name: "Baesa", lat: 14.6681, lng: 121.0147 }, { name: "New Era", lat: 14.6646, lng: 121.0604 },
-            { name: "Horseshoe", lat: 14.6125, lng: 121.0421 }, { name: "Immaculate Conception", lat: 14.6224, lng: 121.0443 },
-            { name: "Bagbag", lat: 14.6983, lng: 121.0289 }, { name: "Kaligayahan", lat: 14.7299, lng: 121.0423 },
-            { name: "Pasong Tamo", lat: 14.6753, lng: 121.0507 }, { name: "North Fairview", lat: 14.7121, lng: 121.0602 },
+            { name: "Fairview", lat: 14.7056, lng: 121.0699, tier: 1 }, { name: "Novaliches", lat: 14.7195, lng: 121.0365, tier: 1 },
+            { name: "Commonwealth", lat: 14.7038, lng: 121.0854, tier: 1 }, { name: "San Martin de Porres", lat: 14.6165, lng: 121.0493, tier: 3 },
+            { name: "Lagro", lat: 14.7247, lng: 121.0640, tier: 2 }, { name: "Sauyo", lat: 14.6942, lng: 121.0434, tier: 3 },
+            { name: "Talipapa", lat: 14.6824, lng: 121.0238, tier: 2 }, { name: "Batasan Hills", lat: 14.6807, lng: 121.0961, tier: 1 },
+            { name: "Payatas", lat: 14.7123, lng: 121.0972, tier: 1 }, { name: "UP Diliman", lat: 14.6541, lng: 121.0641, tier: 1 },
+            { name: "Cubao", lat: 14.6194, lng: 121.0533, tier: 1 }, { name: "Project 6", lat: 14.6582, lng: 121.0405, tier: 2 },
+            { name: "Project 8", lat: 14.6669, lng: 121.0281, tier: 2 }, { name: "Tandang Sora", lat: 14.6796, lng: 121.0359, tier: 1 },
+            { name: "Kamuning", lat: 14.6272, lng: 121.0396, tier: 2 }, { name: "Loyola Heights", lat: 14.6383, lng: 121.0752, tier: 2 },
+            { name: "Libis", lat: 14.6161, lng: 121.0766, tier: 2 }, { name: "White Plains", lat: 14.6048, lng: 121.0738, tier: 2 },
+            { name: "Blue Ridge", lat: 14.6172, lng: 121.0745, tier: 3 }, { name: "Novaliches West", lat: 14.7059, lng: 121.0315, tier: 3 },
+            { name: "Sangandaan", lat: 14.6742, lng: 121.0211, tier: 3 }, { name: "Katipunan", lat: 14.6311, lng: 121.0730, tier: 2 },
+            { name: "Teachers Village", lat: 14.6439, lng: 121.0576, tier: 2 },
+            { name: "Diliman", lat: 14.6484, lng: 121.0495, tier: 1 }, { name: "Krus na Ligas", lat: 14.6437, lng: 121.0634, tier: 3 },
+            { name: "Holy Spirit", lat: 14.6794, lng: 121.0787, tier: 2 }, { name: "Bagumbayan", lat: 14.6070, lng: 121.0788, tier: 3 },
+            { name: "Culiat", lat: 14.6669, lng: 121.0535, tier: 2 }, { name: "Apolonio Samson", lat: 14.6542, lng: 121.0093, tier: 3 },
+            { name: "Baesa", lat: 14.6681, lng: 121.0147, tier: 2 }, { name: "New Era", lat: 14.6646, lng: 121.0604, tier: 3 },
+            { name: "Horseshoe", lat: 14.6125, lng: 121.0421, tier: 3 }, { name: "Immaculate Conception", lat: 14.6224, lng: 121.0443, tier: 3 },
+            { name: "Bagbag", lat: 14.6983, lng: 121.0289, tier: 3 }, { name: "Kaligayahan", lat: 14.7299, lng: 121.0423, tier: 3 },
+            { name: "Pasong Tamo", lat: 14.6753, lng: 121.0507, tier: 3 }, { name: "North Fairview", lat: 14.7121, lng: 121.0602, tier: 2 },
             // Landmarks / commercial districts
-            { name: "Araneta Center", lat: 14.6186, lng: 121.0526, type: "landmark" },
-            { name: "Quezon Memorial Circle", lat: 14.6515, lng: 121.0493, type: "landmark" },
-            { name: "Philcoa", lat: 14.6535, lng: 121.0475, type: "landmark" },
-            { name: "SM North EDSA", lat: 14.6570, lng: 121.0305, type: "landmark" },
-            { name: "SM City Fairview", lat: 14.7337, lng: 121.0585, type: "landmark" },
-            { name: "SM City Novaliches", lat: 14.7080, lng: 121.0373, type: "landmark" },
-            { name: "SM City Sta. Mesa", lat: 14.6044, lng: 121.0188, type: "landmark" },
-            { name: "Trinoma", lat: 14.6531, lng: 121.0334, type: "landmark" },
-            { name: "Vertis North", lat: 14.6521, lng: 121.0360, type: "landmark" },
-            { name: "Eastwood City", lat: 14.6097, lng: 121.0801, type: "landmark" },
-            { name: "Timog Avenue", lat: 14.6332, lng: 121.0347, type: "landmark" },
-            { name: "Balara", lat: 14.6643, lng: 121.0834, type: "landmark" },
-            { name: "Anonas", lat: 14.6280, lng: 121.0647, type: "landmark" }
+            { name: "Araneta Center", lat: 14.6186, lng: 121.0526, type: "landmark", tier: 1 },
+            { name: "Quezon Memorial Circle", lat: 14.6515, lng: 121.0493, type: "landmark", tier: 1 },
+            { name: "Philcoa", lat: 14.6535, lng: 121.0475, type: "landmark", tier: 2 },
+            { name: "SM North EDSA", lat: 14.6570, lng: 121.0305, type: "landmark", tier: 1 },
+            { name: "SM City Fairview", lat: 14.7337, lng: 121.0585, type: "landmark", tier: 2 },
+            { name: "SM City Novaliches", lat: 14.7080, lng: 121.0373, type: "landmark", tier: 2 },
+            { name: "SM City Sta. Mesa", lat: 14.6044, lng: 121.0188, type: "landmark", tier: 2 },
+            { name: "Trinoma", lat: 14.6531, lng: 121.0334, type: "landmark", tier: 1 },
+            { name: "Vertis North", lat: 14.6521, lng: 121.0360, type: "landmark", tier: 2 },
+            { name: "Eastwood City", lat: 14.6097, lng: 121.0801, type: "landmark", tier: 1 },
+            { name: "Timog Avenue", lat: 14.6332, lng: 121.0347, type: "landmark", tier: 2 },
+            { name: "Balara", lat: 14.6643, lng: 121.0834, type: "landmark", tier: 2 },
+            { name: "Anonas", lat: 14.6280, lng: 121.0647, type: "landmark", tier: 3 }
         ];
         majorLocations.forEach(loc => {
             const isLandmark = loc.type === 'landmark';
             const cls = 'leaflet-map-label' + (isLandmark ? ' leaflet-map-label-landmark' : '');
             const html = (isLandmark ? '<i class="fas fa-landmark"></i>' : '') + '<span>' + loc.name + '</span>';
             const label = L.marker([loc.lat, loc.lng], { icon: L.divIcon({ className: cls, html, iconSize: null }), interactive: false });
-            locationLabels.push(label);
-            if (currentMapLayer === 'satellite' && map && labelsEnabled) label.addTo(map);
+            locationLabels.push({
+                marker: label,
+                latlng: L.latLng(loc.lat, loc.lng),
+                tier: loc.tier || 3,
+                minZoom: LABEL_TIER_MIN_ZOOM[loc.tier || 3],
+                // Rough pill size until the real one can be read off the DOM
+                // on first render. 12px bold Poppins runs ~7.5px/char; 27px is
+                // the horizontal padding plus border, 18px more for a
+                // landmark's icon and gap. Height is line-height + padding +
+                // border. Erring large is the safe direction — it only makes
+                // the very first pass slightly stricter.
+                w: 27 + loc.name.length * 7.5 + (isLandmark ? 18 : 0),
+                h: 32,
+                measured: false
+            });
         });
+        updateLocationLabelsVisibility();
     }
+
+    // Decide which labels are actually on the map right now.
+    //
+    // All 50 pills used to be added at once at every zoom. At the default
+    // zoom 13 the whole city fits on screen, so they piled on top of each
+    // other into an unreadable stack — and because each one carries a
+    // backdrop-filter blur, compositing 50 of them over moving satellite
+    // tiles made panning and zooming crawl. Two filters fix both problems:
+    //
+    //   1. Zoom tier — a label only qualifies once you are zoomed in far
+    //      enough for its importance (see LABEL_TIER_MIN_ZOOM).
+    //   2. Collision — qualifying labels are placed in importance order and
+    //      any whose pill would overlap one already placed is skipped, so
+    //      what survives is always readable. Off-screen labels are dropped
+    //      before either test, which is what keeps the DOM small.
     function updateLocationLabelsVisibility() {
         if (!map) return;
-        if (currentMapLayer === 'satellite' && labelsEnabled) { locationLabels.forEach(l => { if (!map.hasLayer(l)) l.addTo(map); }); }
-        else { locationLabels.forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); }); }
         updateLabelToggleButton();
+
+        const hideAll = !(currentMapLayer === 'satellite' && labelsEnabled);
+        if (hideAll) {
+            locationLabels.forEach(l => { if (map.hasLayer(l.marker)) map.removeLayer(l.marker); });
+            return;
+        }
+
+        const zoom    = map.getZoom();
+        const size    = map.getSize();
+        const PAD     = 40;   // keep labels just off-screen mounted, so a small pan doesn't flicker
+        const GAP     = 6;    // minimum breathing room between two pills
+        const placed  = [];
+
+        // Most important first, so a tier-1 name always wins a collision
+        // against a tier-3 one regardless of array order.
+        const ordered = locationLabels.slice().sort((a, b) => a.tier - b.tier);
+
+        ordered.forEach(l => {
+            let show = zoom >= l.minZoom;
+
+            if (show) {
+                const p = map.latLngToContainerPoint(l.latlng);
+                // divIcon with iconSize:null anchors the pill's top-left at the point.
+                const box = { x1: p.x - GAP, y1: p.y - GAP, x2: p.x + l.w + GAP, y2: p.y + l.h + GAP };
+
+                if (box.x2 < -PAD || box.x1 > size.x + PAD || box.y2 < -PAD || box.y1 > size.y + PAD) {
+                    show = false;                       // off-screen
+                } else {
+                    for (let i = 0; i < placed.length; i++) {
+                        const o = placed[i];
+                        if (box.x1 < o.x2 && box.x2 > o.x1 && box.y1 < o.y2 && box.y2 > o.y1) { show = false; break; }
+                    }
+                    if (show) placed.push(box);
+                }
+            }
+
+            if (show) {
+                if (!map.hasLayer(l.marker)) l.marker.addTo(map);
+                // First time it renders, swap the estimate for the real size so
+                // later collision passes are exact.
+                if (!l.measured) {
+                    const el = l.marker.getElement();
+                    if (el && el.offsetWidth) { l.w = el.offsetWidth; l.h = el.offsetHeight; l.measured = true; }
+                }
+            } else if (map.hasLayer(l.marker)) {
+                map.removeLayer(l.marker);
+            }
+        });
+    }
+
+    // Re-run the pass after the view settles. Coalesced into one animation
+    // frame so a zoom that also fires moveend only costs a single pass.
+    let labelPassQueued = false;
+    function scheduleLabelPass() {
+        if (labelPassQueued) return;
+        labelPassQueued = true;
+        requestAnimationFrame(() => { labelPassQueued = false; updateLocationLabelsVisibility(); });
     }
     function updateLabelToggleButton() {
         const btn = document.getElementById('labelToggleBtn'); if (!btn) return;
@@ -3509,6 +3596,10 @@ input[type="file"] {
             if (panStartPosition && marker) { const d = marker.getLatLng().distanceTo(panStartPosition); if (d > MIN_MOVE_DISTANCE) { selectedLatLng = marker.getLatLng(); locationSource = 'map'; handleMapLocationUpdate(); } }
             panStartPosition = null;
         });
+        // Which labels fit depends on the zoom and on what is on screen, so
+        // re-run the pass whenever either settles.
+        map.on('zoomend', scheduleLabelPass);
+        map.on('moveend', scheduleLabelPass);
         addLocationLabels(); updateLocationLabelsVisibility(); updateLabelToggleButton();
         syncMapLayerToggleButton();
         // Pre-load barangay GeoJSON so borders are ready on first pin drop

@@ -813,6 +813,31 @@ tbody tr:hover { background: rgba(55,98,200,.08); }
     box-shadow: 0 5px 14px rgba(239,68,68,.38);
 }
 .btn-delete:active { transform: scale(.96); }
+
+/* ── Actions cell ──────────────────────────────────────────────────────────
+   The View and Delete buttons used to sit in the cell as two bare inline-flex
+   siblings separated by a 4px margin. With nine columns competing for width
+   the cell got squeezed until the pair wrapped onto two lines and collided.
+   A nowrap flex row with a real gap keeps them side by side, and sizing the
+   column to its content stops the table from squeezing it in the first place. */
+.fbk-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+#feedbackTable th:last-child,
+#feedbackTable td:last-child { width: 1%; white-space: nowrap; }
+
+/* Match the two buttons' heights exactly so they read as a pair, and make the
+   icon-only delete a circle rather than a squashed pill. */
+.fbk-actions .btn-action { min-height: 32px; box-sizing: border-box; }
+.fbk-actions .btn-delete {
+    width: 32px;
+    padding: 0;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
 [data-theme="dark"] .btn-delete {
     background: rgba(239,68,68,.14);
     border-color: rgba(239,68,68,.30);
@@ -2023,14 +2048,16 @@ tr.notif-highlight > td:first-child {
                     <span class="searchable" style="font-size:10px;"><?= date('g:i A', strtotime($fb['created_at'])) ?></span>
                 </td>
                 <td>
-                    <button class="btn-action btn-view" onclick="openDetail(<?= $fb['feedback_id'] ?>)">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <?php if ($isAdmin): ?>
-                    <button class="btn-action btn-delete" onclick="showDeleteConfirm(<?= $fb['feedback_id'] ?>)" style="margin-left:4px;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <?php endif; ?>
+                    <div class="fbk-actions">
+                        <button class="btn-action btn-view" onclick="openDetail(<?= $fb['feedback_id'] ?>)">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <?php if ($isAdmin): ?>
+                        <button class="btn-action btn-delete" onclick="showDeleteConfirm(<?= $fb['feedback_id'] ?>)" title="Delete feedback" aria-label="Delete feedback">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>
