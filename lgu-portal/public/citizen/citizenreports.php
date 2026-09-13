@@ -38,34 +38,58 @@ $maintenance_data = array();
 
 // ── 1. Pull from maintenance_schedule ────────────────────────────────────────
 $maintenance_result = $conn->query("
-    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date AS end_date, budget 
-    FROM maintenance_schedule 
+    SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date AS end_date, budget
+    FROM maintenance_schedule
     ORDER BY starting_date DESC
 ");
 if ($maintenance_result) {
     while ($row = $maintenance_result->fetch_assoc()) {
+        // "Delayed" has no bucket of its own on the citizen side, it is still
+        // unfinished, not-yet-started-in-earnest work, so it groups and sorts
+        // with "Scheduled" instead of falling through every status view.
+        $dispStatus = in_array($row['status'], ['In Progress', 'Completed'], true) ? $row['status'] : 'Scheduled';
         $maintenance_data[] = [
-            'display_id'   => (int)$row['sched_id'],
-            'modal_id'     => (int)$row['sched_id'],
-            'id_label'     => '#SCH-' . str_pad($row['sched_id'], 3, '0', STR_PAD_LEFT),
-            'task'         => $row['task'],
-            'location'     => $row['location'],
-            'category'     => $row['category'] ?? 'General Maintenance',
-            'status'       => $row['status'],
-            'starting_date'=> $row['starting_date'],
-            'end_date'     => $row['end_date'],
-            'budget'       => (float)$row['budget'],
+            'display_id'    => (int)$row['sched_id'],
+            'modal_id'      => (int)$row['sched_id'],
+            'id_label'      => '#SCH-' . str_pad($row['sched_id'], 3, '0', STR_PAD_LEFT),
+            'task'          => $row['task'],
+            'location'      => $row['location'],
+            'category'      => $row['category'] ?? 'General Maintenance',
+            'status'        => $dispStatus,
+            'starting_date' => $row['starting_date'],
+            'end_date'      => $row['end_date'],
+            'budget'        => (float)$row['budget'],
+            // Drives both the status mix and the merged display order below —
+            // for finished work "recent" means when it wrapped up, not when it
+            // originally started.
+            'activity_date' => ($dispStatus === 'Completed' && !empty($row['end_date'])) ? $row['end_date'] : $row['starting_date'],
         ];
     }
 }
 
-// ── 2. Pull from reports (joined with request_resolutions + requests) ─────────
+// ── 2. Last daily-log activity per report ────────────────────────────────────
+// An in-progress report's starting_date is fixed the day work began and never
+// moves again, so it cannot tell us how recently that work has actually been
+// active, the daily log an engineer keeps while working it can. No entry here
+// just means no log has been posted yet; activity_date falls back to
+// starting_date for those below.
+$lastLogByRep = [];
+$logResult = $conn->query("SELECT rep_id, MAX(updated_at) AS last_update FROM report_daily_logs GROUP BY rep_id");
+if ($logResult) {
+    while ($lr = $logResult->fetch_assoc()) {
+        if (!empty($lr['last_update'])) {
+            $lastLogByRep[(int)$lr['rep_id']] = $lr['last_update'];
+        }
+    }
+}
+
+// ── 3. Pull from reports (joined with request_resolutions + requests) ─────────
 // rep_id is offset by 10000 so modal IDs never collide with sched_ids
 $report_result = $conn->query("
     SELECT
         r.rep_id, r.starting_date, r.estimated_end_date AS end_date,
         r.priority_lvl, r.budget,
-        res.status AS resolution_status, res.req_id,
+        res.status AS resolution_status, res.req_id, res.resolved_at,
         req.infrastructure, req.location, req.issue, req.district,
         GROUP_CONCAT(ev.img_path ORDER BY ev.uploaded_at ASC SEPARATOR ',') AS evidence_images
     FROM reports r
@@ -78,16 +102,25 @@ $report_result = $conn->query("
 ");
 if ($report_result) {
     while ($rRow = $report_result->fetch_assoc()) {
-        // Map resolution_status → simple display status
+        // Map resolution_status to a simple display status
         $resStatus = $rRow['resolution_status'] ?? '';
+        $repId     = (int)$rRow['rep_id'];
         if ($resStatus === 'Completed') {
             $dispStatus = 'Completed';
+            // resolved_at is only meaningfully set the moment a report is
+            // actually marked Completed (admin/pending_reports.php), before
+            // that it just holds the resolution row's creation time, so it is
+            // only trustworthy in this branch.
+            $activityDate = !empty($rRow['resolved_at']) ? $rRow['resolved_at'] : $rRow['starting_date'];
         } elseif (in_array($resStatus, ['In Progress', 'Pending Completion'])) {
-            $dispStatus = 'In Progress';
-        } elseif ($resStatus === 'Scheduled' || $resStatus === 'Pending') {
-            $dispStatus = 'Scheduled';
+            $dispStatus   = 'In Progress';
+            $activityDate = $lastLogByRep[$repId] ?? $rRow['starting_date'];
         } else {
-            $dispStatus = 'Scheduled';
+            // Scheduled / Pending / Approved / Pending Admin Approval / anything
+            // else not yet actively worked, grouped as "Scheduled" for the
+            // citizen view, which does not need the admin-side approval detail.
+            $dispStatus   = 'Scheduled';
+            $activityDate = $rRow['starting_date'];
         }
 
         $evImgs = [];
@@ -95,8 +128,8 @@ if ($report_result) {
             $evImgs = array_values(array_filter(explode(',', $rRow['evidence_images'])));
         }
         $maintenance_data[] = [
-            'display_id'      => (int)$rRow['rep_id'],
-            'modal_id'        => 10000 + (int)$rRow['rep_id'],
+            'display_id'      => $repId,
+            'modal_id'        => 10000 + $repId,
             'id_label'        => '#RPT-' . str_pad($rRow['rep_id'], 3, '0', STR_PAD_LEFT),
             'task'            => $rRow['infrastructure'] ?? 'Infrastructure Report',
             'location'        => $rRow['location'] ?? '—',
@@ -108,17 +141,18 @@ if ($report_result) {
             'priority'        => $rRow['priority_lvl'] ?? '',
             'issue'           => $rRow['issue'] ?? '',
             'evidence_images' => $evImgs,
+            'activity_date'   => $activityDate,
         ];
     }
 }
 
-// ── 3. Sort combined by starting_date DESC, limit 10 ─────────────────────────
-usort($maintenance_data, function($a, $b) {
-    return strcmp($b['starting_date'] ?? '', $a['starting_date'] ?? '');
-});
-$maintenance_data = array_slice($maintenance_data, 0, 10);
-
-// ── Tally counts directly from the combined table data ───────────────────────
+// ── 4. True system-wide totals for the stat cards ────────────────────────────
+// These used to be tallied from the already-sliced-to-10 list further down,
+// which made them exactly as skewed as that list: a status with zero rows in
+// the top 10 read as "0" on its stat card even when the system actually had
+// dozens of them (this is what made "In Progress"/"Completed" look like they
+// had nothing at all). Tally from the full combined dataset instead, before
+// it gets sliced down to the ones actually shown.
 $count_scheduled = 0;
 $count_ongoing   = 0;
 $count_completed = 0;
@@ -129,6 +163,46 @@ foreach ($maintenance_data as $_item) {
         default:            $count_scheduled++; break; // Scheduled / Pending
     }
 }
+
+// ── 5. Pick the 10 shown in "Recent Maintenance Reports" ─────────────────────
+// A flat "sort everything by date DESC, take 10" starves out anything but
+// "Scheduled": every request approval inserts a fresh Scheduled row dated
+// today (functionality/validate_request.php), so on any install that
+// approves even a couple of requests a day, brand-new Scheduled work
+// permanently outranks older in-progress/completed work by date, and once
+// none of those are left in the visible slice, their legend/stat filters
+// look empty too. Round-robining across the three statuses (most-recent
+// first within each) guarantees the list stays a genuine cross-section of
+// what's actually happening, not just whatever was approved most recently.
+$TOTAL_SHOWN = 10;
+$buckets = ['Completed' => [], 'In Progress' => [], 'Scheduled' => []];
+foreach ($maintenance_data as $item) {
+    $buckets[$item['status']][] = $item;
+}
+$byActivityDesc = function ($a, $b) {
+    return strcmp($b['activity_date'] ?? '', $a['activity_date'] ?? '');
+};
+foreach ($buckets as &$bucket) {
+    usort($bucket, $byActivityDesc);
+}
+unset($bucket);
+
+$cursors = array_fill_keys(array_keys($buckets), 0);
+$shown   = [];
+while (count($shown) < $TOTAL_SHOWN) {
+    $addedThisRound = false;
+    foreach ($buckets as $status => $bucket) {
+        if (count($shown) >= $TOTAL_SHOWN) break;
+        if ($cursors[$status] < count($bucket)) {
+            $shown[] = $bucket[$cursors[$status]];
+            $cursors[$status]++;
+            $addedThisRound = true;
+        }
+    }
+    if (!$addedThisRound) break; // every bucket exhausted before reaching $TOTAL_SHOWN
+}
+usort($shown, $byActivityDesc);
+$maintenance_data = $shown;
 ?>
 <!DOCTYPE html>
 <html lang="en">
