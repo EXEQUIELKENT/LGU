@@ -37,9 +37,35 @@ if ($pending_result) {
 $maintenance_data = array();
 
 // ── 1. Pull from maintenance_schedule ────────────────────────────────────────
+// This page shows only CIMM's own maintenance work — never data pulled in
+// from the CPRF or Energy integrations, which live in this same table
+// (maintenance_schedule.energy_maintenance_id for rows Energy's system
+// imported directly, cprf_facility_id for rows tagged against a CPRF
+// facility). SHOW COLUMNS first because those columns only exist once an
+// admin page has actually run the relevant integration's schema-ensure call
+// (employee.php / sched.php) — this is a read-only citizen page, so it must
+// not trigger that ALTER TABLE itself just to check.
+$scheduleColumns = [];
+$colResult = $conn->query('SHOW COLUMNS FROM maintenance_schedule');
+if ($colResult) {
+    while ($colRow = $colResult->fetch_assoc()) {
+        $scheduleColumns[strtolower((string)$colRow['Field'])] = true;
+    }
+    $colResult->free();
+}
+$scheduleExclusions = [];
+if (isset($scheduleColumns['energy_maintenance_id'])) {
+    $scheduleExclusions[] = 'energy_maintenance_id IS NULL';
+}
+if (isset($scheduleColumns['cprf_facility_id'])) {
+    $scheduleExclusions[] = '(cprf_facility_id IS NULL OR cprf_facility_id = 0)';
+}
+$scheduleWhere = $scheduleExclusions ? ('WHERE ' . implode(' AND ', $scheduleExclusions)) : '';
+
 $maintenance_result = $conn->query("
     SELECT sched_id, task, location, category, status, starting_date, estimated_completion_date AS end_date, budget
     FROM maintenance_schedule
+    $scheduleWhere
     ORDER BY starting_date DESC
 ");
 if ($maintenance_result) {
