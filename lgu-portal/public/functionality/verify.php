@@ -9,15 +9,10 @@ header("Expires: 0");
 require __DIR__ . '/../../includes/config/db.php';
 
 // ── Base URLs (mirrors login.php) ─────────────────────────────────────────
-if ($_SERVER['HTTP_HOST'] === 'localhost') {
-    $BASE_URL      = '/LGU/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
-    $loginUrl      = '/LGU/lgu-portal/public/citizen/login.php';
-} else {
-    $BASE_URL      = '/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
-    $loginUrl      = '/lgu-portal/public/citizen/login.php';
-}
+require_once __DIR__ . '/../../includes/core/base_url.php';
+$BASE_URL      = cimm_base_url();
+$OFFICIAL_LOGO = cimm_asset_url('assets/img/officiallogo.png');
+$loginUrl      = cimm_asset_url('citizen/login.php');
 
 // ─────────────────────────────────────────────────────────────────────────
 //  VERIFICATION LOGIC

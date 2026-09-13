@@ -10,13 +10,9 @@ $serverTimestamp = time();
 require_once __DIR__ . '/../../includes/config/auth_config.php';
 require_once __DIR__ . '/../../includes/config/db.php';
 
-if ($_SERVER['HTTP_HOST'] === 'localhost') {
-    $BASE_URL     = '/LGU/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
-} else {
-    $BASE_URL     = '/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
-}
+require_once __DIR__ . '/../../includes/core/base_url.php';
+$BASE_URL      = cimm_base_url();
+$OFFICIAL_LOGO = cimm_asset_url('assets/img/officiallogo.png');
 
 // Notification helpers
 function setNotification($type, $message) {

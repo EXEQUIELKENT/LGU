@@ -21,11 +21,8 @@ if (!$isLocalhost && file_exists($authConfigFile)) {
     
     if (!isset($show_login) || $show_login !== true) {
         // Unauthorized access attempt - redirect to home page
-        if ($_SERVER['HTTP_HOST'] === 'localhost') {
-            $redirectUrl = '/LGU/lgu-portal/public/citizen/citizencimm.php';
-        } else {
-            $redirectUrl = '/lgu-portal/public/citizen/citizencimm.php';
-        }
+        require_once __DIR__ . '/../../includes/core/base_url.php';
+        $redirectUrl = cimm_asset_url('citizen/citizencimm.php');
         
         // Log unauthorized access attempt (optional)
         error_log('🚨 UNAUTHORIZED LOGIN ACCESS ATTEMPT - IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN') . ' | Time: ' . date('Y-m-d H:i:s'));
@@ -142,17 +139,11 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 }
 
 // For local development and domain (show correct path for logo and URLs)
-if ($_SERVER['HTTP_HOST'] === 'localhost') {
-    $BASE_URL = '/LGU/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
-    $loginUrl = '/LGU/lgu-portal/public/citizen/login.php';
-    $employeeUrl = '/LGU/lgu-portal/public/admin/employee.php';
-} else {
-    $BASE_URL = '/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
-    $loginUrl = '/lgu-portal/public/citizen/login.php';
-    $employeeUrl = '/lgu-portal/public/admin/employee.php';
-}
+require_once __DIR__ . '/../../includes/core/base_url.php';
+$BASE_URL      = cimm_base_url();
+$OFFICIAL_LOGO = cimm_asset_url('assets/img/officiallogo.png');
+$loginUrl      = cimm_asset_url('citizen/login.php');
+$employeeUrl   = cimm_asset_url('admin/employee.php');
 
 function setNotification($type, $message) {
     $_SESSION['notification'] = [

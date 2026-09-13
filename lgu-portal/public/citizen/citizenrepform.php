@@ -50,13 +50,9 @@ $cprfMapFacilities = array_values(array_filter(array_map(static function ($f) {
 }, $cprfFacilitiesCatalog)));
 
 // For local development and domain (show correct path for logo)
-if ($_SERVER['HTTP_HOST'] === 'localhost') {
-    $BASE_URL = '/LGU/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/LGU/lgu-portal/public/assets/img/officiallogo.png';
-} else {
-    $BASE_URL = '/lgu-portal/public/';
-    $OFFICIAL_LOGO = '/lgu-portal/public/assets/img/officiallogo.png';
-}
+require_once __DIR__ . '/../../includes/core/base_url.php';
+$BASE_URL      = cimm_base_url();
+$OFFICIAL_LOGO = cimm_asset_url('assets/img/officiallogo.png');
 
 // Notification helpers
 function setNotification($type, $message) {
