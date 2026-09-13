@@ -1156,7 +1156,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="../assets/img/officiallogo.png" type="image/png">
+<link rel="icon" href="<?= $BASE_URL ?>assets/img/officiallogo.png" type="image/png">
 <title>LGU | Login</title>
     <link rel="stylesheet" href="<?= $BASE_URL ?>assets/css/citizen_global.css?v=<?= @filemtime(__DIR__ . '/../assets/css/citizen_global.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -1222,7 +1222,7 @@ if (isset($_POST['login_submit']) || isset($_POST['resend_otp'])) {
 }
 
 body {
-    background: url("../assets/img/cityhall.jpeg") center/cover no-repeat fixed;
+    background: url("<?= $BASE_URL ?>assets/img/cityhall.jpeg") center/cover no-repeat fixed;
     min-height: 100vh;  /* ← CHANGED */
     display: flex;
     flex-direction: column;
@@ -2834,12 +2834,12 @@ body:has(#resetPasswordModal) {
     <div class="nav-center">
         <div class="nav-links">
             <a href="#" class="active" data-i18n="nav_login">Log in</a>
-            <a href="citizencimm.php" data-i18n="nav_home">Home</a>
-            <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
-            <a href="track_report.php" data-i18n="nav_track">Track</a>
-            <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
-            <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
-            <a href="about.php" data-i18n="nav_about">About</a>
+            <a href="<?= $BASE_URL ?>citizen/citizencimm.php" data-i18n="nav_home">Home</a>
+            <a href="<?= $BASE_URL ?>citizen/citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>citizen/track_report.php" data-i18n="nav_track">Track</a>
+            <a href="<?= $BASE_URL ?>citizen/citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
+            <a href="<?= $BASE_URL ?>citizen/about.php" data-i18n="nav_about">About</a>
         </div>
         
         <div class="nav-divider"></div>
@@ -2877,12 +2877,12 @@ body:has(#resetPasswordModal) {
         
         <ul class="nav-list">
             <li><a href="#" class="nav-link active"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
-            <li><a href="citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
-            <li><a href="track_report.php" class="nav-link"><i class="fas fa-search"></i><span data-i18n="nav_track">Track</span></a></li>
-            <li><a href="citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
-            <li><a href="about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/track_report.php" class="nav-link"><i class="fas fa-search"></i><span data-i18n="nav_track">Track</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -3613,11 +3613,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="footer-links">
             <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="citizencimm.php" data-i18n="footer_link_home">Home</a></li>
-                <li><a href="citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
-                <li><a href="citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
-                <li><a href="citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
-                <li><a href="about.php" data-i18n="footer_link_about">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         <div class="footer-links">
@@ -3632,8 +3632,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
                 <li><a href="#" data-i18n="footer_link_data">Data Protection</a></li>
                 <li><a href="#" data-i18n="footer_link_access">Accessibility</a></li>
             </ul>
@@ -3653,6 +3653,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 <!--
 *🚨 LOGOUT IS HANDLED IN DEDICATED logout.php. *
-To destroy session, use: <a href="../functionality/logout.php">Logout</a>
+To destroy session, use: <a href="<?= $BASE_URL ?>functionality/logout.php">Logout</a>
 logout.php securely destroys the session and disables cache.
 -->

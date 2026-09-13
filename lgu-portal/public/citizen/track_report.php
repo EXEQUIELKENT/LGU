@@ -68,7 +68,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         body {
             margin: 0; padding: 0; min-height: 100vh;
             display: flex; flex-direction: column;
-            background: url("../assets/img/cityhall.jpeg") center/cover no-repeat fixed;
+            background: url("<?= $BASE_URL ?>assets/img/cityhall.jpeg") center/cover no-repeat fixed;
             position: relative; transition: background 0.3s ease;
         }
         body::before {
@@ -490,20 +490,20 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 <!-- DESKTOP NAVIGATION -->
 <header class="nav">
     <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
-        <img src="../assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
+        <img src="<?= $BASE_URL ?>assets/img/officiallogo.png" alt="LGU Logo" style="width: 40px; border-radius: 8px;">
         <span data-i18n="site_title">InfraGovServices</span>
     </a>
     <div class="nav-center">
         <div class="nav-links">
             <?php if ($show_login): ?>
-            <a href="login.php" data-i18n="nav_login">Log in</a>
+            <a href="<?= $BASE_URL ?>citizen/login.php" data-i18n="nav_login">Log in</a>
             <?php endif; ?>
-            <a href="citizencimm.php" data-i18n="nav_home">Home</a>
-            <a href="citizenreports.php" data-i18n="nav_reports">Reports</a>
+            <a href="<?= $BASE_URL ?>citizen/citizencimm.php" data-i18n="nav_home">Home</a>
+            <a href="<?= $BASE_URL ?>citizen/citizenreports.php" data-i18n="nav_reports">Reports</a>
             <a href="#" class="active" data-i18n="nav_track">Track</a>
-            <a href="citizenrepform.php" data-i18n="nav_requests">Requests</a>
-            <a href="citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
-            <a href="about.php" data-i18n="nav_about">About</a>
+            <a href="<?= $BASE_URL ?>citizen/citizenrepform.php" data-i18n="nav_requests">Requests</a>
+            <a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" data-i18n="nav_feedback">Feedback</a>
+            <a href="<?= $BASE_URL ?>citizen/about.php" data-i18n="nav_about">About</a>
         </div>
         <div class="nav-divider"></div>
         <div class="nav-actions">
@@ -530,20 +530,20 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
 <div class="sidebar-nav" id="sidebarNav">
     <div class="sidebar-top">
         <a href="https://infragovservices.com/" class="site-logo" target="_blank" rel="noopener noreferrer">
-            <img src="../assets/img/officiallogo.png" alt="LGU Logo">
+            <img src="<?= $BASE_URL ?>assets/img/officiallogo.png" alt="LGU Logo">
             <div class="sidebar-divider logo-divider"></div>
         </a>
         <div class="sidebar-logo-spacer"></div>
         <ul class="nav-list">
             <?php if ($show_login): ?>
-            <li><a href="login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/login.php" class="nav-link"><i class="fas fa-sign-in-alt"></i><span data-i18n="nav_login">Log in</span></a></li>
             <?php endif; ?>
-            <li><a href="citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
-            <li><a href="citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizencimm.php" class="nav-link"><i class="fas fa-home"></i><span data-i18n="nav_home">Home</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizenreports.php" class="nav-link"><i class="fas fa-file-alt"></i><span data-i18n="nav_reports">Reports</span></a></li>
             <li><a href="#" class="nav-link active"><i class="fas fa-magnifying-glass-location"></i><span data-i18n="nav_track">Track</span></a></li>
-            <li><a href="citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
-            <li><a href="citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
-            <li><a href="about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizenrepform.php" class="nav-link"><i class="fas fa-clipboard-list"></i><span data-i18n="nav_requests">Requests</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" class="nav-link"><i class="fas fa-comment-dots"></i><span data-i18n="nav_feedback">Feedback</span></a></li>
+            <li><a href="<?= $BASE_URL ?>citizen/about.php" class="nav-link"><i class="fas fa-info-circle"></i><span data-i18n="nav_about">About</span></a></li>
         </ul>
     </div>
 </div>
@@ -560,7 +560,7 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         <span class="mobile-lang-label" id="mobileLangLabel">E</span>
     </button>
     <a href="https://infragovservices.com/" target="_blank" rel="noopener noreferrer">
-        <img src="../assets/img/officiallogo.png" alt="LGU Logo">
+        <img src="<?= $BASE_URL ?>assets/img/officiallogo.png" alt="LGU Logo">
     </a>
     <div class="mobile-clock" id="mobileClock"></div>
     <button class="nav-btn dark-mode-btn mobile-dark-mode-btn dark-toggle" id="mobileDarkModeBtn" title="Toggle Dark Mode">
@@ -691,19 +691,19 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
         <div class="footer-links">
             <h4 data-i18n="footer_quick_links">Quick Links</h4>
             <ul>
-                <li><a href="citizencimm.php" data-i18n="footer_link_home">Home</a></li>
-                <li><a href="citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
-                <li><a href="citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
-                <li><a href="track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
-                <li><a href="citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
-                <li><a href="about.php" data-i18n="footer_link_about">About Us</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizencimm.php" data-i18n="footer_link_home">Home</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizenreports.php" data-i18n="footer_link_reports">Reports</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizenrepform.php" data-i18n="footer_link_submit">Submit Request</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/track_report.php" data-i18n="footer_link_track">Track My Report</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/citizen_feedback.php" data-i18n="footer_link_feedback">Feedback</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/about.php" data-i18n="footer_link_about">About Us</a></li>
             </ul>
         </div>
         <div class="footer-links">
             <h4 data-i18n="footer_legal">Legal</h4>
             <ul>
-                <li><a href="privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
-                <li><a href="termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/privacy.php" data-i18n="footer_link_privacy">Privacy Policy</a></li>
+                <li><a href="<?= $BASE_URL ?>citizen/termcon.php" data-i18n="footer_link_terms">Terms of Service</a></li>
             </ul>
         </div>
     </div>
@@ -1120,8 +1120,8 @@ $prefillRef = isset($_GET['ref']) ? preg_replace('/\D/', '', $_GET['ref']) : '';
             const evField  = document.getElementById('trackEvidenceField');
             const evStrip  = document.getElementById('trackEvidenceStrip');
             // Paths come back relative to public/ (e.g. "uploads/evidence/x.jpg")
-            // — this page lives in public/citizen/, so prefix "../" to resolve.
-            const evImages = (d.evidence_images || []).map(p => '../' + String(p).replace(/^\/+/, ''));
+            // — this page lives in public/citizen/, so prefix "<?= $BASE_URL ?>" to resolve.
+            const evImages = (d.evidence_images || []).map(p => '<?= $BASE_URL ?>' + String(p).replace(/^\/+/, ''));
             if (evImages.length) {
                 evStrip.innerHTML = '';
                 evImages.forEach((src) => {
